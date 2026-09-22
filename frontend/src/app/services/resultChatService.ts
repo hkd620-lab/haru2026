@@ -56,12 +56,17 @@ export type ChatWithResultResponse = {
   requiresConfirmation?: boolean;
   confirmationType?: ResultChatConfirmationType;
   limitReached?: boolean;
+  limitReason?: 'web_search_limit_reached' | 'monthly_ai_quota_exceeded';
+  failureReason?: 'web_search_failed';
   notice?: string;
   plan?: 'free' | 'basic' | 'premium' | 'developer';
   planLabel?: string;
   webSearchLimit?: number;
   webSearchUsedCount?: number;
   webSearchRemainingCount?: number;
+  monthlyAiLimit?: number;
+  monthlyAiUsedCount?: number;
+  monthlyAiRemainingCount?: number;
 };
 
 export async function chatWithResult(payload: ChatWithResultRequest): Promise<ChatWithResultResponse> {

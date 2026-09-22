@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, type StorageReference } from 'firebase/storage';
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { compressImage } from '../services/imageService';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +12,13 @@ import heic2any from 'heic2any';
 import { LoadingOverlay } from './LoadingOverlay';
 import GrapeLoadingMini from './GrapeLoadingMini';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
+import {
+  cleanupTrackedRecordPhotos,
+  decodeConvertedJpeg,
+  enqueuePendingRecordPhotoCleanup,
+  excludeCommittedRecordPhotoUrls,
+  retryPendingRecordPhotoCleanup,
+} from '../services/recordPhotoUploadCore';
 import {
   makeReadingBookId,
   normalizeBookField,
@@ -368,6 +375,7 @@ const LEDGER_DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
 interface LedgerDraftPayload {
   rows: LedgerPeriodPreviewRow[];
   year: number;
+  pendingImageUrls?: string[];
   savedAt: number;
 }
 
@@ -387,13 +395,13 @@ function loadLedgerXlsxDraft(): LedgerDraftPayload | null {
   }
 }
 
-function saveLedgerXlsxDraft(rows: LedgerPeriodPreviewRow[], year: number) {
+function saveLedgerXlsxDraft(rows: LedgerPeriodPreviewRow[], year: number, pendingImageUrls: string[] = []) {
   try {
     if (rows.length === 0) {
       sessionStorage.removeItem(LEDGER_DRAFT_STORAGE_KEY);
       return;
     }
-    const payload: LedgerDraftPayload = { rows, year, savedAt: Date.now() };
+    const payload: LedgerDraftPayload = { rows, year, pendingImageUrls, savedAt: Date.now() };
     sessionStorage.setItem(LEDGER_DRAFT_STORAGE_KEY, JSON.stringify(payload));
   } catch {
     // sessionStorage 용량 초과 등은 무시한다 — draft는 편의 기능이므로 저장 흐름을 막지 않는다.
@@ -454,7 +462,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedImageMeta, setUploadedImageMeta] = useState<UploadedImageMeta[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCleaningSessionUploads, setIsCleaningSessionUploads] = useState(false);
+  const isCleaningSessionUploadsRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sessionUploadedImageUrlsRef = useRef<string[]>([]);
+  const committedCloseRef = useRef(false);
   const [isExtractingBookText, setIsExtractingBookText] = useState(false);
   const [readingOcrUsedCount, setReadingOcrUsedCount] = useState<number | null>(null);
   const [readingBookTextMode, setReadingBookTextMode] = useState<'photo' | 'manual'>('photo');
@@ -572,6 +584,14 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [blockedBookMessage, setBlockedBookMessage] = useState<string>('');
   const isDeveloper = !!user?.uid && DEVELOPER_UIDS.includes(user.uid);
 
+  useEffect(() => {
+    if (!user?.uid) return;
+    const storage = getStorage();
+    void retryPendingRecordPhotoCleanup(user.uid, async (path) => {
+      await deleteObject(ref(storage, path));
+    });
+  }, [user?.uid]);
+
   const readingReflectionQuestions = [
     '이 책은 나를 어떻게 변화시켰는가?',
     '나는 무엇을 반성하게 되었는가?',
@@ -582,6 +602,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
   useEffect(() => {
     if (isOpen) {
+      sessionUploadedImageUrlsRef.current = [];
+      committedCloseRef.current = false;
       setFormData((format === '육아일기' || format === '성장기록') ? { ...initialData, child_measuredate: initialData.child_measuredate || getTodayInputValue() } : initialData);
       setGrowthSubjectBirthdate('');
       setGrowthSubjectGender('');
@@ -667,6 +689,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       if (isLedgerFormat) {
         const draft = loadLedgerXlsxDraft();
         if (draft) {
+          sessionUploadedImageUrlsRef.current = (draft.pendingImageUrls || []).filter((url) => {
+            const path = getStoragePathFromDownloadUrl(url);
+            return Boolean(path?.startsWith(`users/${user?.uid}/format_photos/`));
+          });
           const doneCount = draft.rows.filter((row) => row.entry.category).length;
           const resume = window.confirm(
             `이전에 작업하던 카드 명세서가 있습니다.\n이어서 작업하시겠습니까? (${draft.rows.length}건, 분류 지정 ${doneCount}건 완료)`,
@@ -915,7 +941,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     if (!isOpen || format !== 'HARU보조장부') return;
     if (ledgerDraftSaveTimerRef.current) clearTimeout(ledgerDraftSaveTimerRef.current);
     ledgerDraftSaveTimerRef.current = setTimeout(() => {
-      saveLedgerXlsxDraft(ledgerXlsxPreviewRows, ledgerXlsxYear);
+      saveLedgerXlsxDraft(
+        ledgerXlsxPreviewRows,
+        ledgerXlsxYear,
+        sessionUploadedImageUrlsRef.current,
+      );
     }, 500);
     return () => {
       if (ledgerDraftSaveTimerRef.current) clearTimeout(ledgerDraftSaveTimerRef.current);
@@ -1106,7 +1136,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
         savedCount++;
       }
       toast.success(`${savedCount}건의 거래가 각각 저장되었습니다!`);
-      onClose();
+      closeAfterCommit();
     } catch (error) {
       console.error('주식 거래 저장 실패:', error);
       toast.error('저장에 실패했습니다.');
@@ -1173,6 +1203,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   };
 
   const handleSubmit = async () => {
+    if (isCleaningSessionUploadsRef.current) {
+      toast.warning('사진 정리가 끝난 뒤 저장해주세요.');
+      return;
+    }
     if (recordStep === 'select') return;
     setIsSaving(true);
     try {
@@ -1187,7 +1221,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
       await onSave(dataToSave);
       toast.success('저장되었습니다!');
-      onClose();
+      closeAfterCommit();
 
       // 백그라운드 AI 제목 추출
       try {
@@ -1785,6 +1819,11 @@ ${contentValues}`,
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (isCleaningSessionUploadsRef.current) {
+      event.target.value = '';
+      toast.warning('사진 정리가 끝난 뒤 다시 추가해주세요.');
+      return;
+    }
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
@@ -1809,6 +1848,8 @@ ${contentValues}`,
       const functionsInstance = getFunctions(undefined, 'asia-northeast3');
 
       for (const file of filesToUpload) {
+        let pendingStorageRef: StorageReference | null = null;
+        let uploadTracked = false;
         if (file.size > 20 * 1024 * 1024) {
           toast.warning(`${file.name}은 20MB를 초과하여 건너뜁니다.`);
           continue;
@@ -1833,7 +1874,7 @@ ${contentValues}`,
 
         const originalMeta = await readOriginalImageMeta(file);
 
-        // HEIC → JPG 변환 (Cloudinary convertHeic 임시 변환만 사용)
+        // HEIC → JPG 변환 (서버가 Cloudinary 임시 객체를 회수·삭제한 뒤 JPEG 데이터만 반환)
         let fileToProcess: File | Blob = file;
         if (isHeic) {
           try {
@@ -1850,12 +1891,7 @@ ${contentValues}`,
 
             const convertHeicFunc = httpsCallable(functionsInstance, 'convertHeic');
             const result = await convertHeicFunc({ imageBase64 });
-            const { url } = result.data as { url: string };
-
-            // Cloudinary 임시 JPG URL → Blob (이후 Firebase Storage에 영구 저장)
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('JPG 다운로드 실패');
-            fileToProcess = await response.blob();
+            fileToProcess = await decodeConvertedJpeg(result.data);
           } catch (err) {
             console.error('HEIC 변환 실패:', err);
             toast.error('HEIC 변환에 실패했습니다.');
@@ -1873,8 +1909,11 @@ ${contentValues}`,
 
           const imagePath = `users/${user.uid}/format_photos/${recordId}_${prefix}_${fileName}`;
           const storageRef = ref(storage, imagePath);
+          pendingStorageRef = storageRef;
           await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
           const downloadUrl = await getDownloadURL(storageRef);
+          sessionUploadedImageUrlsRef.current.push(downloadUrl);
+          uploadTracked = true;
           newImageUrls.push(downloadUrl);
           newImageMeta.push({
             ...originalMeta,
@@ -1890,6 +1929,13 @@ ${contentValues}`,
             }
           }
         } catch (fileError: any) {
+          if (pendingStorageRef && !uploadTracked) {
+            try {
+              await deleteObject(pendingStorageRef);
+            } catch {
+              enqueuePendingRecordPhotoCleanup(pendingStorageRef.fullPath);
+            }
+          }
           if (fileError?.message === 'FILE_READER_ERROR') {
             toast.error(
               '각종 클라우드에 있는 사진은 직접 업로드가 안 됩니다. 스마트폰에서 직접 업로드하거나 클라우드의 사진을 다운받은 후 추가해주세요.'
@@ -1935,6 +1981,64 @@ ${contentValues}`,
     }
   }
 
+  const cleanupUncommittedSessionUploads = async (): Promise<boolean> => {
+    if (committedCloseRef.current || sessionUploadedImageUrlsRef.current.length === 0) return true;
+    if (!user?.uid) return false;
+    const urls = sessionUploadedImageUrlsRef.current;
+    const storage = getStorage();
+    const { deletedUrls, failedUrls } = await cleanupTrackedRecordPhotos(urls, async (url) => {
+      const path = getStoragePathFromDownloadUrl(url);
+      if (!path || !path.startsWith(`users/${user.uid}/format_photos/`)) {
+        throw new Error('삭제 권한이 없는 사진 경로입니다.');
+      }
+      await deleteObject(ref(storage, path));
+    });
+    sessionUploadedImageUrlsRef.current = failedUrls;
+
+    if (deletedUrls.length > 0) {
+      const deleted = new Set(deletedUrls);
+      setUploadedImages((images) => images.filter((url) => !deleted.has(url)));
+      setUploadedImageMeta((metadata) => metadata.filter((meta) => !deleted.has(meta.url)));
+      const nextRows = ledgerXlsxPreviewRows.map((row) => ({
+        ...row,
+        entry: {
+          ...row.entry,
+          imageUrls: (row.entry.imageUrls || []).filter((url) => !deleted.has(url)),
+          imageMeta: (row.entry.imageMeta || []).filter((meta) => !deleted.has(meta.url)),
+        },
+      }));
+      setLedgerXlsxPreviewRows(nextRows);
+      saveLedgerXlsxDraft(nextRows, ledgerXlsxYear, sessionUploadedImageUrlsRef.current);
+    }
+
+    if (failedUrls.length > 0) {
+      toast.error('일부 사진 정리에 실패했습니다. 네트워크를 확인한 뒤 다시 닫아주세요.');
+      return false;
+    }
+    return true;
+  };
+
+  const closeAfterCommit = () => {
+    committedCloseRef.current = true;
+    onClose();
+  };
+
+  const handleCloseRequest = async () => {
+    if (isUploading || isSaving || isSavingLedgerXlsx || isCleaningSessionUploadsRef.current) {
+      toast.warning('사진 업로드 또는 저장이 끝난 뒤 닫아주세요.');
+      return;
+    }
+    isCleaningSessionUploadsRef.current = true;
+    setIsCleaningSessionUploads(true);
+    try {
+      if (!(await cleanupUncommittedSessionUploads())) return;
+      onClose();
+    } finally {
+      isCleaningSessionUploadsRef.current = false;
+      setIsCleaningSessionUploads(false);
+    }
+  };
+
   const handleDeleteImage = async (imageUrl: string, index: number) => {
     const periodRow = ledgerInputMode === 'period'
       ? ledgerXlsxPreviewRows.find((row) => row.id === expandedLedgerXlsxRowId)
@@ -1968,6 +2072,7 @@ ${contentValues}`,
         await deleteObject(imageRef);
       }
 
+      sessionUploadedImageUrlsRef.current = sessionUploadedImageUrlsRef.current.filter((url) => url !== imageUrl);
       removeFromState();
       toast.success('사진이 삭제되었습니다.');
     } catch (error: any) {
@@ -1986,6 +2091,7 @@ ${contentValues}`,
         msg.includes('이미 삭제');
 
       if (ignorable) {
+        sessionUploadedImageUrlsRef.current = sessionUploadedImageUrlsRef.current.filter((url) => url !== imageUrl);
         removeFromState();
         toast.success('사진이 제거되었습니다.');
       } else {
@@ -1995,6 +2101,10 @@ ${contentValues}`,
   };
 
   const handleSaveLedgerEntries = async () => {
+    if (isCleaningSessionUploadsRef.current) {
+      toast.warning('사진 정리가 끝난 뒤 저장해주세요.');
+      return;
+    }
     if (ledgerEntries.length === 0) {
       toast.warning('거래 내역이 없습니다. 거래를 최소 1건 입력해 주세요.');
       return;
@@ -2073,7 +2183,7 @@ ${contentValues}`,
         });
       }
 
-      onClose();
+      closeAfterCommit();
     } catch (error) {
       console.error('저장 중 오류:', error);
       toast.error('저장에 실패했습니다.');
@@ -2201,6 +2311,10 @@ ${contentValues}`,
   };
 
   const handleSaveLedgerXlsxRows = async () => {
+    if (isCleaningSessionUploadsRef.current) {
+      toast.warning('사진 정리가 끝난 뒤 저장해주세요.');
+      return;
+    }
     const selectedRows = ledgerXlsxPreviewRows.filter((row) => row.selected && row.canImport);
     if (selectedRows.length === 0) {
       toast.warning('보조장부에 반영할 거래를 선택해 주세요.');
@@ -2244,6 +2358,10 @@ ${contentValues}`,
         ].join('|'))}`,
       }));
       const result = await saveLedgerPeriodEntriesBatch(user.uid, saveEntries);
+      sessionUploadedImageUrlsRef.current = excludeCommittedRecordPhotoUrls(
+        sessionUploadedImageUrlsRef.current,
+        selectedRows.flatMap((row) => row.entry.imageUrls || []),
+      );
       setLedgerPeriodResult({
         totalCount: ledgerXlsxPreviewRows.length,
         savedCount: result.savedCount,
@@ -2397,7 +2515,7 @@ ${contentValues}`,
     try {
       await saveHouseholdEntriesBatch(householdEntries);
       toast.success(`가계부 ${householdEntries.length}건이 저장되었습니다!`);
-      onClose();
+      closeAfterCommit();
     } catch (error) {
       console.error('저장 중 오류:', error);
       toast.error('저장에 실패했습니다.');
@@ -2422,7 +2540,7 @@ ${contentValues}`,
     try {
       await onSave(dataToSave as any);
       toast.success(`배뇨일지 ${voidingEntries.length}건이 저장되었습니다!`);
-      onClose();
+      closeAfterCommit();
     } catch (error) {
       console.error('저장 중 오류:', error);
       toast.error('저장에 실패했습니다.');
@@ -2566,7 +2684,7 @@ ${contentValues}`,
       // 저장 완료된 달은 목록에서 제거 — 검증 실패로 막힌 달만 남겨 재수정할 수 있게 한다.
       const savedMonths = new Set(validGroups.map((g) => g.month));
       setKakaoXlsxMonthGroups((groups) => groups.filter((g) => !savedMonths.has(g.month)));
-      if (blockedMonths.length === 0) onClose();
+      if (blockedMonths.length === 0) closeAfterCommit();
     } catch (error) {
       console.error('카카오뱅크 가져오기 저장 실패:', error);
       toast.error('저장 중 오류가 발생했습니다. 가계부에서 반영 여부를 확인해 주세요.');
@@ -2576,6 +2694,10 @@ ${contentValues}`,
   };
 
   const handleSaveOriginalAsSayu = async () => {
+    if (isCleaningSessionUploadsRef.current) {
+      toast.warning('사진 정리가 끝난 뒤 저장해주세요.');
+      return;
+    }
     if (isLedgerFormat) {
       return handleSaveLedgerEntries();
     }
@@ -2658,6 +2780,10 @@ ${contentValues}`,
   };
 
   const handleSaveSayu = async () => {
+    if (isCleaningSessionUploadsRef.current) {
+      toast.warning('사진 정리가 끝난 뒤 저장해주세요.');
+      return;
+    }
     const updateData: Record<string, any> = {
       ...formData,
       ...getGrowthSaveFields(),
@@ -3057,7 +3183,7 @@ ${contentValues}`,
       setIsSaving(true);
       await onSave(updateData);
       toast.success(editingReadingEntryId ? '📖 독서장 회차가 수정되었습니다.' : '📖 독서장이 누적 저장되었습니다.');
-      onClose();
+      closeAfterCommit();
     } catch (error: any) {
       console.error('중간기록 저장 실패:', error);
       toast.error('중간기록 저장에 실패했습니다.');
@@ -3096,7 +3222,7 @@ ${contentValues}`,
       await onSave(updateData);
       toast.success('SAYU-나의기록에 저장되었습니다.');
       setShowReadingFinishModal(false);
-      onClose();
+      closeAfterCommit();
     } catch (error) {
       console.error('최종 독서사유 저장 실패:', error);
       toast.error('최종 저장에 실패했습니다.');
@@ -3185,7 +3311,7 @@ ${contentValues}`,
           zIndex: 1000,
           padding: '20px',
         }}
-        onClick={onClose}
+        onClick={handleCloseRequest}
       >
         <div
           style={{
@@ -3222,7 +3348,7 @@ ${contentValues}`,
               )}
             </div>
             <button
-              onClick={onClose}
+              onClick={handleCloseRequest}
               style={{
                 background: 'none',
                 border: 'none',
@@ -5796,8 +5922,8 @@ ${contentValues}`,
                 </label>
                 <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8, marginTop: 0 }}>
                   {isLedgerFormat
-                    ? '사진 없이도 저장할 수 있습니다 · 최대 10장 · PNG, JPG, JPEG, WEBP, HEIC'
-                    : '사진 없이도 저장할 수 있습니다 · 최대 3장 · PNG, JPG, JPEG, WEBP, HEIC'}
+                    ? '사진 없이도 저장할 수 있습니다 · 최대 10장 · PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다'
+                    : '사진 없이도 저장할 수 있습니다 · 최대 3장 · PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다'}
                 </p>
                 <input
                   ref={fileInputRef}
@@ -5810,7 +5936,7 @@ ${contentValues}`,
                 {format === '일기' ? (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || activeUploadedImages.length >= 3}
+                    disabled={isUploading || isCleaningSessionUploads || activeUploadedImages.length >= 3}
                     style={{
                       width: '100%',
                       padding: '17px',
@@ -5832,7 +5958,7 @@ ${contentValues}`,
                 ) : (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3)}
+                    disabled={isUploading || isCleaningSessionUploads || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3)}
                     style={{
                       width: '100%',
                       padding: '10px 16px',
@@ -6084,7 +6210,7 @@ ${contentValues}`,
                 </button>
                 <button
                   onClick={handleSaveOriginalAsSayu}
-                  disabled={isSaving || isPolishing}
+                  disabled={isSaving || isPolishing || isCleaningSessionUploads}
                   style={{
                     flex: 1, height: '56px',
                     fontSize: '14px', fontWeight: 500,
@@ -6195,8 +6321,8 @@ ${contentValues}`,
               <button
                 onClick={ledgerInputMode === 'period' ? handleSaveLedgerXlsxRows : handleSaveOriginalAsSayu}
                 disabled={ledgerInputMode === 'period'
-                  ? isSavingLedgerXlsx || ledgerPeriodSelectedRows.length === 0
-                  : isSaving}
+                  ? isSavingLedgerXlsx || isCleaningSessionUploads || ledgerPeriodSelectedRows.length === 0
+                  : isSaving || isCleaningSessionUploads}
                 style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#1A3C6E', color: '#fff', cursor: isSaving || isSavingLedgerXlsx ? 'not-allowed' : 'pointer', opacity: isSaving || isSavingLedgerXlsx || (ledgerInputMode === 'period' && ledgerPeriodSelectedRows.length === 0) ? 0.7 : 1, fontWeight: 700 }}
               >
                 {ledgerInputMode === 'period'
@@ -6256,7 +6382,7 @@ ${contentValues}`,
                 </button>
                 <button
                   onClick={handleSaveOriginalAsSayu}
-                  disabled={isSaving || isPolishing}
+                  disabled={isSaving || isPolishing || isCleaningSessionUploads}
                   style={{
                     padding: '12px 16px',
                     fontSize: 14,

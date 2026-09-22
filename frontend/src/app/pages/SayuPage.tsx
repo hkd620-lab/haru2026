@@ -59,6 +59,7 @@ const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(['diary', 'essay', 'travel', 'garden'
 const SENSITIVE_PUBLIC_FORMATS: RecordFormat[] = ['HARU가계부', '업무일지'];
 const GROWTH_TIMELINE_FORMAT_LABEL = '성장타임라인';
 const GROWTH_TIMELINE_SAYU_LABEL = 'HARU타임라인';
+const SNS_GALMURI_LABEL = 'SNS 갈무리';
 type PlantSayuEntryType = 'detective' | 'diary' | 'library' | 'catalog';
 type PlantSayuFilter = 'all' | PlantSayuEntryType;
 type ResultChatModalState = {
@@ -100,6 +101,10 @@ const PLANT_SAYU_SOURCE_LABEL: Record<string, string> = {
   plantnet: 'PlantNet',
   gemini: 'AI 분석',
 };
+
+function isCompletedSnsStoryRecord(record: HaruRecord): boolean {
+  return record.source === 'sns_story' && record.generationStatus === 'completed';
+}
 
 type HaruLawArticleView = {
   lawName: string;
@@ -2174,6 +2179,7 @@ export function SayuPage() {
     '주식거래일지': 'stock',
     'HARU보조장부': 'ledger',
     'HARU가계부': 'household',
+    [SNS_GALMURI_LABEL]: 'essay',
   };
 
   const META_SUFFIXES = ['_sayu', '_final_sayu', '_polished', '_polishedAt', '_mode', '_stats', '_images', '_imageMeta', '_rating', '_status', '_completedAt', '_reflection_questions', '_reflection_answers', '_entries_snapshot'];
@@ -2181,7 +2187,7 @@ export function SayuPage() {
   const hasSayu = (date: Date | null): 'none' | 'saved' | 'polished' | 'written' => {
     if (!date) return 'none';
     const dateStr = formatDateString(date);
-    const dayRecords = records.filter((r) => r.date === dateStr);
+    const dayRecords = records.filter((r) => r.date === dateStr && !isCompletedSnsStoryRecord(r));
     if (dayRecords.length === 0) return 'none';
 
     let hasAnyPolished = false;
@@ -2240,7 +2246,7 @@ export function SayuPage() {
   const getFormatDotsForDay = (date: Date | null): { prefix: string; color: string }[] => {
     if (!date) return [];
     const dateStr = formatDateString(date);
-    const dayRecords = records.filter((r) => r.date === dateStr);
+    const dayRecords = records.filter((r) => r.date === dateStr && !isCompletedSnsStoryRecord(r));
     const seen = new Set<string>();
     const dots: { prefix: string; color: string }[] = [];
     dayRecords.forEach((record) => {
@@ -2272,7 +2278,7 @@ export function SayuPage() {
   const handleDateClick = (date: Date | null) => {
     if (!date) return;
     const dateStr = formatDateString(date);
-    const dayRecords = records.filter((r) => r.date === dateStr);
+    const dayRecords = records.filter((r) => r.date === dateStr && !isCompletedSnsStoryRecord(r));
 
     if (dayRecords.length === 0) {
       toast.info('해당 날짜에 기록이 없습니다.');
@@ -2471,13 +2477,18 @@ export function SayuPage() {
     if (!filterFormat && !openRecordId) return;
 
     const routeKey = `${filterFormat}|${openRecordId}`;
-    const targetTab = routeState?.tab === 'assistants' || filterFormat === '하루LAW' ? 'assistants' : 'records';
+    const targetTab = routeState?.tab === 'assistants' || filterFormat === '하루LAW' || filterFormat === SNS_GALMURI_LABEL ? 'assistants' : 'records';
     setSayuTab(targetTab);
     setViewMode('list');
     setSayuSearchInput('');
     setDebouncedSayuSearch('');
     if (filterFormat) {
       setSelectedSayuLabels((prev) => ({ ...prev, [targetTab]: filterFormat }));
+      setExpandedSayuGroups((prev) => {
+        const next = new Set(prev);
+        next.add(`${targetTab}_${filterFormat}`);
+        return next;
+      });
     }
 
     if (!openRecordId) {
@@ -2519,7 +2530,7 @@ export function SayuPage() {
     } else {
       // filterFormat(한글 형식명)을 실제 저장 필드 prefix로 변환 — 기존에는 'memo'로 고정되어 있어
       // 메모 외 형식(일기/에세이 등)을 열면 잘못된 필드(memo_*)를 읽는 문제가 있었다.
-      const resolvedFormatKey = ALL_FORMAT_PREFIXES[filterFormat] || 'memo';
+      const resolvedFormatKey = filterFormat === SNS_GALMURI_LABEL ? 'essay' : ALL_FORMAT_PREFIXES[filterFormat] || 'memo';
       openFormatSayu(recordDate, resolvedFormatKey, filterFormat || '메모', openRecordId);
     }
     navigate('/sayu', { replace: true, state: null });
@@ -2585,15 +2596,15 @@ export function SayuPage() {
   };
 
   const handleSaveSayu = async (editedContent: string, rating: number) => {
-    if (!selectedDate) return;
+    if (!selectedDate) return false;
     const currentFormatInfo = selectedDateFormats[0];
     const record = currentFormatInfo?.recordId
       ? records.find((r) => r.id === currentFormatInfo.recordId)
       : records.find((r) => r.date === selectedDate);
-    if (!record) return;
+    if (!record) return false;
 
     const formatKey = currentFormatInfo?.key || selectedDateFormats.find((f) => record[`${f.key}_sayu`])?.key;
-    if (!formatKey) return;
+    if (!formatKey) return false;
 
     const sayuKey = `${formatKey}_sayu`;
     const ratingKey = `${formatKey}_rating`;
@@ -2617,9 +2628,11 @@ export function SayuPage() {
       );
 
       toast.success('SAYU-나의기록에 저장되었습니다!');
+      return true;
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('저장에 실패했습니다.');
+      return false;
     }
   };
 
@@ -3841,6 +3854,7 @@ export function SayuPage() {
   };
 
   const isKnowledgeWarehouseRecord = (record: HaruRecord) => {
+    if (isCompletedSnsStoryRecord(record)) return false;
     const formats = Array.isArray(record.formats) ? record.formats.map(String) : [];
     const sourceText = [
       record.type,
@@ -3874,6 +3888,7 @@ export function SayuPage() {
   };
 
   const hasCompletedFormatForRecord = (record: HaruRecord, prefix: string) => {
+    if (isCompletedSnsStoryRecord(record)) return false;
     if (isKnowledgeWarehouseRecord(record)) return false;
     if (prefix === 'growthTimeline') {
       return isGrowthTimelineRecord(record) && normalizeTimelineItems((record as any).timelineItems).length > 0;
@@ -4371,6 +4386,30 @@ export function SayuPage() {
 
   const assistantEntries: FlatSayuEntry[] = [
     ...records
+      .filter((record) => isSayuScopeDate(record.date) && isCompletedSnsStoryRecord(record))
+      .map((record) => {
+        const title = String((record as any).essay_title || (record as any).essay_ai_title || 'SNS 갈무리 이야기').slice(0, 48);
+        const content = String((record as any).essay_sayu || (record as any).content || '').trim();
+        const sourceCount = Array.isArray((record as any).sourceRecordIds) ? (record as any).sourceRecordIds.length : 0;
+        const subtitle = [
+          sourceCount > 0 ? `SNS 기록 ${sourceCount}건` : 'SNS 갈무리 작품',
+          compactPlantText(content, 80),
+        ].filter(Boolean).join(' · ');
+        const keywords = getRecordPreviewKeywords(record, 'essay');
+        return {
+          id: `${record.id}_sns_galmuri`,
+          recordId: record.id,
+          date: record.date,
+          label: SNS_GALMURI_LABEL,
+          title,
+          subtitle,
+          color: '#10b981',
+          keywords,
+          searchText: buildSearchText(SNS_GALMURI_LABEL, title, subtitle, keywords, content),
+          onOpen: () => openFormatSayu(record.date, 'essay', SNS_GALMURI_LABEL, record.id),
+        };
+      }),
+    ...records
       .filter((record) => (
         isSayuScopeDate(record.date) &&
         !isKnowledgeWarehouseRecord(record) &&
@@ -4740,6 +4779,13 @@ export function SayuPage() {
                 title: '하루LAW',
                 subtitle: `생활 속 법률 관련 기록 ${groupCount}건`,
                 description: `최근 기록 ${formatListDate(group.latestDate)} · 법률 관련 기록과 사유를 모아두었습니다.`,
+              };
+            }
+            if (group.label === SNS_GALMURI_LABEL) {
+              return {
+                title: SNS_GALMURI_LABEL,
+                subtitle: `SNS에 흩어진 기록을 모아 정리한 작품 ${groupCount}건`,
+                description: `최근 작품 ${formatListDate(group.latestDate)} · 나의 이야기로 완성해 보관합니다.`,
               };
             }
             if (isPlantGroup) {

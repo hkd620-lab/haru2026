@@ -17,6 +17,12 @@ import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './
 import { compressImage } from '../services/imageService';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
 import {
+  decodeConvertedJpeg,
+  enqueuePendingRecordPhotoCleanup,
+  persistRecordPhoto,
+  retryPendingRecordPhotoCleanup,
+} from '../services/recordPhotoUploadCore';
+import {
   getLocationCandidateFromGps,
   type ReverseGeocodeCandidate,
 } from '../services/reverseGeocodeService';
@@ -42,6 +48,7 @@ const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const MOOD_OPTIONS = ['기쁨', '평온', '무미', '울적', '번잡'];
 const TIMELINE_IMAGE_MAX_WIDTH = 1600;
 const TIMELINE_IMAGE_QUALITY = 0.82;
+const RECORD_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
 type EnvTagType = 'weather' | 'temperature' | 'mood';
 
 type HouseholdSayuEntry = {
@@ -79,6 +86,32 @@ function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdS
   } catch {
     return [];
   }
+}
+
+function isHeicLikeFile(file: File) {
+  return file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    /\.(heic|heif)$/i.test(file.name);
+}
+
+function isSupportedRecordImage(file: File) {
+  return file.type.startsWith('image/') || isHeicLikeFile(file);
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function convertHeicRecordImage(file: File): Promise<Blob> {
+  const convertHeic = httpsCallable(functions, 'convertHeic');
+  const result = await convertHeic({ imageBase64: arrayBufferToBase64(await file.arrayBuffer()) });
+  return await decodeConvertedJpeg(result.data);
 }
 
 function formatHouseholdDate(date: string): string {
@@ -514,7 +547,7 @@ export interface SayuModalProps {
   format?: string;
   dateLabel: string;
   currentRating?: number;
-  onSave: (content: string, rating: number) => void;
+  onSave: (content: string, rating: number) => Promise<boolean>;
   recordDate?: string;
   weather?: string;
   temperature?: string;
@@ -540,6 +573,10 @@ export function formatDateToKorean(dateStr: string): string {
   const dayOfWeek = days[date.getDay()];
   
   return `${year}년 ${month}월 ${day}일 ${dayOfWeek}요일`;
+}
+
+function hideOnError(e: React.SyntheticEvent<HTMLImageElement>) {
+  e.currentTarget.style.display = 'none';
 }
 
 export function SayuModal({
@@ -601,12 +638,22 @@ export function SayuModal({
   const [showTimelineDocument, setShowTimelineDocument] = useState(false);
   const [isExportingEpub, setIsExportingEpub] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title || '');
+  const [isEditing, setIsEditing] = useState(false);
+  const savedDraftRef = useRef({
+    content,
+    title: title || '',
+    weather: weather || '',
+    temperature: temperature || '',
+    mood: mood || '',
+    specialDay: (currentRating || 0) > 0,
+  });
   const isGrowthTimeline = formatKey === 'growthTimeline';
   const isHouseholdSayu = formatKey === 'household' || format === 'HARU가계부' || Boolean(editedOriginalData.household_entries);
   const householdSayuEntries = isHouseholdSayu ? parseHouseholdEntriesForSayu(editedOriginalData) : [];
   const timelineLocationRecoveryKeyRef = useRef('');
   const editedTimelineItemsRef = useRef<GrowthTimelineEditItem[]>([]);
   const openedTimelineSummaryRef = useRef('');
+  const mainEditorRef = useRef<HTMLTextAreaElement>(null);
   const weatherTagsRef = useRef<string[]>(WEATHER_OPTIONS);
   const temperatureTagsRef = useRef<string[]>(TEMPERATURE_OPTIONS);
   const moodTagsRef = useRef<string[]>(MOOD_OPTIONS);
@@ -619,6 +666,14 @@ export function SayuModal({
       activationConstraint: { delay: 200, tolerance: 5 },
     }),
   );
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    void retryPendingRecordPhotoCleanup(
+      currentUser.uid,
+      (path) => deleteObject(ref(storage, path)),
+    );
+  }, [currentUser?.uid]);
 
   useEffect(() => {
     weatherTagsRef.current = weatherTags;
@@ -814,20 +869,31 @@ export function SayuModal({
     }
     setIsDeleting(true);
     try {
-      // 1. Storage: {date}_{formatKey}_ 접두사 파일 삭제
-      const storageRef = ref(storage, `users/${currentUser.uid}/format_photos/`);
-      const listResult = await listAll(storageRef);
-      const filesToDelete = listResult.items.filter((item) =>
-        item.name.startsWith(`${recordDate}_${formatKey}_`)
-      );
-      await Promise.allSettled(filesToDelete.map((file) => deleteObject(file)));
-
-      // 2. Firestore: 해당 형식 필드 삭제 (firestoreId 우선, 없으면 recordDate 폴백)
+      // 1. Firestore: 해당 형식 필드 삭제 (firestoreId 우선, 없으면 recordDate 폴백)
       const docId = firestoreId || recordDate!;
       const recordRef = doc(db, 'users', currentUser.uid, 'records', docId);
       const recordSnap = await getDoc(recordRef);
       if (recordSnap.exists()) {
         const data = recordSnap.data();
+        if (data.source === 'sns_story' && data.generationStatus === 'completed') {
+          if (data.isPublic === true || typeof data.sharedRecordId === 'string') {
+            await firestoreService.unpublishSharedRecord(currentUser.uid, docId);
+          }
+          await deleteDoc(recordRef);
+          toast.success('삭제되었습니다.');
+          onClose(true);
+          onRefresh?.();
+          return;
+        }
+
+        // 2. Storage: 일반 기록 형식 사진만 삭제. SNS 원본 기록과 사진에는 접근하지 않는다.
+        const storageRef = ref(storage, `users/${currentUser.uid}/format_photos/`);
+        const listResult = await listAll(storageRef);
+        const filesToDelete = listResult.items.filter((item) =>
+          item.name.startsWith(`${recordDate}_${formatKey}_`)
+        );
+        await Promise.allSettled(filesToDelete.map((file) => deleteObject(file)));
+
         console.log('[DELETE] recordDate:', recordDate);
         console.log('[DELETE] formatKey:', formatKey);
         console.log('[DELETE] all fields:', Object.keys(data));
@@ -1162,6 +1228,14 @@ export function SayuModal({
   useEffect(() => {
     if (isOpen) {
       console.log('📌 formatKey:', formatKey, 'recordDate:', recordDate);
+      savedDraftRef.current = {
+        content,
+        title: title || '',
+        weather: weather || '',
+        temperature: temperature || '',
+        mood: mood || '',
+        specialDay: (currentRating || 0) > 0,
+      };
       setEditedContent(content);
       setEditedWeather(weather || '');
       setEditedTemperature(temperature || '');
@@ -1231,6 +1305,7 @@ export function SayuModal({
       setIsSpecialDay((currentRating || 0) > 0);
       setLocalAiComment(aiComment || '');
       setViewMode('ai');
+      setIsEditing(false);
       setIsPrinting(false);
       setShowDeleteDialog(false);
       setShowTimelineDocument(false);
@@ -1265,6 +1340,36 @@ export function SayuModal({
       }
     }
   }, [isOpen, content, currentRating, images, format, title, aiComment, timelineItems, formatKey, firestoreId, recordDate, currentUser?.uid]);
+
+  useEffect(() => {
+    if (!isOpen || !isEditing || viewMode !== 'ai' || !mainEditorRef.current) return;
+
+    const editor = mainEditorRef.current;
+    editor.style.height = 'auto';
+    editor.style.height = `${Math.max(editor.scrollHeight, 400)}px`;
+  }, [isOpen, isEditing, viewMode, editedContent]);
+
+  const handleCancelEdit = () => {
+    const saved = savedDraftRef.current;
+    setEditedContent(saved.content);
+    setEditedTitle(saved.title);
+    setEditedWeather(saved.weather);
+    setEditedTemperature(saved.temperature);
+    setEditedMood(saved.mood);
+    setIsSpecialDay(saved.specialDay);
+    setIsEditing(false);
+  };
+
+  const rememberSavedEdit = (savedContent: string) => {
+    savedDraftRef.current = {
+      content: savedContent,
+      title: editedTitle,
+      weather: editedWeather,
+      temperature: editedTemperature,
+      mood: editedMood,
+      specialDay: isSpecialDay,
+    };
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -1313,7 +1418,9 @@ export function SayuModal({
         }
         toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
         await onRefresh?.();
-        onClose();
+        rememberSavedEdit(nextContent);
+        setEditedContent(nextContent);
+        setIsEditing(false);
         return;
       }
 
@@ -1329,9 +1436,11 @@ export function SayuModal({
         }
         await updateDoc(recordRef, titleUpdate);
       }
-      onSave(editedContent, isSpecialDay ? 1 : 0);
+      const saved = await onSave(editedContent, isSpecialDay ? 1 : 0);
+      if (!saved) return;
+      rememberSavedEdit(editedContent);
       toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
-      onClose();
+      setIsEditing(false);
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('❌ 저장에 실패했습니다. 다시 시도해주세요.');
@@ -1390,36 +1499,85 @@ export function SayuModal({
     if (!file || !currentUser || !firestoreId || !formatKey) return;
     if (localImages.length >= 3) {
       toast.error('사진은 최대 3장까지 추가할 수 있습니다.');
+      e.target.value = '';
       return;
     }
+    if (file.size > RECORD_IMAGE_MAX_BYTES) {
+      toast.error('사진은 20MB 이하만 추가할 수 있습니다.');
+      e.target.value = '';
+      return;
+    }
+    if (!isSupportedRecordImage(file)) {
+      toast.error('PNG, JPG, JPEG, WEBP, HEIC 사진만 추가할 수 있습니다.');
+      e.target.value = '';
+      return;
+    }
+
     setIsUploadingImage(true);
     try {
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 8);
-      const fileName = `${recordDate}_${formatKey}_${timestamp}_${randomId}.jpg`;
+      const uploadedFileName = `${recordDate}_${formatKey}_${timestamp}_${randomId}.jpg`;
       const originalMeta = await readOriginalImageMeta(file);
-      const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${fileName}`);
-      const compressed = await compressImage(file, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
-      await uploadBytes(imageRef, compressed, { contentType: 'image/jpeg' });
-      const url = await getDownloadURL(imageRef);
-      const newImages = [...localImages, url];
-      setLocalImages(newImages);
+
+      let fileToProcess: File | Blob = file;
+      if (isHeicLikeFile(file)) {
+        try {
+          toast.info('HEIC 파일을 JPG로 변환 중...');
+          fileToProcess = await convertHeicRecordImage(file);
+        } catch (heicError) {
+          console.error('HEIC 변환 실패:', heicError);
+          toast.error('HEIC 변환에 실패했습니다. JPG로 저장한 뒤 다시 시도해주세요.');
+          return;
+        }
+      }
+
+      const imageFile = fileToProcess instanceof File
+        ? fileToProcess
+        : new File([fileToProcess], uploadedFileName, { type: 'image/jpeg' });
+      const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`);
+      const imagePath = `users/${currentUser.uid}/format_photos/${uploadedFileName}`;
+      const compressed = await compressImage(imageFile, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
       const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
       const imageMetaKey = `${formatKey}_imageMeta`;
-      const recordSnap = await getDoc(recordRef);
-      const existingMeta = recordSnap.exists() ? parseUploadedImageMeta(recordSnap.data()[imageMetaKey]) : [];
-      const newImageMeta = [
-        ...existingMeta,
-        {
-          ...originalMeta,
-          url,
-          uploadedAt: new Date().toISOString(),
+      let committedImages = localImages;
+
+      await persistRecordPhoto({
+        upload: async () => {
+          try {
+            await uploadBytes(imageRef, compressed, { contentType: 'image/jpeg' });
+            const url = await getDownloadURL(imageRef);
+            return { url, cleanup: () => deleteObject(imageRef) };
+          } catch (error) {
+            try {
+              await deleteObject(imageRef);
+            } catch {
+              enqueuePendingRecordPhotoCleanup(imagePath);
+            }
+            throw error;
+          }
         },
-      ].filter((meta) => newImages.includes(meta.url));
-      await updateDoc(recordRef, {
-        [`${formatKey}_images`]: JSON.stringify(newImages),
-        [imageMetaKey]: JSON.stringify(newImageMeta),
+        persist: async (url) => {
+          const newImages = [...localImages, url];
+          const recordSnap = await getDoc(recordRef);
+          const existingMeta = recordSnap.exists() ? parseUploadedImageMeta(recordSnap.data()[imageMetaKey]) : [];
+          const newImageMeta = [
+            ...existingMeta,
+            { ...originalMeta, url, uploadedAt: new Date().toISOString() },
+          ].filter((meta) => newImages.includes(meta.url));
+          await updateDoc(recordRef, {
+            [`${formatKey}_images`]: JSON.stringify(newImages),
+            [imageMetaKey]: JSON.stringify(newImageMeta),
+          });
+          committedImages = newImages;
+        },
+        commit: () => setLocalImages(committedImages),
+        onCleanupFailure: () => enqueuePendingRecordPhotoCleanup(imagePath),
       });
+      await retryPendingRecordPhotoCleanup(
+        currentUser.uid,
+        (path) => deleteObject(ref(storage, path)),
+      );
       await refreshPublicSharedRecord();
       toast.success('사진이 추가되었습니다!');
     } catch (err) {
@@ -2044,6 +2202,25 @@ export function SayuModal({
         .sayu-modal-inner {
           max-width: 100%;
           width: 100%;
+          height: 100dvh;
+          max-height: 100dvh !important;
+          border-radius: 0 !important;
+        }
+        .sayu-modal-content {
+          padding: 16px !important;
+          overscroll-behavior: contain;
+          -webkit-overflow-scrolling: touch;
+        }
+        .sayu-record-asset-frame {
+          box-sizing: border-box;
+          width: 100%;
+          max-width: 720px;
+          margin: 0 auto;
+          padding: 24px 18px;
+          border: 1px solid #54745A;
+          border-radius: 12px;
+          background: #FFFCF2;
+          box-shadow: 0 3px 16px rgba(42, 66, 45, 0.07);
         }
         @media (min-width: 640px) {
           .sayu-modal-overlay {
@@ -2051,6 +2228,15 @@ export function SayuModal({
           }
           .sayu-modal-inner {
             max-width: 480px;
+            height: auto;
+            max-height: 90vh !important;
+            border-radius: 12px !important;
+          }
+          .sayu-modal-content {
+            padding: 24px !important;
+          }
+          .sayu-record-asset-frame {
+            padding: 32px;
           }
         }
       `}</style>
@@ -2345,14 +2531,15 @@ export function SayuModal({
 
         {/* Content */}
         <div
+          className="sayu-modal-content"
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '24px',
             backgroundColor: '#fafafa',
           }}
         >
-          {/* 편집 가능 안내 — 이 편집창이 열려 있는 동안 계속 표시 */}
+          {/* 편집 안내는 실제 수정 화면에서만 표시 */}
+          {(viewMode === 'original' || isEditing) && (
           <div
             style={{
               display: 'flex',
@@ -2371,7 +2558,9 @@ export function SayuModal({
             <span aria-hidden="true">✏️</span>
             <span>이 기록은 바로 수정할 수 있습니다. 수정한 뒤 아래 ‘저장’ 버튼을 눌러주세요.</span>
           </div>
+          )}
           {viewMode === 'ai' ? (
+            isEditing ? (
             <div>
               {/* 제목 입력 */}
               <div style={{ marginBottom: '16px' }}>
@@ -2593,9 +2782,6 @@ export function SayuModal({
               {!isGrowthTimeline && (() => {
                 const validImages = (localImages || []).filter(img => img && img !== '');
                 if (validImages.length === 0) return null;
-                const hideOnError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                };
                 return (
                   <div style={{ marginBottom: '12px' }}>
                     {/* 1장 */}
@@ -2811,7 +2997,7 @@ export function SayuModal({
               {/* 사진 추가 버튼 - IIFE 블록 완전 밖에 위치, 항상 표시 */}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 id="sayu-image-upload"
                 style={{
                   position: 'absolute',
@@ -2844,6 +3030,9 @@ export function SayuModal({
                   >
                     {isUploadingImage ? '⏳ 업로드 중...' : `📷 사진 추가 (${localImages.length}/3)`}
                   </button>
+                  <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9ca3af' }}>
+                    PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다
+                  </p>
                 </div>
               )}
 
@@ -2864,11 +3053,13 @@ export function SayuModal({
 
               {/* SAYU 텍스트 편집 영역 */}
               <textarea
+                ref={mainEditorRef}
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
                 style={{
                   width: '100%',
                   minHeight: '400px',
+                  boxSizing: 'border-box',
                   padding: '20px',
                   fontSize: 15,
                   lineHeight: 1.8,
@@ -2876,7 +3067,8 @@ export function SayuModal({
                   borderRadius: 8,
                   backgroundColor: '#fff',
                   color: '#333',
-                  resize: 'vertical',
+                  resize: 'none',
+                  overflowY: 'hidden',
                   fontFamily: 'inherit',
                   outline: 'none',
                   whiteSpace: 'pre-wrap',
@@ -2918,6 +3110,155 @@ export function SayuModal({
               </>
               )}
             </div>
+            ) : (
+            <div aria-label="SAYU 기록 읽기 화면">
+              <article className="sayu-record-asset-frame" aria-label="하루 기록자산 액자">
+                <header style={{ marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid #D9CBAA', textAlign: 'center' }}>
+                  <img
+                    src="/brand/haru-pumpkin-logo.png"
+                    alt="하루lab 공식 호박 로고"
+                    style={{ display: 'block', width: 50, height: 'auto', margin: '0 auto 12px' }}
+                  />
+                  <p style={{ margin: 0, color: '#86551E', fontSize: 14, fontWeight: 700, letterSpacing: '0.08em' }}>
+                    하루의 기록
+                  </p>
+                  {format?.trim() && (
+                    <p style={{ margin: '10px 0 0', color: '#526356', fontSize: 12, fontWeight: 600 }}>
+                      {format.trim()}
+                    </p>
+                  )}
+                  {(recordDate || dateLabel?.trim()) && (
+                    <p style={{ margin: '5px 0 0', color: '#64716A', fontSize: 12 }}>
+                      {recordDate ? formatDateToKorean(recordDate) : dateLabel}
+                    </p>
+                  )}
+                <h3
+                  style={{
+                    margin: '18px 0 0',
+                    color: '#263B2E',
+                    fontSize: 23,
+                    lineHeight: 1.45,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {editedTitle.trim() || title?.trim() || `${format || '기록'} — ${dateLabel}`}
+                </h3>
+                {(editedWeather || editedTemperature || editedMood) && (
+                  <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+                    {editedWeather && (
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F0F2E9', color: '#4B5D50', fontSize: 12 }}>
+                        {editedWeather}
+                      </span>
+                    )}
+                    {editedTemperature && (
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F0F2E9', color: '#4B5D50', fontSize: 12 }}>
+                        {editedTemperature}
+                      </span>
+                    )}
+                    {editedMood && (
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F0F2E9', color: '#4B5D50', fontSize: 12 }}>
+                        {editedMood}
+                      </span>
+                    )}
+                  </div>
+                )}
+                </header>
+
+              {isHouseholdSayu ? (
+                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent, allHouseholdEntries)
+              ) : (
+              <>
+                {isGrowthTimeline && editedTimelineItems.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
+                    {editedTimelineItems.map((item, index) => (
+                      <article
+                        key={`${item.url}_read_${index}`}
+                        style={{ overflow: 'hidden', border: '1px solid #e5e7eb', borderRadius: 12, backgroundColor: '#fff' }}
+                      >
+                        <img
+                          src={item.url}
+                          alt={`성장타임라인 사진 ${index + 1}`}
+                          onError={hideOnError}
+                          style={{ display: 'block', width: '100%', maxHeight: 360, objectFit: 'cover' }}
+                        />
+                        <div style={{ padding: '12px 14px' }}>
+                          <p style={{ margin: 0, color: '#1A3C6E', fontSize: 13, fontWeight: 700 }}>
+                            {item.takenDate ? formatDateToKorean(item.takenDate) : `사진 ${index + 1}`}
+                          </p>
+                          {getTimelineLocationText(item) && (
+                            <p style={{ margin: '5px 0 0', color: '#52715f', fontSize: 12 }}>📍 {getTimelineLocationText(item)}</p>
+                          )}
+                          {item.memo && (
+                            <p style={{ margin: '8px 0 0', color: '#374151', fontSize: 15, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{item.memo}</p>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                {!isGrowthTimeline && localImages.filter(Boolean).length > 0 && (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: localImages.filter(Boolean).length === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                      gap: 8,
+                      marginBottom: 18,
+                    }}
+                  >
+                    {localImages.filter(Boolean).map((imageUrl, index) => (
+                      <img
+                        key={`${imageUrl}_read_${index}`}
+                        src={imageUrl}
+                        alt={`기록 사진 ${index + 1}`}
+                        onError={hideOnError}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          height: localImages.filter(Boolean).length === 1 ? 'auto' : 170,
+                          maxHeight: 420,
+                          objectFit: 'cover',
+                          borderRadius: 10,
+                          border: '1px solid #e5e7eb',
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {editedContent.trim() ? (
+                  <article
+                    style={{
+                      color: '#2F3742',
+                      fontSize: 16,
+                      lineHeight: 1.85,
+                      whiteSpace: 'pre-wrap',
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {editedContent}
+                  </article>
+                ) : (
+                  <div style={{ padding: '36px 16px', borderRadius: 12, backgroundColor: '#fff', color: '#6B7280', textAlign: 'center' }}>
+                    저장된 SAYU 내용이 없습니다.
+                  </div>
+                )}
+
+                {localAiComment && (
+                  <div style={{ marginTop: 16, padding: '12px 16px', backgroundColor: '#FDF6C3', borderRadius: 10, border: '1px solid #e8d87a' }}>
+                    <p style={{ margin: '0 0 4px', fontSize: 11, color: '#a08c2a', fontWeight: 700 }}>💬 AI 한마디</p>
+                    <p style={{ margin: 0, fontSize: 14, color: '#4a3d00', lineHeight: 1.6 }}>{localAiComment}</p>
+                  </div>
+                )}
+              </>
+              )}
+                <footer style={{ marginTop: 32, paddingTop: 16, borderTop: '1px solid #E5DABF', color: '#5C655D', fontSize: 12, lineHeight: 1.6, textAlign: 'center' }}>
+                  오늘의 기록이 삶의 자산이 됩니다 · haru2026
+                </footer>
+              </article>
+              {publicControl && <div style={{ maxWidth: 720, margin: '16px auto 0' }}>{publicControl}</div>}
+            </div>
+            )
           ) : (
             renderOriginalData()
           )}
@@ -2930,7 +3271,7 @@ export function SayuModal({
           )}
         </div>
 
-        {/* Footer - AI 탭일 때만 별점/저장 버튼 표시 */}
+        {/* Footer - 읽기에서는 닫기/수정, 편집에서는 기존 저장 기능 표시 */}
         {viewMode === 'ai' && (
         <div
           style={{
@@ -2939,6 +3280,7 @@ export function SayuModal({
             backgroundColor: '#fff',
           }}
         >
+          {isEditing && (
           <div style={{ marginBottom: '16px' }}>
             <button
               onClick={() => setIsSpecialDay(!isSpecialDay)}
@@ -2964,9 +3306,10 @@ export function SayuModal({
               )}
             </button>
           </div>
+          )}
 
           {/* 🔮 이 기록으로 예언하기 — 본문 있을 때만 노출 */}
-          {(editedContent?.trim() || content?.trim()) && (
+          {!isEditing && (editedContent?.trim() || content?.trim()) && (
             <div style={{ marginBottom: 12 }}>
               <button
                 onClick={() => {
@@ -3009,9 +3352,10 @@ export function SayuModal({
           )}
 
           {/* 버튼 */}
+          {isEditing ? (
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
             <button
-              onClick={() => onClose()}
+              onClick={handleCancelEdit}
               disabled={isSaving}
               style={{
                 padding: '10px 20px',
@@ -3045,6 +3389,46 @@ export function SayuModal({
               {isSaving ? '저장 중...' : '💾 최종 저장'}
             </button>
           </div>
+          ) : (
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => onClose()}
+              style={{
+                flex: 1,
+                minHeight: 46,
+                padding: '11px 18px',
+                fontSize: 15,
+                border: '1px solid #d1d5db',
+                borderRadius: 10,
+                backgroundColor: '#fff',
+                color: '#4B5563',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              닫기
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              style={{
+                flex: 1.4,
+                minHeight: 46,
+                padding: '11px 18px',
+                fontSize: 15,
+                border: 'none',
+                borderRadius: 10,
+                backgroundColor: '#10b981',
+                color: '#fff',
+                cursor: 'pointer',
+                fontWeight: 700,
+              }}
+            >
+              ✏️ 수정하기
+            </button>
+          </div>
+          )}
         </div>
         )}
 

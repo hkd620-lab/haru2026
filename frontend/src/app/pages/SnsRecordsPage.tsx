@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { addDoc, collection, getDocs, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { GrapeAnimation } from '../components/GrapeAnimation';
+import { SnsPrivateThumbnails } from '../components/SnsPrivateThumbnails';
+import { SnsStoryCreator } from '../components/SnsStoryCreator';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { activeSnsRecords } from '../utils/snsRecordState';
+import type { SnsRecord } from '../utils/snsRecordState';
+import { useSnsRecords, useSnsSession } from '../hooks/useSnsRecords';
+import { createSnsTrashActions } from '../services/snsTrash';
 
 const COLOR_BLUE = '#1A3C6E';
 const COLOR_BG = '#FAF9F6';
@@ -17,16 +23,14 @@ const COLOR_BORDER = '#e5e5e5';
 
 type TabKey = 'upload' | 'timeline' | 'autobio';
 type Source = 'facebook' | 'instagram';
-
-interface SnsRecord {
-  id: string;
-  source: Source;
-  timestamp: number;
-  text: string;
-  thumbnails?: string[];
-}
+type TimelineView = 'active' | 'trash';
 
 export function SnsRecordsPage() {
+  const { user } = useAuth();
+  return <SnsRecordsContent key={user?.uid || 'signed-out'} />;
+}
+
+function SnsRecordsContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const fromPath = (location.state as any)?.from as string | undefined;
@@ -54,8 +58,12 @@ export function SnsRecordsPage() {
   const [uploadProgress, setUploadProgress] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [records, setRecords] = useState<SnsRecord[]>([]);
-  const [loadingRecords, setLoadingRecords] = useState(false);
+  const session = useSnsSession(user?.uid);
+  const { records: rawRecords, loading: loadingRecords, serverReady, error: recordsError } = useSnsRecords(session);
+  const trashActions = useMemo(() => createSnsTrashActions(db, user?.uid || '', session.isCurrent), [session, user?.uid]);
+  const [timelineView, setTimelineView] = useState<TimelineView>('active');
+  const actionLocks = useRef(new Set<string>());
+  const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
 
   // 검색 입력값 (draft) — 검색 버튼을 눌러야 applied로 반영
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -76,59 +84,21 @@ export function SnsRecordsPage() {
   const PAGE_SIZE = 10;
   const initialTabSet = useRef(false);
 
-  // 통합자서전 기간 선택
-  const [autobioRange, setAutobioRange] = useState<'all' | 'year' | 'custom'>('all');
-  const [autobioYear, setAutobioYear] = useState<string>('');
-  const [autobioFrom, setAutobioFrom] = useState<string>('');
-  const [autobioTo, setAutobioTo] = useState<string>('');
-
   // 검색결과 저장 진행상태
   const [savingSearch, setSavingSearch] = useState(false);
 
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    const load = async () => {
-      setLoadingRecords(true);
-      try {
-        const colRef = collection(db, 'users', user.uid, 'snsRecords');
-        const snap = await getDocs(query(colRef, orderBy('timestamp', 'desc')));
-        if (cancelled) return;
-        // 중복 제거: 같은 timestamp + 같은 텍스트는 1개만 유지
-        const seen = new Set<string>();
-        const list: SnsRecord[] = [];
-        snap.docs.forEach((d) => {
-          const data = d.data() as any;
-          const ts = typeof data.timestamp === 'number' ? data.timestamp : 0;
-          const text = data.text || '';
-          const key = `${ts}__${text}`;
-          if (seen.has(key)) return;
-          seen.add(key);
-          list.push({
-            id: d.id,
-            source: (data.source as Source) || 'facebook',
-            timestamp: ts,
-            text,
-            thumbnails: Array.isArray(data.thumbnails) ? data.thumbnails : [],
-          });
-        });
-        setRecords(list);
-        // 첫 진입 시 데이터가 있으면 타임라인 탭으로 자동 전환 (1회만)
-        if (!initialTabSet.current) {
-          initialTabSet.current = true;
-          if (list.length > 0) setTab('timeline');
-        }
-      } catch (e) {
-        console.error('SNS 기록 조회 실패:', e);
-      } finally {
-        if (!cancelled) setLoadingRecords(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [user, uploading]);
+  const activeRecords = useMemo(() => activeSnsRecords(rawRecords), [rawRecords]);
+  const trashedRecords = useMemo(() => rawRecords.filter((record) => record.isDeleted), [rawRecords]);
 
-  useEffect(() => { setTimelinePage(1); }, [appliedSearch, records.length]);
+  useEffect(() => {
+    if (loadingRecords || initialTabSet.current) return;
+    initialTabSet.current = true;
+    if (rawRecords.length > 0) setTab('timeline');
+  }, [loadingRecords, rawRecords.length]);
+
+  const visibleRecords = timelineView === 'trash' ? trashedRecords : activeRecords;
+
+  useEffect(() => { setTimelinePage(1); }, [appliedSearch, visibleRecords.length, timelineView]);
 
   const handleOpenFacebookDownload = () => {
     window.open('https://accountscenter.facebook.com/info_and_permissions/dyi/', '_blank', 'noopener,noreferrer');
@@ -142,7 +112,7 @@ export function SnsRecordsPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!user) {
+    if (!user || !session.isCurrent()) {
       toast.error('로그인이 필요합니다.');
       return;
     }
@@ -158,10 +128,12 @@ export function SnsRecordsPage() {
       const storagePath = `users/${user.uid}/snsUploads/${ts}_${file.name}`;
       const ref = storageRef(storage, storagePath);
       await uploadBytes(ref, file);
+      if (!session.isCurrent()) return;
 
       setUploadProgress('AI가 게시물을 분석하고 있어요...');
       const callable = httpsCallable(functions, 'analyzeFacebookZip');
       const result = await callable({ storagePath, source });
+      if (!session.isCurrent()) return;
       const data = result.data as { success?: boolean; count?: number; error?: string };
       if (data?.success) {
         toast.success(`분석 완료: ${data.count ?? 0}개 게시물이 정리되었어요.`);
@@ -170,19 +142,22 @@ export function SnsRecordsPage() {
         toast.error(data?.error || '분석에 실패했습니다.');
       }
     } catch (err: any) {
+      if (!session.isCurrent()) return;
       console.error('ZIP 업로드/분석 실패:', err);
       toast.error(err?.message || '업로드에 실패했습니다.');
     } finally {
-      setUploading(false);
-      setUploadProgress('');
+      if (session.isCurrent()) {
+        setUploading(false);
+        setUploadProgress('');
+      }
     }
   };
 
   const filteredRecords = useMemo(() => {
     const kw = appliedSearch.keyword.trim().toLowerCase();
-    const fromMs = appliedSearch.dateFrom ? new Date(appliedSearch.dateFrom + 'T00:00:00').getTime() : 0;
-    const toMs = appliedSearch.dateTo ? new Date(appliedSearch.dateTo + 'T23:59:59').getTime() : 0;
-    return records.filter((r) => {
+    const fromMs = appliedSearch.dateFrom ? new Date(appliedSearch.dateFrom + 'T00:00:00+09:00').getTime() : 0;
+    const toMs = appliedSearch.dateTo ? new Date(appliedSearch.dateTo + 'T23:59:59.999+09:00').getTime() : 0;
+    return visibleRecords.filter((r) => {
       if (appliedSearch.source !== 'all' && r.source !== appliedSearch.source) return false;
       const hasPhoto = (r.thumbnails?.length ?? 0) > 0;
       if (appliedSearch.filter === 'text' && hasPhoto) return false;
@@ -194,7 +169,7 @@ export function SnsRecordsPage() {
       if (kw && !r.text.toLowerCase().includes(kw)) return false;
       return true;
     });
-  }, [records, appliedSearch]);
+  }, [visibleRecords, appliedSearch]);
 
   const handleApplySearch = () => {
     setAppliedSearch({
@@ -209,11 +184,15 @@ export function SnsRecordsPage() {
   const formatDate = (ts: number) => {
     if (!ts) return '';
     const d = new Date(ts * (ts < 1e12 ? 1000 : 1));
-    return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    return d.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
   const handleSaveSearchResults = async () => {
-    if (!user) return;
+    if (!user || !session.isCurrent()) return;
+    if (timelineView !== 'active') {
+      toast.info('휴지통 기록은 검색결과로 저장하지 않습니다.');
+      return;
+    }
     if (filteredRecords.length === 0) {
       toast.info('저장할 검색결과가 없습니다.');
       return;
@@ -231,20 +210,50 @@ export function SnsRecordsPage() {
         keyword: appliedSearch.keyword,
         source: appliedSearch.source,
         type: appliedSearch.filter,
-        results: filteredRecords,
+        results: filteredRecords.map(({ revision, isDeleted, ...record }) => record),
         savedAt: serverTimestamp(),
       });
-      toast.success('검색결과가 저장되었습니다');
+      if (session.isCurrent()) toast.success('검색결과가 저장되었습니다');
     } catch (err: any) {
+      if (!session.isCurrent()) return;
       console.error('검색결과 저장 실패:', err);
       toast.error(err?.message || '검색결과 저장에 실패했습니다.');
     } finally {
-      setSavingSearch(false);
+      if (session.isCurrent()) setSavingSearch(false);
     }
   };
 
-  const handleAutobioGenerate = () => {
-    toast.info('준비 중입니다');
+  const handleTrashChange = async (record: SnsRecord, deleted: boolean) => {
+    if (!session.isCurrent() || !serverReady || actionLocks.current.has(record.id)) return;
+    if (deleted && !window.confirm(
+      `${formatDate(record.timestamp)}의 이 SNS 기록 하나를 삭제할까요?\n삭제한 기록은 HARU 일반 휴지통이 아니라 타임라인 상단의 'SNS 휴지통'으로 이동하며 언제든 복원할 수 있습니다.\nFacebook·Instagram 원본과 사진 파일은 삭제되지 않습니다.`,
+    )) return;
+    if (!session.isCurrent()) return;
+    actionLocks.current.add(record.id);
+    setBusyIds(new Set(actionLocks.current));
+    try {
+      const changed = await trashActions.change(record, deleted);
+      if (!session.isCurrent()) return;
+      if (deleted) {
+        toast.success(changed ? 'SNS 휴지통으로 이동했습니다.' : '이미 SNS 휴지통으로 이동된 기록입니다.', {
+          action: {
+            label: 'SNS 휴지통 보기',
+            onClick: () => {
+              setTimelineView('trash');
+              setTimelinePage(1);
+            },
+          },
+        });
+      } else {
+        toast.success(changed ? '원래 날짜로 복원했습니다.' : '이미 복원된 기록입니다.');
+      }
+    } catch (error: any) {
+      if (!session.isCurrent()) return;
+      toast.error(error?.message || '처리하지 못했습니다. 연결 상태를 확인해 주세요.');
+    } finally {
+      actionLocks.current.delete(record.id);
+      if (session.isCurrent()) setBusyIds(new Set(actionLocks.current));
+    }
   };
 
   if (authLoading) {
@@ -264,7 +273,7 @@ export function SnsRecordsPage() {
           <GrapeAnimation />
         </div>
         <p style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: COLOR_BLUE }}>
-          SNS 기록 페이지 준비 중...
+          SNS 갈무리 비서 준비 중...
         </p>
       </div>
     );
@@ -299,10 +308,10 @@ export function SnsRecordsPage() {
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         <div style={{ marginBottom: 16 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: COLOR_BLUE, letterSpacing: '-0.01em' }}>
-            📱 snsHARU보기
+            📱 SNS 갈무리 비서
           </h1>
           <p style={{ fontSize: 13, color: '#666', marginTop: 6 }}>
-            Facebook · Instagram 기록을 AI로 정리해드려요.
+            SNS에 흩어진 기록을 모아 정리하고 나의 이야기로 만듭니다.
           </p>
         </div>
 
@@ -469,6 +478,51 @@ export function SnsRecordsPage() {
         {/* === 탭2: 타임라인 (검색/필터 통합) === */}
         {tab === 'timeline' && (
           <section>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 6, marginBottom: 12 }}>
+              {([
+                { k: 'active', label: `보관중 ${activeRecords.length}` },
+                { k: 'trash', label: `SNS 휴지통 ${trashedRecords.length}` },
+              ] as { k: TimelineView; label: string }[]).map((item) => {
+                const active = timelineView === item.k;
+                return (
+                  <button
+                    key={item.k}
+                    type="button"
+                    onClick={() => setTimelineView(item.k)}
+                    style={{
+                      padding: '9px 10px',
+                      borderRadius: 10,
+                      border: `1px solid ${active ? COLOR_BLUE : COLOR_BORDER}`,
+                      background: active ? COLOR_BLUE : '#fff',
+                      color: active ? '#fff' : COLOR_BLUE,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <p
+              role="note"
+              style={{
+                margin: '-4px 0 12px',
+                padding: '9px 11px',
+                borderRadius: 8,
+                background: '#eef6ff',
+                color: COLOR_BLUE,
+                fontSize: 12,
+                lineHeight: 1.5,
+              }}
+            >
+              {timelineView === 'trash'
+                ? "복원한 기록은 바로 위의 '보관중'으로 돌아갑니다."
+                : "삭제한 SNS 기록은 바로 위의 'SNS 휴지통' 버튼에서 확인하고 복원할 수 있습니다."}
+            </p>
+
             {/* 키워드 검색창 */}
             <input
               type="text"
@@ -610,7 +664,7 @@ export function SnsRecordsPage() {
             </button>
 
             {/* 검색결과 저장 버튼 — 결과가 1건 이상일 때만 노출 */}
-            {filteredRecords.length > 0 && (
+            {timelineView === 'active' && filteredRecords.length > 0 && (
               <button
                 type="button"
                 onClick={handleSaveSearchResults}
@@ -632,9 +686,16 @@ export function SnsRecordsPage() {
               </button>
             )}
 
+            {recordsError && <p role="alert" style={{ color: '#b91c1c', fontSize: 13 }}>{recordsError}</p>}
+            {!loadingRecords && !recordsError && !serverReady && (
+              <p role="status" style={{ color: '#666', fontSize: 12 }}>최신 기록을 확인 중입니다. 연결되면 삭제·복원할 수 있습니다.</p>
+            )}
+            <p style={{ color: '#666', fontSize: 12 }}>
+              삭제한 SNS 기록은 이 화면의 'SNS 휴지통'에서 확인하고 복원할 수 있습니다. Facebook·Instagram 원본과 사진 파일은 삭제되지 않습니다.
+            </p>
             {/* 검색 결과 건수 */}
             <p style={{ fontSize: 12, color: '#666', marginBottom: 10 }}>
-              검색 결과: <b>{filteredRecords.length}</b>건
+              {timelineView === 'trash' ? 'SNS 휴지통' : '검색 결과'}: <b>{filteredRecords.length}</b>건
             </p>
 
             {loadingRecords ? (
@@ -644,8 +705,10 @@ export function SnsRecordsPage() {
                 </div>
                 <p style={{ marginTop: 8, fontSize: 12, color: '#666' }}>SNS 기록을 불러오는 중...</p>
               </div>
-            ) : records.length === 0 ? (
-              <EmptyState message="아직 가져온 SNS 기록이 없어요." subMessage="업로드 탭에서 ZIP을 올려주세요." />
+            ) : visibleRecords.length === 0 ? (
+              timelineView === 'trash'
+                ? <EmptyState message="SNS 휴지통에 있는 기록이 없어요." />
+                : <EmptyState message="아직 가져온 SNS 기록이 없어요." subMessage="업로드 탭에서 ZIP을 올려주세요." />
             ) : filteredRecords.length === 0 ? (
               <EmptyState message="검색 결과가 없어요." />
             ) : (
@@ -656,6 +719,12 @@ export function SnsRecordsPage() {
                       key={r.id}
                       record={r}
                       formatDate={formatDate}
+                      userUid={user?.uid}
+                      mode={timelineView}
+                      busy={busyIds.has(r.id)}
+                      disabled={!serverReady}
+                      onDelete={() => handleTrashChange(r, true)}
+                      onRestore={() => handleTrashChange(r, false)}
                     />
                   ))}
                 </div>
@@ -671,132 +740,14 @@ export function SnsRecordsPage() {
 
         {/* === 탭3: 통합자서전생성 === */}
         {tab === 'autobio' && (
-          <section>
-            <div
-              style={{
-                background: '#fff',
-                border: `1px solid ${COLOR_BORDER}`,
-                borderRadius: 12,
-                padding: 16,
-                marginBottom: 12,
-              }}
-            >
-              <p style={{ fontSize: 13, color: '#444', lineHeight: 1.6, margin: 0 }}>
-                기간별 전체 기록으로 나의 이야기를 생성합니다
-              </p>
-            </div>
-
-            {/* 기간 선택 */}
-            <div style={{ fontSize: 12, fontWeight: 700, color: COLOR_BLUE, margin: '6px 0 8px' }}>
-              기간 선택
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-              {([
-                { k: 'all', label: '전체 기간' },
-                { k: 'year', label: '연도별' },
-                { k: 'custom', label: '직접설정' },
-              ] as { k: typeof autobioRange; label: string }[]).map((c) => {
-                const active = autobioRange === c.k;
-                return (
-                  <button
-                    key={c.k}
-                    type="button"
-                    onClick={() => setAutobioRange(c.k)}
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: 999,
-                      border: `1px solid ${active ? COLOR_BLUE : COLOR_BORDER}`,
-                      background: active ? COLOR_BLUE : '#fff',
-                      color: active ? '#fff' : COLOR_BLUE,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {c.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {autobioRange === 'year' && (
-              <input
-                type="number"
-                placeholder="예: 2024"
-                value={autobioYear}
-                onChange={(e) => setAutobioYear(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  border: `1px solid ${COLOR_BORDER}`,
-                  fontSize: 13,
-                  outline: 'none',
-                  marginBottom: 10,
-                  boxSizing: 'border-box',
-                }}
-              />
-            )}
-
-            {autobioRange === 'custom' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 6, marginBottom: 10 }}>
-                <input
-                  type="date"
-                  value={autobioFrom}
-                  onChange={(e) => setAutobioFrom(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: `1px solid ${COLOR_BORDER}`,
-                    fontSize: 13,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-                <input
-                  type="date"
-                  value={autobioTo}
-                  onChange={(e) => setAutobioTo(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: `1px solid ${COLOR_BORDER}`,
-                    fontSize: 13,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-            )}
-
-            {/* 시놉시스 생성 버튼 */}
-            <button
-              type="button"
-              onClick={handleAutobioGenerate}
-              style={{
-                width: '100%',
-                padding: '14px 14px',
-                borderRadius: 10,
-                border: 'none',
-                background: COLOR_BLUE,
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: 'pointer',
-                marginTop: 6,
-                marginBottom: 12,
-              }}
-            >
-              📖 나의 이야기 시놉시스 생성
-            </button>
-
-            {/* 안내 문구 */}
-            <p style={{ fontSize: 12, color: '#666', lineHeight: 1.6, margin: 0 }}>
-              생성된 나의 이야기는 나도작가 SNS 작품 섹션에 저장됩니다
-            </p>
-          </section>
+          <SnsStoryCreator
+            rawRecords={rawRecords}
+            loadingRecords={loadingRecords}
+            serverReady={serverReady}
+            recordsError={recordsError}
+            session={session}
+            userUid={user?.uid}
+          />
         )}
       </div>
 
@@ -809,13 +760,24 @@ export function SnsRecordsPage() {
 function PostCard({
   record,
   formatDate,
+  userUid,
+  mode,
+  busy,
+  disabled,
+  onDelete,
+  onRestore,
 }: {
   record: SnsRecord;
   formatDate: (ts: number) => string;
+  userUid?: string | null;
+  mode: TimelineView;
+  busy: boolean;
+  disabled: boolean;
+  onDelete: () => void;
+  onRestore: () => void;
 }) {
   const lines = record.text.split('\n').slice(0, 3).join('\n');
   const truncated = record.text.length > 140 ? record.text.slice(0, 140) + '…' : lines;
-  const thumbs = (record.thumbnails || []).slice(0, 3);
   return (
     <div
       style={{
@@ -833,18 +795,49 @@ function PostCard({
           {truncated}
         </p>
       )}
-      {thumbs.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-          {thumbs.map((url, i) => (
-            <img
-              key={i}
-              src={url}
-              alt=""
-              style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8, background: '#eee' }}
-            />
-          ))}
-        </div>
+      {!record.text && record.thumbnails.length === 0 && (
+        <p style={{ fontSize: 12, color: '#666', margin: 0 }}>본문과 연결된 사진이 없는 기록입니다.</p>
       )}
+      <SnsPrivateThumbnails thumbnails={record.thumbnails} userUid={userUid} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+        {mode === 'trash' ? (
+          <button
+            type="button"
+            onClick={onRestore}
+            disabled={busy || disabled}
+            style={{
+              padding: '7px 12px',
+              borderRadius: 8,
+              border: `1px solid ${COLOR_GREEN}`,
+              background: '#fff',
+              color: COLOR_GREEN,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: busy ? 'wait' : 'pointer',
+            }}
+          >
+            {busy ? '복원 중...' : '복원'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={busy || disabled}
+            style={{
+              padding: '7px 12px',
+              borderRadius: 8,
+              border: '1px solid #fca5a5',
+              background: '#fff',
+              color: '#dc2626',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: busy ? 'wait' : 'pointer',
+            }}
+          >
+            {busy ? '삭제 중...' : '삭제'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

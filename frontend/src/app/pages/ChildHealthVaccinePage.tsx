@@ -5,6 +5,7 @@ import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { getBirthdateState, getScheduleStatus, getSeoulToday, isNearSchedule, type ScheduleStatus } from './childVaccineSchedule';
 
 type VaccineSchedule = {
   id: string;
@@ -55,27 +56,10 @@ const SCHEDULE: VaccineSchedule[] = [
   { id: 'hpv-2', name: 'HPV', disease: '사람유두종바이러스(여아)', dose: '2차', minMonth: 138, maxMonth: 150, note: '1차 후 6개월 후' },
 ];
 
-function calcAgeMonths(birthdate: string): number {
-  const birth = new Date(birthdate);
-  const today = new Date();
-  return (today.getFullYear() - birth.getFullYear()) * 12
-    + (today.getMonth() - birth.getMonth());
-}
-
-type VaccineStatus = 'done' | 'this_month' | 'upcoming' | 'future';
-
-function getStatus(v: VaccineSchedule, ageMonths: number): VaccineStatus {
-  if (ageMonths > v.maxMonth) return 'done';
-  if (ageMonths >= v.minMonth && ageMonths <= v.maxMonth) return 'this_month';
-  if (v.minMonth - ageMonths <= 2) return 'upcoming';
-  return 'future';
-}
-
-const STATUS_CONFIG: Record<VaccineStatus, { label: string; color: string; bg: string; border: string }> = {
-  done: { label: '완료', color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB' },
-  this_month: { label: '이번 달', color: '#fff', bg: '#0F766E', border: '#0F766E' },
-  upcoming: { label: '곧 접종', color: '#0F766E', bg: '#CCFBF1', border: '#5EEAD4' },
-  future: { label: '예정', color: '#374151', bg: '#F9FAFB', border: '#E5E7EB' },
+const STATUS_CONFIG: Record<ScheduleStatus, { label: string; color: string; bg: string; border: string }> = {
+  elapsed: { label: '권장 시기 경과', color: '#374151', bg: '#F3F4F6', border: '#D1D5DB' },
+  current: { label: '권장 시기 해당', color: '#0F766E', bg: '#CCFBF1', border: '#5EEAD4' },
+  before: { label: '권장 시기 전', color: '#374151', bg: '#F9FAFB', border: '#E5E7EB' },
 };
 
 type GrowthSubject = { id: string; name: string; birthdate?: string };
@@ -88,6 +72,7 @@ export function ChildHealthVaccinePage() {
   const [subjects, setSubjects] = useState<GrowthSubject[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [manualBirthdate, setManualBirthdate] = useState('');
+  const [manualBadInput, setManualBadInput] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active'>('active');
 
   useEffect(() => {
@@ -112,8 +97,12 @@ export function ChildHealthVaccinePage() {
   }, [user?.uid]);
 
   const selectedSubject = subjects.find((s) => s.id === selectedId);
-  const birthdate = selectedSubject?.birthdate || manualBirthdate;
-  const ageMonths = birthdate ? calcAgeMonths(birthdate) : null;
+  const birthdate = selectedSubject ? (selectedSubject.birthdate ?? '') : manualBirthdate;
+  const seoulToday = getSeoulToday(new Date());
+  const birthdateState = manualBadInput && !selectedSubject
+    ? { kind: 'invalid' as const }
+    : getBirthdateState(birthdate, seoulToday);
+  const ageMonths = birthdateState.kind === 'valid' ? birthdateState.ageMonths : null;
 
   const closeToOrigin = () => {
     if (fromPath) { navigate(fromPath); return; }
@@ -125,14 +114,14 @@ export function ChildHealthVaccinePage() {
 
   const filtered = ageMonths !== null
     ? SCHEDULE.filter((v) => {
-        const status = getStatus(v, ageMonths);
-        if (filter === 'active') return status === 'this_month' || status === 'upcoming';
+        const status = getScheduleStatus(v, ageMonths);
+        if (filter === 'active') return status === 'current' || isNearSchedule(v, ageMonths);
         return true;
       })
     : [];
 
-  const thisMonthCount = ageMonths !== null
-    ? SCHEDULE.filter((v) => getStatus(v, ageMonths) === 'this_month').length
+  const currentCount = ageMonths !== null
+    ? SCHEDULE.filter((v) => getScheduleStatus(v, ageMonths) === 'current').length
     : 0;
 
   return (
@@ -151,7 +140,7 @@ export function ChildHealthVaccinePage() {
       <div className="mb-5">
         <h1 className="text-2xl font-bold" style={{ color: '#0F766E' }}>💉 예방접종 일정</h1>
         <p className="text-sm mt-1" style={{ color: '#6B7280', lineHeight: 1.6 }}>
-          질병관리청 국가예방접종 일정 기준으로 월령별 접종 현황을 안내합니다.
+          생년월일 기준의 참고 일정을 안내합니다.
         </p>
       </div>
 
@@ -166,7 +155,7 @@ export function ChildHealthVaccinePage() {
             </label>
             <select
               value={selectedId}
-              onChange={(e) => { setSelectedId(e.target.value); setManualBirthdate(''); }}
+              onChange={(e) => { setSelectedId(e.target.value); setManualBirthdate(''); setManualBadInput(false); }}
               className="w-full h-10 rounded-lg border px-3 text-sm"
               style={{ borderColor: '#5EEAD4', background: '#fff', color: '#1A3C6E' }}
             >
@@ -188,13 +177,24 @@ export function ChildHealthVaccinePage() {
             <input
               type="date"
               value={manualBirthdate}
-              onChange={(e) => setManualBirthdate(e.target.value)}
-              onInput={(e) => setManualBirthdate(e.currentTarget.value)}
-              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => { setManualBirthdate(e.target.value); setManualBadInput(e.currentTarget.validity.badInput); }}
+              onInput={(e) => { setManualBirthdate(e.currentTarget.value); setManualBadInput(e.currentTarget.validity.badInput); }}
+              max={seoulToday}
               className="w-full h-10 rounded-lg border px-3 text-sm"
               style={{ borderColor: '#5EEAD4', background: '#fff', color: '#1A3C6E' }}
             />
           </div>
+        )}
+
+        {birthdateState.kind === 'invalid' && (
+          <p role="alert" className="mt-2 text-sm" style={{ color: '#B91C1C' }}>
+            올바른 생년월일을 입력해 주세요.
+          </p>
+        )}
+        {birthdateState.kind === 'future' && (
+          <p role="alert" className="mt-2 text-sm" style={{ color: '#B91C1C' }}>
+            생년월일은 오늘 이후로 입력할 수 없습니다.
+          </p>
         )}
 
         {ageMonths !== null && (
@@ -205,27 +205,30 @@ export function ChildHealthVaccinePage() {
                 &nbsp;({Math.floor(ageMonths / 12)}세 {ageMonths % 12}개월)
               </span>
             )}
-            {thisMonthCount > 0 && (
-              <span
-                style={{
-                  marginLeft: 10,
-                  padding: '2px 10px',
-                  borderRadius: 999,
-                  background: '#0F766E',
-                  color: '#fff',
-                  fontSize: 11,
-                  fontWeight: 700,
-                }}
-              >
-                이번 달 접종 {thisMonthCount}건
-              </span>
-            )}
+            <span
+              style={{
+                display: 'inline-block',
+                marginLeft: 10,
+                padding: '2px 10px',
+                borderRadius: 999,
+                background: '#0F766E',
+                color: '#fff',
+                fontSize: 11,
+                fontWeight: 700,
+              }}
+            >
+              권장 시기 해당 일정 {currentCount}개
+            </span>
           </p>
         )}
       </div>
 
       {ageMonths !== null && (
         <>
+          <div className="rounded-xl p-4 mb-4 text-sm" style={{ background: '#F0FDFA', border: '1px solid #CCFBF1', color: '#374151', lineHeight: 1.6 }}>
+            생년월일을 기준으로 계산한 참고 일정입니다. 실제 접종 이력은 확인하지 않았습니다.
+            권장 시기가 지났다고 접종 완료나 미접종을 뜻하지 않습니다.
+          </div>
           <div className="flex gap-2 mb-4">
             {(['active', 'all'] as const).map((f) => (
               <button
@@ -239,45 +242,48 @@ export function ChildHealthVaccinePage() {
                   border: 'none',
                 }}
               >
-                {f === 'active' ? '이번 달 · 곧 접종' : '전체 보기'}
+                {f === 'active' ? '권장 시기 해당 · 임박' : '전체 보기'}
               </button>
             ))}
           </div>
+          <p className="mb-3 text-xs" style={{ color: '#4B5563' }}>
+            임박은 권장 시기 시작까지 월령 기준 2개월 이내입니다.
+            {filter === 'active' && ' 경과·이후 일정은 전체 보기에서 확인할 수 있습니다.'}
+          </p>
 
           {filtered.length === 0 ? (
             <div
               className="rounded-xl p-6 text-center text-sm"
               style={{ background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}
             >
-              {filter === 'active'
-                ? '현재 이번 달이거나 곧 접종할 항목이 없습니다.'
-                : '접종 일정 데이터가 없습니다.'}
+              이 필터에 해당하는 일정이 없습니다. 전체 보기에서 다른 일정을 확인하세요.
             </div>
           ) : (
             <div className="flex flex-col gap-2">
               {filtered.map((v) => {
-                const status = getStatus(v, ageMonths);
+                const status = getScheduleStatus(v, ageMonths);
                 const cfg = STATUS_CONFIG[status];
+                const near = status === 'before' && isNearSchedule(v, ageMonths);
                 return (
                   <div
                     key={v.id}
-                    className="rounded-xl p-4 flex items-start gap-3"
+                    className="rounded-xl p-4 flex flex-wrap items-start gap-3"
                     style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}
                   >
                     <span
                       style={{
                         padding: '2px 8px',
                         borderRadius: 999,
-                        background: status === 'this_month' ? '#fff' : cfg.bg,
-                        color: status === 'this_month' ? '#0F766E' : cfg.color,
+                        background: cfg.bg,
+                        color: cfg.color,
                         border: `1px solid ${cfg.border}`,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: 700,
-                        flexShrink: 0,
+                        maxWidth: '100%',
                         marginTop: 2,
                       }}
                     >
-                      {cfg.label}
+                      {cfg.label}{near ? ' · 2개월 이내' : ''}
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2 flex-wrap">
@@ -285,7 +291,7 @@ export function ChildHealthVaccinePage() {
                           style={{
                             fontSize: 14,
                             fontWeight: 700,
-                            color: status === 'done' ? '#9CA3AF' : '#0F766E',
+                            color: status === 'current' ? '#0F766E' : '#1F2937',
                           }}
                         >
                           {v.name} {v.dose}
@@ -296,7 +302,10 @@ export function ChildHealthVaccinePage() {
                       </div>
                       <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
                         권장 시기: {v.minMonth}~{v.maxMonth === 999 ? '매년' : `${v.maxMonth}`}개월
-                        {v.note && <span style={{ marginLeft: 6, color: '#9CA3AF' }}>· {v.note}</span>}
+                        {v.note && <span style={{ marginLeft: 6, color: '#4B5563' }}>· {v.note}</span>}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#374151', marginTop: 4 }}>
+                        접종 여부 미확인
                       </div>
                     </div>
                   </div>
@@ -310,9 +319,10 @@ export function ChildHealthVaccinePage() {
             style={{ background: '#F0FDFA', border: '1px solid #CCFBF1', color: '#374151', lineHeight: 1.6 }}
           >
             <span style={{ fontWeight: 700, color: '#0F766E' }}>안내&nbsp;</span>
-            질병관리청 2024년 국가예방접종 일정 기준입니다.
-            실제 접종은 반드시 소아과 전문의와 상의하세요.
-            일부 접종(RV, HPV 등)은 접종 시작 시기에 따라 차수가 달라질 수 있습니다.
+            질병관리청 2024년 국가예방접종 일정 기준의 참고 정보입니다.
+            접종 여부는 예방접종도우미 또는 접종기관에서 확인하세요.
+            실제 접종 시기와 차수는 이전 접종일·백신 종류 등에 따라 달라질 수 있습니다.
+            개인별 접종 일정은 의료진과 상의하세요.
           </div>
         </>
       )}

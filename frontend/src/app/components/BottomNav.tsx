@@ -10,6 +10,10 @@ export function BottomNav() {
   const { user, loading } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
 
+  const scrollToSayuTop = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  };
+
   // v2에서 진입한 세션이면 HARU 버튼이 v2 홈으로 향하도록
   const homePath = location.pathname === '/v2' ? '/v2' : getOrigin() || '/';
 
@@ -51,6 +55,7 @@ export function BottomNav() {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={item.path === '/sayu' ? scrollToSayuTop : undefined}
                 className="flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 transition-all"
                 style={{
                   color: isActive ? '#1A3C6E' : '#999999',

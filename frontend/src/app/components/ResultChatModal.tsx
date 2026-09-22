@@ -147,6 +147,9 @@ type PendingConfirmation = {
   webSearchLimit?: number;
   webSearchUsedCount?: number;
   webSearchRemainingCount?: number;
+  monthlyAiLimit?: number;
+  monthlyAiUsedCount?: number;
+  monthlyAiRemainingCount?: number;
   attachments?: HaruLawAttachmentRef[];
 };
 
@@ -188,10 +191,12 @@ export function ResultChatModal({
   const [pendingAttachments, setPendingAttachments] = useState<HaruLawAttachmentRef[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const requestInFlightRef = useRef(false);
 
   const threadId = useMemo(() => getThreadId(config.sourceKey, sourceIndex), [config.sourceKey, sourceIndex]);
   const isHaruLaw = config.sourceKey === 'haruraw_sayu';
   const isPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
+  const isChoicePending = Boolean(pendingConfirmation);
 
   useEffect(() => {
     if (!isOpen || !uid || !recordId) return;
@@ -200,6 +205,7 @@ export function ResultChatModal({
     setMessages([]);
     setStatusNotice(null);
     setPendingConfirmation(null);
+    requestInFlightRef.current = false;
     setSavedMemoIds({});
     setPendingAttachments([]);
 
@@ -350,7 +356,8 @@ export function ResultChatModal({
     options: { skipOptimisticUser?: boolean; attachments?: HaruLawAttachmentRef[] } = {},
   ) => {
     const trimmed = text.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed || loading || requestInFlightRef.current) return;
+    if (searchPreference === 'auto' && pendingConfirmation) return;
     if (uploadingFiles) {
       toast.info('파일 업로드가 끝난 뒤 전송해 주세요.');
       return;
@@ -360,10 +367,11 @@ export function ResultChatModal({
       ? options.attachments
       : (pendingAttachments.length > 0 ? pendingAttachments : undefined);
 
+    requestInFlightRef.current = true;
     setLoading(true);
     setQuestion('');
     setStatusNotice(null);
-    const optimistic: ResultChatMessage | null = options.skipOptimisticUser
+    const optimistic: ResultChatMessage | null = options.skipOptimisticUser || searchPreference === 'auto'
       ? null
       : { role: 'user', content: trimmed, ...(attachmentsToSend?.length ? { attachments: attachmentsToSend } : {}) };
     if (optimistic) setMessages((prev) => [...prev, optimistic]);
@@ -395,6 +403,9 @@ export function ResultChatModal({
           webSearchLimit: response.webSearchLimit,
           webSearchUsedCount: response.webSearchUsedCount,
           webSearchRemainingCount: response.webSearchRemainingCount,
+          monthlyAiLimit: response.monthlyAiLimit,
+          monthlyAiUsedCount: response.monthlyAiUsedCount,
+          monthlyAiRemainingCount: response.monthlyAiRemainingCount,
           attachments: attachmentsToSend,
         });
         return;
@@ -402,7 +413,16 @@ export function ResultChatModal({
       setPendingConfirmation(null);
       if (response.limitReached) {
         if (optimistic) setMessages((prev) => prev.filter((item) => item !== optimistic));
-        setStatusNotice(response.notice || '이 결과에서 이용할 수 있는 최신자료 확인을 모두 사용했습니다.');
+        setStatusNotice(response.notice || (
+          response.limitReason === 'monthly_ai_quota_exceeded'
+            ? '이번 달 AI 도움을 모두 사용했습니다.'
+            : '이 결과에서 이용할 수 있는 최신자료 확인을 모두 사용했습니다.'
+        ));
+        return;
+      }
+      if (response.failureReason) {
+        if (optimistic) setMessages((prev) => prev.filter((item) => item !== optimistic));
+        setStatusNotice(response.notice || '외부자료 확인을 실행하지 못했습니다. 잠시 후 다시 시도해 주세요.');
         return;
       }
       setPendingAttachments([]);
@@ -424,6 +444,7 @@ export function ResultChatModal({
       if (optimistic) setMessages((prev) => prev.filter((item) => item !== optimistic));
       setQuestion(trimmed);
     } finally {
+      requestInFlightRef.current = false;
       setLoading(false);
     }
   };
@@ -457,6 +478,11 @@ export function ResultChatModal({
       setSavingIndex(null);
     }
   };
+
+  const monthlyAiBlocked = typeof pendingConfirmation?.monthlyAiRemainingCount === 'number'
+    && pendingConfirmation.monthlyAiRemainingCount <= 0;
+  const webSearchBlocked = pendingConfirmation?.webSearchRemainingCount === 0 || monthlyAiBlocked;
+  const choiceActionDisabled = loading || monthlyAiBlocked;
 
   return (
     <div
@@ -503,8 +529,8 @@ export function ResultChatModal({
 
         <div ref={scrollAreaRef} style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
           <p style={{ margin: '0 0 12px', padding: 12, borderRadius: 10, backgroundColor: '#F8FAFC', color: '#475569', fontSize: 12, lineHeight: 1.6 }}>
-            📘 나의 기록을 바탕으로 답변하고,
-            {'\n'}필요한 일반 정보도 함께 설명합니다.
+            질문마다 나의 기록으로 답변할지,
+            {'\n'}최신 외부자료를 확인할지 선택할 수 있습니다.
           </p>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -512,7 +538,7 @@ export function ResultChatModal({
               <button
                 key={item}
                 type="button"
-                disabled={loading || uploadingFiles}
+                disabled={loading || uploadingFiles || isChoicePending}
                 onClick={() => sendQuestion(item)}
                 style={{
                   minHeight: 34,
@@ -523,7 +549,7 @@ export function ResultChatModal({
                   color: '#4A5A2C',
                   fontSize: 12,
                   fontWeight: 800,
-                  cursor: loading || uploadingFiles ? 'wait' : 'pointer',
+                  cursor: loading || uploadingFiles || isChoicePending ? 'not-allowed' : 'pointer',
                 }}
               >
                 {item}
@@ -650,42 +676,45 @@ export function ResultChatModal({
 
           {pendingConfirmation && (
             <div style={{ marginTop: 14, padding: 14, borderRadius: 10, border: '1px solid #BFDBFE', backgroundColor: '#EFF6FF', color: '#1E3A8A' }}>
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, fontWeight: 800, whiteSpace: 'pre-wrap' }}>
-                {pendingConfirmation.notice}
+              <p style={{ margin: '0 0 6px', fontSize: 14, lineHeight: 1.5, fontWeight: 900 }}>
+                어떤 방식으로 답변할까요?
               </p>
-              {typeof pendingConfirmation.webSearchLimit === 'number' && (
-                <p style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.5, color: '#1D4ED8', fontWeight: 700 }}>
-                  {pendingConfirmation.planLabel || '이용권'} · 이 결과의 최신자료 확인 {pendingConfirmation.webSearchLimit}회 중 {pendingConfirmation.webSearchRemainingCount ?? 0}회 이용 가능
-                </p>
-              )}
+              <p style={{ margin: '0 0 10px', fontSize: 12.5, lineHeight: 1.55, color: '#1E40AF', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                질문: {pendingConfirmation.question}
+              </p>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, fontWeight: 800, whiteSpace: 'pre-wrap' }}>
+                {pendingConfirmation.notice
+                  .split('\n')
+                  .filter((line) => line !== '어떤 방식으로 답변할까요?' && line !== `질문: ${pendingConfirmation.question}`)
+                  .join('\n')
+                  .trim()}
+              </p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                {pendingConfirmation.confirmationType === 'ambiguous' && (
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => sendQuestion(pendingConfirmation.question, 'record_only', { attachments: pendingConfirmation.attachments })}
-                    style={{ minHeight: 34, padding: '0 12px', borderRadius: 8, border: '1px solid #94A3B8', backgroundColor: '#FFFFFF', color: '#1F2937', fontSize: 12, fontWeight: 900, cursor: loading ? 'wait' : 'pointer' }}
-                  >
-                    나의 기록으로 답변
-                  </button>
-                )}
                 <button
                   type="button"
-                  disabled={loading || pendingConfirmation.webSearchRemainingCount === 0}
+                  disabled={choiceActionDisabled}
+                  onClick={() => sendQuestion(pendingConfirmation.question, 'record_only', { attachments: pendingConfirmation.attachments })}
+                  style={{ minHeight: 34, padding: '0 12px', borderRadius: 8, border: '1px solid #94A3B8', backgroundColor: monthlyAiBlocked ? '#E5E7EB' : '#FFFFFF', color: monthlyAiBlocked ? '#64748B' : '#1F2937', fontSize: 12, fontWeight: 900, cursor: choiceActionDisabled ? 'not-allowed' : 'pointer' }}
+                >
+                  나의 기록으로 답변
+                </button>
+                <button
+                  type="button"
+                  disabled={loading || webSearchBlocked}
                   onClick={() => sendQuestion(pendingConfirmation.question, 'web_confirmed', { attachments: pendingConfirmation.attachments })}
                   style={{
                     minHeight: 34,
                     padding: '0 12px',
                     borderRadius: 8,
                     border: '1px solid #1A3C6E',
-                    backgroundColor: pendingConfirmation.webSearchRemainingCount === 0 ? '#E5E7EB' : '#1A3C6E',
-                    color: '#FFFFFF',
+                    backgroundColor: webSearchBlocked ? '#E5E7EB' : '#1A3C6E',
+                    color: webSearchBlocked ? '#64748B' : '#FFFFFF',
                     fontSize: 12,
                     fontWeight: 900,
-                    cursor: loading || pendingConfirmation.webSearchRemainingCount === 0 ? 'not-allowed' : 'pointer',
+                    cursor: loading || webSearchBlocked ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  최신자료 확인
+                  최신 외부자료 확인
                 </button>
                 <button
                   type="button"
@@ -716,7 +745,7 @@ export function ResultChatModal({
           }}
           style={{ padding: 14, borderTop: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column', gap: 8, backgroundColor: '#FFFFFF' }}
         >
-          {webSearchUsage && (
+          {webSearchUsage && !pendingConfirmation && (
             <p
               style={{
                 margin: 0,
@@ -742,7 +771,7 @@ export function ResultChatModal({
               {isPaidUser ? (
                 <button
                   type="button"
-                  disabled={loading || uploadingFiles || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES}
+                  disabled={loading || uploadingFiles || isChoicePending || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES}
                   onClick={() => fileInputRef.current?.click()}
                   style={{
                     alignSelf: 'flex-start',
@@ -754,7 +783,7 @@ export function ResultChatModal({
                     color: '#475569',
                     fontSize: 12,
                     fontWeight: 800,
-                    cursor: loading || uploadingFiles || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES ? 'not-allowed' : 'pointer',
+                    cursor: loading || uploadingFiles || isChoicePending || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES ? 'not-allowed' : 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 5,
@@ -774,7 +803,7 @@ export function ResultChatModal({
             <input
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              disabled={loading || uploadingFiles}
+              disabled={loading || uploadingFiles || isChoicePending}
               placeholder="나의 기록을 바탕으로 자유롭게 질문해 보세요."
               style={{
                 flex: 1,
@@ -790,17 +819,17 @@ export function ResultChatModal({
             />
             <button
               type="submit"
-              disabled={loading || uploadingFiles || !question.trim()}
+              disabled={loading || uploadingFiles || isChoicePending || !question.trim()}
               style={{
                 minWidth: 70,
                 height: 42,
                 borderRadius: 10,
                 border: 'none',
-                backgroundColor: loading || uploadingFiles || !question.trim() ? '#CBD5E1' : '#1A3C6E',
+                backgroundColor: loading || uploadingFiles || isChoicePending || !question.trim() ? '#CBD5E1' : '#1A3C6E',
                 color: '#FFFFFF',
                 fontSize: 13,
                 fontWeight: 900,
-                cursor: loading || uploadingFiles || !question.trim() ? 'not-allowed' : 'pointer',
+                cursor: loading || uploadingFiles || isChoicePending || !question.trim() ? 'not-allowed' : 'pointer',
               }}
             >
               전송

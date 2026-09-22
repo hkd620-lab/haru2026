@@ -37,8 +37,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.recoverSubscriptionBillingRequest = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = void 0;
-exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = exports.getSubscriptionRefundEligibility = void 0;
+exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.getSnsThumbnailData = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = void 0;
+exports.generateSnsStoryFinal = exports.generateSnsStorySynopsis = exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = exports.getSubscriptionRefundEligibility = exports.executeScheduledDeletion = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -97,7 +97,7 @@ const PLANTNET_API_KEY_SECRET = (0, params_1.defineSecret)('PLANTNET_API_KEY');
 const MICROSOFT_CLIENT_ID_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_ID');
 const MICROSOFT_CLIENT_SECRET_SECRET = (0, params_1.defineSecret)('MICROSOFT_CLIENT_SECRET');
 const GOOGLE_DRIVE_SERVICE_ACCOUNT_SECRET = (0, params_1.defineSecret)('GOOGLE_DRIVE_SERVICE_ACCOUNT');
-const FRONTEND_URL = 'https://haru2026.com';
+const FRONTEND_URL = oauthStateCore_1.DEFAULT_LOGIN_FRONTEND_ORIGIN;
 // 관리자 전용 기능 접근 제어용 UID
 const ADMIN_UID = internalEntitlements_1.INTERNAL_ADMIN_UID;
 // Storage 버킷
@@ -328,12 +328,12 @@ function logOAuthCallbackCompleted(provider, startedAt, timings) {
         ...timings,
     });
 }
-function buildFrontendAuthCallbackUrl(customToken, provider) {
+function buildFrontendAuthCallbackUrl(customToken, provider, frontendOrigin = FRONTEND_URL) {
     const params = new URLSearchParams({ customToken, provider });
-    return `${FRONTEND_URL}/auth/callback#${params.toString()}`;
+    return `${frontendOrigin}/auth/callback#${params.toString()}`;
 }
-function buildLoginErrorRedirect(provider) {
-    return `${FRONTEND_URL}/login?error=${provider}_login_failed`;
+function buildLoginErrorRedirect(provider, frontendOrigin = FRONTEND_URL) {
+    return `${frontendOrigin}/login?error=${provider}_login_failed`;
 }
 const HARU_PORTONE_STORE_ID = 'store-d9310c4a-b5e8-4f6e-9e92-88e6b119e838';
 const HARU_INICIS_PROVIDER = 'kg_inicis';
@@ -2860,25 +2860,23 @@ function getResultChatSearchPreference(value) {
         return preference;
     return 'auto';
 }
-function buildWebSearchNotice(plan, usage) {
-    return [
-        '🌐 최신 외부자료 확인이 필요한 질문입니다.',
-        '',
-        RESULT_CHAT_PLAN_LABELS[plan],
-        `이 결과의 최신자료 확인 ${usage.limit}회 중 ${usage.remainingCount}회 이용 가능`,
-        '',
-        '최신자료를 확인한 뒤 답변할까요?',
-    ].join('\n');
-}
-function buildAmbiguousNotice(plan, usage) {
-    return [
+function buildAmbiguousNotice(plan, usage, monthlyUsage, question) {
+    const lines = [
         '어떤 방식으로 답변할까요?',
         '',
-        '나의 기록만으로 답변할 수도 있고, 최신 외부자료를 함께 확인할 수도 있습니다.',
+        `질문: ${question}`,
         '',
-        RESULT_CHAT_PLAN_LABELS[plan],
-        `이 결과의 최신자료 확인 ${usage.limit}회 중 ${usage.remainingCount}회 이용 가능`,
-    ].join('\n');
+        `${RESULT_CHAT_PLAN_LABELS[plan]} · 외부자료 확인 ${usage.limit}회 중 ${usage.remainingCount}회 남음`,
+        `월간 AI 도움 ${monthlyUsage.limit}회 중 ${monthlyUsage.remaining}회 남음`,
+    ];
+    if (monthlyUsage.remaining <= 0) {
+        lines.push('', '이번 달 AI 도움을 모두 사용했습니다.', '새 답변을 받으려면 다음 달 사용량 초기화 또는 요금제 확인이 필요합니다.');
+        return lines.join('\n');
+    }
+    if (usage.remainingCount <= 0) {
+        lines.push('', '이 결과의 외부자료 확인 횟수를 모두 사용했습니다.', '나의 기록을 바탕으로 한 질문은 계속할 수 있습니다.');
+    }
+    return lines.join('\n');
 }
 function buildWebSearchExhaustedNotice() {
     return [
@@ -2886,6 +2884,72 @@ function buildWebSearchExhaustedNotice() {
         '',
         '나의 기록을 바탕으로 한 질문은 계속할 수 있습니다.',
     ].join('\n');
+}
+function buildMonthlyAiQuotaExhaustedNotice() {
+    return [
+        '이번 달 AI 도움을 모두 사용했습니다.',
+        '',
+        '외부자료 확인 횟수가 남아 있어도 월간 AI 도움 한도가 소진되면 새 답변을 만들 수 없습니다.',
+        '요금제를 확인하거나 다음 달 사용량 초기화 후 다시 이용해 주세요.',
+    ].join('\n');
+}
+function buildWebSearchFailedNotice() {
+    return [
+        '외부자료 확인을 실행하지 못했습니다.',
+        '',
+        '이번 요청은 최신자료 출처가 확인되지 않아 사용 횟수를 차감하지 않았습니다.',
+        '잠시 후 다시 시도하거나 나의 기록으로 답변을 선택해 주세요.',
+    ].join('\n');
+}
+function buildResultChatWebRetryPrompt(prompt) {
+    return `${prompt}\n\n[외부자료 검색 재시도]\n이 요청은 사용자가 최신 외부자료 확인을 명시적으로 선택했습니다. 반드시 Google Search 도구를 실제로 사용하고, 검색으로 확인된 출처가 포함된 답변만 작성하세요. 검색 출처를 확보할 수 없으면 추측하거나 기록만으로 대신 답하지 마세요.`;
+}
+function addOptionalTokenCounts(current, next) {
+    const nextCount = typeof next === 'number' && Number.isFinite(next) ? next : null;
+    if (current === null)
+        return nextCount;
+    if (nextCount === null)
+        return current;
+    return current + nextCount;
+}
+function buildResultChatLimitResponse(params) {
+    return {
+        threadId: params.threadId,
+        answer: '',
+        sources: [],
+        answerRoute: params.answerRoute,
+        routeLabel: params.routeLabel,
+        limitReached: true,
+        limitReason: params.limitReason,
+        notice: params.notice,
+        plan: params.actualPlan,
+        planLabel: RESULT_CHAT_PLAN_LABELS[params.actualPlan],
+        webSearchLimit: params.usage.limit,
+        webSearchUsedCount: params.usage.usedCount,
+        webSearchRemainingCount: params.usage.remainingCount,
+        monthlyAiLimit: params.monthlyUsage.limit,
+        monthlyAiUsedCount: params.monthlyUsage.used,
+        monthlyAiRemainingCount: params.monthlyUsage.remaining,
+    };
+}
+function buildResultChatFailureResponse(params) {
+    return {
+        threadId: params.threadId,
+        answer: '',
+        sources: [],
+        answerRoute: params.answerRoute,
+        routeLabel: params.routeLabel,
+        failureReason: params.failureReason,
+        notice: params.notice,
+        plan: params.actualPlan,
+        planLabel: RESULT_CHAT_PLAN_LABELS[params.actualPlan],
+        webSearchLimit: params.usage.limit,
+        webSearchUsedCount: params.usage.usedCount,
+        webSearchRemainingCount: params.usage.remainingCount,
+        monthlyAiLimit: params.monthlyUsage.limit,
+        monthlyAiUsedCount: params.monthlyUsage.used,
+        monthlyAiRemainingCount: params.monthlyUsage.remaining,
+    };
 }
 function extractJsonObject(text) {
     const match = text.match(/\{[\s\S]*\}/);
@@ -3094,6 +3158,7 @@ ${routeGuide[params.route]}
 
 [모드 제한]
 ${getSafetyModeGuide(params.safetyMode)}
+${params.questionSafetyGuide || ''}
 
 [형식별 지침]
 ${params.systemGuide || '(추가 지침 없음)'}
@@ -3140,6 +3205,18 @@ function decorateResultChatAnswer(answer, route, usage, recordOnlyChosen = false
         return `${label}\n${missingExtra.join('\n')}${rest ? `\n\n${rest}` : ''}`;
     }
     return `${preface.join('\n')}\n\n${cleanAnswer}`;
+}
+function getResultChatQuestionSafetyGuide(question) {
+    const normalized = normalizeResultChatQuestion(question);
+    if (!hasAnyResultChatPattern(normalized, RESULT_CHAT_HIGH_RISK_PATTERNS))
+        return '';
+    return [
+        '',
+        '[질문 안전 지침]',
+        '- 이 질문에는 의료·법률·금융 등 고위험 판단으로 이어질 수 있는 표현이 포함되어 있다.',
+        '- 사용자가 선택한 자료 출처 방식은 유지하되, 진단·치료·복약, 승소·패소, 위법 여부, 매수·매도 결론을 단정하지 않는다.',
+        '- 확인된 사실, 추가 확인이 필요한 사항, 전문가에게 확인할 항목을 구분해 안내한다.',
+    ].join('\n');
 }
 async function getRecentResultChatMessages(messagesRef) {
     const recentSnap = await messagesRef.orderBy('createdAt', 'desc').limit(RESULT_CHAT_HISTORY_LIMIT).get();
@@ -3321,7 +3398,7 @@ exports.chatWithResult = (0, https_2.onCall)({
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 90,
 }, async (request) => {
-    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24;
     if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -3371,110 +3448,155 @@ exports.chatWithResult = (0, https_2.onCall)({
     const actualPlan = coerceUserPlan(await getUserPlan(uid));
     const isDev = DEVELOPER_UIDS.has(uid);
     const requestId = createAiUsageRequestId();
+    const currentUsageForChoice = await getThreadWebSearchUsage(threadRef, actualPlan);
+    const monthlyUsageForChoice = await (0, monthlyAiQuota_1.getMonthlyAiQuotaStatus)(uid);
+    if (attachments.length > 0) {
+        if (sourceKey !== 'haruraw_sayu') {
+            throw new https_2.HttpsError('failed-precondition', '첨부는 하루LAW 자문에서만 사용할 수 있습니다.');
+        }
+        if (actualPlan === 'free') {
+            throw new https_2.HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
+        }
+    }
+    if (searchPreference === 'auto') {
+        return {
+            threadId,
+            answer: '',
+            sources: [],
+            answerRoute: 'ambiguous',
+            routeLabel: RESULT_ROUTE_LABELS.ambiguous,
+            requiresConfirmation: true,
+            confirmationType: 'ambiguous',
+            notice: buildAmbiguousNotice(actualPlan, currentUsageForChoice, monthlyUsageForChoice, question),
+            plan: actualPlan,
+            planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
+            webSearchLimit: currentUsageForChoice.limit,
+            webSearchUsedCount: currentUsageForChoice.usedCount,
+            webSearchRemainingCount: currentUsageForChoice.remainingCount,
+            monthlyAiLimit: monthlyUsageForChoice.limit,
+            monthlyAiUsedCount: monthlyUsageForChoice.used,
+            monthlyAiRemainingCount: monthlyUsageForChoice.remaining,
+        };
+    }
     let locked = false;
     let reservedWebSearch = false;
     let webSearchFinalized = false;
     let monthlyQuotaReservation = null;
+    let attemptedAnswerRoute = 'ambiguous';
     try {
         await acquireResultChatLock(threadRef, requestId);
         locked = true;
         await enforceResultChatRateLimit(uid);
-        if (attachments.length > 0) {
-            if (sourceKey !== 'haruraw_sayu') {
-                throw new https_2.HttpsError('failed-precondition', '첨부는 하루LAW 자문에서만 사용할 수 있습니다.');
-            }
-            if (actualPlan === 'free') {
-                throw new https_2.HttpsError('permission-denied', '파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.');
-            }
-        }
-        monthlyQuotaReservation = await (0, monthlyAiQuota_1.reserveMonthlyAiQuota)(uid, 'chatWithResult');
         const ai = new genai_1.GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
-        const classification = await classifyResultChatQuestion(ai, {
-            uid,
-            actualPlan,
-            recordId,
-            sourceKey,
-            question,
-            sourceResult,
-            requestId,
-            isDev,
-        });
         const currentUsage = await getThreadWebSearchUsage(threadRef, actualPlan);
-        let answerRoute = classification.route;
-        let recordOnlyChosen = false;
-        if (searchPreference === 'record_only') {
-            if (answerRoute === 'high_risk_guidance') {
-                answerRoute = 'high_risk_guidance';
-            }
-            else if (answerRoute === 'web_search') {
-                await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
-                monthlyQuotaReservation = null;
-                return {
+        const answerRoute = searchPreference === 'web_confirmed' ? 'web_search' : 'record_only';
+        attemptedAnswerRoute = answerRoute;
+        const recordOnlyChosen = searchPreference === 'record_only';
+        const questionSafetyGuide = getResultChatQuestionSafetyGuide(question);
+        let usageForAnswer = currentUsage;
+        // 월간 AI 한도가 소진되면 기록 답변도 만들 수 없으므로, 두 한도가 모두
+        // 소진된 경우에도 "기록 질문은 계속 가능"이라는 잘못된 안내가 먼저 나가지 않는다.
+        if (monthlyUsageForChoice.remaining <= 0) {
+            await logResultChatUsage({
+                uid,
+                actualPlan,
+                recordId,
+                sourceKey,
+                answerRoute,
+                model: null,
+                inputTokens: null,
+                outputTokens: null,
+                webSearchUsed: false,
+                professionalApiUsed: false,
+                searchSourceCount: 0,
+                latencyMs: null,
+                requestId,
+                success: false,
+                errorCode: 'MONTHLY_AI_QUOTA_EXCEEDED',
+                isDev,
+            });
+            return buildResultChatLimitResponse({
+                threadId,
+                answerRoute,
+                routeLabel: RESULT_ROUTE_LABELS[answerRoute],
+                limitReason: 'monthly_ai_quota_exceeded',
+                notice: buildMonthlyAiQuotaExhaustedNotice(),
+                actualPlan,
+                usage: currentUsage,
+                monthlyUsage: monthlyUsageForChoice,
+            });
+        }
+        if (answerRoute === 'web_search') {
+            if (currentUsage.remainingCount <= 0) {
+                await logResultChatUsage({
+                    uid,
+                    actualPlan,
+                    recordId,
+                    sourceKey,
+                    answerRoute,
+                    model: null,
+                    inputTokens: null,
+                    outputTokens: null,
+                    webSearchUsed: false,
+                    professionalApiUsed: false,
+                    searchSourceCount: 0,
+                    latencyMs: null,
+                    requestId,
+                    success: false,
+                    errorCode: 'web_search_limit_reached',
+                    isDev,
+                });
+                return buildResultChatLimitResponse({
                     threadId,
-                    answer: '',
-                    sources: [],
                     answerRoute,
                     routeLabel: RESULT_ROUTE_LABELS.web_search,
-                    requiresConfirmation: true,
-                    confirmationType: 'web_search',
-                    notice: buildWebSearchNotice(actualPlan, currentUsage),
-                    plan: actualPlan,
-                    planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
-                    webSearchLimit: currentUsage.limit,
-                    webSearchUsedCount: currentUsage.usedCount,
-                    webSearchRemainingCount: currentUsage.remainingCount,
-                };
-            }
-            else {
-                answerRoute = 'record_only';
-                recordOnlyChosen = true;
+                    limitReason: 'web_search_limit_reached',
+                    notice: buildWebSearchExhaustedNotice(),
+                    actualPlan,
+                    usage: currentUsage,
+                    monthlyUsage: monthlyUsageForChoice,
+                });
             }
         }
-        else if (searchPreference === 'web_confirmed') {
-            if (answerRoute === 'high_risk_guidance') {
-                answerRoute = 'high_risk_guidance';
-            }
-            else if (answerRoute !== 'record_only') {
-                answerRoute = 'web_search';
-            }
+        try {
+            monthlyQuotaReservation = await (0, monthlyAiQuota_1.reserveMonthlyAiQuota)(uid, 'chatWithResult');
         }
-        else if (answerRoute === 'web_search') {
-            await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
-            monthlyQuotaReservation = null;
-            return {
-                threadId,
-                answer: '',
-                sources: [],
-                answerRoute,
-                routeLabel: RESULT_ROUTE_LABELS.web_search,
-                requiresConfirmation: true,
-                confirmationType: 'web_search',
-                notice: buildWebSearchNotice(actualPlan, currentUsage),
-                plan: actualPlan,
-                planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
-                webSearchLimit: currentUsage.limit,
-                webSearchUsedCount: currentUsage.usedCount,
-                webSearchRemainingCount: currentUsage.remainingCount,
-            };
-        }
-        else if (answerRoute === 'ambiguous') {
-            await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
-            monthlyQuotaReservation = null;
-            return {
-                threadId,
-                answer: '',
-                sources: [],
-                answerRoute,
-                routeLabel: RESULT_ROUTE_LABELS.ambiguous,
-                requiresConfirmation: true,
-                confirmationType: 'ambiguous',
-                notice: buildAmbiguousNotice(actualPlan, currentUsage),
-                plan: actualPlan,
-                planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
-                webSearchLimit: currentUsage.limit,
-                webSearchUsedCount: currentUsage.usedCount,
-                webSearchRemainingCount: currentUsage.remainingCount,
-            };
+        catch (error) {
+            const errorDetails = error instanceof https_2.HttpsError
+                ? error.details
+                : undefined;
+            if (error instanceof https_2.HttpsError && (errorDetails === null || errorDetails === void 0 ? void 0 : errorDetails.reason) === 'MONTHLY_AI_QUOTA_EXCEEDED') {
+                const monthlyUsage = await (0, monthlyAiQuota_1.getMonthlyAiQuotaStatus)(uid);
+                await logResultChatUsage({
+                    uid,
+                    actualPlan,
+                    recordId,
+                    sourceKey,
+                    answerRoute,
+                    model: null,
+                    inputTokens: null,
+                    outputTokens: null,
+                    webSearchUsed: false,
+                    professionalApiUsed: false,
+                    searchSourceCount: 0,
+                    latencyMs: null,
+                    requestId,
+                    success: false,
+                    errorCode: 'MONTHLY_AI_QUOTA_EXCEEDED',
+                    isDev,
+                });
+                return buildResultChatLimitResponse({
+                    threadId,
+                    answerRoute,
+                    routeLabel: RESULT_ROUTE_LABELS[answerRoute],
+                    limitReason: 'monthly_ai_quota_exceeded',
+                    notice: buildMonthlyAiQuotaExhaustedNotice(),
+                    actualPlan,
+                    usage: currentUsage,
+                    monthlyUsage,
+                });
+            }
+            throw error;
         }
         const recentMessageRows = await getRecentResultChatMessages(messagesRef);
         const reusable = attachments.length > 0
@@ -3484,6 +3606,8 @@ exports.chatWithResult = (0, https_2.onCall)({
                 : findReusableResultChatAnswer(recentMessageRows, question, answerRoute, { allowRecentWebSearchMs: RESULT_CHAT_LOCK_STALE_MS });
         if (reusable) {
             if (answerRoute === 'web_search') {
+                await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+                monthlyQuotaReservation = null;
                 return {
                     threadId,
                     answer: reusable.answer,
@@ -3497,6 +3621,9 @@ exports.chatWithResult = (0, https_2.onCall)({
                     webSearchLimit: currentUsage.limit,
                     webSearchUsedCount: currentUsage.usedCount,
                     webSearchRemainingCount: currentUsage.remainingCount,
+                    monthlyAiLimit: monthlyUsageForChoice.limit,
+                    monthlyAiUsedCount: monthlyUsageForChoice.used,
+                    monthlyAiRemainingCount: monthlyUsageForChoice.remaining,
                     cached: true,
                 };
             }
@@ -3550,9 +3677,11 @@ exports.chatWithResult = (0, https_2.onCall)({
                 webSearchLimit: currentUsage.limit,
                 webSearchUsedCount: currentUsage.usedCount,
                 webSearchRemainingCount: currentUsage.remainingCount,
+                monthlyAiLimit: monthlyQuotaReservation.limit,
+                monthlyAiUsedCount: monthlyQuotaReservation.used,
+                monthlyAiRemainingCount: monthlyQuotaReservation.remaining,
             };
         }
-        let usageForAnswer = currentUsage;
         if (answerRoute === 'web_search') {
             const reserved = await reserveWebSearchSlot(threadRef, actualPlan, sourceKey, sourceIndex);
             if (!reserved.reserved) {
@@ -3576,20 +3705,16 @@ exports.chatWithResult = (0, https_2.onCall)({
                     errorCode: 'web_search_limit_reached',
                     isDev,
                 });
-                return {
+                return buildResultChatLimitResponse({
                     threadId,
-                    answer: '',
-                    sources: [],
                     answerRoute,
                     routeLabel: RESULT_ROUTE_LABELS.web_search,
-                    limitReached: true,
+                    limitReason: 'web_search_limit_reached',
                     notice: buildWebSearchExhaustedNotice(),
-                    plan: actualPlan,
-                    planLabel: RESULT_CHAT_PLAN_LABELS[actualPlan],
-                    webSearchLimit: reserved.limit,
-                    webSearchUsedCount: reserved.usedCount,
-                    webSearchRemainingCount: reserved.remainingCount,
-                };
+                    actualPlan,
+                    usage: reserved,
+                    monthlyUsage: monthlyUsageForChoice,
+                });
             }
             reservedWebSearch = true;
             usageForAnswer = reserved;
@@ -3602,6 +3727,7 @@ exports.chatWithResult = (0, https_2.onCall)({
             safetyMode: policy.safetyMode,
             systemGuide: policy.systemGuide,
             recordOnlyChosen,
+            questionSafetyGuide,
         });
         const { fileParts, attachmentMeta } = attachments.length > 0
             ? await loadHaruLawAttachmentParts(uid, attachments)
@@ -3610,31 +3736,57 @@ exports.chatWithResult = (0, https_2.onCall)({
             ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
             : prompt;
         const startedAt = Date.now();
-        const response = await ai.models.generateContent({
+        let response = await ai.models.generateContent({
             model: RESULT_CHAT_MODEL_NAME,
             contents,
             config: answerRoute === 'web_search'
                 ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
                 : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
         });
-        const latencyMs = Date.now() - startedAt;
-        const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
-        const finishReason = (_l = (_k = response.candidates) === null || _k === void 0 ? void 0 : _k[0]) === null || _l === void 0 ? void 0 : _l.finishReason;
-        const { sources, usedWebSearch } = answerRoute === 'web_search'
+        let inputTokens = addOptionalTokenCounts(null, (_k = response.usageMetadata) === null || _k === void 0 ? void 0 : _k.promptTokenCount);
+        let outputTokens = addOptionalTokenCounts(null, (_l = response.usageMetadata) === null || _l === void 0 ? void 0 : _l.candidatesTokenCount);
+        let { sources, usedWebSearch } = answerRoute === 'web_search'
             ? getResultChatSources(response)
             : { sources: [], usedWebSearch: false };
         if (answerRoute === 'web_search' && !usedWebSearch) {
             logger.warn('chatWithResult web_search_not_grounded 진단:', {
-                finishReason,
-                hasCandidates: ((_o = (_m = response.candidates) === null || _m === void 0 ? void 0 : _m.length) !== null && _o !== void 0 ? _o : 0) > 0,
-                hasGroundingMetadata: !!((_q = (_p = response.candidates) === null || _p === void 0 ? void 0 : _p[0]) === null || _q === void 0 ? void 0 : _q.groundingMetadata),
-                webSearchQueriesCount: (_v = (_u = (_t = (_s = (_r = response.candidates) === null || _r === void 0 ? void 0 : _r[0]) === null || _s === void 0 ? void 0 : _s.groundingMetadata) === null || _t === void 0 ? void 0 : _t.webSearchQueries) === null || _u === void 0 ? void 0 : _u.length) !== null && _v !== void 0 ? _v : 0,
-                groundingChunksCount: (_0 = (_z = (_y = (_x = (_w = response.candidates) === null || _w === void 0 ? void 0 : _w[0]) === null || _x === void 0 ? void 0 : _x.groundingMetadata) === null || _y === void 0 ? void 0 : _y.groundingChunks) === null || _z === void 0 ? void 0 : _z.length) !== null && _0 !== void 0 ? _0 : 0,
+                attempt: 1,
+                finishReason: (_o = (_m = response.candidates) === null || _m === void 0 ? void 0 : _m[0]) === null || _o === void 0 ? void 0 : _o.finishReason,
+                hasCandidates: ((_q = (_p = response.candidates) === null || _p === void 0 ? void 0 : _p.length) !== null && _q !== void 0 ? _q : 0) > 0,
+                hasGroundingMetadata: !!((_s = (_r = response.candidates) === null || _r === void 0 ? void 0 : _r[0]) === null || _s === void 0 ? void 0 : _s.groundingMetadata),
+                webSearchQueriesCount: (_x = (_w = (_v = (_u = (_t = response.candidates) === null || _t === void 0 ? void 0 : _t[0]) === null || _u === void 0 ? void 0 : _u.groundingMetadata) === null || _v === void 0 ? void 0 : _v.webSearchQueries) === null || _w === void 0 ? void 0 : _w.length) !== null && _x !== void 0 ? _x : 0,
+                groundingChunksCount: (_2 = (_1 = (_0 = (_z = (_y = response.candidates) === null || _y === void 0 ? void 0 : _y[0]) === null || _z === void 0 ? void 0 : _z.groundingMetadata) === null || _0 === void 0 ? void 0 : _0.groundingChunks) === null || _1 === void 0 ? void 0 : _1.length) !== null && _2 !== void 0 ? _2 : 0,
                 recordId,
                 sourceKey,
             });
-            throw new Error('web_search_not_grounded');
+            const retryPrompt = buildResultChatWebRetryPrompt(prompt);
+            const retryContents = fileParts.length > 0
+                ? [{ role: 'user', parts: [{ text: retryPrompt }, ...fileParts] }]
+                : retryPrompt;
+            response = await ai.models.generateContent({
+                model: RESULT_CHAT_MODEL_NAME,
+                contents: retryContents,
+                config: { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
+            });
+            inputTokens = addOptionalTokenCounts(inputTokens, (_3 = response.usageMetadata) === null || _3 === void 0 ? void 0 : _3.promptTokenCount);
+            outputTokens = addOptionalTokenCounts(outputTokens, (_4 = response.usageMetadata) === null || _4 === void 0 ? void 0 : _4.candidatesTokenCount);
+            ({ sources, usedWebSearch } = getResultChatSources(response));
+            if (!usedWebSearch) {
+                logger.warn('chatWithResult web_search_not_grounded 진단:', {
+                    attempt: 2,
+                    finishReason: (_6 = (_5 = response.candidates) === null || _5 === void 0 ? void 0 : _5[0]) === null || _6 === void 0 ? void 0 : _6.finishReason,
+                    hasCandidates: ((_8 = (_7 = response.candidates) === null || _7 === void 0 ? void 0 : _7.length) !== null && _8 !== void 0 ? _8 : 0) > 0,
+                    hasGroundingMetadata: !!((_10 = (_9 = response.candidates) === null || _9 === void 0 ? void 0 : _9[0]) === null || _10 === void 0 ? void 0 : _10.groundingMetadata),
+                    webSearchQueriesCount: (_15 = (_14 = (_13 = (_12 = (_11 = response.candidates) === null || _11 === void 0 ? void 0 : _11[0]) === null || _12 === void 0 ? void 0 : _12.groundingMetadata) === null || _13 === void 0 ? void 0 : _13.webSearchQueries) === null || _14 === void 0 ? void 0 : _14.length) !== null && _15 !== void 0 ? _15 : 0,
+                    groundingChunksCount: (_20 = (_19 = (_18 = (_17 = (_16 = response.candidates) === null || _16 === void 0 ? void 0 : _16[0]) === null || _17 === void 0 ? void 0 : _17.groundingMetadata) === null || _18 === void 0 ? void 0 : _18.groundingChunks) === null || _19 === void 0 ? void 0 : _19.length) !== null && _20 !== void 0 ? _20 : 0,
+                    recordId,
+                    sourceKey,
+                });
+                throw new Error('web_search_not_grounded');
+            }
         }
+        const latencyMs = Date.now() - startedAt;
+        const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
         if (answerRoute === 'web_search') {
             usageForAnswer = await finalizeWebSearchSlot(threadRef, actualPlan, true);
             webSearchFinalized = true;
@@ -3643,7 +3795,6 @@ exports.chatWithResult = (0, https_2.onCall)({
         if (!answer) {
             throw new Error('empty_answer');
         }
-        const gUsage = response.usageMetadata;
         await logResultChatUsage({
             uid,
             actualPlan,
@@ -3651,8 +3802,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             sourceKey,
             answerRoute,
             model: RESULT_CHAT_MODEL_NAME,
-            inputTokens: (_1 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _1 !== void 0 ? _1 : null,
-            outputTokens: (_2 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _2 !== void 0 ? _2 : null,
+            inputTokens,
+            outputTokens,
             webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
             professionalApiUsed: false,
             searchSourceCount: sources.length,
@@ -3673,8 +3824,8 @@ exports.chatWithResult = (0, https_2.onCall)({
             safetyMode: policy.safetyMode,
             answerRoute,
             model: RESULT_CHAT_MODEL_NAME,
-            inputTokens: (_3 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.promptTokenCount) !== null && _3 !== void 0 ? _3 : null,
-            outputTokens: (_4 = gUsage === null || gUsage === void 0 ? void 0 : gUsage.candidatesTokenCount) !== null && _4 !== void 0 ? _4 : null,
+            inputTokens,
+            outputTokens,
             latencyMs,
             webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
             professionalApiUsed: false,
@@ -3693,12 +3844,51 @@ exports.chatWithResult = (0, https_2.onCall)({
             webSearchLimit: usageForAnswer.limit,
             webSearchUsedCount: usageForAnswer.usedCount,
             webSearchRemainingCount: usageForAnswer.remainingCount,
+            monthlyAiLimit: (_21 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.limit) !== null && _21 !== void 0 ? _21 : monthlyUsageForChoice.limit,
+            monthlyAiUsedCount: (_22 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.used) !== null && _22 !== void 0 ? _22 : monthlyUsageForChoice.used,
+            monthlyAiRemainingCount: (_23 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.remaining) !== null && _23 !== void 0 ? _23 : monthlyUsageForChoice.remaining,
         };
     }
     catch (error) {
         await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+        monthlyQuotaReservation = null;
         if (reservedWebSearch && !webSearchFinalized) {
             await finalizeWebSearchSlot(threadRef, actualPlan, false);
+            reservedWebSearch = false;
+        }
+        if ((error === null || error === void 0 ? void 0 : error.message) === 'web_search_not_grounded') {
+            const [usageAfterRollback, monthlyUsageAfterRollback] = await Promise.all([
+                getThreadWebSearchUsage(threadRef, actualPlan),
+                (0, monthlyAiQuota_1.getMonthlyAiQuotaStatus)(uid),
+            ]);
+            await logResultChatUsage({
+                uid,
+                actualPlan,
+                recordId,
+                sourceKey,
+                answerRoute: attemptedAnswerRoute,
+                model: null,
+                inputTokens: null,
+                outputTokens: null,
+                webSearchUsed: false,
+                professionalApiUsed: false,
+                searchSourceCount: 0,
+                latencyMs: null,
+                requestId,
+                success: false,
+                errorCode: 'web_search_not_grounded',
+                isDev,
+            });
+            return buildResultChatFailureResponse({
+                threadId,
+                answerRoute: attemptedAnswerRoute,
+                routeLabel: RESULT_ROUTE_LABELS[attemptedAnswerRoute],
+                failureReason: 'web_search_failed',
+                notice: buildWebSearchFailedNotice(),
+                actualPlan,
+                usage: usageAfterRollback,
+                monthlyUsage: monthlyUsageAfterRollback,
+            });
         }
         if (error instanceof https_2.HttpsError) {
             throw error;
@@ -3708,7 +3898,7 @@ exports.chatWithResult = (0, https_2.onCall)({
             errorMessage: error === null || error === void 0 ? void 0 : error.message,
             errorStatus: error === null || error === void 0 ? void 0 : error.status,
             errorCode: error === null || error === void 0 ? void 0 : error.code,
-            errorCause: String((_5 = error === null || error === void 0 ? void 0 : error.cause) !== null && _5 !== void 0 ? _5 : ''),
+            errorCause: String((_24 = error === null || error === void 0 ? void 0 : error.cause) !== null && _24 !== void 0 ? _24 : ''),
             stack: error === null || error === void 0 ? void 0 : error.stack,
             recordId,
             sourceKey,
@@ -4068,8 +4258,10 @@ ${text}`;
 exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] }, async (req, res) => {
     try {
         const state = crypto.randomBytes(32).toString('hex');
+        const returnOrigin = (0, oauthStateCore_1.resolveLoginFrontendOrigin)(req.query.returnOrigin);
         await db.collection('oauth_states').doc(state).set({
             provider: 'kakao',
+            returnOrigin,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
         });
@@ -4089,20 +4281,21 @@ exports.kakaoLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', me
 // ===== 🟡 카카오 콜백 (통합 UID 적용) =====
 exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', secrets: [KAKAO_CLIENT_ID_SECRET, KAKAO_CLIENT_SECRET_SECRET] }, async (req, res) => {
     var _a, _b, _c, _d, _f;
+    let frontendOrigin = FRONTEND_URL;
     try {
         const callbackStartedAt = Date.now();
         const timings = {};
-        const { code, state } = req.query;
-        if (!code || typeof code !== 'string')
-            throw new Error('Invalid code');
+        const { code, state, error: providerError } = req.query;
         if (!state || typeof state !== 'string')
             throw new Error('Invalid state');
-        await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'kakao'));
+        const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'kakao'));
+        frontendOrigin = (0, oauthStateCore_1.resolveLoginFrontendOrigin)(oauthState === null || oauthState === void 0 ? void 0 : oauthState.returnOrigin);
+        const callbackCode = (0, oauthStateCore_1.getLoginOAuthCallbackCode)(code, providerError);
         const kakaoTokenParams = {
             grant_type: 'authorization_code',
             client_id: KAKAO_CLIENT_ID_SECRET.value().trim(),
             redirect_uri: KAKAO_REDIRECT_URI,
-            code,
+            code: callbackCode,
         };
         const kakaoClientSecret = KAKAO_CLIENT_SECRET_SECRET.value().trim();
         if (kakaoClientSecret) {
@@ -4165,19 +4358,21 @@ exports.kakaoCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', memo
         });
         const customToken = await measureOAuthPhase(timings, 'customTokenMs', () => admin.auth().createCustomToken(uid));
         logOAuthCallbackCompleted('kakao', callbackStartedAt, timings);
-        res.redirect(buildFrontendAuthCallbackUrl(customToken, 'kakao'));
+        res.redirect(buildFrontendAuthCallbackUrl(customToken, 'kakao', frontendOrigin));
     }
     catch (error) {
         logger.error('❌ 카카오 콜백 실패:', getSafeOAuthError(error));
-        res.redirect(buildLoginErrorRedirect('kakao'));
+        res.redirect(buildLoginErrorRedirect('kakao', frontendOrigin));
     }
 });
 // ===== 🟢 네이버 로그인 시작 =====
 exports.naverLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] }, async (req, res) => {
     try {
         const state = crypto.randomBytes(32).toString('hex');
+        const returnOrigin = (0, oauthStateCore_1.resolveLoginFrontendOrigin)(req.query.returnOrigin);
         await db.collection('oauth_states').doc(state).set({
             provider: 'naver',
+            returnOrigin,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
         });
@@ -4195,22 +4390,23 @@ exports.naverLoginStart = (0, https_1.onRequest)({ region: 'asia-northeast3', me
 });
 // ===== 🟢 네이버 콜백 (통합 UID 적용) =====
 exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', memory: '512MiB', secrets: [NAVER_CLIENT_ID_SECRET, NAVER_CLIENT_SECRET_SECRET] }, async (req, res) => {
+    let frontendOrigin = FRONTEND_URL;
     try {
         const callbackStartedAt = Date.now();
         const timings = {};
-        const { code, state } = req.query;
-        if (!code || typeof code !== 'string')
-            throw new Error('Invalid code');
+        const { code, state, error: providerError } = req.query;
         if (!state || typeof state !== 'string')
             throw new Error('Invalid state');
-        await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'naver'));
+        const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'naver'));
+        frontendOrigin = (0, oauthStateCore_1.resolveLoginFrontendOrigin)(oauthState === null || oauthState === void 0 ? void 0 : oauthState.returnOrigin);
+        const callbackCode = (0, oauthStateCore_1.getLoginOAuthCallbackCode)(code, providerError);
         const tokenResponse = await measureOAuthPhase(timings, 'tokenMs', () => axios_1.default.post('https://nid.naver.com/oauth2.0/token', null, {
             params: {
                 grant_type: 'authorization_code',
                 client_id: NAVER_CLIENT_ID_SECRET.value().trim(),
                 client_secret: NAVER_CLIENT_SECRET_SECRET.value().trim(),
                 redirect_uri: NAVER_REDIRECT_URI,
-                code,
+                code: callbackCode,
                 state,
             },
             timeout: OAUTH_TOKEN_TIMEOUT_MS,
@@ -4240,11 +4436,11 @@ exports.naverCallback = (0, https_1.onRequest)({ region: 'asia-northeast3', memo
         });
         const customToken = await measureOAuthPhase(timings, 'customTokenMs', () => admin.auth().createCustomToken(uid));
         logOAuthCallbackCompleted('naver', callbackStartedAt, timings);
-        res.redirect(buildFrontendAuthCallbackUrl(customToken, 'naver'));
+        res.redirect(buildFrontendAuthCallbackUrl(customToken, 'naver', frontendOrigin));
     }
     catch (error) {
         logger.error('❌ 네이버 콜백 실패:', getSafeOAuthError(error));
-        res.redirect(buildLoginErrorRedirect('naver'));
+        res.redirect(buildLoginErrorRedirect('naver', frontendOrigin));
     }
 });
 // ===== 🔵 구글 로그인 시작 =====
@@ -4256,8 +4452,10 @@ exports.googleLoginStart = (0, https_1.onRequest)({
     try {
         const GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID_SECRET.value(); // 🔐 Secret 값 사용
         const state = crypto.randomBytes(32).toString('hex');
+        const returnOrigin = (0, oauthStateCore_1.resolveLoginFrontendOrigin)(req.query.returnOrigin);
         await db.collection('oauth_states').doc(state).set({
             provider: 'google',
+            returnOrigin,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 60 * 1000),
         });
@@ -4281,19 +4479,20 @@ exports.googleCallback = (0, https_1.onRequest)({
     memory: '512MiB',
     secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET] // 🔐 Secret 연결
 }, async (req, res) => {
+    let frontendOrigin = FRONTEND_URL;
     try {
         const callbackStartedAt = Date.now();
         const timings = {};
         const GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID_SECRET.value(); // 🔐 Secret 값 사용
         const GOOGLE_CLIENT_SECRET = GOOGLE_CLIENT_SECRET_SECRET.value(); // 🔐 Secret 값 사용
-        const { code, state } = req.query;
-        if (!code || typeof code !== 'string')
-            throw new Error('Invalid code');
+        const { code, state, error: providerError } = req.query;
         if (!state || typeof state !== 'string')
             throw new Error('Invalid state');
-        await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'google'));
+        const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'google'));
+        frontendOrigin = (0, oauthStateCore_1.resolveLoginFrontendOrigin)(oauthState === null || oauthState === void 0 ? void 0 : oauthState.returnOrigin);
+        const callbackCode = (0, oauthStateCore_1.getLoginOAuthCallbackCode)(code, providerError);
         const tokenResponse = await measureOAuthPhase(timings, 'tokenMs', () => axios_1.default.post('https://oauth2.googleapis.com/token', {
-            code,
+            code: callbackCode,
             client_id: GOOGLE_CLIENT_ID,
             client_secret: GOOGLE_CLIENT_SECRET,
             redirect_uri: GOOGLE_REDIRECT_URI,
@@ -4326,11 +4525,11 @@ exports.googleCallback = (0, https_1.onRequest)({
         });
         const customToken = await measureOAuthPhase(timings, 'customTokenMs', () => admin.auth().createCustomToken(uid));
         logOAuthCallbackCompleted('google', callbackStartedAt, timings);
-        res.redirect(buildFrontendAuthCallbackUrl(customToken, 'google'));
+        res.redirect(buildFrontendAuthCallbackUrl(customToken, 'google', frontendOrigin));
     }
     catch (error) {
         logger.error('❌ 구글 콜백 실패:', getSafeOAuthError(error));
-        res.redirect(buildLoginErrorRedirect('google'));
+        res.redirect(buildLoginErrorRedirect('google', frontendOrigin));
     }
 });
 const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
@@ -9073,6 +9272,7 @@ Object.defineProperty(exports, "suggestBookPublishRevision", { enumerable: true,
 Object.defineProperty(exports, "applyBookPublishRevision", { enumerable: true, get: function () { return bookReview_1.applyBookPublishRevision; } });
 var snsAnalyzer_1 = require("./snsAnalyzer");
 Object.defineProperty(exports, "analyzeFacebookZip", { enumerable: true, get: function () { return snsAnalyzer_1.analyzeFacebookZip; } });
+Object.defineProperty(exports, "getSnsThumbnailData", { enumerable: true, get: function () { return snsAnalyzer_1.getSnsThumbnailData; } });
 var snsToDiary_1 = require("./snsToDiary");
 Object.defineProperty(exports, "convertSnsToDiary", { enumerable: true, get: function () { return snsToDiary_1.convertSnsToDiary; } });
 var generateLawsuitClaimReason_1 = require("./generateLawsuitClaimReason");
@@ -10472,34 +10672,80 @@ exports.getOnbidRealEstateList = (0, https_2.onCall)({
 });
 // ===== 💊 식약처 의약품 제품 허가정보 조회 (SAYU건강관리 - 약봉지 보고 약정보 얻기) =====
 // 출처: 식품의약품안전처 / Base: apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07
-// 함수명(operation)이 버전마다 변동되므로 후보 순차 시도 + 성공한 URL 메모리 캐시
+// 2026-09-20 운영 504 재발 방지:
+// 공식 허가정보 상세 응답이 확인된 endpoint를 우선하고, 전체 외부 호출 예산 안에서만 fallback을 시도한다.
 const DRUG_API_BASE = 'https://apis.data.go.kr/1471000/DrugPrdtPrmsnInfoService07';
 const DRUG_API_OPS = [
-    '/getDrugPrdtPrmsnDtlInq05',
     '/getDrugPrdtPrmsnDtlInq06',
-    '/getDrugPrdtPrmsnInq05',
-    '/getDrugPrdtPrmsnDtlInq07',
     '/getDrugPrdtPrmsnInq07',
-    '/getDrugPrdtPrmsnDtlInq04',
-    '/getDrugPrdtPrmsnInq04',
 ];
+const DRUG_API_TOTAL_BUDGET_MS = 9000;
+const DRUG_API_MAX_SINGLE_TIMEOUT_MS = 3500;
+const DRUG_API_MIN_REMAINING_MS = 250;
+const DRUG_API_UNAVAILABLE_MESSAGE = '식약처 공식 의약품 정보 서비스의 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.';
 let _drugApiUrlCache = null;
-async function callDrugApiOnce(url, params) {
-    var _a, _b;
+function encodeDrugApiParam(key, value) {
+    const raw = String(value);
+    if (key !== 'serviceKey')
+        return encodeURIComponent(raw);
+    try {
+        return encodeURIComponent(decodeURIComponent(raw));
+    }
+    catch {
+        return encodeURIComponent(raw);
+    }
+}
+function drugApiEndpointName(url) {
+    return url.replace(`${DRUG_API_BASE}/`, '');
+}
+function createDrugApiUnavailableError() {
+    return new https_2.HttpsError('unavailable', DRUG_API_UNAVAILABLE_MESSAGE);
+}
+function isDrugApiAuthStatus(status) {
+    return status === 401 || status === 403;
+}
+function isDrugApiAuthResult(resultCode, resultMsg) {
+    const text = `${resultCode} ${resultMsg}`.toUpperCase();
+    return (['20', '30', '31'].includes(resultCode) ||
+        text.includes('SERVICE_ACCESS_DENIED') ||
+        text.includes('SERVICE_KEY_IS_NOT_REGISTERED') ||
+        text.includes('DEADLINE_HAS_EXPIRED') ||
+        text.includes('UNREGISTERED_SERVICE_KEY'));
+}
+function drugApiErrorCode(err) {
+    var _a;
+    return String((err === null || err === void 0 ? void 0 : err.publicDataResultCode) ||
+        (err === null || err === void 0 ? void 0 : err.code) ||
+        (((_a = err === null || err === void 0 ? void 0 : err.response) === null || _a === void 0 ? void 0 : _a.status) ? `HTTP_${err.response.status}` : '') ||
+        (err === null || err === void 0 ? void 0 : err.name) ||
+        'UNKNOWN');
+}
+function isDrugApiTimeoutError(err) {
+    return (err === null || err === void 0 ? void 0 : err.code) === 'ECONNABORTED' || /timeout|aborted/i.test(String((err === null || err === void 0 ? void 0 : err.message) || (err === null || err === void 0 ? void 0 : err.name) || ''));
+}
+async function callDrugApiOnce(url, params, timeoutMs) {
+    var _a, _b, _c, _d;
     const resp = await axios_1.default.get(url, {
         params,
-        timeout: 12000,
+        timeout: timeoutMs,
         headers: { Accept: 'application/json' },
         paramsSerializer: (p) => Object.entries(p)
-            .map(([k, v]) => k === 'serviceKey'
-            ? `${k}=${encodeURIComponent(decodeURIComponent(String(v)))}`
-            : `${k}=${encodeURIComponent(String(v))}`)
+            .map(([k, v]) => `${k}=${encodeDrugApiParam(k, v)}`)
             .join('&'),
     });
     const data = resp === null || resp === void 0 ? void 0 : resp.data;
     const root = (_a = data === null || data === void 0 ? void 0 : data.response) !== null && _a !== void 0 ? _a : data;
     if (!root || (!root.body && !root.header)) {
         throw new Error('식약처 응답 구조 비정상');
+    }
+    const header = root.header;
+    const resultCode = String((_b = header === null || header === void 0 ? void 0 : header.resultCode) !== null && _b !== void 0 ? _b : '');
+    const resultMsg = String((_c = header === null || header === void 0 ? void 0 : header.resultMsg) !== null && _c !== void 0 ? _c : '');
+    if (resultCode && resultCode !== '00' && resultCode !== '0' && resultCode !== '03') {
+        const err = new Error(`식약처 API 비정상 응답: ${resultCode}`);
+        err.publicDataResultCode = resultCode;
+        err.publicDataResultMsg = resultMsg;
+        throw err;
     }
     const body = root.body;
     const rawItems = body === null || body === void 0 ? void 0 : body.items;
@@ -10509,7 +10755,7 @@ async function callDrugApiOnce(url, params) {
     else if (rawItems === null || rawItems === void 0 ? void 0 : rawItems.item)
         items = Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item];
     const itemCount = items.length;
-    const totalCount = parseInt(String((_b = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _b !== void 0 ? _b : '0'), 10) || 0;
+    const totalCount = parseInt(String((_d = body === null || body === void 0 ? void 0 : body.totalCount) !== null && _d !== void 0 ? _d : '0'), 10) || 0;
     const hasResults = itemCount > 0 || totalCount > 0;
     // 상세 화면이 필요로 하는 문서 필드가 하나라도 들어있는지
     const hasDetailFields = items.some((it) => ((it === null || it === void 0 ? void 0 : it.EE_DOC_DATA) && String(it.EE_DOC_DATA).trim()) ||
@@ -10517,41 +10763,63 @@ async function callDrugApiOnce(url, params) {
         ((it === null || it === void 0 ? void 0 : it.NB_DOC_DATA) && String(it.NB_DOC_DATA).trim()));
     return { resp, hasResults, hasDetailFields, totalCount, itemCount };
 }
-async function callDrugApi(params) {
-    var _a, _b, _c, _d;
-    // 1단계: 캐시된 endpoint 우선 시도.
-    // 응답 자체가 실패한 경우만 캐시 무효화 후 전체 후보 재시도.
-    if (_drugApiUrlCache) {
-        try {
-            const { resp } = await callDrugApiOnce(_drugApiUrlCache, params);
-            return resp;
-        }
-        catch (err) {
-            logger.warn('식약처 캐시 endpoint 실패 — 캐시 무효화 후 전체 후보 재시도', {
-                cached: _drugApiUrlCache.split('/').pop(),
-                status: ((_a = err === null || err === void 0 ? void 0 : err.response) === null || _a === void 0 ? void 0 : _a.status) || 0,
-            });
-            _drugApiUrlCache = null;
-        }
-    }
-    // 2단계: 전체 후보 순회 — 우선순위
+async function callDrugApi(params, deadlineMs) {
+    var _a, _b, _c;
+    // 우선순위
     //   ① 상세 필드(EE/UD/NB_DOC_DATA) 있는 endpoint → 즉시 캐시 + 반환
     //   ② items만 있고 상세 필드 없는 endpoint → fallback 후보, 캐시 보류
     //   ③ 0건이지만 정상 응답 → 마지막 fallback 후보, 캐시 보류
-    const tryUrls = DRUG_API_OPS.map((op) => DRUG_API_BASE + op);
+    const knownUrls = DRUG_API_OPS.map((op) => DRUG_API_BASE + op);
+    const tryUrls = _drugApiUrlCache
+        ? [_drugApiUrlCache, ...knownUrls.filter((url) => url !== _drugApiUrlCache)]
+        : knownUrls;
     let firstResultResp = null;
     let firstResultOp = null;
     let firstValidResp = null;
     let firstValidOp = null;
     let lastError = null;
-    let lastSnippet = '';
     let lastStatus = 0;
-    for (const url of tryUrls) {
-        const op = url.split('/').pop() || '';
-        try {
-            const { resp, hasResults, hasDetailFields, totalCount, itemCount } = await callDrugApiOnce(url, params);
-            logger.info('식약처 endpoint 시도', {
+    const startedAt = Date.now();
+    for (const [index, url] of tryUrls.entries()) {
+        const op = drugApiEndpointName(url);
+        const remainingMs = deadlineMs - Date.now();
+        if (remainingMs <= DRUG_API_MIN_REMAINING_MS) {
+            logger.warn('식약처 endpoint 예산 초과로 중단', {
                 op,
+                endpointIndex: index + 1,
+                totalElapsedMs: Date.now() - startedAt,
+                budgetExceeded: true,
+            });
+            if (firstResultResp) {
+                logger.warn('식약처 endpoint 예산 초과 — 기존 결과 응답 반환', {
+                    firstResultOp,
+                    reason: 'budget_exceeded_with_result',
+                });
+                return firstResultResp;
+            }
+            if (firstValidResp) {
+                logger.warn('식약처 endpoint 예산 초과 — 기존 정상 응답 반환', {
+                    firstValidOp,
+                    reason: 'budget_exceeded_with_valid_response',
+                });
+                return firstValidResp;
+            }
+            throw createDrugApiUnavailableError();
+        }
+        const timeoutMs = Math.max(DRUG_API_MIN_REMAINING_MS, Math.min(DRUG_API_MAX_SINGLE_TIMEOUT_MS, remainingMs - DRUG_API_MIN_REMAINING_MS));
+        const attemptStartedAt = Date.now();
+        try {
+            const { resp, hasResults, hasDetailFields, totalCount, itemCount } = await callDrugApiOnce(url, params, timeoutMs);
+            const durationMs = Date.now() - attemptStartedAt;
+            logger.info('식약처 endpoint 응답', {
+                op,
+                endpointIndex: index + 1,
+                durationMs,
+                status: 200,
+                errorCode: null,
+                timeout: false,
+                totalElapsedMs: Date.now() - startedAt,
+                budgetExceeded: Date.now() >= deadlineMs,
                 totalCount,
                 itemCount,
                 hasResults,
@@ -10577,10 +10845,44 @@ async function callDrugApi(params) {
         }
         catch (err) {
             lastError = err;
-            lastStatus = ((_b = err === null || err === void 0 ? void 0 : err.response) === null || _b === void 0 ? void 0 : _b.status) || 0;
-            lastSnippet = typeof ((_c = err === null || err === void 0 ? void 0 : err.response) === null || _c === void 0 ? void 0 : _c.data) === 'string'
-                ? err.response.data.slice(0, 200)
-                : JSON.stringify(((_d = err === null || err === void 0 ? void 0 : err.response) === null || _d === void 0 ? void 0 : _d.data) || {}).slice(0, 200);
+            lastStatus = ((_a = err === null || err === void 0 ? void 0 : err.response) === null || _a === void 0 ? void 0 : _a.status) || 0;
+            const durationMs = Date.now() - attemptStartedAt;
+            const resultCode = String((_b = err === null || err === void 0 ? void 0 : err.publicDataResultCode) !== null && _b !== void 0 ? _b : '');
+            const resultMsg = String((_c = err === null || err === void 0 ? void 0 : err.publicDataResultMsg) !== null && _c !== void 0 ? _c : '');
+            const timeout = isDrugApiTimeoutError(err);
+            logger.warn('식약처 endpoint 실패', {
+                op,
+                endpointIndex: index + 1,
+                durationMs,
+                status: lastStatus,
+                errorCode: drugApiErrorCode(err),
+                timeout,
+                totalElapsedMs: Date.now() - startedAt,
+                budgetExceeded: Date.now() >= deadlineMs,
+            });
+            if (url === _drugApiUrlCache) {
+                _drugApiUrlCache = null;
+            }
+            if (isDrugApiAuthStatus(lastStatus) || isDrugApiAuthResult(resultCode, resultMsg)) {
+                throw new https_2.HttpsError('permission-denied', '식약처 공식 의약품 정보 서비스 인증이 거부됐습니다. 활용신청 승인 상태를 확인해 주세요.');
+            }
+            if (Date.now() >= deadlineMs) {
+                if (firstResultResp) {
+                    logger.warn('식약처 endpoint 실패 후 예산 소진 — 기존 결과 응답 반환', {
+                        firstResultOp,
+                        reason: 'timeout_after_result',
+                    });
+                    return firstResultResp;
+                }
+                if (firstValidResp) {
+                    logger.warn('식약처 endpoint 실패 후 예산 소진 — 기존 정상 응답 반환', {
+                        firstValidOp,
+                        reason: 'timeout_after_valid_response',
+                    });
+                    return firstValidResp;
+                }
+                throw createDrugApiUnavailableError();
+            }
             continue;
         }
     }
@@ -10601,10 +10903,13 @@ async function callDrugApi(params) {
     }
     logger.error('식약처 API 모든 endpoint 후보 실패', {
         lastStatus,
-        lastSnippet,
         triedCount: tryUrls.length,
+        totalElapsedMs: Date.now() - startedAt,
     });
-    throw lastError || new Error('식약처 API endpoint를 찾을 수 없습니다');
+    if (lastError && isDrugApiTimeoutError(lastError)) {
+        throw createDrugApiUnavailableError();
+    }
+    throw lastError || createDrugApiUnavailableError();
 }
 function buildDrugSearchTerms(raw) {
     var _a;
@@ -10677,7 +10982,14 @@ exports.getDrugInfo = (0, https_2.onCall)({
     let totalCount = 0;
     let resultCode = '';
     let resultMsg = '';
+    let hadDrugApiFailure = false;
+    const drugApiDeadlineMs = Date.now() + DRUG_API_TOTAL_BUDGET_MS;
     for (const term of searchTerms) {
+        if (drugApiDeadlineMs - Date.now() <= DRUG_API_MIN_REMAINING_MS) {
+            if (mergedItems.length > 0)
+                break;
+            throw createDrugApiUnavailableError();
+        }
         const params = {
             serviceKey: DRUG_API_KEY_SECRET.value(),
             pageNo: String(pageNo),
@@ -10687,11 +10999,22 @@ exports.getDrugInfo = (0, https_2.onCall)({
         };
         let resp;
         try {
-            resp = await callDrugApi(params);
+            resp = await callDrugApi(params, drugApiDeadlineMs);
         }
         catch (err) {
+            hadDrugApiFailure = true;
+            if (err instanceof https_2.HttpsError) {
+                if (err.code === 'unavailable' && mergedItems.length > 0) {
+                    logger.warn('식약처 후속 검색 지연 — 기존 결과 반환', {
+                        preservedItemCount: mergedItems.length,
+                        reason: 'followup_unavailable',
+                    });
+                    break;
+                }
+                throw err;
+            }
             if (term === searchTerms[0] && searchTerms.length === 1) {
-                throw new https_2.HttpsError('internal', '식약처 서버에 연결할 수 없습니다');
+                throw createDrugApiUnavailableError();
             }
             continue;
         }
@@ -10712,6 +11035,11 @@ exports.getDrugInfo = (0, https_2.onCall)({
             seen.add(key);
             mergedItems.push(item);
         }
+        if (mergedItems.length >= numOfRows)
+            break;
+    }
+    if (mergedItems.length === 0 && hadDrugApiFailure && !resultCode) {
+        throw createDrugApiUnavailableError();
     }
     return {
         success: true,
@@ -13093,3 +13421,6 @@ Object.defineProperty(exports, "requestSubscriptionRefund", { enumerable: true, 
 Object.defineProperty(exports, "listSubscriptionRefundRequests", { enumerable: true, get: function () { return subscriptionRefunds_2.listSubscriptionRefundRequests; } });
 Object.defineProperty(exports, "approveSubscriptionRefund", { enumerable: true, get: function () { return subscriptionRefunds_2.approveSubscriptionRefund; } });
 Object.defineProperty(exports, "rejectSubscriptionRefund", { enumerable: true, get: function () { return subscriptionRefunds_2.rejectSubscriptionRefund; } });
+var snsStory_1 = require("./snsStory");
+Object.defineProperty(exports, "generateSnsStorySynopsis", { enumerable: true, get: function () { return snsStory_1.generateSnsStorySynopsis; } });
+Object.defineProperty(exports, "generateSnsStoryFinal", { enumerable: true, get: function () { return snsStory_1.generateSnsStoryFinal; } });
