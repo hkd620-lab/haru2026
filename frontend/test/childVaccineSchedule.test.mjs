@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { getBirthdateState, getScheduleStatus, getSeoulToday, isNearSchedule, parseCalendarDate } from '../src/app/pages/childVaccineSchedule.ts';
+import { transformWithEsbuild } from 'vite';
+
+// CI uses Node 20, which cannot import TypeScript files directly.
+const source = await readFile(new URL('../src/app/pages/childVaccineSchedule.ts', import.meta.url), 'utf8');
+const { code } = await transformWithEsbuild(source, 'childVaccineSchedule.ts', { loader: 'ts', format: 'esm' });
+const { getBirthdateState, getScheduleStatus, getSeoulToday, isNearSchedule, parseCalendarDate } =
+  await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
 
 const age = (birthdate, today = '2026-09-22') => getBirthdateState(birthdate, today);
 
