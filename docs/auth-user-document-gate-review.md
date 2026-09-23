@@ -5,7 +5,7 @@
 - 2026-09-23 `git fetch origin main` / 전용 브랜치 `git pull --ff-only origin main` 결과: `aea3cc5f6e300b26e7dcc38e56b9c6bb95d233cc`. 제시된 감사 기준과 동일하다.
 - 브랜치: `fix/auth-user-document-gate`.
 - 웹 사용자 문서 진입 판정, 공개 법적 문서 경계, 회귀 테스트, 그리고 실제 검증에서 확인된 `cancelAccountDeletion` Callable의 Admin Firestore sentinel 사용 오류만 변경한다. 로그인 성능 개선 작업을 재개하지 않는다.
-- 운영 계정·데이터·설정 조회/변경, Rules·Hosting 배포, main 병합을 수행하지 않는다. 단, 실제 Callable 검증에서 확인된 복구 실패를 운영에 남기지 않기 위해 `requestAccountDeletion`, `cancelAccountDeletion`, `executeScheduledDeletion` 세 Functions는 별도 확인 후 선배포 대상으로 둔다.
+- 운영 계정·데이터·설정 변경, Rules·Hosting 배포, main 병합을 이 문서 작성 시점에는 수행하지 않았다. 실제 Callable 검증에서 확인된 복구 실패를 운영에 남기지 않기 위해 `requestAccountDeletion`, `cancelAccountDeletion`, `executeScheduledDeletion` 세 Functions는 2026-09-23 제한 선배포를 완료했다.
 - PR 워크플로는 pull_request에서 Hosting preview를 자동 배포한다. Preview 확인이 허용된 `a0b3e14b2c0b199f6bffcac89d4742bce6a2bba2`에서는 실행했고, Hosting 배포가 금지된 후속 문서/리뷰 보정 커밋은 `[skip ci]`로 실행을 생략한다. 워크플로와 저장소 설정은 변경하지 않는다. [GitHub의 skip 안내](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs)에 따른 처리다. PR 생성 후 해당 SHA의 실행 유무를 확인한다.
 
 ## 원인과 변경
@@ -97,7 +97,7 @@ Functions Admin SDK 경로는 Firestore Rules 수정만으로 제한되지 않�
 4. Rules 문서 조회 비용/한도, 쿼리 호환성, 클라이언트 쓰기가 허용된 consents 데이터의 신뢰 수준, Admin SDK 공통 검사와 정책 데이터 마이그레이션 검토.
 5. 에뮬레이터와 테스트 계정으로 Rules/Functions/모바일/구버전 영향 검증 후 별도 PR·배포 승인.
 
-이번 PR에서 Rules와 Storage 정책은 수정하지 않는다. Functions 권한 정책도 확대하지 않는다. 다만 운영의 탈퇴유예 복구 버튼이 같은 런타임 오류로 실패하지 않게 하려면 `requestAccountDeletion`, `cancelAccountDeletion`, `executeScheduledDeletion` 세 Functions의 제한 선배포가 필요하다. 게이트 내부의 기존 FCM 중복 토큰 정리(`users/{uid}/settings/settings`)도 사용자 문서 확인 전 실행될 수 있으며 이번 화면 진입 보완과 별개의 서버 접근 정책 검토 대상이다.
+이번 PR에서 Rules와 Storage 정책은 수정하지 않는다. Functions 권한 정책도 확대하지 않는다. 운영의 탈퇴유예 복구 버튼이 같은 런타임 오류로 실패하지 않도록 `requestAccountDeletion`, `cancelAccountDeletion`, `executeScheduledDeletion` 세 Functions는 2026-09-23에 제한 선배포를 완료했다. 게이트 내부의 기존 FCM 중복 토큰 정리(`users/{uid}/settings/settings`)도 사용자 문서 확인 전 실행될 수 있으며 이번 화면 진입 보완과 별개의 서버 접근 정책 검토 대상이다.
 
 ## 운영 미검증과 적용 상태
 
@@ -111,16 +111,25 @@ Functions Admin SDK 경로는 Firestore Rules 수정만으로 제한되지 않�
 - `BrowserRouter` 바깥에 있던 인증 공급자를 라우터 안으로 옮기고, `PublicLegalBoundary`가 **정확한 두 법적 문서 경로만** 원래의 `TermsPage`/`PrivacyPage`로 렌더한다. 이때 인증 공급자·앱 초기화·보호 화면은 마운트하지 않는다. 다른 경로는 종전과 같이 인증 공급자를 통과한다. 법적 문서의 닫기 버튼으로 `/settings`에 가면 다시 인증 공급자가 적용된다.
 - 실제 법적 문서 컴포넌트를 사용하는 독립 서버 렌더 검사 6/6 통과, 기존 브라우저 회귀 하네스 번들 변환 통과. 동의 화면 링크를 여는 새 브라우저 테스트 2건도 추가했지만 이 환경은 Chromium 다운로드 실패로 실행하지 못했다. 전체 웹 빌드와 실제 Firebase SDK E2E도 아직 실행하지 못했다. 따라서 병합·배포 판정은 보류한다.
 
-## 운영 반영 순서
+## 운영 반영 상태와 남은 순서
 
-이 PR은 Draft로 유지한다. 운영 반영은 다음 순서로만 진행한다.
+이 PR은 2026-09-23에 계정탈퇴 Functions 제한 선배포를 완료한 상태에서 main 병합 전 검토 중이다. 선배포는 다음 세 함수로만 제한했고, Hosting·Rules·운영 사용자 데이터는 변경하지 않았다.
 
-1. `requestAccountDeletion`, `cancelAccountDeletion`, `executeScheduledDeletion` 세 Functions만 선배포한다.
-2. 세 함수의 ACTIVE 상태, 리전, 런타임, revision과 최근 ERROR 로그를 확인한다.
-3. `config/accountDeletion.enabled` kill switch 상태를 읽기만 하고 변경하지 않는다.
-4. 이후에만 Draft 해제와 main 병합을 검토한다.
-5. 병합 후 Hosting 자동 배포가 진행된다.
-6. 정상 로그인 운영 E2E를 확인한다.
-7. 문제가 발생하면 이전 Hosting 버전으로 복구한다.
+| Function | Region | Runtime | State | Revision |
+|---|---|---|---|---|
+| `requestAccountDeletion` | `asia-northeast3` | `nodejs22` | `ACTIVE` | `requestaccountdeletion-00015-vek` |
+| `cancelAccountDeletion` | `asia-northeast3` | `nodejs22` | `ACTIVE` | `cancelaccountdeletion-00011-men` |
+| `executeScheduledDeletion` | `asia-northeast3` | `nodejs22` | `ACTIVE` | `executescheduleddeletion-00014-jaf` |
 
-PR 작성과 Functions 선배포는 운영 Hosting 적용 완료를 의미하지 않는다. 판정: 로컬 구현·검증 완료, Functions 제한 선배포 필요, 운영 로그인 E2E 미확인. main 병합 및 Hosting 배포 미수행.
+배포 후 최근 ERROR 이상 로그는 0건이었다. `config/accountDeletion.enabled` kill switch는 읽기 전용 확인 결과 `true`였으며 값을 변경하지 않았다. 운영 계정, 사용자 문서, 동의 상태, 탈퇴 상태를 만들거나 수정하지 않았다. 실제 탈퇴 신청과 실제 삭제 스케줄도 수동 호출하지 않았다.
+
+남은 운영 반영 순서는 다음과 같다.
+
+1. 최신 PR HEAD와 base/main, Codex 리뷰, 변경 파일, Functions ACTIVE 상태를 다시 확인한다.
+2. 조건이 모두 맞을 때만 main에 merge commit 방식으로 병합한다.
+3. main push로 시작되는 Hosting 자동 배포가 병합 SHA를 checkout하고 live 채널에 성공했는지 확인한다.
+4. `haru2026.com`, `/terms`, `/privacy` 공개 응답을 확인한다.
+5. 이후 정상 로그인 운영 E2E를 확인한다.
+6. 문제가 발생하면 이전 Hosting 버전으로 복구한다.
+
+PR 병합과 Functions 선배포는 운영 로그인 E2E 완료를 의미하지 않는다. 판정: 로컬 구현·검증 완료, Functions 제한 선배포 완료, main 병합 및 Hosting 자동 배포 대기, 운영 로그인 E2E 미확인.
