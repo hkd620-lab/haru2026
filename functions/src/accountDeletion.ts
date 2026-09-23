@@ -1,5 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import * as logger from 'firebase-functions/logger';
 import * as admin from 'firebase-admin';
@@ -65,8 +66,8 @@ export const requestAccountDeletion = onCall(
     await db.doc(`users/${uid}`).set(
       {
         accountStatus: 'pending_deletion',
-        deletionRequestedAt: admin.firestore.FieldValue.serverTimestamp(),
-        deletionScheduledAt: admin.firestore.Timestamp.fromDate(scheduledAt),
+        deletionRequestedAt: FieldValue.serverTimestamp(),
+        deletionScheduledAt: Timestamp.fromDate(scheduledAt),
       },
       { merge: true },
     );
@@ -97,9 +98,9 @@ export const cancelAccountDeletion = onCall(
 
     await db.doc(`users/${uid}`).set(
       {
-        accountStatus: admin.firestore.FieldValue.delete(),
-        deletionRequestedAt: admin.firestore.FieldValue.delete(),
-        deletionScheduledAt: admin.firestore.FieldValue.delete(),
+        accountStatus: FieldValue.delete(),
+        deletionRequestedAt: FieldValue.delete(),
+        deletionScheduledAt: FieldValue.delete(),
       },
       { merge: true },
     );
@@ -209,7 +210,7 @@ async function deleteOwnedHaruLawShareMeta(uid: string): Promise<void> {
 async function anonymizeAiUsageLogs(uid: string): Promise<void> {
   const snap = await db.collection('aiUsageLogs').where('uid', '==', uid).get();
   await Promise.all(
-    snap.docs.map((d) => d.ref.update({ uid: admin.firestore.FieldValue.delete() })),
+    snap.docs.map((d) => d.ref.update({ uid: FieldValue.delete() })),
   );
 }
 
@@ -262,7 +263,7 @@ export const executeScheduledDeletion = onSchedule(
     const targetsSnap = await db
       .collection('users')
       .where('accountStatus', '==', 'pending_deletion')
-      .where('deletionScheduledAt', '<=', admin.firestore.Timestamp.fromDate(new Date()))
+      .where('deletionScheduledAt', '<=', Timestamp.fromDate(new Date()))
       .limit(DELETION_BATCH_LIMIT)
       .get();
 
