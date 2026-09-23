@@ -10,6 +10,7 @@
     "dev": "vite",
     "test:subscription-display": "node test/subscriptionDisplay.policy.test.cjs",
     "test:law-easy-explain": "node test/lawEasyExplain.policy.test.cjs",
+    "test:harulaw-attachment-cleanup": "node test/haruLawAttachmentCleanup.test.mjs",
     "test:sns-thumbnails": "node test/snsThumbnailRequestQueue.test.mjs && node test/snsThumbnailAuthCache.test.mjs && node test/snsThumbnailPersistentCache.test.mjs && node test/snsThumbnailTieredLoad.test.mjs && node test/snsPrivateThumbnails.policy.test.cjs",
     "test:sns-story": "node test/snsStoryCreator.policy.test.cjs && node test/snsStoryRequestState.test.mjs"
   },
