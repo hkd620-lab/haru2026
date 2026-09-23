@@ -4,9 +4,9 @@
 
 - 2026-09-23 `git fetch origin main` / 전용 브랜치 `git pull --ff-only origin main` 결과: `aea3cc5f6e300b26e7dcc38e56b9c6bb95d233cc`. 제시된 감사 기준과 동일하다.
 - 브랜치: `fix/auth-user-document-gate`.
-- 웹 사용자 문서 진입 판정과 공개 법적 문서 경계 및 회귀 테스트만 변경한다. 로그인 성능 개선 작업을 재개하지 않는다.
-- 운영 계정·데이터·설정 조회/변경, Functions·Rules·Hosting 배포, main 병합을 수행하지 않는다.
-- PR 워크플로가 Hosting preview를 자동 배포하므로 커밋의 `[skip ci]`로 실행을 생략한다. 워크플로와 저장소 설정은 변경하지 않는다. [GitHub의 skip 안내](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs)에 따른 처리다. PR 생성 후 해당 SHA의 실행 유무를 확인한다.
+- 웹 사용자 문서 진입 판정, 공개 법적 문서 경계, 회귀 테스트, 그리고 실제 검증에서 확인된 `cancelAccountDeletion` Callable의 Admin Firestore sentinel 사용 오류만 변경한다. 로그인 성능 개선 작업을 재개하지 않는다.
+- 운영 계정·데이터·설정 조회/변경, Rules·Hosting 배포, main 병합을 수행하지 않는다. 단, 실제 Callable 검증에서 확인된 복구 실패를 운영에 남기지 않기 위해 `requestAccountDeletion`, `cancelAccountDeletion`, `executeScheduledDeletion` 세 Functions는 별도 확인 후 선배포 대상으로 둔다.
+- PR 워크플로는 pull_request에서 Hosting preview를 자동 배포한다. Preview 확인이 허용된 `a0b3e14b2c0b199f6bffcac89d4742bce6a2bba2`에서는 실행했고, Hosting 배포가 금지된 후속 문서/리뷰 보정 커밋은 `[skip ci]`로 실행을 생략한다. 워크플로와 저장소 설정은 변경하지 않는다. [GitHub의 skip 안내](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs)에 따른 처리다. PR 생성 후 해당 SHA의 실행 유무를 확인한다.
 
 ## 원인과 변경
 
@@ -17,6 +17,8 @@
 문서 리스너는 `includeMetadataChanges`를 사용한다. `fromCache` 또는 `hasPendingWrites` 응답으로 새 진입 판정을 만들지 않는다. 동의의 로컬 쓰기가 실패할 수 있으므로 서버 확인 전에 게이트를 열지 않는다. 이미 서버에서 확인된 세션은 이후 캐시 이벤트만으로 판정을 바꾸지 않으며, 리스너 오류가 오면 다시 차단한다. 연결 단절 시 즉시 모든 진행 중 화면을 잠그는 기능은 이번 범위가 아니다.
 
 Auth 변경과 재시도마다 세대 번호를 증가시킨다. UID, 세대, 현재 Firebase 사용자, 구독 정리 여부를 검사하여 이전 구독의 늦은 응답을 무시한다. 같은 UID 재로그인도 다시 확인한다. 동의 체크박스 및 작업 중 상태는 새 계정에 이월하지 않는다. 늦은 redirect 결과는 Auth 판정을 덮어쓰지 않는다. 동의 저장/탈퇴 취소의 늦은 완료도 다른 세션의 상태를 바꾸지 않는다.
+
+실제 Functions 에뮬레이터에서 `cancelAccountDeletion`을 호출했을 때 `admin.firestore.FieldValue.delete()`가 런타임에서 `undefined`가 되어 500 INTERNAL로 실패했다. `functions/src/accountDeletion.ts`는 `firebase-admin/firestore`의 `FieldValue`, `Timestamp` export를 사용하도록 수정했다. 이 변경은 탈퇴 신청·취소·예약 삭제 파일 안의 Firestore sentinel 사용을 같은 방식으로 맞춘 것이며, 동의·탈퇴유예 권한 정책 자체를 확대하지 않는다.
 
 ## 상태별 전후 동작
 
@@ -63,6 +65,10 @@ cd frontend && npm run build
 - 기존 로그인 콜백/홈 개인화 및 SNS 인증 캐시 테스트 각각 통과.
 - 웹 production build 통과. 실제 운영 설정/비밀값 대신 로컬 테스트용 Firebase 환경값 사용. 기존과 동일한 package-lock의 설치 의존성을 로컬에서 재사용했다. 독립 TypeScript 전체 검사는 실행하지 않았다(Vite 빌드/테스트 번들 변환 검증).
 - 기존 대형 청크, 동적/정적 import 혼용, Browserslist 갱신 경고는 남아 있다. 관련 성능 변경은 하지 않았다.
+- `d54832d30d280958c11ba42e50c6c4a5777cd26d` 기준 실제 Firebase Auth·Firestore JS SDK 에뮬레이터 검증 7/7 통과 결과를 이어받았다.
+- `a0b3e14b2c0b199f6bffcac89d4742bce6a2bba2` 기준 Auth·Firestore·Functions 에뮬레이터에서 실제 `cancelAccountDeletion` Callable과 실제 `HomePageV2`/`RecordPage`/`SettingsPage`/`TermsPage`/`PrivacyPage`를 포함한 브라우저 검증 6/6 통과. 실패 주입 케이스의 예상 복구 실패 로그를 제외한 unexpected browser error는 0건이다.
+- Functions temp build, PR worktree `tsc -p functions/tsconfig.json --noEmit`, `node functions/test/accountDeletionCompleteness.policy.test.js`, `git diff --check` 통과.
+- GitHub Actions PR workflow `Deploy to Firebase Hosting on PR`은 `a0b3e14b2c0b199f6bffcac89d4742bce6a2bba2`에서 성공했고, Hosting preview만 배포했다. 이 preview 성공은 Functions 수정의 운영 반영을 의미하지 않는다.
 
 ## 서버 권한: 별도 정책 결정
 
@@ -91,11 +97,11 @@ Functions Admin SDK 경로는 Firestore Rules 수정만으로 제한되지 않�
 4. Rules 문서 조회 비용/한도, 쿼리 호환성, 클라이언트 쓰기가 허용된 consents 데이터의 신뢰 수준, Admin SDK 공통 검사와 정책 데이터 마이그레이션 검토.
 5. 에뮬레이터와 테스트 계정으로 Rules/Functions/모바일/구버전 영향 검증 후 별도 PR·배포 승인.
 
-이번 PR에서 Rules, Functions, Storage 정책은 수정하지 않는다. 게이트 내부의 기존 FCM 중복 토큰 정리(`users/{uid}/settings/settings`)도 사용자 문서 확인 전 실행될 수 있으며 이번 화면 진입 보완과 별개의 서버 접근 정책 검토 대상이다.
+이번 PR에서 Rules와 Storage 정책은 수정하지 않는다. Functions 권한 정책도 확대하지 않는다. 다만 운영의 탈퇴유예 복구 버튼이 같은 런타임 오류로 실패하지 않게 하려면 `requestAccountDeletion`, `cancelAccountDeletion`, `executeScheduledDeletion` 세 Functions의 제한 선배포가 필요하다. 게이트 내부의 기존 FCM 중복 토큰 정리(`users/{uid}/settings/settings`)도 사용자 문서 확인 전 실행될 수 있으며 이번 화면 진입 보완과 별개의 서버 접근 정책 검토 대상이다.
 
 ## 운영 미검증과 적용 상태
 
-운영 배포 규칙, 실제 사용자 문서 분포, 실제 소셜/이메일 로그인·동의 쓰기·탈퇴 취소, 느린 네트워크/PWA의 실제 SDK 이벤트는 검증하지 않았다. 캐시만 가능한 초기 오프라인 이용은 차단되는 의도적 변화다. 서버 확인이 끝난 세션의 통신 중단을 즉시 감지해 잠그는 변경은 아니다.
+운영 사용자 문서 분포, 실제 소셜/이메일 로그인·동의 쓰기, 느린 네트워크/PWA의 실제 SDK 이벤트는 검증하지 않았다. 캐시만 가능한 초기 오프라인 이용은 차단되는 의도적 변화다. 서버 확인이 끝난 세션의 통신 중단을 즉시 감지해 잠그는 변경은 아니다.
 
 승인 후 별도 환경에서 정상 기존 계정, 신규 가입, 동의 누락, 탈퇴유예, 네트워크 실패·재시도, A→B 전환, 로그아웃을 실제 SDK로 검증해야 한다.
 
@@ -105,4 +111,16 @@ Functions Admin SDK 경로는 Firestore Rules 수정만으로 제한되지 않�
 - `BrowserRouter` 바깥에 있던 인증 공급자를 라우터 안으로 옮기고, `PublicLegalBoundary`가 **정확한 두 법적 문서 경로만** 원래의 `TermsPage`/`PrivacyPage`로 렌더한다. 이때 인증 공급자·앱 초기화·보호 화면은 마운트하지 않는다. 다른 경로는 종전과 같이 인증 공급자를 통과한다. 법적 문서의 닫기 버튼으로 `/settings`에 가면 다시 인증 공급자가 적용된다.
 - 실제 법적 문서 컴포넌트를 사용하는 독립 서버 렌더 검사 6/6 통과, 기존 브라우저 회귀 하네스 번들 변환 통과. 동의 화면 링크를 여는 새 브라우저 테스트 2건도 추가했지만 이 환경은 Chromium 다운로드 실패로 실행하지 못했다. 전체 웹 빌드와 실제 Firebase SDK E2E도 아직 실행하지 못했다. 따라서 병합·배포 판정은 보류한다.
 
-PR 작성은 운영 적용 완료를 의미하지 않는다. 판정: 로컬 구현·검증 완료, 운영 E2E 미확인. main 병합 및 배포 미수행.
+## 운영 반영 순서
+
+이 PR은 Draft로 유지한다. 운영 반영은 다음 순서로만 진행한다.
+
+1. `requestAccountDeletion`, `cancelAccountDeletion`, `executeScheduledDeletion` 세 Functions만 선배포한다.
+2. 세 함수의 ACTIVE 상태, 리전, 런타임, revision과 최근 ERROR 로그를 확인한다.
+3. `config/accountDeletion.enabled` kill switch 상태를 읽기만 하고 변경하지 않는다.
+4. 이후에만 Draft 해제와 main 병합을 검토한다.
+5. 병합 후 Hosting 자동 배포가 진행된다.
+6. 정상 로그인 운영 E2E를 확인한다.
+7. 문제가 발생하면 이전 Hosting 버전으로 복구한다.
+
+PR 작성과 Functions 선배포는 운영 Hosting 적용 완료를 의미하지 않는다. 판정: 로컬 구현·검증 완료, Functions 제한 선배포 필요, 운영 로그인 E2E 미확인. main 병합 및 Hosting 배포 미수행.
