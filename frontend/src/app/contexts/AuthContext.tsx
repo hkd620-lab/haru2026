@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -400,24 +400,56 @@ function ConsentGateScreen({
   );
 }
 
+type UserDocumentState = {
+  uid: string;
+  generation: number;
+} & (
+  | { status: 'error' }
+  | { status: 'ready'; pendingDeletion: { scheduledAt: Date | null } | null; needsConsent: boolean }
+);
+
+function AccountVerificationScreen({ failed, canLogout, onRetry, onLogout }: {
+  failed: boolean;
+  canLogout: boolean;
+  onRetry: () => void;
+  onLogout: () => void;
+}) {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EDE9F5', padding: 24 }}>
+      <div style={{ maxWidth: 420, width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
+        <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E' }}>
+          {failed ? '계정 상태를 확인하지 못했습니다' : '계정 상태를 확인하고 있습니다'}
+        </h1>
+        <p role={failed ? 'alert' : 'status'} style={{ fontSize: 14, lineHeight: 1.7, margin: '16px 0' }}>
+          {failed
+            ? '동의 및 탈퇴 신청 상태를 확인할 수 없어 화면을 열지 않았습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.'
+            : '동의 및 탈퇴 신청 상태를 확인할 때까지 잠시 기다려 주세요.'}
+        </p>
+        {failed && <button type="button" onClick={onRetry} style={{ padding: '12px 16px', marginRight: 8 }}>다시 시도</button>}
+        {canLogout && <button type="button" onClick={onLogout} style={{ padding: '12px 16px' }}>로그아웃</button>}
+      </div>
+    </div>
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<LocalUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pendingDeletion, setPendingDeletion] = useState<{ scheduledAt: Date | null } | null>(null);
+  const [userDocument, setUserDocument] = useState<UserDocumentState | null>(null);
+  const generationRef = useRef(0);
+  const [generation, setGeneration] = useState(0);
   const [isRecoveringAccount, setIsRecoveringAccount] = useState(false);
-  const [needsConsent, setNeedsConsent] = useState(false);
   const [isSavingConsent, setIsSavingConsent] = useState(false);
 
   useEffect(() => {
+    let active = true;
     const initAuth = async () => {
       try {
         // 1. Redirect 로그인 체크 (Google 등)
         const result = await getRedirectResult(auth);
-        if (result?.user) {
+        if (active && result?.user && auth.currentUser?.uid === result.user.uid) {
           markLoginTrace('T3_firebase_sign_in_complete');
           rememberLoginProvider(result.user.uid, 'google');
-          setUser(mapUser(result.user));
-          setLoading(false);
           return;
         }
 
@@ -430,7 +462,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         //     먼저 실행돼 user=null로 로그아웃된 것처럼 보이는 타이밍 버그 발생)
       } catch (error) {
         console.error('Auth init error:', error);
-        setLoading(false);
+        // 인증 판정은 onAuthStateChanged만 갱신한다. 늦은 redirect 결과로 되돌리지 않는다.
       }
     };
 
@@ -438,6 +470,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // 5. Firebase 상태 변화 감지
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!active) return;
+      // 같은 UID로 재로그인하더라도 이전 세션의 판정을 재사용하지 않는다.
+      setGeneration(++generationRef.current);
+      setUserDocument(null);
+      setIsSavingConsent(false);
+      setIsRecoveringAccount(false);
       setSnsThumbnailAuthUser(firebaseUser?.uid || null);
       if (firebaseUser) {
         markLoginTrace('T4_auth_state_settled');
@@ -450,7 +488,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => { active = false; unsubscribe(); };
   }, []);
 
   // 로그인 시 FCM 토큰 중복 정리
@@ -460,24 +498,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.uid]);
 
-  // 회원탈퇴 유예기간(accountStatus === 'pending_deletion') 여부와 회원가입 필수 동의
-  // (consents 필드) 여부를 실시간으로 확인한다. 복구/동의 완료 시 서버가 필드를 갱신하면
-  // 즉시 화면이 정상으로 돌아온다.
+  // 서버가 확인한 현재 세션의 사용자 문서만 진입 판정에 사용한다.
   useEffect(() => {
-    if (!user?.uid) {
-      setPendingDeletion(null);
-      setNeedsConsent(false);
-      return;
-    }
+    if (!user?.uid) return;
 
-    const userRef = doc(db, 'users', user.uid);
+    const uid = user.uid;
+    let active = true;
+    const isCurrent = () => active && generationRef.current === generation && auth.currentUser?.uid === uid;
+    const fail = () => {
+      if (isCurrent()) setUserDocument({ uid, generation, status: 'error' });
+    };
+    // 캐시만 반환되거나 오프라인인 경우에도 재시도/로그아웃 경로를 제공한다.
+    const timeout = window.setTimeout(fail, 15000);
+    const userRef = doc(db, 'users', uid);
     const unsubscribe = onSnapshot(
       userRef,
+      { includeMetadataChanges: true },
       (snap) => {
+        if (!isCurrent() || snap.metadata.fromCache || snap.metadata.hasPendingWrites) return;
+        window.clearTimeout(timeout);
         const data = snap.data();
-        const loginProvider = readRememberedLoginProvider(user.uid) ?? normalizeLoginProvider(data?.loginProvider);
+        const loginProvider = readRememberedLoginProvider(uid) ?? normalizeLoginProvider(data?.loginProvider);
         if (loginProvider) {
-          setUser((currentUser) => currentUser?.uid === user.uid
+          setUser((currentUser) => currentUser?.uid === uid
             ? {
               ...currentUser,
               providerId: loginProvider,
@@ -485,28 +528,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             : currentUser);
         }
-        if (data?.accountStatus === 'pending_deletion') {
-          const scheduledAtValue = data.deletionScheduledAt;
-          const scheduledAt = scheduledAtValue instanceof Timestamp ? scheduledAtValue.toDate() : null;
-          setPendingDeletion({ scheduledAt });
-        } else {
-          setPendingDeletion(null);
-        }
-        setNeedsConsent(!data?.consents);
+        const scheduledAtValue = data?.deletionScheduledAt;
+        setUserDocument({
+          uid,
+          generation,
+          status: 'ready',
+          pendingDeletion: data?.accountStatus === 'pending_deletion'
+            ? { scheduledAt: scheduledAtValue instanceof Timestamp ? scheduledAtValue.toDate() : null }
+            : null,
+          // 기존 사용자 호환: 필수 항목/버전의 새 요건은 별도 정책 결정 후 적용한다.
+          needsConsent: !data?.consents,
+        });
         markLoginTrace('T5_user_doc_ready');
         markLoginTrace('T6_required_access_ready');
       },
-      (error) => {
-        console.error('사용자 인증 상태 문서 구독 실패:', error);
-        setPendingDeletion(null);
-        setNeedsConsent(false);
-        markLoginTrace('T5_user_doc_ready');
-        markLoginTrace('T6_required_access_ready');
+      () => {
+        window.clearTimeout(timeout);
+        fail();
       },
     );
 
-    return () => unsubscribe();
-  }, [user?.uid]);
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      unsubscribe();
+    };
+  }, [user?.uid, generation]);
+
+  const retryUserDocument = () => {
+    setIsSavingConsent(false);
+    setIsRecoveringAccount(false);
+    setUserDocument(null);
+    setGeneration(++generationRef.current);
+  };
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -622,7 +676,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       rememberLoginProvider(kakaoUser.uid, 'kakao');
-      setUser(localUser);
+      if (auth.currentUser?.uid === localUser.uid) setUser(localUser);
     } catch (error: any) {
       console.error('Kakao sign in error:', error);
       throw new Error(error.message || '카카오 로그인 실패');
@@ -652,7 +706,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       rememberLoginProvider(naverUser.uid, 'naver');
-      setUser(localUser);
+      if (auth.currentUser?.uid === localUser.uid) setUser(localUser);
     } catch (error: any) {
       console.error('Naver sign in error:', error);
       throw new Error(error.message || '네이버 로그인 실패');
@@ -664,7 +718,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       invalidateSnsThumbnailAuthSession();
       clearLegacySocialUserCache();
       await firebaseSignOut(auth);
-      setUser(null);
     } catch (error: any) {
       console.error('Sign out error:', error);
       throw new Error(error.message || '로그아웃 실패');
@@ -681,10 +734,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentUser = auth.currentUser;
     if (!currentUser) {
       setUser(null);
-      setNeedsConsent(false);
       return;
     }
 
+    if (currentUser.uid !== user?.uid || generationRef.current !== generation) return;
+    const operationGeneration = generationRef.current;
     setIsSavingConsent(true);
     try {
       const userRef = doc(db, 'users', currentUser.uid);
@@ -707,6 +761,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
       // needsConsent 상태는 위 onSnapshot 리스너가 자동으로 갱신한다.
     } catch (error: any) {
+      if (generationRef.current !== operationGeneration) return;
       console.error('동의 저장 실패:', error);
       alert(
         error?.code === 'permission-denied'
@@ -714,11 +769,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : '처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
       );
     } finally {
-      setIsSavingConsent(false);
+      if (generationRef.current === operationGeneration) setIsSavingConsent(false);
     }
   };
 
   const handleRecoverAccount = async () => {
+    if (!user || auth.currentUser?.uid !== user.uid || generationRef.current !== generation) return;
+    const operationGeneration = generationRef.current;
     setIsRecoveringAccount(true);
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
@@ -726,10 +783,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await cancelDeletion({});
       // pendingDeletion 상태는 위 onSnapshot 리스너가 자동으로 갱신한다.
     } catch (error: any) {
+      if (generationRef.current !== operationGeneration) return;
       console.error('계정 복구 실패:', error);
       alert('계정 복구에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
-      setIsRecoveringAccount(false);
+      if (generationRef.current === operationGeneration) setIsRecoveringAccount(false);
     }
   };
 
@@ -754,9 +812,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const handleGateLogout = async () => {
+    try {
+      await signOut();
+    } catch {
+      alert('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    }
+  };
+
+  const currentDocument = user && auth.currentUser?.uid === user.uid
+    && userDocument?.uid === user.uid && userDocument.generation === generation
+    ? userDocument : null;
+  const verifying = loading || Boolean(user && currentDocument?.status !== 'ready');
+  const pendingDeletion = currentDocument?.status === 'ready' ? currentDocument.pendingDeletion : null;
+  const needsConsent = currentDocument?.status === 'ready' && currentDocument.needsConsent;
+
   const value = {
     user,
-    loading,
+    loading: verifying,
     signIn,
     signUp,
     resetPassword,
@@ -772,15 +845,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {pendingDeletion ? (
+      {verifying ? (
+        <AccountVerificationScreen
+          failed={currentDocument?.status === 'error'}
+          canLogout={Boolean(user)}
+          onRetry={retryUserDocument}
+          onLogout={handleGateLogout}
+        />
+      ) : pendingDeletion ? (
         <AccountPendingDeletionScreen
+          key={`${user?.uid}:${generation}`}
           scheduledAt={pendingDeletion.scheduledAt}
           isRecovering={isRecoveringAccount}
           onRecover={handleRecoverAccount}
-          onLogout={signOut}
+          onLogout={handleGateLogout}
         />
       ) : needsConsent ? (
-        <ConsentGateScreen isSaving={isSavingConsent} onSave={handleSaveConsents} onLogout={signOut} />
+        <ConsentGateScreen key={`${user?.uid}:${generation}`} isSaving={isSavingConsent} onSave={handleSaveConsents} onLogout={handleGateLogout} />
       ) : (
         children
       )}
