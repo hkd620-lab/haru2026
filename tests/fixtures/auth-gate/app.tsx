@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router';
 import { AuthProvider, useAuth } from '../../../frontend/src/app/contexts/AuthContext';
 import { ProtectedRoute } from '../../../frontend/src/app/components/ProtectedRoute';
+import { PublicLegalBoundary } from '../../../frontend/src/app/components/PublicLegalBoundary';
 import { harness, setDoc } from './firebase';
 
 function ProtectedContent() {
@@ -22,8 +23,11 @@ function Home() {
 }
 const root = createRoot(document.getElementById('root')!);
 (window as any).unmount = () => root.unmount();
-root.render(<React.StrictMode><AuthProvider><BrowserRouter><Routes>
+root.render(<React.StrictMode><BrowserRouter><PublicLegalBoundary><AuthProvider><Routes>
   <Route path="/" element={<Home />} />
   <Route path="/login" element={<Home />} />
-  <Route element={<ProtectedRoute />}><Route path="/record" element={<ProtectedContent />} /></Route>
-</Routes></BrowserRouter></AuthProvider></React.StrictMode>);
+  <Route element={<ProtectedRoute />}>
+    <Route path="/record" element={<ProtectedContent />} />
+    <Route path="/settings" element={<ProtectedContent />} />
+  </Route>
+</Routes></AuthProvider></PublicLegalBoundary></BrowserRouter></React.StrictMode>);

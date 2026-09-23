@@ -270,3 +270,31 @@ test('unmount cancels listener and late callbacks', async t => {
   await snap(page, index, consent);
   await blocked(page);
 });
+
+for (const [href, title] of [['/terms', '이용약관'], ['/privacy', '개인정보처리방침']]) {
+  test(`consent gate can open ${href} without mounting protected app`, async t => {
+    const page = await setup(t);
+    const index = await auth(page, 'a');
+    await snap(page, index, {});
+    await expect(page.getByRole('heading', { name: '약관 동의가 필요합니다' })).toBeVisible();
+
+    const [legalPage] = await Promise.all([
+      page.waitForEvent('popup'),
+      page.locator(`a[href="${href}"]`).first().click(),
+    ]);
+    t.after(() => legalPage.close());
+    await expect(legalPage.getByRole('heading', { name: title, exact: true })).toBeVisible();
+    assert.equal(await legalPage.evaluate(() => window.harness.observers.size), 0);
+    await expect(legalPage.getByTestId('protected')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: '약관 동의가 필요합니다' })).toBeVisible();
+
+    // The public document's close button re-enters the protected application.
+    await legalPage.getByRole('button', { name: '✕' }).click();
+    await expect(legalPage.getByRole('status')).toBeVisible();
+    await legalPage.evaluate(() => window.harness.emitAuth('a'));
+    await legalPage.waitForFunction(() => window.harness.listeners.length === 1);
+    await legalPage.evaluate(() => window.harness.snapshot(0, {}));
+    await expect(legalPage.getByRole('heading', { name: '약관 동의가 필요합니다' })).toBeVisible();
+    await expect(legalPage.getByTestId('protected')).toHaveCount(0);
+  });
+}

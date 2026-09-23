@@ -86,6 +86,7 @@ import { HangulWordPage } from './pages/HangulWordPage';
 import { HealthMedicationPage } from './pages/HealthMedicationPage';
 import { HouseholdPage } from './pages/HouseholdPage';
 import { BottomNav } from './components/BottomNav';
+import { PublicLegalBoundary } from './components/PublicLegalBoundary';
 import { Footer } from './components/Footer';
 import { TodayQuote } from './components/TodayQuote';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
@@ -292,14 +293,16 @@ function AppChrome() {
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <LoadingProvider>
-        <AppInitializer />
-        <BrowserRouter>
-        <AppChrome />
+      <BrowserRouter>
+        <PublicLegalBoundary>
+          <AuthProvider>
+            <LoadingProvider>
+              <AppInitializer />
+              <AppChrome />
+            </LoadingProvider>
+          </AuthProvider>
+        </PublicLegalBoundary>
       </BrowserRouter>
-        </LoadingProvider>
-    </AuthProvider>
     </ThemeProvider>
   );
 }
