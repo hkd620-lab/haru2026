@@ -115,11 +115,13 @@ Functions Admin SDK 경로는 Firestore Rules 수정만으로 제한되지 않�
 
 이 PR은 2026-09-23에 계정탈퇴 Functions 제한 선배포를 완료한 상태에서 main 병합 전 검토 중이다. 선배포는 다음 세 함수로만 제한했고, Hosting·Rules·운영 사용자 데이터는 변경하지 않았다.
 
-| Function | Region | Runtime | State | Revision |
-|---|---|---|---|---|
-| `requestAccountDeletion` | `asia-northeast3` | `nodejs22` | `ACTIVE` | `requestaccountdeletion-00015-vek` |
-| `cancelAccountDeletion` | `asia-northeast3` | `nodejs22` | `ACTIVE` | `cancelaccountdeletion-00011-men` |
-| `executeScheduledDeletion` | `asia-northeast3` | `nodejs22` | `ACTIVE` | `executescheduleddeletion-00014-jaf` |
+| Function | Region | Runtime | State | Revision | Traffic |
+|---|---|---|---|---|---|
+| `requestAccountDeletion` | `asia-northeast3` | `nodejs22` | `ACTIVE` | `requestaccountdeletion-00015-vek` | 100% |
+| `cancelAccountDeletion` | `asia-northeast3` | `nodejs22` | `ACTIVE` | `cancelaccountdeletion-00011-men` | 100% |
+| `executeScheduledDeletion` | `asia-northeast3` | `nodejs22` | `ACTIVE` | `executescheduleddeletion-00014-jaf` | 100% |
+
+배포는 clean 전용 worktree의 `53cc7b298c4c8c338fe262ba48998edc244a7e4b`에서 실행했다. 이 SHA는 `functions/src/accountDeletion.ts`의 Admin Firestore sentinel 수정(`a0b3e14b2c0b199f6bffcac89d4742bce6a2bba2`)을 포함하며, 이후 커밋은 문서 보정만 추가했다. Cloud Run 확인 결과 세 서비스 모두 latest ready revision이 위 revision과 같고, traffic 100%가 해당 revision에 배정되어 있었다.
 
 배포 후 최근 ERROR 이상 로그는 0건이었다. `config/accountDeletion.enabled` kill switch는 읽기 전용 확인 결과 `true`였으며 값을 변경하지 않았다. 운영 계정, 사용자 문서, 동의 상태, 탈퇴 상태를 만들거나 수정하지 않았다. 실제 탈퇴 신청과 실제 삭제 스케줄도 수동 호출하지 않았다.
 
