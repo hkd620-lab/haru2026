@@ -36,9 +36,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.lawPrecedent = exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.recoverSubscriptionBillingRequest = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.getSnsThumbnailData = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = void 0;
-exports.generateSnsStoryFinal = exports.generateSnsStorySynopsis = exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = exports.getSubscriptionRefundEligibility = exports.executeScheduledDeletion = void 0;
+exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.recoverSubscriptionBillingRequest = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.cleanupHeicTemp = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.getSnsThumbnailData = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = void 0;
+exports.generateSnsStoryFinal = exports.generateSnsStorySynopsis = exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = exports.getSubscriptionRefundEligibility = exports.executeScheduledDeletion = exports.cancelAccountDeletion = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -60,11 +60,13 @@ const subscriptionHelpers_1 = require("./subscriptionHelpers");
 const subscriptionRefunds_1 = require("./subscriptionRefunds");
 const subscriptionBillingCore_1 = require("./subscriptionBillingCore");
 const rateLimit_1 = require("./utils/rateLimit");
+const heicConversionCore_1 = require("./heicConversionCore");
 const englishBibleWordMeaning_1 = require("./englishBibleWordMeaning");
 const PortOne = __importStar(require("@portone/server-sdk"));
 const monthlyAiQuota_1 = require("./utils/monthlyAiQuota");
 const internalEntitlements_1 = require("./internalEntitlements");
 const oauthStateCore_1 = require("./oauthStateCore");
+const lawEasyExplainCore_1 = require("./lawEasyExplainCore");
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 const genai_1 = require("@google/genai");
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -4989,23 +4991,77 @@ exports.convertHeic = (0, https_2.onCall)({ region: 'asia-northeast3', memory: '
     }
     await (0, rateLimit_1.enforceRateLimit)(request.auth.uid, 'convertHeic', 5, 30);
     configureCloudinary();
+    const temporaryPublicId = `heic_temp/${safeCloudinarySegment(request.auth.uid, 'user')}/${crypto.randomUUID()}`;
     try {
-        const dataUri = `data:image/heic;base64,${imageBase64}`;
-        const result = await cloudinary.uploader.upload(dataUri, {
-            resource_type: 'image',
-            format: 'jpg',
-            folder: 'heic_temp',
+        return await (0, heicConversionCore_1.convertHeicToJpegBase64)(imageBase64, temporaryPublicId, {
+            upload: async (dataUri, publicId) => cloudinary.uploader.upload(dataUri, {
+                resource_type: 'image',
+                format: 'jpg',
+                public_id: publicId,
+                overwrite: false,
+                transformation: [heicConversionCore_1.HEIC_UPLOAD_TRANSFORMATION],
+            }),
+            download: async (url, maxBytes) => {
+                const response = await axios_1.default.get(url, {
+                    responseType: 'arraybuffer',
+                    timeout: 30000,
+                    maxContentLength: maxBytes,
+                    maxBodyLength: maxBytes,
+                });
+                const contentType = String(response.headers['content-type'] || '').toLowerCase();
+                if (!contentType.startsWith('image/jpeg')) {
+                    throw new Error('Cloudinary conversion did not return JPEG data');
+                }
+                const jpeg = Buffer.from(response.data);
+                if (jpeg.length > heicConversionCore_1.CONVERTED_JPEG_MAX_BYTES) {
+                    throw new Error('Converted JPEG exceeds the response size limit');
+                }
+                return jpeg;
+            },
+            destroy: async (publicId) => {
+                const result = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+                if (!['ok', 'not found'].includes(String(result === null || result === void 0 ? void 0 : result.result))) {
+                    throw new Error(`Cloudinary temporary object cleanup failed: ${String((result === null || result === void 0 ? void 0 : result.result) || 'unknown')}`);
+                }
+            },
         });
-        return { url: result.secure_url };
     }
     catch (error) {
         logger.error('Cloudinary HEIC 변환 오류:', error);
         throw new https_2.HttpsError('internal', `변환 실패: ${error.message}`);
     }
 });
+exports.cleanupHeicTemp = (0, scheduler_1.onSchedule)({
+    schedule: 'every 30 minutes',
+    region: 'asia-northeast3',
+}, async () => {
+    configureCloudinary();
+    const result = await (0, heicConversionCore_1.sweepExpiredHeicTempObjects)(Date.now(), {
+        list: async (nextCursor) => cloudinary.api.resources({
+            resource_type: 'image',
+            type: 'upload',
+            prefix: 'heic_temp/',
+            max_results: 500,
+            ...(nextCursor ? { next_cursor: nextCursor } : {}),
+        }),
+        destroy: async (publicId) => {
+            const destroyed = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+            if (!['ok', 'not found'].includes(String(destroyed === null || destroyed === void 0 ? void 0 : destroyed.result))) {
+                throw new Error(`Cloudinary temporary object cleanup failed: ${String((destroyed === null || destroyed === void 0 ? void 0 : destroyed.result) || 'unknown')}`);
+            }
+        },
+    });
+    if (result.failed.length > 0) {
+        logger.warn('HEIC 임시 객체 정리 일부 실패', { failedCount: result.failed.length });
+    }
+    logger.info('HEIC 임시 객체 정리 완료', {
+        deletedCount: result.deleted.length,
+        failedCount: result.failed.length,
+    });
+});
 // uploadRecordImage 는 정책 복구(Firebase Storage 메인)에 따라 제거됨.
 // 일반 업로드는 frontend가 Firebase Storage 직접 처리.
-// HEIC만 convertHeic(임시 변환) 거친 후 Firebase Storage에 영구 저장.
+// HEIC만 convertHeic에서 임시 변환·삭제한 뒤 JPEG 데이터를 받아 Firebase Storage에 영구 저장.
 exports.deleteRecordImage = (0, https_2.onCall)({ region: 'asia-northeast3' }, async (request) => {
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -8765,16 +8821,35 @@ exports.lawEasyExplain = (0, https_2.onCall)({
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다');
     }
-    const { lawText, userQuery } = request.data;
-    if (!lawText) {
-        throw new https_2.HttpsError('invalid-argument', '법령 텍스트를 입력해주세요.');
-    }
+    let input;
     try {
-        const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+        input = (0, lawEasyExplainCore_1.validateLawEasyExplainInput)(request.data);
+    }
+    catch (error) {
+        if (error instanceof lawEasyExplainCore_1.LawEasyExplainInputError) {
+            throw new https_2.HttpsError('invalid-argument', error.message);
+        }
+        throw error;
+    }
+    const { normalizedLawText, normalizedUserQuery, lawName, articleStr, } = input;
+    const cacheKey = (0, lawEasyExplainCore_1.buildLawConsultCacheKey)({
+        normalizedLawText,
+        normalizedUserQuery,
+    });
+    const cacheRef = db.collection('lawConsultCache').doc(cacheKey);
+    try {
         const modelName = 'gemini-3.1-flash-lite';
-        const model = genAI.getGenerativeModel({
-            model: modelName,
-            systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
+        const result = await (0, lawEasyExplainCore_1.resolveLawEasyExplanation)({
+            readCache: async () => {
+                var _a;
+                const cacheSnap = await cacheRef.get();
+                return cacheSnap.exists ? (_a = cacheSnap.data()) === null || _a === void 0 ? void 0 : _a.explanation : null;
+            },
+            generate: async () => {
+                const genAI = new generative_ai_1.GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+                const model = genAI.getGenerativeModel({
+                    model: modelName,
+                    systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
 사용자의 질문과 관련 법조문을 바탕으로, 반드시 아래 형식으로만 답변하세요.
 마크다운 기호(**, ##, --, >, __)는 절대 사용하지 마세요.
 
@@ -8799,31 +8874,60 @@ AI 의견:
 (놓치기 쉬운 중요한 점 1가지)
 
 본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다.`
-        });
-        const prompt = userQuery
-            ? `[사용자 질문]: ${userQuery}\n\n[관련 법조문]: ${lawText}`
-            : lawText;
-        const result = await model.generateContent(prompt);
-        const usage = getGeminiUsage(result);
-        await (0, aiUsageLogger_1.logAiUsage)({
-            uid: request.auth.uid,
-            featureName: 'law_explain',
-            plan: AI_USAGE_PLAN,
-            model: modelName,
-            inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens,
-            imageCount: 0,
-            externalApiProvider: null,
-            externalApiCalled: false,
-            groundingUsed: false,
-            requestId: null,
-            success: true,
-            errorCode: null,
-            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+                });
+                const prompt = `[사용자 질문]: ${normalizedUserQuery}\n\n[관련 법조문]: ${normalizedLawText}`;
+                const generationResult = await model.generateContent(prompt);
+                return {
+                    explanation: generationResult.response.text(),
+                    usage: getGeminiUsage(generationResult),
+                };
+            },
+            recordUsage: async (generation) => {
+                await (0, aiUsageLogger_1.logAiUsage)({
+                    uid: request.auth.uid,
+                    featureName: 'law_explain',
+                    plan: AI_USAGE_PLAN,
+                    model: modelName,
+                    inputTokens: generation.usage.inputTokens,
+                    outputTokens: generation.usage.outputTokens,
+                    imageCount: 0,
+                    externalApiProvider: null,
+                    externalApiCalled: false,
+                    groundingUsed: false,
+                    requestId: null,
+                    success: true,
+                    errorCode: null,
+                    isDev: DEVELOPER_UIDS.has(request.auth.uid),
+                });
+            },
+            writeCache: async (explanation) => {
+                await cacheRef.set({
+                    explanation,
+                    promptVersion: lawEasyExplainCore_1.LAW_EASY_EXPLAIN_PROMPT_VERSION,
+                    lawName,
+                    articleStr,
+                    lawTextHash: (0, lawEasyExplainCore_1.sha256Hex)(normalizedLawText),
+                    questionHash: (0, lawEasyExplainCore_1.sha256Hex)(normalizedUserQuery),
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+            },
+            onCacheReadError: (cacheError) => {
+                logger.warn('lawEasyExplain 캐시 조회 실패, Gemini 생성 진행:', {
+                    cacheKey,
+                    message: (cacheError === null || cacheError === void 0 ? void 0 : cacheError.message) || String(cacheError),
+                });
+            },
+            onCacheWriteError: (cacheError) => {
+                logger.warn('lawEasyExplain 캐시 저장 실패, explanation 반환:', {
+                    cacheKey,
+                    message: (cacheError === null || cacheError === void 0 ? void 0 : cacheError.message) || String(cacheError),
+                });
+            },
         });
         return {
             success: true,
-            explanation: result.response.text(),
+            ...result,
         };
     }
     catch (error) {

@@ -90,6 +90,14 @@ import {
   resolveLoginFrontendOrigin,
   type LoginOAuthProvider,
 } from './oauthStateCore';
+import {
+  LAW_EASY_EXPLAIN_PROMPT_VERSION,
+  LawEasyExplainInputError,
+  buildLawConsultCacheKey,
+  resolveLawEasyExplanation,
+  sha256Hex,
+  validateLawEasyExplainInput,
+} from './lawEasyExplainCore';
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 import { GoogleGenAI } from '@google/genai';
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -10074,18 +10082,40 @@ export const lawEasyExplain = onCall(
       throw new HttpsError('unauthenticated', '로그인이 필요합니다');
     }
 
-    const { lawText, userQuery } = request.data;
-
-    if (!lawText) {
-      throw new HttpsError('invalid-argument', '법령 텍스트를 입력해주세요.');
+    let input;
+    try {
+      input = validateLawEasyExplainInput(request.data);
+    } catch (error) {
+      if (error instanceof LawEasyExplainInputError) {
+        throw new HttpsError('invalid-argument', error.message);
+      }
+      throw error;
     }
 
+    const {
+      normalizedLawText,
+      normalizedUserQuery,
+      lawName,
+      articleStr,
+    } = input;
+    const cacheKey = buildLawConsultCacheKey({
+      normalizedLawText,
+      normalizedUserQuery,
+    });
+    const cacheRef = db.collection('lawConsultCache').doc(cacheKey);
+
     try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
       const modelName = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
+      const result = await resolveLawEasyExplanation({
+        readCache: async () => {
+          const cacheSnap = await cacheRef.get();
+          return cacheSnap.exists ? cacheSnap.data()?.explanation : null;
+        },
+        generate: async () => {
+          const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            systemInstruction: `당신은 실무 경력 20년의 대한민국 법률 전문가입니다.
 사용자의 질문과 관련 법조문을 바탕으로, 반드시 아래 형식으로만 답변하세요.
 마크다운 기호(**, ##, --, >, __)는 절대 사용하지 마세요.
 
@@ -10110,32 +10140,60 @@ AI 의견:
 (놓치기 쉬운 중요한 점 1가지)
 
 본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체할 수 없습니다.`
-      });
-
-      const prompt = userQuery
-        ? `[사용자 질문]: ${userQuery}\n\n[관련 법조문]: ${lawText}`
-        : lawText;
-      const result = await model.generateContent(prompt);
-      const usage = getGeminiUsage(result);
-      await logAiUsage({
-        uid: request.auth.uid,
-        featureName: 'law_explain',
-        plan: AI_USAGE_PLAN,
-        model: modelName,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        imageCount: 0,
-        externalApiProvider: null,
-        externalApiCalled: false,
-        groundingUsed: false,
-        requestId: null,
-        success: true,
-        errorCode: null,
-        isDev: DEVELOPER_UIDS.has(request.auth.uid),
+          });
+          const prompt = `[사용자 질문]: ${normalizedUserQuery}\n\n[관련 법조문]: ${normalizedLawText}`;
+          const generationResult = await model.generateContent(prompt);
+          return {
+            explanation: generationResult.response.text(),
+            usage: getGeminiUsage(generationResult),
+          };
+        },
+        recordUsage: async (generation) => {
+          await logAiUsage({
+            uid: request.auth!.uid,
+            featureName: 'law_explain',
+            plan: AI_USAGE_PLAN,
+            model: modelName,
+            inputTokens: generation.usage.inputTokens,
+            outputTokens: generation.usage.outputTokens,
+            imageCount: 0,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(request.auth!.uid),
+          });
+        },
+        writeCache: async (explanation) => {
+          await cacheRef.set({
+            explanation,
+            promptVersion: LAW_EASY_EXPLAIN_PROMPT_VERSION,
+            lawName,
+            articleStr,
+            lawTextHash: sha256Hex(normalizedLawText),
+            questionHash: sha256Hex(normalizedUserQuery),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        },
+        onCacheReadError: (cacheError: any) => {
+          logger.warn('lawEasyExplain 캐시 조회 실패, Gemini 생성 진행:', {
+            cacheKey,
+            message: cacheError?.message || String(cacheError),
+          });
+        },
+        onCacheWriteError: (cacheError: any) => {
+          logger.warn('lawEasyExplain 캐시 저장 실패, explanation 반환:', {
+            cacheKey,
+            message: cacheError?.message || String(cacheError),
+          });
+        },
       });
       return {
         success: true,
-        explanation: result.response.text(),
+        ...result,
       };
 
     } catch (error: any) {
