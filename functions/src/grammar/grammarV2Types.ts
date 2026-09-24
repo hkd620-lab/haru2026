@@ -16,7 +16,11 @@ export const GRAMMAR_V2_PILOT_GENERATION_MODELS = [
 
 export type GrammarV2PilotGenerationModel = typeof GRAMMAR_V2_PILOT_GENERATION_MODELS[number];
 
-export type GrammarV2VerifyMode = 'full' | 'lite' | 'both';
+// 'gemini' 는 축소 검증과 같은 프롬프트·같은 변경분 출력 형식을 Gemini 로 돌리는 것.
+// 'all3' 은 같은 생성 초안 하나에 full·lite·gemini 를 각각 돌려 비교한다.
+export type GrammarV2VerifyMode = 'full' | 'lite' | 'both' | 'gemini' | 'all3';
+
+export type GrammarV2VerifyRun = 'full' | 'lite' | 'gemini';
 
 export interface GrammarV2PilotOptions {
   generationModel?: GrammarV2PilotGenerationModel;
@@ -30,7 +34,7 @@ export interface GrammarV2Request {
 }
 
 export interface GrammarV2PilotStageMetrics {
-  stage: 'generate' | 'verify_full' | 'verify_lite';
+  stage: 'generate' | 'verify_full' | 'verify_lite' | 'verify_gemini';
   model: string;
   inputTokens: number | null;
   outputTokens: number | null;
@@ -57,10 +61,12 @@ export interface GrammarV2PilotMetrics {
   stages: GrammarV2PilotStageMetrics[];
 }
 
-// verifyMode 'both'에서 full·lite 결과를 나란히 비교하기 위한 묶음.
+// verifyMode 'both'·'all3'에서 검증 방식별 결과를 나란히 비교하기 위한 묶음.
 export interface GrammarV2PilotVariant {
-  verifyMode: 'full' | 'lite';
+  verifyMode: GrammarV2VerifyRun;
+  model: string;
   changes: string[];
+  changePaths: string[];
   corrected: boolean;
   semantic: GrammarV2ValidatedSemanticPayload;
 }

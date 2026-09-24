@@ -40,6 +40,7 @@ import {
   GrammarV2ValidatedSemanticPayload,
   GrammarV2VerifierResponse,
   GrammarV2VerifyMode,
+  GrammarV2VerifyRun,
 } from './grammarV2Types';
 import {
   GRAMMAR_V2_PILOT_MAX_NOTE_SENTENCES,
@@ -152,7 +153,13 @@ type TokenUsage = {
 };
 
 const PILOT_ALLOWED_GENERATION_MODELS: ReadonlySet<string> = new Set(GRAMMAR_V2_PILOT_GENERATION_MODELS);
-const PILOT_VERIFY_MODES: ReadonlySet<string> = new Set<GrammarV2VerifyMode>(['full', 'lite', 'both']);
+const PILOT_VERIFY_MODES: ReadonlySet<string> = new Set<GrammarV2VerifyMode>([
+  'full',
+  'lite',
+  'both',
+  'gemini',
+  'all3',
+]);
 
 // 파일럿 모드 = Functions 에뮬레이터 안 + Firestore 에뮬레이터 연결됨.
 // 두 조건이 모두 맞지 않으면 파일럿 기능(bsb, 모델 선택, 검증 방식, 캐시 건너뛰기)은 전부 막힌다.
@@ -181,7 +188,7 @@ function parsePilotOptions(value: unknown): GrammarV2PilotOptions {
   if (value.verifyMode !== undefined) {
     const mode = String(value.verifyMode);
     if (!PILOT_VERIFY_MODES.has(mode)) {
-      throw new HttpsError('invalid-argument', 'pilot.verifyMode must be full, lite, or both.');
+      throw new HttpsError('invalid-argument', 'pilot.verifyMode must be full, lite, both, gemini, or all3.');
     }
     options.verifyMode = mode as GrammarV2VerifyMode;
   }
@@ -558,6 +565,81 @@ async function verifyWithGpt(params: {
   throw lastError || new Error('GPT verifier failed.');
 }
 
+// 파일럿 전용: 축소 검증과 같은 프롬프트·같은 변경분 형식을 Gemini 로 돌린다.
+// 검증 비용의 대부분이 GPT-4o 입력이라, 같은 일을 훨씬 싼 모델로 할 수 있는지 보려는 것.
+const GRAMMAR_V2_LITE_CHANGES_SCHEMA = {
+  type: SchemaType.OBJECT,
+  properties: {
+    changes: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          path: { type: SchemaType.STRING },
+          value: { type: SchemaType.STRING },
+          reason: { type: SchemaType.STRING },
+        },
+        required: ['path', 'value', 'reason'],
+      },
+    },
+  },
+  required: ['changes'],
+} as any;
+
+async function verifyWithGemini(params: {
+  uid: string;
+  sourceKey: string;
+  requestId: string;
+  prompt: string;
+  model: string;
+}): Promise<{
+  response: GrammarV2LiteVerifierResponse;
+  usage: TokenUsage;
+  latencyMs: number;
+  attempts: number;
+}> {
+  const startedAt = Date.now();
+  try {
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
+    const model = genAI.getGenerativeModel({
+      model: params.model,
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: 'application/json',
+        responseSchema: GRAMMAR_V2_LITE_CHANGES_SCHEMA,
+      } as any,
+    });
+    const result = await model.generateContent(params.prompt);
+    const usage = geminiUsage(result);
+    const response = normalizeLiteVerifierResponse(parseJsonPayload<unknown>(result.response.text()));
+    const latencyMs = Date.now() - startedAt;
+    await logGrammarV2Usage({
+      uid: params.uid,
+      featureName: 'grammar_v2_verify',
+      model: params.model,
+      sourceKey: params.sourceKey,
+      requestId: params.requestId,
+      usage,
+      latencyMs,
+      success: true,
+      errorCode: null,
+    });
+    return { response, usage, latencyMs, attempts: 1 };
+  } catch (error: any) {
+    await logGrammarV2Usage({
+      uid: params.uid,
+      featureName: 'grammar_v2_verify',
+      model: params.model,
+      sourceKey: params.sourceKey,
+      requestId: params.requestId,
+      latencyMs: Date.now() - startedAt,
+      success: false,
+      errorCode: error?.code || error?.message || 'gemini_verify_failed',
+    });
+    throw error;
+  }
+}
+
 function mapKnownError(error: unknown): HttpsError {
   if (error instanceof HttpsError) return error;
   if (error instanceof BibleSourceError) return new HttpsError(error.code, error.message);
@@ -659,46 +741,67 @@ export const getGrammarExplainV2 = onCall(
       const draftForVerifier = semanticWithoutPositions(validatedGemini);
       const variants: GrammarV2PilotVariant[] = [];
 
-      // 'both'는 같은 생성 초안에 두 검증을 각각 돌려 결과와 토큰을 따로 모은다.
-      const verifyRuns: Array<'full' | 'lite'> =
-        verifyMode === 'both' ? ['full', 'lite'] : [verifyMode];
+      // 'both'·'all3'는 같은 생성 초안에 검증을 각각 돌려 결과와 토큰을 따로 모은다.
+      const verifyRuns: GrammarV2VerifyRun[] =
+        verifyMode === 'all3'
+          ? ['full', 'lite', 'gemini']
+          : verifyMode === 'both'
+            ? ['full', 'lite']
+            : [verifyMode];
 
       for (const mode of verifyRuns) {
-        const verified = await verifyWithGpt({
-          uid: request.auth.uid,
-          sourceKey,
-          requestId,
-          prompt: buildGptVerifierPrompt(context, draftForVerifier, { mode }),
-          mode,
+        // Gemini 검증은 축소 검증과 같은 프롬프트를 쓴다.
+        const prompt = buildGptVerifierPrompt(context, draftForVerifier, {
+          mode: mode === 'full' ? 'full' : 'lite',
         });
+        const verifierModel = mode === 'gemini' ? generationModel : GRAMMAR_V2_VERIFY_MODEL;
+        const verified =
+          mode === 'gemini'
+            ? await verifyWithGemini({
+                uid: request.auth.uid,
+                sourceKey,
+                requestId,
+                prompt,
+                model: verifierModel,
+              })
+            : await verifyWithGpt({
+                uid: request.auth.uid,
+                sourceKey,
+                requestId,
+                prompt,
+                mode,
+              });
 
         const stage: GrammarV2PilotStageMetrics = {
-          stage: mode === 'full' ? 'verify_full' : 'verify_lite',
-          model: GRAMMAR_V2_VERIFY_MODEL,
+          stage: mode === 'full' ? 'verify_full' : mode === 'lite' ? 'verify_lite' : 'verify_gemini',
+          model: verifierModel,
           inputTokens: verified.usage.inputTokens,
           outputTokens: verified.usage.outputTokens,
-          thoughtsTokens: null,
+          thoughtsTokens: verified.usage.thoughtsTokens ?? null,
           latencyMs: verified.latencyMs,
           attempts: verified.attempts,
         };
 
         let semanticAfterGpt: GrammarV2SemanticPayload;
         let changeNotes: string[];
+        let changePaths: string[];
         let corrected: boolean;
 
-        if (mode === 'lite') {
+        if (mode === 'full') {
+          const full = verified.response as GrammarV2VerifierResponse;
+          semanticAfterGpt = full.corrected || validatedGemini;
+          changeNotes = full.changes;
+          changePaths = [];
+          corrected = full.corrected !== null;
+        } else {
           const lite = verified.response as GrammarV2LiteVerifierResponse;
           const outcome = applyLiteChanges(draftForVerifier, lite.changes);
           semanticAfterGpt = outcome.semantic;
           changeNotes = lite.changes.map((c) => `${c.path}: ${c.reason || 'fixed'}`);
+          changePaths = lite.changes.map((c) => c.path);
           corrected = outcome.applied > 0;
           stage.changesApplied = outcome.applied;
           if (outcome.skipped.length > 0) stage.changesSkipped = outcome.skipped;
-        } else {
-          const full = verified.response as GrammarV2VerifierResponse;
-          semanticAfterGpt = full.corrected || validatedGemini;
-          changeNotes = full.changes;
-          corrected = full.corrected !== null;
         }
 
         // 적용 결과가 검증을 통과하지 못하면 변경을 버리고 이미 통과한 초안을 쓴다.
@@ -727,18 +830,28 @@ export const getGrammarExplainV2 = onCall(
         stages.push(stage);
         variants.push({
           verifyMode: mode,
+          model: verifierModel,
           changes: changeNotes,
+          changePaths,
           corrected,
           semantic: validatedForMode,
         });
       }
 
-      // 저장본은 'full'이 있으면 full 기준(기존 동작과 동일), 없으면 실행한 검증 결과를 쓴다.
-      const canonicalVariant = variants.find((item) => item.verifyMode === 'full') ?? variants[0];
+      // 저장본 기준: all3 은 축소 검증(lite) 결과, 그 밖에는 full 이 있으면 full(기존 동작),
+      // 없으면 실행한 검증 결과를 쓴다.
+      const canonicalMode: GrammarV2VerifyRun | undefined =
+        verifyMode === 'all3' ? 'lite' : variants.some((v) => v.verifyMode === 'full') ? 'full' : undefined;
+      const canonicalVariant =
+        (canonicalMode && variants.find((item) => item.verifyMode === canonicalMode)) || variants[0];
       const finalSemantic = canonicalVariant.semantic;
-      const canonicalStage = stages.find(
-        (item) => item.stage === (canonicalVariant.verifyMode === 'full' ? 'verify_full' : 'verify_lite')
-      );
+      const canonicalStageName =
+        canonicalVariant.verifyMode === 'full'
+          ? 'verify_full'
+          : canonicalVariant.verifyMode === 'lite'
+            ? 'verify_lite'
+            : 'verify_gemini';
+      const canonicalStage = stages.find((item) => item.stage === canonicalStageName);
 
       const doc: GrammarV2CacheDocument = {
         schemaVersion: GRAMMAR_V2_SCHEMA_VERSION,
@@ -767,7 +880,7 @@ export const getGrammarExplainV2 = onCall(
           createdAt: Timestamp.now(),
         },
         verification: {
-          model: GRAMMAR_V2_VERIFY_MODEL,
+          model: canonicalVariant.model,
           status: 'passed',
           changes: canonicalVariant.changes,
           inputTokens: canonicalStage?.inputTokens ?? null,

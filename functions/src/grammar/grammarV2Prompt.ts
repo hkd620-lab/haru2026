@@ -3,7 +3,7 @@ import { CanonicalBibleContext, GrammarV2SemanticPayload } from './grammarV2Type
 export const GRAMMAR_V2_SCHEMA_VERSION = 'grammar-v2';
 export const GRAMMAR_V2_PROMPT_VERSION = 'v2.2.3';
 // 파일럿(얕은 해설 기준)은 별도 프롬프트 버전을 쓴다. 운영 캐시(v2.2.3)와 섞이지 않는다.
-export const GRAMMAR_V2_PILOT_PROMPT_VERSION = 'v2.3.2-pilot';
+export const GRAMMAR_V2_PILOT_PROMPT_VERSION = 'v2.3.3-pilot';
 export const GRAMMAR_V2_GENERATE_MODEL = 'gemini-3.1-flash-lite';
 export const GRAMMAR_V2_VERIFY_MODEL = 'gpt-4o';
 
@@ -169,6 +169,11 @@ Translation rules (translationNatural):
 - Do not use archaic Korean scriptural endings such as ~하사, ~하리로다, ~이니라, ~하셨느니라, ~하시니, ~로다, ~느니라. Write present-day Korean polite style (~습니다 / ~입니다).
 - Do not add anything that is not in the ${versionLabel} text, and do not drop anything that is in it.
 
+Korean register rules (apply to translationNatural and to every explanation field):
+- Narration, description and advice addressed to the reader use "여러분" and ~습니다 / ~입니다.
+- When the verse quotes a person speaking inside the story (God to Abram, Ruth to Naomi, Jesus to a crowd), you may keep the register natural for that speaker addressing that listener.
+- NEVER mix registers inside one sentence. Do not pair 너/너의 with 여러분, and do not pair a plain imperative (~하라, ~마라) with a polite imperative (~하십시오, ~하세요) in the same sentence. Pick one register per sentence and keep it.
+
 Glossary rules:
 - Include only words a Korean student in the third year of middle school or above would plausibly not know.
 - Do NOT include basic vocabulary such as God, love, is, was, and, the, said, go, man, day.
@@ -184,6 +189,7 @@ Glossary rules:
 - Each keyPoint.pattern must name a structure that actually appears in the TARGET verse. Do not mislabel or simplify away the real subject, object, verb, clause, phrase, or passive relation just to make it sound easier.
 - keyPoint.caution must name, in one sentence, something a Korean learner would actually get wrong WHEN READING THIS VERSE.
 - A caution that would fit almost any English sentence is not acceptable. Do not write generic advice such as "전치사 in이 쓰였음을 주의하세요" or "and는 대등하게 연결합니다". Point at the specific word, word order, or form in this verse that causes the confusion, and say what the wrong reading would be.
+- caution is about READING, not writing. The reader is interpreting this verse, not composing English. Never warn about a production mistake such as "will going으로 쓰지 마세요", "복수형을 빼먹지 마세요", or "전치사를 빠뜨리지 마세요". Describe only a wrong interpretation of this verse and the correct one.
 
 Return this exact semantic JSON shape:
 {
