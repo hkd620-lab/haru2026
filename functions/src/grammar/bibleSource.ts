@@ -7,7 +7,7 @@ import {
   GrammarV2Input,
 } from './grammarV2Types';
 
-type BibleSourceErrorCode = 'invalid-argument' | 'not-found';
+type BibleSourceErrorCode = 'invalid-argument' | 'not-found' | 'failed-precondition';
 
 interface BibleChapterFile {
   book: string;
@@ -23,8 +23,17 @@ export class BibleSourceError extends Error {
   }
 }
 
-const SUPPORTED_VERSIONS = new Set<BibleVersion>(['kjv']);
+const SUPPORTED_VERSIONS = new Set<BibleVersion>(['kjv', 'bsb']);
 const chapterCache = new Map<string, BibleChapterFile>();
+
+// BSB에는 절 번호만 있고 본문이 비었거나, 절 전체가 괄호로 처리된 사본 차이 구절이 36개 있다.
+// (예: Matthew 17:21 = 빈 절, Exodus 16:36 = "(Now an omer is a tenth of an ephah.)")
+// 이런 절은 문법 해설 생성 대상이 아니므로 '없는 절'(not-found)과 구별되는 오류로 막는다.
+function isTextualVariantVerse(text: string): boolean {
+  const trimmed = (text || '').trim();
+  if (!trimmed) return true;
+  return /^[([].*[)\]]$/.test(trimmed);
+}
 
 function assertPositiveInteger(value: unknown, fieldName: string): number {
   if (!Number.isInteger(value) || Number(value) < 1) {
@@ -42,8 +51,12 @@ function normalizeInput(input: GrammarV2Input): GrammarV2Input {
   if (!SUPPORTED_VERSIONS.has(version)) {
     throw new BibleSourceError('invalid-argument', `Unsupported Bible version: ${version}`);
   }
-  if (!/^[a-z]+$/.test(book)) {
-    throw new BibleSourceError('invalid-argument', 'book must be a lowercase English prefix.');
+  // 숫자가 붙는 책(1kings, 1chronicles, 2corinthians, 3john 등)을 허용한다.
+  if (!/^[1-3]?[a-z]+$/.test(book)) {
+    throw new BibleSourceError(
+      'invalid-argument',
+      'book must be a lowercase English prefix, optionally prefixed with 1-3.'
+    );
   }
 
   return { version, book, chapter, verse };
@@ -90,6 +103,14 @@ export function loadCanonicalBibleContext(input: GrammarV2Input): CanonicalBible
     throw new BibleSourceError(
       'not-found',
       `Verse not found: ${normalized.version}/${normalized.book} ${normalized.chapter}:${normalized.verse}`
+    );
+  }
+
+  // 사본 차이 절 차단은 BSB에만 적용한다. 기존 KJV 경로 동작은 그대로 유지한다.
+  if (normalized.version === 'bsb' && isTextualVariantVerse(chapterData.verses[targetIndex].text)) {
+    throw new BibleSourceError(
+      'failed-precondition',
+      `Textual-variant verse has no body text to analyze: ${normalized.version}/${normalized.book} ${normalized.chapter}:${normalized.verse}`
     );
   }
 

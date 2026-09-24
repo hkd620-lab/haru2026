@@ -2,29 +2,47 @@ import { CanonicalBibleContext, GrammarV2SemanticPayload } from './grammarV2Type
 
 export const GRAMMAR_V2_SCHEMA_VERSION = 'grammar-v2';
 export const GRAMMAR_V2_PROMPT_VERSION = 'v2.2.3';
+// 파일럿(얕은 해설 기준)은 별도 프롬프트 버전을 쓴다. 운영 캐시(v2.2.3)와 섞이지 않는다.
+export const GRAMMAR_V2_PILOT_PROMPT_VERSION = 'v2.3.0-pilot';
 export const GRAMMAR_V2_GENERATE_MODEL = 'gemini-3.1-flash-lite';
 export const GRAMMAR_V2_VERIFY_MODEL = 'gpt-4o';
 
-export function buildGeminiSemanticPrompt(context: CanonicalBibleContext): string {
-  const before = context.contextBefore
-    ? `${context.bookName} ${context.chapter}:${context.contextBefore.verse} ${context.contextBefore.text}`
-    : '(none)';
-  const after = context.contextAfter
-    ? `${context.bookName} ${context.chapter}:${context.contextAfter.verse} ${context.contextAfter.text}`
-    : '(none)';
+export type GrammarV2PromptDepth = 'standard' | 'shallow';
+
+function contextLines(context: CanonicalBibleContext): { before: string; after: string } {
+  return {
+    before: context.contextBefore
+      ? `${context.bookName} ${context.chapter}:${context.contextBefore.verse} ${context.contextBefore.text}`
+      : '(none)',
+    after: context.contextAfter
+      ? `${context.bookName} ${context.chapter}:${context.contextAfter.verse} ${context.contextAfter.text}`
+      : '(none)',
+  };
+}
+
+export function buildGeminiSemanticPrompt(
+  context: CanonicalBibleContext,
+  options: { depth?: GrammarV2PromptDepth } = {}
+): string {
+  if (options.depth === 'shallow') {
+    return buildShallowSemanticPrompt(context);
+  }
+
+  const { before, after } = contextLines(context);
+  const versionLabel = context.version.toUpperCase();
 
   return `You are creating an English-learning grammar analysis for a Korean beginner.
 
 Analyze ONLY the TARGET verse. The context verses are only for understanding.
 
-Bible version: ${context.version.toUpperCase()}
+Bible version: ${versionLabel}
 Context before: ${before}
 TARGET ${context.bookName} ${context.chapter}:${context.verse}: ${context.targetVerse.text}
 Context after: ${after}
 
 Rules:
-- Do not change, modernize, or paraphrase the KJV source text.
-- Do not confuse KJV archaic style with modern English.
+- Do not change, modernize, or paraphrase the ${versionLabel} source text.
+- Do not confuse ${versionLabel} archaic style with modern English.
 - chunks must contain exact consecutive substrings copied from the TARGET verse only.
 - Do not add words that are not in the TARGET verse to chunks.
 - chunk order must follow the TARGET verse order.
@@ -57,7 +75,7 @@ Rules:
 Return this exact semantic JSON shape:
 {
   "difficulty": "short Korean difficulty label",
-  "styleNote": "short Korean KJV style note",
+  "styleNote": "short Korean ${versionLabel} style note",
   "translationNatural": "natural Korean translation of the TARGET verse",
   "chunks": [
     {
@@ -102,10 +120,108 @@ Return this exact semantic JSON shape:
 }`;
 }
 
+// 허 대표님 해설 깊이 기준(2026-09-24): 청크당 핵심 문법 1가지·1~2문장, 전수 품사 분석 금지,
+// 문법 용어 최소화, 심화 내용은 별도 심화 버튼. 화면 호환을 위해 keyPoints 3개와 필드 구조는 유지한다.
+function buildShallowSemanticPrompt(context: CanonicalBibleContext): string {
+  const { before, after } = contextLines(context);
+  const versionLabel = context.version.toUpperCase();
+
+  return `You are writing a short, easy English-learning grammar note for a Korean middle-school reader.
+
+Analyze ONLY the TARGET verse. The context verses are only for understanding.
+
+Bible version: ${versionLabel}
+Context before: ${before}
+TARGET ${context.bookName} ${context.chapter}:${context.verse}: ${context.targetVerse.text}
+Context after: ${after}
+
+Source rules:
+- Do not change, modernize, or paraphrase the ${versionLabel} source text.
+- chunks must contain exact consecutive substrings copied from the TARGET verse only.
+- Do not add words that are not in the TARGET verse to chunks.
+- chunk order must follow the TARGET verse order.
+- Every lexical source word in the TARGET verse must appear exactly once across chunks.
+- One verse is exactly one analysis unit. Produce exactly one analysis for the TARGET verse.
+- A verse may contain several clauses or sentence-like structures; analyze them together as a single verse-level unit.
+- Never split the TARGET verse into sub-units or sub-references such as "14-a" or "14-b", and never output more than one analysis object for a verse.
+- glossary must contain at most 8 items, with ids contiguous from w1.
+- chunks[].termIds must only contain ids that exist in glossary. Use an empty array when there is no matching item.
+- keyPoints must contain exactly 3 items with order 1, 2, 3.
+- No Markdown.
+- Return JSON only.
+- Do not include schemaVersion, promptVersion, source identity, start, or end.
+
+Depth rules (most important — stay short and easy):
+- Write for a Korean middle-school student. All Korean must be plain, everyday Korean.
+- Split the verse into meaningful phrase units, not word by word. Prefer fewer and larger chunks.
+- Do not label the part of speech or sentence role of every single word.
+- chunk.note must explain exactly ONE core grammar point of that chunk, in 1-2 short Korean sentences. Never more than 2 sentences.
+- If a chunk needs no grammar explanation, write one short sentence about the single thing that matters most for reading it.
+- Do not repeat chunk.meaning in chunk.note.
+- Use a grammar term only when it is necessary, and when you use one, explain it in easy Korean in the same sentence.
+- Do not add pronoun-antecedent analysis, comparisons of repeated words, or extra warnings unless the verse cannot be read without them. Deeper material belongs to a separate advanced view, not here.
+- glossary: include only the words a Korean middle-school reader would actually need. Fewer is better than eight.
+- keyPoints: each of pattern, meaningKo, why, example.en, example.ko, and caution must be exactly one short sentence.
+- Each keyPoint.pattern must be a grammatical structure that actually appears in the TARGET verse. Do not mislabel or simplify away the real subject, object, verb, clause, phrase, or passive relation just to make it sound easier.
+- Each keyPoint.caution must name the single most likely misreading of this verse in one sentence.
+
+Return this exact semantic JSON shape:
+{
+  "difficulty": "short Korean difficulty label",
+  "styleNote": "short Korean ${versionLabel} style note",
+  "translationNatural": "natural Korean translation of the TARGET verse",
+  "chunks": [
+    {
+      "id": "c1",
+      "order": 1,
+      "text": "exact consecutive substring from the TARGET verse",
+      "role": "short Korean role label",
+      "level": 0,
+      "parentId": null,
+      "meaning": "Korean meaning",
+      "note": "one core grammar point, 1-2 short Korean sentences",
+      "termIds": ["w1"]
+    }
+  ],
+  "glossary": [
+    {
+      "id": "w1",
+      "term": "source term",
+      "type": "word",
+      "ipa": "IPA pronunciation",
+      "hangul": "Korean pronunciation",
+      "syllables": ["syllable"],
+      "hangulSyllables": ["Korean syllable"],
+      "stressIndex": 0,
+      "meaningKo": "Korean meaning",
+      "note": "Korean note"
+    }
+  ],
+  "keyPoints": [
+    {
+      "order": 1,
+      "pattern": "English pattern",
+      "meaningKo": "Korean meaning in one sentence",
+      "why": "why it matters in this verse, one sentence",
+      "example": {
+        "en": "simple English example",
+        "ko": "Korean translation"
+      },
+      "caution": "Korean caution in one sentence"
+    }
+  ]
+}`;
+}
+
 export function buildGptVerifierPrompt(
   context: CanonicalBibleContext,
-  semantic: GrammarV2SemanticPayload
+  semantic: GrammarV2SemanticPayload,
+  options: { mode?: 'full' | 'lite' } = {}
 ): string {
+  if (options.mode === 'lite') {
+    return buildLiteVerifierPrompt(context, semantic);
+  }
+
   return `You are verifying a KJV Bible grammar-learning semantic payload.
 
 You may correct grammar-learning analysis, but you must not change source identity or invent source text.
@@ -160,6 +276,50 @@ Return JSON only in this shape:
 If corrections are needed, corrected must be the full semantic payload shape only:
 {
   "changes": ["short Korean or English change note"],
+  "corrected": { ...full semantic payload... }
+}`;
+}
+
+// 축소 검증(lite): 틀린 것만 고친다. 설명을 더 붙이거나 깊게 만드는 일은 하지 않는다.
+// 비용의 대부분이 이 단계라서, full 검증과 나란히 돌려 놓친 오류가 있는지 비교하는 것이 목적이다.
+function buildLiteVerifierPrompt(
+  context: CanonicalBibleContext,
+  semantic: GrammarV2SemanticPayload
+): string {
+  const versionLabel = context.version.toUpperCase();
+
+  return `You are checking a ${versionLabel} Bible grammar-learning semantic payload for errors only.
+
+Canonical target verse:
+${context.bookName} ${context.chapter}:${context.verse} ${context.targetVerse.text}
+
+Semantic payload to check:
+${JSON.stringify(semantic, null, 2)}
+
+Check ONLY these three kinds of error:
+1. Grammar-explanation errors — a stated grammatical fact about the target verse is wrong, or a keyPoint.pattern describes a structure that does not actually occur in the target verse, or chunk.role / chunk.note contradicts the real syntactic function of that chunk.
+2. Translation errors — translationNatural, chunk.meaning, or glossary[].meaningKo misrepresents the target verse, or a glossary meaning does not match how the word is used here.
+3. Format errors — chunks are not exact consecutive substrings of the target verse, a lexical word of the target verse is missing or duplicated across chunks, glossary has more than 8 items, glossary ids are not contiguous from w1, termIds reference ids that do not exist, keyPoints are not exactly 3 with order 1/2/3, or Markdown is present.
+
+Correction rules (strict):
+- Correct ONLY what is actually wrong, and change as little text as possible.
+- Do NOT add explanation. Do NOT expand, enrich, or deepen any note, why, or caution.
+- Do NOT add new chunks, new glossary items, new cautions, pronoun-antecedent analysis, or comparisons of repeated words.
+- Do NOT rewrite correct text merely to improve style, tone, or completeness.
+- Keep every chunk.note at 2 sentences or fewer, and keep each keyPoint field at one sentence.
+- Short and simple is intended here. Brevity is not an error, and a missing deeper explanation is not an error.
+- If all three checks pass, return corrected as null even if you could imagine a richer explanation.
+- No Markdown.
+
+Return JSON only in this shape:
+{
+  "changes": [],
+  "corrected": null
+}
+
+If real errors were found, corrected must be the full semantic payload shape with the minimal fixes applied:
+{
+  "changes": ["short note naming the error kind and what was fixed"],
   "corrected": { ...full semantic payload... }
 }`;
 }

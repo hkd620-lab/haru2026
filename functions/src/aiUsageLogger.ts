@@ -11,6 +11,8 @@ type AiUsageLogInput = {
   model: string | null;
   inputTokens: number | null;
   outputTokens: number | null;
+  // Gemini thoughtsTokenCount. candidatesTokenCount에 포함되지 않아 비용 계산에 따로 필요하다.
+  thoughtsTokens?: number | null;
   imageCount: number;
   externalApiProvider: string | null;
   externalApiCalled: boolean;

@@ -55,12 +55,22 @@ function sentenceCount(value: string): number {
   return matches ? matches.filter((item) => item.trim()).length : 1;
 }
 
-function parseChunk(value: unknown, index: number): GrammarV2SemanticChunk {
+// 기본값 4는 기존 KJV 경로의 동작이다. 파일럿·BSB 요청은 얕은 해설 기준에 맞춰 2를 넘긴다.
+export const GRAMMAR_V2_DEFAULT_MAX_NOTE_SENTENCES = 4;
+export const GRAMMAR_V2_PILOT_MAX_NOTE_SENTENCES = 2;
+
+export interface GrammarV2ValidateOptions {
+  maxNoteSentences?: number;
+}
+
+function parseChunk(value: unknown, index: number, maxNoteSentences: number): GrammarV2SemanticChunk {
   if (!isPlainObject(value)) fail(`chunks[${index}] must be an object.`);
   const parentId = value.parentId;
   if (parentId !== null && typeof parentId !== 'string') fail(`chunks[${index}].parentId must be string or null.`);
   const note = requireString(value.note, `chunks[${index}].note`);
-  if (sentenceCount(note) > 4) fail(`chunks[${index}].note must be at most 4 sentences.`);
+  if (sentenceCount(note) > maxNoteSentences) {
+    fail(`chunks[${index}].note must be at most ${maxNoteSentences} sentences.`);
+  }
 
   return {
     id: requireString(value.id, `chunks[${index}].id`),
@@ -169,8 +179,10 @@ function withSourcePositions(sourceText: string, chunks: GrammarV2SemanticChunk[
 
 export function validateGrammarV2SemanticPayload(
   sourceText: string,
-  payload: unknown
+  payload: unknown,
+  options: GrammarV2ValidateOptions = {}
 ): GrammarV2ValidatedSemanticPayload {
+  const maxNoteSentences = options.maxNoteSentences ?? GRAMMAR_V2_DEFAULT_MAX_NOTE_SENTENCES;
   if (!isPlainObject(payload)) fail('semantic payload must be an object.');
 
   const difficulty = requireString(payload.difficulty, 'difficulty');
@@ -186,7 +198,9 @@ export function validateGrammarV2SemanticPayload(
   if (payload.glossary.length > 8) fail('glossary must contain at most 8 items.');
   if (payload.keyPoints.length !== 3) fail('keyPoints must contain exactly 3 items.');
 
-  const chunks = payload.chunks.map(parseChunk).sort((a, b) => a.order - b.order);
+  const chunks = payload.chunks
+    .map((chunk, index) => parseChunk(chunk, index, maxNoteSentences))
+    .sort((a, b) => a.order - b.order);
   const glossary = payload.glossary.map(parseGlossaryItem);
   const keyPoints = payload.keyPoints.map(parseKeyPoint).sort((a, b) => a.order - b.order);
 

@@ -13,6 +13,7 @@ import {
 } from './bibleSource';
 import {
   GRAMMAR_V2_GENERATE_MODEL,
+  GRAMMAR_V2_PILOT_PROMPT_VERSION,
   GRAMMAR_V2_PROMPT_VERSION,
   GRAMMAR_V2_SCHEMA_VERSION,
   GRAMMAR_V2_VERIFY_MODEL,
@@ -20,14 +21,22 @@ import {
   buildGptVerifierPrompt,
 } from './grammarV2Prompt';
 import {
+  GRAMMAR_V2_PILOT_GENERATION_MODELS,
   GrammarV2CacheDocument,
   GrammarV2Input,
+  GrammarV2PilotMetrics,
+  GrammarV2PilotOptions,
+  GrammarV2PilotStageMetrics,
+  GrammarV2PilotVariant,
+  GrammarV2Request,
   GrammarV2SemanticChunk,
   GrammarV2SemanticPayload,
   GrammarV2ValidatedSemanticPayload,
   GrammarV2VerifierResponse,
+  GrammarV2VerifyMode,
 } from './grammarV2Types';
 import {
+  GRAMMAR_V2_PILOT_MAX_NOTE_SENTENCES,
   GrammarV2ValidationError,
   validateGrammarV2SemanticPayload,
 } from './grammarV2Validator';
@@ -133,9 +142,55 @@ const GRAMMAR_V2_SEMANTIC_RESPONSE_SCHEMA = {
 type TokenUsage = {
   inputTokens: number | null;
   outputTokens: number | null;
+  thoughtsTokens?: number | null;
 };
 
-function toGrammarV2Input(data: unknown): GrammarV2Input {
+const PILOT_ALLOWED_GENERATION_MODELS: ReadonlySet<string> = new Set(GRAMMAR_V2_PILOT_GENERATION_MODELS);
+const PILOT_VERIFY_MODES: ReadonlySet<string> = new Set<GrammarV2VerifyMode>(['full', 'lite', 'both']);
+
+// 파일럿 모드 = Functions 에뮬레이터 안 + Firestore 에뮬레이터 연결됨.
+// 두 조건이 모두 맞지 않으면 파일럿 기능(bsb, 모델 선택, 검증 방식, 캐시 건너뛰기)은 전부 막힌다.
+// 이 함수가 운영 Firestore 오염을 막는 코드 가드다.
+function isPilotEnvironment(): boolean {
+  return process.env.FUNCTIONS_EMULATOR === 'true' && Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+}
+
+function parsePilotOptions(value: unknown): GrammarV2PilotOptions {
+  if (!isRecord(value)) {
+    throw new HttpsError('invalid-argument', 'pilot must be an object.');
+  }
+  const options: GrammarV2PilotOptions = {};
+
+  if (value.generationModel !== undefined) {
+    const model = String(value.generationModel);
+    if (!PILOT_ALLOWED_GENERATION_MODELS.has(model)) {
+      throw new HttpsError(
+        'invalid-argument',
+        `pilot.generationModel must be one of: ${GRAMMAR_V2_PILOT_GENERATION_MODELS.join(', ')}`
+      );
+    }
+    options.generationModel = model as GrammarV2PilotOptions['generationModel'];
+  }
+
+  if (value.verifyMode !== undefined) {
+    const mode = String(value.verifyMode);
+    if (!PILOT_VERIFY_MODES.has(mode)) {
+      throw new HttpsError('invalid-argument', 'pilot.verifyMode must be full, lite, or both.');
+    }
+    options.verifyMode = mode as GrammarV2VerifyMode;
+  }
+
+  if (value.skipCacheRead !== undefined) {
+    if (typeof value.skipCacheRead !== 'boolean') {
+      throw new HttpsError('invalid-argument', 'pilot.skipCacheRead must be a boolean.');
+    }
+    options.skipCacheRead = value.skipCacheRead;
+  }
+
+  return options;
+}
+
+function toGrammarV2Request(data: unknown): GrammarV2Request {
   if (!data || typeof data !== 'object') {
     throw new HttpsError('invalid-argument', 'Request data is required.');
   }
@@ -143,14 +198,27 @@ function toGrammarV2Input(data: unknown): GrammarV2Input {
   if (value.verseText !== undefined) {
     throw new HttpsError('invalid-argument', 'verseText is not accepted. The server uses canonical Bible source.');
   }
-  if (value.version !== 'kjv') {
+  if (value.version !== 'kjv' && value.version !== 'bsb') {
     throw new HttpsError('invalid-argument', 'Only KJV is supported in this pilot.');
   }
+
+  // 파일럿 기능을 요구하는 요청은 캐시를 읽기 전에 여기서 막힌다.
+  const wantsPilot = value.version !== 'kjv' || value.pilot !== undefined;
+  if (wantsPilot && !isPilotEnvironment()) {
+    throw new HttpsError(
+      'failed-precondition',
+      'grammar-v2 pilot features require the local emulator (FUNCTIONS_EMULATOR and FIRESTORE_EMULATOR_HOST).'
+    );
+  }
+
   return {
-    version: 'kjv',
-    book: String(value.book || '').trim().toLowerCase(),
-    chapter: Number(value.chapter),
-    verse: Number(value.verse),
+    input: {
+      version: value.version,
+      book: String(value.book || '').trim().toLowerCase(),
+      chapter: Number(value.chapter),
+      verse: Number(value.verse),
+    },
+    pilot: value.pilot === undefined ? null : parsePilotOptions(value.pilot),
   };
 }
 
@@ -164,6 +232,8 @@ function geminiUsage(result: any): TokenUsage {
   return {
     inputTokens: usage?.promptTokenCount ?? null,
     outputTokens: usage?.candidatesTokenCount ?? null,
+    // thinking 토큰은 candidatesTokenCount에 포함되지 않아 따로 기록해야 비용이 맞는다.
+    thoughtsTokens: usage?.thoughtsTokenCount ?? null,
   };
 }
 
@@ -178,12 +248,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isUsableGrammarV2Cache(value: unknown): value is GrammarV2CacheDocument {
+function isUsableGrammarV2Cache(
+  value: unknown,
+  promptVersion: string = GRAMMAR_V2_PROMPT_VERSION
+): value is GrammarV2CacheDocument {
   if (!isRecord(value)) return false;
   const verification = value.verification;
   return (
     value.schemaVersion === GRAMMAR_V2_SCHEMA_VERSION &&
-    value.promptVersion === GRAMMAR_V2_PROMPT_VERSION &&
+    value.promptVersion === promptVersion &&
     isRecord(verification) &&
     verification.status === 'passed'
   );
@@ -234,6 +307,7 @@ async function logGrammarV2Usage(params: {
   sourceKey: string;
   requestId: string;
   usage?: TokenUsage;
+  latencyMs?: number | null;
   success: boolean;
   errorCode: string | null;
 }): Promise<void> {
@@ -244,6 +318,8 @@ async function logGrammarV2Usage(params: {
     model: params.model,
     inputTokens: params.usage?.inputTokens ?? null,
     outputTokens: params.usage?.outputTokens ?? null,
+    thoughtsTokens: params.usage?.thoughtsTokens ?? null,
+    latencyMs: params.latencyMs ?? null,
     imageCount: 0,
     externalApiProvider: params.featureName === 'grammar_v2_verify' ? 'openai' : null,
     externalApiCalled: true,
@@ -261,11 +337,13 @@ async function generateSemanticPayload(params: {
   sourceKey: string;
   requestId: string;
   prompt: string;
-}): Promise<{ semantic: GrammarV2SemanticPayload; usage: TokenUsage }> {
+  generationModel: string;
+}): Promise<{ semantic: GrammarV2SemanticPayload; usage: TokenUsage; latencyMs: number }> {
+  const startedAt = Date.now();
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
     const model = genAI.getGenerativeModel({
-      model: GRAMMAR_V2_GENERATE_MODEL,
+      model: params.generationModel,
       generationConfig: {
         temperature: 0.2,
         responseMimeType: 'application/json',
@@ -275,27 +353,31 @@ async function generateSemanticPayload(params: {
     const result = await model.generateContent(params.prompt);
     const usage = geminiUsage(result);
     const semantic = parseJsonPayload<GrammarV2SemanticPayload>(result.response.text());
+    const latencyMs = Date.now() - startedAt;
     await logGrammarV2Usage({
       uid: params.uid,
       featureName: 'grammar_v2_generate',
-      model: GRAMMAR_V2_GENERATE_MODEL,
+      model: params.generationModel,
       sourceKey: params.sourceKey,
       requestId: params.requestId,
       usage,
+      latencyMs,
       success: true,
       errorCode: null,
     });
     return {
       semantic,
       usage,
+      latencyMs,
     };
   } catch (error: any) {
     await logGrammarV2Usage({
       uid: params.uid,
       featureName: 'grammar_v2_generate',
-      model: GRAMMAR_V2_GENERATE_MODEL,
+      model: params.generationModel,
       sourceKey: params.sourceKey,
       requestId: params.requestId,
+      latencyMs: Date.now() - startedAt,
       success: false,
       errorCode: error?.code || error?.message || 'gemini_generate_failed',
     });
@@ -308,8 +390,14 @@ async function verifyWithGpt(params: {
   sourceKey: string;
   requestId: string;
   prompt: string;
-}): Promise<{ response: GrammarV2VerifierResponse; usage: TokenUsage }> {
+}): Promise<{
+  response: GrammarV2VerifierResponse;
+  usage: TokenUsage;
+  latencyMs: number;
+  attempts: number;
+}> {
   let lastError: any = null;
+  const startedAt = Date.now();
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
       const res = await axios.post(
@@ -332,6 +420,7 @@ async function verifyWithGpt(params: {
       const response = normalizeVerifierResponse(
         parseJsonPayload<GrammarV2VerifierResponse>(res.data.choices[0].message.content || '')
       );
+      const latencyMs = Date.now() - startedAt;
       await logGrammarV2Usage({
         uid: params.uid,
         featureName: 'grammar_v2_verify',
@@ -339,12 +428,15 @@ async function verifyWithGpt(params: {
         sourceKey: params.sourceKey,
         requestId: params.requestId,
         usage,
+        latencyMs,
         success: true,
         errorCode: null,
       });
       return {
         response,
         usage,
+        latencyMs,
+        attempts: attempt,
       };
     } catch (error: any) {
       lastError = error;
@@ -354,6 +446,7 @@ async function verifyWithGpt(params: {
         model: GRAMMAR_V2_VERIFY_MODEL,
         sourceKey: params.sourceKey,
         requestId: params.requestId,
+        latencyMs: Date.now() - startedAt,
         success: false,
         errorCode: error?.response?.status ? `openai_${error.response.status}` : error?.message || `gpt_attempt_${attempt}_failed`,
       });
@@ -381,41 +474,101 @@ export const getGrammarExplainV2 = onCall(
     }
 
     try {
-      const input = toGrammarV2Input(request.data);
+      const { input, pilot } = toGrammarV2Request(request.data);
+
+      // 파일럿 실행 여부. 옵션 없는 KJV 요청은 false → 아래 모든 분기가 기존 동작과 같다.
+      const isPilotRun = pilot !== null || input.version !== 'kjv';
+      const generationModel = pilot?.generationModel ?? GRAMMAR_V2_GENERATE_MODEL;
+      const verifyMode: GrammarV2VerifyMode = pilot?.verifyMode ?? 'full';
+      const promptVersion = isPilotRun ? GRAMMAR_V2_PILOT_PROMPT_VERSION : GRAMMAR_V2_PROMPT_VERSION;
+      const validateOptions = isPilotRun
+        ? { maxNoteSentences: GRAMMAR_V2_PILOT_MAX_NOTE_SENTENCES }
+        : {};
+      const skipCacheRead = pilot?.skipCacheRead ?? false;
+
       const sourceKey = buildGrammarV2CacheKey(input);
       const context = loadCanonicalBibleContext(input);
       const cacheRef = admin.firestore().collection('grammarCache').doc(sourceKey);
-      const cached = await cacheRef.get();
-      const cachedData = cached.data();
-      if (isUsableGrammarV2Cache(cachedData)) return cachedData;
+      if (!skipCacheRead) {
+        const cached = await cacheRef.get();
+        const cachedData = cached.data();
+        if (isUsableGrammarV2Cache(cachedData, promptVersion)) return cachedData;
+      }
 
       const requestId = randomUUID();
       const generated = await generateSemanticPayload({
         uid: request.auth.uid,
         sourceKey,
         requestId,
-        prompt: buildGeminiSemanticPrompt(context),
+        prompt: buildGeminiSemanticPrompt(context, { depth: isPilotRun ? 'shallow' : 'standard' }),
+        generationModel,
       });
       const validatedGemini = validateGrammarV2SemanticPayload(
         context.targetVerse.text,
-        generated.semantic
+        generated.semantic,
+        validateOptions
       );
+      const draftForVerifier = semanticWithoutPositions(validatedGemini);
 
-      const verified = await verifyWithGpt({
-        uid: request.auth.uid,
-        sourceKey,
-        requestId,
-        prompt: buildGptVerifierPrompt(context, semanticWithoutPositions(validatedGemini)),
-      });
-      const semanticAfterGpt = verified.response.corrected || validatedGemini;
-      const finalSemantic = validateGrammarV2SemanticPayload(
-        context.targetVerse.text,
-        semanticAfterGpt
+      const stages: GrammarV2PilotStageMetrics[] = [
+        {
+          stage: 'generate',
+          model: generationModel,
+          inputTokens: generated.usage.inputTokens,
+          outputTokens: generated.usage.outputTokens,
+          thoughtsTokens: generated.usage.thoughtsTokens ?? null,
+          latencyMs: generated.latencyMs,
+          attempts: 1,
+        },
+      ];
+      const variants: GrammarV2PilotVariant[] = [];
+
+      // 'both'는 같은 생성 초안에 두 검증을 각각 돌려 결과와 토큰을 따로 모은다.
+      const verifyRuns: Array<'full' | 'lite'> =
+        verifyMode === 'both' ? ['full', 'lite'] : [verifyMode];
+
+      for (const mode of verifyRuns) {
+        const verified = await verifyWithGpt({
+          uid: request.auth.uid,
+          sourceKey,
+          requestId,
+          prompt: buildGptVerifierPrompt(context, draftForVerifier, { mode }),
+        });
+        const semanticAfterGpt = verified.response.corrected || validatedGemini;
+        const validatedForMode = validateGrammarV2SemanticPayload(
+          context.targetVerse.text,
+          semanticAfterGpt,
+          validateOptions
+        );
+        stages.push({
+          stage: mode === 'full' ? 'verify_full' : 'verify_lite',
+          model: GRAMMAR_V2_VERIFY_MODEL,
+          inputTokens: verified.usage.inputTokens,
+          outputTokens: verified.usage.outputTokens,
+          thoughtsTokens: null,
+          latencyMs: verified.latencyMs,
+          attempts: verified.attempts,
+          changes: verified.response.changes,
+          corrected: verified.response.corrected !== null,
+        });
+        variants.push({
+          verifyMode: mode,
+          changes: verified.response.changes,
+          corrected: verified.response.corrected !== null,
+          semantic: validatedForMode,
+        });
+      }
+
+      // 저장본은 'full'이 있으면 full 기준(기존 동작과 동일), 없으면 실행한 검증 결과를 쓴다.
+      const canonicalVariant = variants.find((item) => item.verifyMode === 'full') ?? variants[0];
+      const finalSemantic = canonicalVariant.semantic;
+      const canonicalStage = stages.find(
+        (item) => item.stage === (canonicalVariant.verifyMode === 'full' ? 'verify_full' : 'verify_lite')
       );
 
       const doc: GrammarV2CacheDocument = {
         schemaVersion: GRAMMAR_V2_SCHEMA_VERSION,
-        promptVersion: GRAMMAR_V2_PROMPT_VERSION,
+        promptVersion,
         meta: {
           sourceType: 'bible',
           version: context.version,
@@ -434,7 +587,7 @@ export const getGrammarExplainV2 = onCall(
         glossary: finalSemantic.glossary,
         keyPoints: finalSemantic.keyPoints,
         generation: {
-          model: GRAMMAR_V2_GENERATE_MODEL,
+          model: generationModel,
           inputTokens: generated.usage.inputTokens,
           outputTokens: generated.usage.outputTokens,
           createdAt: admin.firestore.Timestamp.now(),
@@ -442,14 +595,29 @@ export const getGrammarExplainV2 = onCall(
         verification: {
           model: GRAMMAR_V2_VERIFY_MODEL,
           status: 'passed',
-          changes: verified.response.changes,
-          inputTokens: verified.usage.inputTokens,
-          outputTokens: verified.usage.outputTokens,
+          changes: canonicalVariant.changes,
+          inputTokens: canonicalStage?.inputTokens ?? null,
+          outputTokens: canonicalStage?.outputTokens ?? null,
         },
       };
 
       await cacheRef.set(doc);
-      return doc;
+      if (!isPilotRun) return doc;
+
+      // 파일럿 응답에만 계측·비교 자료를 덧붙인다. 캐시 문서 구조는 그대로 둔다.
+      const pilotMetrics: GrammarV2PilotMetrics = {
+        promptVersion,
+        verifyMode,
+        generationModel,
+        cacheRead: !skipCacheRead,
+        stages,
+      };
+      return {
+        ...doc,
+        pilotMetrics,
+        pilotDraftSemantic: draftForVerifier,
+        pilotVariants: variants,
+      };
     } catch (error) {
       const mapped = mapKnownError(error);
       logger.error('[getGrammarExplainV2] failed', error);

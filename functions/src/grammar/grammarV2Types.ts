@@ -1,10 +1,60 @@
-export type BibleVersion = 'kjv';
+export type BibleVersion = 'kjv' | 'bsb';
 
 export interface GrammarV2Input {
   version: BibleVersion;
   book: string;
   chapter: number;
   verse: number;
+}
+
+// 파일럿 전용 옵션. 에뮬레이터(파일럿 모드)에서만 허용되고, 운영에서는 요청에 들어오는
+// 순간 캐시 읽기 전에 failed-precondition으로 막힌다.
+export const GRAMMAR_V2_PILOT_GENERATION_MODELS = [
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash-lite',
+] as const;
+
+export type GrammarV2PilotGenerationModel = typeof GRAMMAR_V2_PILOT_GENERATION_MODELS[number];
+
+export type GrammarV2VerifyMode = 'full' | 'lite' | 'both';
+
+export interface GrammarV2PilotOptions {
+  generationModel?: GrammarV2PilotGenerationModel;
+  verifyMode?: GrammarV2VerifyMode;
+  skipCacheRead?: boolean;
+}
+
+export interface GrammarV2Request {
+  input: GrammarV2Input;
+  pilot: GrammarV2PilotOptions | null;
+}
+
+export interface GrammarV2PilotStageMetrics {
+  stage: 'generate' | 'verify_full' | 'verify_lite';
+  model: string;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  thoughtsTokens: number | null;
+  latencyMs: number;
+  attempts: number;
+  changes?: string[];
+  corrected?: boolean;
+}
+
+export interface GrammarV2PilotMetrics {
+  promptVersion: string;
+  verifyMode: GrammarV2VerifyMode;
+  generationModel: string;
+  cacheRead: boolean;
+  stages: GrammarV2PilotStageMetrics[];
+}
+
+// verifyMode 'both'에서 full·lite 결과를 나란히 비교하기 위한 묶음.
+export interface GrammarV2PilotVariant {
+  verifyMode: 'full' | 'lite';
+  changes: string[];
+  corrected: boolean;
+  semantic: GrammarV2ValidatedSemanticPayload;
 }
 
 export interface CanonicalVerse {

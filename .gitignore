@@ -10,6 +10,10 @@
 frontend/.env
 frontend/.env.local
 
+# Functions 로컬 비밀값 (절대 Git에 올리면 안 됨)
+.secret.local
+functions/.secret.local
+
 # 서비스 계정 키 (절대 Git에 올리면 안 됨)
 firebase-service-account.json
 *-service-account.json
