@@ -389,5 +389,29 @@ await check('18. 응답 유실 후 제거·닫기는 서버 저장 유예 뒤 �
   }
 });
 
-assert.equal(cases.length, 18);
+await check('19. 진행 중인 참조 조회가 끝나도 그 사이 추가된 정리 예약 보존', async () => {
+  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 10_000 });
+  try {
+    const first = makeEntry({ verifyReference: true });
+    const later = makeEntry({ storagePath: 'users/user-a/haruLawAttachments/record-a/later.pdf', notBefore: 11_000 });
+    enqueueHaruLawAttachmentCleanup(first);
+    let finishReferenceRead;
+    const deleted = [];
+    const dependencies = {
+      deletePath: async (path) => { deleted.push(path); },
+      isReferenced: () => new Promise((resolve) => { finishReferenceRead = resolve; }),
+    };
+    const running = retryPendingHaruLawAttachmentCleanup('user-a', dependencies);
+    await cleanupHaruLawAttachments([later], dependencies);
+    finishReferenceRead(true);
+    await running;
+    mock.timers.tick(1_000);
+    await new Promise(setImmediate);
+    assert.deepEqual(deleted, [later.storagePath]);
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+assert.equal(cases.length, 19);
 console.log(`하루LAW 첨부 정리 ${cases.length}개 시나리오 통과`);

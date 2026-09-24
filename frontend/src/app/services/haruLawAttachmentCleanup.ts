@@ -238,12 +238,19 @@ export async function retryPendingHaruLawAttachmentCleanup(
   const result = await cleanupEntries(ownedEntries, dependencies, false);
   const completedPaths = new Set([...result.deletedPaths, ...result.preservedPaths]);
   const latestQueue = readCleanupQueue();
-  writeCleanupQueue(latestQueue.filter((entry) => entry.uid !== uid || !completedPaths.has(entry.storagePath)));
+  const remainingQueue = latestQueue.filter((entry) => entry.uid !== uid || !completedPaths.has(entry.storagePath));
+  writeCleanupQueue(remainingQueue);
+  const remainingOwned = remainingQueue.filter((entry) => entry.uid === uid);
   if (result.failedPaths.length > 0) {
     result.nextRetryAt = scheduleFailedCleanupRetry(uid, dependencies, result.nextRetryAt);
   } else {
     scheduledCleanupFailureCounts.delete(uid);
     if (result.nextRetryAt) {
+      scheduleDeferredHaruLawAttachmentCleanup(uid, result.nextRetryAt, dependencies);
+    } else if (remainingOwned.length > 0) {
+      const now = Date.now();
+      result.nextRetryAt = Math.min(...remainingOwned.map((entry) =>
+        (entry.notBefore || 0) > now ? entry.notBefore! : now + 30_000));
       scheduleDeferredHaruLawAttachmentCleanup(uid, result.nextRetryAt, dependencies);
     } else {
       const scheduled = scheduledCleanupRetries.get(uid);
