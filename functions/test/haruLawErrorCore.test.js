@@ -77,6 +77,16 @@ async function run() {
     ),
     null,
   );
+  const largePdf = Buffer.alloc((2 * 1024 * 1024) + 256, 0x41);
+  Buffer.from('%PDF-1.7').copy(largePdf, 0);
+  Buffer.from('\ntrailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n0\n%%EOF').copy(
+    largePdf,
+    largePdf.length - 72,
+  );
+  assert.equal(
+    getHaruLawAttachmentContentError('application/pdf', largePdf),
+    'ATTACHMENT_PDF_UNREADABLE',
+  );
   assert.equal(
     getHaruLawAttachmentContentError('application/zip', Buffer.from('PK')),
     'ATTACHMENT_UNSUPPORTED_TYPE',
@@ -126,6 +136,20 @@ async function run() {
       `AI HTTP ${status} must be temporary`,
     );
   }
+  assert.equal(
+    classifyHaruLawAiError(
+      new TypeError('fetch failed', { cause: Object.assign(new Error('socket reset'), { code: 'ECONNRESET' }) }),
+      false,
+    ),
+    'HARULAW_AI_TEMPORARY_UNAVAILABLE',
+  );
+  assert.equal(
+    classifyHaruLawAiError(
+      new TypeError('fetch failed', { cause: Object.assign(new Error('dns failed'), { code: 'ENOTFOUND' }) }),
+      true,
+    ),
+    'HARULAW_AI_TEMPORARY_UNAVAILABLE',
+  );
   assert.equal(classifyHaruLawAiError(new Error('unexpected implementation error'), false), 'HARULAW_PROCESSING_FAILED');
 
   const indexSource = fs.readFileSync(path.resolve(__dirname, '../src/index.ts'), 'utf8');

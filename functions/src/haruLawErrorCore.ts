@@ -35,15 +35,18 @@ export type HaruLawErrorDescriptor = {
 const ALLOWED_MIME_TYPES = new Set<string>(HARULAW_ALLOWED_ATTACHMENT_MIME_TYPES);
 const TEMPORARY_ERROR_CODES = new Set([
   'ECONNRESET',
+  'ECONNREFUSED',
   'ETIMEDOUT',
   'ECONNABORTED',
   'EAI_AGAIN',
+  'ENOTFOUND',
   'ENETUNREACH',
   'RESOURCE_EXHAUSTED',
   'UNAVAILABLE',
   'DEADLINE_EXCEEDED',
 ]);
 export const HARULAW_LAW_API_MAX_ATTEMPTS = 3;
+const MAX_PDF_STRUCTURE_SCAN_BYTES = 1024 * 1024;
 
 export class HaruLawApiTemporaryError extends Error {
   readonly code = 'LAW_API_TEMPORARY_UNAVAILABLE';
@@ -71,7 +74,14 @@ function isIsoBmffHeif(bytes: Uint8Array): boolean {
     .some((brand) => brands.includes(brand));
 }
 
-function hasPdfEncryptionDictionary(pdf: string): boolean {
+function getPdfStructureTail(bytes: Uint8Array): string {
+  const start = Math.max(0, bytes.byteLength - MAX_PDF_STRUCTURE_SCAN_BYTES);
+  const tail = bytes.subarray(start);
+  return Buffer.from(tail.buffer, tail.byteOffset, tail.byteLength).toString('latin1');
+}
+
+function hasPdfEncryptionDictionary(bytes: Uint8Array): boolean {
+  const pdf = getPdfStructureTail(bytes);
   const trailerPattern = /(?:^|[\r\n])trailer[\t \r\n]*<</g;
   for (let match = trailerPattern.exec(pdf); match; match = trailerPattern.exec(pdf)) {
     const end = pdf.indexOf('startxref', match.index);
@@ -105,8 +115,7 @@ export function getHaruLawAttachmentContentError(
     if (bytes.length < 8 || !startsWithBytes(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d])) {
       return 'ATTACHMENT_PDF_UNREADABLE';
     }
-    const searchablePdf = Buffer.from(bytes).toString('latin1');
-    if (hasPdfEncryptionDictionary(searchablePdf)) {
+    if (hasPdfEncryptionDictionary(bytes)) {
       return 'ATTACHMENT_PDF_UNREADABLE';
     }
     return null;
@@ -125,23 +134,49 @@ export function getHaruLawAttachmentContentError(
   return signatureMatches ? null : 'ATTACHMENT_UNSUPPORTED_TYPE';
 }
 
-function readStatus(error: unknown): number | undefined {
-  const candidate = error as { code?: unknown; status?: unknown; response?: { status?: unknown } } | null;
-  const status = Number(candidate?.response?.status ?? candidate?.status ?? candidate?.code);
-  return Number.isFinite(status) ? status : undefined;
+function readErrorChain(error: unknown): Array<{
+  code?: unknown;
+  status?: unknown;
+  response?: { status?: unknown; data?: unknown };
+  cause?: unknown;
+}> {
+  const chain = [];
+  let current = error;
+  const seen = new Set<unknown>();
+  while (current && typeof current === 'object' && !seen.has(current) && chain.length < 6) {
+    seen.add(current);
+    const candidate = current as {
+      code?: unknown;
+      status?: unknown;
+      response?: { status?: unknown; data?: unknown };
+      cause?: unknown;
+    };
+    chain.push(candidate);
+    current = candidate.cause;
+  }
+  return chain;
 }
 
-function readCode(error: unknown): string {
-  const candidate = error as { code?: unknown; status?: unknown } | null;
-  return String(candidate?.code ?? candidate?.status ?? '').trim().toUpperCase();
+function readStatus(error: unknown): number | undefined {
+  for (const candidate of readErrorChain(error)) {
+    const status = Number(candidate?.response?.status ?? candidate?.status ?? candidate?.code);
+    if (Number.isFinite(status)) return status;
+  }
+  return undefined;
+}
+
+function hasTemporaryErrorCode(error: unknown): boolean {
+  return readErrorChain(error).some((candidate) => {
+    const code = String(candidate?.code ?? '').trim().toUpperCase();
+    return TEMPORARY_ERROR_CODES.has(code);
+  });
 }
 
 export function isRetryableLawApiError(error: unknown): boolean {
   const candidate = error as { response?: unknown } | null;
   const status = readStatus(error);
-  const code = readCode(error);
   if (status !== undefined) return status === 429 || status >= 500;
-  if (TEMPORARY_ERROR_CODES.has(code)) return true;
+  if (hasTemporaryErrorCode(error)) return true;
   return !candidate?.response;
 }
 
@@ -170,8 +205,7 @@ export async function runHaruLawApiRequestWithRetry<T>(
 
 export function isTemporaryHaruLawAiError(error: unknown): boolean {
   const status = readStatus(error);
-  const code = readCode(error);
-  return (status !== undefined && (status === 429 || status >= 500)) || TEMPORARY_ERROR_CODES.has(code);
+  return (status !== undefined && (status === 429 || status >= 500)) || hasTemporaryErrorCode(error);
 }
 
 export function classifyHaruLawAiError(
