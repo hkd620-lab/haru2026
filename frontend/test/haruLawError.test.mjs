@@ -72,6 +72,7 @@ assert.equal(hasReadableHaruLawPdfHeader(Buffer.from('not pdf content')), false)
 assert.equal(hasReadableHaruLawPdfHeader(Buffer.from('%PDF-')), false);
 
 const resultChatSource = await readFile(new URL('../src/app/components/ResultChatModal.tsx', import.meta.url), 'utf8');
+const recordPageSource = await readFile(new URL('../src/app/pages/RecordPage.tsx', import.meta.url), 'utf8');
 assert.match(
   resultChatSource,
   /attachments: pendingAttachmentsRef\.current\.length > 0\s+\? pendingAttachmentsRef\.current\s+: undefined/,
@@ -82,6 +83,11 @@ assert.match(
   resultChatSource,
   /const uploadScopeId = attachmentScopeRef\.current;[\s\S]*uploadingFilesRef\.current = true;[\s\S]*await file\.slice\(0, 8\)\.arrayBuffer\(\)\);[\s\S]*attachmentScopeRef\.current !== uploadScopeId/,
   'PDF validation must be tracked as active and abort if its attachment scope changes',
+);
+assert.match(
+  recordPageSource,
+  /setUploadingLawFiles\(true\);[\s\S]*try \{[\s\S]*try \{[\s\S]*await file\.slice\(0, 8\)\.arrayBuffer\(\)\);[\s\S]*catch \{[\s\S]*ATTACHMENT_PDF_UNREADABLE[\s\S]*finally \{[\s\S]*event\.target\.value = ''/,
+  'RecordPage must report PDF header read failures and always reset the file input',
 );
 
 console.log('haruLAW frontend error mapping tests passed');

@@ -33,7 +33,6 @@ export type HaruLawErrorDescriptor = {
 };
 
 const ALLOWED_MIME_TYPES = new Set<string>(HARULAW_ALLOWED_ATTACHMENT_MIME_TYPES);
-const TEMPORARY_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 const TEMPORARY_ERROR_CODES = new Set([
   'ECONNRESET',
   'ETIMEDOUT',
@@ -151,7 +150,7 @@ export async function runHaruLawApiRequestWithRetry<T>(
 export function isTemporaryHaruLawAiError(error: unknown): boolean {
   const status = readStatus(error);
   const code = readCode(error);
-  return (status !== undefined && TEMPORARY_STATUS_CODES.has(status)) || TEMPORARY_ERROR_CODES.has(code);
+  return (status !== undefined && (status === 429 || status >= 500)) || TEMPORARY_ERROR_CODES.has(code);
 }
 
 export function classifyHaruLawAiError(

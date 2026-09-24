@@ -105,6 +105,13 @@ async function run() {
     classifyHaruLawAiError({ status: 503 }, false),
     'HARULAW_AI_TEMPORARY_UNAVAILABLE',
   );
+  for (const status of [501, 507, 520, 522]) {
+    assert.equal(
+      classifyHaruLawAiError({ status }, false),
+      'HARULAW_AI_TEMPORARY_UNAVAILABLE',
+      `AI HTTP ${status} must be temporary`,
+    );
+  }
   assert.equal(classifyHaruLawAiError(new Error('unexpected implementation error'), false), 'HARULAW_PROCESSING_FAILED');
 
   const indexSource = fs.readFileSync(path.resolve(__dirname, '../src/index.ts'), 'utf8');
