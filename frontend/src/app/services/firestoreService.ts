@@ -2113,6 +2113,7 @@ class FirestoreService {
 
   private isExportBodyExcluded(key: string): boolean {
     if (this.EXPORT_EXCLUDED_FIELDS.has(key)) return true;
+    if (key === 'haruraw_attachments') return true;
     if (key.endsWith('_images')) return true;
     if (key.endsWith('_imageMeta')) return true;
     if (key.endsWith('_storagePath')) return true;
@@ -2184,7 +2185,10 @@ class FirestoreService {
       if (typeof v === 'string' && v) {
         refs.add(v);
       } else if (Array.isArray(v)) {
-        for (const item of v) { if (typeof item === 'string' && item) refs.add(item); }
+        for (const item of v) {
+          if (typeof item === 'string' && item) refs.add(item);
+          else addImageMeta(item);
+        }
       }
     }
 
@@ -2195,7 +2199,10 @@ class FirestoreService {
         const val = record[`${prefix}_${suffix}`];
         if (typeof val === 'string' && val) refs.add(val);
         else if (Array.isArray(val)) {
-          for (const item of val) { if (typeof item === 'string' && item) refs.add(item); }
+          for (const item of val) {
+            if (typeof item === 'string' && item) refs.add(item);
+            else addImageMeta(item);
+          }
         }
       }
     }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { collection, doc, getDoc, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, getDocsFromServer, limit, orderBy, query } from 'firebase/firestore';
 import { Paperclip, X } from 'lucide-react';
-import { ref as storageRef, uploadBytes } from 'firebase/storage';
+import { deleteObject, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 import ReactMarkdown from 'react-markdown';
@@ -17,6 +17,15 @@ import {
   type ResultChatSearchPreference,
 } from '../services/resultChatService';
 import { firestoreService } from '../services/firestoreService';
+import {
+  buildHaruLawCleanupEntries,
+  HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS,
+  cleanupHaruLawAttachments,
+  enqueueHaruLawAttachmentCleanup,
+  retryPendingHaruLawAttachmentCleanup,
+  scheduleDeferredHaruLawAttachmentCleanup,
+  type HaruLawAttachmentCleanupEntry,
+} from '../services/haruLawAttachmentCleanup';
 import { useSubscription } from '../hooks/useSubscription';
 
 // functions/src/index.ts 의 WEB_SEARCH_LIMITS 와 동일하게 유지할 것
@@ -165,6 +174,29 @@ const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
 const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
 const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
 
+async function deleteHaruLawAttachmentPath(storagePath: string): Promise<void> {
+  await deleteObject(storageRef(storage, storagePath));
+}
+
+async function isHaruLawAttachmentReferenced(entry: HaruLawAttachmentCleanupEntry): Promise<boolean> {
+  const messagesRef = collection(
+    db,
+    'users',
+    entry.uid,
+    'records',
+    entry.recordId,
+    'resultThreads',
+    entry.threadId,
+    'messages',
+  );
+  const snap = await getDocsFromServer(messagesRef);
+  return snap.docs.some((item) => {
+    const attachments = (item.data() as ResultChatMessage)?.attachments;
+    return Array.isArray(attachments)
+      && attachments.some((attachment) => attachment?.storagePath === entry.storagePath);
+  });
+}
+
 export function ResultChatModal({
   isOpen,
   onClose,
@@ -190,8 +222,16 @@ export function ResultChatModal({
   const [webSearchUsage, setWebSearchUsage] = useState<{ limit: number; remaining: number } | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<HaruLawAttachmentRef[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [closingAttachments, setClosingAttachments] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const requestInFlightRef = useRef(false);
+  const uploadingFilesRef = useRef(false);
+  const closingAttachmentsRef = useRef(false);
+  const activeUploadScopeRef = useRef(0);
+  const attachmentScopeRef = useRef(0);
+  const uploadingAttachmentsRef = useRef<HaruLawAttachmentRef[]>([]);
+  const pendingAttachmentsRef = useRef<HaruLawAttachmentRef[]>([]);
+  const attemptedAttachmentPathsRef = useRef<Set<string>>(new Set());
 
   const threadId = useMemo(() => getThreadId(config.sourceKey, sourceIndex), [config.sourceKey, sourceIndex]);
   const isHaruLaw = config.sourceKey === 'haruraw_sayu';
@@ -207,6 +247,8 @@ export function ResultChatModal({
     setPendingConfirmation(null);
     requestInFlightRef.current = false;
     setSavedMemoIds({});
+    pendingAttachmentsRef.current = [];
+    attemptedAttachmentPathsRef.current.clear();
     setPendingAttachments([]);
 
     const loadMessages = async () => {
@@ -255,6 +297,65 @@ export function ResultChatModal({
     };
   }, [isOpen, uid, recordId, threadId, subscription?.plan]);
 
+  useEffect(() => {
+    if (!isOpen || !uid) return;
+    const dependencies = {
+      deletePath: deleteHaruLawAttachmentPath,
+      isReferenced: isHaruLawAttachmentReferenced,
+    };
+    void retryPendingHaruLawAttachmentCleanup(uid, dependencies)
+      .then((result) => {
+        if (result.nextRetryAt) {
+          scheduleDeferredHaruLawAttachmentCleanup(uid, result.nextRetryAt, dependencies);
+        }
+      })
+      .catch((error) => {
+        console.warn('하루LAW 첨부 지연 정리 재시도 실패:', error);
+      });
+  }, [isOpen, uid]);
+
+  useEffect(() => {
+    if (!isOpen || !uid || !recordId) return;
+    const scopeId = attachmentScopeRef.current + 1;
+    attachmentScopeRef.current = scopeId;
+    return () => {
+      if (attachmentScopeRef.current === scopeId) {
+        attachmentScopeRef.current += 1;
+      }
+      const attachments = [
+        ...pendingAttachmentsRef.current,
+        ...uploadingAttachmentsRef.current,
+      ];
+      if (attachments.length === 0) return;
+      const isInFlight = requestInFlightRef.current || uploadingFilesRef.current;
+      const notBefore = isInFlight ? Date.now() + HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS : undefined;
+      const entries = buildHaruLawCleanupEntries(
+        uid,
+        recordId,
+        threadId,
+        attachments,
+        attemptedAttachmentPathsRef.current,
+        notBefore,
+      );
+      pendingAttachmentsRef.current = [];
+      uploadingAttachmentsRef.current = [];
+      if (isInFlight) {
+        entries.forEach(enqueueHaruLawAttachmentCleanup);
+        if (notBefore) {
+          scheduleDeferredHaruLawAttachmentCleanup(uid, notBefore, {
+            deletePath: deleteHaruLawAttachmentPath,
+            isReferenced: isHaruLawAttachmentReferenced,
+          });
+        }
+        return;
+      }
+      void cleanupHaruLawAttachments(entries, {
+        deletePath: deleteHaruLawAttachmentPath,
+        isReferenced: isHaruLawAttachmentReferenced,
+      });
+    };
+  }, [isOpen, uid, recordId, threadId]);
+
   // 확인창·새 답변이 항상 화면에 보이도록 대화 영역을 맨 아래로 스크롤
   useEffect(() => {
     const el = scrollAreaRef.current;
@@ -266,13 +367,47 @@ export function ResultChatModal({
 
   if (!isOpen) return null;
 
-  const openSavedMemo = (memoRecordId: string) => {
+  const closeWithPendingCleanup = async (): Promise<boolean> => {
+    if (uploadingFilesRef.current || requestInFlightRef.current || loading) {
+      toast.info('파일 전송이 끝난 뒤 창을 닫아 주세요.');
+      return false;
+    }
+    if (closingAttachmentsRef.current) return false;
+    closingAttachmentsRef.current = true;
+    setClosingAttachments(true);
+    try {
+      const attachments = pendingAttachmentsRef.current;
+      if (attachments.length > 0) {
+        const entries = buildHaruLawCleanupEntries(
+          uid,
+          recordId,
+          threadId,
+          attachments,
+          attemptedAttachmentPathsRef.current,
+        );
+        await cleanupHaruLawAttachments(entries, {
+          deletePath: deleteHaruLawAttachmentPath,
+          isReferenced: isHaruLawAttachmentReferenced,
+        });
+        pendingAttachmentsRef.current = [];
+        attemptedAttachmentPathsRef.current.clear();
+        setPendingAttachments([]);
+      }
+      onClose();
+      return true;
+    } finally {
+      closingAttachmentsRef.current = false;
+      setClosingAttachments(false);
+    }
+  };
+
+  const openSavedMemo = async (memoRecordId: string) => {
     if (!memoRecordId) return;
+    if (!await closeWithPendingCleanup()) return;
     if (onMemoSaved) {
       onMemoSaved(memoRecordId);
       return;
     }
-    onClose();
     navigate('/sayu', {
       state: {
         filterFormat: '메모',
@@ -289,6 +424,10 @@ export function ResultChatModal({
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (closingAttachmentsRef.current || uploadingFilesRef.current || requestInFlightRef.current) {
+      event.target.value = '';
+      return;
+    }
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
     if (!isHaruLaw || !isPaidUser) {
@@ -326,28 +465,96 @@ export function ResultChatModal({
       }
     }
 
+    const uploaded: HaruLawAttachmentRef[] = [];
+    const uploadScopeId = attachmentScopeRef.current;
+    activeUploadScopeRef.current = uploadScopeId;
+    uploadingAttachmentsRef.current = [];
+    uploadingFilesRef.current = true;
     setUploadingFiles(true);
     try {
-      const uploaded: HaruLawAttachmentRef[] = [];
       for (let i = 0; i < toUpload.length; i += 1) {
         const file = toUpload[i];
         const safeName = `${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
         const path = `users/${uid}/haruLawAttachments/${recordId}/${safeName}`;
         await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
-        uploaded.push({ storagePath: path, mimeType: file.type, fileName: file.name });
+        const attachment = { storagePath: path, mimeType: file.type, fileName: file.name };
+        uploaded.push(attachment);
+        uploadingAttachmentsRef.current = [...uploaded];
+        if (attachmentScopeRef.current !== uploadScopeId) {
+          const notBefore = Date.now() + HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS;
+          const [entry] = buildHaruLawCleanupEntries(
+            uid,
+            recordId,
+            threadId,
+            [attachment],
+            new Set(),
+            notBefore,
+          );
+          if (entry) {
+            enqueueHaruLawAttachmentCleanup(entry);
+            scheduleDeferredHaruLawAttachmentCleanup(uid, notBefore, {
+              deletePath: deleteHaruLawAttachmentPath,
+              isReferenced: isHaruLawAttachmentReferenced,
+            });
+          }
+        }
       }
-      setPendingAttachments((prev) => [...prev, ...uploaded]);
+      if (attachmentScopeRef.current !== uploadScopeId) return;
+      const next = [...pendingAttachmentsRef.current, ...uploaded];
+      uploadingAttachmentsRef.current = [];
+      pendingAttachmentsRef.current = next;
+      setPendingAttachments(next);
     } catch (error) {
       console.error('하루LAW 첨부 업로드 실패:', error);
+      if (uploaded.length > 0) {
+        await cleanupHaruLawAttachments(
+          buildHaruLawCleanupEntries(uid, recordId, threadId, uploaded, new Set()),
+          {
+            deletePath: deleteHaruLawAttachmentPath,
+            isReferenced: isHaruLawAttachmentReferenced,
+          },
+        );
+      }
+      uploadingAttachmentsRef.current = [];
       toast.error('파일 업로드에 실패했습니다. 다시 시도해 주세요.');
     } finally {
-      setUploadingFiles(false);
+      if (activeUploadScopeRef.current === uploadScopeId) {
+        activeUploadScopeRef.current = 0;
+        uploadingAttachmentsRef.current = [];
+        uploadingFilesRef.current = false;
+        setUploadingFiles(false);
+      }
       event.target.value = '';
     }
   };
 
-  const removeAttachment = (index: number) => {
-    setPendingAttachments((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+  const removeAttachment = async (index: number) => {
+    if (uploadingFilesRef.current || requestInFlightRef.current) return;
+    const attachment = pendingAttachmentsRef.current[index];
+    if (!attachment) return;
+    const next = pendingAttachmentsRef.current.filter((_, itemIndex) => itemIndex !== index);
+    pendingAttachmentsRef.current = next;
+    setPendingAttachments(next);
+    setPendingConfirmation((current) => current
+      ? {
+        ...current,
+        attachments: current.attachments?.filter((item) => item.storagePath !== attachment.storagePath),
+      }
+      : current);
+    await cleanupHaruLawAttachments(
+      buildHaruLawCleanupEntries(
+        uid,
+        recordId,
+        threadId,
+        [attachment],
+        attemptedAttachmentPathsRef.current,
+      ),
+      {
+        deletePath: deleteHaruLawAttachmentPath,
+        isReferenced: isHaruLawAttachmentReferenced,
+      },
+    );
+    attemptedAttachmentPathsRef.current.delete(attachment.storagePath);
   };
 
   const sendQuestion = async (
@@ -356,7 +563,7 @@ export function ResultChatModal({
     options: { skipOptimisticUser?: boolean; attachments?: HaruLawAttachmentRef[] } = {},
   ) => {
     const trimmed = text.trim();
-    if (!trimmed || loading || requestInFlightRef.current) return;
+    if (!trimmed || loading || requestInFlightRef.current || closingAttachmentsRef.current) return;
     if (searchPreference === 'auto' && pendingConfirmation) return;
     if (uploadingFiles) {
       toast.info('파일 업로드가 끝난 뒤 전송해 주세요.');
@@ -365,7 +572,10 @@ export function ResultChatModal({
 
     const attachmentsToSend = 'attachments' in options
       ? options.attachments
-      : (pendingAttachments.length > 0 ? pendingAttachments : undefined);
+      : (pendingAttachmentsRef.current.length > 0 ? pendingAttachmentsRef.current : undefined);
+    attachmentsToSend?.forEach((attachment) => {
+      attemptedAttachmentPathsRef.current.add(attachment.storagePath);
+    });
 
     requestInFlightRef.current = true;
     setLoading(true);
@@ -425,6 +635,8 @@ export function ResultChatModal({
         setStatusNotice(response.notice || '외부자료 확인을 실행하지 못했습니다. 잠시 후 다시 시도해 주세요.');
         return;
       }
+      pendingAttachmentsRef.current = [];
+      attemptedAttachmentPathsRef.current.clear();
       setPendingAttachments([]);
       setMessages((prev) => [...prev, {
         role: 'assistant',
@@ -454,7 +666,7 @@ export function ResultChatModal({
     if (!text || savingIndex !== null) return;
     const savedMemoId = savedMemoIds[index];
     if (savedMemoId) {
-      openSavedMemo(savedMemoId);
+      await openSavedMemo(savedMemoId);
       return;
     }
     setSavingIndex(index);
@@ -470,7 +682,7 @@ export function ResultChatModal({
       });
       setSavedMemoIds((prev) => ({ ...prev, [index]: memoRecordId }));
       toast.success('AI 답변을 나의 기록에 저장했습니다.');
-      openSavedMemo(memoRecordId);
+      await openSavedMemo(memoRecordId);
     } catch (error) {
       console.error('메모 저장 실패:', error);
       toast.error('메모 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
@@ -482,14 +694,14 @@ export function ResultChatModal({
   const monthlyAiBlocked = typeof pendingConfirmation?.monthlyAiRemainingCount === 'number'
     && pendingConfirmation.monthlyAiRemainingCount <= 0;
   const webSearchBlocked = pendingConfirmation?.webSearchRemainingCount === 0 || monthlyAiBlocked;
-  const choiceActionDisabled = loading || monthlyAiBlocked;
+  const choiceActionDisabled = loading || closingAttachments || monthlyAiBlocked;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="결과 기반 AI 대화"
-      onClick={onClose}
+      onClick={() => { void closeWithPendingCleanup(); }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -522,7 +734,7 @@ export function ResultChatModal({
               {title || config.label}
             </h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="닫기" style={{ width: 34, height: 34, borderRadius: 999, border: '1px solid #E5E7EB', background: '#FFFFFF', cursor: 'pointer', flexShrink: 0 }}>
+          <button type="button" disabled={closingAttachments} onClick={() => { void closeWithPendingCleanup(); }} aria-label="닫기" style={{ width: 34, height: 34, borderRadius: 999, border: '1px solid #E5E7EB', background: '#FFFFFF', cursor: closingAttachments ? 'wait' : 'pointer', flexShrink: 0 }}>
             <X size={18} />
           </button>
         </header>
@@ -538,7 +750,7 @@ export function ResultChatModal({
               <button
                 key={item}
                 type="button"
-                disabled={loading || uploadingFiles || isChoicePending}
+                disabled={loading || uploadingFiles || closingAttachments || isChoicePending}
                 onClick={() => sendQuestion(item)}
                 style={{
                   minHeight: 34,
@@ -549,7 +761,7 @@ export function ResultChatModal({
                   color: '#4A5A2C',
                   fontSize: 12,
                   fontWeight: 800,
-                  cursor: loading || uploadingFiles || isChoicePending ? 'not-allowed' : 'pointer',
+                  cursor: loading || uploadingFiles || closingAttachments || isChoicePending ? 'not-allowed' : 'pointer',
                 }}
               >
                 {item}
@@ -569,9 +781,10 @@ export function ResultChatModal({
                   </span>
                   <button
                     type="button"
-                    onClick={() => removeAttachment(index)}
+                    disabled={loading || uploadingFiles || closingAttachments}
+                    onClick={() => { void removeAttachment(index); }}
                     aria-label="첨부 제거"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#94A3B8', lineHeight: 1, fontSize: 14 }}
+                    style={{ background: 'none', border: 'none', cursor: loading || uploadingFiles || closingAttachments ? 'not-allowed' : 'pointer', padding: 0, color: '#94A3B8', lineHeight: 1, fontSize: 14 }}
                   >
                     x
                   </button>
@@ -700,7 +913,7 @@ export function ResultChatModal({
                 </button>
                 <button
                   type="button"
-                  disabled={loading || webSearchBlocked}
+                  disabled={loading || closingAttachments || webSearchBlocked}
                   onClick={() => sendQuestion(pendingConfirmation.question, 'web_confirmed', { attachments: pendingConfirmation.attachments })}
                   style={{
                     minHeight: 34,
@@ -711,7 +924,7 @@ export function ResultChatModal({
                     color: webSearchBlocked ? '#64748B' : '#FFFFFF',
                     fontSize: 12,
                     fontWeight: 900,
-                    cursor: loading || webSearchBlocked ? 'not-allowed' : 'pointer',
+                    cursor: loading || closingAttachments || webSearchBlocked ? 'not-allowed' : 'pointer',
                   }}
                 >
                   최신 외부자료 확인
@@ -771,7 +984,7 @@ export function ResultChatModal({
               {isPaidUser ? (
                 <button
                   type="button"
-                  disabled={loading || uploadingFiles || isChoicePending || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES}
+                  disabled={loading || uploadingFiles || closingAttachments || isChoicePending || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES}
                   onClick={() => fileInputRef.current?.click()}
                   style={{
                     alignSelf: 'flex-start',
@@ -783,7 +996,7 @@ export function ResultChatModal({
                     color: '#475569',
                     fontSize: 12,
                     fontWeight: 800,
-                    cursor: loading || uploadingFiles || isChoicePending || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES ? 'not-allowed' : 'pointer',
+                    cursor: loading || uploadingFiles || closingAttachments || isChoicePending || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES ? 'not-allowed' : 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 5,
@@ -803,7 +1016,7 @@ export function ResultChatModal({
             <input
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              disabled={loading || uploadingFiles || isChoicePending}
+              disabled={loading || uploadingFiles || closingAttachments || isChoicePending}
               placeholder="나의 기록을 바탕으로 자유롭게 질문해 보세요."
               style={{
                 flex: 1,
@@ -819,17 +1032,17 @@ export function ResultChatModal({
             />
             <button
               type="submit"
-              disabled={loading || uploadingFiles || isChoicePending || !question.trim()}
+              disabled={loading || uploadingFiles || closingAttachments || isChoicePending || !question.trim()}
               style={{
                 minWidth: 70,
                 height: 42,
                 borderRadius: 10,
                 border: 'none',
-                backgroundColor: loading || uploadingFiles || isChoicePending || !question.trim() ? '#CBD5E1' : '#1A3C6E',
+                backgroundColor: loading || uploadingFiles || closingAttachments || isChoicePending || !question.trim() ? '#CBD5E1' : '#1A3C6E',
                 color: '#FFFFFF',
                 fontSize: 13,
                 fontWeight: 900,
-                cursor: loading || uploadingFiles || isChoicePending || !question.trim() ? 'not-allowed' : 'pointer',
+                cursor: loading || uploadingFiles || closingAttachments || isChoicePending || !question.trim() ? 'not-allowed' : 'pointer',
               }}
             >
               전송
