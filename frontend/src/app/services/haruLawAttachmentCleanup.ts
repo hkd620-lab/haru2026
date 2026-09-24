@@ -23,6 +23,7 @@ export type HaruLawAttachmentCleanupResult = {
 };
 
 const PENDING_HARULAW_ATTACHMENT_CLEANUP_KEY = 'haru2026_pending_harulaw_attachment_cleanup_v1';
+const scheduledCleanupFailureCounts = new Map<string, number>();
 const scheduledCleanupRetries = new Map<string, {
   retryAt: number;
   timer: ReturnType<typeof setTimeout>;
@@ -213,18 +214,34 @@ export function scheduleDeferredHaruLawAttachmentCleanup(
   if (existing && existing.retryAt <= retryAt) return;
   if (existing) clearTimeout(existing.timer);
 
+  const retryAfterFailure = (nextRetryAt?: number) => {
+    const failureCount = Math.min((scheduledCleanupFailureCounts.get(uid) ?? 0) + 1, 5);
+    scheduledCleanupFailureCounts.set(uid, failureCount);
+    const backoffMs = Math.min(30_000 * 2 ** (failureCount - 1), 300_000);
+    scheduleDeferredHaruLawAttachmentCleanup(
+      uid,
+      Math.min(nextRetryAt ?? Number.POSITIVE_INFINITY, Date.now() + backoffMs),
+      dependencies,
+    );
+  };
+
   const timer = setTimeout(() => {
     const scheduled = scheduledCleanupRetries.get(uid);
     if (!scheduled || scheduled.timer !== timer) return;
     scheduledCleanupRetries.delete(uid);
     void retryPendingHaruLawAttachmentCleanup(uid, dependencies)
       .then((result) => {
+        if (result.failedPaths.length > 0) {
+          retryAfterFailure(result.nextRetryAt);
+          return;
+        }
+        scheduledCleanupFailureCounts.delete(uid);
         if (result.nextRetryAt) {
           scheduleDeferredHaruLawAttachmentCleanup(uid, result.nextRetryAt, dependencies);
         }
       })
       .catch(() => {
-        // 일반 삭제 실패는 큐에 남으며 다음 모달 진입 때 다시 시도한다.
+        retryAfterFailure();
       });
   }, Math.max(0, retryAt - Date.now()));
 
