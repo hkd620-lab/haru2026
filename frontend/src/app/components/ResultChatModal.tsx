@@ -173,7 +173,6 @@ type HaruLawErrorNotice = {
   retryRequest?: {
     question: string;
     searchPreference: ResultChatSearchPreference;
-    attachments?: HaruLawAttachmentRef[];
   };
 };
 
@@ -690,7 +689,7 @@ export function ResultChatModal({
         setHaruLawErrorNotice({
           userError,
           retryRequest: userError.retryable
-            ? { question: trimmed, searchPreference, attachments: attachmentsToSend }
+            ? { question: trimmed, searchPreference }
             : undefined,
         });
       } else {
@@ -1003,7 +1002,11 @@ export function ResultChatModal({
                 onClick={() => {
                   const retry = haruLawErrorNotice.retryRequest;
                   if (!retry) return;
-                  sendQuestion(retry.question, retry.searchPreference, { attachments: retry.attachments });
+                  sendQuestion(retry.question, retry.searchPreference, {
+                    attachments: pendingAttachmentsRef.current.length > 0
+                      ? pendingAttachmentsRef.current
+                      : undefined,
+                  });
                 }}
                 style={{ marginTop: 8, minHeight: 30, padding: '0 10px', borderRadius: 7, border: '1px solid #DC2626', backgroundColor: '#FFFFFF', color: '#991B1B', fontSize: 12, fontWeight: 900, cursor: loading ? 'wait' : 'pointer' }}
               >

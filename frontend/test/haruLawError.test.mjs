@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
   getHaruLawUserError,
   getHaruLawUserErrorByReason,
@@ -69,5 +70,13 @@ for (const unknownError of [new Error('raw secret provider failure'), { code: 'f
 assert.equal(hasReadableHaruLawPdfHeader(Buffer.from('%PDF-1.7')), true);
 assert.equal(hasReadableHaruLawPdfHeader(Buffer.from('not pdf content')), false);
 assert.equal(hasReadableHaruLawPdfHeader(Buffer.from('%PDF-')), false);
+
+const resultChatSource = await readFile(new URL('../src/app/components/ResultChatModal.tsx', import.meta.url), 'utf8');
+assert.match(
+  resultChatSource,
+  /attachments: pendingAttachmentsRef\.current\.length > 0\s+\? pendingAttachmentsRef\.current\s+: undefined/,
+  'retry must use the current pending attachments after the user removes or replaces a file',
+);
+assert.doesNotMatch(resultChatSource, /retryRequest: userError\.retryable[\s\S]{0,160}attachments: attachmentsToSend/);
 
 console.log('haruLAW frontend error mapping tests passed');
