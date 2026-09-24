@@ -18,6 +18,8 @@ import {
 } from '../services/resultChatService';
 import { firestoreService } from '../services/firestoreService';
 import {
+  buildHaruLawCleanupEntries,
+  HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS,
   cleanupHaruLawAttachments,
   enqueueHaruLawAttachmentCleanup,
   retryPendingHaruLawAttachmentCleanup,
@@ -171,26 +173,6 @@ const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
 ]);
 const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
 const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
-const HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS = 2 * 60 * 1000;
-
-function buildHaruLawCleanupEntries(
-  uid: string,
-  recordId: string,
-  threadId: string,
-  attachments: HaruLawAttachmentRef[],
-  attemptedPaths: Set<string>,
-  notBefore?: number,
-): HaruLawAttachmentCleanupEntry[] {
-  return attachments.map((attachment) => ({
-    ...attachment,
-    uid,
-    recordId,
-    threadId,
-    verifyReference: attemptedPaths.has(attachment.storagePath),
-    ...(notBefore ? { notBefore } : {}),
-  }));
-}
-
 async function deleteHaruLawAttachmentPath(storagePath: string): Promise<void> {
   await deleteObject(storageRef(storage, storagePath));
 }

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { mock } from 'node:test';
 import {
+  buildHaruLawCleanupEntries,
+  HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS,
   cleanupHaruLawAttachments,
   enqueueHaruLawAttachmentCleanup,
   isOwnedHaruLawAttachmentPath,
@@ -298,5 +300,88 @@ await check('15. 연속 예약 실패는 최대 5분 간격으로 재시도하�
   }
 });
 
-assert.equal(cases.length, 15);
+await check('16. 즉시 제거·닫기 정리 실패도 모달 재진입 없이 자동 재시도', async () => {
+  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 10_000 });
+  try {
+    const entry = makeEntry();
+    let deletes = 0;
+    const result = await cleanupHaruLawAttachments([entry], {
+      deletePath: async () => {
+        deletes += 1;
+        if (deletes === 1) throw new Error('offline');
+      },
+      isReferenced: async () => false,
+    });
+    assert.deepEqual(result.failedPaths, [entry.storagePath]);
+    mock.timers.tick(30_000);
+    await new Promise(setImmediate);
+    assert.equal(deletes, 2);
+    mock.timers.tick(300_000);
+    await new Promise(setImmediate);
+    assert.equal(deletes, 2);
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+await check('17. 모달 진입 큐 재시도의 참조 조회 실패도 자동 회복', async () => {
+  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 10_000 });
+  try {
+    enqueueHaruLawAttachmentCleanup(makeEntry({ verifyReference: true }));
+    let reads = 0;
+    let deletes = 0;
+    const result = await retryPendingHaruLawAttachmentCleanup('user-a', {
+      deletePath: async () => { deletes += 1; },
+      isReferenced: async () => {
+        reads += 1;
+        if (reads === 1) throw new Error('offline');
+        return true;
+      },
+    });
+    assert.equal(result.nextRetryAt, 40_000);
+    mock.timers.tick(30_000);
+    await new Promise(setImmediate);
+    assert.equal(reads, 2);
+    assert.equal(deletes, 0);
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+await check('18. 응답 유실 후 제거·닫기는 서버 저장 유예 뒤 참조를 확인해 보존', async () => {
+  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 10_000 });
+  try {
+    const attachment = makeEntry();
+    const attempted = new Set([attachment.storagePath]);
+    const [entry] = buildHaruLawCleanupEntries('user-a', 'record-a', 'haruraw_sayu', [attachment], attempted);
+    assert.equal(entry.verifyReference, true);
+    assert.equal(entry.notBefore, 10_000 + HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS);
+    const [unused] = buildHaruLawCleanupEntries('user-a', 'record-a', 'haruraw_sayu', [attachment], new Set());
+    assert.equal(unused.notBefore, undefined);
+    const [later] = buildHaruLawCleanupEntries('user-a', 'record-a', 'haruraw_sayu', [attachment], attempted, 200_000);
+    assert.equal(later.notBefore, 200_000);
+    let committed = false;
+    let reads = 0;
+    let deletes = 0;
+    const result = await cleanupHaruLawAttachments([entry], {
+      deletePath: async () => { deletes += 1; },
+      isReferenced: async () => { reads += 1; return committed; },
+    });
+    assert.deepEqual(result.deferredPaths, [entry.storagePath]);
+    assert.equal(reads, 0);
+    mock.timers.tick(HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS - 1);
+    await new Promise(setImmediate);
+    assert.equal(reads, 0);
+    assert.equal(deletes, 0);
+    committed = true;
+    mock.timers.tick(1);
+    await new Promise(setImmediate);
+    assert.equal(reads, 1);
+    assert.equal(deletes, 0);
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+assert.equal(cases.length, 18);
 console.log(`하루LAW 첨부 정리 ${cases.length}개 시나리오 통과`);
