@@ -21,6 +21,7 @@ import {
   cleanupHaruLawAttachments,
   enqueueHaruLawAttachmentCleanup,
   retryPendingHaruLawAttachmentCleanup,
+  scheduleDeferredHaruLawAttachmentCleanup,
   type HaruLawAttachmentCleanupEntry,
 } from '../services/haruLawAttachmentCleanup';
 import { useSubscription } from '../hooks/useSubscription';
@@ -314,12 +315,19 @@ export function ResultChatModal({
 
   useEffect(() => {
     if (!isOpen || !uid) return;
-    void retryPendingHaruLawAttachmentCleanup(uid, {
+    const dependencies = {
       deletePath: deleteHaruLawAttachmentPath,
       isReferenced: isHaruLawAttachmentReferenced,
-    }).catch((error) => {
-      console.warn('하루LAW 첨부 지연 정리 재시도 실패:', error);
-    });
+    };
+    void retryPendingHaruLawAttachmentCleanup(uid, dependencies)
+      .then((result) => {
+        if (result.nextRetryAt) {
+          scheduleDeferredHaruLawAttachmentCleanup(uid, result.nextRetryAt, dependencies);
+        }
+      })
+      .catch((error) => {
+        console.warn('하루LAW 첨부 지연 정리 재시도 실패:', error);
+      });
   }, [isOpen, uid]);
 
   useEffect(() => {
@@ -336,18 +344,25 @@ export function ResultChatModal({
       ];
       if (attachments.length === 0) return;
       const isInFlight = requestInFlightRef.current || uploadingFilesRef.current;
+      const notBefore = isInFlight ? Date.now() + HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS : undefined;
       const entries = buildHaruLawCleanupEntries(
         uid,
         recordId,
         threadId,
         attachments,
         attemptedAttachmentPathsRef.current,
-        isInFlight ? Date.now() + HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS : undefined,
+        notBefore,
       );
       pendingAttachmentsRef.current = [];
       uploadingAttachmentsRef.current = [];
       if (isInFlight) {
         entries.forEach(enqueueHaruLawAttachmentCleanup);
+        if (notBefore) {
+          scheduleDeferredHaruLawAttachmentCleanup(uid, notBefore, {
+            deletePath: deleteHaruLawAttachmentPath,
+            isReferenced: isHaruLawAttachmentReferenced,
+          });
+        }
         return;
       }
       void cleanupHaruLawAttachments(entries, {
@@ -476,14 +491,22 @@ export function ResultChatModal({
         uploaded.push(attachment);
         uploadingAttachmentsRef.current = [...uploaded];
         if (attachmentScopeRef.current !== uploadScopeId) {
-          enqueueHaruLawAttachmentCleanup(buildHaruLawCleanupEntries(
+          const notBefore = Date.now() + HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS;
+          const [entry] = buildHaruLawCleanupEntries(
             uid,
             recordId,
             threadId,
             [attachment],
             new Set(),
-            Date.now() + HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS,
-          )[0]);
+            notBefore,
+          );
+          if (entry) {
+            enqueueHaruLawAttachmentCleanup(entry);
+            scheduleDeferredHaruLawAttachmentCleanup(uid, notBefore, {
+              deletePath: deleteHaruLawAttachmentPath,
+              isReferenced: isHaruLawAttachmentReferenced,
+            });
+          }
         }
       }
       if (attachmentScopeRef.current !== uploadScopeId) return;

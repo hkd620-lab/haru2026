@@ -19,9 +19,14 @@ export type HaruLawAttachmentCleanupResult = {
   preservedPaths: string[];
   failedPaths: string[];
   deferredPaths: string[];
+  nextRetryAt?: number;
 };
 
 const PENDING_HARULAW_ATTACHMENT_CLEANUP_KEY = 'haru2026_pending_harulaw_attachment_cleanup_v1';
+const scheduledCleanupRetries = new Map<string, {
+  retryAt: number;
+  timer: ReturnType<typeof setTimeout>;
+}>();
 
 function getStorage(): Storage | null {
   try {
@@ -40,7 +45,10 @@ export function isOwnedHaruLawAttachmentPath(uid: string, recordId: string, stor
   const prefix = `users/${uid}/haruLawAttachments/${recordId}/`;
   if (!storagePath.startsWith(prefix)) return false;
   const fileName = storagePath.slice(prefix.length);
-  return Boolean(fileName) && !fileName.includes('/') && !fileName.includes('..');
+  return Boolean(fileName)
+    && !fileName.includes('/')
+    && fileName !== '.'
+    && fileName !== '..';
 }
 
 function normalizeCleanupEntry(raw: unknown): HaruLawAttachmentCleanupEntry | null {
@@ -145,6 +153,7 @@ async function cleanupEntries(
   for (const entry of uniqueEntries.values()) {
     if ((entry.notBefore || 0) > now) {
       result.deferredPaths.push(entry.storagePath);
+      result.nextRetryAt = Math.min(result.nextRetryAt ?? Number.POSITIVE_INFINITY, entry.notBefore!);
       if (enqueueFailures) enqueueHaruLawAttachmentCleanup(entry);
       continue;
     }
@@ -192,4 +201,32 @@ export async function retryPendingHaruLawAttachmentCleanup(
   const latestQueue = readCleanupQueue();
   writeCleanupQueue(latestQueue.filter((entry) => entry.uid !== uid || !completedPaths.has(entry.storagePath)));
   return result;
+}
+
+export function scheduleDeferredHaruLawAttachmentCleanup(
+  uid: string,
+  retryAt: number,
+  dependencies: CleanupDependencies,
+) {
+  if (!uid || !Number.isFinite(retryAt) || retryAt <= 0) return;
+  const existing = scheduledCleanupRetries.get(uid);
+  if (existing && existing.retryAt <= retryAt) return;
+  if (existing) clearTimeout(existing.timer);
+
+  const timer = setTimeout(() => {
+    const scheduled = scheduledCleanupRetries.get(uid);
+    if (!scheduled || scheduled.timer !== timer) return;
+    scheduledCleanupRetries.delete(uid);
+    void retryPendingHaruLawAttachmentCleanup(uid, dependencies)
+      .then((result) => {
+        if (result.nextRetryAt) {
+          scheduleDeferredHaruLawAttachmentCleanup(uid, result.nextRetryAt, dependencies);
+        }
+      })
+      .catch(() => {
+        // 일반 삭제 실패는 큐에 남으며 다음 모달 진입 때 다시 시도한다.
+      });
+  }, Math.max(0, retryAt - Date.now()));
+
+  scheduledCleanupRetries.set(uid, { retryAt, timer });
 }

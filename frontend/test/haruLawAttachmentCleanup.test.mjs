@@ -5,6 +5,7 @@ import {
   enqueueHaruLawAttachmentCleanup,
   isOwnedHaruLawAttachmentPath,
   retryPendingHaruLawAttachmentCleanup,
+  scheduleDeferredHaruLawAttachmentCleanup,
 } from '../src/app/services/haruLawAttachmentCleanup.ts';
 
 const localStorageValues = new Map();
@@ -43,6 +44,7 @@ await check('2. 다른 UID 경로 차단', async () => {
 await check('3. 다른 기록·중첩 경로 차단', async () => {
   assert.equal(isOwnedHaruLawAttachmentPath('user-a', 'record-a', 'users/user-a/haruLawAttachments/record-b/file.pdf'), false);
   assert.equal(isOwnedHaruLawAttachmentPath('user-a', 'record-a', 'users/user-a/haruLawAttachments/record-a/nested/file.pdf'), false);
+  assert.equal(isOwnedHaruLawAttachmentPath('user-a', 'record-a', 'users/user-a/haruLawAttachments/record-a/123_contract..pdf'), true);
 });
 
 await check('4. 삭제 큐 중복 방지', async () => {
@@ -154,6 +156,24 @@ await check('11. 전송 중 이탈 항목 지연 후 안전 정리', async () =>
     now: () => 5_000,
   });
   assert.deepEqual(later.deletedPaths, [entry.storagePath]);
+
+  const scheduledEntry = makeEntry({
+    storagePath: 'users/user-a/haruLawAttachments/record-a/scheduled.pdf',
+    fileName: 'scheduled.pdf',
+    notBefore: Date.now() + 10,
+  });
+  enqueueHaruLawAttachmentCleanup(scheduledEntry);
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('예약 정리 시간 초과')), 500);
+    scheduleDeferredHaruLawAttachmentCleanup('user-a', scheduledEntry.notBefore, {
+      deletePath: async (path) => {
+        assert.equal(path, scheduledEntry.storagePath);
+        clearTimeout(timeout);
+        resolve();
+      },
+      isReferenced: async () => false,
+    });
+  });
 });
 
 await check('12. UI 제거·닫기·부분 업로드 실패·성공 커밋 경계 연결', async () => {
@@ -164,6 +184,7 @@ await check('12. UI 제거·닫기·부분 업로드 실패·성공 커밋 경�
   assert.match(source, /uploaded\.length > 0/);
   assert.match(source, /uploadingAttachmentsRef\.current = \[\.\.\.uploaded\]/);
   assert.match(source, /attachmentScopeRef\.current !== uploadScopeId/);
+  assert.match(source, /scheduleDeferredHaruLawAttachmentCleanup/);
   assert.match(source, /cleanupHaruLawAttachments/);
   assert.match(source, /pendingAttachmentsRef\.current = \[\];[\s\S]*attemptedAttachmentPathsRef\.current\.clear\(\);[\s\S]*setPendingAttachments\(\[\]\);/);
   assert.match(source, /catch \(error: any\)[\s\S]*setQuestion\(trimmed\);/);
