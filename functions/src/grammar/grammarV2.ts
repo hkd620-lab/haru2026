@@ -28,6 +28,8 @@ import {
   GRAMMAR_V2_PILOT_GENERATION_MODELS,
   GrammarV2CacheDocument,
   GrammarV2Input,
+  GrammarV2LiteChange,
+  GrammarV2LiteVerifierResponse,
   GrammarV2PilotMetrics,
   GrammarV2PilotOptions,
   GrammarV2PilotStageMetrics,
@@ -286,6 +288,101 @@ function semanticWithoutPositions(payload: GrammarV2ValidatedSemanticPayload): G
   };
 }
 
+// 축소 검증이 고칠 수 있는 필드만 허용한다. 청크 text·id·순서 같은 구조는 코드가 정하므로 손대지 못한다.
+const LITE_CHANGE_PATHS: ReadonlyArray<{ re: RegExp; apply: (payload: any, m: RegExpMatchArray, value: string) => void }> = [
+  {
+    re: /^(difficulty|styleNote|translationNatural)$/,
+    apply: (payload, m, value) => {
+      payload[m[1]] = value;
+    },
+  },
+  {
+    re: /^chunks\[(\d+)\]\.(role|meaning|note)$/,
+    apply: (payload, m, value) => {
+      payload.chunks[Number(m[1])][m[2]] = value;
+    },
+  },
+  {
+    re: /^glossary\[(\d+)\]\.(term|type|ipa|hangul|meaningKo|note)$/,
+    apply: (payload, m, value) => {
+      payload.glossary[Number(m[1])][m[2]] = value;
+    },
+  },
+  {
+    re: /^keyPoints\[(\d+)\]\.(pattern|meaningKo|why|caution)$/,
+    apply: (payload, m, value) => {
+      payload.keyPoints[Number(m[1])][m[2]] = value;
+    },
+  },
+  {
+    re: /^keyPoints\[(\d+)\]\.example\.(en|ko)$/,
+    apply: (payload, m, value) => {
+      payload.keyPoints[Number(m[1])].example[m[2]] = value;
+    },
+  },
+];
+
+function arrayLengthForPath(payload: GrammarV2SemanticPayload, path: string): number | null {
+  if (path.startsWith('chunks[')) return payload.chunks.length;
+  if (path.startsWith('glossary[')) return payload.glossary.length;
+  if (path.startsWith('keyPoints[')) return payload.keyPoints.length;
+  return null;
+}
+
+function normalizeLiteVerifierResponse(value: unknown): GrammarV2LiteVerifierResponse {
+  if (!isRecord(value) || !Array.isArray(value.changes)) {
+    throw new Error('Invalid GPT lite verifier response: changes must be an array.');
+  }
+  const changes: GrammarV2LiteChange[] = value.changes.map((item, index) => {
+    if (!isRecord(item) || typeof item.path !== 'string') {
+      throw new Error(`Invalid GPT lite verifier response: changes[${index}].path must be a string.`);
+    }
+    return {
+      path: item.path,
+      value: item.value,
+      reason: typeof item.reason === 'string' ? item.reason : undefined,
+    };
+  });
+  return { changes };
+}
+
+/** 변경분을 초안 사본에 적용한다. 허용되지 않은 경로는 건너뛰고 이유를 남긴다. */
+function applyLiteChanges(
+  draft: GrammarV2SemanticPayload,
+  changes: GrammarV2LiteChange[]
+): { semantic: GrammarV2SemanticPayload; applied: number; skipped: string[] } {
+  const next: GrammarV2SemanticPayload = JSON.parse(JSON.stringify(draft));
+  const skipped: string[] = [];
+  let applied = 0;
+
+  for (const change of changes) {
+    if (typeof change.value !== 'string') {
+      skipped.push(`${change.path}: value must be a string`);
+      continue;
+    }
+    const rule = LITE_CHANGE_PATHS.find((candidate) => candidate.re.test(change.path));
+    if (!rule) {
+      skipped.push(`${change.path}: path not editable`);
+      continue;
+    }
+    const match = change.path.match(rule.re) as RegExpMatchArray;
+    const indexed = match[1] !== undefined && /^\d+$/.test(match[1]) ? Number(match[1]) : null;
+    const length = arrayLengthForPath(next, change.path);
+    if (indexed !== null && length !== null && (indexed < 0 || indexed >= length)) {
+      skipped.push(`${change.path}: index out of range`);
+      continue;
+    }
+    try {
+      rule.apply(next, match, change.value);
+      applied += 1;
+    } catch (error: any) {
+      skipped.push(`${change.path}: ${error?.message || 'apply failed'}`);
+    }
+  }
+
+  return { semantic: next, applied, skipped };
+}
+
 function normalizeVerifierResponse(value: unknown): GrammarV2VerifierResponse {
   if (!isRecord(value) || !Array.isArray(value.changes)) {
     throw new Error('Invalid GPT verifier response: changes must be an array.');
@@ -394,8 +491,9 @@ async function verifyWithGpt(params: {
   sourceKey: string;
   requestId: string;
   prompt: string;
+  mode: 'full' | 'lite';
 }): Promise<{
-  response: GrammarV2VerifierResponse;
+  response: GrammarV2VerifierResponse | GrammarV2LiteVerifierResponse;
   usage: TokenUsage;
   latencyMs: number;
   attempts: number;
@@ -421,9 +519,9 @@ async function verifyWithGpt(params: {
         }
       );
       const usage = openAiUsage(res.data);
-      const response = normalizeVerifierResponse(
-        parseJsonPayload<GrammarV2VerifierResponse>(res.data.choices[0].message.content || '')
-      );
+      const raw = parseJsonPayload<unknown>(res.data.choices[0].message.content || '');
+      const response =
+        params.mode === 'lite' ? normalizeLiteVerifierResponse(raw) : normalizeVerifierResponse(raw);
       const latencyMs = Date.now() - startedAt;
       await logGrammarV2Usage({
         uid: params.uid,
@@ -485,8 +583,13 @@ export const getGrammarExplainV2 = onCall(
       const generationModel = pilot?.generationModel ?? GRAMMAR_V2_GENERATE_MODEL;
       const verifyMode: GrammarV2VerifyMode = pilot?.verifyMode ?? 'full';
       const promptVersion = isPilotRun ? GRAMMAR_V2_PILOT_PROMPT_VERSION : GRAMMAR_V2_PROMPT_VERSION;
+      // 파일럿에서만 따옴표·공백 정규화 비교와 pattern 어구 검사를 코드로 돌린다.
       const validateOptions = isPilotRun
-        ? { maxNoteSentences: GRAMMAR_V2_PILOT_MAX_NOTE_SENTENCES }
+        ? {
+            maxNoteSentences: GRAMMAR_V2_PILOT_MAX_NOTE_SENTENCES,
+            normalizeChunkMatching: true,
+            rejectSourcePhrasePattern: true,
+          }
         : {};
       const skipCacheRead = pilot?.skipCacheRead ?? false;
 
@@ -562,14 +665,10 @@ export const getGrammarExplainV2 = onCall(
           sourceKey,
           requestId,
           prompt: buildGptVerifierPrompt(context, draftForVerifier, { mode }),
+          mode,
         });
-        const semanticAfterGpt = verified.response.corrected || validatedGemini;
-        const validatedForMode = validateGrammarV2SemanticPayload(
-          context.targetVerse.text,
-          semanticAfterGpt,
-          validateOptions
-        );
-        stages.push({
+
+        const stage: GrammarV2PilotStageMetrics = {
           stage: mode === 'full' ? 'verify_full' : 'verify_lite',
           model: GRAMMAR_V2_VERIFY_MODEL,
           inputTokens: verified.usage.inputTokens,
@@ -577,13 +676,55 @@ export const getGrammarExplainV2 = onCall(
           thoughtsTokens: null,
           latencyMs: verified.latencyMs,
           attempts: verified.attempts,
-          changes: verified.response.changes,
-          corrected: verified.response.corrected !== null,
-        });
+        };
+
+        let semanticAfterGpt: GrammarV2SemanticPayload;
+        let changeNotes: string[];
+        let corrected: boolean;
+
+        if (mode === 'lite') {
+          const lite = verified.response as GrammarV2LiteVerifierResponse;
+          const outcome = applyLiteChanges(draftForVerifier, lite.changes);
+          semanticAfterGpt = outcome.semantic;
+          changeNotes = lite.changes.map((c) => `${c.path}: ${c.reason || 'fixed'}`);
+          corrected = outcome.applied > 0;
+          stage.changesApplied = outcome.applied;
+          if (outcome.skipped.length > 0) stage.changesSkipped = outcome.skipped;
+        } else {
+          const full = verified.response as GrammarV2VerifierResponse;
+          semanticAfterGpt = full.corrected || validatedGemini;
+          changeNotes = full.changes;
+          corrected = full.corrected !== null;
+        }
+
+        // 적용 결과가 검증을 통과하지 못하면 변경을 버리고 이미 통과한 초안을 쓴다.
+        // (초안은 위에서 검증을 통과했으므로 항상 안전한 대안이다.)
+        let validatedForMode: GrammarV2ValidatedSemanticPayload;
+        try {
+          validatedForMode = validateGrammarV2SemanticPayload(
+            context.targetVerse.text,
+            semanticAfterGpt,
+            validateOptions
+          );
+        } catch (error) {
+          if (!(error instanceof GrammarV2ValidationError)) throw error;
+          stage.changesRejected = error.message;
+          corrected = false;
+          logger.warn('[getGrammarExplainV2] verifier changes rejected by validator', {
+            sourceKey,
+            mode,
+            message: error.message,
+          });
+          validatedForMode = validatedGemini;
+        }
+
+        stage.changes = changeNotes;
+        stage.corrected = corrected;
+        stages.push(stage);
         variants.push({
           verifyMode: mode,
-          changes: verified.response.changes,
-          corrected: verified.response.corrected !== null,
+          changes: changeNotes,
+          corrected,
           semantic: validatedForMode,
         });
       }

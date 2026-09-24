@@ -303,32 +303,39 @@ ${context.bookName} ${context.chapter}:${context.verse} ${context.targetVerse.te
 Semantic payload to check:
 ${JSON.stringify(semantic, null, 2)}
 
-Check ONLY these three kinds of error:
-1. Grammar-explanation errors — a stated grammatical fact about the target verse is wrong, or a keyPoint.pattern describes a structure that does not actually occur in the target verse, or chunk.role / chunk.note contradicts the real syntactic function of that chunk.
-1a. keyPoint.pattern must be the NAME OF A GRAMMATICAL STRUCTURE in Korean, not a quotation from the verse. Treat it as an error whenever the pattern text appears inside the target verse or is otherwise just a phrase lifted from it (for example "to my feet", "under heaven", "as a ransom", "who believes in Him", "In the beginning"). Replace such a pattern with the structure's name (for example "전치사구(시간)", "to부정사(목적)", "관계대명사 who절", "수동태(be + 과거분사)", "주어 + 동사 + 목적어") and keep meaningKo, why, example and caution consistent with the corrected name. Record the fix in changes.
-1b. keyPoint.caution must point at something a Korean learner would actually get wrong in THIS verse. Treat generic advice that would fit almost any English sentence as an error, and replace it with a verse-specific caution. This is the one case where you may rewrite a caution that is not factually false.
+Check ONLY these two kinds of error:
+1. Grammar-explanation errors — a stated grammatical fact about the target verse is wrong, a keyPoint.pattern names a structure that does not actually occur in the target verse, or chunk.role / chunk.note contradicts the real syntactic function of that chunk.
 2. Translation errors — translationNatural, chunk.meaning, or glossary[].meaningKo misrepresents the target verse, or a glossary meaning does not match how the word is used here.
-3. Format errors — chunks are not exact consecutive substrings of the target verse, a lexical word of the target verse is missing or duplicated across chunks, glossary has more than 8 items, glossary ids are not contiguous from w1, termIds reference ids that do not exist, keyPoints are not exactly 3 with order 1/2/3, or Markdown is present.
+
+Structural checks (chunk text, chunk coverage, glossary size and ids, keyPoint count, whether a pattern merely copies a phrase from the verse) are already handled by code. Do not spend output on them.
 
 Correction rules (strict):
-- Correct ONLY what is actually wrong, and change as little text as possible.
+- Report ONLY what is actually wrong, and change as little text as possible.
 - Do NOT add explanation. Do NOT expand, enrich, or deepen any note, why, or caution.
-- Do NOT add new chunks, new glossary items, new cautions, pronoun-antecedent analysis, or comparisons of repeated words.
 - Do NOT rewrite correct text merely to improve style, tone, or completeness.
 - Keep every chunk.note at 2 sentences or fewer, and keep each keyPoint field at one sentence.
 - Short and simple is intended here. Brevity is not an error, and a missing deeper explanation is not an error.
-- If all three checks pass, return corrected as null even if you could imagine a richer explanation.
+- If both checks pass, return an empty changes array even if you could imagine a richer explanation.
 - No Markdown.
+
+Output ONLY the fields you are changing — never the whole payload.
 
 Return JSON only in this shape:
 {
-  "changes": [],
-  "corrected": null
+  "changes": []
 }
 
-If real errors were found, corrected must be the full semantic payload shape with the minimal fixes applied:
+If real errors were found, list one entry per changed field:
 {
-  "changes": ["short note naming the error kind and what was fixed"],
-  "corrected": { ...full semantic payload... }
-}`;
+  "changes": [
+    { "path": "chunks[2].note", "value": "corrected Korean text", "reason": "짧은 이유" }
+  ]
+}
+
+Path rules:
+- Use exactly these forms: "difficulty", "styleNote", "translationNatural", "chunks[i].role", "chunks[i].meaning", "chunks[i].note", "glossary[i].term", "glossary[i].type", "glossary[i].ipa", "glossary[i].hangul", "glossary[i].meaningKo", "glossary[i].note", "keyPoints[i].pattern", "keyPoints[i].meaningKo", "keyPoints[i].why", "keyPoints[i].caution", "keyPoints[i].example.en", "keyPoints[i].example.ko".
+- i is a 0-based index into the array as given above.
+- value must be the full replacement string for that one field.
+- Never use a path for chunks[i].text, ids, orders, levels, parentId, termIds, syllables, or stressIndex. Those are fixed by code.
+- Never add or remove array items.`;
 }

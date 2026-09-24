@@ -61,6 +61,54 @@ export const GRAMMAR_V2_PILOT_MAX_NOTE_SENTENCES = 2;
 
 export interface GrammarV2ValidateOptions {
   maxNoteSentences?: number;
+  // 파일럿: 따옴표 종류·연속 공백 차이는 눈감아 주고 비교한다. 통과하면 청크 text 를
+  // 원문의 해당 구간 문자 그대로로 바꿔 넣어, 모델이 곧은 따옴표로 바꿔 써도 원문이 보존된다.
+  normalizeChunkMatching?: boolean;
+  // 파일럿: keyPoint.pattern 이 원문 어구 복사인지 코드로 검사한다(프롬프트에 맡기지 않는다).
+  rejectSourcePhrasePattern?: boolean;
+}
+
+// 곧은·굽은 따옴표와 아포스트로피. BSB 본문은 굽은 문자를 쓰는데 모델이 곧은 문자로
+// 바꿔 출력하는 일이 잦아, 비교할 때만 무시한다.
+const QUOTE_CHARS = new Set(['"', '“', '”', "'", '‘', '’', '«', '»']);
+
+/**
+ * 비교용으로 따옴표를 빼고 연속 공백을 하나로 줄인다.
+ * map[i] = 정규화 문자열의 i번째 문자가 원문 몇 번째 문자에서 왔는지.
+ */
+function normalizeForMatching(text: string): { text: string; map: number[] } {
+  const chars: string[] = [];
+  const map: number[] = [];
+  let lastWasSpace = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (QUOTE_CHARS.has(ch)) continue;
+    if (/\s/.test(ch)) {
+      if (lastWasSpace) continue;
+      chars.push(' ');
+      map.push(i);
+      lastWasSpace = true;
+      continue;
+    }
+    chars.push(ch);
+    map.push(i);
+    lastWasSpace = false;
+  }
+
+  return { text: chars.join(''), map };
+}
+
+/**
+ * pattern 이 문법 구조명이 아니라 원문에서 베낀 어구인지 본다.
+ * 한글이 섞인 구조명(예: to부정사(목적), 수동태(be + 과거분사))은 허용한다.
+ */
+function patternIsSourcePhrase(pattern: string, normalizedSource: string): boolean {
+  if (/[가-힣]/.test(pattern)) return false;
+  const words = pattern.match(/[A-Za-z]+/g) || [];
+  if (words.length < 2) return false;
+  const normalized = normalizeForMatching(pattern).text.trim();
+  return normalized.length > 0 && normalizedSource.includes(normalized);
 }
 
 function parseChunk(value: unknown, index: number, maxNoteSentences: number): GrammarV2SemanticChunk {
@@ -146,19 +194,42 @@ function assertNoParentCycles(chunks: GrammarV2SemanticChunk[]): void {
   }
 }
 
-function withSourcePositions(sourceText: string, chunks: GrammarV2SemanticChunk[]): GrammarV2Chunk[] {
-  let prevEnd = 0;
+function withSourcePositions(
+  sourceText: string,
+  chunks: GrammarV2SemanticChunk[],
+  normalizeMatching: boolean
+): GrammarV2Chunk[] {
   const positioned: GrammarV2Chunk[] = [];
 
-  for (const chunk of chunks) {
-    if (!chunk.text) fail(`chunk text cannot be empty: ${chunk.id}`);
-    const start = sourceText.indexOf(chunk.text, prevEnd);
-    if (start === -1) {
-      fail(`chunk is not an exact ordered substring of target verse: ${chunk.id}`);
+  if (normalizeMatching) {
+    // 따옴표·공백 차이를 무시한 위치에서 찾고, 찾은 자리의 원문 문자를 그대로 text 로 쓴다.
+    const source = normalizeForMatching(sourceText);
+    let cursor = 0;
+
+    for (const chunk of chunks) {
+      const needle = normalizeForMatching(chunk.text).text.trim();
+      if (!needle) fail(`chunk text cannot be empty: ${chunk.id}`);
+      const found = source.text.indexOf(needle, cursor);
+      if (found === -1) {
+        fail(`chunk is not an exact ordered substring of target verse: ${chunk.id}`);
+      }
+      const start = source.map[found];
+      const end = source.map[found + needle.length - 1] + 1;
+      positioned.push({ ...chunk, text: sourceText.slice(start, end), start, end });
+      cursor = found + needle.length;
     }
-    const end = start + chunk.text.length;
-    positioned.push({ ...chunk, start, end });
-    prevEnd = end;
+  } else {
+    let prevEnd = 0;
+    for (const chunk of chunks) {
+      if (!chunk.text) fail(`chunk text cannot be empty: ${chunk.id}`);
+      const start = sourceText.indexOf(chunk.text, prevEnd);
+      if (start === -1) {
+        fail(`chunk is not an exact ordered substring of target verse: ${chunk.id}`);
+      }
+      const end = start + chunk.text.length;
+      positioned.push({ ...chunk, start, end });
+      prevEnd = end;
+    }
   }
 
   let cursor = 0;
@@ -227,11 +298,22 @@ export function validateGrammarV2SemanticPayload(
     if (point.order !== index + 1) fail('keyPoints order must be exactly [1,2,3].');
   });
 
+  if (options.rejectSourcePhrasePattern) {
+    const normalizedSource = normalizeForMatching(sourceText).text;
+    keyPoints.forEach((point, index) => {
+      if (patternIsSourcePhrase(point.pattern, normalizedSource)) {
+        fail(
+          `keyPoints[${index}].pattern must name a grammatical structure, not copy a phrase from the verse: ${point.pattern}`
+        );
+      }
+    });
+  }
+
   return {
     difficulty,
     styleNote,
     translationNatural,
-    chunks: withSourcePositions(sourceText, chunks),
+    chunks: withSourcePositions(sourceText, chunks, Boolean(options.normalizeChunkMatching)),
     glossary,
     keyPoints,
   };

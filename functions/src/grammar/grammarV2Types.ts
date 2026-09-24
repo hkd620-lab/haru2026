@@ -42,6 +42,10 @@ export interface GrammarV2PilotStageMetrics {
   // 검증기에 걸려 버려진 생성 시도. 토큰은 실제로 썼으므로 비용 계산에는 포함된다.
   validationFailed?: boolean;
   validationError?: string;
+  // 축소 검증에서 돌려받은 변경분 적용 결과.
+  changesApplied?: number;
+  changesSkipped?: string[];
+  changesRejected?: string;
 }
 
 export interface GrammarV2PilotMetrics {
@@ -175,4 +179,16 @@ export interface GrammarV2CacheDocument {
 export interface GrammarV2VerifierResponse {
   changes: string[];
   corrected: GrammarV2SemanticPayload | null;
+}
+
+// 축소 검증(lite)은 payload 전체를 다시 받지 않고 바뀐 필드만 받는다.
+// 전체를 되돌려 받으면 출력 토큰이 3배가 되어 비용 대부분을 차지했다.
+export interface GrammarV2LiteChange {
+  path: string;
+  value: unknown;
+  reason?: string;
+}
+
+export interface GrammarV2LiteVerifierResponse {
+  changes: GrammarV2LiteChange[];
 }
