@@ -341,3 +341,12 @@ Cowork(claude-opus-5) 세션에서 로컬 폴더 구조를 실측 조사하고 �
 - `~/HARU2026`, `~/HARU2026_old_do_not_delete_yet` 같은 옛 경로는 더 이상 존재하지 않는다. 지시서에 사용하지 말 것.
 - 어느 폴더에서 작업하든 시작 전 `pwd` / `git branch --show-current` / `git status --short`로 실측 확인 후 시작한다. 문서에 적힌 경로·브랜치명을 그대로 믿지 않는다.
 - 배포 상태를 서술할 때는 `gcloud functions list --sort-by=~updateTime` 실측을 근거로 한다. 병합 여부만으로 배포 여부를 단정하지 않는다.
+
+## HARU2026 Slack 운영정책 (2026-09-24 추가)
+
+- Slack 작업 전 `docs/HARU2026_Slack_운영정책.md` 필수 확인
+- `#haru2026-감사`: `C0C1LQ394JY`
+- `#haru2026-개발`: `C0C11P98MHV`
+- 비밀번호·토큰·인증정보·결제정보·개인정보 및 보고서 전문 기록 금지
+- 확인되지 않은 상태나 최종 판정을 임의로 확정하지 말 것
+- 공식 Slack 기록은 시박사가 검토 후 수행하며, CC는 최종 보고에 `Slack 기록용 확정 요약`을 포함할 것
