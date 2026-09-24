@@ -233,8 +233,9 @@ export function classifyHaruLawAiError(
       return '';
     }
   }).join(' ').toLowerCase();
-  const attachmentReadFailure = /(attachment|document|pdf|image|inline.?data|mime|decode|corrupt|encrypt|unsupported).*(read|process|parse|decode|invalid|fail|support)|(?:cannot|could not|unable to).*(read|process|decode)|no pages|empty file|password.?protected|failed to parse/i;
-  if (hasAttachments && attachmentReadFailure.test(evidence)) {
+  const hasAttachmentSubject = /(attachment|document|pdf|image|inline.?data|mime|file|pages?)/i.test(evidence);
+  const hasReadFailure = /(?:cannot|could not|unable to|fail(?:ed)? to).{0,120}(?:read|process|parse|decode)|(?:read|process|parse|decode).{0,120}(?:invalid|fail|unsupported)|corrupt|encrypt|unsupported.{0,40}(?:mime|file|format|type)|no pages|empty file|password.?protected/i.test(evidence);
+  if (hasAttachments && hasAttachmentSubject && hasReadFailure) {
     return 'ATTACHMENT_CONTENT_UNREADABLE';
   }
   return 'HARULAW_PROCESSING_FAILED';

@@ -117,6 +117,17 @@ async function run() {
     classifyHaruLawAiError({ response: { status: 400 }, message: 'invalid argument' }, true),
     'HARULAW_PROCESSING_FAILED',
   );
+  for (const message of [
+    'Unable to process request because API key is invalid',
+    'Could not process request',
+    'Failed to parse provider response',
+  ]) {
+    assert.equal(
+      classifyHaruLawAiError({ response: { status: 400 }, message }, true),
+      'HARULAW_PROCESSING_FAILED',
+      `generic provider error must not be blamed on attachments: ${message}`,
+    );
+  }
   assert.equal(
     classifyHaruLawAiError({ response: { status: 400, data: { error: 'PDF failed to parse' } } }, true),
     'ATTACHMENT_CONTENT_UNREADABLE',
