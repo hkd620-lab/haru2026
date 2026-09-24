@@ -53,6 +53,7 @@ class InstrumentedGoogleGenAI {
       generateContent: async (request) => {
         const captured = cloneGenerateContentRequest(request);
         genaiCalls.push(captured);
+        const currentQuestion = capturedCurrentQuestion(captured.contents);
         if (captured.hasGoogleSearchTool && webSearchDelayMs > 0) {
           await sleep(webSearchDelayMs);
         }
@@ -65,6 +66,20 @@ class InstrumentedGoogleGenAI {
             text: '검색 출처 없는 테스트 답변입니다.',
             usageMetadata: { promptTokenCount: 101, candidatesTokenCount: 23 },
             candidates: [{ finishReason: 'STOP' }],
+          };
+        }
+        if (captured.contents.includes('첨부 PDF의 최신 내용을 확인해줘.')) {
+          return {
+            text: '   ',
+            usageMetadata: { promptTokenCount: 67, candidatesTokenCount: 0 },
+            candidates: captured.hasGoogleSearchTool
+              ? [{
+                groundingMetadata: {
+                  webSearchQueries: ['첨부 PDF 최신 내용'],
+                  groundingChunks: [{ web: { title: '테스트 출처', uri: 'https://example.test/empty' } }],
+                },
+              }]
+              : [{}],
           };
         }
         if (this.inner) {
@@ -82,7 +97,6 @@ class InstrumentedGoogleGenAI {
             }],
           };
         }
-        const currentQuestion = capturedCurrentQuestion(captured.contents);
         if (currentQuestion === '초한지를 쓴 사람은?') {
           return {
             text: '《초한지》는 초나라와 한나라의 쟁패를 다룬 여러 소설·번역·각색본을 가리킬 수 있어 정확한 책 제목이나 출판사 정보가 필요합니다.',
@@ -715,6 +729,27 @@ async function run() {
   assert.strictEqual(attachmentWeb.webSearchUsed, true);
   assert.ok(genaiCalls[genaiCalls.length - 1].hasGoogleSearchTool);
   assert.ok(genaiCalls[genaiCalls.length - 1].contents.includes('inlineData'));
+
+  const emptyAnswerThreadBefore = await getThread(USERS.developer, 'law', 'haruraw_sayu');
+  const emptyAnswerUsedBefore = emptyAnswerThreadBefore.webSearchUsedCount || 0;
+  const emptyAnswerMonthlyBefore = await getMonthlyUsed(USERS.developer);
+  const emptyAnswerMessagesBefore = (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length;
+  await assert.rejects(
+    callable(USERS.developer, {
+      recordId: 'law',
+      sourceKey: 'haruraw_sayu',
+      question: '첨부 PDF의 최신 내용을 확인해줘.',
+      searchPreference: 'web_confirmed',
+      attachments: [attachment],
+    }),
+    (error) => error?.code === 'invalid-argument'
+      && error?.details?.reason === 'ATTACHMENT_CONTENT_UNREADABLE'
+      && error?.details?.retryable === false,
+  );
+  await assertThreadSearchUsage(USERS.developer, 'law', 'haruraw_sayu', emptyAnswerUsedBefore, 0);
+  assert.strictEqual(await getMonthlyUsed(USERS.developer), emptyAnswerMonthlyBefore);
+  messages = await getMessages(USERS.developer, 'law', 'haruraw_sayu');
+  assert.strictEqual(messages.length, emptyAnswerMessagesBefore);
 
   await assert.rejects(
     callable(USERS.developer, {

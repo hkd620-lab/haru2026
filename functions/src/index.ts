@@ -4421,6 +4421,9 @@ export const chatWithResult = onCall(
 
       const latencyMs = Date.now() - startedAt;
       const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
+      if (!rawAnswer) {
+        throw new Error(attachments.length > 0 ? 'attachment content could not be read' : 'empty_answer');
+      }
 
       if (answerRoute === 'web_search') {
         usageForAnswer = await finalizeWebSearchSlot(threadRef, actualPlan, true);
@@ -4428,9 +4431,6 @@ export const chatWithResult = onCall(
       }
 
       const answer = decorateResultChatAnswer(rawAnswer, answerRoute, usageForAnswer, recordOnlyChosen);
-      if (!answer) {
-        throw new Error(attachments.length > 0 ? 'attachment content could not be read' : 'empty_answer');
-      }
 
       await logResultChatUsage({
         uid,
