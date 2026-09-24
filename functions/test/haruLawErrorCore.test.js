@@ -16,7 +16,7 @@ async function run() {
     assert.equal(isRetryableLawApiError({ code }), true, `${code} must be retryable`);
   }
   assert.equal(isRetryableLawApiError(new Error('no response')), true);
-  for (const status of [429, 500, 502, 503, 504]) {
+  for (const status of [429, 500, 501, 502, 503, 504, 507, 520, 522]) {
     assert.equal(isRetryableLawApiError({ response: { status } }), true, `HTTP ${status} must be retryable`);
   }
   for (const status of [400, 401, 403, 404]) {

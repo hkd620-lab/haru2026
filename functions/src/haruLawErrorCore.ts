@@ -120,7 +120,7 @@ export function isRetryableLawApiError(error: unknown): boolean {
   const candidate = error as { response?: unknown } | null;
   const status = readStatus(error);
   const code = readCode(error);
-  if (status !== undefined) return TEMPORARY_STATUS_CODES.has(status);
+  if (status !== undefined) return status === 429 || status >= 500;
   if (TEMPORARY_ERROR_CODES.has(code)) return true;
   return !candidate?.response;
 }

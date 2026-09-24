@@ -78,5 +78,10 @@ assert.match(
   'retry must use the current pending attachments after the user removes or replaces a file',
 );
 assert.doesNotMatch(resultChatSource, /retryRequest: userError\.retryable[\s\S]{0,160}attachments: attachmentsToSend/);
+assert.match(
+  resultChatSource,
+  /const uploadScopeId = attachmentScopeRef\.current;[\s\S]*uploadingFilesRef\.current = true;[\s\S]*await file\.slice\(0, 8\)\.arrayBuffer\(\)\);[\s\S]*attachmentScopeRef\.current !== uploadScopeId/,
+  'PDF validation must be tracked as active and abort if its attachment scope changes',
+);
 
 console.log('haruLAW frontend error mapping tests passed');

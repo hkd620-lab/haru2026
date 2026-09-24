@@ -465,35 +465,6 @@ export function ResultChatModal({
     }
 
     const toUpload = files.slice(0, remainingSlots);
-    for (const file of toUpload) {
-      if (!HARULAW_ATTACH_ALLOWED_TYPES.has(file.type)) {
-        const userError = getHaruLawUserErrorByReason('ATTACHMENT_UNSUPPORTED_TYPE');
-        setHaruLawErrorNotice({ userError });
-        toast.error(userError.title);
-        event.target.value = '';
-        return;
-      }
-      const sizeLimit = file.type === 'application/pdf'
-        ? HARULAW_ATTACH_MAX_PDF_BYTES
-        : HARULAW_ATTACH_MAX_IMAGE_BYTES;
-      if (file.size > sizeLimit) {
-        toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB 이하)`);
-        event.target.value = '';
-        return;
-      }
-      if (file.type === 'application/pdf') {
-        const header = new Uint8Array(await file.slice(0, 8).arrayBuffer());
-        if (!hasReadableHaruLawPdfHeader(header)) {
-          const userError = getHaruLawUserErrorByReason('ATTACHMENT_PDF_UNREADABLE');
-          setHaruLawErrorNotice({ userError });
-          toast.error(userError.title);
-          event.target.value = '';
-          return;
-        }
-      }
-    }
-
-    setHaruLawErrorNotice(null);
     const uploaded: HaruLawAttachmentRef[] = [];
     const uploadScopeId = attachmentScopeRef.current;
     activeUploadScopeRef.current = uploadScopeId;
@@ -501,6 +472,34 @@ export function ResultChatModal({
     uploadingFilesRef.current = true;
     setUploadingFiles(true);
     try {
+      for (const file of toUpload) {
+        if (!HARULAW_ATTACH_ALLOWED_TYPES.has(file.type)) {
+          const userError = getHaruLawUserErrorByReason('ATTACHMENT_UNSUPPORTED_TYPE');
+          setHaruLawErrorNotice({ userError });
+          toast.error(userError.title);
+          return;
+        }
+        const sizeLimit = file.type === 'application/pdf'
+          ? HARULAW_ATTACH_MAX_PDF_BYTES
+          : HARULAW_ATTACH_MAX_IMAGE_BYTES;
+        if (file.size > sizeLimit) {
+          toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB 이하)`);
+          return;
+        }
+        if (file.type === 'application/pdf') {
+          const header = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+          if (attachmentScopeRef.current !== uploadScopeId) return;
+          if (!hasReadableHaruLawPdfHeader(header)) {
+            const userError = getHaruLawUserErrorByReason('ATTACHMENT_PDF_UNREADABLE');
+            setHaruLawErrorNotice({ userError });
+            toast.error(userError.title);
+            return;
+          }
+        }
+      }
+
+      if (attachmentScopeRef.current !== uploadScopeId) return;
+      setHaruLawErrorNotice(null);
       for (let i = 0; i < toUpload.length; i += 1) {
         const file = toUpload[i];
         const safeName = `${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
