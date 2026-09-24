@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { signInWithCustomToken } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { toast } from 'sonner';
+import { buildAuthCallbackFailureDiagnostics, logAuthCallbackFailure } from '../utils/authCallbackDiagnostics';
 import { normalizeLoginProvider, rememberLoginProviderLocally } from '../utils/loginProvider';
 import { failLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 
@@ -62,14 +63,6 @@ function clearSensitiveCallbackUrl() {
   window.history.replaceState({}, document.title, window.location.pathname);
 }
 
-function classifyCallbackError(error: unknown) {
-  const code = typeof (error as { code?: unknown })?.code === 'string'
-    ? (error as { code: string }).code
-    : '';
-  if (/^auth\/[a-z0-9-]+$/.test(code)) return 'firebase_auth_error' as const;
-  return 'callback_unexpected_error' as const;
-}
-
 export function AuthCallbackPage() {
   const navigate = useNavigate();
 
@@ -123,13 +116,14 @@ export function AuthCallbackPage() {
           callbackInProgressKeys.delete(callbackKey);
         }
       } catch (error) {
-        const errorType = classifyCallbackError(error);
+        const diagnostics = buildAuthCallbackFailureDiagnostics(error, navigator.onLine);
+        const errorType = diagnostics.category;
         failLoginTrace(
           errorType === 'firebase_auth_error' ? 'firebase_custom_token_sign_in' : 'callback_processing',
           errorType,
           callbackProvider,
         );
-        console.error('Firebase 로그인 실패:', { provider: callbackProvider, errorType });
+        logAuthCallbackFailure(diagnostics);
         toast.error('로그인 처리 중 오류가 발생했습니다.');
         navigate('/login', { replace: true });
       }
