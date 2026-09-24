@@ -71,6 +71,27 @@ function isIsoBmffHeif(bytes: Uint8Array): boolean {
     .some((brand) => brands.includes(brand));
 }
 
+function hasPdfEncryptionDictionary(pdf: string): boolean {
+  const trailerPattern = /(?:^|[\r\n])trailer[\t \r\n]*<</g;
+  for (let match = trailerPattern.exec(pdf); match; match = trailerPattern.exec(pdf)) {
+    const end = pdf.indexOf('startxref', match.index);
+    const trailer = pdf.slice(match.index, end >= 0 ? end : Math.min(pdf.length, match.index + 8192));
+    if (/\/Encrypt\b/.test(trailer)) return true;
+  }
+
+  const xrefPattern = /\/Type\s*\/XRef\b/g;
+  for (let match = xrefPattern.exec(pdf); match; match = xrefPattern.exec(pdf)) {
+    const objectStart = pdf.lastIndexOf('obj', match.index);
+    const dictionaryStart = objectStart >= 0 ? pdf.indexOf('<<', objectStart) : -1;
+    const streamStart = pdf.indexOf('stream', match.index);
+    if (dictionaryStart >= 0 && dictionaryStart < match.index && streamStart > match.index) {
+      const dictionary = pdf.slice(dictionaryStart, streamStart);
+      if (/\/Encrypt\b/.test(dictionary)) return true;
+    }
+  }
+  return false;
+}
+
 export function getHaruLawAttachmentContentError(
   mimeType: string,
   bytes: Uint8Array,
@@ -85,7 +106,7 @@ export function getHaruLawAttachmentContentError(
       return 'ATTACHMENT_PDF_UNREADABLE';
     }
     const searchablePdf = Buffer.from(bytes).toString('latin1');
-    if (/\/Encrypt\b/.test(searchablePdf)) {
+    if (hasPdfEncryptionDictionary(searchablePdf)) {
       return 'ATTACHMENT_PDF_UNREADABLE';
     }
     return null;
@@ -159,11 +180,27 @@ export function classifyHaruLawAiError(
 ): HaruLawErrorReason {
   if (isTemporaryHaruLawAiError(error)) return 'HARULAW_AI_TEMPORARY_UNAVAILABLE';
 
-  const candidate = error as { message?: unknown } | null;
-  const status = readStatus(error);
-  const message = String(candidate?.message ?? '').toLowerCase();
+  const candidate = error as {
+    message?: unknown;
+    details?: unknown;
+    errorDetails?: unknown;
+    response?: { data?: unknown };
+  } | null;
+  const evidence = [
+    candidate?.message,
+    candidate?.details,
+    candidate?.errorDetails,
+    candidate?.response?.data,
+  ].map((value) => {
+    if (typeof value === 'string') return value;
+    try {
+      return value == null ? '' : JSON.stringify(value);
+    } catch {
+      return '';
+    }
+  }).join(' ').toLowerCase();
   const attachmentReadFailure = /(attachment|document|pdf|image|inline.?data|mime|decode|corrupt|encrypt|unsupported).*(read|process|parse|decode|invalid|fail|support)|(?:cannot|could not|unable to).*(read|process|decode)|no pages|empty file|password.?protected|failed to parse/i;
-  if (hasAttachments && (status === 400 || status === 422 || attachmentReadFailure.test(message))) {
+  if (hasAttachments && attachmentReadFailure.test(evidence)) {
     return 'ATTACHMENT_CONTENT_UNREADABLE';
   }
   return 'HARULAW_PROCESSING_FAILED';

@@ -64,8 +64,18 @@ async function run() {
     'ATTACHMENT_PDF_UNREADABLE',
   );
   assert.equal(
-    getHaruLawAttachmentContentError('application/pdf', Buffer.from('%PDF-1.7\n/Encrypt 4 0 R')),
+    getHaruLawAttachmentContentError(
+      'application/pdf',
+      Buffer.from('%PDF-1.7\n1 0 obj\n<< /Length 0 >>\nstream\n\nendstream\nendobj\ntrailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n0\n%%EOF'),
+    ),
     'ATTACHMENT_PDF_UNREADABLE',
+  );
+  assert.equal(
+    getHaruLawAttachmentContentError(
+      'application/pdf',
+      Buffer.from('%PDF-1.7\n1 0 obj\n<< /Length 31 >>\nstream\nVisible text mentions /Encrypt only\nendstream\nendobj\ntrailer\n<< /Root 1 0 R >>\nstartxref\n0\n%%EOF'),
+    ),
+    null,
   );
   assert.equal(
     getHaruLawAttachmentContentError('application/zip', Buffer.from('PK')),
@@ -95,6 +105,10 @@ async function run() {
   );
   assert.equal(
     classifyHaruLawAiError({ response: { status: 400 }, message: 'invalid argument' }, true),
+    'HARULAW_PROCESSING_FAILED',
+  );
+  assert.equal(
+    classifyHaruLawAiError({ response: { status: 400, data: { error: 'PDF failed to parse' } } }, true),
     'ATTACHMENT_CONTENT_UNREADABLE',
   );
   assert.equal(
