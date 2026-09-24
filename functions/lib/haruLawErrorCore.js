@@ -61,31 +61,94 @@ function getPdfStructureTail(bytes) {
         text: Buffer.from(tail.buffer, tail.byteOffset, tail.byteLength).toString('latin1'),
     };
 }
-function hasPdfEncryptionDictionary(bytes) {
-    const { start, text: pdf } = getPdfStructureTail(bytes);
-    const trailerPattern = /(?:^|[\r\n])trailer[\t \r\n]*<</g;
-    for (let match = trailerPattern.exec(pdf); match; match = trailerPattern.exec(pdf)) {
-        const end = pdf.indexOf('startxref', match.index);
-        const trailer = pdf.slice(match.index, end >= 0 ? end : Math.min(pdf.length, match.index + 8192));
-        if (/\/Encrypt\b/.test(trailer))
-            return true;
-    }
-    const startXrefMatches = [...pdf.matchAll(/startxref[\t \r\n]+(\d+)/g)];
-    const startXrefMatch = startXrefMatches.at(-1);
-    const xrefOffset = Number(startXrefMatch === null || startXrefMatch === void 0 ? void 0 : startXrefMatch[1]);
-    const relativeXrefOffset = xrefOffset - start;
-    if (Number.isSafeInteger(xrefOffset) && relativeXrefOffset >= 0 && relativeXrefOffset < pdf.length) {
-        const xrefObject = pdf.slice(relativeXrefOffset, relativeXrefOffset + 64 * 1024);
-        const objectHeader = /^\s*\d+\s+\d+\s+obj\b/.exec(xrefObject);
-        if (objectHeader) {
-            const dictionaryStart = xrefObject.indexOf('<<', objectHeader[0].length);
-            const streamMatch = /[\r\n]stream(?:\r\n|\r|\n)/.exec(xrefObject);
-            if (dictionaryStart >= 0 && streamMatch && dictionaryStart < streamMatch.index) {
-                const dictionary = xrefObject.slice(dictionaryStart, streamMatch.index);
-                if (/\/Type\s*\/XRef\b/.test(dictionary) && /\/Encrypt\b/.test(dictionary))
-                    return true;
-            }
+function extractPdfDictionary(source, searchFrom) {
+    const start = source.indexOf('<<', searchFrom);
+    if (start < 0)
+        return null;
+    let depth = 0;
+    let literalDepth = 0;
+    let escaped = false;
+    let inComment = false;
+    for (let index = start; index < source.length - 1; index += 1) {
+        const char = source[index];
+        const next = source[index + 1];
+        if (inComment) {
+            if (char === '\r' || char === '\n')
+                inComment = false;
+            continue;
         }
+        if (literalDepth > 0) {
+            if (escaped) {
+                escaped = false;
+            }
+            else if (char === '\\') {
+                escaped = true;
+            }
+            else if (char === '(') {
+                literalDepth += 1;
+            }
+            else if (char === ')') {
+                literalDepth -= 1;
+            }
+            continue;
+        }
+        if (char === '%') {
+            inComment = true;
+        }
+        else if (char === '(') {
+            literalDepth = 1;
+        }
+        else if (char === '<' && next === '<') {
+            depth += 1;
+            index += 1;
+        }
+        else if (char === '>' && next === '>') {
+            depth -= 1;
+            index += 1;
+            if (depth === 0)
+                return source.slice(start, index + 1);
+        }
+    }
+    return null;
+}
+function getPdfXrefDictionary(pdf, start, xrefOffset) {
+    const relativeXrefOffset = xrefOffset - start;
+    if (!Number.isSafeInteger(xrefOffset) || relativeXrefOffset < 0 || relativeXrefOffset >= pdf.length) {
+        return null;
+    }
+    const xrefSection = pdf.slice(relativeXrefOffset, relativeXrefOffset + 64 * 1024);
+    const contentStart = xrefSection.search(/\S/);
+    if (contentStart < 0)
+        return null;
+    if (/^xref\b/.test(xrefSection.slice(contentStart))) {
+        const trailerMatch = /(?:^|[\r\n])trailer\b/g.exec(xrefSection.slice(contentStart));
+        if (!trailerMatch)
+            return null;
+        return extractPdfDictionary(xrefSection, contentStart + trailerMatch.index + trailerMatch[0].length);
+    }
+    const objectHeader = /^\s*\d+\s+\d+\s+obj\b/.exec(xrefSection);
+    if (!objectHeader)
+        return null;
+    const dictionary = extractPdfDictionary(xrefSection, objectHeader[0].length);
+    return dictionary && /\/Type\s*\/XRef\b/.test(dictionary) ? dictionary : null;
+}
+function hasPdfEncryptionDictionary(bytes) {
+    var _a;
+    const { start, text: pdf } = getPdfStructureTail(bytes);
+    const startXrefMatches = [...pdf.matchAll(/startxref[\t \r\n]+(\d+)/g)];
+    let xrefOffset = Number((_a = startXrefMatches.at(-1)) === null || _a === void 0 ? void 0 : _a[1]);
+    const visited = new Set();
+    for (let depth = 0; depth < 16 && Number.isSafeInteger(xrefOffset) && !visited.has(xrefOffset); depth += 1) {
+        visited.add(xrefOffset);
+        const dictionary = getPdfXrefDictionary(pdf, start, xrefOffset);
+        if (!dictionary)
+            break;
+        if (/\/Encrypt\b/.test(dictionary))
+            return true;
+        const previous = /\/Prev\s+(\d+)/.exec(dictionary);
+        if (!previous)
+            break;
+        xrefOffset = Number(previous[1]);
     }
     return false;
 }

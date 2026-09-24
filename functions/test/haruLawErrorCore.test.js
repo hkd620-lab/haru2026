@@ -63,10 +63,12 @@ async function run() {
     getHaruLawAttachmentContentError('application/pdf', Buffer.from('ordinary text pretending to be a pdf')),
     'ATTACHMENT_PDF_UNREADABLE',
   );
+  const encryptedTrailerPrefix = '%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n';
+  const encryptedTrailerXrefOffset = Buffer.byteLength(encryptedTrailerPrefix);
   assert.equal(
     getHaruLawAttachmentContentError(
       'application/pdf',
-      Buffer.from('%PDF-1.7\n1 0 obj\n<< /Length 0 >>\nstream\n\nendstream\nendobj\ntrailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n0\n%%EOF'),
+      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
     ),
     'ATTACHMENT_PDF_UNREADABLE',
   );
@@ -86,6 +88,15 @@ async function run() {
     ),
     null,
   );
+  const falseTrailerStreamPrefix = '%PDF-1.7\n1 0 obj\n<< /Length 48 >>\nstream\ntrailer << /Encrypt 4 0 R >>\nVisible metadata\nendstream\nendobj\n';
+  const falseTrailerXrefOffset = Buffer.byteLength(falseTrailerStreamPrefix);
+  assert.equal(
+    getHaruLawAttachmentContentError(
+      'application/pdf',
+      Buffer.from(`${falseTrailerStreamPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R >>\nstartxref\n${falseTrailerXrefOffset}\n%%EOF`),
+    ),
+    null,
+  );
   const encryptedXrefPrefix = '%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n';
   const encryptedXrefOffset = Buffer.byteLength(encryptedXrefPrefix);
   assert.equal(
@@ -95,12 +106,13 @@ async function run() {
     ),
     'ATTACHMENT_PDF_UNREADABLE',
   );
-  const largePdf = Buffer.alloc((2 * 1024 * 1024) + 256, 0x41);
-  Buffer.from('%PDF-1.7').copy(largePdf, 0);
-  Buffer.from('\ntrailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n0\n%%EOF').copy(
-    largePdf,
-    largePdf.length - 72,
-  );
+  const largePdfBody = Buffer.alloc(2 * 1024 * 1024, 0x41);
+  Buffer.from('%PDF-1.7').copy(largePdfBody, 0);
+  const largeXrefOffset = largePdfBody.length;
+  const largePdf = Buffer.concat([
+    largePdfBody,
+    Buffer.from(`\nxref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n${largeXrefOffset}\n%%EOF`),
+  ]);
   assert.equal(
     getHaruLawAttachmentContentError('application/pdf', largePdf),
     'ATTACHMENT_PDF_UNREADABLE',
