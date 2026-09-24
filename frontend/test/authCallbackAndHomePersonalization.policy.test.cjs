@@ -22,8 +22,11 @@ assertBefore(authCallbackSrc, 'callbackInProgressKeys.add(callbackKey);', 'signI
 assert(authCallbackSrc.includes('callbackInProgressKeys.has(callbackKey) || isCallbackCompleted(callbackKey)'));
 assert(authCallbackSrc.includes("failLoginTrace('provider_error_param', 'provider_redirect_error', provider)"));
 assert(authCallbackSrc.includes("failLoginTrace('missing_custom_token', 'missing_custom_token', provider)"));
-assert(authCallbackSrc.includes("errorType === 'firebase_auth_error' ? 'firebase_custom_token_sign_in' : 'callback_processing'"));
-assert(authCallbackSrc.includes('const diagnostics = buildAuthCallbackFailureDiagnostics(error, navigator.onLine);'));
+assert(authCallbackSrc.includes("let callbackPhase: AuthCallbackFailurePhase = 'callback_processing';"));
+assertBefore(authCallbackSrc, "callbackPhase = 'sign_in_with_custom_token';", 'signInWithCustomToken(auth, customToken)');
+assertBefore(authCallbackSrc, 'signInWithCustomToken(auth, customToken)', "callbackPhase = 'post_sign_in';");
+assert(authCallbackSrc.includes("callbackPhase === 'sign_in_with_custom_token' ? 'firebase_custom_token_sign_in' : 'callback_processing'"));
+assert(authCallbackSrc.includes('const diagnostics = buildAuthCallbackFailureDiagnostics(error, callbackPhase, navigator.onLine);'));
 assert(authCallbackSrc.includes('logAuthCallbackFailure(diagnostics);'));
 assert.equal(authCallbackSrc.match(/logAuthCallbackFailure\(diagnostics\);/g)?.length, 1);
 assertBefore(authCallbackSrc, "navigate('/', { replace: true });", '} catch (error) {');

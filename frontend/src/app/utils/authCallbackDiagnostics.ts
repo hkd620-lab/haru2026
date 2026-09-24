@@ -1,8 +1,12 @@
 export type AuthCallbackFailureCategory = 'firebase_auth_error' | 'callback_unexpected_error';
+export type AuthCallbackFailurePhase =
+  | 'callback_processing'
+  | 'sign_in_with_custom_token'
+  | 'post_sign_in';
 
 export type AuthCallbackFailureDiagnostics = {
   category: AuthCallbackFailureCategory;
-  phase: 'sign_in_with_custom_token';
+  phase: AuthCallbackFailurePhase;
   errorCode: string;
   online: boolean;
 };
@@ -36,13 +40,14 @@ export function getSafeFirebaseAuthErrorCode(error: unknown) {
 
 export function buildAuthCallbackFailureDiagnostics(
   error: unknown,
+  phase: AuthCallbackFailurePhase,
   online: boolean,
 ): AuthCallbackFailureDiagnostics {
   const errorCode = getSafeFirebaseAuthErrorCode(error);
 
   return {
     category: errorCode === 'unknown' ? 'callback_unexpected_error' : 'firebase_auth_error',
-    phase: 'sign_in_with_custom_token',
+    phase,
     errorCode,
     online,
   };

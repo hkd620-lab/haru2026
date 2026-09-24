@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router';
 import { signInWithCustomToken } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { toast } from 'sonner';
-import { buildAuthCallbackFailureDiagnostics, logAuthCallbackFailure } from '../utils/authCallbackDiagnostics';
+import {
+  buildAuthCallbackFailureDiagnostics,
+  logAuthCallbackFailure,
+  type AuthCallbackFailurePhase,
+} from '../utils/authCallbackDiagnostics';
 import { normalizeLoginProvider, rememberLoginProviderLocally } from '../utils/loginProvider';
 import { failLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 
@@ -70,6 +74,7 @@ export function AuthCallbackPage() {
     const processCallback = async () => {
       markLoginTrace('T2_callback_arrived');
       let callbackProvider: ReturnType<typeof normalizeLoginProvider> = null;
+      let callbackPhase: AuthCallbackFailurePhase = 'callback_processing';
       try {
         const { customToken, provider, error } = readCallbackParams();
         callbackProvider = provider;
@@ -102,7 +107,9 @@ export function AuthCallbackPage() {
 
         try {
           // Firebase 커스텀 토큰으로 로그인
+          callbackPhase = 'sign_in_with_custom_token';
           const userCredential = await signInWithCustomToken(auth, customToken);
+          callbackPhase = 'post_sign_in';
           markLoginTrace('T3_firebase_sign_in_complete');
           rememberCompletedCallback(callbackKey);
           if (provider) {
@@ -116,10 +123,10 @@ export function AuthCallbackPage() {
           callbackInProgressKeys.delete(callbackKey);
         }
       } catch (error) {
-        const diagnostics = buildAuthCallbackFailureDiagnostics(error, navigator.onLine);
+        const diagnostics = buildAuthCallbackFailureDiagnostics(error, callbackPhase, navigator.onLine);
         const errorType = diagnostics.category;
         failLoginTrace(
-          errorType === 'firebase_auth_error' ? 'firebase_custom_token_sign_in' : 'callback_processing',
+          callbackPhase === 'sign_in_with_custom_token' ? 'firebase_custom_token_sign_in' : 'callback_processing',
           errorType,
           callbackProvider,
         );
