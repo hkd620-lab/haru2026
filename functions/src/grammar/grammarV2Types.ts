@@ -39,6 +39,9 @@ export interface GrammarV2PilotStageMetrics {
   attempts: number;
   changes?: string[];
   corrected?: boolean;
+  // 검증기에 걸려 버려진 생성 시도. 토큰은 실제로 썼으므로 비용 계산에는 포함된다.
+  validationFailed?: boolean;
+  validationError?: string;
 }
 
 export interface GrammarV2PilotMetrics {
@@ -46,6 +49,7 @@ export interface GrammarV2PilotMetrics {
   verifyMode: GrammarV2VerifyMode;
   generationModel: string;
   cacheRead: boolean;
+  generateAttempts: number;
   stages: GrammarV2PilotStageMetrics[];
 }
 

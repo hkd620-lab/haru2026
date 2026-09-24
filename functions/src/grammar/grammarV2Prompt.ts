@@ -3,7 +3,7 @@ import { CanonicalBibleContext, GrammarV2SemanticPayload } from './grammarV2Type
 export const GRAMMAR_V2_SCHEMA_VERSION = 'grammar-v2';
 export const GRAMMAR_V2_PROMPT_VERSION = 'v2.2.3';
 // 파일럿(얕은 해설 기준)은 별도 프롬프트 버전을 쓴다. 운영 캐시(v2.2.3)와 섞이지 않는다.
-export const GRAMMAR_V2_PILOT_PROMPT_VERSION = 'v2.3.0-pilot';
+export const GRAMMAR_V2_PILOT_PROMPT_VERSION = 'v2.3.1-pilot';
 export const GRAMMAR_V2_GENERATE_MODEL = 'gemini-3.1-flash-lite';
 export const GRAMMAR_V2_VERIFY_MODEL = 'gpt-4o';
 
@@ -138,6 +138,8 @@ Context after: ${after}
 Source rules:
 - Do not change, modernize, or paraphrase the ${versionLabel} source text.
 - chunks must contain exact consecutive substrings copied from the TARGET verse only.
+- Copy chunk.text character by character from the TARGET verse. Change nothing: keep the original capitalization, punctuation, commas, periods, colons, semicolons, apostrophes and quotation marks exactly as they appear, including any quotation mark that falls inside your chunk.
+- Do not normalize, trim, re-spell, or tidy up chunk.text in any way. Concatenating all chunk.text values in order must reproduce the TARGET verse.
 - Do not add words that are not in the TARGET verse to chunks.
 - chunk order must follow the TARGET verse order.
 - Every lexical source word in the TARGET verse must appear exactly once across chunks.
@@ -162,8 +164,13 @@ Depth rules (most important — stay short and easy):
 - Do not add pronoun-antecedent analysis, comparisons of repeated words, or extra warnings unless the verse cannot be read without them. Deeper material belongs to a separate advanced view, not here.
 - glossary: include only the words a Korean middle-school reader would actually need. Fewer is better than eight.
 - keyPoints: each of pattern, meaningKo, why, example.en, example.ko, and caution must be exactly one short sentence.
-- Each keyPoint.pattern must be a grammatical structure that actually appears in the TARGET verse. Do not mislabel or simplify away the real subject, object, verb, clause, phrase, or passive relation just to make it sound easier.
-- Each keyPoint.caution must name the single most likely misreading of this verse in one sentence.
+- keyPoint.pattern must be the NAME OF A GRAMMATICAL STRUCTURE in Korean, not a quotation from the verse.
+- Never copy a phrase from the TARGET verse into keyPoint.pattern. If your pattern text appears inside the verse, it is wrong — replace it with the structure's name.
+- Good keyPoint.pattern values: "주어 + 동사 + 목적어", "전치사구(시간)", "to부정사(목적)", "관계대명사 who절", "수동태(be + 과거분사)", "명령문", "비교급 + than", "분사구문", "there + be 존재구문".
+- Bad keyPoint.pattern values (these are verse phrases, not structures): "to my feet", "under heaven", "as a ransom", "who believes in Him", "In the beginning".
+- Each keyPoint.pattern must name a structure that actually appears in the TARGET verse. Do not mislabel or simplify away the real subject, object, verb, clause, phrase, or passive relation just to make it sound easier.
+- keyPoint.caution must name, in one sentence, something a Korean learner would actually get wrong WHEN READING THIS VERSE.
+- A caution that would fit almost any English sentence is not acceptable. Do not write generic advice such as "전치사 in이 쓰였음을 주의하세요" or "and는 대등하게 연결합니다". Point at the specific word, word order, or form in this verse that causes the confusion, and say what the wrong reading would be.
 
 Return this exact semantic JSON shape:
 {
@@ -200,14 +207,14 @@ Return this exact semantic JSON shape:
   "keyPoints": [
     {
       "order": 1,
-      "pattern": "English pattern",
+      "pattern": "Korean name of the grammatical structure, never a phrase from the verse",
       "meaningKo": "Korean meaning in one sentence",
       "why": "why it matters in this verse, one sentence",
       "example": {
         "en": "simple English example",
         "ko": "Korean translation"
       },
-      "caution": "Korean caution in one sentence"
+      "caution": "one sentence naming a mistake a Korean learner would make in THIS verse"
     }
   ]
 }`;
@@ -298,6 +305,8 @@ ${JSON.stringify(semantic, null, 2)}
 
 Check ONLY these three kinds of error:
 1. Grammar-explanation errors — a stated grammatical fact about the target verse is wrong, or a keyPoint.pattern describes a structure that does not actually occur in the target verse, or chunk.role / chunk.note contradicts the real syntactic function of that chunk.
+1a. keyPoint.pattern must be the NAME OF A GRAMMATICAL STRUCTURE in Korean, not a quotation from the verse. Treat it as an error whenever the pattern text appears inside the target verse or is otherwise just a phrase lifted from it (for example "to my feet", "under heaven", "as a ransom", "who believes in Him", "In the beginning"). Replace such a pattern with the structure's name (for example "전치사구(시간)", "to부정사(목적)", "관계대명사 who절", "수동태(be + 과거분사)", "주어 + 동사 + 목적어") and keep meaningKo, why, example and caution consistent with the corrected name. Record the fix in changes.
+1b. keyPoint.caution must point at something a Korean learner would actually get wrong in THIS verse. Treat generic advice that would fit almost any English sentence as an error, and replace it with a verse-specific caution. This is the one case where you may rewrite a caution that is not factually false.
 2. Translation errors — translationNatural, chunk.meaning, or glossary[].meaningKo misrepresents the target verse, or a glossary meaning does not match how the word is used here.
 3. Format errors — chunks are not exact consecutive substrings of the target verse, a lexical word of the target verse is missing or duplicated across chunks, glossary has more than 8 items, glossary ids are not contiguous from w1, termIds reference ids that do not exist, keyPoints are not exactly 3 with order 1/2/3, or Markdown is present.
 

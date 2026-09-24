@@ -500,31 +500,56 @@ export const getGrammarExplainV2 = onCall(
       }
 
       const requestId = randomUUID();
-      const generated = await generateSemanticPayload({
-        uid: request.auth.uid,
-        sourceKey,
-        requestId,
-        prompt: buildGeminiSemanticPrompt(context, { depth: isPilotRun ? 'shallow' : 'standard' }),
-        generationModel,
-      });
-      const validatedGemini = validateGrammarV2SemanticPayload(
-        context.targetVerse.text,
-        generated.semantic,
-        validateOptions
-      );
-      const draftForVerifier = semanticWithoutPositions(validatedGemini);
+      const prompt = buildGeminiSemanticPrompt(context, { depth: isPilotRun ? 'shallow' : 'standard' });
+      const stages: GrammarV2PilotStageMetrics[] = [];
 
-      const stages: GrammarV2PilotStageMetrics[] = [
-        {
+      // 파일럿 모드에서만 검증기 실패 시 생성을 한 번 더 시도한다.
+      // 기존 KJV 경로는 maxGenerateAttempts 가 1이라 지금과 같다.
+      const maxGenerateAttempts = isPilotRun ? 2 : 1;
+      let generated!: Awaited<ReturnType<typeof generateSemanticPayload>>;
+      let validatedGemini!: GrammarV2ValidatedSemanticPayload;
+      let generateAttempts = 0;
+
+      for (let attempt = 1; attempt <= maxGenerateAttempts; attempt += 1) {
+        generateAttempts = attempt;
+        generated = await generateSemanticPayload({
+          uid: request.auth.uid,
+          sourceKey,
+          requestId,
+          prompt,
+          generationModel,
+        });
+        const stage: GrammarV2PilotStageMetrics = {
           stage: 'generate',
           model: generationModel,
           inputTokens: generated.usage.inputTokens,
           outputTokens: generated.usage.outputTokens,
           thoughtsTokens: generated.usage.thoughtsTokens ?? null,
           latencyMs: generated.latencyMs,
-          attempts: 1,
-        },
-      ];
+          attempts: attempt,
+        };
+        stages.push(stage);
+
+        try {
+          validatedGemini = validateGrammarV2SemanticPayload(
+            context.targetVerse.text,
+            generated.semantic,
+            validateOptions
+          );
+          break;
+        } catch (error) {
+          const isValidationError = error instanceof GrammarV2ValidationError;
+          if (!isValidationError || attempt === maxGenerateAttempts) throw error;
+          stage.validationFailed = true;
+          stage.validationError = (error as GrammarV2ValidationError).message;
+          logger.warn(
+            `[getGrammarExplainV2] generation attempt ${attempt} failed validation, retrying`,
+            { sourceKey, message: stage.validationError }
+          );
+        }
+      }
+
+      const draftForVerifier = semanticWithoutPositions(validatedGemini);
       const variants: GrammarV2PilotVariant[] = [];
 
       // 'both'는 같은 생성 초안에 두 검증을 각각 돌려 결과와 토큰을 따로 모은다.
@@ -614,6 +639,7 @@ export const getGrammarExplainV2 = onCall(
         verifyMode,
         generationModel,
         cacheRead: !skipCacheRead,
+        generateAttempts,
         stages,
       };
       return {
