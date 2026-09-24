@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { collection, doc, getDoc, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, getDocsFromServer, limit, orderBy, query } from 'firebase/firestore';
 import { Paperclip, X } from 'lucide-react';
 import { deleteObject, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { toast } from 'sonner';
@@ -173,6 +173,7 @@ const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
 ]);
 const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
 const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
+
 async function deleteHaruLawAttachmentPath(storagePath: string): Promise<void> {
   await deleteObject(storageRef(storage, storagePath));
 }
@@ -188,7 +189,7 @@ async function isHaruLawAttachmentReferenced(entry: HaruLawAttachmentCleanupEntr
     entry.threadId,
     'messages',
   );
-  const snap = await getDocs(messagesRef);
+  const snap = await getDocsFromServer(messagesRef);
   return snap.docs.some((item) => {
     const attachments = (item.data() as ResultChatMessage)?.attachments;
     return Array.isArray(attachments)

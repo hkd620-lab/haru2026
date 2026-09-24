@@ -183,6 +183,12 @@ await check('12. UI 제거·닫기·부분 업로드 실패·성공 커밋 경�
   const source = await readFile(new URL('../src/app/components/ResultChatModal.tsx', import.meta.url), 'utf8');
   const firestoreService = await readFile(new URL('../src/app/services/firestoreService.ts', import.meta.url), 'utf8');
   assert.match(source, /deleteObject/);
+  const referenceCheck = source.slice(
+    source.indexOf('async function isHaruLawAttachmentReferenced'),
+    source.indexOf('export function ResultChatModal'),
+  );
+  assert.match(referenceCheck, /await getDocsFromServer\(messagesRef\)/);
+  assert.doesNotMatch(referenceCheck, /await getDocs\(/);
   assert.match(source, /closeWithPendingCleanup/);
   assert.match(source, /uploaded\.length > 0/);
   assert.match(source, /uploadingAttachmentsRef\.current = \[\.\.\.uploaded\]/);
