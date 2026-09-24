@@ -20,6 +20,12 @@ import {
   getAssistantRecommendations,
   type AssistantRecommendation,
 } from '../utils/assistantRecommendations';
+import {
+  getHaruLawUserError,
+  getHaruLawUserErrorByReason,
+  hasReadableHaruLawPdfHeader,
+  type HaruLawUserError,
+} from '../utils/haruLawError';
 import { db, storage } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
 import { useSubscription } from '../hooks/useSubscription';
@@ -320,7 +326,7 @@ export function RecordPage() {
   const [lawLoading, setLawLoading] = useState(false);
   const [lawResults, setLawResults] = useState<any[]>([]);
   const [lawSummary, setLawSummary] = useState('');
-  const [lawError, setLawError] = useState('');
+  const [lawError, setLawError] = useState<HaruLawUserError | null>(null);
   const lawSearchHistory = useRef<{query: string, summary: string, articles: any[]}[]>([]);
   const [activeLawQuery, setActiveLawQuery] = useState('');
   const [isSavingLaw, setIsSavingLaw] = useState(false);
@@ -711,7 +717,9 @@ export function RecordPage() {
     const toUpload = files.slice(0, remainingSlots);
     for (const file of toUpload) {
       if (!HARULAW_ATTACH_ALLOWED_TYPES.has(file.type)) {
-        toast.error(`${file.name}: PNG, JPEG, WebP, HEIC, PDF만 첨부할 수 있습니다.`);
+        const userError = getHaruLawUserErrorByReason('ATTACHMENT_UNSUPPORTED_TYPE');
+        setLawError(userError);
+        toast.error(userError.title);
         event.target.value = '';
         return;
       }
@@ -723,8 +731,19 @@ export function RecordPage() {
         event.target.value = '';
         return;
       }
+      if (file.type === 'application/pdf') {
+        const header = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+        if (!hasReadableHaruLawPdfHeader(header)) {
+          const userError = getHaruLawUserErrorByReason('ATTACHMENT_PDF_UNREADABLE');
+          setLawError(userError);
+          toast.error(userError.title);
+          event.target.value = '';
+          return;
+        }
+      }
     }
 
+    setLawError(null);
     setUploadingLawFiles(true);
     try {
       const uploaded: HaruLawAttachmentRef[] = [];
@@ -746,8 +765,8 @@ export function RecordPage() {
     }
   };
 
-  const handleLawSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLawSearch = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!lawQuery.trim()) return;
     if (uploadingLawFiles) {
       toast.info('파일 업로드가 끝난 뒤 전송해 주세요.');
@@ -756,7 +775,7 @@ export function RecordPage() {
     setLawLoading(true);
     setLawResults([]);
     setLawSummary('');
-    setLawError('');
+    setLawError(null);
     const attachmentsToSend = [...lawAttachments];
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
@@ -767,7 +786,12 @@ export function RecordPage() {
       });
       const data = res.data;
       if (!data.success) {
-        setLawError(data.message || '검색 결과가 없습니다.');
+        setLawError({
+          reason: 'NO_RESULTS',
+          title: '관련 법령을 찾지 못했습니다',
+          message: data.message || '질문을 조금 더 구체적으로 입력해 주세요.',
+          retryable: false,
+        });
         return;
       }
       setLawSaved(false);
@@ -780,8 +804,8 @@ export function RecordPage() {
         { query: lawQuery, summary: data.aiSummary, articles: data.data },
         ...lawSearchHistory.current,
       ].slice(0, 10);
-    } catch {
-      setLawError('법령 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } catch (error) {
+      setLawError(getHaruLawUserError(error));
     } finally {
       setLawLoading(false);
     }
@@ -1414,7 +1438,28 @@ export function RecordPage() {
                   border: '1px solid #ffcccc', borderRadius: 8,
                   color: '#cc0000', fontSize: 13, marginBottom: 8,
                 }}>
-                  {lawError}
+                  <strong style={{ display: 'block', marginBottom: 4 }}>{lawError.title}</strong>
+                  <span style={{ display: 'block', lineHeight: 1.6 }}>{lawError.message}</span>
+                  {lawError.retryable && lawError.actionLabel && (
+                    <button
+                      type="button"
+                      disabled={lawLoading || uploadingLawFiles}
+                      onClick={() => handleLawSearch()}
+                      style={{
+                        marginTop: 8,
+                        padding: '6px 10px',
+                        border: '1px solid #cc0000',
+                        borderRadius: 7,
+                        backgroundColor: '#FFFFFF',
+                        color: '#A00000',
+                        fontSize: 12,
+                        fontWeight: 800,
+                        cursor: lawLoading || uploadingLawFiles ? 'wait' : 'pointer',
+                      }}
+                    >
+                      {lawError.actionLabel}
+                    </button>
+                  )}
                 </div>
               )}
 

@@ -172,9 +172,13 @@ Module._load = function patchedLoad(request, parent, isMain) {
     return {
       getStorage: () => ({
         bucket: () => ({
-          file: () => ({
+          file: (storagePath) => ({
             getMetadata: async () => [{ contentType: 'application/pdf', size: 1024 }],
-            download: async () => [Buffer.from('%PDF-1.4\n% test attachment\n')],
+            download: async () => [Buffer.from(
+              storagePath.endsWith('/not-really.pdf')
+                ? 'ordinary text pretending to be a pdf'
+                : '%PDF-1.4\n% test attachment\n',
+            )],
           }),
         }),
       }),
@@ -711,6 +715,19 @@ async function run() {
   assert.strictEqual(attachmentWeb.webSearchUsed, true);
   assert.ok(genaiCalls[genaiCalls.length - 1].hasGoogleSearchTool);
   assert.ok(genaiCalls[genaiCalls.length - 1].contents.includes('inlineData'));
+
+  await assert.rejects(
+    callable(USERS.developer, {
+      recordId: 'law',
+      sourceKey: 'haruraw_sayu',
+      question: 'PDF 내용을 확인해줘.',
+      searchPreference: 'record_only',
+      attachments: [{ ...attachment, storagePath: `users/${USERS.developer}/haruLawAttachments/law/not-really.pdf` }],
+    }),
+    (error) => error?.code === 'invalid-argument'
+      && error?.details?.reason === 'ATTACHMENT_PDF_UNREADABLE'
+      && error?.details?.retryable === false,
+  );
 
   const logs = await getLogs({ featureName: 'result_chat' });
   assert.ok(logs.some((log) => log.actualPlan === 'basic' && log.answerRoute === 'record_only' && log.webSearchUsed === false && log.searchSourceCount === 0));

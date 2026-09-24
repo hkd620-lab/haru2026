@@ -98,6 +98,16 @@ import {
   sha256Hex,
   validateLawEasyExplainInput,
 } from './lawEasyExplainCore';
+import {
+  classifyHaruLawAiError,
+  getHaruLawAttachmentContentError,
+  getHaruLawErrorDescriptor,
+  HaruLawApiTemporaryError,
+  isAllowedHaruLawAttachmentMime,
+  runHaruLawApiRequestWithRetry,
+  type HaruLawErrorReason,
+  type HaruLawProcessingStage,
+} from './haruLawErrorCore';
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 import { GoogleGenAI } from '@google/genai';
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -3931,8 +3941,9 @@ function readHaruLawAttachments(raw: unknown): HaruLawAttachmentRef[] {
   });
 }
 
-function isAllowedHaruLawAttachmentMime(mimeType: string): boolean {
-  return mimeType === 'application/pdf' || /^image\/[-+.\w]+$/i.test(mimeType);
+function createHaruLawHttpsError(reason: HaruLawErrorReason): HttpsError {
+  const descriptor = getHaruLawErrorDescriptor(reason);
+  return new HttpsError(descriptor.code, descriptor.message, descriptor.details);
 }
 
 function getHaruLawAttachmentSizeLimit(mimeType: string): number {
@@ -3951,7 +3962,7 @@ async function loadHaruLawAttachmentParts(
       throw new HttpsError('permission-denied', '허용되지 않은 파일 경로입니다.');
     }
     if (!isAllowedHaruLawAttachmentMime(att.mimeType)) {
-      throw new HttpsError('invalid-argument', '지원하지 않는 파일 형식입니다.');
+      throw createHaruLawHttpsError('ATTACHMENT_UNSUPPORTED_TYPE');
     }
 
     const file = bucket().file(att.storagePath);
@@ -3966,7 +3977,7 @@ async function loadHaruLawAttachmentParts(
     const storedMimeType = String(metadata?.contentType || '').trim().toLowerCase();
     const effectiveMimeType = storedMimeType || att.mimeType;
     if (!isAllowedHaruLawAttachmentMime(effectiveMimeType) || (storedMimeType && storedMimeType !== att.mimeType)) {
-      throw new HttpsError('invalid-argument', '첨부 파일 형식이 허용 범위와 다릅니다.');
+      throw createHaruLawHttpsError('ATTACHMENT_UNSUPPORTED_TYPE');
     }
 
     const sizeLimit = getHaruLawAttachmentSizeLimit(effectiveMimeType);
@@ -3984,6 +3995,10 @@ async function loadHaruLawAttachmentParts(
     }
     if (buf.length > sizeLimit) {
       throw new HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+    }
+    const contentError = getHaruLawAttachmentContentError(effectiveMimeType, buf);
+    if (contentError) {
+      throw createHaruLawHttpsError(contentError);
     }
 
     fileParts.push({ inlineData: { mimeType: effectiveMimeType, data: buf.toString('base64') } });
@@ -4093,6 +4108,7 @@ export const chatWithResult = onCall(
     let webSearchFinalized = false;
     let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
     let attemptedAnswerRoute: ResultAnswerRoute = 'ambiguous';
+    let haruLawProcessingStage: HaruLawProcessingStage = 'attachment_load';
 
     try {
       await acquireResultChatLock(threadRef, requestId);
@@ -4347,6 +4363,7 @@ export const chatWithResult = onCall(
       const { fileParts, attachmentMeta } = attachments.length > 0
         ? await loadHaruLawAttachmentParts(uid, attachments)
         : { fileParts: [] as HaruLawGeminiFilePart[], attachmentMeta: [] as HaruLawAttachmentRef[] };
+      haruLawProcessingStage = 'summary_ai';
       const contents: any = fileParts.length > 0
         ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
         : prompt;
@@ -4412,7 +4429,7 @@ export const chatWithResult = onCall(
 
       const answer = decorateResultChatAnswer(rawAnswer, answerRoute, usageForAnswer, recordOnlyChosen);
       if (!answer) {
-        throw new Error('empty_answer');
+        throw new Error(attachments.length > 0 ? 'attachment content could not be read' : 'empty_answer');
       }
 
       await logResultChatUsage({
@@ -4513,6 +4530,37 @@ export const chatWithResult = onCall(
       }
       if (error instanceof HttpsError) {
         throw error;
+      }
+      if (sourceKey === 'haruraw_sayu') {
+        const reason = classifyHaruLawAiError(error, attachments.length > 0);
+        logger.error('chatWithResult 하루LAW 처리 실패:', {
+          stage: haruLawProcessingStage,
+          reason,
+          errorName: error?.name,
+          errorCode: error?.code,
+          errorStatus: error?.response?.status ?? error?.status,
+          recordId,
+          sourceKey,
+        });
+        await logResultChatUsage({
+          uid,
+          actualPlan,
+          recordId,
+          sourceKey,
+          answerRoute: 'ambiguous',
+          model: null,
+          inputTokens: null,
+          outputTokens: null,
+          webSearchUsed: false,
+          professionalApiUsed: false,
+          searchSourceCount: 0,
+          latencyMs: null,
+          requestId,
+          success: false,
+          errorCode: reason,
+          isDev,
+        });
+        throw createHaruLawHttpsError(reason);
       }
       logger.error('chatWithResult 실패:', {
         errorName: error?.name,
@@ -9414,6 +9462,7 @@ export const lawSearch = onCall(
       timeout: 10000,
     };
 
+    let processingStage: HaruLawProcessingStage = 'attachment_load';
     try {
       const { XMLParser } = await import('fast-xml-parser');
       const LAW_API_KEY = LAW_API_KEY_SECRET.value().trim();
@@ -9433,37 +9482,22 @@ export const lawSearch = onCall(
       };
 
       const getLawXmlWithRetry = async (url: string) => {
-        let lastError: any;
-        for (let attempt = 1; attempt <= 3; attempt += 1) {
-          try {
-            return await axios.get(url, axiosConfig);
-          } catch (error: any) {
-            lastError = error;
-            const status = error?.response?.status;
-            const retriable =
-              error?.code === 'ECONNRESET' ||
-              error?.code === 'ETIMEDOUT' ||
-              error?.code === 'ECONNABORTED' ||
-              !error?.response ||
-              status >= 500;
-
-            if (!retriable || attempt === 3) {
-              throw error;
-            }
-
-            logger.warn('HARUraw 법제처 API 재시도', {
-              attempt,
-              code: error?.code,
-              status,
-            });
-            await new Promise((resolve) => setTimeout(resolve, attempt * 700));
-          }
-        }
-
-        throw lastError;
+        return runHaruLawApiRequestWithRetry(
+          () => axios.get(url, axiosConfig),
+          {
+            onRetry: (attempt, error: any) => {
+              logger.warn('HARUraw 법제처 API 재시도', {
+                attempt,
+                code: error?.code,
+                status: error?.response?.status,
+              });
+            },
+          },
+        );
       };
 
       // 0단계: Gemini로 정확한 법령 이름 추출
+      processingStage = 'keyword_ai';
       const genAI = new GoogleGenerativeAI(GEMINI_KEY);
       const kwModelName = 'gemini-3.1-flash-lite';
       const kwModel = genAI.getGenerativeModel({ model: kwModelName });
@@ -9505,6 +9539,7 @@ export const lawSearch = onCall(
       console.log('HARUraw 추출 키워드:', lawKeyword);
 
       // 1단계: 법제처 검색
+      processingStage = 'law_api_search';
       const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?OC=${LAW_API_KEY}&target=law&type=XML&query=${encodeURIComponent(lawKeyword)}`;
       const searchRes = await getLawXmlWithRetry(searchUrl);
       const searchJson = parser.parse(searchRes.data);
@@ -9530,6 +9565,7 @@ export const lawSearch = onCall(
       }
 
       // 2단계: 법령 전문 조회
+      processingStage = 'law_api_detail';
       const serviceUrl = `https://www.law.go.kr/DRF/lawService.do?OC=${LAW_API_KEY}&target=law&MST=${mstId}&type=XML`;
       const serviceRes = await getLawXmlWithRetry(serviceUrl);
       const lawJson = parser.parse(serviceRes.data);
@@ -9549,6 +9585,7 @@ export const lawSearch = onCall(
         .filter((j: any) => j.articleStr !== '제undefined조' && j.content.length > 5);
 
       // 3단계: Gemini로 관련 조문만 선별 (최대 5개)
+      processingStage = 'article_select_ai';
       const jomunCatalog = allJomuns
         .map((j: any) => `${j.articleStr}(${j.title})`)
         .join('\n');
@@ -9594,6 +9631,7 @@ export const lawSearch = onCall(
       const finalJomuns = cleanedJomuns.length > 0 ? cleanedJomuns : allJomuns.slice(0, 3);
 
       // 4단계: Gemini로 전체 요약 생성
+      processingStage = 'summary_ai';
       const summaryModelName = 'gemini-3.1-pro-preview';
       const summaryModel = genAI.getGenerativeModel({ model: summaryModelName });
       const lawText = finalJomuns
@@ -9644,6 +9682,10 @@ export const lawSearch = onCall(
         ? [{ text: summaryPrompt }, ...fileParts]
         : summaryPrompt;
       const summaryResult = await summaryModel.generateContent(summaryContents);
+      const summaryText = summaryResult.response.text().trim();
+      if (!summaryText) {
+        throw new Error(attachments.length > 0 ? 'attachment content could not be read' : 'empty_answer');
+      }
       const summaryUsage = getGeminiUsage(summaryResult);
       await logAiUsage({
         uid: request.auth.uid,
@@ -9665,14 +9707,25 @@ export const lawSearch = onCall(
       return {
         success: true,
         data: finalJomuns,
-        aiSummary: summaryResult.response.text(),
+        aiSummary: summaryText,
       };
 
     } catch (error: any) {
       if (error instanceof HttpsError) {
         throw error;
       }
-      logger.error('HARUraw 법령 검색 실패:', error);
+      const reason: HaruLawErrorReason = error instanceof HaruLawApiTemporaryError
+        ? 'LAW_API_TEMPORARY_UNAVAILABLE'
+        : processingStage === 'keyword_ai' || processingStage === 'article_select_ai' || processingStage === 'summary_ai'
+          ? classifyHaruLawAiError(error, processingStage === 'summary_ai' && attachments.length > 0)
+          : 'HARULAW_PROCESSING_FAILED';
+      logger.error('HARUraw 법령 검색 실패:', {
+        stage: processingStage,
+        reason,
+        errorName: error?.name,
+        errorCode: error?.code,
+        errorStatus: error?.response?.status ?? error?.status,
+      });
       if (request.auth?.uid) {
         await logAiUsage({
           uid: request.auth.uid,
@@ -9687,11 +9740,11 @@ export const lawSearch = onCall(
           groundingUsed: false,
           requestId: null,
           success: false,
-          errorCode: getAiUsageErrorCode(error),
+          errorCode: reason,
           isDev: DEVELOPER_UIDS.has(request.auth.uid),
         });
       }
-      throw new HttpsError('internal', '법령 검색에 실패했습니다.');
+      throw createHaruLawHttpsError(reason);
     }
   }
 );

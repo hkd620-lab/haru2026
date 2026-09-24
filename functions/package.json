@@ -7,6 +7,7 @@
     "test:english-bible-word": "node test/englishBibleWordMeaning.test.js",
     "test:internal-entitlements": "node test/internalEntitlements.policy.test.js",
     "test:result-chat": "node test/resultChat.integration.js",
+    "test:harulaw-errors": "node --experimental-strip-types test/haruLawErrorCore.test.js",
     "test:monthly-ai-quota": "node test/monthlyAiQuota.policy.test.js",
     "test:monthly-ocr-quota": "node test/monthlyOcrQuota.policy.test.js",
     "test:payment-provider-flow": "node test/paymentProviderFlow.policy.test.js",
