@@ -56,10 +56,13 @@ function isIsoBmffHeif(bytes) {
 function getPdfStructureTail(bytes) {
     const start = Math.max(0, bytes.byteLength - MAX_PDF_STRUCTURE_SCAN_BYTES);
     const tail = bytes.subarray(start);
-    return Buffer.from(tail.buffer, tail.byteOffset, tail.byteLength).toString('latin1');
+    return {
+        start,
+        text: Buffer.from(tail.buffer, tail.byteOffset, tail.byteLength).toString('latin1'),
+    };
 }
 function hasPdfEncryptionDictionary(bytes) {
-    const pdf = getPdfStructureTail(bytes);
+    const { start, text: pdf } = getPdfStructureTail(bytes);
     const trailerPattern = /(?:^|[\r\n])trailer[\t \r\n]*<</g;
     for (let match = trailerPattern.exec(pdf); match; match = trailerPattern.exec(pdf)) {
         const end = pdf.indexOf('startxref', match.index);
@@ -67,15 +70,21 @@ function hasPdfEncryptionDictionary(bytes) {
         if (/\/Encrypt\b/.test(trailer))
             return true;
     }
-    const xrefPattern = /\/Type\s*\/XRef\b/g;
-    for (let match = xrefPattern.exec(pdf); match; match = xrefPattern.exec(pdf)) {
-        const objectStart = pdf.lastIndexOf('obj', match.index);
-        const dictionaryStart = objectStart >= 0 ? pdf.indexOf('<<', objectStart) : -1;
-        const streamStart = pdf.indexOf('stream', match.index);
-        if (dictionaryStart >= 0 && dictionaryStart < match.index && streamStart > match.index) {
-            const dictionary = pdf.slice(dictionaryStart, streamStart);
-            if (/\/Encrypt\b/.test(dictionary))
-                return true;
+    const startXrefMatches = [...pdf.matchAll(/startxref[\t \r\n]+(\d+)/g)];
+    const startXrefMatch = startXrefMatches.at(-1);
+    const xrefOffset = Number(startXrefMatch === null || startXrefMatch === void 0 ? void 0 : startXrefMatch[1]);
+    const relativeXrefOffset = xrefOffset - start;
+    if (Number.isSafeInteger(xrefOffset) && relativeXrefOffset >= 0 && relativeXrefOffset < pdf.length) {
+        const xrefObject = pdf.slice(relativeXrefOffset, relativeXrefOffset + 64 * 1024);
+        const objectHeader = /^\s*\d+\s+\d+\s+obj\b/.exec(xrefObject);
+        if (objectHeader) {
+            const dictionaryStart = xrefObject.indexOf('<<', objectHeader[0].length);
+            const streamMatch = /[\r\n]stream(?:\r\n|\r|\n)/.exec(xrefObject);
+            if (dictionaryStart >= 0 && streamMatch && dictionaryStart < streamMatch.index) {
+                const dictionary = xrefObject.slice(dictionaryStart, streamMatch.index);
+                if (/\/Type\s*\/XRef\b/.test(dictionary) && /\/Encrypt\b/.test(dictionary))
+                    return true;
+            }
         }
     }
     return false;

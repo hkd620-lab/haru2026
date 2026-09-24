@@ -77,6 +77,24 @@ async function run() {
     ),
     null,
   );
+  const falseXrefStreamPrefix = '%PDF-1.7\n1 0 obj\n<< /Length 34 >>\nstream\nVisible /Type /XRef and /Encrypt text\nendstream\nendobj\n';
+  const falseXrefTableOffset = Buffer.byteLength(falseXrefStreamPrefix);
+  assert.equal(
+    getHaruLawAttachmentContentError(
+      'application/pdf',
+      Buffer.from(`${falseXrefStreamPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R >>\nstartxref\n${falseXrefTableOffset}\n%%EOF`),
+    ),
+    null,
+  );
+  const encryptedXrefPrefix = '%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n';
+  const encryptedXrefOffset = Buffer.byteLength(encryptedXrefPrefix);
+  assert.equal(
+    getHaruLawAttachmentContentError(
+      'application/pdf',
+      Buffer.from(`${encryptedXrefPrefix}2 0 obj\n<< /Type /XRef /Encrypt 4 0 R /Length 0 >>\nstream\n\nendstream\nendobj\nstartxref\n${encryptedXrefOffset}\n%%EOF`),
+    ),
+    'ATTACHMENT_PDF_UNREADABLE',
+  );
   const largePdf = Buffer.alloc((2 * 1024 * 1024) + 256, 0x41);
   Buffer.from('%PDF-1.7').copy(largePdf, 0);
   Buffer.from('\ntrailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n0\n%%EOF').copy(
