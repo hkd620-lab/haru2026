@@ -3,7 +3,7 @@ import { CanonicalBibleContext, GrammarV2SemanticPayload } from './grammarV2Type
 export const GRAMMAR_V2_SCHEMA_VERSION = 'grammar-v2';
 export const GRAMMAR_V2_PROMPT_VERSION = 'v2.2.3';
 // 파일럿(얕은 해설 기준)은 별도 프롬프트 버전을 쓴다. 운영 캐시(v2.2.3)와 섞이지 않는다.
-export const GRAMMAR_V2_PILOT_PROMPT_VERSION = 'v2.3.1-pilot';
+export const GRAMMAR_V2_PILOT_PROMPT_VERSION = 'v2.3.2-pilot';
 export const GRAMMAR_V2_GENERATE_MODEL = 'gemini-3.1-flash-lite';
 export const GRAMMAR_V2_VERIFY_MODEL = 'gpt-4o';
 
@@ -162,6 +162,19 @@ Depth rules (most important — stay short and easy):
 - Do not repeat chunk.meaning in chunk.note.
 - Use a grammar term only when it is necessary, and when you use one, explain it in easy Korean in the same sentence.
 - Do not add pronoun-antecedent analysis, comparisons of repeated words, or extra warnings unless the verse cannot be read without them. Deeper material belongs to a separate advanced view, not here.
+
+Translation rules (translationNatural):
+- Translate the ${versionLabel} English text directly into Korean. Work from the English in front of you, sentence by sentence.
+- NEVER reuse sentences from an existing Korean Bible translation (개역개정, 개역한글, 새번역, 공동번역 and the like). Those are separate copyrighted translations, and this must be your own direct rendering of the ${versionLabel} English.
+- Do not use archaic Korean scriptural endings such as ~하사, ~하리로다, ~이니라, ~하셨느니라, ~하시니, ~로다, ~느니라. Write present-day Korean polite style (~습니다 / ~입니다).
+- Do not add anything that is not in the ${versionLabel} text, and do not drop anything that is in it.
+
+Glossary rules:
+- Include only words a Korean student in the third year of middle school or above would plausibly not know.
+- Do NOT include basic vocabulary such as God, love, is, was, and, the, said, go, man, day.
+- Include a personal or place name only when its pronunciation is genuinely hard for a Korean reader.
+- Never list the same word twice.
+- Never invent a filler, dummy, or placeholder entry. If only two words are worth listing, list two. An empty glossary is acceptable when the verse has no difficult word.
 - glossary: include only the words a Korean middle-school reader would actually need. Fewer is better than eight.
 - keyPoints: each of pattern, meaningKo, why, example.en, example.ko, and caution must be exactly one short sentence.
 - keyPoint.pattern must be the NAME OF A GRAMMATICAL STRUCTURE in Korean, not a quotation from the verse.
@@ -176,7 +189,7 @@ Return this exact semantic JSON shape:
 {
   "difficulty": "short Korean difficulty label",
   "styleNote": "short Korean ${versionLabel} style note",
-  "translationNatural": "natural Korean translation of the TARGET verse",
+  "translationNatural": "your own direct Korean translation of the TARGET verse in ~습니다/~입니다 style",
   "chunks": [
     {
       "id": "c1",
@@ -186,7 +199,7 @@ Return this exact semantic JSON shape:
       "level": 0,
       "parentId": null,
       "meaning": "Korean meaning",
-      "note": "one core grammar point, 1-2 short Korean sentences",
+      "note": "one core grammar point, 1-2 short Korean sentences, different from every other chunk's note",
       "termIds": ["w1"]
     }
   ],

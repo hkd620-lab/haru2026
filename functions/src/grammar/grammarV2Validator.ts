@@ -59,6 +59,21 @@ function sentenceCount(value: string): number {
 export const GRAMMAR_V2_DEFAULT_MAX_NOTE_SENTENCES = 4;
 export const GRAMMAR_V2_PILOT_MAX_NOTE_SENTENCES = 2;
 
+// 기존 한국어 성경 문장을 그대로 가져왔는지 가려내는 고어체 어미 표지.
+// 현대 한국어 직역이면 이 표현이 나올 일이 없다.
+export const GRAMMAR_V2_ARCHAIC_KOREAN_MARKERS = [
+  '하사',
+  '하리로다',
+  '이니라',
+  '니라.',
+  '느니라',
+  '하시니',
+  '로다',
+] as const;
+
+// 단어표에 채워 넣기용 가짜 항목이 들어오는 것을 막는다.
+const GLOSSARY_FILLER_MARKERS = ['더미', 'dummy', 'placeholder', '자리표시'];
+
 export interface GrammarV2ValidateOptions {
   maxNoteSentences?: number;
   // 파일럿: 따옴표 종류·연속 공백 차이는 눈감아 주고 비교한다. 통과하면 청크 text 를
@@ -66,6 +81,11 @@ export interface GrammarV2ValidateOptions {
   normalizeChunkMatching?: boolean;
   // 파일럿: keyPoint.pattern 이 원문 어구 복사인지 코드로 검사한다(프롬프트에 맡기지 않는다).
   rejectSourcePhrasePattern?: boolean;
+  // 파일럿: 단어표 중복·더미 항목, 청크 해설 복사, 번역의 고어체를 코드로 걸러낸다.
+  rejectGlossaryDuplicates?: boolean;
+  rejectFillerGlossary?: boolean;
+  rejectDuplicateChunkNotes?: boolean;
+  rejectArchaicKoreanTranslation?: boolean;
 }
 
 // 곧은·굽은 따옴표와 아포스트로피. BSB 본문은 굽은 문자를 쓰는데 모델이 곧은 문자로
@@ -297,6 +317,46 @@ export function validateGrammarV2SemanticPayload(
   keyPoints.forEach((point, index) => {
     if (point.order !== index + 1) fail('keyPoints order must be exactly [1,2,3].');
   });
+
+  if (options.rejectGlossaryDuplicates) {
+    const seen = new Map<string, number>();
+    glossary.forEach((item, index) => {
+      const key = item.term.trim().toLowerCase();
+      if (seen.has(key)) {
+        fail(`glossary has the same term twice: "${item.term}" (glossary[${seen.get(key)}] and glossary[${index}])`);
+      }
+      seen.set(key, index);
+    });
+  }
+
+  if (options.rejectFillerGlossary) {
+    glossary.forEach((item, index) => {
+      const haystack = `${item.term} ${item.meaningKo} ${item.note}`.toLowerCase();
+      const hit = GLOSSARY_FILLER_MARKERS.find((marker) => haystack.includes(marker.toLowerCase()));
+      if (hit) fail(`glossary[${index}] looks like a filler entry (contains "${hit}").`);
+    });
+  }
+
+  if (options.rejectDuplicateChunkNotes) {
+    const seen = new Map<string, number>();
+    chunks.forEach((chunk, index) => {
+      const key = chunk.note.trim();
+      if (!key) return;
+      if (seen.has(key)) {
+        fail(`chunks[${index}].note is identical to chunks[${seen.get(key)}].note.`);
+      }
+      seen.set(key, index);
+    });
+  }
+
+  if (options.rejectArchaicKoreanTranslation) {
+    const hit = GRAMMAR_V2_ARCHAIC_KOREAN_MARKERS.find((marker) => translationNatural.includes(marker));
+    if (hit) {
+      fail(
+        `translationNatural uses an archaic Korean scriptural ending ("${hit}"). Translate the source text directly in modern Korean.`
+      );
+    }
+  }
 
   if (options.rejectSourcePhrasePattern) {
     const normalizedSource = normalizeForMatching(sourceText).text;

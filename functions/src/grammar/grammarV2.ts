@@ -589,6 +589,10 @@ export const getGrammarExplainV2 = onCall(
             maxNoteSentences: GRAMMAR_V2_PILOT_MAX_NOTE_SENTENCES,
             normalizeChunkMatching: true,
             rejectSourcePhrasePattern: true,
+            rejectGlossaryDuplicates: true,
+            rejectFillerGlossary: true,
+            rejectDuplicateChunkNotes: true,
+            rejectArchaicKoreanTranslation: true,
           }
         : {};
       const skipCacheRead = pilot?.skipCacheRead ?? false;
