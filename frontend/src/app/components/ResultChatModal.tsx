@@ -243,6 +243,7 @@ export function ResultChatModal({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const requestInFlightRef = useRef(false);
   const uploadingFilesRef = useRef(false);
+  const closingAttachmentsRef = useRef(false);
   const activeUploadScopeRef = useRef(0);
   const attachmentScopeRef = useRef(0);
   const uploadingAttachmentsRef = useRef<HaruLawAttachmentRef[]>([]);
@@ -388,7 +389,8 @@ export function ResultChatModal({
       toast.info('파일 전송이 끝난 뒤 창을 닫아 주세요.');
       return false;
     }
-    if (closingAttachments) return false;
+    if (closingAttachmentsRef.current) return false;
+    closingAttachmentsRef.current = true;
     setClosingAttachments(true);
     try {
       const attachments = pendingAttachmentsRef.current;
@@ -411,6 +413,7 @@ export function ResultChatModal({
       onClose();
       return true;
     } finally {
+      closingAttachmentsRef.current = false;
       setClosingAttachments(false);
     }
   };
@@ -438,6 +441,10 @@ export function ResultChatModal({
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (closingAttachmentsRef.current || uploadingFilesRef.current || requestInFlightRef.current) {
+      event.target.value = '';
+      return;
+    }
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
     if (!isHaruLaw || !isPaidUser) {
@@ -573,7 +580,7 @@ export function ResultChatModal({
     options: { skipOptimisticUser?: boolean; attachments?: HaruLawAttachmentRef[] } = {},
   ) => {
     const trimmed = text.trim();
-    if (!trimmed || loading || requestInFlightRef.current) return;
+    if (!trimmed || loading || requestInFlightRef.current || closingAttachmentsRef.current) return;
     if (searchPreference === 'auto' && pendingConfirmation) return;
     if (uploadingFiles) {
       toast.info('파일 업로드가 끝난 뒤 전송해 주세요.');
@@ -704,7 +711,7 @@ export function ResultChatModal({
   const monthlyAiBlocked = typeof pendingConfirmation?.monthlyAiRemainingCount === 'number'
     && pendingConfirmation.monthlyAiRemainingCount <= 0;
   const webSearchBlocked = pendingConfirmation?.webSearchRemainingCount === 0 || monthlyAiBlocked;
-  const choiceActionDisabled = loading || monthlyAiBlocked;
+  const choiceActionDisabled = loading || closingAttachments || monthlyAiBlocked;
 
   return (
     <div
@@ -760,7 +767,7 @@ export function ResultChatModal({
               <button
                 key={item}
                 type="button"
-                disabled={loading || uploadingFiles || isChoicePending}
+                disabled={loading || uploadingFiles || closingAttachments || isChoicePending}
                 onClick={() => sendQuestion(item)}
                 style={{
                   minHeight: 34,
@@ -771,7 +778,7 @@ export function ResultChatModal({
                   color: '#4A5A2C',
                   fontSize: 12,
                   fontWeight: 800,
-                  cursor: loading || uploadingFiles || isChoicePending ? 'not-allowed' : 'pointer',
+                  cursor: loading || uploadingFiles || closingAttachments || isChoicePending ? 'not-allowed' : 'pointer',
                 }}
               >
                 {item}
@@ -923,7 +930,7 @@ export function ResultChatModal({
                 </button>
                 <button
                   type="button"
-                  disabled={loading || webSearchBlocked}
+                  disabled={loading || closingAttachments || webSearchBlocked}
                   onClick={() => sendQuestion(pendingConfirmation.question, 'web_confirmed', { attachments: pendingConfirmation.attachments })}
                   style={{
                     minHeight: 34,
@@ -934,7 +941,7 @@ export function ResultChatModal({
                     color: webSearchBlocked ? '#64748B' : '#FFFFFF',
                     fontSize: 12,
                     fontWeight: 900,
-                    cursor: loading || webSearchBlocked ? 'not-allowed' : 'pointer',
+                    cursor: loading || closingAttachments || webSearchBlocked ? 'not-allowed' : 'pointer',
                   }}
                 >
                   최신 외부자료 확인
@@ -994,7 +1001,7 @@ export function ResultChatModal({
               {isPaidUser ? (
                 <button
                   type="button"
-                  disabled={loading || uploadingFiles || isChoicePending || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES}
+                  disabled={loading || uploadingFiles || closingAttachments || isChoicePending || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES}
                   onClick={() => fileInputRef.current?.click()}
                   style={{
                     alignSelf: 'flex-start',
@@ -1006,7 +1013,7 @@ export function ResultChatModal({
                     color: '#475569',
                     fontSize: 12,
                     fontWeight: 800,
-                    cursor: loading || uploadingFiles || isChoicePending || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES ? 'not-allowed' : 'pointer',
+                    cursor: loading || uploadingFiles || closingAttachments || isChoicePending || pendingAttachments.length >= HARULAW_ATTACH_MAX_FILES ? 'not-allowed' : 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 5,
@@ -1026,7 +1033,7 @@ export function ResultChatModal({
             <input
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              disabled={loading || uploadingFiles || isChoicePending}
+              disabled={loading || uploadingFiles || closingAttachments || isChoicePending}
               placeholder="나의 기록을 바탕으로 자유롭게 질문해 보세요."
               style={{
                 flex: 1,
@@ -1042,17 +1049,17 @@ export function ResultChatModal({
             />
             <button
               type="submit"
-              disabled={loading || uploadingFiles || isChoicePending || !question.trim()}
+              disabled={loading || uploadingFiles || closingAttachments || isChoicePending || !question.trim()}
               style={{
                 minWidth: 70,
                 height: 42,
                 borderRadius: 10,
                 border: 'none',
-                backgroundColor: loading || uploadingFiles || isChoicePending || !question.trim() ? '#CBD5E1' : '#1A3C6E',
+                backgroundColor: loading || uploadingFiles || closingAttachments || isChoicePending || !question.trim() ? '#CBD5E1' : '#1A3C6E',
                 color: '#FFFFFF',
                 fontSize: 13,
                 fontWeight: 900,
-                cursor: loading || uploadingFiles || isChoicePending || !question.trim() ? 'not-allowed' : 'pointer',
+                cursor: loading || uploadingFiles || closingAttachments || isChoicePending || !question.trim() ? 'not-allowed' : 'pointer',
               }}
             >
               전송
