@@ -1,4 +1,7 @@
 import * as admin from 'firebase-admin';
+// 에뮬레이터의 firebase-admin 스텁이 admin.firestore 의 정적 속성을 잃어버리므로
+// FieldValue 는 서브모듈에서 직접 가져온다. 운영에서는 같은 클래스다.
+import { FieldValue } from 'firebase-admin/firestore';
 
 type AiUsageLogInput = {
   uid: string;
@@ -62,7 +65,7 @@ export async function logAiUsage(input: AiUsageLogInput): Promise<void> {
       ...input,
       plan: input.plan === 'beta' ? actualPlan : input.plan,
       actualPlan,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
   } catch (error) {
     console.error('AI usage logging failed:', error);

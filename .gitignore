@@ -14,6 +14,10 @@ frontend/.env.local
 .secret.local
 functions/.secret.local
 
+# 에뮬레이터 로그
+firestore-debug.log
+firestore-debug.*.log
+
 # 서비스 계정 키 (절대 Git에 올리면 안 됨)
 firebase-service-account.json
 *-service-account.json

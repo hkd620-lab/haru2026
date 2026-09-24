@@ -1,6 +1,10 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
+// 에뮬레이터는 firebase-admin 메인 엔트리를 프록시로 갈아끼우는데, 그 과정에서
+// admin.firestore 를 bind() 로 감싸 Timestamp 같은 정적 속성이 사라진다.
+// 서브모듈에서 직접 가져오면 운영·에뮬레이터 모두에서 같은 클래스를 쓴다.
+import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import axios from 'axios';
 import { randomUUID } from 'crypto';
@@ -590,7 +594,7 @@ export const getGrammarExplainV2 = onCall(
           model: generationModel,
           inputTokens: generated.usage.inputTokens,
           outputTokens: generated.usage.outputTokens,
-          createdAt: admin.firestore.Timestamp.now(),
+          createdAt: Timestamp.now(),
         },
         verification: {
           model: GRAMMAR_V2_VERIFY_MODEL,
