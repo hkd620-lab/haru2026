@@ -162,6 +162,8 @@ await check('12. UI 제거·닫기·부분 업로드 실패·성공 커밋 경�
   assert.match(source, /deleteObject/);
   assert.match(source, /closeWithPendingCleanup/);
   assert.match(source, /uploaded\.length > 0/);
+  assert.match(source, /uploadingAttachmentsRef\.current = \[\.\.\.uploaded\]/);
+  assert.match(source, /attachmentScopeRef\.current !== uploadScopeId/);
   assert.match(source, /cleanupHaruLawAttachments/);
   assert.match(source, /pendingAttachmentsRef\.current = \[\];[\s\S]*attemptedAttachmentPathsRef\.current\.clear\(\);[\s\S]*setPendingAttachments\(\[\]\);/);
   assert.match(source, /catch \(error: any\)[\s\S]*setQuestion\(trimmed\);/);

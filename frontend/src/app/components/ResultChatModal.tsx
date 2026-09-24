@@ -242,6 +242,9 @@ export function ResultChatModal({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const requestInFlightRef = useRef(false);
   const uploadingFilesRef = useRef(false);
+  const activeUploadScopeRef = useRef(0);
+  const attachmentScopeRef = useRef(0);
+  const uploadingAttachmentsRef = useRef<HaruLawAttachmentRef[]>([]);
   const pendingAttachmentsRef = useRef<HaruLawAttachmentRef[]>([]);
   const attemptedAttachmentPathsRef = useRef<Set<string>>(new Set());
 
@@ -321,8 +324,16 @@ export function ResultChatModal({
 
   useEffect(() => {
     if (!isOpen || !uid || !recordId) return;
+    const scopeId = attachmentScopeRef.current + 1;
+    attachmentScopeRef.current = scopeId;
     return () => {
-      const attachments = pendingAttachmentsRef.current;
+      if (attachmentScopeRef.current === scopeId) {
+        attachmentScopeRef.current += 1;
+      }
+      const attachments = [
+        ...pendingAttachmentsRef.current,
+        ...uploadingAttachmentsRef.current,
+      ];
       if (attachments.length === 0) return;
       const isInFlight = requestInFlightRef.current || uploadingFilesRef.current;
       const entries = buildHaruLawCleanupEntries(
@@ -334,6 +345,7 @@ export function ResultChatModal({
         isInFlight ? Date.now() + HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS : undefined,
       );
       pendingAttachmentsRef.current = [];
+      uploadingAttachmentsRef.current = [];
       if (isInFlight) {
         entries.forEach(enqueueHaruLawAttachmentCleanup);
         return;
@@ -449,6 +461,9 @@ export function ResultChatModal({
     }
 
     const uploaded: HaruLawAttachmentRef[] = [];
+    const uploadScopeId = attachmentScopeRef.current;
+    activeUploadScopeRef.current = uploadScopeId;
+    uploadingAttachmentsRef.current = [];
     uploadingFilesRef.current = true;
     setUploadingFiles(true);
     try {
@@ -457,9 +472,23 @@ export function ResultChatModal({
         const safeName = `${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
         const path = `users/${uid}/haruLawAttachments/${recordId}/${safeName}`;
         await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
-        uploaded.push({ storagePath: path, mimeType: file.type, fileName: file.name });
+        const attachment = { storagePath: path, mimeType: file.type, fileName: file.name };
+        uploaded.push(attachment);
+        uploadingAttachmentsRef.current = [...uploaded];
+        if (attachmentScopeRef.current !== uploadScopeId) {
+          enqueueHaruLawAttachmentCleanup(buildHaruLawCleanupEntries(
+            uid,
+            recordId,
+            threadId,
+            [attachment],
+            new Set(),
+            Date.now() + HARULAW_IN_FLIGHT_CLEANUP_DELAY_MS,
+          )[0]);
+        }
       }
+      if (attachmentScopeRef.current !== uploadScopeId) return;
       const next = [...pendingAttachmentsRef.current, ...uploaded];
+      uploadingAttachmentsRef.current = [];
       pendingAttachmentsRef.current = next;
       setPendingAttachments(next);
     } catch (error) {
@@ -473,10 +502,15 @@ export function ResultChatModal({
           },
         );
       }
+      uploadingAttachmentsRef.current = [];
       toast.error('파일 업로드에 실패했습니다. 다시 시도해 주세요.');
     } finally {
-      uploadingFilesRef.current = false;
-      setUploadingFiles(false);
+      if (activeUploadScopeRef.current === uploadScopeId) {
+        activeUploadScopeRef.current = 0;
+        uploadingAttachmentsRef.current = [];
+        uploadingFilesRef.current = false;
+        setUploadingFiles(false);
+      }
       event.target.value = '';
     }
   };
