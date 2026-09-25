@@ -30,7 +30,9 @@ type LoginTraceBlockedReason =
   | 'pending_deletion'
   | 'account_switch';
 
-type LoginTraceResumeReason = 'user_doc_retry';
+type LoginTraceResumeReason = 'user_doc_retry' | 'required_access_ready';
+
+type LoginTraceAccountBindingResult = 'no_trace' | 'bound' | 'same_account' | 'account_changed';
 
 type LoginTraceOutcomeStatus = 'in_progress' | 'success' | 'failed' | 'blocked';
 
@@ -54,6 +56,7 @@ type LoginTrace = {
   version?: 2;
   traceId: string;
   provider: LoginProvider | 'unknown';
+  accountBinding?: string;
   startedAt: number;
   marks: Partial<Record<LoginTraceStep, number>>;
   events?: LoginTraceEvent[];
@@ -69,6 +72,10 @@ type LoginTrace = {
 const ACTIVE_TRACE_KEY = 'haru.loginPerformanceTrace.v1';
 const LAST_TRACE_KEY = 'haru.loginPerformanceLastTrace.v1';
 const DEBUG_FLAG_KEY = 'haru_login_perf_debug';
+const RESUMABLE_BLOCK_REASONS: Record<LoginTraceResumeReason, LoginTraceBlockedReason[]> = {
+  user_doc_retry: ['user_doc_error'],
+  required_access_ready: ['required_consent_missing', 'pending_deletion'],
+};
 const ORDERED_STEPS: LoginTraceStep[] = [
   'T0_login_click',
   'T1_provider_redirect_requested',
@@ -231,6 +238,30 @@ function persistLastTrace(trace: LoginTrace) {
   }
 }
 
+function removeActiveTrace() {
+  if (!canUseStorage()) return;
+  try {
+    window.sessionStorage.removeItem(ACTIVE_TRACE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function createAccountBinding(traceId: string, uid: string) {
+  const input = `${traceId}\u0000${uid}`;
+  let left = 0x811c9dc5;
+  let right = 0x9e3779b9;
+
+  for (let index = 0; index < input.length; index += 1) {
+    const code = input.charCodeAt(index);
+    left = Math.imul(left ^ code, 0x01000193);
+    right = Math.imul(right ^ code, 0x85ebca6b);
+    right ^= right >>> 13;
+  }
+
+  return `${(left >>> 0).toString(36)}.${(right >>> 0).toString(36)}`;
+}
+
 function markTraceEvent(trace: LoginTrace, step: LoginTraceStep, at: number) {
   normalizeTrace(trace);
   const duplicate = typeof trace.marks[step] === 'number';
@@ -261,6 +292,39 @@ function setTraceOutcome(
   trace.outcome = outcome;
   trace.outcomeHistory?.push(outcome);
   return outcome;
+}
+
+function hasUsableStepEvent(trace: LoginTrace, step: LoginTraceStep) {
+  const activeOutcomeSequence = trace.outcome?.status === 'in_progress'
+    ? trace.outcome.sequence
+    : -1;
+  return (trace.events || []).some((event) => (
+    event.step === step
+    && !event.afterTerminal
+    && event.sequence > activeOutcomeSequence
+  ));
+}
+
+function completeTraceIfReady(trace: LoginTrace, step: LoginTraceStep) {
+  if (trace.outcome?.status !== 'in_progress') return false;
+  if (!hasUsableStepEvent(trace, 'T6_required_access_ready')) return false;
+  if (!hasUsableStepEvent(trace, 'T9_home_core_data_ready')) return false;
+
+  setTraceOutcome(trace, 'success', 'home_core_data_ready', nowMs(), step);
+  persistLastTrace(trace);
+  logTrace(trace);
+  return true;
+}
+
+function retireTraceForAccountChange(trace: LoginTrace) {
+  if (trace.outcome?.status !== 'success' && trace.outcome?.status !== 'failed') {
+    if (trace.outcome?.status !== 'blocked' || trace.outcome.reason !== 'account_switch') {
+      setTraceOutcome(trace, 'blocked', 'account_switch', nowMs());
+    }
+    persistLastTrace(trace);
+    logTrace(trace);
+  }
+  removeActiveTrace();
 }
 
 function roundDelta(value: number) {
@@ -414,8 +478,11 @@ export function markLoginTrace(step: LoginTraceStep) {
   const trace = readTrace();
   if (!trace) return null;
   markTraceEvent(trace, step, nowMs());
-  if (isTerminalOutcome(trace.outcome)) persistLastTrace(trace);
-  else writeTrace(trace);
+  const completed = completeTraceIfReady(trace, step);
+  if (!completed) {
+    if (isTerminalOutcome(trace.outcome)) persistLastTrace(trace);
+    else writeTrace(trace);
+  }
   markBrowserPerformance(step);
   return trace;
 }
@@ -423,14 +490,9 @@ export function markLoginTrace(step: LoginTraceStep) {
 export function finishLoginTrace(step: LoginTraceStep = 'T9_home_core_data_ready') {
   const trace = markLoginTrace(step);
   if (!trace) return;
-  if (trace.outcome?.status !== 'in_progress') {
-    persistLastTrace(trace);
+  if (trace.outcome?.status === 'blocked' || trace.outcome?.status === 'failed') {
     logTrace(trace);
-    return;
   }
-  setTraceOutcome(trace, 'success', 'home_core_data_ready', nowMs(), step);
-  persistLastTrace(trace);
-  logTrace(trace);
 }
 
 export function blockLoginTrace(reason: LoginTraceBlockedReason) {
@@ -452,11 +514,47 @@ export function blockLoginTrace(reason: LoginTraceBlockedReason) {
 export function resumeLoginTrace(reason: LoginTraceResumeReason) {
   const trace = readTrace();
   if (!trace) return null;
-  if (trace.outcome?.status === 'success' || trace.outcome?.status === 'failed') {
+  if (trace.outcome?.status !== 'blocked') {
+    return trace;
+  }
+  if (!RESUMABLE_BLOCK_REASONS[reason].includes(trace.outcome.reason as LoginTraceBlockedReason)) {
     return trace;
   }
   setTraceOutcome(trace, 'in_progress', reason, nowMs());
   writeTrace(trace);
+  return trace;
+}
+
+export function markLoginAccessReady() {
+  resumeLoginTrace('required_access_ready');
+  return markLoginTrace('T6_required_access_ready');
+}
+
+export function bindLoginTraceToAccount(uid: string): LoginTraceAccountBindingResult {
+  const trace = readTrace();
+  if (!trace) return 'no_trace';
+
+  const binding = createAccountBinding(trace.traceId, uid);
+  if (!trace.accountBinding) {
+    trace.accountBinding = binding;
+    writeTrace(trace);
+    return 'bound';
+  }
+  if (trace.accountBinding === binding) {
+    return 'same_account';
+  }
+
+  retireTraceForAccountChange(trace);
+  return 'account_changed';
+}
+
+export function endLoginTraceForAuthChange() {
+  const trace = readTrace();
+  if (!trace) {
+    removeActiveTrace();
+    return null;
+  }
+  retireTraceForAccountChange(trace);
   return trace;
 }
 

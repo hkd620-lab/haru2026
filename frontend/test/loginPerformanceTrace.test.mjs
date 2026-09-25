@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 
 import {
   beginLoginTrace,
+  bindLoginTraceToAccount,
   blockLoginTrace,
+  endLoginTraceForAuthChange,
   failLoginTrace,
   finishLoginTrace,
+  markLoginAccessReady,
   markLoginTrace,
   resumeLoginTrace,
   summarizeLoginTrace,
@@ -115,20 +118,19 @@ try {
   beginLoginTrace('kakao');
   tick(100);
   finishLoginTrace('T9_home_core_data_ready');
+  summary = summarizeLoginTrace(readTrace());
+  assert.equal(summary.outcome.status, 'in_progress');
+  assert(summary.missingSteps.includes('T6_required_access_ready'));
   tick(20);
   markLoginTrace('T8_home_first_render');
   tick(10);
   markLoginTrace('T5_user_doc_ready');
   tick(10);
-  markLoginTrace('T6_required_access_ready');
+  markLoginAccessReady();
 
   summary = summarizeLoginTrace(readTrace(LAST_TRACE_KEY));
   assert.equal(summary.outcome.status, 'success');
-  assert.deepEqual(summary.lateSteps, [
-    'T8_home_first_render',
-    'T5_user_doc_ready',
-    'T6_required_access_ready',
-  ]);
+  assert.deepEqual(summary.lateSteps, []);
   assert.equal(summary.intervals.find((item) => item.label === 'T8→T9').status, 'out_of_order');
   assert.equal(summary.intervals.find((item) => item.label === 'T8→T9').actualDeltaMs, -20);
 
@@ -181,7 +183,7 @@ try {
   tick(30);
   markLoginTrace('T5_user_doc_ready');
   tick(10);
-  markLoginTrace('T6_required_access_ready');
+  markLoginAccessReady();
   tick(10);
   markLoginTrace('T8_home_first_render');
   tick(10);
@@ -190,6 +192,91 @@ try {
   assert.equal(summary.outcome.status, 'success');
   assert(summary.outcomeHistory.some((item) => item.status === 'blocked' && item.reason === 'user_doc_error'));
   assert(summary.outcomeHistory.some((item) => item.status === 'in_progress' && item.reason === 'user_doc_retry'));
+
+  for (const reason of ['required_consent_missing', 'pending_deletion']) {
+    window.sessionStorage.clear();
+    resetClock(5500);
+    beginLoginTrace('google');
+    tick(10);
+    markLoginTrace('T4_auth_state_settled');
+    tick(10);
+    markLoginTrace('T5_user_doc_ready');
+    tick(10);
+    finishLoginTrace('T9_home_core_data_ready');
+    assert.equal(summarizeLoginTrace(readTrace()).outcome.status, 'in_progress');
+    blockLoginTrace(reason);
+    summary = summarizeLoginTrace(readTrace(LAST_TRACE_KEY));
+    assert.equal(summary.outcome.status, 'blocked');
+
+    tick(10);
+    markLoginAccessReady();
+    summary = summarizeLoginTrace(readTrace());
+    assert.equal(summary.outcome.status, 'in_progress');
+    assert(summary.outcomeHistory.some((item) => (
+      item.status === 'in_progress' && item.reason === 'required_access_ready'
+    )));
+    assert(summary.events.some((event) => (
+      event.step === 'T6_required_access_ready' && !event.afterTerminal
+    )));
+
+    tick(10);
+    finishLoginTrace('T9_home_core_data_ready');
+    summary = summarizeLoginTrace(readTrace(LAST_TRACE_KEY));
+    assert.equal(summary.outcome.status, 'success');
+    assert(summary.events.some((event) => (
+      event.step === 'T6_required_access_ready' && !event.afterTerminal
+    )));
+    assert(summary.events.some((event) => (
+      event.step === 'T9_home_core_data_ready' && !event.afterTerminal
+    )));
+  }
+
+  window.sessionStorage.clear();
+  resetClock(5800);
+  beginLoginTrace('google');
+  assert.equal(bindLoginTraceToAccount('test-account-a'), 'bound');
+  markLoginTrace('T4_auth_state_settled');
+  markLoginTrace('T5_user_doc_ready');
+  const firstTraceId = readTrace().traceId;
+  assert(!window.sessionStorage.getItem(ACTIVE_TRACE_KEY).includes('test-account-a'));
+  assert.equal(bindLoginTraceToAccount('test-account-b'), 'account_changed');
+  assert.equal(window.sessionStorage.getItem(ACTIVE_TRACE_KEY), null);
+  summary = summarizeLoginTrace(readTrace(LAST_TRACE_KEY));
+  assert.equal(summary.traceId, firstTraceId);
+  assert.equal(summary.outcome.status, 'blocked');
+  assert.equal(summary.outcome.reason, 'account_switch');
+  const retiredEventCount = summary.events.length;
+  markLoginAccessReady();
+  finishLoginTrace('T9_home_core_data_ready');
+  assert.equal(summarizeLoginTrace(readTrace(LAST_TRACE_KEY)).events.length, retiredEventCount);
+
+  tick(20);
+  beginLoginTrace('kakao');
+  assert.equal(bindLoginTraceToAccount('test-account-b'), 'bound');
+  assert.equal(bindLoginTraceToAccount('test-account-b'), 'same_account');
+  markLoginTrace('T4_auth_state_settled');
+  markLoginAccessReady();
+  finishLoginTrace('T9_home_core_data_ready');
+  summary = summarizeLoginTrace(readTrace(LAST_TRACE_KEY));
+  assert.notEqual(summary.traceId, firstTraceId);
+  assert.equal(summary.outcome.status, 'success');
+  assert(!window.sessionStorage.getItem(LAST_TRACE_KEY).includes('test-account-b'));
+
+  window.sessionStorage.clear();
+  resetClock(5900);
+  beginLoginTrace('naver');
+  bindLoginTraceToAccount('test-account-c');
+  markLoginTrace('T4_auth_state_settled');
+  endLoginTraceForAuthChange();
+  assert.equal(window.sessionStorage.getItem(ACTIVE_TRACE_KEY), null);
+  summary = summarizeLoginTrace(readTrace(LAST_TRACE_KEY));
+  assert.equal(summary.outcome.status, 'blocked');
+  assert.equal(summary.outcome.reason, 'account_switch');
+  const signedOutEventCount = summary.events.length;
+  markLoginTrace('T5_user_doc_ready');
+  markLoginAccessReady();
+  finishLoginTrace('T9_home_core_data_ready');
+  assert.equal(summarizeLoginTrace(readTrace(LAST_TRACE_KEY)).events.length, signedOutEventCount);
 
   window.sessionStorage.clear();
   resetClock(6000);

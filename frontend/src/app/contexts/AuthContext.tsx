@@ -27,7 +27,14 @@ import {
   readRememberedLoginProvider,
   rememberLoginProviderLocally,
 } from '../utils/loginProvider';
-import { blockLoginTrace, markLoginTrace, resumeLoginTrace } from '../utils/loginPerformance';
+import {
+  bindLoginTraceToAccount,
+  blockLoginTrace,
+  endLoginTraceForAuthChange,
+  markLoginAccessReady,
+  markLoginTrace,
+  resumeLoginTrace,
+} from '../utils/loginPerformance';
 import {
   invalidateSnsThumbnailAuthSession,
   setSnsThumbnailAuthUser,
@@ -437,6 +444,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [userDocument, setUserDocument] = useState<UserDocumentState | null>(null);
   const generationRef = useRef(0);
+  const hadAuthenticatedUserRef = useRef(false);
   const [generation, setGeneration] = useState(0);
   const [isRecoveringAccount, setIsRecoveringAccount] = useState(false);
   const [isSavingConsent, setIsSavingConsent] = useState(false);
@@ -471,6 +479,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 5. Firebase 상태 변화 감지
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (!active) return;
+      const hadAuthenticatedUser = hadAuthenticatedUserRef.current;
       // 같은 UID로 재로그인하더라도 이전 세션의 판정을 재사용하지 않는다.
       setGeneration(++generationRef.current);
       setUserDocument(null);
@@ -478,10 +487,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsRecoveringAccount(false);
       setSnsThumbnailAuthUser(firebaseUser?.uid || null);
       if (firebaseUser) {
-        markLoginTrace('T4_auth_state_settled');
+        const accountBindingResult = bindLoginTraceToAccount(firebaseUser.uid);
+        hadAuthenticatedUserRef.current = true;
+        if (accountBindingResult !== 'account_changed') {
+          markLoginTrace('T4_auth_state_settled');
+        }
         setUser(mapUser(firebaseUser));
         clearLegacySocialUserCache();
       } else {
+        if (hadAuthenticatedUser) endLoginTraceForAuthChange();
+        hadAuthenticatedUserRef.current = false;
         clearLegacySocialUserCache();
         setUser(null);
       }
@@ -550,7 +565,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (needsConsent) {
           blockLoginTrace('required_consent_missing');
         } else {
-          markLoginTrace('T6_required_access_ready');
+          markLoginAccessReady();
         }
       },
       () => {
@@ -730,6 +745,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       invalidateSnsThumbnailAuthSession();
       clearLegacySocialUserCache();
       await firebaseSignOut(auth);
+      endLoginTraceForAuthChange();
     } catch (error: any) {
       console.error('Sign out error:', error);
       throw new Error(error.message || '로그아웃 실패');
