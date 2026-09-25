@@ -61,15 +61,31 @@ export const GRAMMAR_V2_PILOT_MAX_NOTE_SENTENCES = 2;
 
 // 기존 한국어 성경 문장을 그대로 가져왔는지 가려내는 고어체 어미 표지.
 // 현대 한국어 직역이면 이 표현이 나올 일이 없다.
+// '하시니' 는 제거했다. "주님은 위대하시니…" 처럼 현대 한국어 연결어미로도 쓰여
+// 시편 145:3 을 두 번 거짓 거부했다.
 export const GRAMMAR_V2_ARCHAIC_KOREAN_MARKERS = [
   '하사',
   '하리로다',
   '이니라',
   '니라.',
   '느니라',
-  '하시니',
   '로다',
 ] as const;
+
+/**
+ * 번역 길이 비율 상한. 앞뒤 절 내용이 번역에 끌려 들어오면 번역이 원문보다 길어진다.
+ * 파일럿 300절 실측(한글 글자 수 ÷ BSB 원문 글자 수): 중앙값 0.429, 95% 0.554,
+ * 99% 0.655, 정상 최대 0.662, 누출 사례 john 10:35 는 0.862.
+ * 0.75 는 정상 최대와 누출 사이에 있고, 0.70~0.85 구간에서 걸리는 절이 같다.
+ */
+export const GRAMMAR_V2_TRANSLATION_RATIO_MAX = 0.75;
+
+/**
+ * 원문이 이보다 짧으면 비율 검사를 건너뛴다.
+ * "Jesus wept."(11자) → "예수님께서 눈물을 흘리셨습니다."는 비율 1.27 이 정상이다.
+ * 파일럿 300절의 최소 원문 길이가 45자였다.
+ */
+export const GRAMMAR_V2_TRANSLATION_RATIO_MIN_SOURCE_CHARS = 45;
 
 // 단어표에 채워 넣기용 가짜 항목이 들어오는 것을 막는다.
 const GLOSSARY_FILLER_MARKERS = ['더미', 'dummy', 'placeholder', '자리표시'];
@@ -86,6 +102,8 @@ export interface GrammarV2ValidateOptions {
   rejectFillerGlossary?: boolean;
   rejectDuplicateChunkNotes?: boolean;
   rejectArchaicKoreanTranslation?: boolean;
+  // 파일럿: 번역이 원문보다 지나치게 길면 앞뒤 절 내용이 섞인 것으로 보고 거부한다.
+  rejectOverlongTranslation?: boolean;
 }
 
 // 곧은·굽은 따옴표와 아포스트로피. BSB 본문은 굽은 문자를 쓰는데 모델이 곧은 문자로
@@ -354,6 +372,16 @@ export function validateGrammarV2SemanticPayload(
     if (hit) {
       fail(
         `translationNatural uses an archaic Korean scriptural ending ("${hit}"). Translate the source text directly in modern Korean.`
+      );
+    }
+  }
+
+  if (options.rejectOverlongTranslation && sourceText.length >= GRAMMAR_V2_TRANSLATION_RATIO_MIN_SOURCE_CHARS) {
+    const hangulCount = (translationNatural.match(/[가-힣]/g) || []).length;
+    const ratio = hangulCount / sourceText.length;
+    if (ratio > GRAMMAR_V2_TRANSLATION_RATIO_MAX) {
+      fail(
+        `translationNatural is too long for this verse (${hangulCount} Korean syllables for ${sourceText.length} source characters, ratio ${ratio.toFixed(2)} > ${GRAMMAR_V2_TRANSLATION_RATIO_MAX}). Translate only the target verse, not the surrounding ones.`
       );
     }
   }

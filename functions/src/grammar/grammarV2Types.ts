@@ -46,6 +46,8 @@ export interface GrammarV2PilotStageMetrics {
   // 검증기에 걸려 버려진 생성 시도. 토큰은 실제로 썼으므로 비용 계산에는 포함된다.
   validationFailed?: boolean;
   validationError?: string;
+  // API 429·5xx 로 지수 백오프 재시도한 횟수.
+  transientRetries?: number;
   // 축소 검증에서 돌려받은 변경분 적용 결과.
   changesApplied?: number;
   changesSkipped?: string[];

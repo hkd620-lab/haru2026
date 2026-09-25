@@ -161,6 +161,50 @@ const PILOT_VERIFY_MODES: ReadonlySet<string> = new Set<GrammarV2VerifyMode>([
   'all3',
 ]);
 
+// 파일럿 300절에서 Gemini 503("high demand")이 65건 났고 재시도가 없어 그 절들이 그대로 실패했다.
+// 429·5xx 는 일시적이라 지수 백오프로 다시 시도한다.
+const TRANSIENT_MAX_ATTEMPTS = 4; // 최초 1회 + 재시도 3회
+const TRANSIENT_BASE_DELAY_MS = 2000;
+
+function transientStatusOf(error: any): number | null {
+  const status =
+    error?.response?.status ??
+    error?.status ??
+    (typeof error?.message === 'string' ? Number(error.message.match(/\[(\d{3})[\s\]]/)?.[1]) : null);
+  if (!status || Number.isNaN(status)) return null;
+  return status === 429 || status >= 500 ? status : null;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * 일시적 오류(429·5xx)면 2초·4초·8초에 약간의 무작위를 더해 다시 시도한다.
+ * 그 밖의 오류는 즉시 던진다. onRetry 로 재시도 횟수를 계측에 남긴다.
+ */
+async function withTransientRetry<T>(
+  label: string,
+  run: () => Promise<T>,
+  onRetry: (attempt: number, status: number) => void
+): Promise<T> {
+  let lastError: any;
+  for (let attempt = 1; attempt <= TRANSIENT_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await run();
+    } catch (error: any) {
+      lastError = error;
+      const status = transientStatusOf(error);
+      if (status === null || attempt === TRANSIENT_MAX_ATTEMPTS) throw error;
+      const delay = TRANSIENT_BASE_DELAY_MS * 2 ** (attempt - 1) + Math.floor(Math.random() * 500);
+      onRetry(attempt, status);
+      logger.warn(`[getGrammarExplainV2] ${label} got ${status}, retrying in ${delay}ms (attempt ${attempt})`);
+      await sleep(delay);
+    }
+  }
+  throw lastError;
+}
+
 // 파일럿 모드 = Functions 에뮬레이터 안 + Firestore 에뮬레이터 연결됨.
 // 두 조건이 모두 맞지 않으면 파일럿 기능(bsb, 모델 선택, 검증 방식, 캐시 건너뛰기)은 전부 막힌다.
 // 이 함수가 운영 Firestore 오염을 막는 코드 가드다.
@@ -446,8 +490,14 @@ async function generateSemanticPayload(params: {
   requestId: string;
   prompt: string;
   generationModel: string;
-}): Promise<{ semantic: GrammarV2SemanticPayload; usage: TokenUsage; latencyMs: number }> {
+}): Promise<{
+  semantic: GrammarV2SemanticPayload;
+  usage: TokenUsage;
+  latencyMs: number;
+  transientRetries: number;
+}> {
   const startedAt = Date.now();
+  let transientRetries = 0;
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
     const model = genAI.getGenerativeModel({
@@ -458,7 +508,13 @@ async function generateSemanticPayload(params: {
         responseSchema: GRAMMAR_V2_SEMANTIC_RESPONSE_SCHEMA,
       } as any,
     });
-    const result = await model.generateContent(params.prompt);
+    const result = await withTransientRetry(
+      'gemini generate',
+      () => model.generateContent(params.prompt),
+      () => {
+        transientRetries += 1;
+      }
+    );
     const usage = geminiUsage(result);
     const semantic = parseJsonPayload<GrammarV2SemanticPayload>(result.response.text());
     const latencyMs = Date.now() - startedAt;
@@ -477,6 +533,7 @@ async function generateSemanticPayload(params: {
       semantic,
       usage,
       latencyMs,
+      transientRetries,
     };
   } catch (error: any) {
     await logGrammarV2Usage({
@@ -504,25 +561,34 @@ async function verifyWithGpt(params: {
   usage: TokenUsage;
   latencyMs: number;
   attempts: number;
+  transientRetries: number;
 }> {
   let lastError: any = null;
   const startedAt = Date.now();
+  let transientRetries = 0;
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
-      const res = await axios.post(
-        'https://api.openai.com/v1/chat/completions',
-        {
-          model: GRAMMAR_V2_VERIFY_MODEL,
-          messages: [{ role: 'user', content: params.prompt }],
-          temperature: 0.2,
-          response_format: { type: 'json_object' },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${OPENAI_API_KEY_SECRET.value().replace(/[^\x20-\x7E]/g, '').trim()}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 25000,
+      const res = await withTransientRetry(
+        'openai verify',
+        () =>
+          axios.post(
+            'https://api.openai.com/v1/chat/completions',
+            {
+              model: GRAMMAR_V2_VERIFY_MODEL,
+              messages: [{ role: 'user', content: params.prompt }],
+              temperature: 0.2,
+              response_format: { type: 'json_object' },
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${OPENAI_API_KEY_SECRET.value().replace(/[^\x20-\x7E]/g, '').trim()}`,
+                'Content-Type': 'application/json',
+              },
+              timeout: 25000,
+            }
+          ),
+        () => {
+          transientRetries += 1;
         }
       );
       const usage = openAiUsage(res.data);
@@ -546,6 +612,7 @@ async function verifyWithGpt(params: {
         usage,
         latencyMs,
         attempts: attempt,
+        transientRetries,
       };
     } catch (error: any) {
       lastError = error;
@@ -597,8 +664,10 @@ async function verifyWithGemini(params: {
   usage: TokenUsage;
   latencyMs: number;
   attempts: number;
+  transientRetries: number;
 }> {
   const startedAt = Date.now();
+  let transientRetries = 0;
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
     const model = genAI.getGenerativeModel({
@@ -609,7 +678,13 @@ async function verifyWithGemini(params: {
         responseSchema: GRAMMAR_V2_LITE_CHANGES_SCHEMA,
       } as any,
     });
-    const result = await model.generateContent(params.prompt);
+    const result = await withTransientRetry(
+      'gemini verify',
+      () => model.generateContent(params.prompt),
+      () => {
+        transientRetries += 1;
+      }
+    );
     const usage = geminiUsage(result);
     const response = normalizeLiteVerifierResponse(parseJsonPayload<unknown>(result.response.text()));
     const latencyMs = Date.now() - startedAt;
@@ -624,7 +699,7 @@ async function verifyWithGemini(params: {
       success: true,
       errorCode: null,
     });
-    return { response, usage, latencyMs, attempts: 1 };
+    return { response, usage, latencyMs, attempts: 1, transientRetries };
   } catch (error: any) {
     await logGrammarV2Usage({
       uid: params.uid,
@@ -675,6 +750,7 @@ export const getGrammarExplainV2 = onCall(
             rejectFillerGlossary: true,
             rejectDuplicateChunkNotes: true,
             rejectArchaicKoreanTranslation: true,
+            rejectOverlongTranslation: true,
           }
         : {};
       const skipCacheRead = pilot?.skipCacheRead ?? false;
@@ -716,6 +792,7 @@ export const getGrammarExplainV2 = onCall(
           thoughtsTokens: generated.usage.thoughtsTokens ?? null,
           latencyMs: generated.latencyMs,
           attempts: attempt,
+          transientRetries: generated.transientRetries,
         };
         stages.push(stage);
 
@@ -780,6 +857,7 @@ export const getGrammarExplainV2 = onCall(
           thoughtsTokens: verified.usage.thoughtsTokens ?? null,
           latencyMs: verified.latencyMs,
           attempts: verified.attempts,
+          transientRetries: verified.transientRetries,
         };
 
         let semanticAfterGpt: GrammarV2SemanticPayload;
