@@ -27,7 +27,7 @@ import {
   readRememberedLoginProvider,
   rememberLoginProviderLocally,
 } from '../utils/loginProvider';
-import { markLoginTrace } from '../utils/loginPerformance';
+import { blockLoginTrace, markLoginTrace, resumeLoginTrace } from '../utils/loginPerformance';
 import {
   invalidateSnsThumbnailAuthSession,
   setSnsThumbnailAuthUser,
@@ -506,7 +506,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true;
     const isCurrent = () => active && generationRef.current === generation && auth.currentUser?.uid === uid;
     const fail = () => {
-      if (isCurrent()) setUserDocument({ uid, generation, status: 'error' });
+      if (isCurrent()) {
+        setUserDocument({ uid, generation, status: 'error' });
+        blockLoginTrace('user_doc_error');
+      }
     };
     // 캐시만 반환되거나 오프라인인 경우에도 재시도/로그아웃 경로를 제공한다.
     const timeout = window.setTimeout(fail, 15000);
@@ -529,18 +532,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             : currentUser);
         }
         const scheduledAtValue = data?.deletionScheduledAt;
+        const pendingDeletion = data?.accountStatus === 'pending_deletion'
+          ? { scheduledAt: scheduledAtValue instanceof Timestamp ? scheduledAtValue.toDate() : null }
+          : null;
+        const needsConsent = !data?.consents;
         setUserDocument({
           uid,
           generation,
           status: 'ready',
-          pendingDeletion: data?.accountStatus === 'pending_deletion'
-            ? { scheduledAt: scheduledAtValue instanceof Timestamp ? scheduledAtValue.toDate() : null }
-            : null,
+          pendingDeletion,
           // 기존 사용자 호환: 필수 항목/버전의 새 요건은 별도 정책 결정 후 적용한다.
-          needsConsent: !data?.consents,
+          needsConsent,
         });
         markLoginTrace('T5_user_doc_ready');
-        markLoginTrace('T6_required_access_ready');
+        if (pendingDeletion) {
+          blockLoginTrace('pending_deletion');
+        } else if (needsConsent) {
+          blockLoginTrace('required_consent_missing');
+        } else {
+          markLoginTrace('T6_required_access_ready');
+        }
       },
       () => {
         window.clearTimeout(timeout);
@@ -559,6 +570,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsSavingConsent(false);
     setIsRecoveringAccount(false);
     setUserDocument(null);
+    resumeLoginTrace('user_doc_retry');
     setGeneration(++generationRef.current);
   };
 

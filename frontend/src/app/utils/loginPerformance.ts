@@ -24,11 +24,41 @@ type LoginFailureType =
   | 'firebase_auth_error'
   | 'callback_unexpected_error';
 
+type LoginTraceBlockedReason =
+  | 'user_doc_error'
+  | 'required_consent_missing'
+  | 'pending_deletion'
+  | 'account_switch';
+
+type LoginTraceResumeReason = 'user_doc_retry';
+
+type LoginTraceOutcomeStatus = 'in_progress' | 'success' | 'failed' | 'blocked';
+
+type LoginTraceEvent = {
+  step: LoginTraceStep;
+  at: number;
+  sequence: number;
+  duplicate: boolean;
+  afterTerminal: boolean;
+};
+
+type LoginTraceOutcome = {
+  status: LoginTraceOutcomeStatus;
+  reason: string;
+  at: number;
+  sequence: number;
+  step?: LoginTraceStep;
+};
+
 type LoginTrace = {
+  version?: 2;
   traceId: string;
   provider: LoginProvider | 'unknown';
   startedAt: number;
   marks: Partial<Record<LoginTraceStep, number>>;
+  events?: LoginTraceEvent[];
+  outcome?: LoginTraceOutcome;
+  outcomeHistory?: LoginTraceOutcome[];
   failure?: {
     stage: LoginFailureStage;
     errorType: LoginFailureType;
@@ -50,6 +80,17 @@ const ORDERED_STEPS: LoginTraceStep[] = [
   'T7_home_route_start',
   'T8_home_first_render',
   'T9_home_core_data_ready',
+];
+
+const LOGIN_TRACE_INTERVALS: Array<{ label: string; from: LoginTraceStep; to: LoginTraceStep }> = [
+  { label: 'T0→T2', from: 'T0_login_click', to: 'T2_callback_arrived' },
+  { label: 'T2→T3', from: 'T2_callback_arrived', to: 'T3_firebase_sign_in_complete' },
+  { label: 'T3→T4', from: 'T3_firebase_sign_in_complete', to: 'T4_auth_state_settled' },
+  { label: 'T4→T6', from: 'T4_auth_state_settled', to: 'T6_required_access_ready' },
+  { label: 'T7→T8', from: 'T7_home_route_start', to: 'T8_home_first_render' },
+  { label: 'T8→T9', from: 'T8_home_first_render', to: 'T9_home_core_data_ready' },
+  { label: 'T0→T8', from: 'T0_login_click', to: 'T8_home_first_render' },
+  { label: 'T0→T9', from: 'T0_login_click', to: 'T9_home_core_data_ready' },
 ];
 
 function canUseStorage() {
@@ -77,6 +118,69 @@ function createTraceId() {
   }
 }
 
+function getStepIndex(step: LoginTraceStep) {
+  return ORDERED_STEPS.indexOf(step);
+}
+
+function isTerminalOutcome(outcome?: LoginTraceOutcome) {
+  return Boolean(outcome && outcome.status !== 'in_progress');
+}
+
+function nextSequence(trace: LoginTrace) {
+  const eventMax = (trace.events || []).reduce((max, event) => Math.max(max, event.sequence), 0);
+  const outcomeMax = (trace.outcomeHistory || []).reduce((max, outcome) => Math.max(max, outcome.sequence), 0);
+  return Math.max(eventMax, outcomeMax) + 1;
+}
+
+function makeOutcome(
+  trace: LoginTrace,
+  status: LoginTraceOutcomeStatus,
+  reason: string,
+  at: number,
+  step?: LoginTraceStep,
+): LoginTraceOutcome {
+  return {
+    status,
+    reason,
+    at,
+    sequence: nextSequence(trace),
+    ...(step ? { step } : {}),
+  };
+}
+
+function synthesizeEventsFromMarks(trace: LoginTrace): LoginTraceEvent[] {
+  return ORDERED_STEPS
+    .filter((step) => typeof trace.marks?.[step] === 'number')
+    .map((step) => ({
+      step,
+      at: trace.marks[step] as number,
+      sequence: getStepIndex(step) + 1,
+      duplicate: false,
+      afterTerminal: false,
+    }))
+    .sort((a, b) => a.at - b.at || a.sequence - b.sequence);
+}
+
+function normalizeTrace(trace: LoginTrace) {
+  trace.version = 2;
+  trace.marks = trace.marks || {};
+  if (!Array.isArray(trace.events)) {
+    trace.events = synthesizeEventsFromMarks(trace);
+  }
+  if (!Array.isArray(trace.outcomeHistory)) {
+    trace.outcomeHistory = [];
+  }
+  if (!trace.outcome) {
+    trace.outcome = {
+      status: 'in_progress',
+      reason: 'trace_active',
+      at: trace.startedAt,
+      sequence: 0,
+    };
+  }
+  return trace;
+}
+
 function readTrace(): LoginTrace | null {
   if (!canUseStorage()) return null;
   try {
@@ -84,7 +188,7 @@ function readTrace(): LoginTrace | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as LoginTrace;
     if (!parsed?.traceId || !parsed?.provider || !parsed?.startedAt) return null;
-    return parsed;
+    return normalizeTrace(parsed);
   } catch {
     return null;
   }
@@ -120,31 +224,145 @@ function shouldLogTrace() {
 function persistLastTrace(trace: LoginTrace) {
   if (!canUseStorage()) return;
   try {
+    window.sessionStorage.setItem(ACTIVE_TRACE_KEY, JSON.stringify(trace));
     window.sessionStorage.setItem(LAST_TRACE_KEY, JSON.stringify(trace));
-    window.sessionStorage.removeItem(ACTIVE_TRACE_KEY);
   } catch {
     // ignore
   }
 }
 
+function markTraceEvent(trace: LoginTrace, step: LoginTraceStep, at: number) {
+  normalizeTrace(trace);
+  const duplicate = typeof trace.marks[step] === 'number';
+  const event: LoginTraceEvent = {
+    step,
+    at,
+    sequence: nextSequence(trace),
+    duplicate,
+    afterTerminal: isTerminalOutcome(trace.outcome),
+  };
+
+  trace.events?.push(event);
+  if (!duplicate) {
+    trace.marks[step] = at;
+  }
+  return event;
+}
+
+function setTraceOutcome(
+  trace: LoginTrace,
+  status: LoginTraceOutcomeStatus,
+  reason: string,
+  at: number,
+  step?: LoginTraceStep,
+) {
+  normalizeTrace(trace);
+  const outcome = makeOutcome(trace, status, reason, at, step);
+  trace.outcome = outcome;
+  trace.outcomeHistory?.push(outcome);
+  return outcome;
+}
+
+function roundDelta(value: number) {
+  return Math.round(value);
+}
+
+export function summarizeLoginTrace(trace: LoginTrace) {
+  const normalized = normalizeTrace({
+    ...trace,
+    marks: { ...trace.marks },
+    events: trace.events ? trace.events.map((event) => ({ ...event })) : undefined,
+    outcome: trace.outcome ? { ...trace.outcome } : undefined,
+    outcomeHistory: trace.outcomeHistory ? trace.outcomeHistory.map((outcome) => ({ ...outcome })) : undefined,
+  });
+
+  const events = (normalized.events || [])
+    .slice()
+    .sort((a, b) => a.sequence - b.sequence)
+    .map((event) => ({
+      step: event.step,
+      elapsedMs: roundDelta(event.at - normalized.startedAt),
+      sequence: event.sequence,
+      duplicate: event.duplicate,
+      afterTerminal: event.afterTerminal,
+    }));
+
+  const missingSteps = ORDERED_STEPS.filter((step) => typeof normalized.marks[step] !== 'number');
+  const duplicateSteps = ORDERED_STEPS.filter((step) => (
+    (normalized.events || []).filter((event) => event.step === step).length > 1
+  ));
+  const lateSteps = (normalized.events || [])
+    .filter((event) => event.afterTerminal)
+    .map((event) => event.step);
+
+  const intervals = LOGIN_TRACE_INTERVALS.map(({ label, from, to }) => {
+    const fromAt = normalized.marks[from];
+    const toAt = normalized.marks[to];
+    if (typeof fromAt !== 'number' || typeof toAt !== 'number') {
+      return {
+        label,
+        from,
+        to,
+        status: 'missing' as const,
+        durationMs: null,
+        actualDeltaMs: null,
+        missing: [from, to].filter((step) => typeof normalized.marks[step] !== 'number'),
+      };
+    }
+
+    const actualDeltaMs = roundDelta(toAt - fromAt);
+    if (actualDeltaMs < 0) {
+      return {
+        label,
+        from,
+        to,
+        status: 'out_of_order' as const,
+        durationMs: null,
+        actualDeltaMs,
+        missing: [],
+      };
+    }
+
+    return {
+      label,
+      from,
+      to,
+      status: 'ok' as const,
+      durationMs: actualDeltaMs,
+      actualDeltaMs,
+      missing: [],
+    };
+  });
+
+  return {
+    traceId: normalized.traceId,
+    provider: normalized.provider,
+    outcome: normalized.outcome,
+    outcomeHistory: normalized.outcomeHistory,
+    failure: normalized.failure,
+    events,
+    intervals,
+    missingSteps,
+    duplicateSteps,
+    lateSteps,
+  };
+}
+
 function logTrace(trace: LoginTrace) {
   if (!shouldLogTrace()) return;
 
-  const rows = ORDERED_STEPS
-    .filter((step) => typeof trace.marks[step] === 'number')
-    .map((step, index, steps) => {
-      const value = trace.marks[step] || trace.startedAt;
-      const previousStep = steps[index - 1];
-      const previousValue = previousStep ? trace.marks[previousStep] || trace.startedAt : trace.startedAt;
-      return {
-        step,
-        elapsedMs: Math.max(0, Math.round(value - trace.startedAt)),
-        sincePreviousMs: Math.max(0, Math.round(value - previousValue)),
-      };
-    });
+  const summary = summarizeLoginTrace(trace);
 
-  console.info('[HARU login trace]', { traceId: trace.traceId, provider: trace.provider });
-  console.table(rows);
+  console.info('[HARU login trace]', {
+    traceId: trace.traceId,
+    provider: trace.provider,
+    outcome: summary.outcome,
+    missingSteps: summary.missingSteps,
+    duplicateSteps: summary.duplicateSteps,
+    lateSteps: summary.lateSteps,
+  });
+  console.table(summary.events);
+  console.table(summary.intervals);
 }
 
 function logFailureTrace(trace: LoginTrace) {
@@ -161,13 +379,30 @@ function logFailureTrace(trace: LoginTrace) {
 
 export function beginLoginTrace(provider: LoginProvider) {
   const startedAt = nowMs();
+  const outcome: LoginTraceOutcome = {
+    status: 'in_progress',
+    reason: 'login_click',
+    at: startedAt,
+    sequence: 0,
+    step: 'T0_login_click',
+  };
   const trace: LoginTrace = {
+    version: 2,
     traceId: createTraceId(),
     provider,
     startedAt,
     marks: {
       T0_login_click: startedAt,
     },
+    events: [{
+      step: 'T0_login_click',
+      at: startedAt,
+      sequence: 1,
+      duplicate: false,
+      afterTerminal: false,
+    }],
+    outcome,
+    outcomeHistory: [outcome],
   };
 
   writeTrace(trace);
@@ -178,10 +413,9 @@ export function beginLoginTrace(provider: LoginProvider) {
 export function markLoginTrace(step: LoginTraceStep) {
   const trace = readTrace();
   if (!trace) return null;
-  if (!trace.marks[step]) {
-    trace.marks[step] = nowMs();
-    writeTrace(trace);
-  }
+  markTraceEvent(trace, step, nowMs());
+  if (isTerminalOutcome(trace.outcome)) persistLastTrace(trace);
+  else writeTrace(trace);
   markBrowserPerformance(step);
   return trace;
 }
@@ -189,8 +423,41 @@ export function markLoginTrace(step: LoginTraceStep) {
 export function finishLoginTrace(step: LoginTraceStep = 'T9_home_core_data_ready') {
   const trace = markLoginTrace(step);
   if (!trace) return;
+  if (trace.outcome?.status !== 'in_progress') {
+    persistLastTrace(trace);
+    logTrace(trace);
+    return;
+  }
+  setTraceOutcome(trace, 'success', 'home_core_data_ready', nowMs(), step);
   persistLastTrace(trace);
   logTrace(trace);
+}
+
+export function blockLoginTrace(reason: LoginTraceBlockedReason) {
+  const trace = readTrace();
+  if (!trace) return null;
+  if (trace.outcome?.status === 'success' || trace.outcome?.status === 'failed') {
+    return trace;
+  }
+  if (trace.outcome?.status === 'blocked' && trace.outcome.reason === reason) {
+    persistLastTrace(trace);
+    return trace;
+  }
+  setTraceOutcome(trace, 'blocked', reason, nowMs());
+  persistLastTrace(trace);
+  logTrace(trace);
+  return trace;
+}
+
+export function resumeLoginTrace(reason: LoginTraceResumeReason) {
+  const trace = readTrace();
+  if (!trace) return null;
+  if (trace.outcome?.status === 'success' || trace.outcome?.status === 'failed') {
+    return trace;
+  }
+  setTraceOutcome(trace, 'in_progress', reason, nowMs());
+  writeTrace(trace);
+  return trace;
 }
 
 export function failLoginTrace(
@@ -201,10 +468,19 @@ export function failLoginTrace(
   const failedAt = nowMs();
   const existingTrace = readTrace();
   const trace: LoginTrace = existingTrace || {
+    version: 2,
     traceId: createTraceId(),
     provider: providerOverride || 'unknown',
     startedAt: failedAt,
     marks: {},
+    events: [],
+    outcome: {
+      status: 'in_progress',
+      reason: 'trace_active',
+      at: failedAt,
+      sequence: 0,
+    },
+    outcomeHistory: [],
   };
 
   if (providerOverride) {
@@ -214,9 +490,10 @@ export function failLoginTrace(
   trace.failure = {
     stage,
     errorType,
-    elapsedMs: Math.max(0, Math.round(failedAt - trace.startedAt)),
+    elapsedMs: roundDelta(failedAt - trace.startedAt),
   };
 
+  setTraceOutcome(trace, 'failed', stage, failedAt);
   persistLastTrace(trace);
   logFailureTrace(trace);
 }
