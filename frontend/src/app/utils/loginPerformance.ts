@@ -52,6 +52,14 @@ type LoginTraceOutcome = {
   step?: LoginTraceStep;
 };
 
+type LoginTraceSuccessMeasurement = {
+  attemptSequence: number;
+  t6EventSequence: number;
+  t9EventSequence: number;
+  confirmedAt: number;
+  confirmedBy: LoginTraceStep;
+};
+
 type LoginTrace = {
   version?: 2;
   traceId: string;
@@ -62,6 +70,7 @@ type LoginTrace = {
   events?: LoginTraceEvent[];
   outcome?: LoginTraceOutcome;
   outcomeHistory?: LoginTraceOutcome[];
+  successMeasurement?: LoginTraceSuccessMeasurement;
   failure?: {
     stage: LoginFailureStage;
     errorType: LoginFailureType;
@@ -294,23 +303,34 @@ function setTraceOutcome(
   return outcome;
 }
 
-function hasUsableStepEvent(trace: LoginTrace, step: LoginTraceStep) {
+function findUsableStepEvent(trace: LoginTrace, step: LoginTraceStep) {
   const activeOutcomeSequence = trace.outcome?.status === 'in_progress'
     ? trace.outcome.sequence
     : -1;
-  return (trace.events || []).some((event) => (
-    event.step === step
-    && !event.afterTerminal
-    && event.sequence > activeOutcomeSequence
-  ));
+  return (trace.events || [])
+    .filter((event) => (
+      event.step === step
+      && !event.afterTerminal
+      && event.sequence > activeOutcomeSequence
+    ))
+    .sort((a, b) => a.sequence - b.sequence)[0];
 }
 
-function completeTraceIfReady(trace: LoginTrace, step: LoginTraceStep) {
+function completeTraceIfReady(trace: LoginTrace, completionEvent: LoginTraceEvent) {
   if (trace.outcome?.status !== 'in_progress') return false;
-  if (!hasUsableStepEvent(trace, 'T6_required_access_ready')) return false;
-  if (!hasUsableStepEvent(trace, 'T9_home_core_data_ready')) return false;
+  const attemptSequence = trace.outcome.sequence;
+  const t6Event = findUsableStepEvent(trace, 'T6_required_access_ready');
+  const t9Event = findUsableStepEvent(trace, 'T9_home_core_data_ready');
+  if (!t6Event || !t9Event) return false;
 
-  setTraceOutcome(trace, 'success', 'home_core_data_ready', nowMs(), step);
+  trace.successMeasurement = {
+    attemptSequence,
+    t6EventSequence: t6Event.sequence,
+    t9EventSequence: t9Event.sequence,
+    confirmedAt: completionEvent.at,
+    confirmedBy: completionEvent.step,
+  };
+  setTraceOutcome(trace, 'success', 'home_core_data_ready', completionEvent.at, completionEvent.step);
   persistLastTrace(trace);
   logTrace(trace);
   return true;
@@ -338,6 +358,7 @@ export function summarizeLoginTrace(trace: LoginTrace) {
     events: trace.events ? trace.events.map((event) => ({ ...event })) : undefined,
     outcome: trace.outcome ? { ...trace.outcome } : undefined,
     outcomeHistory: trace.outcomeHistory ? trace.outcomeHistory.map((outcome) => ({ ...outcome })) : undefined,
+    successMeasurement: trace.successMeasurement ? { ...trace.successMeasurement } : undefined,
   });
 
   const events = (normalized.events || [])
@@ -398,6 +419,47 @@ export function summarizeLoginTrace(trace: LoginTrace) {
     };
   });
 
+  const storedSuccessMeasurement = normalized.successMeasurement;
+  const successT6Event = storedSuccessMeasurement
+    ? (normalized.events || []).find((event) => event.sequence === storedSuccessMeasurement.t6EventSequence)
+    : undefined;
+  const successT9Event = storedSuccessMeasurement
+    ? (normalized.events || []).find((event) => event.sequence === storedSuccessMeasurement.t9EventSequence)
+    : undefined;
+  const successAttempt = storedSuccessMeasurement
+    ? (normalized.outcomeHistory || []).find((outcome) => (
+      outcome.sequence === storedSuccessMeasurement.attemptSequence
+      && outcome.status === 'in_progress'
+    ))
+    : undefined;
+  const successMeasurement = storedSuccessMeasurement && successT6Event && successT9Event && successAttempt
+    ? {
+      attemptReason: successAttempt.reason,
+      attemptStartedElapsedMs: roundDelta(successAttempt.at - normalized.startedAt),
+      t6Event: {
+        sequence: successT6Event.sequence,
+        elapsedMs: roundDelta(successT6Event.at - normalized.startedAt),
+      },
+      t9Event: {
+        sequence: successT9Event.sequence,
+        elapsedMs: roundDelta(successT9Event.at - normalized.startedAt),
+      },
+      t0ToSuccessfulT9Ms: roundDelta(successT9Event.at - normalized.startedAt),
+      t6ToT9: {
+        status: successT9Event.at >= successT6Event.at ? 'ok' as const : 'out_of_order' as const,
+        durationMs: successT9Event.at >= successT6Event.at
+          ? roundDelta(successT9Event.at - successT6Event.at)
+          : null,
+        actualDeltaMs: roundDelta(successT9Event.at - successT6Event.at),
+      },
+      successConfirmedBy: storedSuccessMeasurement.confirmedBy,
+      successConfirmedElapsedMs: roundDelta(storedSuccessMeasurement.confirmedAt - normalized.startedAt),
+      t0ToSuccessConfirmationMs: roundDelta(storedSuccessMeasurement.confirmedAt - normalized.startedAt),
+      successConfirmationDelayAfterT9Ms: roundDelta(storedSuccessMeasurement.confirmedAt - successT9Event.at),
+      attemptDurationToConfirmationMs: roundDelta(storedSuccessMeasurement.confirmedAt - successAttempt.at),
+    }
+    : null;
+
   return {
     traceId: normalized.traceId,
     provider: normalized.provider,
@@ -406,6 +468,8 @@ export function summarizeLoginTrace(trace: LoginTrace) {
     failure: normalized.failure,
     events,
     intervals,
+    firstObservedIntervals: intervals,
+    successMeasurement,
     missingSteps,
     duplicateSteps,
     lateSteps,
@@ -424,9 +488,11 @@ function logTrace(trace: LoginTrace) {
     missingSteps: summary.missingSteps,
     duplicateSteps: summary.duplicateSteps,
     lateSteps: summary.lateSteps,
+    successMeasurement: summary.successMeasurement,
   });
   console.table(summary.events);
-  console.table(summary.intervals);
+  console.info('[HARU login trace first observed intervals]');
+  console.table(summary.firstObservedIntervals);
 }
 
 function logFailureTrace(trace: LoginTrace) {
@@ -477,8 +543,8 @@ export function beginLoginTrace(provider: LoginProvider) {
 export function markLoginTrace(step: LoginTraceStep) {
   const trace = readTrace();
   if (!trace) return null;
-  markTraceEvent(trace, step, nowMs());
-  const completed = completeTraceIfReady(trace, step);
+  const event = markTraceEvent(trace, step, nowMs());
+  const completed = completeTraceIfReady(trace, event);
   if (!completed) {
     if (isTerminalOutcome(trace.outcome)) persistLastTrace(trace);
     else writeTrace(trace);

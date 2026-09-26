@@ -133,6 +133,15 @@ try {
   assert.deepEqual(summary.lateSteps, []);
   assert.equal(summary.intervals.find((item) => item.label === 'T8→T9').status, 'out_of_order');
   assert.equal(summary.intervals.find((item) => item.label === 'T8→T9').actualDeltaMs, -20);
+  assert.equal(summary.successMeasurement.t9Event.elapsedMs, 100);
+  assert.equal(summary.successMeasurement.t6Event.elapsedMs, 140);
+  assert.equal(summary.successMeasurement.successConfirmedBy, 'T6_required_access_ready');
+  assert.equal(summary.successMeasurement.successConfirmedElapsedMs, 140);
+  assert.equal(summary.successMeasurement.t0ToSuccessfulT9Ms, 100);
+  assert.equal(summary.successMeasurement.t0ToSuccessConfirmationMs, 140);
+  assert.equal(summary.successMeasurement.successConfirmationDelayAfterT9Ms, 40);
+  assert.equal(summary.successMeasurement.t6ToT9.status, 'out_of_order');
+  assert.equal(summary.successMeasurement.t6ToT9.actualDeltaMs, -40);
 
   window.sessionStorage.clear();
   resetClock(3000);
@@ -203,6 +212,10 @@ try {
     markLoginTrace('T5_user_doc_ready');
     tick(10);
     finishLoginTrace('T9_home_core_data_ready');
+    const firstT9Event = summarizeLoginTrace(readTrace()).events.find((event) => (
+      event.step === 'T9_home_core_data_ready'
+    ));
+    assert.equal(firstT9Event.elapsedMs, 30);
     assert.equal(summarizeLoginTrace(readTrace()).outcome.status, 'in_progress');
     blockLoginTrace(reason);
     summary = summarizeLoginTrace(readTrace(LAST_TRACE_KEY));
@@ -229,6 +242,27 @@ try {
     assert(summary.events.some((event) => (
       event.step === 'T9_home_core_data_ready' && !event.afterTerminal
     )));
+    const t9Events = summary.events.filter((event) => event.step === 'T9_home_core_data_ready');
+    const successfulT6Event = summary.events.find((event) => (
+      event.step === 'T6_required_access_ready' && event.elapsedMs === 40
+    ));
+    assert.deepEqual(t9Events.map((event) => event.elapsedMs), [30, 50]);
+    assert.equal(readTrace(LAST_TRACE_KEY).marks.T9_home_core_data_ready, 5530);
+    assert.equal(summary.firstObservedIntervals.find((item) => item.label === 'T0→T9').durationMs, 30);
+    assert.equal(summary.successMeasurement.attemptReason, 'required_access_ready');
+    assert.equal(summary.successMeasurement.attemptStartedElapsedMs, 40);
+    assert.equal(summary.successMeasurement.t6Event.elapsedMs, 40);
+    assert.equal(summary.successMeasurement.t6Event.sequence, successfulT6Event.sequence);
+    assert.equal(summary.successMeasurement.t9Event.elapsedMs, 50);
+    assert.equal(summary.successMeasurement.t9Event.sequence, t9Events[1].sequence);
+    assert.equal(summary.successMeasurement.t0ToSuccessfulT9Ms, 50);
+    assert.equal(summary.successMeasurement.t6ToT9.status, 'ok');
+    assert.equal(summary.successMeasurement.t6ToT9.durationMs, 10);
+    assert.equal(summary.successMeasurement.successConfirmedBy, 'T9_home_core_data_ready');
+    assert.equal(summary.successMeasurement.successConfirmedElapsedMs, 50);
+    assert.equal(summary.successMeasurement.t0ToSuccessConfirmationMs, 50);
+    assert.equal(summary.successMeasurement.successConfirmationDelayAfterT9Ms, 0);
+    assert.equal(summary.successMeasurement.attemptDurationToConfirmationMs, 10);
   }
 
   window.sessionStorage.clear();
