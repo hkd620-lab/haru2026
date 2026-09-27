@@ -4,7 +4,6 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getStorage } from 'firebase-admin/storage';
 import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { google } from 'googleapis';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import axios from 'axios';
@@ -15234,6 +15233,7 @@ export const getKoreanPlantInfo = onCall(
 const DRIVE_ROOT_FOLDER_ID = '1mzrd3lgMRrCBRCowN0VfmvKhE_5IyJ9X';
 
 async function getDriveClient(serviceAccountJson: string) {
+  const { google } = await import('googleapis');
   const credentials = JSON.parse(serviceAccountJson);
   const auth = new google.auth.GoogleAuth({
     credentials,
@@ -15242,8 +15242,10 @@ async function getDriveClient(serviceAccountJson: string) {
   return google.drive({ version: 'v3', auth });
 }
 
+type DriveClient = Awaited<ReturnType<typeof getDriveClient>>;
+
 async function findDriveFolder(
-  driveClient: ReturnType<typeof google.drive>,
+  driveClient: DriveClient,
   name: string,
   parentId: string,
 ): Promise<string | null> {
@@ -15256,7 +15258,7 @@ async function findDriveFolder(
 }
 
 async function createDriveFolder(
-  driveClient: ReturnType<typeof google.drive>,
+  driveClient: DriveClient,
   name: string,
   parentId: string,
 ): Promise<string> {
@@ -15272,7 +15274,7 @@ async function createDriveFolder(
 }
 
 async function getOrCreateMonthFolder(
-  driveClient: ReturnType<typeof google.drive>,
+  driveClient: DriveClient,
   year: string,
   month: string,
 ): Promise<string> {

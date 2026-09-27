@@ -45,7 +45,6 @@ const https_2 = require("firebase-functions/v2/https");
 const storage_1 = require("firebase-admin/storage");
 const params_1 = require("firebase-functions/params");
 const generative_ai_1 = require("@google/generative-ai");
-const googleapis_1 = require("googleapis");
 const admin = __importStar(require("firebase-admin"));
 const logger = __importStar(require("firebase-functions/logger"));
 const axios_1 = __importDefault(require("axios"));
@@ -13397,12 +13396,13 @@ exports.getKoreanPlantInfo = (0, https_2.onCall)({
 // ===== 📁 보조장부 영수증 → 구글 드라이브 자동 업로드 =====
 const DRIVE_ROOT_FOLDER_ID = '1mzrd3lgMRrCBRCowN0VfmvKhE_5IyJ9X';
 async function getDriveClient(serviceAccountJson) {
+    const { google } = await Promise.resolve().then(() => __importStar(require('googleapis')));
     const credentials = JSON.parse(serviceAccountJson);
-    const auth = new googleapis_1.google.auth.GoogleAuth({
+    const auth = new google.auth.GoogleAuth({
         credentials,
         scopes: ['https://www.googleapis.com/auth/drive.file'],
     });
-    return googleapis_1.google.drive({ version: 'v3', auth });
+    return google.drive({ version: 'v3', auth });
 }
 async function findDriveFolder(driveClient, name, parentId) {
     var _a, _b, _c;
