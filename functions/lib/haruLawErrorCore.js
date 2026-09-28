@@ -104,15 +104,19 @@ function decodePdfName(bytes, start, end) {
     }
     return Buffer.from(decoded).toString('latin1');
 }
-function extractPdfByteDictionaryDescriptor(bytes, searchFrom) {
-    let start = -1;
-    for (let index = searchFrom; index < bytes.length - 1; index += 1) {
-        if (bytes[index] === 0x3c && bytes[index + 1] === 0x3c) {
-            start = index;
-            break;
-        }
+function readPdfIntegerToken(bytes, from) {
+    let cursor = skipPdfWhitespaceAndComments(bytes, from);
+    const start = cursor;
+    let value = 0;
+    while (cursor < bytes.length && bytes[cursor] >= 0x30 && bytes[cursor] <= 0x39) {
+        value = value * 10 + bytes[cursor] - 0x30;
+        cursor += 1;
     }
-    if (start < 0)
+    return cursor > start && isPdfDelimiter(bytes[cursor]) ? { value, end: cursor } : null;
+}
+function extractPdfByteDictionaryDescriptor(bytes, searchFrom) {
+    const start = skipPdfWhitespaceAndComments(bytes, searchFrom);
+    if (bytes[start] !== 0x3c || bytes[start + 1] !== 0x3c)
         return null;
     let depth = 0;
     let literalDepth = 0;
@@ -167,7 +171,10 @@ function extractPdfByteDictionaryDescriptor(bytes, searchFrom) {
             continue;
         }
         if (arrayDepth > 0) {
-            if (byte === 0x28) {
+            if (byte === 0x25) {
+                inComment = true;
+            }
+            else if (byte === 0x28) {
                 literalDepth = 1;
             }
             else if (byte === 0x5b) {
@@ -257,16 +264,14 @@ function extractPdfByteDictionaryDescriptor(bytes, searchFrom) {
     return null;
 }
 function getLargePdfXrefDescriptor(bytes, xrefOffset) {
-    let cursor = xrefOffset;
-    while (cursor < bytes.length && isPdfWhitespace(bytes[cursor]))
-        cursor += 1;
+    let cursor = skipPdfWhitespaceAndComments(bytes, xrefOffset);
     if (!matchesAsciiAt(bytes, cursor, 'xref')) {
-        const objectHeader = Buffer.from(bytes.subarray(cursor, Math.min(bytes.length, cursor + 64)))
-            .toString('latin1')
-            .match(/^\d+\s+\d+\s+obj\b/);
-        if (!objectHeader)
+        const objectNumber = readPdfIntegerToken(bytes, cursor);
+        const generation = objectNumber && readPdfIntegerToken(bytes, objectNumber.end);
+        cursor = generation ? skipPdfWhitespaceAndComments(bytes, generation.end) : -1;
+        if (cursor < 0 || !matchesAsciiAt(bytes, cursor, 'obj') || !isPdfDelimiter(bytes[cursor + 3]))
             return null;
-        const descriptor = extractPdfByteDictionaryDescriptor(bytes, cursor + objectHeader[0].length);
+        const descriptor = extractPdfByteDictionaryDescriptor(bytes, cursor + 3);
         return (descriptor === null || descriptor === void 0 ? void 0 : descriptor.isXrefStream) ? descriptor : null;
     }
     const trailerToken = 'trailer';
