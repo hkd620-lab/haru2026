@@ -261,6 +261,21 @@ async function run() {
     getHaruLawAttachmentContentError('application/pdf', encryptedOversizedXrefStreamPdf),
     'ATTACHMENT_PDF_UNREADABLE',
   );
+  const incrementalParts = [Buffer.from('%PDF-1.7\n')];
+  let previousIncrementalXref;
+  for (let index = 0; index < 18; index += 1) {
+    const offset = incrementalParts.reduce((total, part) => total + part.length, 0);
+    incrementalParts.push(Buffer.from(
+      `xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Size 1`
+        + `${index === 0 ? ' /Encrypt 4 0 R' : ` /Prev ${previousIncrementalXref}`} >>\n`,
+    ));
+    previousIncrementalXref = offset;
+  }
+  incrementalParts.push(Buffer.from(`startxref\n${previousIncrementalXref}\n%%EOF`));
+  assert.equal(
+    getHaruLawAttachmentContentError('application/pdf', Buffer.concat(incrementalParts)),
+    'ATTACHMENT_PDF_UNREADABLE',
+  );
   assert.equal(
     getHaruLawAttachmentContentError('application/zip', Buffer.from('PK')),
     'ATTACHMENT_UNSUPPORTED_TYPE',

@@ -325,7 +325,7 @@ function hasPdfEncryptionDictionary(bytes: Uint8Array): boolean {
     }
   }
   const visited = new Set<number>();
-  for (let depth = 0; depth < 16 && Number.isSafeInteger(xrefOffset) && !visited.has(xrefOffset); depth += 1) {
+  while (Number.isSafeInteger(xrefOffset) && !visited.has(xrefOffset)) {
     visited.add(xrefOffset);
     const descriptor = getLargePdfXrefDescriptor(bytes, xrefOffset);
     if (!descriptor) break;
