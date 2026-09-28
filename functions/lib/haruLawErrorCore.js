@@ -111,6 +111,32 @@ function extractPdfDictionary(source, searchFrom) {
     }
     return null;
 }
+function isPdfWhitespace(byte) {
+    return byte === 0x00 || byte === 0x09 || byte === 0x0a || byte === 0x0c || byte === 0x0d || byte === 0x20;
+}
+function matchesAsciiAt(bytes, offset, value) {
+    return offset >= 0
+        && offset + value.length <= bytes.length
+        && [...value].every((char, index) => bytes[offset + index] === char.charCodeAt(0));
+}
+function getLargeClassicPdfTrailerDictionary(bytes, xrefOffset) {
+    let cursor = xrefOffset;
+    while (cursor < bytes.length && isPdfWhitespace(bytes[cursor]))
+        cursor += 1;
+    if (!matchesAsciiAt(bytes, cursor, 'xref'))
+        return null;
+    const trailerToken = 'trailer';
+    for (let index = cursor + 4; index <= bytes.length - trailerToken.length; index += 1) {
+        if ((bytes[index - 1] === 0x0a || bytes[index - 1] === 0x0d)
+            && matchesAsciiAt(bytes, index, trailerToken)
+            && isPdfWhitespace(bytes[index + trailerToken.length])) {
+            const dictionaryBytes = bytes.subarray(index + trailerToken.length, Math.min(bytes.length, index + 64 * 1024));
+            const dictionarySource = Buffer.from(dictionaryBytes.buffer, dictionaryBytes.byteOffset, dictionaryBytes.byteLength).toString('latin1');
+            return extractPdfDictionary(dictionarySource, 0);
+        }
+    }
+    return null;
+}
 function getPdfXrefDictionary(pdf, start, xrefOffset) {
     const relativeXrefOffset = xrefOffset - start;
     if (!Number.isSafeInteger(xrefOffset) || relativeXrefOffset < 0 || relativeXrefOffset >= pdf.length) {
@@ -140,7 +166,9 @@ function hasPdfEncryptionDictionary(bytes) {
     const visited = new Set();
     for (let depth = 0; depth < 16 && Number.isSafeInteger(xrefOffset) && !visited.has(xrefOffset); depth += 1) {
         visited.add(xrefOffset);
-        const dictionary = getPdfXrefDictionary(pdf, start, xrefOffset);
+        const dictionary = xrefOffset < start
+            ? getLargeClassicPdfTrailerDictionary(bytes, xrefOffset)
+            : getPdfXrefDictionary(pdf, start, xrefOffset);
         if (!dictionary)
             break;
         if (/\/Encrypt\b/.test(dictionary))
