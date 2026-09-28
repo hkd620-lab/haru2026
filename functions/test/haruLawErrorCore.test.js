@@ -117,6 +117,13 @@ async function run() {
   assert.equal(
     getHaruLawAttachmentContentError(
       'application/pdf',
+      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \n\t trailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
+    ),
+    'ATTACHMENT_PDF_UNREADABLE',
+  );
+  assert.equal(
+    getHaruLawAttachmentContentError(
+      'application/pdf',
       Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n% offset note\n${encryptedTrailerXrefOffset}\n%%EOF`),
     ),
     'ATTACHMENT_PDF_UNREADABLE',

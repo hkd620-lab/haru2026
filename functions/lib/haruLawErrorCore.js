@@ -271,9 +271,19 @@ function getLargePdfXrefDescriptor(bytes, xrefOffset) {
         return (descriptor === null || descriptor === void 0 ? void 0 : descriptor.isXrefStream) ? descriptor : null;
     }
     const trailerToken = 'trailer';
+    let inComment = false;
     for (let index = cursor + 4; index <= bytes.length - trailerToken.length; index += 1) {
-        if ((bytes[index - 1] === 0x0a || bytes[index - 1] === 0x0d)
-            && matchesAsciiAt(bytes, index, trailerToken)
+        if (inComment) {
+            if (bytes[index] === 0x0a || bytes[index] === 0x0d)
+                inComment = false;
+            continue;
+        }
+        if (bytes[index] === 0x25) {
+            inComment = true;
+            continue;
+        }
+        if (matchesAsciiAt(bytes, index, trailerToken)
+            && isPdfDelimiter(bytes[index - 1])
             && isPdfDelimiter(bytes[index + trailerToken.length])) {
             return extractPdfByteDictionaryDescriptor(bytes, index + trailerToken.length);
         }
