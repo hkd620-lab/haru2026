@@ -155,6 +155,35 @@ async function run() {
     getHaruLawAttachmentContentError('application/pdf', encryptedOversizedTrailerPdf),
     'ATTACHMENT_PDF_UNREADABLE',
   );
+  const commentDelimitedEncryptPdf = Buffer.from(
+    `${largeClassicXrefPrefix}xref\n0 60000\n${oversizedClassicXrefEntries}trailer\n`
+      + `<< /Size 60000 /Root 1 0 R /Encrypt% separated by comment\n4 0 R >>\nstartxref\n${largeClassicXrefOffset}\n%%EOF`,
+  );
+  assert.equal(
+    getHaruLawAttachmentContentError('application/pdf', commentDelimitedEncryptPdf),
+    'ATTACHMENT_PDF_UNREADABLE',
+  );
+  const nestedEncryptOnlyPdf = Buffer.from(
+    `${largeClassicXrefPrefix}xref\n0 60000\n${oversizedClassicXrefEntries}trailer\n`
+      + `<< /Size 60000 /Root 1 0 R /Vendor << /Encrypt 4 0 R >> >>\nstartxref\n${largeClassicXrefOffset}\n%%EOF`,
+  );
+  assert.equal(getHaruLawAttachmentContentError('application/pdf', nestedEncryptOnlyPdf), null);
+  const encryptNameValuePdf = Buffer.from(
+    `${largeClassicXrefPrefix}xref\n0 60000\n${oversizedClassicXrefEntries}trailer\n`
+      + `<< /Size 60000 /Root 1 0 R /Vendor /Encrypt >>\nstartxref\n${largeClassicXrefOffset}\n%%EOF`,
+  );
+  assert.equal(getHaruLawAttachmentContentError('application/pdf', encryptNameValuePdf), null);
+  const oversizedXrefStreamPrefix = `${largeClassicXrefPrefix}2 0 obj\n<< /Type /XRef /Encrypt 4 0 R /Length ${1200 * 1024} >>\nstream\n`;
+  const oversizedXrefStreamOffset = Buffer.byteLength(largeClassicXrefPrefix);
+  const encryptedOversizedXrefStreamPdf = Buffer.concat([
+    Buffer.from(oversizedXrefStreamPrefix),
+    Buffer.alloc(1200 * 1024, 0x41),
+    Buffer.from(`\nendstream\nendobj\nstartxref\n${oversizedXrefStreamOffset}\n%%EOF`),
+  ]);
+  assert.equal(
+    getHaruLawAttachmentContentError('application/pdf', encryptedOversizedXrefStreamPdf),
+    'ATTACHMENT_PDF_UNREADABLE',
+  );
   assert.equal(
     getHaruLawAttachmentContentError('application/zip', Buffer.from('PK')),
     'ATTACHMENT_UNSUPPORTED_TYPE',

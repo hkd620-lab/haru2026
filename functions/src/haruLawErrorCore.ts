@@ -135,7 +135,7 @@ function matchesAsciiAt(bytes: Uint8Array, offset: number, value: string): boole
     && [...value].every((char, index) => bytes[offset + index] === char.charCodeAt(0));
 }
 
-type PdfXrefDescriptor = { hasEncrypt: boolean; previous?: number };
+type PdfXrefDescriptor = { hasEncrypt: boolean; previous?: number; isXrefStream?: boolean };
 
 function getPdfXrefDescriptor(dictionary: string): PdfXrefDescriptor {
   const previous = /\/Prev\s+(\d+)/.exec(dictionary);
@@ -143,6 +143,26 @@ function getPdfXrefDescriptor(dictionary: string): PdfXrefDescriptor {
     hasEncrypt: /\/Encrypt\b/.test(dictionary),
     ...(previous ? { previous: Number(previous[1]) } : {}),
   };
+}
+
+function isPdfDelimiter(byte: number | undefined): boolean {
+  return isPdfWhitespace(byte)
+    || byte === 0x28 || byte === 0x29 || byte === 0x3c || byte === 0x3e
+    || byte === 0x5b || byte === 0x5d || byte === 0x7b || byte === 0x7d
+    || byte === 0x2f || byte === 0x25;
+}
+
+function skipPdfWhitespaceAndComments(bytes: Uint8Array, from: number): number {
+  let cursor = from;
+  while (cursor < bytes.length) {
+    if (isPdfWhitespace(bytes[cursor])) {
+      cursor += 1;
+      continue;
+    }
+    if (bytes[cursor] !== 0x25) break;
+    while (cursor < bytes.length && bytes[cursor] !== 0x0a && bytes[cursor] !== 0x0d) cursor += 1;
+  }
+  return cursor;
 }
 
 function extractPdfByteDictionaryDescriptor(bytes: Uint8Array, searchFrom: number): PdfXrefDescriptor | null {
@@ -159,7 +179,16 @@ function extractPdfByteDictionaryDescriptor(bytes: Uint8Array, searchFrom: numbe
   let literalDepth = 0;
   let escaped = false;
   let inComment = false;
+  let arrayDepth = 0;
+  let inHexString = false;
+  let literalWasTopLevelValue = false;
+  let arrayWasTopLevelValue = false;
+  let hexWasTopLevelValue = false;
+  let topLevelExpectKey = true;
+  let topLevelValueStarted = false;
+  let pendingTopLevelKey = '';
   let hasEncrypt = false;
+  let isXrefStream = false;
   let previous: number | undefined;
   for (let index = start; index < bytes.length - 1; index += 1) {
     const byte = bytes[index];
@@ -177,6 +206,34 @@ function extractPdfByteDictionaryDescriptor(bytes: Uint8Array, searchFrom: numbe
         literalDepth += 1;
       } else if (byte === 0x29) {
         literalDepth -= 1;
+        if (literalDepth === 0 && literalWasTopLevelValue) {
+          topLevelExpectKey = true;
+          literalWasTopLevelValue = false;
+        }
+      }
+      continue;
+    }
+    if (inHexString) {
+      if (byte === 0x3e) {
+        inHexString = false;
+        if (hexWasTopLevelValue) {
+          topLevelExpectKey = true;
+          hexWasTopLevelValue = false;
+        }
+      }
+      continue;
+    }
+    if (arrayDepth > 0) {
+      if (byte === 0x28) {
+        literalDepth = 1;
+      } else if (byte === 0x5b) {
+        arrayDepth += 1;
+      } else if (byte === 0x5d) {
+        arrayDepth -= 1;
+        if (arrayDepth === 0 && arrayWasTopLevelValue) {
+          topLevelExpectKey = true;
+          arrayWasTopLevelValue = false;
+        }
       }
       continue;
     }
@@ -184,34 +241,76 @@ function extractPdfByteDictionaryDescriptor(bytes: Uint8Array, searchFrom: numbe
       inComment = true;
     } else if (byte === 0x28) {
       literalDepth = 1;
+      literalWasTopLevelValue = depth === 1 && !topLevelExpectKey;
+    } else if (byte === 0x5b) {
+      arrayDepth = 1;
+      arrayWasTopLevelValue = depth === 1 && !topLevelExpectKey;
+    } else if (byte === 0x3c && next !== 0x3c) {
+      inHexString = true;
+      hexWasTopLevelValue = depth === 1 && !topLevelExpectKey;
     } else if (byte === 0x3c && next === 0x3c) {
+      const nestedTopLevelValue = depth === 1 && !topLevelExpectKey;
       depth += 1;
       index += 1;
+      if (nestedTopLevelValue) topLevelValueStarted = true;
     } else if (byte === 0x3e && next === 0x3e) {
       depth -= 1;
       index += 1;
-      if (depth === 0) return { hasEncrypt, ...(previous !== undefined ? { previous } : {}) };
-    } else if (byte === 0x2f && matchesAsciiAt(bytes, index, '/Encrypt') && isPdfWhitespace(bytes[index + 8])) {
-      hasEncrypt = true;
-    } else if (byte === 0x2f && matchesAsciiAt(bytes, index, '/Prev') && isPdfWhitespace(bytes[index + 5])) {
-      let digitIndex = index + 5;
-      while (digitIndex < bytes.length && isPdfWhitespace(bytes[digitIndex])) digitIndex += 1;
-      let value = 0;
-      const digitStart = digitIndex;
-      while (digitIndex < bytes.length && bytes[digitIndex] >= 0x30 && bytes[digitIndex] <= 0x39) {
-        value = value * 10 + bytes[digitIndex] - 0x30;
-        digitIndex += 1;
+      if (depth === 0) {
+        return {
+          hasEncrypt,
+          ...(previous !== undefined ? { previous } : {}),
+          ...(isXrefStream ? { isXrefStream: true } : {}),
+        };
       }
-      if (digitIndex > digitStart) previous = value;
+      if (depth === 1 && topLevelValueStarted) {
+        topLevelExpectKey = true;
+        topLevelValueStarted = false;
+      }
+    } else if (depth === 1 && byte === 0x2f) {
+      let nameEnd = index + 1;
+      while (nameEnd < bytes.length && !isPdfDelimiter(bytes[nameEnd])) nameEnd += 1;
+      const name = Buffer.from(bytes.subarray(index + 1, nameEnd)).toString('latin1');
+      const isKey = topLevelExpectKey || topLevelValueStarted;
+      if (isKey) {
+        pendingTopLevelKey = name;
+        hasEncrypt ||= name === 'Encrypt';
+        if (name === 'Prev') {
+          let digitIndex = skipPdfWhitespaceAndComments(bytes, nameEnd);
+          let value = 0;
+          const digitStart = digitIndex;
+          while (digitIndex < bytes.length && bytes[digitIndex] >= 0x30 && bytes[digitIndex] <= 0x39) {
+            value = value * 10 + bytes[digitIndex] - 0x30;
+            digitIndex += 1;
+          }
+          if (digitIndex > digitStart) previous = value;
+        }
+        topLevelExpectKey = false;
+        topLevelValueStarted = false;
+      } else {
+        if (pendingTopLevelKey === 'Type' && name === 'XRef') isXrefStream = true;
+        pendingTopLevelKey = '';
+        topLevelExpectKey = true;
+      }
+      index = nameEnd - 1;
+    } else if (depth === 1 && !topLevelExpectKey && !isPdfWhitespace(byte)) {
+      topLevelValueStarted = true;
     }
   }
   return null;
 }
 
-function getLargeClassicPdfTrailerDescriptor(bytes: Uint8Array, xrefOffset: number): PdfXrefDescriptor | null {
+function getLargePdfXrefDescriptor(bytes: Uint8Array, xrefOffset: number): PdfXrefDescriptor | null {
   let cursor = xrefOffset;
   while (cursor < bytes.length && isPdfWhitespace(bytes[cursor])) cursor += 1;
-  if (!matchesAsciiAt(bytes, cursor, 'xref')) return null;
+  if (!matchesAsciiAt(bytes, cursor, 'xref')) {
+    const objectHeader = Buffer.from(bytes.subarray(cursor, Math.min(bytes.length, cursor + 64)))
+      .toString('latin1')
+      .match(/^\d+\s+\d+\s+obj\b/);
+    if (!objectHeader) return null;
+    const descriptor = extractPdfByteDictionaryDescriptor(bytes, cursor + objectHeader[0].length);
+    return descriptor?.isXrefStream ? descriptor : null;
+  }
 
   const trailerToken = 'trailer';
   for (let index = cursor + 4; index <= bytes.length - trailerToken.length; index += 1) {
@@ -253,7 +352,7 @@ function hasPdfEncryptionDictionary(bytes: Uint8Array): boolean {
   for (let depth = 0; depth < 16 && Number.isSafeInteger(xrefOffset) && !visited.has(xrefOffset); depth += 1) {
     visited.add(xrefOffset);
     const descriptor = xrefOffset < start
-      ? getLargeClassicPdfTrailerDescriptor(bytes, xrefOffset)
+      ? getLargePdfXrefDescriptor(bytes, xrefOffset)
       : (() => {
         const dictionary = getPdfXrefDictionary(pdf, start, xrefOffset);
         return dictionary ? getPdfXrefDescriptor(dictionary) : null;
