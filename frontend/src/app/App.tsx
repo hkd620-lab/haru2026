@@ -157,9 +157,14 @@ function DeveloperBookStudioRoute() {
 function AppChrome() {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const isAiImportRoute = location.pathname === '/ai-import';
   const hidePublicLandingBottomNav = loading || (!user && location.pathname === '/');
-  const appChromeStyle = hidePublicLandingBottomNav
-    ? ({ '--content-pb': '0px', '--bottomnav-height': '0px' } as CSSProperties)
+  const appChromeStyle = hidePublicLandingBottomNav || isAiImportRoute
+    ? ({
+        '--content-pb': '0px',
+        '--bottomnav-height': '0px',
+        ...(isAiImportRoute ? { backgroundColor: '#F7F8FC' } : {}),
+      } as CSSProperties)
     : undefined;
 
   return (
@@ -286,9 +291,9 @@ function AppChrome() {
           <Route path="/refund" element={<RefundPage />} />
         </Routes>
       </main>
-      <TodayQuote />
-      <Footer />
-      <BottomNav />
+      {!isAiImportRoute && <TodayQuote />}
+      {!isAiImportRoute && <Footer />}
+      {!isAiImportRoute && <BottomNav />}
       <Toaster position="top-center" toastOptions={{ className: 'no-print' }} />
     </div>
   );
