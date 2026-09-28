@@ -31,6 +31,7 @@ const SOURCE_LABELS: Record<string, string> = {
   'claude.ai': 'Claude',
   'gemini.google.com': 'Gemini',
   'chatgpt.com': 'ChatGPT',
+  'slack': 'Slack',
 };
 
 const MATERIAL_KEYS: (keyof BookMaterial)[] = [

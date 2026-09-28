@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { width: 320px; padding: 12px; font-family: sans-serif; margin: 0; }
+    h3 { margin: 0 0 10px; }
+    .tabs { display: flex; gap: 4px; margin: 12px 0 8px; }
+    .tab {
+      flex: 1; padding: 5px 0; font-size: 12px; text-align: center;
+      border: 1px solid #ccc; border-radius: 4px; cursor: pointer;
+      background: #f5f5f5; color: #555;
+    }
+    .tab.active { background: #4CAF50; color: white; border-color: #4CAF50; }
+    #convList { max-height: 280px; overflow-y: auto; margin-top: 4px; }
+    .card {
+      border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px;
+      margin-bottom: 6px; font-size: 12px;
+    }
+    .card-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .card-ai { font-weight: bold; color: #333; }
+    .card-cat { color: #888; font-size: 11px; }
+    .card-time { color: #aaa; font-size: 10px; margin-bottom: 4px; }
+    .card-content { color: #555; line-height: 1.4; }
+    #listStatus { font-size: 11px; color: #999; text-align: center; padding: 8px 0; }
+  </style>
+</head>
+<body>
+  <h3>My-AI-Library</h3>
+
+  <div id="mainSection">
+    <select id="categorySelect" style="width: 100%; margin-bottom: 8px;">
+      <option value="general">일반</option>
+      <option value="coding">코딩</option>
+      <option value="research">리서치</option>
+      <option value="writing">글쓰기</option>
+    </select>
+
+    <button id="extractBtn" style="width: 100%; padding: 8px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">서버에 저장하기</button>
+    <button id="downloadBtn" style="width: 100%; padding: 8px; margin-top: 8px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">하드에 소장하기 (.md)</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

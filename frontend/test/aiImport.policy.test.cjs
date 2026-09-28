@@ -1,0 +1,23 @@
+const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
+const { test } = require('node:test');
+
+const page = readFileSync(new URL('../src/app/pages/AiImportPage.tsx', `file://${__filename}`), 'utf8');
+const service = readFileSync(new URL('../src/app/services/aiImportService.ts', `file://${__filename}`), 'utf8');
+const library = readFileSync(new URL('../src/app/pages/AiLibraryPage.tsx', `file://${__filename}`), 'utf8');
+
+test('로그인하지 않은 사용자는 HARU 저장을 시도하지 않는다', () => {
+  assert.match(page, /if \(!user\)/);
+  assert.match(page, /HARU에 로그인한 뒤 Slack에서 저장을 다시 눌러 주세요/);
+});
+
+test('현재 로그인 UID 아래 records에 멱등 문서로 저장하고 실제 문서를 재조회한다', () => {
+  assert.match(service, /doc\(db, 'users', uid, 'records', recordId\)/);
+  assert.match(service, /runTransaction/);
+  assert.match(service, /const verified = await getDoc\(recordRef\)/);
+  assert.match(service, /type: 'ai_log'/);
+});
+
+test('Slack 출처 라벨을 Slack으로 표시한다', () => {
+  assert.match(library, /'slack': 'Slack'/);
+});

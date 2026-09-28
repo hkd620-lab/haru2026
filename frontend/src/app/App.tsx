@@ -43,6 +43,8 @@ import { AdminChecklistPage } from './pages/AdminChecklistPage';
 import { AdminHaruLawReviewPage } from './pages/AdminHaruLawReviewPage';
 import { AdminSubscriptionRefundsPage } from './pages/AdminSubscriptionRefundsPage';
 import { DevConsolePage } from './pages/DevConsolePage';
+import { AiImportPage } from './pages/AiImportPage';
+import { AiLibraryPage } from './pages/AiLibraryPage';
 import { ElderBookPage } from './pages/ElderBookPage';
 import { RecordBookPage } from './pages/RecordBookPage';
 import { KNewsPublisherPage } from './pages/KNewsPublisherPage';
@@ -182,6 +184,8 @@ function AppChrome() {
           {/* 인증 */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route path="/ai-import" element={<AiImportPage />} />
+          <Route path="/ai-library" element={<AiLibraryPage />} />
 
           {/* 기존 페이지들 */}
           <Route path="/household" element={<HouseholdPage />} />
