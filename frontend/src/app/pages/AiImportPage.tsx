@@ -66,13 +66,78 @@ export function AiImportPage() {
     };
   }, [importId, loading, user]);
 
-  const color = state === 'success' || state === 'duplicate' ? '#166534' : state === 'error' ? '#B91C1C' : '#1A3C6E';
+  const completed = state === 'success' || state === 'duplicate';
+  const failed = state === 'error';
+  const color = completed ? '#166534' : failed ? '#B91C1C' : '#1A3C6E';
+  const icon = completed ? '✓' : failed ? '!' : state === 'login' ? '→' : '…';
   return (
-    <main style={{ maxWidth: 560, margin: '48px auto', padding: 24, textAlign: 'center' }}>
-      <h1 style={{ color: '#1A3C6E', fontSize: 24, fontWeight: 800 }}>AI 학습함 가져오기</h1>
-      <p role={state === 'error' ? 'alert' : 'status'} style={{ color, lineHeight: 1.7 }}>{message}</p>
-      {state === 'login' && <Link to="/login">HARU 로그인</Link>}
-      {(state === 'success' || state === 'duplicate') && <Link to="/ai-library">AI 학습함 열기</Link>}
+    <main style={{
+      minHeight: '100dvh',
+      boxSizing: 'border-box',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px 18px',
+      background: 'linear-gradient(180deg, #F4F1FF 0%, #FFFBE8 100%)',
+    }}>
+      <section style={{
+        width: '100%',
+        maxWidth: 460,
+        padding: '38px 28px 32px',
+        textAlign: 'center',
+        background: '#FFFFFF',
+        border: '1px solid #E7E2F2',
+        borderRadius: 24,
+        boxShadow: '0 18px 48px rgba(26, 60, 110, 0.12)',
+      }}>
+        <div style={{
+          width: 58,
+          height: 58,
+          margin: '0 auto 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '50%',
+          background: completed ? '#DCFCE7' : failed ? '#FEE2E2' : '#E8EEF9',
+          color,
+          fontSize: 28,
+          fontWeight: 900,
+        }} aria-hidden="true">
+          {icon}
+        </div>
+        <p style={{ margin: '0 0 8px', color: '#7C6A9A', fontSize: 13, fontWeight: 700 }}>HARU2026</p>
+        <h1 style={{ margin: 0, color: '#1A3C6E', fontSize: 25, fontWeight: 800 }}>AI 학습함 가져오기</h1>
+        <p
+          role={failed ? 'alert' : 'status'}
+          style={{ margin: '14px 0 26px', color, fontSize: 15, lineHeight: 1.7, wordBreak: 'keep-all' }}
+        >
+          {message}
+        </p>
+        {state === 'login' && (
+          <Link to="/login" style={primaryLinkStyle}>HARU 로그인</Link>
+        )}
+        {completed && (
+          <Link to="/ai-library" style={primaryLinkStyle}>AI 학습함 열기</Link>
+        )}
+        {(state === 'waiting' || state === 'saving') && (
+          <p style={{ margin: 0, color: '#8A94A6', fontSize: 13 }}>이 창을 닫지 말고 잠시 기다려 주세요.</p>
+        )}
+      </section>
     </main>
   );
 }
+
+const primaryLinkStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: 180,
+  minHeight: 46,
+  padding: '0 22px',
+  borderRadius: 999,
+  background: '#1A3C6E',
+  color: '#FFFFFF',
+  fontSize: 15,
+  fontWeight: 800,
+  textDecoration: 'none',
+} as const;
