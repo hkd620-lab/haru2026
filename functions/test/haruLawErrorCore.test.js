@@ -276,6 +276,15 @@ async function run() {
     getHaruLawAttachmentContentError('application/pdf', Buffer.concat(incrementalParts)),
     'ATTACHMENT_PDF_UNREADABLE',
   );
+  const invalidForwardPrevPrefix = '%PDF-1.7\n';
+  const invalidForwardPrevOffset = Buffer.byteLength(invalidForwardPrevPrefix);
+  assert.equal(
+    getHaruLawAttachmentContentError(
+      'application/pdf',
+      Buffer.from(`${invalidForwardPrevPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Prev ${invalidForwardPrevOffset + 1} >>\nstartxref\n${invalidForwardPrevOffset}\n%%EOF`),
+    ),
+    'ATTACHMENT_PDF_UNREADABLE',
+  );
   assert.equal(
     getHaruLawAttachmentContentError('application/zip', Buffer.from('PK')),
     'ATTACHMENT_UNSUPPORTED_TYPE',
