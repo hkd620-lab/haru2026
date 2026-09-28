@@ -34,6 +34,8 @@ const SOURCE_LABELS: Record<string, string> = {
   'slack': 'Slack',
 };
 
+const PRIMARY_SOURCES = ['chatgpt.com', 'claude.ai', 'gemini.google.com', 'slack'] as const;
+
 const MATERIAL_KEYS: (keyof BookMaterial)[] = [
   'bookMaterialTitle',
   'bookSummary',
@@ -360,7 +362,7 @@ export function AiLibraryPage() {
     return match ? match[1] : '';
   };
 
-  // 동적 필터 버튼 생성
+  // 주요 수집 출처는 기록 유무와 관계없이 항상 노출하고, 그 외 출처만 동적으로 추가한다.
   const filterButtons = useMemo(() => {
     const sources = new Set<string>();
     logs.forEach(log => {
@@ -368,9 +370,13 @@ export function AiLibraryPage() {
       if (source) sources.add(source);
     });
 
-    const buttons = [{ value: 'all', label: '전체' }];
+    const buttons = [
+      { value: 'all', label: '전체' },
+      ...PRIMARY_SOURCES.map(source => ({ value: source, label: SOURCE_LABELS[source] })),
+    ];
 
     Array.from(sources).sort().forEach(source => {
+      if (PRIMARY_SOURCES.includes(source as typeof PRIMARY_SOURCES[number])) return;
       const label = SOURCE_LABELS[source] || source;
       buttons.push({ value: source, label });
     });

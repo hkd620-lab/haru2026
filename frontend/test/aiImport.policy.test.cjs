@@ -18,6 +18,8 @@ test('현재 로그인 UID 아래 records에 멱등 문서로 저장하고 실�
   assert.match(service, /type: 'ai_log'/);
 });
 
-test('Slack 출처 라벨을 Slack으로 표시한다', () => {
+test('Slack 출처 라벨과 필터를 기록 유무와 관계없이 표시한다', () => {
   assert.match(library, /'slack': 'Slack'/);
+  assert.match(library, /PRIMARY_SOURCES = \['chatgpt\.com', 'claude\.ai', 'gemini\.google\.com', 'slack'\]/);
+  assert.match(library, /\.\.\.PRIMARY_SOURCES\.map/);
 });
