@@ -319,6 +319,8 @@ async function run() {
     'Unable to process request because API key is invalid',
     'Could not process request',
     'Failed to parse provider response',
+    'Unable to process request; see documentation',
+    'Unable to process profile response',
   ]) {
     assert.equal(
       classifyHaruLawAiError({ response: { status: 400 }, message }, true),

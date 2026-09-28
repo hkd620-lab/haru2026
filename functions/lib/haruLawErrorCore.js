@@ -431,7 +431,7 @@ function classifyHaruLawAiError(error, hasAttachments) {
             return '';
         }
     }).join(' ').toLowerCase();
-    const hasAttachmentSubject = /(attachment|document|pdf|image|inline.?data|mime|file|pages?)/i.test(evidence);
+    const hasAttachmentSubject = /\b(?:attachment|document|pdf|image|inline.?data|mime|file|pages?)\b/i.test(evidence);
     const hasReadFailure = /(?:cannot|could not|unable to|fail(?:ed)? to).{0,120}(?:read|process|parse|decode)|(?:read|process|parse|decode).{0,120}(?:invalid|fail|unsupported)|corrupt|encrypt|unsupported.{0,40}(?:mime|file|format|type)|no pages|empty file|password.?protected/i.test(evidence);
     if (hasAttachments && hasAttachmentSubject && hasReadFailure) {
         return 'ATTACHMENT_CONTENT_UNREADABLE';
