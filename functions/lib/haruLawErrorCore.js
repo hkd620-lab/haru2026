@@ -55,11 +55,7 @@ function isIsoBmffHeif(bytes) {
 }
 function getPdfStructureTail(bytes) {
     const start = Math.max(0, bytes.byteLength - MAX_PDF_STRUCTURE_SCAN_BYTES);
-    const tail = bytes.subarray(start);
-    return {
-        start,
-        text: Buffer.from(tail.buffer, tail.byteOffset, tail.byteLength).toString('latin1'),
-    };
+    return bytes.subarray(start);
 }
 function isPdfWhitespace(byte) {
     return byte === 0x00 || byte === 0x09 || byte === 0x0a || byte === 0x0c || byte === 0x0d || byte === 0x20;
@@ -278,17 +274,24 @@ function getLargePdfXrefDescriptor(bytes, xrefOffset) {
     for (let index = cursor + 4; index <= bytes.length - trailerToken.length; index += 1) {
         if ((bytes[index - 1] === 0x0a || bytes[index - 1] === 0x0d)
             && matchesAsciiAt(bytes, index, trailerToken)
-            && isPdfWhitespace(bytes[index + trailerToken.length])) {
+            && isPdfDelimiter(bytes[index + trailerToken.length])) {
             return extractPdfByteDictionaryDescriptor(bytes, index + trailerToken.length);
         }
     }
     return null;
 }
 function hasPdfEncryptionDictionary(bytes) {
-    var _a;
-    const { text: pdf } = getPdfStructureTail(bytes);
-    const startXrefMatches = [...pdf.matchAll(/startxref[\t \r\n]+(\d+)/g)];
-    let xrefOffset = Number((_a = startXrefMatches.at(-1)) === null || _a === void 0 ? void 0 : _a[1]);
+    const tail = getPdfStructureTail(bytes);
+    let xrefOffset = Number.NaN;
+    for (let index = 0; index <= tail.length - 9; index += 1) {
+        if (matchesAsciiAt(tail, index, 'startxref')
+            && (index === 0 || isPdfDelimiter(tail[index - 1]))
+            && isPdfDelimiter(tail[index + 9])) {
+            const offset = readPdfIntegerToken(tail, index + 9);
+            if (offset)
+                xrefOffset = offset.value;
+        }
+    }
     const visited = new Set();
     for (let depth = 0; depth < 16 && Number.isSafeInteger(xrefOffset) && !visited.has(xrefOffset); depth += 1) {
         visited.add(xrefOffset);

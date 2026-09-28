@@ -74,13 +74,9 @@ function isIsoBmffHeif(bytes: Uint8Array): boolean {
     .some((brand) => brands.includes(brand));
 }
 
-function getPdfStructureTail(bytes: Uint8Array): { start: number; text: string } {
+function getPdfStructureTail(bytes: Uint8Array): Uint8Array {
   const start = Math.max(0, bytes.byteLength - MAX_PDF_STRUCTURE_SCAN_BYTES);
-  const tail = bytes.subarray(start);
-  return {
-    start,
-    text: Buffer.from(tail.buffer, tail.byteOffset, tail.byteLength).toString('latin1'),
-  };
+  return bytes.subarray(start);
 }
 
 function isPdfWhitespace(byte: number | undefined): boolean {
@@ -289,7 +285,7 @@ function getLargePdfXrefDescriptor(bytes: Uint8Array, xrefOffset: number): PdfXr
     if (
       (bytes[index - 1] === 0x0a || bytes[index - 1] === 0x0d)
       && matchesAsciiAt(bytes, index, trailerToken)
-      && isPdfWhitespace(bytes[index + trailerToken.length])
+      && isPdfDelimiter(bytes[index + trailerToken.length])
     ) {
       return extractPdfByteDictionaryDescriptor(bytes, index + trailerToken.length);
     }
@@ -298,9 +294,18 @@ function getLargePdfXrefDescriptor(bytes: Uint8Array, xrefOffset: number): PdfXr
 }
 
 function hasPdfEncryptionDictionary(bytes: Uint8Array): boolean {
-  const { text: pdf } = getPdfStructureTail(bytes);
-  const startXrefMatches = [...pdf.matchAll(/startxref[\t \r\n]+(\d+)/g)];
-  let xrefOffset = Number(startXrefMatches.at(-1)?.[1]);
+  const tail = getPdfStructureTail(bytes);
+  let xrefOffset = Number.NaN;
+  for (let index = 0; index <= tail.length - 9; index += 1) {
+    if (
+      matchesAsciiAt(tail, index, 'startxref')
+      && (index === 0 || isPdfDelimiter(tail[index - 1]))
+      && isPdfDelimiter(tail[index + 9])
+    ) {
+      const offset = readPdfIntegerToken(tail, index + 9);
+      if (offset) xrefOffset = offset.value;
+    }
+  }
   const visited = new Set<number>();
   for (let depth = 0; depth < 16 && Number.isSafeInteger(xrefOffset) && !visited.has(xrefOffset); depth += 1) {
     visited.add(xrefOffset);
