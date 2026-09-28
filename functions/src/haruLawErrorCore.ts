@@ -296,7 +296,16 @@ function getLargePdfXrefDescriptor(bytes: Uint8Array, xrefOffset: number): PdfXr
 function hasPdfEncryptionDictionary(bytes: Uint8Array): boolean {
   const tail = getPdfStructureTail(bytes);
   let xrefOffset = Number.NaN;
+  let inComment = false;
   for (let index = 0; index <= tail.length - 9; index += 1) {
+    if (inComment) {
+      if (tail[index] === 0x0a || tail[index] === 0x0d) inComment = false;
+      continue;
+    }
+    if (tail[index] === 0x25) {
+      inComment = true;
+      continue;
+    }
     if (
       matchesAsciiAt(tail, index, 'startxref')
       && (index === 0 || isPdfDelimiter(tail[index - 1]))
