@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "AI 지식 수집기",
+  "version": "2.4",
+  "icons": {
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "128": "icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["activeTab", "scripting", "storage", "clipboardWrite", "tabs"],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://gemini.google.com/*",
+    "https://claude.ai/*",
+    "https://app.slack.com/*",
+    "https://haru2026.com/*",
+    "https://haru2026-8abb8.web.app/*",
+    "https://firestore.googleapis.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://gemini.google.com/*",
+        "https://claude.ai/*",
+        "https://app.slack.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "https://haru2026.com/ai-import*",
+        "https://haru2026-8abb8.web.app/ai-import*"
+      ],
+      "js": ["haru-bridge.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "oauth2": {
+    "client_id": "1037388320702-fi7uhnev4ftg32m3rjegqq3332lbssup.apps.googleusercontent.com",
+    "scopes": [
+      "openid",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+  }
+}
