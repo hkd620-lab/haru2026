@@ -145,6 +145,16 @@ async function run() {
     getHaruLawAttachmentContentError('application/pdf', encryptedOversizedClassicXrefPdf),
     'ATTACHMENT_PDF_UNREADABLE',
   );
+  const oversizedTrailerDictionary = `<< /Size 60000 /Root 1 0 R /Encrypt 4 0 R /Custom (${`A`.repeat(70 * 1024)}) >>`;
+  assert.ok(Buffer.byteLength(oversizedTrailerDictionary) > 64 * 1024);
+  const encryptedOversizedTrailerPdf = Buffer.from(
+    `${largeClassicXrefPrefix}xref\n0 60000\n${oversizedClassicXrefEntries}trailer\n`
+      + `${oversizedTrailerDictionary}\nstartxref\n${largeClassicXrefOffset}\n%%EOF`,
+  );
+  assert.equal(
+    getHaruLawAttachmentContentError('application/pdf', encryptedOversizedTrailerPdf),
+    'ATTACHMENT_PDF_UNREADABLE',
+  );
   assert.equal(
     getHaruLawAttachmentContentError('application/zip', Buffer.from('PK')),
     'ATTACHMENT_UNSUPPORTED_TYPE',

@@ -135,7 +135,80 @@ function matchesAsciiAt(bytes: Uint8Array, offset: number, value: string): boole
     && [...value].every((char, index) => bytes[offset + index] === char.charCodeAt(0));
 }
 
-function getLargeClassicPdfTrailerDictionary(bytes: Uint8Array, xrefOffset: number): string | null {
+type PdfXrefDescriptor = { hasEncrypt: boolean; previous?: number };
+
+function getPdfXrefDescriptor(dictionary: string): PdfXrefDescriptor {
+  const previous = /\/Prev\s+(\d+)/.exec(dictionary);
+  return {
+    hasEncrypt: /\/Encrypt\b/.test(dictionary),
+    ...(previous ? { previous: Number(previous[1]) } : {}),
+  };
+}
+
+function extractPdfByteDictionaryDescriptor(bytes: Uint8Array, searchFrom: number): PdfXrefDescriptor | null {
+  let start = -1;
+  for (let index = searchFrom; index < bytes.length - 1; index += 1) {
+    if (bytes[index] === 0x3c && bytes[index + 1] === 0x3c) {
+      start = index;
+      break;
+    }
+  }
+  if (start < 0) return null;
+
+  let depth = 0;
+  let literalDepth = 0;
+  let escaped = false;
+  let inComment = false;
+  let hasEncrypt = false;
+  let previous: number | undefined;
+  for (let index = start; index < bytes.length - 1; index += 1) {
+    const byte = bytes[index];
+    const next = bytes[index + 1];
+    if (inComment) {
+      if (byte === 0x0a || byte === 0x0d) inComment = false;
+      continue;
+    }
+    if (literalDepth > 0) {
+      if (escaped) {
+        escaped = false;
+      } else if (byte === 0x5c) {
+        escaped = true;
+      } else if (byte === 0x28) {
+        literalDepth += 1;
+      } else if (byte === 0x29) {
+        literalDepth -= 1;
+      }
+      continue;
+    }
+    if (byte === 0x25) {
+      inComment = true;
+    } else if (byte === 0x28) {
+      literalDepth = 1;
+    } else if (byte === 0x3c && next === 0x3c) {
+      depth += 1;
+      index += 1;
+    } else if (byte === 0x3e && next === 0x3e) {
+      depth -= 1;
+      index += 1;
+      if (depth === 0) return { hasEncrypt, ...(previous !== undefined ? { previous } : {}) };
+    } else if (byte === 0x2f && matchesAsciiAt(bytes, index, '/Encrypt') && isPdfWhitespace(bytes[index + 8])) {
+      hasEncrypt = true;
+    } else if (byte === 0x2f && matchesAsciiAt(bytes, index, '/Prev') && isPdfWhitespace(bytes[index + 5])) {
+      let digitIndex = index + 5;
+      while (digitIndex < bytes.length && isPdfWhitespace(bytes[digitIndex])) digitIndex += 1;
+      let value = 0;
+      const digitStart = digitIndex;
+      while (digitIndex < bytes.length && bytes[digitIndex] >= 0x30 && bytes[digitIndex] <= 0x39) {
+        value = value * 10 + bytes[digitIndex] - 0x30;
+        digitIndex += 1;
+      }
+      if (digitIndex > digitStart) previous = value;
+    }
+  }
+  return null;
+}
+
+function getLargeClassicPdfTrailerDescriptor(bytes: Uint8Array, xrefOffset: number): PdfXrefDescriptor | null {
   let cursor = xrefOffset;
   while (cursor < bytes.length && isPdfWhitespace(bytes[cursor])) cursor += 1;
   if (!matchesAsciiAt(bytes, cursor, 'xref')) return null;
@@ -147,13 +220,7 @@ function getLargeClassicPdfTrailerDictionary(bytes: Uint8Array, xrefOffset: numb
       && matchesAsciiAt(bytes, index, trailerToken)
       && isPdfWhitespace(bytes[index + trailerToken.length])
     ) {
-      const dictionaryBytes = bytes.subarray(index + trailerToken.length, Math.min(bytes.length, index + 64 * 1024));
-      const dictionarySource = Buffer.from(
-        dictionaryBytes.buffer,
-        dictionaryBytes.byteOffset,
-        dictionaryBytes.byteLength,
-      ).toString('latin1');
-      return extractPdfDictionary(dictionarySource, 0);
+      return extractPdfByteDictionaryDescriptor(bytes, index + trailerToken.length);
     }
   }
   return null;
@@ -185,14 +252,16 @@ function hasPdfEncryptionDictionary(bytes: Uint8Array): boolean {
   const visited = new Set<number>();
   for (let depth = 0; depth < 16 && Number.isSafeInteger(xrefOffset) && !visited.has(xrefOffset); depth += 1) {
     visited.add(xrefOffset);
-    const dictionary = xrefOffset < start
-      ? getLargeClassicPdfTrailerDictionary(bytes, xrefOffset)
-      : getPdfXrefDictionary(pdf, start, xrefOffset);
-    if (!dictionary) break;
-    if (/\/Encrypt\b/.test(dictionary)) return true;
-    const previous = /\/Prev\s+(\d+)/.exec(dictionary);
-    if (!previous) break;
-    xrefOffset = Number(previous[1]);
+    const descriptor = xrefOffset < start
+      ? getLargeClassicPdfTrailerDescriptor(bytes, xrefOffset)
+      : (() => {
+        const dictionary = getPdfXrefDictionary(pdf, start, xrefOffset);
+        return dictionary ? getPdfXrefDescriptor(dictionary) : null;
+      })();
+    if (!descriptor) break;
+    if (descriptor.hasEncrypt) return true;
+    if (descriptor.previous === undefined) break;
+    xrefOffset = descriptor.previous;
   }
   return false;
 }
