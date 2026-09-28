@@ -487,7 +487,16 @@ export function ResultChatModal({
           return;
         }
         if (file.type === 'application/pdf') {
-          const header = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+          let header: Uint8Array;
+          try {
+            header = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+          } catch {
+            if (attachmentScopeRef.current !== uploadScopeId) return;
+            const userError = getHaruLawUserErrorByReason('ATTACHMENT_PDF_UNREADABLE');
+            setHaruLawErrorNotice({ userError });
+            toast.error(userError.title);
+            return;
+          }
           if (attachmentScopeRef.current !== uploadScopeId) return;
           if (!hasReadableHaruLawPdfHeader(header)) {
             const userError = getHaruLawUserErrorByReason('ATTACHMENT_PDF_UNREADABLE');

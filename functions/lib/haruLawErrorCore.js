@@ -116,7 +116,7 @@ function getPdfXrefDictionary(pdf, start, xrefOffset) {
     if (!Number.isSafeInteger(xrefOffset) || relativeXrefOffset < 0 || relativeXrefOffset >= pdf.length) {
         return null;
     }
-    const xrefSection = pdf.slice(relativeXrefOffset, relativeXrefOffset + 64 * 1024);
+    const xrefSection = pdf.slice(relativeXrefOffset);
     const contentStart = xrefSection.search(/\S/);
     if (contentStart < 0)
         return null;

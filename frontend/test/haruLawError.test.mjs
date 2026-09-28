@@ -85,6 +85,11 @@ assert.match(
   'PDF validation must be tracked as active and abort if its attachment scope changes',
 );
 assert.match(
+  resultChatSource,
+  /if \(file\.type === 'application\/pdf'\) \{[\s\S]*try \{[\s\S]*await file\.slice\(0, 8\)\.arrayBuffer\(\)[\s\S]*\} catch \{[\s\S]*ATTACHMENT_PDF_UNREADABLE[\s\S]*setHaruLawErrorNotice\(\{ userError \}\)/,
+  'ResultChatModal must map PDF header read failures to the structured unreadable-PDF notice',
+);
+assert.match(
   recordPageSource,
   /setUploadingLawFiles\(true\);[\s\S]*try \{[\s\S]*try \{[\s\S]*await file\.slice\(0, 8\)\.arrayBuffer\(\)\);[\s\S]*catch \{[\s\S]*ATTACHMENT_PDF_UNREADABLE[\s\S]*finally \{[\s\S]*event\.target\.value = ''/,
   'RecordPage must report PDF header read failures and always reset the file input',
