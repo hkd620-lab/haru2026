@@ -75,6 +75,27 @@ async function run() {
   assert.equal(
     getHaruLawAttachmentContentError(
       'application/pdf',
+      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /Vendor << /Encrypt 4 0 R >> >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
+    ),
+    null,
+  );
+  assert.equal(
+    getHaruLawAttachmentContentError(
+      'application/pdf',
+      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /Vendor /Encrypt >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
+    ),
+    null,
+  );
+  assert.equal(
+    getHaruLawAttachmentContentError(
+      'application/pdf',
+      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /En#63rypt 4 0 R >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
+    ),
+    'ATTACHMENT_PDF_UNREADABLE',
+  );
+  assert.equal(
+    getHaruLawAttachmentContentError(
+      'application/pdf',
       Buffer.from('%PDF-1.7\n1 0 obj\n<< /Length 31 >>\nstream\nVisible text mentions /Encrypt only\nendstream\nendobj\ntrailer\n<< /Root 1 0 R >>\nstartxref\n0\n%%EOF'),
     ),
     null,
@@ -103,6 +124,13 @@ async function run() {
     getHaruLawAttachmentContentError(
       'application/pdf',
       Buffer.from(`${encryptedXrefPrefix}2 0 obj\n<< /Type /XRef /Encrypt 4 0 R /Length 0 >>\nstream\n\nendstream\nendobj\nstartxref\n${encryptedXrefOffset}\n%%EOF`),
+    ),
+    'ATTACHMENT_PDF_UNREADABLE',
+  );
+  assert.equal(
+    getHaruLawAttachmentContentError(
+      'application/pdf',
+      Buffer.from(`${encryptedXrefPrefix}2 0 obj\n<< /Type /XR#65f /En#63rypt 4 0 R /Length 0 >>\nstream\n\nendstream\nendobj\nstartxref\n${encryptedXrefOffset}\n%%EOF`),
     ),
     'ATTACHMENT_PDF_UNREADABLE',
   );

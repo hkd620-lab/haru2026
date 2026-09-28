@@ -61,56 +61,6 @@ function getPdfStructureTail(bytes) {
         text: Buffer.from(tail.buffer, tail.byteOffset, tail.byteLength).toString('latin1'),
     };
 }
-function extractPdfDictionary(source, searchFrom) {
-    const start = source.indexOf('<<', searchFrom);
-    if (start < 0)
-        return null;
-    let depth = 0;
-    let literalDepth = 0;
-    let escaped = false;
-    let inComment = false;
-    for (let index = start; index < source.length - 1; index += 1) {
-        const char = source[index];
-        const next = source[index + 1];
-        if (inComment) {
-            if (char === '\r' || char === '\n')
-                inComment = false;
-            continue;
-        }
-        if (literalDepth > 0) {
-            if (escaped) {
-                escaped = false;
-            }
-            else if (char === '\\') {
-                escaped = true;
-            }
-            else if (char === '(') {
-                literalDepth += 1;
-            }
-            else if (char === ')') {
-                literalDepth -= 1;
-            }
-            continue;
-        }
-        if (char === '%') {
-            inComment = true;
-        }
-        else if (char === '(') {
-            literalDepth = 1;
-        }
-        else if (char === '<' && next === '<') {
-            depth += 1;
-            index += 1;
-        }
-        else if (char === '>' && next === '>') {
-            depth -= 1;
-            index += 1;
-            if (depth === 0)
-                return source.slice(start, index + 1);
-        }
-    }
-    return null;
-}
 function isPdfWhitespace(byte) {
     return byte === 0x00 || byte === 0x09 || byte === 0x0a || byte === 0x0c || byte === 0x0d || byte === 0x20;
 }
@@ -118,13 +68,6 @@ function matchesAsciiAt(bytes, offset, value) {
     return offset >= 0
         && offset + value.length <= bytes.length
         && [...value].every((char, index) => bytes[offset + index] === char.charCodeAt(0));
-}
-function getPdfXrefDescriptor(dictionary) {
-    const previous = /\/Prev\s+(\d+)/.exec(dictionary);
-    return {
-        hasEncrypt: /\/Encrypt\b/.test(dictionary),
-        ...(previous ? { previous: Number(previous[1]) } : {}),
-    };
 }
 function isPdfDelimiter(byte) {
     return isPdfWhitespace(byte)
@@ -145,6 +88,21 @@ function skipPdfWhitespaceAndComments(bytes, from) {
             cursor += 1;
     }
     return cursor;
+}
+function decodePdfName(bytes, start, end) {
+    const decoded = [];
+    for (let index = start; index < end; index += 1) {
+        if (bytes[index] === 0x23 && index + 2 < end) {
+            const hex = String.fromCharCode(bytes[index + 1], bytes[index + 2]);
+            if (/^[0-9a-f]{2}$/i.test(hex)) {
+                decoded.push(Number.parseInt(hex, 16));
+                index += 2;
+                continue;
+            }
+        }
+        decoded.push(bytes[index]);
+    }
+    return Buffer.from(decoded).toString('latin1');
 }
 function extractPdfByteDictionaryDescriptor(bytes, searchFrom) {
     let start = -1;
@@ -265,7 +223,7 @@ function extractPdfByteDictionaryDescriptor(bytes, searchFrom) {
             let nameEnd = index + 1;
             while (nameEnd < bytes.length && !isPdfDelimiter(bytes[nameEnd]))
                 nameEnd += 1;
-            const name = Buffer.from(bytes.subarray(index + 1, nameEnd)).toString('latin1');
+            const name = decodePdfName(bytes, index + 1, nameEnd);
             const isKey = topLevelExpectKey || topLevelValueStarted;
             if (isKey) {
                 pendingTopLevelKey = name;
@@ -321,41 +279,15 @@ function getLargePdfXrefDescriptor(bytes, xrefOffset) {
     }
     return null;
 }
-function getPdfXrefDictionary(pdf, start, xrefOffset) {
-    const relativeXrefOffset = xrefOffset - start;
-    if (!Number.isSafeInteger(xrefOffset) || relativeXrefOffset < 0 || relativeXrefOffset >= pdf.length) {
-        return null;
-    }
-    const xrefSection = pdf.slice(relativeXrefOffset);
-    const contentStart = xrefSection.search(/\S/);
-    if (contentStart < 0)
-        return null;
-    if (/^xref\b/.test(xrefSection.slice(contentStart))) {
-        const trailerMatch = /(?:^|[\r\n])trailer\b/g.exec(xrefSection.slice(contentStart));
-        if (!trailerMatch)
-            return null;
-        return extractPdfDictionary(xrefSection, contentStart + trailerMatch.index + trailerMatch[0].length);
-    }
-    const objectHeader = /^\s*\d+\s+\d+\s+obj\b/.exec(xrefSection);
-    if (!objectHeader)
-        return null;
-    const dictionary = extractPdfDictionary(xrefSection, objectHeader[0].length);
-    return dictionary && /\/Type\s*\/XRef\b/.test(dictionary) ? dictionary : null;
-}
 function hasPdfEncryptionDictionary(bytes) {
     var _a;
-    const { start, text: pdf } = getPdfStructureTail(bytes);
+    const { text: pdf } = getPdfStructureTail(bytes);
     const startXrefMatches = [...pdf.matchAll(/startxref[\t \r\n]+(\d+)/g)];
     let xrefOffset = Number((_a = startXrefMatches.at(-1)) === null || _a === void 0 ? void 0 : _a[1]);
     const visited = new Set();
     for (let depth = 0; depth < 16 && Number.isSafeInteger(xrefOffset) && !visited.has(xrefOffset); depth += 1) {
         visited.add(xrefOffset);
-        const descriptor = xrefOffset < start
-            ? getLargePdfXrefDescriptor(bytes, xrefOffset)
-            : (() => {
-                const dictionary = getPdfXrefDictionary(pdf, start, xrefOffset);
-                return dictionary ? getPdfXrefDescriptor(dictionary) : null;
-            })();
+        const descriptor = getLargePdfXrefDescriptor(bytes, xrefOffset);
         if (!descriptor)
             break;
         if (descriptor.hasEncrypt)
