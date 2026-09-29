@@ -32,6 +32,7 @@ export type HaruLawAttachmentRef = {
   storagePath: string;
   mimeType: string;
   fileName: string;
+  sizeBytes?: number;
 };
 
 export type ChatWithResultRequest = {

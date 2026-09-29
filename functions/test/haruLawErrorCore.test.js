@@ -45,6 +45,11 @@ async function run() {
   assert.equal(lawApiDescriptor.code, 'unavailable');
   assert.equal(JSON.stringify(lawApiDescriptor).includes('do-not-leak'), false);
   assert.equal(JSON.stringify(lawApiDescriptor).toLowerCase().includes('stack'), false);
+  assert.deepEqual(getHaruLawErrorDescriptor('ATTACHMENT_TOTAL_SIZE_EXCEEDED'), {
+    code: 'invalid-argument',
+    message: '첨부파일의 전체 크기가 50MiB를 초과했습니다.',
+    details: { reason: 'ATTACHMENT_TOTAL_SIZE_EXCEEDED', retryable: false },
+  });
 
   const parseError = Object.assign(new SyntaxError('invalid normal XML response'), { response: { status: 200 } });
   let parseAttempts = 0;
@@ -57,236 +62,27 @@ async function run() {
   );
   assert.equal(parseAttempts, 1);
 
-  const validPdf = Buffer.from('%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n');
-  assert.equal(getHaruLawAttachmentContentError('application/pdf', validPdf), null);
-  assert.equal(
-    getHaruLawAttachmentContentError('application/pdf', Buffer.from('ordinary text pretending to be a pdf')),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  const encryptedTrailerPrefix = '%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n';
-  const encryptedTrailerXrefOffset = Buffer.byteLength(encryptedTrailerPrefix);
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
-    ),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /Vendor << /Encrypt 4 0 R >> >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
-    ),
-    null,
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /Vendor /Encrypt >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
-    ),
-    null,
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n% note << /Encrypt 4 0 R >>\n<< /Root 1 0 R >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
-    ),
-    null,
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Vendor [ % ] comment\n /Encrypt ] /Root 1 0 R >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
-    ),
-    null,
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /En#63rypt 4 0 R >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
-    ),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer% note\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
-    ),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \n\t trailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n${encryptedTrailerXrefOffset}\n%%EOF`),
-    ),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n% offset note\n${encryptedTrailerXrefOffset}\n%%EOF`),
-    ),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedTrailerPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref% note mentions startxref 0\n${encryptedTrailerXrefOffset}\n%%EOF`),
-    ),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from('%PDF-1.7\n1 0 obj\n<< /Length 31 >>\nstream\nVisible text mentions /Encrypt only\nendstream\nendobj\ntrailer\n<< /Root 1 0 R >>\nstartxref\n0\n%%EOF'),
-    ),
-    null,
-  );
-  const falseXrefStreamPrefix = '%PDF-1.7\n1 0 obj\n<< /Length 34 >>\nstream\nVisible /Type /XRef and /Encrypt text\nendstream\nendobj\n';
-  const falseXrefTableOffset = Buffer.byteLength(falseXrefStreamPrefix);
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${falseXrefStreamPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R >>\nstartxref\n${falseXrefTableOffset}\n%%EOF`),
-    ),
-    null,
-  );
-  const falseTrailerStreamPrefix = '%PDF-1.7\n1 0 obj\n<< /Length 48 >>\nstream\ntrailer << /Encrypt 4 0 R >>\nVisible metadata\nendstream\nendobj\n';
-  const falseTrailerXrefOffset = Buffer.byteLength(falseTrailerStreamPrefix);
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${falseTrailerStreamPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R >>\nstartxref\n${falseTrailerXrefOffset}\n%%EOF`),
-    ),
-    null,
-  );
-  const encryptedXrefPrefix = '%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n';
-  const encryptedXrefOffset = Buffer.byteLength(encryptedXrefPrefix);
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedXrefPrefix}2 0 obj\n<< /Type /XRef /Encrypt 4 0 R /Length 0 >>\nstream\n\nendstream\nendobj\nstartxref\n${encryptedXrefOffset}\n%%EOF`),
-    ),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedXrefPrefix}2 0 obj\n<< /Type /XR#65f /En#63rypt 4 0 R /Length 0 >>\nstream\n\nendstream\nendobj\nstartxref\n${encryptedXrefOffset}\n%%EOF`),
-    ),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${encryptedXrefPrefix}2 % object number\n0 % generation\nobj\n<< /Type /XRef /Encrypt 4 0 R /Length 0 >>\nstream\n\nendstream\nendobj\nstartxref\n${encryptedXrefOffset}\n%%EOF`),
-    ),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  const largePdfBody = Buffer.alloc(2 * 1024 * 1024, 0x41);
-  Buffer.from('%PDF-1.7').copy(largePdfBody, 0);
-  const largeXrefOffset = largePdfBody.length;
-  const largePdf = Buffer.concat([
-    largePdfBody,
-    Buffer.from(`\nxref\n0 1\n0000000000 65535 f \ntrailer\n<< /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n${largeXrefOffset}\n%%EOF`),
-  ]);
-  assert.equal(
-    getHaruLawAttachmentContentError('application/pdf', largePdf),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  const largeClassicXrefPrefix = '%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n';
-  const largeClassicXrefOffset = Buffer.byteLength(largeClassicXrefPrefix);
-  const largeClassicXrefEntries = Array.from(
-    { length: 4000 },
-    (_, index) => `${String(index).padStart(10, '0')} 00000 n \n`,
-  ).join('');
-  assert.ok(Buffer.byteLength(largeClassicXrefEntries) > 64 * 1024);
-  const encryptedLargeClassicXrefPdf = Buffer.from(
-    `${largeClassicXrefPrefix}xref\n0 4000\n${largeClassicXrefEntries}trailer\n`
-      + `<< /Size 4000 /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n${largeClassicXrefOffset}\n%%EOF`,
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError('application/pdf', encryptedLargeClassicXrefPdf),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  const oversizedClassicXrefEntries = Array.from(
-    { length: 60000 },
-    (_, index) => `${String(index).padStart(10, '0')} 00000 n \n`,
-  ).join('');
-  assert.ok(Buffer.byteLength(oversizedClassicXrefEntries) > 1024 * 1024);
-  const encryptedOversizedClassicXrefPdf = Buffer.from(
-    `${largeClassicXrefPrefix}xref\n0 60000\n${oversizedClassicXrefEntries}trailer\n`
-      + `<< /Size 60000 /Root 1 0 R /Encrypt 4 0 R >>\nstartxref\n${largeClassicXrefOffset}\n%%EOF`,
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError('application/pdf', encryptedOversizedClassicXrefPdf),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  const oversizedTrailerDictionary = `<< /Size 60000 /Root 1 0 R /Encrypt 4 0 R /Custom (${`A`.repeat(70 * 1024)}) >>`;
-  assert.ok(Buffer.byteLength(oversizedTrailerDictionary) > 64 * 1024);
-  const encryptedOversizedTrailerPdf = Buffer.from(
-    `${largeClassicXrefPrefix}xref\n0 60000\n${oversizedClassicXrefEntries}trailer\n`
-      + `${oversizedTrailerDictionary}\nstartxref\n${largeClassicXrefOffset}\n%%EOF`,
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError('application/pdf', encryptedOversizedTrailerPdf),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  const commentDelimitedEncryptPdf = Buffer.from(
-    `${largeClassicXrefPrefix}xref\n0 60000\n${oversizedClassicXrefEntries}trailer\n`
-      + `<< /Size 60000 /Root 1 0 R /Encrypt% separated by comment\n4 0 R >>\nstartxref\n${largeClassicXrefOffset}\n%%EOF`,
-  );
-  assert.equal(
-    getHaruLawAttachmentContentError('application/pdf', commentDelimitedEncryptPdf),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  const nestedEncryptOnlyPdf = Buffer.from(
-    `${largeClassicXrefPrefix}xref\n0 60000\n${oversizedClassicXrefEntries}trailer\n`
-      + `<< /Size 60000 /Root 1 0 R /Vendor << /Encrypt 4 0 R >> >>\nstartxref\n${largeClassicXrefOffset}\n%%EOF`,
-  );
-  assert.equal(getHaruLawAttachmentContentError('application/pdf', nestedEncryptOnlyPdf), null);
-  const encryptNameValuePdf = Buffer.from(
-    `${largeClassicXrefPrefix}xref\n0 60000\n${oversizedClassicXrefEntries}trailer\n`
-      + `<< /Size 60000 /Root 1 0 R /Vendor /Encrypt >>\nstartxref\n${largeClassicXrefOffset}\n%%EOF`,
-  );
-  assert.equal(getHaruLawAttachmentContentError('application/pdf', encryptNameValuePdf), null);
-  const oversizedXrefStreamPrefix = `${largeClassicXrefPrefix}2 0 obj\n<< /Type /XRef /Encrypt 4 0 R /Length ${1200 * 1024} >>\nstream\n`;
-  const oversizedXrefStreamOffset = Buffer.byteLength(largeClassicXrefPrefix);
-  const encryptedOversizedXrefStreamPdf = Buffer.concat([
-    Buffer.from(oversizedXrefStreamPrefix),
-    Buffer.alloc(1200 * 1024, 0x41),
-    Buffer.from(`\nendstream\nendobj\nstartxref\n${oversizedXrefStreamOffset}\n%%EOF`),
-  ]);
-  assert.equal(
-    getHaruLawAttachmentContentError('application/pdf', encryptedOversizedXrefStreamPdf),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  const incrementalParts = [Buffer.from('%PDF-1.7\n')];
-  let previousIncrementalXref;
-  for (let index = 0; index < 18; index += 1) {
-    const offset = incrementalParts.reduce((total, part) => total + part.length, 0);
-    incrementalParts.push(Buffer.from(
-      `xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Size 1`
-        + `${index === 0 ? ' /Encrypt 4 0 R' : ` /Prev ${previousIncrementalXref}`} >>\n`,
-    ));
-    previousIncrementalXref = offset;
+  const fixtureDirectory = path.resolve(__dirname, 'fixtures/harulaw-pdf');
+  for (const fileName of ['general.pdf', 'incremental.pdf', 'classic-xref.pdf', 'xref-stream.pdf']) {
+    assert.equal(
+      await getHaruLawAttachmentContentError('application/pdf', fs.readFileSync(path.join(fixtureDirectory, fileName))),
+      null,
+      `${fileName} must be accepted`,
+    );
   }
-  incrementalParts.push(Buffer.from(`startxref\n${previousIncrementalXref}\n%%EOF`));
+  for (const fileName of ['encrypted.pdf', 'corrupt.pdf']) {
+    assert.equal(
+      await getHaruLawAttachmentContentError('application/pdf', fs.readFileSync(path.join(fixtureDirectory, fileName))),
+      'ATTACHMENT_PDF_UNREADABLE',
+      `${fileName} must be rejected`,
+    );
+  }
   assert.equal(
-    getHaruLawAttachmentContentError('application/pdf', Buffer.concat(incrementalParts)),
-    'ATTACHMENT_PDF_UNREADABLE',
-  );
-  const invalidForwardPrevPrefix = '%PDF-1.7\n';
-  const invalidForwardPrevOffset = Buffer.byteLength(invalidForwardPrevPrefix);
-  assert.equal(
-    getHaruLawAttachmentContentError(
-      'application/pdf',
-      Buffer.from(`${invalidForwardPrevPrefix}xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Prev ${invalidForwardPrevOffset + 1} >>\nstartxref\n${invalidForwardPrevOffset}\n%%EOF`),
-    ),
+    await getHaruLawAttachmentContentError('application/pdf', Buffer.from('ordinary text pretending to be a pdf')),
     'ATTACHMENT_PDF_UNREADABLE',
   );
   assert.equal(
-    getHaruLawAttachmentContentError('application/zip', Buffer.from('PK')),
+    await getHaruLawAttachmentContentError('application/zip', Buffer.from('PK')),
     'ATTACHMENT_UNSUPPORTED_TYPE',
   );
 
@@ -299,11 +95,11 @@ async function run() {
   ];
   for (const [mimeType, content] of allowedImages) {
     assert.equal(isAllowedHaruLawAttachmentMime(mimeType), true);
-    assert.equal(getHaruLawAttachmentContentError(mimeType, content), null, `${mimeType} signature must pass`);
+    assert.equal(await getHaruLawAttachmentContentError(mimeType, content), null, `${mimeType} signature must pass`);
   }
   assert.equal(isAllowedHaruLawAttachmentMime('image/gif'), false);
   assert.equal(
-    getHaruLawAttachmentContentError('image/png', Buffer.from('not a png')),
+    await getHaruLawAttachmentContentError('image/png', Buffer.from('not a png')),
     'ATTACHMENT_UNSUPPORTED_TYPE',
   );
 
@@ -366,6 +162,25 @@ async function run() {
   assert.equal(classifyHaruLawAiError(new Error('unexpected implementation error'), false), 'HARULAW_PROCESSING_FAILED');
 
   const indexSource = fs.readFileSync(path.resolve(__dirname, '../src/index.ts'), 'utf8');
+  const attachmentLoaderSource = indexSource.slice(
+    indexSource.indexOf('async function prepareHaruLawAttachments('),
+    indexSource.indexOf('export const chatWithResult = onCall('),
+  );
+  assert.match(indexSource, /const HARULAW_ATTACH_MAX_PDF_BYTES = 50_000_000/);
+  assert.match(indexSource, /const HARULAW_ATTACH_MAX_TOTAL_BYTES = 50 \* 1024 \* 1024/);
+  assert.ok(
+    attachmentLoaderSource.indexOf('await file.getMetadata()') < attachmentLoaderSource.indexOf('await file.download({ destination: tempPath })'),
+    'all metadata validation must precede attachment downloads',
+  );
+  assert.match(attachmentLoaderSource, /metadataTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES/);
+  assert.match(attachmentLoaderSource, /downloadedTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES/);
+  assert.match(attachmentLoaderSource, /await fs\.promises\.readFile\(tempPath\)/);
+  assert.match(attachmentLoaderSource, /ai\.files\.upload\(/);
+  assert.match(attachmentLoaderSource, /fileParts\.push\(\{ fileData:/);
+  assert.doesNotMatch(attachmentLoaderSource, /inlineData|toString\('base64'\)/);
+  assert.match(attachmentLoaderSource, /export const cleanupHaruLawGeminiFiles = onSchedule\(/);
+  assert.match(indexSource, /export const chatWithResult = onCall\([\s\S]{0,160}memory: '512MiB',[\s\S]{0,80}concurrency: 1/);
+  assert.match(indexSource, /export const lawSearch = onCall\([\s\S]{0,220}memory: '1GiB',[\s\S]{0,80}concurrency: 1/);
   const lawSearchSource = indexSource.slice(
     indexSource.indexOf('export const lawSearch = onCall('),
     indexSource.indexOf('export const prepareHaruLawSharePreview = onCall('),

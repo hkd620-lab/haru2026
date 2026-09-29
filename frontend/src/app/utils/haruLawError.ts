@@ -6,6 +6,9 @@ export type HaruLawUserError = {
   actionLabel?: string;
 };
 
+export const HARULAW_ATTACH_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+export const HARULAW_ATTACH_MAX_PDF_BYTES = 50_000_000;
+
 const ERROR_MESSAGES: Record<string, HaruLawUserError> = {
   LAW_API_TEMPORARY_UNAVAILABLE: {
     reason: 'LAW_API_TEMPORARY_UNAVAILABLE',
@@ -18,6 +21,12 @@ const ERROR_MESSAGES: Record<string, HaruLawUserError> = {
     reason: 'ATTACHMENT_PDF_UNREADABLE',
     title: '이 PDF를 읽을 수 없습니다',
     message: '파일이 손상되었거나 암호가 설정됐을 수 있습니다. 문제가 있는 첨부를 제거한 뒤 PDF를 다시 저장하거나 다른 파일을 첨부해 주세요.',
+    retryable: false,
+  },
+  ATTACHMENT_TOTAL_SIZE_EXCEEDED: {
+    reason: 'ATTACHMENT_TOTAL_SIZE_EXCEEDED',
+    title: '첨부파일의 전체 크기가 너무 큽니다',
+    message: '한 번에 첨부할 수 있는 파일의 전체 크기는 50MiB입니다. 파일 수나 크기를 줄인 뒤 다시 시도해 주세요.',
     retryable: false,
   },
   ATTACHMENT_UNSUPPORTED_TYPE: {

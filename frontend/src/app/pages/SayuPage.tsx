@@ -892,8 +892,8 @@ export function SayuPage() {
           try {
             const url = await getDownloadURL(ref(storage, att.storagePath));
             return [att.storagePath, url] as const;
-          } catch (error) {
-            console.warn('하루LAW 첨부 URL 로드 실패:', att.storagePath, error);
+          } catch {
+            console.warn('하루LAW 첨부 URL 로드 실패');
             return null;
           }
         })

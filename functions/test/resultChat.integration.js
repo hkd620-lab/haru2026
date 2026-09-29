@@ -1,6 +1,8 @@
 /* eslint-disable no-console */
 const assert = require('assert');
+const fs = require('fs');
 const Module = require('module');
+const path = require('path');
 
 process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'demo-haru-result-chat';
 process.env.GOOGLE_CLOUD_PROJECT = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
@@ -14,11 +16,89 @@ if (!process.env.FIRESTORE_EMULATOR_HOST) {
 const useRealGemini = process.env.HARU_RESULT_CHAT_REAL_GEMINI === '1';
 const realGeminiSmokeOnly = process.env.HARU_RESULT_CHAT_REAL_SMOKE === '1';
 const realGenai = require('@google/genai');
+const realLegacyGenai = require('@google/generative-ai');
 const genaiCalls = [];
+const legacyGenaiCalls = [];
 let forceWebSearchError = false;
 let webSearchNotGroundedResponsesRemaining = 0;
 let webSearchDelayMs = 0;
 const RESULT_CHAT_RATE_LIMIT_FOR_TEST = 12;
+const HARULAW_ATTACH_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+const HARULAW_ATTACH_MAX_PDF_BYTES = 50_000_000;
+const pdfFixture = fs.readFileSync(path.resolve(__dirname, 'fixtures/harulaw-pdf/general.pdf'));
+const attachmentMetadataPaths = [];
+const attachmentDownloadPaths = [];
+const geminiFileUploads = [];
+const geminiFileDeletes = [];
+const googleGenAiClientOptions = [];
+const activeGeminiFiles = new Set();
+let geminiFileUploadAttemptCount = 0;
+let failGeminiFileUploadAtAttempt = 0;
+let forceGeminiFileDeleteError = false;
+
+function makePaddedPdf(size) {
+  const result = Buffer.alloc(size, 0x20);
+  pdfFixture.copy(result);
+  return result;
+}
+
+function getMockAttachment(storagePath) {
+  if (storagePath.endsWith('/not-really.pdf')) {
+    const bytes = Buffer.from('ordinary text pretending to be a pdf');
+    return { contentType: 'application/pdf', metadataSize: bytes.length, bytes };
+  }
+  if (storagePath.endsWith('/exact-pdf.pdf')) {
+    return {
+      contentType: 'application/pdf',
+      metadataSize: HARULAW_ATTACH_MAX_PDF_BYTES,
+      get bytes() { return makePaddedPdf(HARULAW_ATTACH_MAX_PDF_BYTES); },
+    };
+  }
+  if (storagePath.endsWith('/over-pdf.pdf')) {
+    return {
+      contentType: 'application/pdf',
+      metadataSize: HARULAW_ATTACH_MAX_PDF_BYTES + 1,
+      get bytes() { return makePaddedPdf(HARULAW_ATTACH_MAX_PDF_BYTES + 1); },
+    };
+  }
+  if (storagePath.endsWith('/metadata-over-a.pdf')) {
+    return { contentType: 'application/pdf', metadataSize: 25 * 1024 * 1024, bytes: pdfFixture };
+  }
+  if (storagePath.endsWith('/metadata-over-b.pdf')) {
+    return { contentType: 'application/pdf', metadataSize: 25 * 1024 * 1024 + 1, bytes: pdfFixture };
+  }
+  if (storagePath.endsWith('/actual-a.pdf')) {
+    return {
+      contentType: 'application/pdf',
+      metadataSize: 1,
+      get bytes() { return makePaddedPdf(30 * 1024 * 1024); },
+    };
+  }
+  if (storagePath.endsWith('/actual-b.pdf')) {
+    return {
+      contentType: 'application/pdf',
+      metadataSize: 1,
+      get bytes() { return makePaddedPdf(20 * 1024 * 1024 + 1); },
+    };
+  }
+  if (storagePath.endsWith('/mixed.png')) {
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    return { contentType: 'image/png', metadataSize: bytes.length, bytes };
+  }
+  if (storagePath.endsWith('/mixed.jpg')) {
+    const bytes = Buffer.from([0xff, 0xd8, 0xff, 0x00]);
+    return { contentType: 'image/jpeg', metadataSize: bytes.length, bytes };
+  }
+  if (storagePath.endsWith('/mixed.webp')) {
+    const bytes = Buffer.from('RIFF0000WEBP');
+    return { contentType: 'image/webp', metadataSize: bytes.length, bytes };
+  }
+  if (storagePath.endsWith('/mixed.heic')) {
+    const bytes = Buffer.from([0, 0, 0, 20, ...Buffer.from('ftypheic0000')]);
+    return { contentType: 'image/heic', metadataSize: bytes.length, bytes };
+  }
+  return { contentType: 'application/pdf', metadataSize: pdfFixture.length, bytes: pdfFixture };
+}
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -48,7 +128,51 @@ function capturedCurrentQuestion(contents) {
 
 class InstrumentedGoogleGenAI {
   constructor(options) {
+    googleGenAiClientOptions.push({ timeout: options?.httpOptions?.timeout ?? null });
     this.inner = useRealGemini ? new realGenai.GoogleGenAI(options) : null;
+    this.files = {
+      upload: async (params) => {
+        geminiFileUploadAttemptCount += 1;
+        if (this.inner) return this.inner.files.upload(params);
+        if (failGeminiFileUploadAtAttempt === geminiFileUploadAttemptCount) {
+          const error = new Error('injected_file_upload_failure');
+          error.code = 503;
+          throw error;
+        }
+        const uploaded = {
+          name: params.config.name,
+          uri: `https://generativelanguage.googleapis.com/v1beta/${params.config.name}`,
+          mimeType: params.config.mimeType,
+          sizeBytes: String(fs.statSync(params.file).size),
+        };
+        geminiFileUploads.push({
+          name: uploaded.name,
+          mimeType: uploaded.mimeType,
+          sizeBytes: uploaded.sizeBytes,
+          requestTimeout: params.config?.httpOptions?.timeout ?? null,
+          clientTimeout: options?.httpOptions?.timeout ?? null,
+        });
+        activeGeminiFiles.add(uploaded.name);
+        return uploaded;
+      },
+      delete: async (params) => {
+        const { name } = params;
+        geminiFileDeletes.push(name);
+        if (this.inner) return this.inner.files.delete(params);
+        if (forceGeminiFileDeleteError) {
+          const error = new Error('injected_file_delete_failure');
+          error.code = 503;
+          throw error;
+        }
+        if (!activeGeminiFiles.has(name)) {
+          const error = new Error('injected_file_not_found');
+          error.code = 404;
+          throw error;
+        }
+        activeGeminiFiles.delete(name);
+        return {};
+      },
+    };
     this.models = {
       generateContent: async (request) => {
         const captured = cloneGenerateContentRequest(request);
@@ -177,6 +301,26 @@ class InstrumentedGoogleGenAI {
   }
 }
 
+class InstrumentedGoogleGenerativeAI {
+  getGenerativeModel({ model }) {
+    return {
+      generateContent: async (contents) => {
+        const serialized = typeof contents === 'string' ? contents : JSON.stringify(contents);
+        legacyGenaiCalls.push({ model, contents: serialized.slice(0, 12000) });
+        const text = model === 'gemini-3.1-flash-lite'
+          ? (serialized.includes('조문 목차:') ? '제1조' : '민법')
+          : '첨부 자료와 공식 법령을 함께 확인한 테스트 요약입니다.';
+        return {
+          response: {
+            text: () => text,
+            usageMetadata: { promptTokenCount: 40, candidatesTokenCount: 10 },
+          },
+        };
+      },
+    };
+  }
+}
+
 const originalLoad = Module._load;
 Module._load = function patchedLoad(request, parent, isMain) {
   if (request === '@google/genai') {
@@ -187,15 +331,39 @@ Module._load = function patchedLoad(request, parent, isMain) {
       getStorage: () => ({
         bucket: () => ({
           file: (storagePath) => ({
-            getMetadata: async () => [{ contentType: 'application/pdf', size: 1024 }],
-            download: async () => [Buffer.from(
-              storagePath.endsWith('/not-really.pdf')
-                ? 'ordinary text pretending to be a pdf'
-                : '%PDF-1.4\n% test attachment\n',
-            )],
+            getMetadata: async () => {
+              attachmentMetadataPaths.push(storagePath);
+              const mock = getMockAttachment(storagePath);
+              return [{ contentType: mock.contentType, size: mock.metadataSize }];
+            },
+            download: async (options = {}) => {
+              attachmentDownloadPaths.push(storagePath);
+              const bytes = getMockAttachment(storagePath).bytes;
+              if (options.destination) {
+                fs.writeFileSync(options.destination, bytes);
+                return [{}];
+              }
+              return [bytes];
+            },
           }),
         }),
       }),
+    };
+  }
+  if (request === '@google/generative-ai') {
+    return { ...realLegacyGenai, GoogleGenerativeAI: InstrumentedGoogleGenerativeAI };
+  }
+  if (request === 'axios') {
+    return {
+      get: async (url) => {
+        if (url.includes('/lawSearch.do')) {
+          return { data: '<LawSearch><law><법령명한글>민법</법령명한글><법령일련번호>1</법령일련번호></law></LawSearch>' };
+        }
+        if (url.includes('/lawService.do')) {
+          return { data: '<법령><조문><조문단위><조문번호>1</조문번호><조문제목>목적</조문제목><조문내용>이 법은 테스트 법령의 목적을 정한다.</조문내용></조문단위></조문></법령>' };
+        }
+        throw new Error('unexpected axios request');
+      },
     };
   }
   return originalLoad.call(this, request, parent, isMain);
@@ -215,6 +383,14 @@ const USERS = {
 
 function callable(uid, data) {
   return functions.chatWithResult.run({
+    auth: { uid },
+    data,
+    rawRequest: { headers: {} },
+  });
+}
+
+function lawCallable(uid, data) {
+  return functions.lawSearch.run({
     auth: { uid },
     data,
     rawRequest: { headers: {} },
@@ -245,6 +421,7 @@ async function resetUser(uid) {
 
 async function seed() {
   await deleteCollection('aiUsageLogs');
+  await deleteCollection('haruLawGeminiFileCleanup');
   for (const uid of Object.values(USERS)) {
     await resetUser(uid);
   }
@@ -715,7 +892,9 @@ async function run() {
   });
   assert.strictEqual(attachmentRecord.answerRoute, 'record_only');
   assert.strictEqual(attachmentRecord.webSearchUsed, false);
-  assert.ok(genaiCalls[genaiCalls.length - 1].contents.includes('inlineData'));
+  assert.ok(genaiCalls[genaiCalls.length - 1].contents.includes('fileData'));
+  assert.ok(!genaiCalls[genaiCalls.length - 1].contents.includes('inlineData'));
+  assert.strictEqual(activeGeminiFiles.size, 0);
   messages = await getMessages(USERS.developer, 'law', 'haruraw_sayu');
   assert.ok(messages.some((message) => message.role === 'user' && Array.isArray(message.attachments) && message.attachments.length === 1));
   const attachmentWeb = await callable(USERS.developer, {
@@ -728,12 +907,195 @@ async function run() {
   assert.strictEqual(attachmentWeb.answerRoute, 'web_search');
   assert.strictEqual(attachmentWeb.webSearchUsed, true);
   assert.ok(genaiCalls[genaiCalls.length - 1].hasGoogleSearchTool);
-  assert.ok(genaiCalls[genaiCalls.length - 1].contents.includes('inlineData'));
+  assert.ok(genaiCalls[genaiCalls.length - 1].contents.includes('fileData'));
+  assert.strictEqual(activeGeminiFiles.size, 0);
+
+  await resetResultChatRateLimit(USERS.developer);
+  const exactBoundaryCallsBefore = genaiCalls.length;
+  const exactBoundaryResult = await callable(USERS.developer, {
+    recordId: 'law',
+    sourceKey: 'haruraw_sayu',
+    question: '50,000,000바이트 경계 PDF를 기록 기준으로 확인해줘.',
+    searchPreference: 'record_only',
+    attachments: [{
+      ...attachment,
+      storagePath: `users/${USERS.developer}/haruLawAttachments/law/exact-pdf.pdf`,
+      fileName: 'exact-pdf.pdf',
+    }],
+  });
+  assert.strictEqual(exactBoundaryResult.answerRoute, 'record_only');
+  assert.strictEqual(genaiCalls.length, exactBoundaryCallsBefore + 1);
+  assert.strictEqual(geminiFileUploads.at(-1).sizeBytes, String(HARULAW_ATTACH_MAX_PDF_BYTES));
+  assert.strictEqual(activeGeminiFiles.size, 0);
+
+  const overPdfCallsBefore = genaiCalls.length;
+  const overPdfDownloadsBefore = attachmentDownloadPaths.length;
+  await assert.rejects(
+    callable(USERS.developer, {
+      recordId: 'law',
+      sourceKey: 'haruraw_sayu',
+      question: 'PDF 파일당 제한을 넘긴 파일을 확인해줘.',
+      searchPreference: 'record_only',
+      attachments: [{
+        ...attachment,
+        storagePath: `users/${USERS.developer}/haruLawAttachments/law/over-pdf.pdf`,
+        fileName: 'over-pdf.pdf',
+      }],
+    }),
+    (error) => error?.code === 'invalid-argument',
+  );
+  assert.strictEqual(attachmentDownloadPaths.length, overPdfDownloadsBefore);
+  assert.strictEqual(genaiCalls.length, overPdfCallsBefore);
+  assert.strictEqual(activeGeminiFiles.size, 0);
+
+  const mixedAttachments = [
+    ['mixed.pdf', 'application/pdf'],
+    ['mixed.png', 'image/png'],
+    ['mixed.jpg', 'image/jpeg'],
+    ['mixed.webp', 'image/webp'],
+    ['mixed.heic', 'image/heic'],
+  ].map(([fileName, mimeType]) => ({
+    storagePath: `users/${USERS.developer}/haruLawAttachments/law/${fileName}`,
+    mimeType,
+    fileName,
+  }));
+  const mixedResult = await callable(USERS.developer, {
+    recordId: 'law',
+    sourceKey: 'haruraw_sayu',
+    question: '혼합 첨부 다섯 개를 기록 기준으로 확인해줘.',
+    searchPreference: 'record_only',
+    attachments: mixedAttachments,
+  });
+  assert.strictEqual(mixedResult.answerRoute, 'record_only');
+  assert.strictEqual(activeGeminiFiles.size, 0);
+  messages = await getMessages(USERS.developer, 'law', 'haruraw_sayu');
+  assert.ok(messages.some((message) => message.role === 'user' && message.attachments?.length === 5));
+
+  await resetResultChatRateLimit(USERS.developer);
+  failGeminiFileUploadAtAttempt = geminiFileUploadAttemptCount + 2;
+  const partialUploadModelCallsBefore = genaiCalls.length;
+  await assert.rejects(
+    callable(USERS.developer, {
+      recordId: 'law',
+      sourceKey: 'haruraw_sayu',
+      question: '부분 업로드 실패 정리를 확인해줘.',
+      searchPreference: 'record_only',
+      attachments: mixedAttachments,
+    }),
+    (error) => error?.code === 'unavailable'
+      && error?.details?.reason === 'HARULAW_AI_TEMPORARY_UNAVAILABLE',
+  );
+  failGeminiFileUploadAtAttempt = 0;
+  assert.strictEqual(genaiCalls.length, partialUploadModelCallsBefore);
+  assert.strictEqual(activeGeminiFiles.size, 0);
+  assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
+
+  const retryAfterUploadFailure = await callable(USERS.developer, {
+    recordId: 'law',
+    sourceKey: 'haruraw_sayu',
+    question: '부분 업로드 실패 뒤 재시도를 확인해줘.',
+    searchPreference: 'record_only',
+    attachments: mixedAttachments,
+  });
+  assert.strictEqual(retryAfterUploadFailure.answerRoute, 'record_only');
+  assert.strictEqual(activeGeminiFiles.size, 0);
+
+  forceGeminiFileDeleteError = true;
+  const deleteFailureResult = await callable(USERS.developer, {
+    recordId: 'law',
+    sourceKey: 'haruraw_sayu',
+    question: '삭제 실패 재정리 원장을 확인해줘.',
+    searchPreference: 'record_only',
+    attachments: [attachment],
+  });
+  assert.strictEqual(deleteFailureResult.answerRoute, 'record_only');
+  forceGeminiFileDeleteError = false;
+  const cleanupLedgerAfterDeleteFailure = await db.collection('haruLawGeminiFileCleanup').get();
+  assert.strictEqual(cleanupLedgerAfterDeleteFailure.size, 1);
+  assert.strictEqual(activeGeminiFiles.size, 1);
+  await cleanupLedgerAfterDeleteFailure.docs[0].ref.update({
+    cleanupAfter: admin.firestore.Timestamp.fromMillis(Date.now() - 1),
+  });
+  await functions.cleanupHaruLawGeminiFiles.run({});
+  assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
+  assert.strictEqual(activeGeminiFiles.size, 0);
+
+  const overMetadataMonthlyBefore = await getMonthlyUsed(USERS.developer);
+  const overMetadataThreadBefore = await getThread(USERS.developer, 'law', 'haruraw_sayu');
+  const overMetadataMessagesBefore = (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length;
+  const overMetadataCallsBefore = genaiCalls.length;
+  const overMetadataDownloadsBefore = attachmentDownloadPaths.length;
+  await assert.rejects(
+    callable(USERS.developer, {
+      recordId: 'law',
+      sourceKey: 'haruraw_sayu',
+      question: '총합 제한을 1바이트 넘긴 PDF를 확인해줘.',
+      searchPreference: 'web_confirmed',
+      attachments: [
+        { ...attachment, storagePath: `users/${USERS.developer}/haruLawAttachments/law/metadata-over-a.pdf` },
+        { ...attachment, storagePath: `users/${USERS.developer}/haruLawAttachments/law/metadata-over-b.pdf` },
+      ],
+    }),
+    (error) => error?.code === 'invalid-argument'
+      && error?.details?.reason === 'ATTACHMENT_TOTAL_SIZE_EXCEEDED'
+      && error?.details?.retryable === false,
+  );
+  assert.strictEqual(attachmentDownloadPaths.length, overMetadataDownloadsBefore);
+  assert.strictEqual(genaiCalls.length, overMetadataCallsBefore);
+  assert.strictEqual(await getMonthlyUsed(USERS.developer), overMetadataMonthlyBefore);
+  await assertThreadSearchUsage(
+    USERS.developer,
+    'law',
+    'haruraw_sayu',
+    overMetadataThreadBefore.webSearchUsedCount || 0,
+    0,
+  );
+  assert.strictEqual(
+    (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length,
+    overMetadataMessagesBefore,
+  );
+
+  const actualMismatchMonthlyBefore = await getMonthlyUsed(USERS.developer);
+  const actualMismatchThreadBefore = await getThread(USERS.developer, 'law', 'haruraw_sayu');
+  const actualMismatchMessagesBefore = (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length;
+  const actualMismatchCallsBefore = genaiCalls.length;
+  const actualMismatchDownloadsBefore = attachmentDownloadPaths.length;
+  await assert.rejects(
+    callable(USERS.developer, {
+      recordId: 'law',
+      sourceKey: 'haruraw_sayu',
+      question: '메타데이터와 실제 크기가 다른 PDF를 확인해줘.',
+      searchPreference: 'web_confirmed',
+      attachments: [
+        { ...attachment, storagePath: `users/${USERS.developer}/haruLawAttachments/law/actual-a.pdf` },
+        { ...attachment, storagePath: `users/${USERS.developer}/haruLawAttachments/law/actual-b.pdf` },
+      ],
+    }),
+    (error) => error?.code === 'invalid-argument'
+      && error?.details?.reason === 'ATTACHMENT_TOTAL_SIZE_EXCEEDED'
+      && error?.details?.retryable === false,
+  );
+  assert.strictEqual(attachmentDownloadPaths.length, actualMismatchDownloadsBefore + 2);
+  assert.strictEqual(genaiCalls.length, actualMismatchCallsBefore);
+  assert.strictEqual(await getMonthlyUsed(USERS.developer), actualMismatchMonthlyBefore);
+  await assertThreadSearchUsage(
+    USERS.developer,
+    'law',
+    'haruraw_sayu',
+    actualMismatchThreadBefore.webSearchUsedCount || 0,
+    0,
+  );
+  assert.strictEqual(
+    (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length,
+    actualMismatchMessagesBefore,
+  );
 
   const emptyAnswerThreadBefore = await getThread(USERS.developer, 'law', 'haruraw_sayu');
   const emptyAnswerUsedBefore = emptyAnswerThreadBefore.webSearchUsedCount || 0;
   const emptyAnswerMonthlyBefore = await getMonthlyUsed(USERS.developer);
   const emptyAnswerMessagesBefore = (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length;
+  const emptyAnswerUploadsBefore = geminiFileUploads.length;
+  const emptyAnswerDeletesBefore = geminiFileDeletes.length;
   await assert.rejects(
     callable(USERS.developer, {
       recordId: 'law',
@@ -748,6 +1110,9 @@ async function run() {
   );
   await assertThreadSearchUsage(USERS.developer, 'law', 'haruraw_sayu', emptyAnswerUsedBefore, 0);
   assert.strictEqual(await getMonthlyUsed(USERS.developer), emptyAnswerMonthlyBefore);
+  assert.strictEqual(geminiFileUploads.length, emptyAnswerUploadsBefore + 1);
+  assert.ok(geminiFileDeletes.length >= emptyAnswerDeletesBefore + 1);
+  assert.strictEqual(activeGeminiFiles.size, 0);
   messages = await getMessages(USERS.developer, 'law', 'haruraw_sayu');
   assert.strictEqual(messages.length, emptyAnswerMessagesBefore);
 
@@ -764,6 +1129,25 @@ async function run() {
       && error?.details?.retryable === false,
   );
 
+  const lawSearchUploadsBefore = geminiFileUploads.length;
+  const lawSearchLegacyCallsBefore = legacyGenaiCalls.length;
+  const lawSearchResult = await lawCallable(USERS.developer, {
+    query: '첨부 계약서에 적용될 민법 조항을 알려줘.',
+    attachments: [attachment],
+  });
+  assert.strictEqual(lawSearchResult.success, true);
+  assert.strictEqual(geminiFileUploads.length, lawSearchUploadsBefore + 1);
+  assert.ok(geminiFileUploads.every((upload) => upload.requestTimeout === null));
+  assert.ok(geminiFileUploads.every((upload) => upload.clientTimeout === 75_000));
+  assert.ok(googleGenAiClientOptions.some((options) => options.timeout === null));
+  assert.ok(googleGenAiClientOptions.some((options) => options.timeout === 75_000));
+  const lawSearchCalls = legacyGenaiCalls.slice(lawSearchLegacyCallsBefore);
+  assert.strictEqual(lawSearchCalls.length, 3);
+  assert.ok(lawSearchCalls.at(-1).contents.includes('fileData'));
+  assert.ok(!lawSearchCalls.at(-1).contents.includes('inlineData'));
+  assert.strictEqual(activeGeminiFiles.size, 0);
+  assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
+
   const logs = await getLogs({ featureName: 'result_chat' });
   assert.ok(logs.some((log) => log.actualPlan === 'basic' && log.answerRoute === 'record_only' && log.webSearchUsed === false && log.searchSourceCount === 0));
   assert.ok(logs.some((log) => log.actualPlan === 'basic' && log.answerRoute === 'web_search' && log.webSearchUsed === true && log.searchSourceCount >= 1));
@@ -775,6 +1159,9 @@ async function run() {
   console.log(JSON.stringify({
     mode: useRealGemini ? 'real-gemini' : 'instrumented-fake-gemini',
     genaiCallCount: genaiCalls.length,
+    legacyGenaiCallCount: legacyGenaiCalls.length,
+    geminiFileUploadCount: geminiFileUploads.length,
+    geminiFileDeleteCount: geminiFileDeletes.length,
     webSearchCallCount: countWebSearchCalls(),
     resultChatLogCount: logs.length,
     checkedPlans: Array.from(new Set(logs.map((log) => log.actualPlan))).sort(),

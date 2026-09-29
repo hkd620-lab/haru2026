@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
+  HARULAW_ATTACH_MAX_PDF_BYTES,
+  HARULAW_ATTACH_MAX_TOTAL_BYTES,
   getHaruLawUserError,
   getHaruLawUserErrorByReason,
   hasReadableHaruLawPdfHeader,
@@ -16,6 +18,12 @@ const expected = {
   ATTACHMENT_PDF_UNREADABLE: [
     '이 PDF를 읽을 수 없습니다',
     '파일이 손상되었거나 암호가 설정됐을 수 있습니다. 문제가 있는 첨부를 제거한 뒤 PDF를 다시 저장하거나 다른 파일을 첨부해 주세요.',
+    false,
+    undefined,
+  ],
+  ATTACHMENT_TOTAL_SIZE_EXCEEDED: [
+    '첨부파일의 전체 크기가 너무 큽니다',
+    '한 번에 첨부할 수 있는 파일의 전체 크기는 50MiB입니다. 파일 수나 크기를 줄인 뒤 다시 시도해 주세요.',
     false,
     undefined,
   ],
@@ -44,6 +52,9 @@ const expected = {
     '다시 시도',
   ],
 };
+
+assert.equal(HARULAW_ATTACH_MAX_TOTAL_BYTES, 52_428_800);
+assert.equal(HARULAW_ATTACH_MAX_PDF_BYTES, 50_000_000);
 
 for (const [reason, [title, message, retryable, actionLabel]] of Object.entries(expected)) {
   assert.deepEqual(getHaruLawUserError({ details: { reason } }), {
@@ -94,5 +105,17 @@ assert.match(
   /setUploadingLawFiles\(true\);[\s\S]*try \{[\s\S]*try \{[\s\S]*await file\.slice\(0, 8\)\.arrayBuffer\(\)\);[\s\S]*catch \{[\s\S]*ATTACHMENT_PDF_UNREADABLE[\s\S]*finally \{[\s\S]*event\.target\.value = ''/,
   'RecordPage must report PDF header read failures and always reset the file input',
 );
+for (const [source, surface] of [[resultChatSource, 'ResultChatModal'], [recordPageSource, 'RecordPage']]) {
+  assert.match(source, /HARULAW_ATTACH_MAX_TOTAL_BYTES/);
+  assert.match(source, /HARULAW_ATTACH_MAX_PDF_BYTES/);
+  assert.match(source, /ATTACHMENT_TOTAL_SIZE_EXCEEDED/);
+  assert.match(source, /selectedTotalBytes/);
+  assert.match(source, /sizeBytes: file\.size/);
+  assert.match(
+    source,
+    /selectedTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES/,
+    `${surface} must reject an over-limit selection before upload`,
+  );
+}
 
 console.log('haruLAW frontend error mapping tests passed');

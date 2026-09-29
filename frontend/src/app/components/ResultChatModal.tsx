@@ -28,6 +28,8 @@ import {
 } from '../services/haruLawAttachmentCleanup';
 import { useSubscription } from '../hooks/useSubscription';
 import {
+  HARULAW_ATTACH_MAX_TOTAL_BYTES,
+  HARULAW_ATTACH_MAX_PDF_BYTES,
   getHaruLawUserError,
   getHaruLawUserErrorByReason,
   hasReadableHaruLawPdfHeader,
@@ -186,7 +188,6 @@ const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
   'application/pdf',
 ]);
 const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
-const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
 
 async function deleteHaruLawAttachmentPath(storagePath: string): Promise<void> {
   await deleteObject(storageRef(storage, storagePath));
@@ -325,8 +326,8 @@ export function ResultChatModal({
           scheduleDeferredHaruLawAttachmentCleanup(uid, result.nextRetryAt, dependencies);
         }
       })
-      .catch((error) => {
-        console.warn('하루LAW 첨부 지연 정리 재시도 실패:', error);
+      .catch(() => {
+        console.warn('하루LAW 첨부 지연 정리 재시도 실패');
       });
   }, [isOpen, uid]);
 
@@ -486,6 +487,19 @@ export function ResultChatModal({
           toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB 이하)`);
           return;
         }
+      }
+      const selectedTotalBytes = toUpload.reduce((total, file) => total + file.size, 0);
+      const pendingTotalBytes = pendingAttachmentsRef.current.reduce(
+        (total, attachment) => total + (attachment.sizeBytes || 0),
+        0,
+      );
+      if (pendingTotalBytes + selectedTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES) {
+        const userError = getHaruLawUserErrorByReason('ATTACHMENT_TOTAL_SIZE_EXCEEDED');
+        setHaruLawErrorNotice({ userError });
+        toast.error(userError.title);
+        return;
+      }
+      for (const file of toUpload) {
         if (file.type === 'application/pdf') {
           let header: Uint8Array;
           try {
@@ -514,7 +528,7 @@ export function ResultChatModal({
         const safeName = `${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
         const path = `users/${uid}/haruLawAttachments/${recordId}/${safeName}`;
         await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
-        const attachment = { storagePath: path, mimeType: file.type, fileName: file.name };
+        const attachment = { storagePath: path, mimeType: file.type, fileName: file.name, sizeBytes: file.size };
         uploaded.push(attachment);
         uploadingAttachmentsRef.current = [...uploaded];
         if (attachmentScopeRef.current !== uploadScopeId) {
@@ -541,8 +555,8 @@ export function ResultChatModal({
       uploadingAttachmentsRef.current = [];
       pendingAttachmentsRef.current = next;
       setPendingAttachments(next);
-    } catch (error) {
-      console.error('하루LAW 첨부 업로드 실패:', error);
+    } catch {
+      console.error('하루LAW 첨부 업로드 실패');
       if (uploaded.length > 0) {
         await cleanupHaruLawAttachments(
           buildHaruLawCleanupEntries(uid, recordId, threadId, uploaded, new Set()),

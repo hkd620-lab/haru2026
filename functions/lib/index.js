@@ -36,9 +36,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.lawEasyExplain = exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.recoverSubscriptionBillingRequest = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.cleanupHeicTemp = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.getSnsThumbnailData = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = void 0;
-exports.generateSnsStoryFinal = exports.generateSnsStorySynopsis = exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = exports.getSubscriptionRefundEligibility = exports.executeScheduledDeletion = exports.cancelAccountDeletion = void 0;
+exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.recoverSubscriptionBillingRequest = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.cleanupHeicTemp = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.cleanupHaruLawGeminiFiles = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
+exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.getSnsThumbnailData = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = void 0;
+exports.generateSnsStoryFinal = exports.generateSnsStorySynopsis = exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = exports.getSubscriptionRefundEligibility = exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -53,6 +53,7 @@ const crypto = __importStar(require("crypto"));
 const PDFDocument = require('pdfkit');
 const sharp = require('sharp');
 const fs = __importStar(require("fs"));
+const os = __importStar(require("os"));
 const path = __importStar(require("path"));
 const aiUsageLogger_1 = require("./aiUsageLogger");
 const subscriptionHelpers_1 = require("./subscriptionHelpers");
@@ -3328,11 +3329,20 @@ async function logResultChatUsage(params) {
 }
 const HARULAW_ATTACH_MAX_FILES = 5;
 const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
-const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
+const HARULAW_ATTACH_MAX_PDF_BYTES = 50000000;
+const HARULAW_ATTACH_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+const HARULAW_GEMINI_FILE_CLEANUP_COLLECTION = 'haruLawGeminiFileCleanup';
+const HARULAW_GEMINI_FILE_CLEANUP_DELAY_MS = 10 * 60 * 1000;
+const HARULAW_GEMINI_FILE_TIMEOUT_MS = 75000;
+const HARULAW_GEMINI_FILE_DELETE_TIMEOUT_MS = 10000;
+const HARULAW_GEMINI_FILE_NAME_PATTERN = /^files\/harulaw-[a-f0-9]{32}$/;
 function readHaruLawAttachments(raw) {
     if (!Array.isArray(raw))
         return [];
-    return raw.slice(0, HARULAW_ATTACH_MAX_FILES).map((item) => {
+    if (raw.length > HARULAW_ATTACH_MAX_FILES) {
+        throw new https_2.HttpsError('invalid-argument', '첨부파일은 최대 5개까지 추가할 수 있습니다.');
+    }
+    return raw.map((item) => {
         const source = item;
         const storagePath = clampResultChatText(source === null || source === void 0 ? void 0 : source.storagePath, 512);
         const mimeType = clampResultChatText(source === null || source === void 0 ? void 0 : source.mimeType, 120).toLowerCase();
@@ -3350,62 +3360,215 @@ function createHaruLawHttpsError(reason) {
 function getHaruLawAttachmentSizeLimit(mimeType) {
     return mimeType.startsWith('image/') ? HARULAW_ATTACH_MAX_IMAGE_BYTES : HARULAW_ATTACH_MAX_PDF_BYTES;
 }
-async function loadHaruLawAttachmentParts(uid, attachments) {
-    const fileParts = [];
+async function prepareHaruLawAttachments(uid, attachments) {
+    const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'harulaw-attachments-'));
+    const preparedFiles = [];
     const attachmentMeta = [];
-    for (const att of attachments) {
-        if (!att.storagePath.startsWith(`users/${uid}/haruLawAttachments/`)) {
-            throw new https_2.HttpsError('permission-denied', '허용되지 않은 파일 경로입니다.');
+    const validatedAttachments = [];
+    let metadataTotalBytes = 0;
+    try {
+        for (const att of attachments) {
+            if (!att.storagePath.startsWith(`users/${uid}/haruLawAttachments/`)) {
+                throw new https_2.HttpsError('permission-denied', '허용되지 않은 파일 경로입니다.');
+            }
+            if (!(0, haruLawErrorCore_1.isAllowedHaruLawAttachmentMime)(att.mimeType)) {
+                throw createHaruLawHttpsError('ATTACHMENT_UNSUPPORTED_TYPE');
+            }
+            const file = bucket().file(att.storagePath);
+            let metadata;
+            try {
+                [metadata] = await file.getMetadata();
+            }
+            catch (error) {
+                logger.warn('하루LAW 첨부 메타데이터 조회 실패', { errorCode: error === null || error === void 0 ? void 0 : error.code });
+                throw new https_2.HttpsError('not-found', '첨부 파일을 찾을 수 없습니다.');
+            }
+            const storedMimeType = String((metadata === null || metadata === void 0 ? void 0 : metadata.contentType) || '').trim().toLowerCase();
+            const effectiveMimeType = storedMimeType || att.mimeType;
+            if (!(0, haruLawErrorCore_1.isAllowedHaruLawAttachmentMime)(effectiveMimeType) || (storedMimeType && storedMimeType !== att.mimeType)) {
+                throw createHaruLawHttpsError('ATTACHMENT_UNSUPPORTED_TYPE');
+            }
+            const sizeLimit = getHaruLawAttachmentSizeLimit(effectiveMimeType);
+            const metadataSize = Number(metadata === null || metadata === void 0 ? void 0 : metadata.size);
+            if (!Number.isSafeInteger(metadataSize) || metadataSize < 0) {
+                throw new https_2.HttpsError('internal', '첨부 파일 크기를 확인하지 못했습니다.');
+            }
+            if (metadataSize > sizeLimit) {
+                throw new https_2.HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+            }
+            metadataTotalBytes += metadataSize;
+            if (metadataTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES) {
+                throw createHaruLawHttpsError('ATTACHMENT_TOTAL_SIZE_EXCEEDED');
+            }
+            validatedAttachments.push({ attachment: att, file, effectiveMimeType, sizeLimit });
         }
-        if (!(0, haruLawErrorCore_1.isAllowedHaruLawAttachmentMime)(att.mimeType)) {
-            throw createHaruLawHttpsError('ATTACHMENT_UNSUPPORTED_TYPE');
+        let downloadedTotalBytes = 0;
+        for (let index = 0; index < validatedAttachments.length; index += 1) {
+            const { attachment: att, file, effectiveMimeType, sizeLimit } = validatedAttachments[index];
+            const tempPath = path.join(tempDir, `${index}.upload`);
+            try {
+                await file.download({ destination: tempPath });
+            }
+            catch (error) {
+                logger.warn('하루LAW 첨부 다운로드 실패', { errorCode: error === null || error === void 0 ? void 0 : error.code });
+                throw new https_2.HttpsError('not-found', '첨부 파일을 다운로드하지 못했습니다.');
+            }
+            const actualSize = (await fs.promises.stat(tempPath)).size;
+            if (actualSize > sizeLimit) {
+                throw new https_2.HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+            }
+            downloadedTotalBytes += actualSize;
+            if (downloadedTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES) {
+                throw createHaruLawHttpsError('ATTACHMENT_TOTAL_SIZE_EXCEEDED');
+            }
+            const contentError = await (0, haruLawErrorCore_1.getHaruLawAttachmentContentError)(effectiveMimeType, await fs.promises.readFile(tempPath));
+            if (contentError) {
+                throw createHaruLawHttpsError(contentError);
+            }
+            preparedFiles.push({ tempPath, mimeType: effectiveMimeType });
+            attachmentMeta.push({ storagePath: att.storagePath, mimeType: effectiveMimeType, fileName: att.fileName });
         }
-        const file = bucket().file(att.storagePath);
-        let metadata;
-        try {
-            [metadata] = await file.getMetadata();
-        }
-        catch (error) {
-            logger.warn('하루LAW 첨부 메타데이터 조회 실패:', { storagePath: att.storagePath, message: error === null || error === void 0 ? void 0 : error.message });
-            throw new https_2.HttpsError('not-found', '첨부 파일을 찾을 수 없습니다.');
-        }
-        const storedMimeType = String((metadata === null || metadata === void 0 ? void 0 : metadata.contentType) || '').trim().toLowerCase();
-        const effectiveMimeType = storedMimeType || att.mimeType;
-        if (!(0, haruLawErrorCore_1.isAllowedHaruLawAttachmentMime)(effectiveMimeType) || (storedMimeType && storedMimeType !== att.mimeType)) {
-            throw createHaruLawHttpsError('ATTACHMENT_UNSUPPORTED_TYPE');
-        }
-        const sizeLimit = getHaruLawAttachmentSizeLimit(effectiveMimeType);
-        const metadataSize = Number(metadata === null || metadata === void 0 ? void 0 : metadata.size);
-        if (Number.isFinite(metadataSize) && metadataSize > sizeLimit) {
-            throw new https_2.HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
-        }
-        let buf;
-        try {
-            [buf] = await file.download();
-        }
-        catch (error) {
-            logger.warn('하루LAW 첨부 다운로드 실패:', { storagePath: att.storagePath, message: error === null || error === void 0 ? void 0 : error.message });
-            throw new https_2.HttpsError('not-found', '첨부 파일을 다운로드하지 못했습니다.');
-        }
-        if (buf.length > sizeLimit) {
-            throw new https_2.HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
-        }
-        const contentError = (0, haruLawErrorCore_1.getHaruLawAttachmentContentError)(effectiveMimeType, buf);
-        if (contentError) {
-            throw createHaruLawHttpsError(contentError);
-        }
-        fileParts.push({ inlineData: { mimeType: effectiveMimeType, data: buf.toString('base64') } });
-        attachmentMeta.push({ storagePath: att.storagePath, mimeType: effectiveMimeType, fileName: att.fileName });
+        return { tempDir, files: preparedFiles, attachmentMeta };
     }
-    return { fileParts, attachmentMeta };
+    catch (error) {
+        await fs.promises.rm(tempDir, { recursive: true, force: true }).catch(() => { });
+        throw error;
+    }
 }
+async function removePreparedHaruLawAttachments(prepared) {
+    if (!prepared)
+        return;
+    await fs.promises.rm(prepared.tempDir, { recursive: true, force: true }).catch((error) => {
+        logger.warn('하루LAW 로컬 임시 첨부 정리 실패', { errorCode: error === null || error === void 0 ? void 0 : error.code });
+    });
+}
+function getHaruLawGeminiFileName(uploadGroupId, index) {
+    const opaqueId = crypto
+        .createHash('sha256')
+        .update(`harulaw:${uploadGroupId}:${index}`)
+        .digest('hex')
+        .slice(0, 32);
+    return `files/harulaw-${opaqueId}`;
+}
+function getHaruLawGeminiCleanupDocRef(fileName) {
+    const docId = crypto.createHash('sha256').update(fileName).digest('hex');
+    return db.collection(HARULAW_GEMINI_FILE_CLEANUP_COLLECTION).doc(docId);
+}
+function isHaruLawGeminiFileNotFound(error) {
+    var _a, _b, _c;
+    const candidate = error;
+    return Number((_c = (_b = (_a = candidate === null || candidate === void 0 ? void 0 : candidate.response) === null || _a === void 0 ? void 0 : _a.status) !== null && _b !== void 0 ? _b : candidate === null || candidate === void 0 ? void 0 : candidate.status) !== null && _c !== void 0 ? _c : candidate === null || candidate === void 0 ? void 0 : candidate.code) === 404;
+}
+async function deleteTrackedHaruLawGeminiFile(ai, tracked) {
+    var _a, _b;
+    try {
+        await ai.files.delete({
+            name: tracked.name,
+            config: { httpOptions: { timeout: HARULAW_GEMINI_FILE_DELETE_TIMEOUT_MS } },
+        });
+        await tracked.cleanupDocRef.delete();
+        return true;
+    }
+    catch (error) {
+        if (isHaruLawGeminiFileNotFound(error)) {
+            await tracked.cleanupDocRef.delete().catch(() => { });
+            return true;
+        }
+        await tracked.cleanupDocRef.set({
+            cleanupAfter: admin.firestore.Timestamp.fromMillis(Date.now() + HARULAW_GEMINI_FILE_CLEANUP_DELAY_MS),
+            lastAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+            attempts: admin.firestore.FieldValue.increment(1),
+        }, { merge: true }).catch(() => { });
+        logger.warn('하루LAW Gemini 임시 File 삭제 실패', {
+            errorCode: error === null || error === void 0 ? void 0 : error.code,
+            errorStatus: (_b = (_a = error === null || error === void 0 ? void 0 : error.response) === null || _a === void 0 ? void 0 : _a.status) !== null && _b !== void 0 ? _b : error === null || error === void 0 ? void 0 : error.status,
+        });
+        return false;
+    }
+}
+async function deleteTrackedHaruLawGeminiFiles(ai, trackedFiles) {
+    if (!ai)
+        return;
+    for (const tracked of trackedFiles) {
+        await deleteTrackedHaruLawGeminiFile(ai, tracked);
+    }
+}
+async function uploadPreparedHaruLawAttachments(ai, prepared, uploadGroupId, trackedFiles) {
+    var _a, _b;
+    const fileParts = [];
+    for (let index = 0; index < prepared.files.length; index += 1) {
+        const preparedFile = prepared.files[index];
+        const name = getHaruLawGeminiFileName(uploadGroupId, index);
+        const cleanupDocRef = getHaruLawGeminiCleanupDocRef(name);
+        try {
+            await cleanupDocRef.set({
+                fileName: name,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                cleanupAfter: admin.firestore.Timestamp.fromMillis(Date.now() + HARULAW_GEMINI_FILE_CLEANUP_DELAY_MS),
+                attempts: 0,
+            });
+            trackedFiles.push({ name, cleanupDocRef });
+            const uploaded = await ai.files.upload({
+                file: preparedFile.tempPath,
+                config: {
+                    name,
+                    mimeType: preparedFile.mimeType,
+                },
+            });
+            if (uploaded.name !== name || !uploaded.uri) {
+                throw new Error('HARULAW_GEMINI_FILE_UPLOAD_INVALID_RESPONSE');
+            }
+            fileParts.push({ fileData: { mimeType: preparedFile.mimeType, fileUri: uploaded.uri } });
+        }
+        catch (error) {
+            logger.warn('하루LAW Gemini 임시 File 업로드 실패', {
+                errorCode: error === null || error === void 0 ? void 0 : error.code,
+                errorStatus: (_b = (_a = error === null || error === void 0 ? void 0 : error.response) === null || _a === void 0 ? void 0 : _a.status) !== null && _b !== void 0 ? _b : error === null || error === void 0 ? void 0 : error.status,
+            });
+            throw createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE');
+        }
+    }
+    return fileParts;
+}
+exports.cleanupHaruLawGeminiFiles = (0, scheduler_1.onSchedule)({
+    schedule: 'every 30 minutes',
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 300,
+    memory: '256MiB',
+}, async () => {
+    var _a;
+    const snapshot = await db.collection(HARULAW_GEMINI_FILE_CLEANUP_COLLECTION)
+        .where('cleanupAfter', '<=', admin.firestore.Timestamp.now())
+        .limit(100)
+        .get();
+    if (snapshot.empty)
+        return;
+    const ai = new genai_1.GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
+    let deletedCount = 0;
+    let failedCount = 0;
+    for (const doc of snapshot.docs) {
+        const fileName = String(((_a = doc.data()) === null || _a === void 0 ? void 0 : _a.fileName) || '');
+        if (!HARULAW_GEMINI_FILE_NAME_PATTERN.test(fileName)) {
+            await doc.ref.delete();
+            continue;
+        }
+        const deleted = await deleteTrackedHaruLawGeminiFile(ai, { name: fileName, cleanupDocRef: doc.ref });
+        if (deleted)
+            deletedCount += 1;
+        else
+            failedCount += 1;
+    }
+    logger.info('하루LAW Gemini 임시 File 재정리 완료', { deletedCount, failedCount });
+});
 exports.chatWithResult = (0, https_2.onCall)({
     region: 'asia-northeast3',
     memory: '512MiB',
+    concurrency: 1,
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 90,
 }, async (request) => {
-    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26;
+    var _a, _b, _c, _d, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27;
     if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -3491,11 +3654,20 @@ exports.chatWithResult = (0, https_2.onCall)({
     let monthlyQuotaReservation = null;
     let attemptedAnswerRoute = 'ambiguous';
     let haruLawProcessingStage = 'attachment_load';
+    let haruLawFileClient = null;
+    let preparedAttachments = null;
+    const trackedGeminiFiles = [];
     try {
         await acquireResultChatLock(threadRef, requestId);
         locked = true;
         await enforceResultChatRateLimit(uid);
         const ai = new genai_1.GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
+        if (attachments.length > 0) {
+            haruLawFileClient = new genai_1.GoogleGenAI({
+                apiKey: GEMINI_API_KEY_SECRET.value(),
+                httpOptions: { timeout: HARULAW_GEMINI_FILE_TIMEOUT_MS },
+            });
+        }
         const currentUsage = await getThreadWebSearchUsage(threadRef, actualPlan);
         const answerRoute = searchPreference === 'web_confirmed' ? 'web_search' : 'record_only';
         attemptedAnswerRoute = answerRoute;
@@ -3737,9 +3909,13 @@ exports.chatWithResult = (0, https_2.onCall)({
             recordOnlyChosen,
             questionSafetyGuide,
         });
-        const { fileParts, attachmentMeta } = attachments.length > 0
-            ? await loadHaruLawAttachmentParts(uid, attachments)
-            : { fileParts: [], attachmentMeta: [] };
+        preparedAttachments = attachments.length > 0
+            ? await prepareHaruLawAttachments(uid, attachments)
+            : null;
+        const fileParts = preparedAttachments
+            ? await uploadPreparedHaruLawAttachments(haruLawFileClient, preparedAttachments, requestId, trackedGeminiFiles)
+            : [];
+        const attachmentMeta = (_k = preparedAttachments === null || preparedAttachments === void 0 ? void 0 : preparedAttachments.attachmentMeta) !== null && _k !== void 0 ? _k : [];
         haruLawProcessingStage = 'summary_ai';
         const contents = fileParts.length > 0
             ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
@@ -3752,19 +3928,19 @@ exports.chatWithResult = (0, https_2.onCall)({
                 ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
                 : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
         });
-        let inputTokens = addOptionalTokenCounts(null, (_k = response.usageMetadata) === null || _k === void 0 ? void 0 : _k.promptTokenCount);
-        let outputTokens = addOptionalTokenCounts(null, (_l = response.usageMetadata) === null || _l === void 0 ? void 0 : _l.candidatesTokenCount);
+        let inputTokens = addOptionalTokenCounts(null, (_l = response.usageMetadata) === null || _l === void 0 ? void 0 : _l.promptTokenCount);
+        let outputTokens = addOptionalTokenCounts(null, (_m = response.usageMetadata) === null || _m === void 0 ? void 0 : _m.candidatesTokenCount);
         let { sources, usedWebSearch } = answerRoute === 'web_search'
             ? getResultChatSources(response)
             : { sources: [], usedWebSearch: false };
         if (answerRoute === 'web_search' && !usedWebSearch) {
             logger.warn('chatWithResult web_search_not_grounded 진단:', {
                 attempt: 1,
-                finishReason: (_o = (_m = response.candidates) === null || _m === void 0 ? void 0 : _m[0]) === null || _o === void 0 ? void 0 : _o.finishReason,
-                hasCandidates: ((_q = (_p = response.candidates) === null || _p === void 0 ? void 0 : _p.length) !== null && _q !== void 0 ? _q : 0) > 0,
-                hasGroundingMetadata: !!((_s = (_r = response.candidates) === null || _r === void 0 ? void 0 : _r[0]) === null || _s === void 0 ? void 0 : _s.groundingMetadata),
-                webSearchQueriesCount: (_x = (_w = (_v = (_u = (_t = response.candidates) === null || _t === void 0 ? void 0 : _t[0]) === null || _u === void 0 ? void 0 : _u.groundingMetadata) === null || _v === void 0 ? void 0 : _v.webSearchQueries) === null || _w === void 0 ? void 0 : _w.length) !== null && _x !== void 0 ? _x : 0,
-                groundingChunksCount: (_2 = (_1 = (_0 = (_z = (_y = response.candidates) === null || _y === void 0 ? void 0 : _y[0]) === null || _z === void 0 ? void 0 : _z.groundingMetadata) === null || _0 === void 0 ? void 0 : _0.groundingChunks) === null || _1 === void 0 ? void 0 : _1.length) !== null && _2 !== void 0 ? _2 : 0,
+                finishReason: (_p = (_o = response.candidates) === null || _o === void 0 ? void 0 : _o[0]) === null || _p === void 0 ? void 0 : _p.finishReason,
+                hasCandidates: ((_r = (_q = response.candidates) === null || _q === void 0 ? void 0 : _q.length) !== null && _r !== void 0 ? _r : 0) > 0,
+                hasGroundingMetadata: !!((_t = (_s = response.candidates) === null || _s === void 0 ? void 0 : _s[0]) === null || _t === void 0 ? void 0 : _t.groundingMetadata),
+                webSearchQueriesCount: (_y = (_x = (_w = (_v = (_u = response.candidates) === null || _u === void 0 ? void 0 : _u[0]) === null || _v === void 0 ? void 0 : _v.groundingMetadata) === null || _w === void 0 ? void 0 : _w.webSearchQueries) === null || _x === void 0 ? void 0 : _x.length) !== null && _y !== void 0 ? _y : 0,
+                groundingChunksCount: (_3 = (_2 = (_1 = (_0 = (_z = response.candidates) === null || _z === void 0 ? void 0 : _z[0]) === null || _0 === void 0 ? void 0 : _0.groundingMetadata) === null || _1 === void 0 ? void 0 : _1.groundingChunks) === null || _2 === void 0 ? void 0 : _2.length) !== null && _3 !== void 0 ? _3 : 0,
                 recordId,
                 sourceKey,
             });
@@ -3777,17 +3953,17 @@ exports.chatWithResult = (0, https_2.onCall)({
                 contents: retryContents,
                 config: { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
             });
-            inputTokens = addOptionalTokenCounts(inputTokens, (_3 = response.usageMetadata) === null || _3 === void 0 ? void 0 : _3.promptTokenCount);
-            outputTokens = addOptionalTokenCounts(outputTokens, (_4 = response.usageMetadata) === null || _4 === void 0 ? void 0 : _4.candidatesTokenCount);
+            inputTokens = addOptionalTokenCounts(inputTokens, (_4 = response.usageMetadata) === null || _4 === void 0 ? void 0 : _4.promptTokenCount);
+            outputTokens = addOptionalTokenCounts(outputTokens, (_5 = response.usageMetadata) === null || _5 === void 0 ? void 0 : _5.candidatesTokenCount);
             ({ sources, usedWebSearch } = getResultChatSources(response));
             if (!usedWebSearch) {
                 logger.warn('chatWithResult web_search_not_grounded 진단:', {
                     attempt: 2,
-                    finishReason: (_6 = (_5 = response.candidates) === null || _5 === void 0 ? void 0 : _5[0]) === null || _6 === void 0 ? void 0 : _6.finishReason,
-                    hasCandidates: ((_8 = (_7 = response.candidates) === null || _7 === void 0 ? void 0 : _7.length) !== null && _8 !== void 0 ? _8 : 0) > 0,
-                    hasGroundingMetadata: !!((_10 = (_9 = response.candidates) === null || _9 === void 0 ? void 0 : _9[0]) === null || _10 === void 0 ? void 0 : _10.groundingMetadata),
-                    webSearchQueriesCount: (_15 = (_14 = (_13 = (_12 = (_11 = response.candidates) === null || _11 === void 0 ? void 0 : _11[0]) === null || _12 === void 0 ? void 0 : _12.groundingMetadata) === null || _13 === void 0 ? void 0 : _13.webSearchQueries) === null || _14 === void 0 ? void 0 : _14.length) !== null && _15 !== void 0 ? _15 : 0,
-                    groundingChunksCount: (_20 = (_19 = (_18 = (_17 = (_16 = response.candidates) === null || _16 === void 0 ? void 0 : _16[0]) === null || _17 === void 0 ? void 0 : _17.groundingMetadata) === null || _18 === void 0 ? void 0 : _18.groundingChunks) === null || _19 === void 0 ? void 0 : _19.length) !== null && _20 !== void 0 ? _20 : 0,
+                    finishReason: (_7 = (_6 = response.candidates) === null || _6 === void 0 ? void 0 : _6[0]) === null || _7 === void 0 ? void 0 : _7.finishReason,
+                    hasCandidates: ((_9 = (_8 = response.candidates) === null || _8 === void 0 ? void 0 : _8.length) !== null && _9 !== void 0 ? _9 : 0) > 0,
+                    hasGroundingMetadata: !!((_11 = (_10 = response.candidates) === null || _10 === void 0 ? void 0 : _10[0]) === null || _11 === void 0 ? void 0 : _11.groundingMetadata),
+                    webSearchQueriesCount: (_16 = (_15 = (_14 = (_13 = (_12 = response.candidates) === null || _12 === void 0 ? void 0 : _12[0]) === null || _13 === void 0 ? void 0 : _13.groundingMetadata) === null || _14 === void 0 ? void 0 : _14.webSearchQueries) === null || _15 === void 0 ? void 0 : _15.length) !== null && _16 !== void 0 ? _16 : 0,
+                    groundingChunksCount: (_21 = (_20 = (_19 = (_18 = (_17 = response.candidates) === null || _17 === void 0 ? void 0 : _17[0]) === null || _18 === void 0 ? void 0 : _18.groundingMetadata) === null || _19 === void 0 ? void 0 : _19.groundingChunks) === null || _20 === void 0 ? void 0 : _20.length) !== null && _21 !== void 0 ? _21 : 0,
                     recordId,
                     sourceKey,
                 });
@@ -3853,9 +4029,9 @@ exports.chatWithResult = (0, https_2.onCall)({
             webSearchLimit: usageForAnswer.limit,
             webSearchUsedCount: usageForAnswer.usedCount,
             webSearchRemainingCount: usageForAnswer.remainingCount,
-            monthlyAiLimit: (_21 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.limit) !== null && _21 !== void 0 ? _21 : monthlyUsageForChoice.limit,
-            monthlyAiUsedCount: (_22 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.used) !== null && _22 !== void 0 ? _22 : monthlyUsageForChoice.used,
-            monthlyAiRemainingCount: (_23 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.remaining) !== null && _23 !== void 0 ? _23 : monthlyUsageForChoice.remaining,
+            monthlyAiLimit: (_22 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.limit) !== null && _22 !== void 0 ? _22 : monthlyUsageForChoice.limit,
+            monthlyAiUsedCount: (_23 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.used) !== null && _23 !== void 0 ? _23 : monthlyUsageForChoice.used,
+            monthlyAiRemainingCount: (_24 = monthlyQuotaReservation === null || monthlyQuotaReservation === void 0 ? void 0 : monthlyQuotaReservation.remaining) !== null && _24 !== void 0 ? _24 : monthlyUsageForChoice.remaining,
         };
     }
     catch (error) {
@@ -3909,7 +4085,7 @@ exports.chatWithResult = (0, https_2.onCall)({
                 reason,
                 errorName: error === null || error === void 0 ? void 0 : error.name,
                 errorCode: error === null || error === void 0 ? void 0 : error.code,
-                errorStatus: (_25 = (_24 = error === null || error === void 0 ? void 0 : error.response) === null || _24 === void 0 ? void 0 : _24.status) !== null && _25 !== void 0 ? _25 : error === null || error === void 0 ? void 0 : error.status,
+                errorStatus: (_26 = (_25 = error === null || error === void 0 ? void 0 : error.response) === null || _25 === void 0 ? void 0 : _25.status) !== null && _26 !== void 0 ? _26 : error === null || error === void 0 ? void 0 : error.status,
                 recordId,
                 sourceKey,
             });
@@ -3938,7 +4114,7 @@ exports.chatWithResult = (0, https_2.onCall)({
             errorMessage: error === null || error === void 0 ? void 0 : error.message,
             errorStatus: error === null || error === void 0 ? void 0 : error.status,
             errorCode: error === null || error === void 0 ? void 0 : error.code,
-            errorCause: String((_26 = error === null || error === void 0 ? void 0 : error.cause) !== null && _26 !== void 0 ? _26 : ''),
+            errorCause: String((_27 = error === null || error === void 0 ? void 0 : error.cause) !== null && _27 !== void 0 ? _27 : ''),
             stack: error === null || error === void 0 ? void 0 : error.stack,
             recordId,
             sourceKey,
@@ -3965,6 +4141,8 @@ exports.chatWithResult = (0, https_2.onCall)({
         throw new https_2.HttpsError('internal', 'AI 응답 생성에 실패했습니다.');
     }
     finally {
+        await deleteTrackedHaruLawGeminiFiles(haruLawFileClient, trackedGeminiFiles);
+        await removePreparedHaruLawAttachments(preparedAttachments);
         if (locked)
             await releaseResultChatLock(threadRef, requestId);
     }
@@ -8247,6 +8425,7 @@ exports.lawSearch = (0, https_2.onCall)({
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
     timeoutSeconds: 90,
     memory: '1GiB',
+    concurrency: 1,
 }, async (request) => {
     var _a, _b, _c, _d, _f, _g, _h, _j, _k;
     if (!request.auth) {
@@ -8276,13 +8455,23 @@ exports.lawSearch = (0, https_2.onCall)({
         timeout: 10000,
     };
     let processingStage = 'attachment_load';
+    let haruLawFileClient = null;
+    let preparedAttachments = null;
+    const trackedGeminiFiles = [];
+    const uploadGroupId = crypto.randomUUID();
     try {
         const { XMLParser } = await Promise.resolve().then(() => __importStar(require('fast-xml-parser')));
         const LAW_API_KEY = LAW_API_KEY_SECRET.value().trim();
         const GEMINI_KEY = GEMINI_API_KEY_SECRET.value().trim();
-        const { fileParts } = attachments.length > 0
-            ? await loadHaruLawAttachmentParts(uid, attachments)
-            : { fileParts: [] };
+        preparedAttachments = attachments.length > 0
+            ? await prepareHaruLawAttachments(uid, attachments)
+            : null;
+        if (preparedAttachments) {
+            haruLawFileClient = new genai_1.GoogleGenAI({
+                apiKey: GEMINI_KEY,
+                httpOptions: { timeout: HARULAW_GEMINI_FILE_TIMEOUT_MS },
+            });
+        }
         const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
         const axiosConfig = {
             headers: {
@@ -8464,7 +8653,10 @@ exports.lawSearch = (0, https_2.onCall)({
 
 사용자 질문: ${query}
 관련 법령(${lawName}):
-	${lawText}`;
+		${lawText}`;
+        const fileParts = preparedAttachments && haruLawFileClient
+            ? await uploadPreparedHaruLawAttachments(haruLawFileClient, preparedAttachments, uploadGroupId, trackedGeminiFiles)
+            : [];
         const summaryContents = fileParts.length > 0
             ? [{ text: summaryPrompt }, ...fileParts]
             : summaryPrompt;
@@ -8531,6 +8723,10 @@ exports.lawSearch = (0, https_2.onCall)({
             });
         }
         throw createHaruLawHttpsError(reason);
+    }
+    finally {
+        await deleteTrackedHaruLawGeminiFiles(haruLawFileClient, trackedGeminiFiles);
+        await removePreparedHaruLawAttachments(preparedAttachments);
     }
 });
 exports.prepareHaruLawSharePreview = (0, https_2.onCall)({

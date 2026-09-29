@@ -8,6 +8,7 @@ exports.runHaruLawApiRequestWithRetry = runHaruLawApiRequestWithRetry;
 exports.isTemporaryHaruLawAiError = isTemporaryHaruLawAiError;
 exports.classifyHaruLawAiError = classifyHaruLawAiError;
 exports.getHaruLawErrorDescriptor = getHaruLawErrorDescriptor;
+const pdf_lib_1 = require("pdf-lib");
 exports.HARULAW_ALLOWED_ATTACHMENT_MIME_TYPES = [
     'image/png',
     'image/jpeg',
@@ -30,7 +31,6 @@ const TEMPORARY_ERROR_CODES = new Set([
     'DEADLINE_EXCEEDED',
 ]);
 exports.HARULAW_LAW_API_MAX_ATTEMPTS = 3;
-const MAX_PDF_STRUCTURE_SCAN_BYTES = 1024 * 1024;
 class HaruLawApiTemporaryError extends Error {
     constructor(error) {
         super('LAW_API_TEMPORARY_UNAVAILABLE');
@@ -53,280 +53,7 @@ function isIsoBmffHeif(bytes) {
     return ['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'heif', 'mif1', 'msf1']
         .some((brand) => brands.includes(brand));
 }
-function getPdfStructureTail(bytes) {
-    const start = Math.max(0, bytes.byteLength - MAX_PDF_STRUCTURE_SCAN_BYTES);
-    return bytes.subarray(start);
-}
-function isPdfWhitespace(byte) {
-    return byte === 0x00 || byte === 0x09 || byte === 0x0a || byte === 0x0c || byte === 0x0d || byte === 0x20;
-}
-function matchesAsciiAt(bytes, offset, value) {
-    return offset >= 0
-        && offset + value.length <= bytes.length
-        && [...value].every((char, index) => bytes[offset + index] === char.charCodeAt(0));
-}
-function isPdfDelimiter(byte) {
-    return isPdfWhitespace(byte)
-        || byte === 0x28 || byte === 0x29 || byte === 0x3c || byte === 0x3e
-        || byte === 0x5b || byte === 0x5d || byte === 0x7b || byte === 0x7d
-        || byte === 0x2f || byte === 0x25;
-}
-function skipPdfWhitespaceAndComments(bytes, from) {
-    let cursor = from;
-    while (cursor < bytes.length) {
-        if (isPdfWhitespace(bytes[cursor])) {
-            cursor += 1;
-            continue;
-        }
-        if (bytes[cursor] !== 0x25)
-            break;
-        while (cursor < bytes.length && bytes[cursor] !== 0x0a && bytes[cursor] !== 0x0d)
-            cursor += 1;
-    }
-    return cursor;
-}
-function decodePdfName(bytes, start, end) {
-    const decoded = [];
-    for (let index = start; index < end; index += 1) {
-        if (bytes[index] === 0x23 && index + 2 < end) {
-            const hex = String.fromCharCode(bytes[index + 1], bytes[index + 2]);
-            if (/^[0-9a-f]{2}$/i.test(hex)) {
-                decoded.push(Number.parseInt(hex, 16));
-                index += 2;
-                continue;
-            }
-        }
-        decoded.push(bytes[index]);
-    }
-    return Buffer.from(decoded).toString('latin1');
-}
-function readPdfIntegerToken(bytes, from) {
-    let cursor = skipPdfWhitespaceAndComments(bytes, from);
-    const start = cursor;
-    let value = 0;
-    while (cursor < bytes.length && bytes[cursor] >= 0x30 && bytes[cursor] <= 0x39) {
-        value = value * 10 + bytes[cursor] - 0x30;
-        cursor += 1;
-    }
-    return cursor > start && isPdfDelimiter(bytes[cursor]) ? { value, end: cursor } : null;
-}
-function extractPdfByteDictionaryDescriptor(bytes, searchFrom) {
-    const start = skipPdfWhitespaceAndComments(bytes, searchFrom);
-    if (bytes[start] !== 0x3c || bytes[start + 1] !== 0x3c)
-        return null;
-    let depth = 0;
-    let literalDepth = 0;
-    let escaped = false;
-    let inComment = false;
-    let arrayDepth = 0;
-    let inHexString = false;
-    let literalWasTopLevelValue = false;
-    let arrayWasTopLevelValue = false;
-    let hexWasTopLevelValue = false;
-    let topLevelExpectKey = true;
-    let topLevelValueStarted = false;
-    let pendingTopLevelKey = '';
-    let hasEncrypt = false;
-    let isXrefStream = false;
-    let previous;
-    for (let index = start; index < bytes.length - 1; index += 1) {
-        const byte = bytes[index];
-        const next = bytes[index + 1];
-        if (inComment) {
-            if (byte === 0x0a || byte === 0x0d)
-                inComment = false;
-            continue;
-        }
-        if (literalDepth > 0) {
-            if (escaped) {
-                escaped = false;
-            }
-            else if (byte === 0x5c) {
-                escaped = true;
-            }
-            else if (byte === 0x28) {
-                literalDepth += 1;
-            }
-            else if (byte === 0x29) {
-                literalDepth -= 1;
-                if (literalDepth === 0 && literalWasTopLevelValue) {
-                    topLevelExpectKey = true;
-                    literalWasTopLevelValue = false;
-                }
-            }
-            continue;
-        }
-        if (inHexString) {
-            if (byte === 0x3e) {
-                inHexString = false;
-                if (hexWasTopLevelValue) {
-                    topLevelExpectKey = true;
-                    hexWasTopLevelValue = false;
-                }
-            }
-            continue;
-        }
-        if (arrayDepth > 0) {
-            if (byte === 0x25) {
-                inComment = true;
-            }
-            else if (byte === 0x28) {
-                literalDepth = 1;
-            }
-            else if (byte === 0x5b) {
-                arrayDepth += 1;
-            }
-            else if (byte === 0x5d) {
-                arrayDepth -= 1;
-                if (arrayDepth === 0 && arrayWasTopLevelValue) {
-                    topLevelExpectKey = true;
-                    arrayWasTopLevelValue = false;
-                }
-            }
-            continue;
-        }
-        if (byte === 0x25) {
-            inComment = true;
-        }
-        else if (byte === 0x28) {
-            literalDepth = 1;
-            literalWasTopLevelValue = depth === 1 && !topLevelExpectKey;
-        }
-        else if (byte === 0x5b) {
-            arrayDepth = 1;
-            arrayWasTopLevelValue = depth === 1 && !topLevelExpectKey;
-        }
-        else if (byte === 0x3c && next !== 0x3c) {
-            inHexString = true;
-            hexWasTopLevelValue = depth === 1 && !topLevelExpectKey;
-        }
-        else if (byte === 0x3c && next === 0x3c) {
-            const nestedTopLevelValue = depth === 1 && !topLevelExpectKey;
-            depth += 1;
-            index += 1;
-            if (nestedTopLevelValue)
-                topLevelValueStarted = true;
-        }
-        else if (byte === 0x3e && next === 0x3e) {
-            depth -= 1;
-            index += 1;
-            if (depth === 0) {
-                return {
-                    hasEncrypt,
-                    ...(previous !== undefined ? { previous } : {}),
-                    ...(isXrefStream ? { isXrefStream: true } : {}),
-                };
-            }
-            if (depth === 1 && topLevelValueStarted) {
-                topLevelExpectKey = true;
-                topLevelValueStarted = false;
-            }
-        }
-        else if (depth === 1 && byte === 0x2f) {
-            let nameEnd = index + 1;
-            while (nameEnd < bytes.length && !isPdfDelimiter(bytes[nameEnd]))
-                nameEnd += 1;
-            const name = decodePdfName(bytes, index + 1, nameEnd);
-            const isKey = topLevelExpectKey || topLevelValueStarted;
-            if (isKey) {
-                pendingTopLevelKey = name;
-                hasEncrypt || (hasEncrypt = name === 'Encrypt');
-                if (name === 'Prev') {
-                    let digitIndex = skipPdfWhitespaceAndComments(bytes, nameEnd);
-                    let value = 0;
-                    const digitStart = digitIndex;
-                    while (digitIndex < bytes.length && bytes[digitIndex] >= 0x30 && bytes[digitIndex] <= 0x39) {
-                        value = value * 10 + bytes[digitIndex] - 0x30;
-                        digitIndex += 1;
-                    }
-                    if (digitIndex > digitStart)
-                        previous = value;
-                }
-                topLevelExpectKey = false;
-                topLevelValueStarted = false;
-            }
-            else {
-                if (pendingTopLevelKey === 'Type' && name === 'XRef')
-                    isXrefStream = true;
-                pendingTopLevelKey = '';
-                topLevelExpectKey = true;
-            }
-            index = nameEnd - 1;
-        }
-        else if (depth === 1 && !topLevelExpectKey && !isPdfWhitespace(byte)) {
-            topLevelValueStarted = true;
-        }
-    }
-    return null;
-}
-function getLargePdfXrefDescriptor(bytes, xrefOffset) {
-    let cursor = skipPdfWhitespaceAndComments(bytes, xrefOffset);
-    if (!matchesAsciiAt(bytes, cursor, 'xref')) {
-        const objectNumber = readPdfIntegerToken(bytes, cursor);
-        const generation = objectNumber && readPdfIntegerToken(bytes, objectNumber.end);
-        cursor = generation ? skipPdfWhitespaceAndComments(bytes, generation.end) : -1;
-        if (cursor < 0 || !matchesAsciiAt(bytes, cursor, 'obj') || !isPdfDelimiter(bytes[cursor + 3]))
-            return null;
-        const descriptor = extractPdfByteDictionaryDescriptor(bytes, cursor + 3);
-        return (descriptor === null || descriptor === void 0 ? void 0 : descriptor.isXrefStream) ? descriptor : null;
-    }
-    const trailerToken = 'trailer';
-    let inComment = false;
-    for (let index = cursor + 4; index <= bytes.length - trailerToken.length; index += 1) {
-        if (inComment) {
-            if (bytes[index] === 0x0a || bytes[index] === 0x0d)
-                inComment = false;
-            continue;
-        }
-        if (bytes[index] === 0x25) {
-            inComment = true;
-            continue;
-        }
-        if (matchesAsciiAt(bytes, index, trailerToken)
-            && isPdfDelimiter(bytes[index - 1])
-            && isPdfDelimiter(bytes[index + trailerToken.length])) {
-            return extractPdfByteDictionaryDescriptor(bytes, index + trailerToken.length);
-        }
-    }
-    return null;
-}
-function hasPdfEncryptionDictionary(bytes) {
-    const tail = getPdfStructureTail(bytes);
-    let xrefOffset = Number.NaN;
-    let inComment = false;
-    for (let index = 0; index <= tail.length - 9; index += 1) {
-        if (inComment) {
-            if (tail[index] === 0x0a || tail[index] === 0x0d)
-                inComment = false;
-            continue;
-        }
-        if (tail[index] === 0x25) {
-            inComment = true;
-            continue;
-        }
-        if (matchesAsciiAt(tail, index, 'startxref')
-            && (index === 0 || isPdfDelimiter(tail[index - 1]))
-            && isPdfDelimiter(tail[index + 9])) {
-            const offset = readPdfIntegerToken(tail, index + 9);
-            if (offset)
-                xrefOffset = offset.value;
-        }
-    }
-    while (Number.isSafeInteger(xrefOffset)) {
-        const descriptor = getLargePdfXrefDescriptor(bytes, xrefOffset);
-        if (!descriptor)
-            break;
-        if (descriptor.hasEncrypt)
-            return true;
-        if (descriptor.previous === undefined)
-            break;
-        if (descriptor.previous >= xrefOffset)
-            return true;
-        xrefOffset = descriptor.previous;
-    }
-    return false;
-}
-function getHaruLawAttachmentContentError(mimeType, bytes) {
+async function getHaruLawAttachmentContentError(mimeType, bytes) {
     const normalizedMimeType = String(mimeType || '').trim().toLowerCase();
     if (!isAllowedHaruLawAttachmentMime(normalizedMimeType)) {
         return 'ATTACHMENT_UNSUPPORTED_TYPE';
@@ -335,7 +62,10 @@ function getHaruLawAttachmentContentError(mimeType, bytes) {
         if (bytes.length < 8 || !startsWithBytes(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d])) {
             return 'ATTACHMENT_PDF_UNREADABLE';
         }
-        if (hasPdfEncryptionDictionary(bytes)) {
+        try {
+            await pdf_lib_1.PDFDocument.load(bytes, { updateMetadata: false });
+        }
+        catch {
             return 'ATTACHMENT_PDF_UNREADABLE';
         }
         return null;
@@ -450,6 +180,12 @@ function getHaruLawErrorDescriptor(reason) {
             return {
                 code: 'invalid-argument',
                 message: '첨부한 PDF를 읽을 수 없습니다.',
+                details: { reason, retryable: false },
+            };
+        case 'ATTACHMENT_TOTAL_SIZE_EXCEEDED':
+            return {
+                code: 'invalid-argument',
+                message: '첨부파일의 전체 크기가 50MiB를 초과했습니다.',
                 details: { reason, retryable: false },
             };
         case 'ATTACHMENT_UNSUPPORTED_TYPE':

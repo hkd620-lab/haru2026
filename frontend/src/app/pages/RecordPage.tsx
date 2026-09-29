@@ -21,6 +21,8 @@ import {
   type AssistantRecommendation,
 } from '../utils/assistantRecommendations';
 import {
+  HARULAW_ATTACH_MAX_TOTAL_BYTES,
+  HARULAW_ATTACH_MAX_PDF_BYTES,
   getHaruLawUserError,
   getHaruLawUserErrorByReason,
   hasReadableHaruLawPdfHeader,
@@ -65,12 +67,12 @@ const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
   'application/pdf',
 ]);
 const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
-const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
 
 type HaruLawAttachmentRef = {
   storagePath: string;
   mimeType: string;
   fileName: string;
+  sizeBytes?: number;
 };
 
 function getLawEasySummary(title?: string, article?: string, description?: string): string {
@@ -731,6 +733,19 @@ export function RecordPage() {
           toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB 이하)`);
           return;
         }
+      }
+      const selectedTotalBytes = toUpload.reduce((total, file) => total + file.size, 0);
+      const currentTotalBytes = lawAttachments.reduce(
+        (total, attachment) => total + (attachment.sizeBytes || 0),
+        0,
+      );
+      if (currentTotalBytes + selectedTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES) {
+        const userError = getHaruLawUserErrorByReason('ATTACHMENT_TOTAL_SIZE_EXCEEDED');
+        setLawError(userError);
+        toast.error(userError.title);
+        return;
+      }
+      for (const file of toUpload) {
         if (file.type === 'application/pdf') {
           let header: Uint8Array;
           try {
@@ -758,11 +773,11 @@ export function RecordPage() {
         const safeName = `${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
         const path = `users/${user.uid}/haruLawAttachments/${draftId}/${safeName}`;
         await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
-        uploaded.push({ storagePath: path, mimeType: file.type, fileName: file.name });
+        uploaded.push({ storagePath: path, mimeType: file.type, fileName: file.name, sizeBytes: file.size });
       }
       setLawAttachments((prev) => [...prev, ...uploaded]);
-    } catch (error) {
-      console.error('하루LAW 첨부 업로드 실패:', error);
+    } catch {
+      console.error('하루LAW 첨부 업로드 실패');
       toast.error('파일 업로드에 실패했습니다. 다시 시도해 주세요.');
     } finally {
       setUploadingLawFiles(false);
