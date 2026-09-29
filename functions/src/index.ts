@@ -3942,7 +3942,11 @@ const HARULAW_ATTACH_MAX_PDF_BYTES = 50_000_000;
 const HARULAW_ATTACH_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 const HARULAW_GEMINI_FILE_CLEANUP_COLLECTION = 'haruLawGeminiFileCleanup';
 const HARULAW_GEMINI_FILE_CLEANUP_DELAY_MS = 10 * 60 * 1000;
-const HARULAW_GEMINI_FILE_TIMEOUT_MS = 75_000;
+const HARULAW_CALLABLE_TIMEOUT_MS = 90_000;
+const HARULAW_GEMINI_FINALIZATION_RESERVE_MS = 15_000;
+// Stop starting/continuing uploads with enough callable time left for catch/finally.
+const HARULAW_GEMINI_FILE_TIMEOUT_MS = HARULAW_CALLABLE_TIMEOUT_MS
+  - HARULAW_GEMINI_FINALIZATION_RESERVE_MS;
 const HARULAW_GEMINI_FILE_DELETE_TIMEOUT_MS = 10_000;
 const HARULAW_GEMINI_FILE_NAME_PATTERN = /^files\/harulaw-[a-f0-9]{32}$/;
 
@@ -4123,16 +4127,17 @@ async function deleteTrackedHaruLawGeminiFiles(
   trackedFiles: TrackedHaruLawGeminiFile[],
 ): Promise<void> {
   if (!ai) return;
-  for (const tracked of trackedFiles) {
-    await deleteTrackedHaruLawGeminiFile(ai, tracked);
-  }
+  // At most five request-owned Files exist. Delete them concurrently so the
+  // 10-second per-delete cap fits inside the 15-second finalization reserve.
+  await Promise.all(trackedFiles.map((tracked) => deleteTrackedHaruLawGeminiFile(ai, tracked)));
 }
 
 async function uploadPreparedHaruLawAttachments(
-  ai: GoogleGenAI,
+  apiKey: string,
   prepared: PreparedHaruLawAttachments,
   uploadGroupId: string,
   trackedFiles: TrackedHaruLawGeminiFile[],
+  uploadDeadlineMs: number,
 ): Promise<HaruLawGeminiFilePart[]> {
   const fileParts: HaruLawGeminiFilePart[] = [];
   for (let index = 0; index < prepared.files.length; index += 1) {
@@ -4140,6 +4145,13 @@ async function uploadPreparedHaruLawAttachments(
     const name = getHaruLawGeminiFileName(uploadGroupId, index);
     const cleanupDocRef = getHaruLawGeminiCleanupDocRef(name);
     try {
+      const remainingUploadMs = Math.min(
+        HARULAW_GEMINI_FILE_TIMEOUT_MS,
+        uploadDeadlineMs - Date.now(),
+      );
+      if (remainingUploadMs <= 0) {
+        throw new Error('HARULAW_GEMINI_FILE_UPLOAD_DEADLINE_EXCEEDED');
+      }
       await cleanupDocRef.set({
         fileName: name,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -4147,7 +4159,11 @@ async function uploadPreparedHaruLawAttachments(
         attempts: 0,
       });
       trackedFiles.push({ name, cleanupDocRef });
-      const uploaded = await ai.files.upload({
+      const uploadClient = new GoogleGenAI({
+        apiKey,
+        httpOptions: { timeout: remainingUploadMs },
+      });
+      const uploaded = await uploadClient.files.upload({
         file: preparedFile.tempPath,
         config: {
           name,
@@ -4210,6 +4226,9 @@ export const chatWithResult = onCall(
     timeoutSeconds: 90,
   },
   async (request) => {
+    const requestStartedAt = Date.now();
+    const uploadDeadlineMs = requestStartedAt
+      + HARULAW_GEMINI_FILE_TIMEOUT_MS;
     if (!request.auth?.uid) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -4314,10 +4333,7 @@ export const chatWithResult = onCall(
 
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
       if (attachments.length > 0) {
-        haruLawFileClient = new GoogleGenAI({
-          apiKey: GEMINI_API_KEY_SECRET.value(),
-          httpOptions: { timeout: HARULAW_GEMINI_FILE_TIMEOUT_MS },
-        });
+        haruLawFileClient = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
       }
       const currentUsage = await getThreadWebSearchUsage(threadRef, actualPlan);
       const answerRoute: ResultAnswerRoute = searchPreference === 'web_confirmed' ? 'web_search' : 'record_only';
@@ -4567,7 +4583,13 @@ export const chatWithResult = onCall(
         ? await prepareHaruLawAttachments(uid, attachments)
         : null;
       const fileParts = preparedAttachments
-        ? await uploadPreparedHaruLawAttachments(haruLawFileClient!, preparedAttachments, requestId, trackedGeminiFiles)
+        ? await uploadPreparedHaruLawAttachments(
+          GEMINI_API_KEY_SECRET.value(),
+          preparedAttachments,
+          requestId,
+          trackedGeminiFiles,
+          uploadDeadlineMs,
+        )
         : [] as HaruLawGeminiFilePart[];
       const attachmentMeta = preparedAttachments?.attachmentMeta ?? [];
       haruLawProcessingStage = 'summary_ai';
@@ -9642,6 +9664,9 @@ export const lawSearch = onCall(
     concurrency: 1,
   },
   async (request) => {
+    const requestStartedAt = Date.now();
+    const uploadDeadlineMs = requestStartedAt
+      + HARULAW_GEMINI_FILE_TIMEOUT_MS;
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -9685,10 +9710,7 @@ export const lawSearch = onCall(
         ? await prepareHaruLawAttachments(uid, attachments)
         : null;
       if (preparedAttachments) {
-        haruLawFileClient = new GoogleGenAI({
-          apiKey: GEMINI_KEY,
-          httpOptions: { timeout: HARULAW_GEMINI_FILE_TIMEOUT_MS },
-        });
+        haruLawFileClient = new GoogleGenAI({ apiKey: GEMINI_KEY });
       }
 
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
@@ -9900,10 +9922,11 @@ export const lawSearch = onCall(
 		${lawText}`;
       const fileParts = preparedAttachments && haruLawFileClient
         ? await uploadPreparedHaruLawAttachments(
-          haruLawFileClient,
+          GEMINI_KEY,
           preparedAttachments,
           uploadGroupId,
           trackedGeminiFiles,
+          uploadDeadlineMs,
         )
         : [] as HaruLawGeminiFilePart[];
       const summaryContents: any = fileParts.length > 0

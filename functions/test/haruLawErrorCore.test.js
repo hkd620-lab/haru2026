@@ -168,6 +168,7 @@ async function run() {
   );
   assert.match(indexSource, /const HARULAW_ATTACH_MAX_PDF_BYTES = 50_000_000/);
   assert.match(indexSource, /const HARULAW_ATTACH_MAX_TOTAL_BYTES = 50 \* 1024 \* 1024/);
+  assert.match(indexSource, /const HARULAW_GEMINI_FINALIZATION_RESERVE_MS = 15_000/);
   assert.ok(
     attachmentLoaderSource.indexOf('await file.getMetadata()') < attachmentLoaderSource.indexOf('await file.download({ destination: tempPath })'),
     'all metadata validation must precede attachment downloads',
@@ -175,7 +176,10 @@ async function run() {
   assert.match(attachmentLoaderSource, /metadataTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES/);
   assert.match(attachmentLoaderSource, /downloadedTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES/);
   assert.match(attachmentLoaderSource, /await fs\.promises\.readFile\(tempPath\)/);
-  assert.match(attachmentLoaderSource, /ai\.files\.upload\(/);
+  assert.match(attachmentLoaderSource, /uploadDeadlineMs - Date\.now\(\)/);
+  assert.match(attachmentLoaderSource, /httpOptions: \{ timeout: remainingUploadMs \}/);
+  assert.match(attachmentLoaderSource, /uploadClient\.files\.upload\(/);
+  assert.match(attachmentLoaderSource, /Promise\.all\(trackedFiles\.map/);
   assert.match(attachmentLoaderSource, /fileParts\.push\(\{ fileData:/);
   assert.doesNotMatch(attachmentLoaderSource, /inlineData|toString\('base64'\)/);
   assert.match(attachmentLoaderSource, /export const cleanupHaruLawGeminiFiles = onSchedule\(/);

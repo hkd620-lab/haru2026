@@ -29,12 +29,15 @@ const pdfFixture = fs.readFileSync(path.resolve(__dirname, 'fixtures/harulaw-pdf
 const attachmentMetadataPaths = [];
 const attachmentDownloadPaths = [];
 const geminiFileUploads = [];
+const geminiFileUploadAttempts = [];
 const geminiFileDeletes = [];
 const googleGenAiClientOptions = [];
 const activeGeminiFiles = new Set();
 let geminiFileUploadAttemptCount = 0;
 let failGeminiFileUploadAtAttempt = 0;
 let forceGeminiFileDeleteError = false;
+let geminiFileUploadDelayQueueMs = [];
+let advanceControlledClock = null;
 
 function makePaddedPdf(size) {
   const result = Buffer.alloc(size, 0x20);
@@ -134,6 +137,17 @@ class InstrumentedGoogleGenAI {
       upload: async (params) => {
         geminiFileUploadAttemptCount += 1;
         if (this.inner) return this.inner.files.upload(params);
+        const clientTimeout = options?.httpOptions?.timeout ?? null;
+        const injectedDelayMs = geminiFileUploadDelayQueueMs.shift() ?? 0;
+        geminiFileUploadAttempts.push({ clientTimeout, injectedDelayMs });
+        if (injectedDelayMs > 0 && advanceControlledClock) {
+          advanceControlledClock(injectedDelayMs);
+        }
+        if (clientTimeout !== null && injectedDelayMs > clientTimeout) {
+          const error = new Error('injected_file_upload_timeout');
+          error.code = 'ETIMEDOUT';
+          throw error;
+        }
         if (failGeminiFileUploadAtAttempt === geminiFileUploadAttemptCount) {
           const error = new Error('injected_file_upload_failure');
           error.code = 503;
@@ -1000,6 +1014,63 @@ async function run() {
   assert.strictEqual(retryAfterUploadFailure.answerRoute, 'record_only');
   assert.strictEqual(activeGeminiFiles.size, 0);
 
+  await resetResultChatRateLimit(USERS.developer);
+  const deadlineMonthlyBefore = await getMonthlyUsed(USERS.developer);
+  const deadlineThreadBefore = await getThread(USERS.developer, 'law', 'haruraw_sayu');
+  const deadlineMessagesBefore = (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length;
+  const deadlineAttemptsBefore = geminiFileUploadAttempts.length;
+  const deadlineDeletesBefore = geminiFileDeletes.length;
+  const originalDateNow = Date.now;
+  let controlledNowMs = originalDateNow();
+  Date.now = () => controlledNowMs;
+  advanceControlledClock = (elapsedMs) => { controlledNowMs += elapsedMs; };
+  geminiFileUploadDelayQueueMs = [60_000, 16_000];
+  try {
+    await assert.rejects(
+      callable(USERS.developer, {
+        recordId: 'law',
+        sourceKey: 'haruraw_sayu',
+        question: '누적 업로드 마감과 롤백을 확인해줘.',
+        searchPreference: 'web_confirmed',
+        attachments: mixedAttachments.slice(0, 2),
+      }),
+      (error) => error?.code === 'unavailable'
+        && error?.details?.reason === 'HARULAW_AI_TEMPORARY_UNAVAILABLE',
+    );
+  } finally {
+    Date.now = originalDateNow;
+    advanceControlledClock = null;
+    geminiFileUploadDelayQueueMs = [];
+  }
+  const deadlineAttempts = geminiFileUploadAttempts.slice(deadlineAttemptsBefore);
+  assert.deepStrictEqual(deadlineAttempts.map((attempt) => attempt.injectedDelayMs), [60_000, 16_000]);
+  assert.deepStrictEqual(deadlineAttempts.map((attempt) => attempt.clientTimeout), [75_000, 15_000]);
+  assert.ok(geminiFileDeletes.length >= deadlineDeletesBefore + 2);
+  assert.strictEqual(activeGeminiFiles.size, 0);
+  assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
+  assert.strictEqual(await getMonthlyUsed(USERS.developer), deadlineMonthlyBefore);
+  await assertThreadSearchUsage(
+    USERS.developer,
+    'law',
+    'haruraw_sayu',
+    deadlineThreadBefore.webSearchUsedCount || 0,
+    0,
+  );
+  assert.strictEqual(
+    (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length,
+    deadlineMessagesBefore,
+  );
+
+  const retryAfterDeadline = await callable(USERS.developer, {
+    recordId: 'law',
+    sourceKey: 'haruraw_sayu',
+    question: '누적 업로드 timeout 뒤 재시도를 확인해줘.',
+    searchPreference: 'record_only',
+    attachments: mixedAttachments.slice(0, 2),
+  });
+  assert.strictEqual(retryAfterDeadline.answerRoute, 'record_only');
+  assert.strictEqual(activeGeminiFiles.size, 0);
+
   forceGeminiFileDeleteError = true;
   const deleteFailureResult = await callable(USERS.developer, {
     recordId: 'law',
@@ -1129,6 +1200,34 @@ async function run() {
       && error?.details?.retryable === false,
   );
 
+  const lawDeadlineAttemptsBefore = geminiFileUploadAttempts.length;
+  const lawDeadlineDeletesBefore = geminiFileDeletes.length;
+  const originalLawDateNow = Date.now;
+  let controlledLawNowMs = originalLawDateNow();
+  Date.now = () => controlledLawNowMs;
+  advanceControlledClock = (elapsedMs) => { controlledLawNowMs += elapsedMs; };
+  geminiFileUploadDelayQueueMs = [60_000, 16_000];
+  try {
+    await assert.rejects(
+      lawCallable(USERS.developer, {
+        query: '누적 업로드 제한이 적용되는 민법 조항을 알려줘.',
+        attachments: mixedAttachments.slice(0, 2),
+      }),
+      (error) => error?.code === 'unavailable'
+        && error?.details?.reason === 'HARULAW_AI_TEMPORARY_UNAVAILABLE',
+    );
+  } finally {
+    Date.now = originalLawDateNow;
+    advanceControlledClock = null;
+    geminiFileUploadDelayQueueMs = [];
+  }
+  const lawDeadlineAttempts = geminiFileUploadAttempts.slice(lawDeadlineAttemptsBefore);
+  assert.deepStrictEqual(lawDeadlineAttempts.map((attempt) => attempt.injectedDelayMs), [60_000, 16_000]);
+  assert.deepStrictEqual(lawDeadlineAttempts.map((attempt) => attempt.clientTimeout), [75_000, 15_000]);
+  assert.ok(geminiFileDeletes.length >= lawDeadlineDeletesBefore + 2);
+  assert.strictEqual(activeGeminiFiles.size, 0);
+  assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
+
   const lawSearchUploadsBefore = geminiFileUploads.length;
   const lawSearchLegacyCallsBefore = legacyGenaiCalls.length;
   const lawSearchResult = await lawCallable(USERS.developer, {
@@ -1138,7 +1237,7 @@ async function run() {
   assert.strictEqual(lawSearchResult.success, true);
   assert.strictEqual(geminiFileUploads.length, lawSearchUploadsBefore + 1);
   assert.ok(geminiFileUploads.every((upload) => upload.requestTimeout === null));
-  assert.ok(geminiFileUploads.every((upload) => upload.clientTimeout === 75_000));
+  assert.ok(geminiFileUploads.every((upload) => upload.clientTimeout > 0 && upload.clientTimeout <= 75_000));
   assert.ok(googleGenAiClientOptions.some((options) => options.timeout === null));
   assert.ok(googleGenAiClientOptions.some((options) => options.timeout === 75_000));
   const lawSearchCalls = legacyGenaiCalls.slice(lawSearchLegacyCallsBefore);
