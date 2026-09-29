@@ -332,6 +332,8 @@ async function run() {
     classifyHaruLawAiError({ response: { status: 400, data: { error: 'PDF failed to parse' } } }, true),
     'ATTACHMENT_CONTENT_UNREADABLE',
   );
+  assert.equal(classifyHaruLawAiError({ message: 'Unable to process attached files' }, true), 'ATTACHMENT_CONTENT_UNREADABLE');
+  assert.equal(classifyHaruLawAiError({ message: 'Uploaded images failed to decode' }, true), 'ATTACHMENT_CONTENT_UNREADABLE');
   assert.equal(
     classifyHaruLawAiError({ response: { status: 429 }, message: 'raw provider failure' }, true),
     'HARULAW_AI_TEMPORARY_UNAVAILABLE',
