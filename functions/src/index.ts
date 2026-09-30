@@ -91,6 +91,11 @@ import {
   type LoginOAuthProvider,
 } from './oauthStateCore';
 import {
+  buildGoogleTokenRequestBody,
+  buildOAuthPhaseLog,
+  type OAuthCallbackPhase,
+} from './oauthCallbackDiagnostics';
+import {
   LAW_EASY_EXPLAIN_PROMPT_VERSION,
   LawEasyExplainInputError,
   buildLawConsultCacheKey,
@@ -5820,6 +5825,26 @@ export const googleCallback = onRequest(
   },
   async (req, res) => {
     let frontendOrigin = FRONTEND_URL;
+    const requestId = crypto.randomUUID();
+    let currentPhase: OAuthCallbackPhase = 'token_exchange';
+    let phaseStartedAt = Date.now();
+    const logPhase = (
+      phase: OAuthCallbackPhase,
+      outcome: 'success' | 'error',
+      httpStatus: number | null,
+      error?: unknown,
+    ) => logger[outcome === 'success' ? 'info' : 'error'](
+      'Google OAuth callback phase',
+      buildOAuthPhaseLog({
+        requestId,
+        provider: 'google',
+        phase,
+        outcome,
+        httpStatus,
+        elapsedMs: Date.now() - phaseStartedAt,
+        error,
+      }),
+    );
     try {
       const callbackStartedAt = Date.now();
       const timings: Record<string, number> = {};
@@ -5834,24 +5859,32 @@ export const googleCallback = onRequest(
       frontendOrigin = resolveLoginFrontendOrigin(oauthState?.returnOrigin);
       const callbackCode = getLoginOAuthCallbackCode(code, providerError);
 
+      currentPhase = 'token_exchange';
+      phaseStartedAt = Date.now();
+      const tokenRequestBody = buildGoogleTokenRequestBody({
+        code: callbackCode,
+        clientId: GOOGLE_CLIENT_ID,
+        clientSecret: GOOGLE_CLIENT_SECRET,
+        redirectUri: GOOGLE_REDIRECT_URI,
+      });
       const tokenResponse = await measureOAuthPhase(
         timings,
         'tokenMs',
         () => axios.post(
           'https://oauth2.googleapis.com/token',
+          tokenRequestBody.toString(),
           {
-            code: callbackCode,
-            client_id: GOOGLE_CLIENT_ID,
-            client_secret: GOOGLE_CLIENT_SECRET,
-            redirect_uri: GOOGLE_REDIRECT_URI,
-            grant_type: 'authorization_code',
-          },
-          { timeout: OAUTH_TOKEN_TIMEOUT_MS }
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: OAUTH_TOKEN_TIMEOUT_MS,
+          }
         )
       );
+      logPhase('token_exchange', 'success', tokenResponse.status);
 
       const { access_token } = tokenResponse.data;
 
+      currentPhase = 'userinfo';
+      phaseStartedAt = Date.now();
       const userResponse = await measureOAuthPhase(
         timings,
         'profileMs',
@@ -5863,7 +5896,10 @@ export const googleCallback = onRequest(
           }
         )
       );
+      logPhase('userinfo', 'success', userResponse.status);
 
+      currentPhase = 'custom_token';
+      phaseStartedAt = Date.now();
       const googleUser = userResponse.data;
 
       const email = googleUser.email;
@@ -5890,12 +5926,17 @@ export const googleCallback = onRequest(
         'customTokenMs',
         () => admin.auth().createCustomToken(uid),
       );
+      logPhase('custom_token', 'success', null);
 
       logOAuthCallbackCompleted('google', callbackStartedAt, timings);
+      currentPhase = 'app_redirect';
+      phaseStartedAt = Date.now();
       res.redirect(buildFrontendAuthCallbackUrl(customToken, 'google', frontendOrigin));
+      logPhase('app_redirect', 'success', 302);
 
     } catch (error: any) {
-      logger.error('❌ 구글 콜백 실패:', getSafeOAuthError(error));
+      const status = axios.isAxiosError(error) ? error.response?.status : null;
+      logPhase(currentPhase, 'error', typeof status === 'number' ? status : null, error);
       res.redirect(buildLoginErrorRedirect('google', frontendOrigin));
     }
   }

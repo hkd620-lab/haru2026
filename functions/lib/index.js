@@ -37,8 +37,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.recoverSubscriptionBillingRequest = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.cleanupHeicTemp = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.cleanupHaruLawGeminiFiles = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.getSnsThumbnailData = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = void 0;
-exports.generateSnsStoryFinal = exports.generateSnsStorySynopsis = exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = exports.getSubscriptionRefundEligibility = exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = void 0;
+exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.deleteAiLibraryLogs = exports.saveAiLibraryImport = exports.listAiLibraryLogs = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.getSnsThumbnailData = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = void 0;
+exports.generateSnsStoryFinal = exports.generateSnsStorySynopsis = exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = exports.getSubscriptionRefundEligibility = exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -66,6 +66,7 @@ const PortOne = __importStar(require("@portone/server-sdk"));
 const monthlyAiQuota_1 = require("./utils/monthlyAiQuota");
 const internalEntitlements_1 = require("./internalEntitlements");
 const oauthStateCore_1 = require("./oauthStateCore");
+const oauthCallbackDiagnostics_1 = require("./oauthCallbackDiagnostics");
 const lawEasyExplainCore_1 = require("./lawEasyExplainCore");
 const haruLawErrorCore_1 = require("./haruLawErrorCore");
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
@@ -4970,7 +4971,20 @@ exports.googleCallback = (0, https_1.onRequest)({
     memory: '512MiB',
     secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET] // 🔐 Secret 연결
 }, async (req, res) => {
+    var _a;
     let frontendOrigin = FRONTEND_URL;
+    const requestId = crypto.randomUUID();
+    let currentPhase = 'token_exchange';
+    let phaseStartedAt = Date.now();
+    const logPhase = (phase, outcome, httpStatus, error) => logger[outcome === 'success' ? 'info' : 'error']('Google OAuth callback phase', (0, oauthCallbackDiagnostics_1.buildOAuthPhaseLog)({
+        requestId,
+        provider: 'google',
+        phase,
+        outcome,
+        httpStatus,
+        elapsedMs: Date.now() - phaseStartedAt,
+        error,
+    }));
     try {
         const callbackStartedAt = Date.now();
         const timings = {};
@@ -4982,44 +4996,62 @@ exports.googleCallback = (0, https_1.onRequest)({
         const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'google'));
         frontendOrigin = (0, oauthStateCore_1.resolveLoginFrontendOrigin)(oauthState === null || oauthState === void 0 ? void 0 : oauthState.returnOrigin);
         const callbackCode = (0, oauthStateCore_1.getLoginOAuthCallbackCode)(code, providerError);
-        const tokenResponse = await measureOAuthPhase(timings, 'tokenMs', () => axios_1.default.post('https://oauth2.googleapis.com/token', {
+        currentPhase = 'token_exchange';
+        phaseStartedAt = Date.now();
+        const tokenRequestBody = (0, oauthCallbackDiagnostics_1.buildGoogleTokenRequestBody)({
             code: callbackCode,
-            client_id: GOOGLE_CLIENT_ID,
-            client_secret: GOOGLE_CLIENT_SECRET,
-            redirect_uri: GOOGLE_REDIRECT_URI,
-            grant_type: 'authorization_code',
-        }, { timeout: OAUTH_TOKEN_TIMEOUT_MS }));
+            clientId: GOOGLE_CLIENT_ID,
+            clientSecret: GOOGLE_CLIENT_SECRET,
+            redirectUri: GOOGLE_REDIRECT_URI,
+        });
+        const tokenResponse = await measureOAuthPhase(timings, 'tokenMs', () => axios_1.default.post('https://oauth2.googleapis.com/token', tokenRequestBody.toString(), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: OAUTH_TOKEN_TIMEOUT_MS,
+        }));
+        logPhase('token_exchange', 'success', tokenResponse.status);
         const { access_token } = tokenResponse.data;
+        currentPhase = 'userinfo';
+        phaseStartedAt = Date.now();
         const userResponse = await measureOAuthPhase(timings, 'profileMs', () => axios_1.default.get('https://www.googleapis.com/oauth2/v2/userinfo', {
             headers: { Authorization: `Bearer ${access_token}` },
             timeout: OAUTH_PROFILE_TIMEOUT_MS,
         }));
+        logPhase('userinfo', 'success', userResponse.status);
+        currentPhase = 'custom_token';
+        phaseStartedAt = Date.now();
         const googleUser = userResponse.data;
         const email = googleUser.email;
         if (!email || typeof email !== 'string')
             throw new Error('Google email missing');
+        if (googleUser.verified_email !== true)
+            throw new Error('Google email is not verified');
         const displayName = googleUser.name || `google_user_${googleUser.id}`;
         const photoURL = googleUser.picture || null;
         // 🔑 통합 UID 생성/조회
         const uid = await measureOAuthPhase(timings, 'uidMs', () => getOrCreateUnifiedUid(email, 'google'));
         await measureOAuthPhase(timings, 'authUserMs', async () => {
             try {
-                await admin.auth().updateUser(uid, { email, displayName, photoURL });
+                await admin.auth().updateUser(uid, { email, emailVerified: true, displayName, photoURL });
             }
             catch (error) {
                 if (error.code === 'auth/user-not-found') {
-                    await admin.auth().createUser({ uid, email, displayName, photoURL });
+                    await admin.auth().createUser({ uid, email, emailVerified: true, displayName, photoURL });
                 }
                 else
                     throw error;
             }
         });
         const customToken = await measureOAuthPhase(timings, 'customTokenMs', () => admin.auth().createCustomToken(uid));
+        logPhase('custom_token', 'success', null);
         logOAuthCallbackCompleted('google', callbackStartedAt, timings);
+        currentPhase = 'app_redirect';
+        phaseStartedAt = Date.now();
         res.redirect(buildFrontendAuthCallbackUrl(customToken, 'google', frontendOrigin));
+        logPhase('app_redirect', 'success', 302);
     }
     catch (error) {
-        logger.error('❌ 구글 콜백 실패:', getSafeOAuthError(error));
+        const status = axios_1.default.isAxiosError(error) ? (_a = error.response) === null || _a === void 0 ? void 0 : _a.status : null;
+        logPhase(currentPhase, 'error', typeof status === 'number' ? status : null, error);
         res.redirect(buildLoginErrorRedirect('google', frontendOrigin));
     }
 });
@@ -9912,6 +9944,10 @@ var generateLawsuitClaimReason_1 = require("./generateLawsuitClaimReason");
 Object.defineProperty(exports, "generateLawsuitClaimReason", { enumerable: true, get: function () { return generateLawsuitClaimReason_1.generateLawsuitClaimReason; } });
 var bookMaterial_1 = require("./bookMaterial");
 Object.defineProperty(exports, "convertToBookMaterial", { enumerable: true, get: function () { return bookMaterial_1.convertToBookMaterial; } });
+var aiLibrary_1 = require("./aiLibrary");
+Object.defineProperty(exports, "listAiLibraryLogs", { enumerable: true, get: function () { return aiLibrary_1.listAiLibraryLogs; } });
+Object.defineProperty(exports, "saveAiLibraryImport", { enumerable: true, get: function () { return aiLibrary_1.saveAiLibraryImport; } });
+Object.defineProperty(exports, "deleteAiLibraryLogs", { enumerable: true, get: function () { return aiLibrary_1.deleteAiLibraryLogs; } });
 var elderBook_1 = require("./elderBook");
 Object.defineProperty(exports, "gatherElderBookSources", { enumerable: true, get: function () { return elderBook_1.gatherElderBookSources; } });
 Object.defineProperty(exports, "buildElderBookOutline", { enumerable: true, get: function () { return elderBook_1.buildElderBookOutline; } });
