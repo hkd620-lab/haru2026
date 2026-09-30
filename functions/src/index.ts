@@ -4059,7 +4059,7 @@ function isHaruLawDeadlineAbortError(error: unknown): boolean {
     || candidate?.code === 20;
 }
 
-async function runHaruLawReadBeforeDeadline<T>(
+async function runHaruLawOperationBeforeDeadline<T>(
   deadlineMs: number,
   operation: () => Promise<T>,
 ): Promise<T> {
@@ -4121,6 +4121,7 @@ async function settleHaruLawRollbacksBeforeDeadline(
 async function commitAttachedResultChatSuccessBeforeDeadline(
   params: Parameters<typeof commitAttachedResultChatSuccess>[0],
   deadlineMs: number,
+  recoveryDeadlineMs: number,
 ): Promise<WebSearchUsage> {
   const remainingMs = getHaruLawRemainingWorkMs(deadlineMs);
   let timeout: NodeJS.Timeout | null = null;
@@ -4141,14 +4142,20 @@ async function commitAttachedResultChatSuccessBeforeDeadline(
   // Change the thread version and clear this request's lock. The success
   // transaction reads the same document and has maxAttempts=1, so it cannot
   // commit after this fence. If it won the race first, its marker is preserved.
-  await params.exchange.threadRef.set({
-    activeRequestId: admin.firestore.FieldValue.delete(),
-    activeRequestStartedMs: admin.firestore.FieldValue.delete(),
-    activeRequestStartedAt: admin.firestore.FieldValue.delete(),
-    lastCancelledRequestId: params.requestId,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
-  const fencedSnap = await params.exchange.threadRef.get();
+  await runHaruLawOperationBeforeDeadline(
+    recoveryDeadlineMs,
+    () => params.exchange.threadRef.set({
+      activeRequestId: admin.firestore.FieldValue.delete(),
+      activeRequestStartedMs: admin.firestore.FieldValue.delete(),
+      activeRequestStartedAt: admin.firestore.FieldValue.delete(),
+      lastCancelledRequestId: params.requestId,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true }),
+  );
+  const fencedSnap = await runHaruLawOperationBeforeDeadline(
+    recoveryDeadlineMs,
+    () => params.exchange.threadRef.get(),
+  );
   commitPromise.catch(() => {});
   if (String(fencedSnap.data()?.lastCommittedRequestId || '') === params.requestId) {
     return getWebSearchUsageFromData(fencedSnap.data(), params.plan);
@@ -4221,7 +4228,7 @@ async function prepareHaruLawAttachments(
       const file = bucket().file(att.storagePath);
       let metadata: any;
       try {
-        [metadata] = await runHaruLawReadBeforeDeadline(
+        [metadata] = await runHaruLawOperationBeforeDeadline(
           workDeadlineMs,
           () => file.getMetadata(),
         );
@@ -4257,7 +4264,7 @@ async function prepareHaruLawAttachments(
       const { attachment: att, file, effectiveMimeType, sizeLimit } = validatedAttachments[index];
       const tempPath = path.join(tempDir, `${index}.upload`);
       try {
-        await runHaruLawReadBeforeDeadline(
+        await runHaruLawOperationBeforeDeadline(
           workDeadlineMs,
           () => file.download({ destination: tempPath }).then(() => undefined),
         );
@@ -4976,6 +4983,7 @@ export const chatWithResult = onCall(
         usageForAnswer = await commitAttachedResultChatSuccessBeforeDeadline(
           { exchange, usageLog, plan: actualPlan, requestId },
           requestFinalizationDeadlineMs,
+          requestRollbackDeadlineMs,
         );
         if (answerRoute === 'web_search') webSearchFinalized = true;
       } else {

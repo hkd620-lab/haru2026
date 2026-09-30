@@ -186,10 +186,10 @@ async function run() {
   assert.match(indexSource, /function getHaruLawRemainingWorkMs\(workDeadlineMs: number\)/);
   assert.match(indexSource, /candidate\?\.name === 'GoogleGenerativeAIAbortError'/);
   assert.match(indexSource, /async function runHaruLawModelBeforeDeadline<T>/);
-  assert.match(indexSource, /async function runHaruLawReadBeforeDeadline<T>/);
+  assert.match(indexSource, /async function runHaruLawOperationBeforeDeadline<T>/);
   assert.match(attachmentLoaderSource, /httpOptions: \{ timeout: remainingUploadMs \}/);
-  assert.match(attachmentLoaderSource, /runHaruLawReadBeforeDeadline\([\s\S]{0,120}\(\) => file\.getMetadata\(\)/);
-  assert.match(attachmentLoaderSource, /runHaruLawReadBeforeDeadline\([\s\S]{0,160}\(\) => file\.download\(\{ destination: tempPath \}\)/);
+  assert.match(attachmentLoaderSource, /runHaruLawOperationBeforeDeadline\([\s\S]{0,120}\(\) => file\.getMetadata\(\)/);
+  assert.match(attachmentLoaderSource, /runHaruLawOperationBeforeDeadline\([\s\S]{0,160}\(\) => file\.download\(\{ destination: tempPath \}\)/);
   assert.match(attachmentLoaderSource, /uploadClient\.files\.upload\(/);
   assert.match(attachmentLoaderSource, /Promise\.all\(\s*trackedFiles\.map/);
   assert.ok(
@@ -207,6 +207,8 @@ async function run() {
   assert.match(indexSource, /return db\.runTransaction\([\s\S]{0,2600}\{ maxAttempts: 1 \}\)/);
   assert.match(indexSource, /lastCommittedRequestId: params\.requestId/);
   assert.match(indexSource, /lastCancelledRequestId: params\.requestId/);
+  assert.match(indexSource, /runHaruLawOperationBeforeDeadline\(\s*recoveryDeadlineMs,[\s\S]{0,480}threadRef\.set/);
+  assert.match(indexSource, /runHaruLawOperationBeforeDeadline\(\s*recoveryDeadlineMs,[\s\S]{0,160}threadRef\.get/);
   assert.match(indexSource, /usageForAnswer = await commitAttachedResultChatSuccessBeforeDeadline/);
   assert.match(indexSource, /await deleteTrackedHaruLawGeminiFiles\(haruLawFileClient, trackedGeminiFiles\)[\s\S]{0,220}commitAttachedResultChatSuccessBeforeDeadline/);
   assert.match(indexSource, /settleHaruLawCleanupLedgerWrite\(tracked\.cleanupDocRef\.delete\(\)\)/);

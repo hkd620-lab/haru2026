@@ -3436,7 +3436,7 @@ function isHaruLawDeadlineAbortError(error) {
         || (candidate === null || candidate === void 0 ? void 0 : candidate.name) === 'GoogleGenerativeAIAbortError'
         || (candidate === null || candidate === void 0 ? void 0 : candidate.code) === 20;
 }
-async function runHaruLawReadBeforeDeadline(deadlineMs, operation) {
+async function runHaruLawOperationBeforeDeadline(deadlineMs, operation) {
     const remainingMs = getHaruLawRemainingWorkMs(deadlineMs);
     let timeout = null;
     try {
@@ -3484,7 +3484,7 @@ async function settleHaruLawRollbacksBeforeDeadline(deadlineMs, rollbacks) {
         logger.warn('하루LAW 사용량 롤백이 함수 마감 전 완료되지 않음');
     }
 }
-async function commitAttachedResultChatSuccessBeforeDeadline(params, deadlineMs) {
+async function commitAttachedResultChatSuccessBeforeDeadline(params, deadlineMs, recoveryDeadlineMs) {
     var _a;
     const remainingMs = getHaruLawRemainingWorkMs(deadlineMs);
     let timeout = null;
@@ -3504,14 +3504,14 @@ async function commitAttachedResultChatSuccessBeforeDeadline(params, deadlineMs)
     // Change the thread version and clear this request's lock. The success
     // transaction reads the same document and has maxAttempts=1, so it cannot
     // commit after this fence. If it won the race first, its marker is preserved.
-    await params.exchange.threadRef.set({
+    await runHaruLawOperationBeforeDeadline(recoveryDeadlineMs, () => params.exchange.threadRef.set({
         activeRequestId: admin.firestore.FieldValue.delete(),
         activeRequestStartedMs: admin.firestore.FieldValue.delete(),
         activeRequestStartedAt: admin.firestore.FieldValue.delete(),
         lastCancelledRequestId: params.requestId,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-    const fencedSnap = await params.exchange.threadRef.get();
+    }, { merge: true }));
+    const fencedSnap = await runHaruLawOperationBeforeDeadline(recoveryDeadlineMs, () => params.exchange.threadRef.get());
     commitPromise.catch(() => { });
     if (String(((_a = fencedSnap.data()) === null || _a === void 0 ? void 0 : _a.lastCommittedRequestId) || '') === params.requestId) {
         return getWebSearchUsageFromData(fencedSnap.data(), params.plan);
@@ -3570,7 +3570,7 @@ async function prepareHaruLawAttachments(uid, attachments, workDeadlineMs) {
             const file = bucket().file(att.storagePath);
             let metadata;
             try {
-                [metadata] = await runHaruLawReadBeforeDeadline(workDeadlineMs, () => file.getMetadata());
+                [metadata] = await runHaruLawOperationBeforeDeadline(workDeadlineMs, () => file.getMetadata());
             }
             catch (error) {
                 if (error instanceof https_2.HttpsError)
@@ -3602,7 +3602,7 @@ async function prepareHaruLawAttachments(uid, attachments, workDeadlineMs) {
             const { attachment: att, file, effectiveMimeType, sizeLimit } = validatedAttachments[index];
             const tempPath = path.join(tempDir, `${index}.upload`);
             try {
-                await runHaruLawReadBeforeDeadline(workDeadlineMs, () => file.download({ destination: tempPath }).then(() => undefined));
+                await runHaruLawOperationBeforeDeadline(workDeadlineMs, () => file.download({ destination: tempPath }).then(() => undefined));
             }
             catch (error) {
                 if (error instanceof https_2.HttpsError)
@@ -4263,7 +4263,7 @@ exports.chatWithResult = (0, https_2.onCall)({
             await deleteTrackedHaruLawGeminiFiles(haruLawFileClient, trackedGeminiFiles);
             await removePreparedHaruLawAttachments(preparedAttachments);
             preparedAttachments = null;
-            usageForAnswer = await commitAttachedResultChatSuccessBeforeDeadline({ exchange, usageLog, plan: actualPlan, requestId }, requestFinalizationDeadlineMs);
+            usageForAnswer = await commitAttachedResultChatSuccessBeforeDeadline({ exchange, usageLog, plan: actualPlan, requestId }, requestFinalizationDeadlineMs, requestRollbackDeadlineMs);
             if (answerRoute === 'web_search')
                 webSearchFinalized = true;
         }
