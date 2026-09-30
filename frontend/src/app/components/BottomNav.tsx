@@ -2,6 +2,7 @@ import { Home, Sparkles, Settings, Wrench, Users, CreditCard } from 'lucide-reac
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { getOrigin } from '../services/v2Origin';
+import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -9,6 +10,7 @@ export function BottomNav() {
   const location = useLocation();
   const { user, loading } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
+  const canUseAiLibrary = hasAiLibraryAccess(user?.email, user?.emailVerified);
 
   const scrollToSayuTop = () => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -25,12 +27,12 @@ export function BottomNav() {
     { path: '/settings', icon: Settings, label: '설정' },
   ];
 
-  const navItems = isDeveloper
-    ? [
-        ...baseItems.slice(0, 4),
-        { path: '/admin/console', icon: Wrench, label: '개발자 콘솔' },
-        ...baseItems.slice(4),
-      ]
+  const developerItems = [
+    ...(canUseAiLibrary ? [{ path: '/ai-library', icon: Wrench, label: 'AI 학습함' }] : []),
+    ...(isDeveloper ? [{ path: '/admin/console', icon: Wrench, label: '개발자 콘솔' }] : []),
+  ];
+  const navItems = developerItems.length > 0
+    ? [...baseItems.slice(0, 4), ...developerItems, ...baseItems.slice(4)]
     : baseItems;
 
   if (loading || (!user && location.pathname === '/')) {

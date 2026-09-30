@@ -10,6 +10,7 @@ import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowse
 import { db } from '../config/firebase';
 import { beginLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 import { buildSocialLoginUrl } from '../utils/socialLoginUrls';
+import { consumePostLoginReturnPath } from '../utils/postLoginReturn';
 
 // 회원가입 동의 시점에 기록해두는 약관/방침 버전 — 추후 개정 시 재동의 대상을 가려낼 때 사용
 const TERMS_VERSION = '2026-08-20';
@@ -88,7 +89,7 @@ export function LoginPage() {
         markLoginTrace('T1_provider_redirect_requested');
         await googleSignIn();
         markLoginTrace('T3_firebase_sign_in_complete');
-        navigate('/');
+        navigate(consumePostLoginReturnPath());
       } catch (e: any) {
         console.error('[dev] Google login failed:', e);
         toast.error('Google 로그인 실패');
@@ -149,7 +150,7 @@ export function LoginPage() {
         }
         toast.success('인증메일을 보냈습니다. 메일함에서 인증을 완료한 뒤 다시 확인해 주세요.');
       }
-      navigate('/');
+      navigate(consumePostLoginReturnPath());
     } catch (error: any) {
       toast.error(error?.message || '이메일 인증에 실패했습니다.');
       setIsLoading(false);

@@ -1888,7 +1888,7 @@ export function SayuPage() {
   useEffect(() => {
     if (false && sayuTab === 'assistants' && !aiLogsLoaded && user?.email) {
       setAiLogsLoading(true);
-      firestoreService.getAiLogs(user.email).then(async (data: any[]) => {
+      firestoreService.getAiLogs().then(async (data: any[]) => {
         setAiLogs(data);
         setAiLogsLoaded(true);
         setAiLogsLoading(false);

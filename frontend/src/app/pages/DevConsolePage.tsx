@@ -9,6 +9,7 @@ import {
   type LibraryBackfillPreview,
   type LibraryBackfillRunResult,
 } from '../services/firestoreService';
+import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -164,11 +165,12 @@ export function DevConsolePage() {
   const [backfillError, setBackfillError] = useState<string | null>(null);
   const [haruLawPendingCount, setHaruLawPendingCount] = useState<number | null>(null);
   const isDeveloper = user?.uid === DEVELOPER_UID;
+  const canUseAiLibrary = hasAiLibraryAccess(user?.email, user?.emailVerified);
 
   useEffect(() => {
     if (!user) return;
-    if (!isDeveloper) navigate('/');
-  }, [user, isDeveloper, navigate]);
+    if (!isDeveloper && !canUseAiLibrary) navigate('/');
+  }, [user, isDeveloper, canUseAiLibrary, navigate]);
 
   useEffect(() => {
     if (!isDeveloper) return;
@@ -229,7 +231,11 @@ export function DevConsolePage() {
     }
   };
 
-  if (!user || !isDeveloper) return null;
+  if (!user || (!isDeveloper && !canUseAiLibrary)) return null;
+
+  if (canUseAiLibrary && !isDeveloper) {
+    return <AiLibraryPage />;
+  }
 
   if (activePanel === 'ai-library') {
     return (
@@ -345,7 +351,7 @@ export function DevConsolePage() {
         </section>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {DEV_TOOLS.map((tool) => (
+          {DEV_TOOLS.filter((tool) => tool.path !== 'ai-library' || canUseAiLibrary).map((tool) => (
             <Fragment key={`${tool.path}-${tool.label}`}>
               {tool.sectionLabel && (
                 <div className="sm:col-span-2 pt-2">

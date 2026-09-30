@@ -91,6 +91,10 @@ import {
   type LoginOAuthProvider,
 } from './oauthStateCore';
 import {
+  buildOAuthPhaseLog,
+} from './oauthCallbackDiagnostics';
+import { handleGoogleOAuthCallback } from './googleOAuthCallbackCore';
+import {
   LAW_EASY_EXPLAIN_PROMPT_VERSION,
   LawEasyExplainInputError,
   buildLawConsultCacheKey,
@@ -5819,84 +5823,56 @@ export const googleCallback = onRequest(
     secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET]  // 🔐 Secret 연결
   },
   async (req, res) => {
-    let frontendOrigin = FRONTEND_URL;
-    try {
-      const callbackStartedAt = Date.now();
-      const timings: Record<string, number> = {};
-      const GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID_SECRET.value();  // 🔐 Secret 값 사용
-      const GOOGLE_CLIENT_SECRET = GOOGLE_CLIENT_SECRET_SECRET.value();  // 🔐 Secret 값 사용
-      
-      const { code, state, error: providerError } = req.query;
-
-      if (!state || typeof state !== 'string') throw new Error('Invalid state');
-
-      const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'google'));
-      frontendOrigin = resolveLoginFrontendOrigin(oauthState?.returnOrigin);
-      const callbackCode = getLoginOAuthCallbackCode(code, providerError);
-
-      const tokenResponse = await measureOAuthPhase(
-        timings,
-        'tokenMs',
-        () => axios.post(
+    await handleGoogleOAuthCallback(req.query, res, {
+      defaultFrontendOrigin: FRONTEND_URL,
+      redirectUri: GOOGLE_REDIRECT_URI,
+      getClientId: () => GOOGLE_CLIENT_ID_SECRET.value(),
+      getClientSecret: () => GOOGLE_CLIENT_SECRET_SECRET.value(),
+      consumeState: (state) => consumeLoginOAuthState(state, 'google'),
+      resolveFrontendOrigin: (origin) => resolveLoginFrontendOrigin(origin),
+      getCallbackCode: (code, providerError) => getLoginOAuthCallbackCode(code, providerError),
+      exchangeToken: (body) => axios.post(
           'https://oauth2.googleapis.com/token',
+          body,
           {
-            code: callbackCode,
-            client_id: GOOGLE_CLIENT_ID,
-            client_secret: GOOGLE_CLIENT_SECRET,
-            redirect_uri: GOOGLE_REDIRECT_URI,
-            grant_type: 'authorization_code',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: OAUTH_TOKEN_TIMEOUT_MS,
           },
-          { timeout: OAUTH_TOKEN_TIMEOUT_MS }
-        )
-      );
-
-      const { access_token } = tokenResponse.data;
-
-      const userResponse = await measureOAuthPhase(
-        timings,
-        'profileMs',
-        () => axios.get(
+        ),
+      getUserInfo: (accessToken) => axios.get(
           'https://www.googleapis.com/oauth2/v2/userinfo',
           {
-            headers: { Authorization: `Bearer ${access_token}` },
+            headers: { Authorization: `Bearer ${accessToken}` },
             timeout: OAUTH_PROFILE_TIMEOUT_MS,
-          }
-        )
-      );
-
-      const googleUser = userResponse.data;
-
-      const email = googleUser.email;
-      if (!email || typeof email !== 'string') throw new Error('Google email missing');
-      const displayName = googleUser.name || `google_user_${googleUser.id}`;
-      const photoURL = googleUser.picture || null;
-
-      // 🔑 통합 UID 생성/조회
-      const uid = await measureOAuthPhase(timings, 'uidMs', () => getOrCreateUnifiedUid(email, 'google'));
-
-      await measureOAuthPhase(timings, 'authUserMs', async () => {
+          },
+        ),
+      getOrCreateUid: (email) => getOrCreateUnifiedUid(email, 'google'),
+      upsertAuthUser: async ({ uid, email, displayName, photoURL }) => {
         try {
-          await admin.auth().updateUser(uid, { email, displayName, photoURL });
+          await admin.auth().updateUser(uid, { email, emailVerified: true, displayName, photoURL });
         } catch (error: any) {
           if (error.code === 'auth/user-not-found') {
-            await admin.auth().createUser({ uid, email, displayName, photoURL });
+            await admin.auth().createUser({ uid, email, emailVerified: true, displayName, photoURL });
           } else throw error;
         }
-      });
-
-      const customToken = await measureOAuthPhase(
-        timings,
-        'customTokenMs',
-        () => admin.auth().createCustomToken(uid),
-      );
-
-      logOAuthCallbackCompleted('google', callbackStartedAt, timings);
-      res.redirect(buildFrontendAuthCallbackUrl(customToken, 'google', frontendOrigin));
-
-    } catch (error: any) {
-      logger.error('❌ 구글 콜백 실패:', getSafeOAuthError(error));
-      res.redirect(buildLoginErrorRedirect('google', frontendOrigin));
-    }
+      },
+      createCustomToken: (uid) => admin.auth().createCustomToken(uid),
+      buildSuccessRedirect: (customToken, frontendOrigin) => (
+        buildFrontendAuthCallbackUrl(customToken, 'google', frontendOrigin)
+      ),
+      buildErrorRedirect: (frontendOrigin) => buildLoginErrorRedirect('google', frontendOrigin),
+      getHttpStatus: (error) => {
+        const status = axios.isAxiosError(error) ? error.response?.status : null;
+        return typeof status === 'number' ? status : null;
+      },
+      onPhase: (input) => logger[input.outcome === 'success' ? 'info' : 'error'](
+        'Google OAuth callback phase',
+        buildOAuthPhaseLog(input),
+      ),
+      onCompleted: (startedAt, timings) => logOAuthCallbackCompleted('google', startedAt, timings),
+      createRequestId: () => crypto.randomUUID(),
+      now: Date.now,
+    });
   }
 );
 
@@ -11316,6 +11292,7 @@ export { analyzeFacebookZip, getSnsThumbnailData } from "./snsAnalyzer";
 export { convertSnsToDiary } from "./snsToDiary";
 export { generateLawsuitClaimReason } from "./generateLawsuitClaimReason";
 export { convertToBookMaterial } from "./bookMaterial";
+export { listAiLibraryLogs, saveAiLibraryImport, deleteAiLibraryLogs } from "./aiLibrary";
 export { gatherElderBookSources, buildElderBookOutline, assignElderBookSources, draftElderBookChapters, polishElderBookChapters } from "./elderBook";
 
 // ===== 단어 뜻 조회 =====

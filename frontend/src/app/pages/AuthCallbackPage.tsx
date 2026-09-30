@@ -10,6 +10,7 @@ import {
 } from '../utils/authCallbackDiagnostics';
 import { normalizeLoginProvider, rememberLoginProviderLocally } from '../utils/loginProvider';
 import { failLoginTrace, markLoginTrace } from '../utils/loginPerformance';
+import { consumePostLoginReturnPath, isAllowedPostLoginReturnPath } from '../utils/postLoginReturn';
 
 const callbackInProgressKeys = new Set<string>();
 const callbackCompletedKeys = new Set<string>();
@@ -118,7 +119,13 @@ export function AuthCallbackPage() {
 
           toast.success('로그인 성공!');
           markLoginTrace('T7_home_route_start');
-          navigate('/', { replace: true });
+          const returnPath = consumePostLoginReturnPath();
+          if (isAllowedPostLoginReturnPath(returnPath)) {
+            // OAuth callback is a different document. Reload /ai-import so the extension bridge is injected again.
+            window.location.replace(returnPath);
+            return;
+          }
+          navigate(returnPath, { replace: true });
         } finally {
           callbackInProgressKeys.delete(callbackKey);
         }

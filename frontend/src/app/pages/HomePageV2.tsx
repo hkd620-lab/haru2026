@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { setOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
+import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
 import { TimelineCollageModal } from '../components/TimelineCollageModal';
 import { HomePersonalizationModal } from '../components/HomePersonalizationModal';
 import { shouldShowAssistantOnboarding } from '../services/assistantOnboardingService';
@@ -575,6 +576,7 @@ export function HomePageV2() {
   const currentUserUidRef = useRef<string | null>(currentUserUid);
   currentUserUidRef.current = currentUserUid;
   const isDeveloper = user?.uid === DEVELOPER_UID;
+  const canUseAiLibrary = hasAiLibraryAccess(user?.email, user?.emailVerified);
   // 숨김 기록 + 개발자 전용 항목은 일반 사용자 홈에서 비노출
   const visibleRecords = useMemo(
     () => RECORDS.filter((r) => !HIDDEN_RECORD_FORMATS.has(r.format) && (!r.developerOnly || isDeveloper)),
@@ -1028,6 +1030,30 @@ export function HomePageV2() {
                 }}
               />
             </button>
+            {canUseAiLibrary && (
+              <button
+                type="button"
+                aria-label="AI 학습함"
+                onClick={() => navigate('/ai-library')}
+                className="v2-pill"
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 999,
+                  background: '#fff',
+                  border: '1px solid #E5DFD0',
+                  color: '#7A6F5A',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: 18,
+                  transition: 'all 180ms cubic-bezier(0.22,0.61,0.36,1)',
+                }}
+              >
+                🧠
+              </button>
+            )}
             {isDeveloper && (
               <button
                 type="button"

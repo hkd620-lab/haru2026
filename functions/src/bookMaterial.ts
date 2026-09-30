@@ -12,7 +12,7 @@ import { defineSecret } from 'firebase-functions/params';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
-import { isInternalDeveloperUid } from './internalEntitlements';
+import { hasAiLibraryDeveloperEmail } from './aiLibrary';
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 
@@ -86,8 +86,11 @@ export const convertToBookMaterial = onCall(
     }
     const uid = request.auth.uid;
 
-    // 2) 개발자 UID 화이트리스트 (Gemini 비용 + 사적 책 프로젝트 보호)
-    if (!isInternalDeveloperUid(uid)) {
+    // 2) Firebase가 검증한 ID 토큰 이메일만 권한 근거로 사용한다.
+    if (!hasAiLibraryDeveloperEmail(
+      request.auth.token.email,
+      request.auth.token.email_verified,
+    )) {
       logger.warn('convertToBookMaterial: 비개발자 호출 차단', { uid });
       throw new HttpsError('permission-denied', '책소재 변환은 개발자 전용 기능입니다.');
     }

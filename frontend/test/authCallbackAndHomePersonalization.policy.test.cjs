@@ -29,7 +29,8 @@ assert(authCallbackSrc.includes("callbackPhase === 'sign_in_with_custom_token' ?
 assert(authCallbackSrc.includes('const diagnostics = buildAuthCallbackFailureDiagnostics(error, callbackPhase, navigator.onLine);'));
 assert(authCallbackSrc.includes('logAuthCallbackFailure(diagnostics);'));
 assert.equal(authCallbackSrc.match(/logAuthCallbackFailure\(diagnostics\);/g)?.length, 1);
-assertBefore(authCallbackSrc, "navigate('/', { replace: true });", '} catch (error) {');
+assertBefore(authCallbackSrc, 'window.location.replace(returnPath);', '} catch (error) {');
+assertBefore(authCallbackSrc, 'navigate(returnPath, { replace: true });', '} catch (error) {');
 assertBefore(authCallbackSrc, '} catch (error) {', 'logAuthCallbackFailure(diagnostics);');
 assert(authCallbackSrc.includes('rememberLoginProviderLocally(userCredential.user.uid, provider);'));
 assert(!authCallbackSrc.includes("from 'firebase/firestore'"));
