@@ -4,6 +4,10 @@ const path = require('path');
 
 const root = path.resolve(__dirname, '..', '..');
 const indexSrc = fs.readFileSync(path.join(root, 'functions/src/index.ts'), 'utf8');
+const googleCallbackCoreSrc = fs.readFileSync(
+  path.join(root, 'functions/src/googleOAuthCallbackCore.ts'),
+  'utf8',
+);
 
 function assertBefore(source, earlier, later, message) {
   const earlierIndex = source.indexOf(earlier);
@@ -35,6 +39,34 @@ for (const provider of ['kakao', 'naver', 'google']) {
       ? 'export const googleLoginStart = onRequest('
       : 'type DriveTokenData = {';
   const callbackBlock = getBlock(`export const ${provider}Callback = onRequest(`, nextStart);
+
+  if (provider === 'google') {
+    assert(callbackBlock.includes('await handleGoogleOAuthCallback(req.query, res'));
+    assert(callbackBlock.includes("consumeState: (state) => consumeLoginOAuthState(state, 'google')"));
+    assert(callbackBlock.includes('resolveFrontendOrigin: (origin) => resolveLoginFrontendOrigin(origin)'));
+    assert(callbackBlock.includes('getCallbackCode: (code, providerError) => getLoginOAuthCallbackCode(code, providerError)'));
+    assert(callbackBlock.includes("buildFrontendAuthCallbackUrl(customToken, 'google', frontendOrigin)"));
+    assert(callbackBlock.includes("buildLoginErrorRedirect('google', frontendOrigin)"));
+    assertBefore(
+      googleCallbackCoreSrc,
+      "if (!state || typeof state !== 'string') throw new Error('Invalid state');",
+      'const oauthState = await dependencies.consumeState(state);',
+      'google must validate state before consuming it',
+    );
+    assertBefore(
+      googleCallbackCoreSrc,
+      'const oauthState = await dependencies.consumeState(state);',
+      'frontendOrigin = dependencies.resolveFrontendOrigin(oauthState?.returnOrigin);',
+      'google must consume state before using returnOrigin',
+    );
+    assertBefore(
+      googleCallbackCoreSrc,
+      'frontendOrigin = dependencies.resolveFrontendOrigin(oauthState?.returnOrigin);',
+      'const callbackCode = dependencies.getCallbackCode(code, providerError);',
+      'google must recover returnOrigin before provider error/code handling',
+    );
+    continue;
+  }
 
   assert(callbackBlock.includes('let frontendOrigin = FRONTEND_URL;'));
   assert(callbackBlock.includes('const { code, state, error: providerError } = req.query;'));

@@ -67,6 +67,7 @@ const monthlyAiQuota_1 = require("./utils/monthlyAiQuota");
 const internalEntitlements_1 = require("./internalEntitlements");
 const oauthStateCore_1 = require("./oauthStateCore");
 const oauthCallbackDiagnostics_1 = require("./oauthCallbackDiagnostics");
+const googleOAuthCallbackCore_1 = require("./googleOAuthCallbackCore");
 const lawEasyExplainCore_1 = require("./lawEasyExplainCore");
 const haruLawErrorCore_1 = require("./haruLawErrorCore");
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
@@ -4971,65 +4972,24 @@ exports.googleCallback = (0, https_1.onRequest)({
     memory: '512MiB',
     secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET] // 🔐 Secret 연결
 }, async (req, res) => {
-    var _a;
-    let frontendOrigin = FRONTEND_URL;
-    const requestId = crypto.randomUUID();
-    let currentPhase = 'token_exchange';
-    let phaseStartedAt = Date.now();
-    const logPhase = (phase, outcome, httpStatus, error) => logger[outcome === 'success' ? 'info' : 'error']('Google OAuth callback phase', (0, oauthCallbackDiagnostics_1.buildOAuthPhaseLog)({
-        requestId,
-        provider: 'google',
-        phase,
-        outcome,
-        httpStatus,
-        elapsedMs: Date.now() - phaseStartedAt,
-        error,
-    }));
-    try {
-        const callbackStartedAt = Date.now();
-        const timings = {};
-        const GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID_SECRET.value(); // 🔐 Secret 값 사용
-        const GOOGLE_CLIENT_SECRET = GOOGLE_CLIENT_SECRET_SECRET.value(); // 🔐 Secret 값 사용
-        const { code, state, error: providerError } = req.query;
-        if (!state || typeof state !== 'string')
-            throw new Error('Invalid state');
-        const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'google'));
-        frontendOrigin = (0, oauthStateCore_1.resolveLoginFrontendOrigin)(oauthState === null || oauthState === void 0 ? void 0 : oauthState.returnOrigin);
-        const callbackCode = (0, oauthStateCore_1.getLoginOAuthCallbackCode)(code, providerError);
-        currentPhase = 'token_exchange';
-        phaseStartedAt = Date.now();
-        const tokenRequestBody = (0, oauthCallbackDiagnostics_1.buildGoogleTokenRequestBody)({
-            code: callbackCode,
-            clientId: GOOGLE_CLIENT_ID,
-            clientSecret: GOOGLE_CLIENT_SECRET,
-            redirectUri: GOOGLE_REDIRECT_URI,
-        });
-        const tokenResponse = await measureOAuthPhase(timings, 'tokenMs', () => axios_1.default.post('https://oauth2.googleapis.com/token', tokenRequestBody.toString(), {
+    await (0, googleOAuthCallbackCore_1.handleGoogleOAuthCallback)(req.query, res, {
+        defaultFrontendOrigin: FRONTEND_URL,
+        redirectUri: GOOGLE_REDIRECT_URI,
+        getClientId: () => GOOGLE_CLIENT_ID_SECRET.value(),
+        getClientSecret: () => GOOGLE_CLIENT_SECRET_SECRET.value(),
+        consumeState: (state) => consumeLoginOAuthState(state, 'google'),
+        resolveFrontendOrigin: (origin) => (0, oauthStateCore_1.resolveLoginFrontendOrigin)(origin),
+        getCallbackCode: (code, providerError) => (0, oauthStateCore_1.getLoginOAuthCallbackCode)(code, providerError),
+        exchangeToken: (body) => axios_1.default.post('https://oauth2.googleapis.com/token', body, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             timeout: OAUTH_TOKEN_TIMEOUT_MS,
-        }));
-        logPhase('token_exchange', 'success', tokenResponse.status);
-        const { access_token } = tokenResponse.data;
-        currentPhase = 'userinfo';
-        phaseStartedAt = Date.now();
-        const userResponse = await measureOAuthPhase(timings, 'profileMs', () => axios_1.default.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-            headers: { Authorization: `Bearer ${access_token}` },
+        }),
+        getUserInfo: (accessToken) => axios_1.default.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { Authorization: `Bearer ${accessToken}` },
             timeout: OAUTH_PROFILE_TIMEOUT_MS,
-        }));
-        logPhase('userinfo', 'success', userResponse.status);
-        currentPhase = 'custom_token';
-        phaseStartedAt = Date.now();
-        const googleUser = userResponse.data;
-        const email = googleUser.email;
-        if (!email || typeof email !== 'string')
-            throw new Error('Google email missing');
-        if (googleUser.verified_email !== true)
-            throw new Error('Google email is not verified');
-        const displayName = googleUser.name || `google_user_${googleUser.id}`;
-        const photoURL = googleUser.picture || null;
-        // 🔑 통합 UID 생성/조회
-        const uid = await measureOAuthPhase(timings, 'uidMs', () => getOrCreateUnifiedUid(email, 'google'));
-        await measureOAuthPhase(timings, 'authUserMs', async () => {
+        }),
+        getOrCreateUid: (email) => getOrCreateUnifiedUid(email, 'google'),
+        upsertAuthUser: async ({ uid, email, displayName, photoURL }) => {
             try {
                 await admin.auth().updateUser(uid, { email, emailVerified: true, displayName, photoURL });
             }
@@ -5040,20 +5000,19 @@ exports.googleCallback = (0, https_1.onRequest)({
                 else
                     throw error;
             }
-        });
-        const customToken = await measureOAuthPhase(timings, 'customTokenMs', () => admin.auth().createCustomToken(uid));
-        logPhase('custom_token', 'success', null);
-        logOAuthCallbackCompleted('google', callbackStartedAt, timings);
-        currentPhase = 'app_redirect';
-        phaseStartedAt = Date.now();
-        res.redirect(buildFrontendAuthCallbackUrl(customToken, 'google', frontendOrigin));
-        logPhase('app_redirect', 'success', 302);
-    }
-    catch (error) {
-        const status = axios_1.default.isAxiosError(error) ? (_a = error.response) === null || _a === void 0 ? void 0 : _a.status : null;
-        logPhase(currentPhase, 'error', typeof status === 'number' ? status : null, error);
-        res.redirect(buildLoginErrorRedirect('google', frontendOrigin));
-    }
+        },
+        createCustomToken: (uid) => admin.auth().createCustomToken(uid),
+        buildSuccessRedirect: (customToken, frontendOrigin) => (buildFrontendAuthCallbackUrl(customToken, 'google', frontendOrigin)),
+        buildErrorRedirect: (frontendOrigin) => buildLoginErrorRedirect('google', frontendOrigin),
+        getHttpStatus: (error) => {
+            var _a;
+            const status = axios_1.default.isAxiosError(error) ? (_a = error.response) === null || _a === void 0 ? void 0 : _a.status : null;
+            return typeof status === 'number' ? status : null;
+        },
+        onPhase: (input) => logger[input.outcome === 'success' ? 'info' : 'error']('Google OAuth callback phase', (0, oauthCallbackDiagnostics_1.buildOAuthPhaseLog)(input)),
+        createRequestId: () => crypto.randomUUID(),
+        now: Date.now,
+    });
 });
 const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 const HARU_DRIVE_SCOPES = [

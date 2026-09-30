@@ -11,14 +11,24 @@ const googleCallbackSrc = indexSrc.slice(
   indexSrc.indexOf('export const googleCallback = onRequest('),
   indexSrc.indexOf('type DriveTokenData = {'),
 );
+const callbackCoreSrc = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'googleOAuthCallbackCore.ts'),
+  'utf8',
+);
 
 assert(googleCallbackSrc.includes("headers: { 'Content-Type': 'application/x-www-form-urlencoded' }"));
-assert(googleCallbackSrc.includes('tokenRequestBody.toString()'));
-assert(googleCallbackSrc.includes("logPhase('token_exchange', 'success', tokenResponse.status)"));
-assert(googleCallbackSrc.includes("logPhase('userinfo', 'success', userResponse.status)"));
-assert(googleCallbackSrc.includes("logPhase('custom_token', 'success', null)"));
-assert(googleCallbackSrc.includes("logPhase('app_redirect', 'success', 302)"));
+assert(googleCallbackSrc.includes('await handleGoogleOAuthCallback(req.query, res'));
 assert.equal(googleCallbackSrc.includes("logger.error('❌ 구글 콜백 실패:', getSafeOAuthError(error))"), false);
+assert(callbackCoreSrc.includes("let currentPhase: OAuthCallbackPhase = 'initialization'"));
+assert(callbackCoreSrc.includes("setPhase('state_validation')"));
+assert(callbackCoreSrc.includes("setPhase('provider_response')"));
+assert(callbackCoreSrc.includes("setPhase('userinfo')"));
+assert(callbackCoreSrc.includes("setPhase('custom_token')"));
+assert(callbackCoreSrc.includes("setPhase('app_redirect')"));
+assert(
+  callbackCoreSrc.indexOf("setPhase('token_exchange');")
+    < callbackCoreSrc.indexOf('dependencies.exchangeToken(tokenRequestBody.toString())'),
+);
 
 const form = buildGoogleTokenRequestBody({
   code: 'code with + and &',

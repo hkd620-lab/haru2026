@@ -1,4 +1,11 @@
-export type OAuthCallbackPhase = 'token_exchange' | 'userinfo' | 'custom_token' | 'app_redirect';
+export type OAuthCallbackPhase =
+  | 'initialization'
+  | 'state_validation'
+  | 'provider_response'
+  | 'token_exchange'
+  | 'userinfo'
+  | 'custom_token'
+  | 'app_redirect';
 
 const ALLOWED_PROVIDER_ERROR_CODES = new Set([
   'access_denied',
@@ -11,7 +18,7 @@ const ALLOWED_PROVIDER_ERROR_CODES = new Set([
   'unsupported_grant_type',
 ]);
 
-type OAuthPhaseLogInput = {
+export type OAuthPhaseLogInput = {
   requestId: string;
   provider: 'google';
   phase: OAuthCallbackPhase;
