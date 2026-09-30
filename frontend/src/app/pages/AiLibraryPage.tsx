@@ -363,7 +363,7 @@ export function AiLibraryPage() {
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [user?.uid, user?.email]);
+  }, [user?.uid, user?.email, user?.emailVerified]);
 
   const getSource = (r: HaruRecord): string => {
     if (r.source) return r.source;

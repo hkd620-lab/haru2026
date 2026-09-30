@@ -1030,11 +1030,35 @@ export function HomePageV2() {
                 }}
               />
             </button>
-            {(isDeveloper || canUseAiLibrary) && (
+            {canUseAiLibrary && (
               <button
                 type="button"
-                aria-label={canUseAiLibrary ? 'AI 학습함' : '개발자 콘솔'}
-                onClick={() => navigate(canUseAiLibrary ? '/ai-library' : '/admin/console')}
+                aria-label="AI 학습함"
+                onClick={() => navigate('/ai-library')}
+                className="v2-pill"
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 999,
+                  background: '#fff',
+                  border: '1px solid #E5DFD0',
+                  color: '#7A6F5A',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: 18,
+                  transition: 'all 180ms cubic-bezier(0.22,0.61,0.36,1)',
+                }}
+              >
+                🧠
+              </button>
+            )}
+            {isDeveloper && (
+              <button
+                type="button"
+                aria-label="개발자 콘솔"
+                onClick={() => navigate('/admin/console')}
                 className="v2-pill"
                 style={{
                   width: 44,
