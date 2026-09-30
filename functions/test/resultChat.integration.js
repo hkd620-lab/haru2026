@@ -28,6 +28,8 @@ const HARULAW_ATTACH_MAX_PDF_BYTES = 50_000_000;
 const pdfFixture = fs.readFileSync(path.resolve(__dirname, 'fixtures/harulaw-pdf/general.pdf'));
 const attachmentMetadataPaths = [];
 const attachmentDownloadPaths = [];
+let attachmentMetadataDelayQueueMs = [];
+let attachmentDownloadDelayQueueMs = [];
 const geminiFileUploads = [];
 const geminiFileUploadAttempts = [];
 const geminiFileDeletes = [];
@@ -391,11 +393,19 @@ Module._load = function patchedLoad(request, parent, isMain) {
           file: (storagePath) => ({
             getMetadata: async () => {
               attachmentMetadataPaths.push(storagePath);
+              const injectedDelayMs = attachmentMetadataDelayQueueMs.shift() ?? 0;
+              if (injectedDelayMs > 0 && advanceControlledClock) {
+                advanceControlledClock(injectedDelayMs);
+              }
               const mock = getMockAttachment(storagePath);
               return [{ contentType: mock.contentType, size: mock.metadataSize }];
             },
             download: async (options = {}) => {
               attachmentDownloadPaths.push(storagePath);
+              const injectedDelayMs = attachmentDownloadDelayQueueMs.shift() ?? 0;
+              if (injectedDelayMs > 0 && advanceControlledClock) {
+                advanceControlledClock(injectedDelayMs);
+              }
               const bytes = getMockAttachment(storagePath).bytes;
               if (options.destination) {
                 fs.writeFileSync(options.destination, bytes);
@@ -1064,6 +1074,49 @@ async function run() {
   });
   assert.strictEqual(retryAfterUploadFailure.answerRoute, 'record_only');
   assert.strictEqual(activeGeminiFiles.size, 0);
+
+  await resetResultChatRateLimit(USERS.developer);
+  const preparationMonthlyBefore = await getMonthlyUsed(USERS.developer);
+  const preparationThreadBefore = await getThread(USERS.developer, 'law', 'haruraw_sayu');
+  const preparationMessagesBefore = (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length;
+  const preparationUploadsBefore = geminiFileUploadAttempts.length;
+  const originalPreparationDateNow = Date.now;
+  let controlledPreparationNowMs = originalPreparationDateNow();
+  Date.now = () => controlledPreparationNowMs;
+  advanceControlledClock = (elapsedMs) => { controlledPreparationNowMs += elapsedMs; };
+  attachmentMetadataDelayQueueMs = [45_000, 16_000];
+  try {
+    await assert.rejects(
+      callable(USERS.developer, {
+        recordId: 'law',
+        sourceKey: 'haruraw_sayu',
+        question: '누적 첨부 준비 마감과 예약 전 중단을 확인해줘.',
+        searchPreference: 'web_confirmed',
+        attachments: mixedAttachments.slice(0, 2),
+      }),
+      (error) => error?.code === 'unavailable'
+        && error?.details?.reason === 'HARULAW_AI_TEMPORARY_UNAVAILABLE',
+    );
+  } finally {
+    Date.now = originalPreparationDateNow;
+    advanceControlledClock = null;
+    attachmentMetadataDelayQueueMs = [];
+    attachmentDownloadDelayQueueMs = [];
+  }
+  assert.strictEqual(geminiFileUploadAttempts.length, preparationUploadsBefore);
+  assert.strictEqual(activeGeminiFiles.size, 0);
+  assert.strictEqual(await getMonthlyUsed(USERS.developer), preparationMonthlyBefore);
+  await assertThreadSearchUsage(
+    USERS.developer,
+    'law',
+    'haruraw_sayu',
+    preparationThreadBefore.webSearchUsedCount || 0,
+    0,
+  );
+  assert.strictEqual(
+    (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length,
+    preparationMessagesBefore,
+  );
 
   await resetResultChatRateLimit(USERS.developer);
   const deadlineMonthlyBefore = await getMonthlyUsed(USERS.developer);
