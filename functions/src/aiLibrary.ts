@@ -4,7 +4,96 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 const AI_LIBRARY_DEVELOPER_EMAIL = 'hkd620@gmail.com';
 const IMPORT_ID_PATTERN = /^[a-f0-9]{64}$/;
 const ALLOWED_SOURCES = new Set(['slack', 'chatgpt.com', 'claude.ai', 'gemini.google.com']);
+const AI_LIBRARY_PAGE_SIZE = 10;
+const AI_LIBRARY_CURSOR_VERSION = 1;
+const AI_LIBRARY_CURSOR_MAX_LENGTH = 4_096;
+const FIRESTORE_MIN_SECONDS = -62_135_596_800;
+const FIRESTORE_MAX_SECONDS = 253_402_300_799;
 export const AI_LIBRARY_DELETE_LIMIT = 10;
+
+type AiLibraryCursor = {
+  v: typeof AI_LIBRARY_CURSOR_VERSION;
+  seconds: number;
+  nanoseconds: number;
+  id: string;
+};
+
+function invalidAiLibraryCursor(): never {
+  throw new HttpsError('invalid-argument', '페이지 커서가 올바르지 않습니다.');
+}
+
+function decodeAiLibraryCursor(value: unknown): AiLibraryCursor | undefined {
+  if (value === undefined) return undefined;
+  if (
+    typeof value !== 'string'
+    || value.length === 0
+    || value.length > AI_LIBRARY_CURSOR_MAX_LENGTH
+    || !/^[A-Za-z0-9_-]+$/.test(value)
+  ) {
+    return invalidAiLibraryCursor();
+  }
+
+  try {
+    const decoded = Buffer.from(value, 'base64url').toString('utf8');
+    if (Buffer.from(decoded, 'utf8').toString('base64url') !== value) {
+      return invalidAiLibraryCursor();
+    }
+    const parsed = JSON.parse(decoded) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return invalidAiLibraryCursor();
+    }
+    const keys = Object.keys(parsed).sort();
+    if (keys.join(',') !== 'id,nanoseconds,seconds,v') {
+      return invalidAiLibraryCursor();
+    }
+    const { v, seconds, nanoseconds, id } = parsed;
+    if (
+      v !== AI_LIBRARY_CURSOR_VERSION
+      || !Number.isInteger(seconds)
+      || (seconds as number) < FIRESTORE_MIN_SECONDS
+      || (seconds as number) > FIRESTORE_MAX_SECONDS
+      || !Number.isInteger(nanoseconds)
+      || (nanoseconds as number) < 0
+      || (nanoseconds as number) > 999_999_999
+      || typeof id !== 'string'
+      || id.length === 0
+      || id === '.'
+      || id === '..'
+      || id.includes('/')
+      || /^__.*__$/.test(id)
+      || Buffer.byteLength(id, 'utf8') > 1_500
+    ) {
+      return invalidAiLibraryCursor();
+    }
+    return {
+      v: AI_LIBRARY_CURSOR_VERSION,
+      seconds: seconds as number,
+      nanoseconds: nanoseconds as number,
+      id,
+    };
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    return invalidAiLibraryCursor();
+  }
+}
+
+function encodeAiLibraryCursor(doc: admin.firestore.QueryDocumentSnapshot): string {
+  const createdAt = doc.get('createdAt');
+  if (
+    !createdAt
+    || !Number.isInteger(createdAt.seconds)
+    || !Number.isInteger(createdAt.nanoseconds)
+  ) {
+    throw new HttpsError('data-loss', '학습함 기록의 생성 시각이 올바르지 않습니다.');
+  }
+  const cursor: AiLibraryCursor = {
+    v: AI_LIBRARY_CURSOR_VERSION,
+    seconds: createdAt.seconds,
+    nanoseconds: createdAt.nanoseconds,
+    id: doc.id,
+  };
+  return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
+}
 
 export function hasAiLibraryDeveloperEmail(email: unknown, emailVerified: unknown): boolean {
   return typeof email === 'string'
@@ -25,21 +114,35 @@ function requireAiLibraryDeveloper(request: { auth?: { uid: string; token: Recor
 
 export const listAiLibraryLogs = onCall({ region: 'asia-northeast3' }, async (request) => {
   const uid = requireAiLibraryDeveloper(request);
-  const snap = await admin.firestore().collection(`users/${uid}/records`)
+  const cursor = decodeAiLibraryCursor(request.data?.cursor);
+  const records = admin.firestore().collection(`users/${uid}/records`);
+  let query = records
     .where('type', '==', 'ai_log')
     .orderBy('createdAt', 'desc')
-    .get();
-  const logs = snap.docs.map((doc) => {
+    .orderBy(admin.firestore.FieldPath.documentId(), 'desc');
+  if (cursor) {
+    query = query.startAfter(
+      new admin.firestore.Timestamp(cursor.seconds, cursor.nanoseconds),
+      records.doc(cursor.id),
+    );
+  }
+  const snap = await query.limit(AI_LIBRARY_PAGE_SIZE + 1).get();
+  const hasNextPage = snap.docs.length > AI_LIBRARY_PAGE_SIZE;
+  const pageDocs = snap.docs.slice(0, AI_LIBRARY_PAGE_SIZE);
+  const logs = pageDocs.map((doc) => {
     const data = doc.data();
     return {
-      id: doc.id,
       ...data,
+      id: doc.id,
       createdAt: data.createdAt?.toDate?.().toISOString?.() ?? data.createdAt ?? '',
       updatedAt: data.updatedAt?.toDate?.().toISOString?.() ?? data.updatedAt ?? '',
       importedAt: data.importedAt?.toDate?.().toISOString?.() ?? data.importedAt ?? '',
     };
   });
-  return { logs };
+  return {
+    logs,
+    ...(hasNextPage ? { nextCursor: encodeAiLibraryCursor(pageDocs[pageDocs.length - 1]) } : {}),
+  };
 });
 
 export const saveAiLibraryImport = onCall({ region: 'asia-northeast3' }, async (request) => {

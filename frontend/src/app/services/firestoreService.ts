@@ -48,6 +48,11 @@ export interface HaruRecord {
   [key: string]: any;
 }
 
+export interface AiLibraryLogPage {
+  logs: HaruRecord[];
+  nextCursor?: string;
+}
+
 export interface GardenCrops {
   crops: string[];
   updatedAt: string;
@@ -2433,14 +2438,28 @@ class FirestoreService {
     }
   }
 
-  async getAiLogs(): Promise<HaruRecord[]> {
+  async getAiLogPage(cursor?: string): Promise<AiLibraryLogPage> {
     const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const callable = httpsCallable<Record<string, never>, { logs: HaruRecord[] }>(
+    const callable = httpsCallable<{ cursor?: string }, AiLibraryLogPage>(
       getFunctions(undefined, 'asia-northeast3'),
       'listAiLibraryLogs',
     );
-    const result = await callable({});
-    return Array.isArray(result.data?.logs) ? result.data.logs : [];
+    const result = await callable(cursor ? { cursor } : {});
+    if (!Array.isArray(result.data?.logs)) {
+      throw new Error('AI 학습함 목록 응답이 올바르지 않습니다.');
+    }
+    if (result.data.nextCursor !== undefined && typeof result.data.nextCursor !== 'string') {
+      throw new Error('AI 학습함 페이지 커서가 올바르지 않습니다.');
+    }
+    return {
+      logs: result.data.logs,
+      ...(result.data.nextCursor ? { nextCursor: result.data.nextCursor } : {}),
+    };
+  }
+
+  // 비활성 레거시 호출부의 배열 계약을 유지한다.
+  async getAiLogs(): Promise<HaruRecord[]> {
+    return (await this.getAiLogPage()).logs;
   }
 
   async deleteAiLogs(ids: Set<string>): Promise<Set<string>> {
