@@ -176,14 +176,20 @@ async function run() {
   assert.match(attachmentLoaderSource, /metadataTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES/);
   assert.match(attachmentLoaderSource, /downloadedTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES/);
   assert.match(attachmentLoaderSource, /await fs\.promises\.readFile\(tempPath\)/);
-  assert.match(attachmentLoaderSource, /uploadDeadlineMs - Date\.now\(\)/);
+  assert.match(indexSource, /function getHaruLawRemainingWorkMs\(workDeadlineMs: number\)/);
   assert.match(attachmentLoaderSource, /httpOptions: \{ timeout: remainingUploadMs \}/);
   assert.match(attachmentLoaderSource, /uploadClient\.files\.upload\(/);
   assert.match(attachmentLoaderSource, /Promise\.all\(trackedFiles\.map/);
+  assert.ok(
+    attachmentLoaderSource.indexOf('await cleanupDocRef.set({')
+      < attachmentLoaderSource.indexOf('const remainingUploadMs = Math.min('),
+    'upload timeout must be recomputed after the cleanup ledger write',
+  );
   assert.match(attachmentLoaderSource, /fileParts\.push\(\{ fileData:/);
   assert.doesNotMatch(attachmentLoaderSource, /inlineData|toString\('base64'\)/);
   assert.match(attachmentLoaderSource, /export const cleanupHaruLawGeminiFiles = onSchedule\(/);
   assert.match(indexSource, /export const chatWithResult = onCall\([\s\S]{0,160}memory: '512MiB',[\s\S]{0,80}concurrency: 1/);
+  assert.match(indexSource, /firstModelAbortSignal[\s\S]{0,700}abortSignal: firstModelAbortSignal/);
   assert.match(indexSource, /export const lawSearch = onCall\([\s\S]{0,220}memory: '1GiB',[\s\S]{0,80}concurrency: 1/);
   const lawSearchSource = indexSource.slice(
     indexSource.indexOf('export const lawSearch = onCall('),
@@ -191,6 +197,7 @@ async function run() {
   );
   assert.match(lawSearchSource, /processingStage = 'law_api_search'/);
   assert.match(lawSearchSource, /processingStage = 'law_api_detail'/);
+  assert.match(lawSearchSource, /summaryModel\.generateContent\(summaryContents, summaryRequestOptions\)/);
   assert.match(lawSearchSource, /createHaruLawHttpsError\(reason\)/);
   assert.equal(lawSearchSource.includes("throw new HttpsError('internal', '법령 검색에 실패했습니다.')"), false);
 }

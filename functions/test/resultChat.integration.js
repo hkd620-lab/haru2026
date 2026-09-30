@@ -37,6 +37,7 @@ let geminiFileUploadAttemptCount = 0;
 let failGeminiFileUploadAtAttempt = 0;
 let forceGeminiFileDeleteError = false;
 let geminiFileUploadDelayQueueMs = [];
+let geminiModelDelayQueueMs = [];
 let advanceControlledClock = null;
 
 function makePaddedPdf(size) {
@@ -118,6 +119,7 @@ function cloneGenerateContentRequest(request) {
   return {
     model: request.model,
     hasGoogleSearchTool: Boolean(request.config?.tools?.some((tool) => tool.googleSearch)),
+    hasAbortSignal: Boolean(request.config?.abortSignal),
     maxOutputTokens: request.config?.maxOutputTokens ?? null,
     contents: contentsText.slice(0, 12000),
     contentsPreview: contentsText.slice(0, 200),
@@ -191,6 +193,12 @@ class InstrumentedGoogleGenAI {
       generateContent: async (request) => {
         const captured = cloneGenerateContentRequest(request);
         genaiCalls.push(captured);
+        if (captured.contents.includes('fileData')) {
+          const injectedModelDelayMs = geminiModelDelayQueueMs.shift() ?? 0;
+          if (injectedModelDelayMs > 0 && advanceControlledClock) {
+            advanceControlledClock(injectedModelDelayMs);
+          }
+        }
         const currentQuestion = capturedCurrentQuestion(captured.contents);
         if (captured.hasGoogleSearchTool && webSearchDelayMs > 0) {
           await sleep(webSearchDelayMs);
@@ -318,9 +326,24 @@ class InstrumentedGoogleGenAI {
 class InstrumentedGoogleGenerativeAI {
   getGenerativeModel({ model }) {
     return {
-      generateContent: async (contents) => {
+      generateContent: async (contents, requestOptions) => {
         const serialized = typeof contents === 'string' ? contents : JSON.stringify(contents);
-        legacyGenaiCalls.push({ model, contents: serialized.slice(0, 12000) });
+        const injectedModelDelayMs = serialized.includes('fileData')
+          ? (geminiModelDelayQueueMs.shift() ?? 0)
+          : 0;
+        if (injectedModelDelayMs > 0 && advanceControlledClock) {
+          advanceControlledClock(injectedModelDelayMs);
+        }
+        legacyGenaiCalls.push({
+          model,
+          contents: serialized.slice(0, 12000),
+          requestTimeout: requestOptions?.timeout ?? null,
+        });
+        if (requestOptions?.timeout && injectedModelDelayMs > requestOptions.timeout) {
+          const error = new Error('injected_model_timeout');
+          error.code = 'ETIMEDOUT';
+          throw error;
+        }
         const text = model === 'gemini-3.1-flash-lite'
           ? (serialized.includes('조문 목차:') ? '제1조' : '민법')
           : '첨부 자료와 공식 법령을 함께 확인한 테스트 요약입니다.';
@@ -1071,6 +1094,47 @@ async function run() {
   assert.strictEqual(retryAfterDeadline.answerRoute, 'record_only');
   assert.strictEqual(activeGeminiFiles.size, 0);
 
+  await resetResultChatRateLimit(USERS.developer);
+  const modelDeadlineMonthlyBefore = await getMonthlyUsed(USERS.developer);
+  const modelDeadlineThreadBefore = await getThread(USERS.developer, 'law', 'haruraw_sayu');
+  const modelDeadlineAttemptsBefore = genaiCalls.length;
+  const originalModelDateNow = Date.now;
+  let controlledModelNowMs = originalModelDateNow();
+  Date.now = () => controlledModelNowMs;
+  advanceControlledClock = (elapsedMs) => { controlledModelNowMs += elapsedMs; };
+  geminiFileUploadDelayQueueMs = [70_000];
+  geminiModelDelayQueueMs = [6_000];
+  try {
+    await assert.rejects(
+      callable(USERS.developer, {
+        recordId: 'law',
+        sourceKey: 'haruraw_sayu',
+        question: '업로드 뒤 모델 호출의 전체 마감을 확인해줘.',
+        searchPreference: 'web_confirmed',
+        attachments: [attachment],
+      }),
+      (error) => error?.code === 'unavailable'
+        && error?.details?.reason === 'HARULAW_AI_TEMPORARY_UNAVAILABLE',
+    );
+  } finally {
+    Date.now = originalModelDateNow;
+    advanceControlledClock = null;
+    geminiFileUploadDelayQueueMs = [];
+    geminiModelDelayQueueMs = [];
+  }
+  assert.strictEqual(genaiCalls.length, modelDeadlineAttemptsBefore + 1);
+  assert.strictEqual(genaiCalls.at(-1).hasAbortSignal, true);
+  assert.strictEqual(activeGeminiFiles.size, 0);
+  assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
+  assert.strictEqual(await getMonthlyUsed(USERS.developer), modelDeadlineMonthlyBefore);
+  await assertThreadSearchUsage(
+    USERS.developer,
+    'law',
+    'haruraw_sayu',
+    modelDeadlineThreadBefore.webSearchUsedCount || 0,
+    0,
+  );
+
   forceGeminiFileDeleteError = true;
   const deleteFailureResult = await callable(USERS.developer, {
     recordId: 'law',
@@ -1225,6 +1289,34 @@ async function run() {
   assert.deepStrictEqual(lawDeadlineAttempts.map((attempt) => attempt.injectedDelayMs), [60_000, 16_000]);
   assert.deepStrictEqual(lawDeadlineAttempts.map((attempt) => attempt.clientTimeout), [75_000, 15_000]);
   assert.ok(geminiFileDeletes.length >= lawDeadlineDeletesBefore + 2);
+  assert.strictEqual(activeGeminiFiles.size, 0);
+  assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
+
+  const lawModelDeadlineCallsBefore = legacyGenaiCalls.length;
+  const originalLawModelDateNow = Date.now;
+  let controlledLawModelNowMs = originalLawModelDateNow();
+  Date.now = () => controlledLawModelNowMs;
+  advanceControlledClock = (elapsedMs) => { controlledLawModelNowMs += elapsedMs; };
+  geminiFileUploadDelayQueueMs = [70_000];
+  geminiModelDelayQueueMs = [6_000];
+  try {
+    await assert.rejects(
+      lawCallable(USERS.developer, {
+        query: '업로드 뒤 모델 호출 마감이 적용되는 민법 조항을 알려줘.',
+        attachments: [attachment],
+      }),
+      (error) => error?.code === 'unavailable'
+        && error?.details?.reason === 'HARULAW_AI_TEMPORARY_UNAVAILABLE',
+    );
+  } finally {
+    Date.now = originalLawModelDateNow;
+    advanceControlledClock = null;
+    geminiFileUploadDelayQueueMs = [];
+    geminiModelDelayQueueMs = [];
+  }
+  const lawModelDeadlineCalls = legacyGenaiCalls.slice(lawModelDeadlineCallsBefore);
+  assert.strictEqual(lawModelDeadlineCalls.length, 3);
+  assert.strictEqual(lawModelDeadlineCalls.at(-1).requestTimeout, 5_000);
   assert.strictEqual(activeGeminiFiles.size, 0);
   assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
 

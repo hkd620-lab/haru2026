@@ -3950,6 +3950,18 @@ const HARULAW_GEMINI_FILE_TIMEOUT_MS = HARULAW_CALLABLE_TIMEOUT_MS
 const HARULAW_GEMINI_FILE_DELETE_TIMEOUT_MS = 10_000;
 const HARULAW_GEMINI_FILE_NAME_PATTERN = /^files\/harulaw-[a-f0-9]{32}$/;
 
+function getHaruLawRemainingWorkMs(workDeadlineMs: number): number {
+  const remainingMs = workDeadlineMs - Date.now();
+  if (remainingMs <= 0) {
+    throw createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE');
+  }
+  return remainingMs;
+}
+
+function getHaruLawWorkAbortSignal(workDeadlineMs: number): AbortSignal {
+  return AbortSignal.timeout(getHaruLawRemainingWorkMs(workDeadlineMs));
+}
+
 function readHaruLawAttachments(raw: unknown): HaruLawAttachmentRef[] {
   if (!Array.isArray(raw)) return [];
   if (raw.length > HARULAW_ATTACH_MAX_FILES) {
@@ -4137,7 +4149,7 @@ async function uploadPreparedHaruLawAttachments(
   prepared: PreparedHaruLawAttachments,
   uploadGroupId: string,
   trackedFiles: TrackedHaruLawGeminiFile[],
-  uploadDeadlineMs: number,
+  workDeadlineMs: number,
 ): Promise<HaruLawGeminiFilePart[]> {
   const fileParts: HaruLawGeminiFilePart[] = [];
   for (let index = 0; index < prepared.files.length; index += 1) {
@@ -4145,13 +4157,7 @@ async function uploadPreparedHaruLawAttachments(
     const name = getHaruLawGeminiFileName(uploadGroupId, index);
     const cleanupDocRef = getHaruLawGeminiCleanupDocRef(name);
     try {
-      const remainingUploadMs = Math.min(
-        HARULAW_GEMINI_FILE_TIMEOUT_MS,
-        uploadDeadlineMs - Date.now(),
-      );
-      if (remainingUploadMs <= 0) {
-        throw new Error('HARULAW_GEMINI_FILE_UPLOAD_DEADLINE_EXCEEDED');
-      }
+      getHaruLawRemainingWorkMs(workDeadlineMs);
       await cleanupDocRef.set({
         fileName: name,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -4159,6 +4165,10 @@ async function uploadPreparedHaruLawAttachments(
         attempts: 0,
       });
       trackedFiles.push({ name, cleanupDocRef });
+      const remainingUploadMs = Math.min(
+        HARULAW_GEMINI_FILE_TIMEOUT_MS,
+        getHaruLawRemainingWorkMs(workDeadlineMs),
+      );
       const uploadClient = new GoogleGenAI({
         apiKey,
         httpOptions: { timeout: remainingUploadMs },
@@ -4227,7 +4237,7 @@ export const chatWithResult = onCall(
   },
   async (request) => {
     const requestStartedAt = Date.now();
-    const uploadDeadlineMs = requestStartedAt
+    const requestWorkDeadlineMs = requestStartedAt
       + HARULAW_GEMINI_FILE_TIMEOUT_MS;
     if (!request.auth?.uid) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -4588,7 +4598,7 @@ export const chatWithResult = onCall(
           preparedAttachments,
           requestId,
           trackedGeminiFiles,
-          uploadDeadlineMs,
+          requestWorkDeadlineMs,
         )
         : [] as HaruLawGeminiFilePart[];
       const attachmentMeta = preparedAttachments?.attachmentMeta ?? [];
@@ -4597,13 +4607,24 @@ export const chatWithResult = onCall(
         ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
         : prompt;
       const startedAt = Date.now();
+      const firstModelAbortSignal = preparedAttachments
+        ? getHaruLawWorkAbortSignal(requestWorkDeadlineMs)
+        : undefined;
       let response = await ai.models.generateContent({
         model: RESULT_CHAT_MODEL_NAME,
         contents,
         config: answerRoute === 'web_search'
-          ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
-          : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
+          ? {
+            tools: [{ googleSearch: {} }],
+            maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS,
+            ...(firstModelAbortSignal ? { abortSignal: firstModelAbortSignal } : {}),
+          }
+          : {
+            maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS,
+            ...(firstModelAbortSignal ? { abortSignal: firstModelAbortSignal } : {}),
+          },
       });
+      if (preparedAttachments) getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
       let inputTokens = addOptionalTokenCounts(null, response.usageMetadata?.promptTokenCount);
       let outputTokens = addOptionalTokenCounts(null, response.usageMetadata?.candidatesTokenCount);
 
@@ -4625,11 +4646,19 @@ export const chatWithResult = onCall(
         const retryContents: any = fileParts.length > 0
           ? [{ role: 'user', parts: [{ text: retryPrompt }, ...fileParts] }]
           : retryPrompt;
+        const retryAbortSignal = preparedAttachments
+          ? getHaruLawWorkAbortSignal(requestWorkDeadlineMs)
+          : undefined;
         response = await ai.models.generateContent({
           model: RESULT_CHAT_MODEL_NAME,
           contents: retryContents,
-          config: { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
+          config: {
+            tools: [{ googleSearch: {} }],
+            maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS,
+            ...(retryAbortSignal ? { abortSignal: retryAbortSignal } : {}),
+          },
         });
+        if (preparedAttachments) getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
         inputTokens = addOptionalTokenCounts(inputTokens, response.usageMetadata?.promptTokenCount);
         outputTokens = addOptionalTokenCounts(outputTokens, response.usageMetadata?.candidatesTokenCount);
         ({ sources, usedWebSearch } = getResultChatSources(response));
@@ -9665,7 +9694,7 @@ export const lawSearch = onCall(
   },
   async (request) => {
     const requestStartedAt = Date.now();
-    const uploadDeadlineMs = requestStartedAt
+    const requestWorkDeadlineMs = requestStartedAt
       + HARULAW_GEMINI_FILE_TIMEOUT_MS;
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -9926,13 +9955,17 @@ export const lawSearch = onCall(
           preparedAttachments,
           uploadGroupId,
           trackedGeminiFiles,
-          uploadDeadlineMs,
+          requestWorkDeadlineMs,
         )
         : [] as HaruLawGeminiFilePart[];
       const summaryContents: any = fileParts.length > 0
         ? [{ text: summaryPrompt }, ...fileParts]
         : summaryPrompt;
-      const summaryResult = await summaryModel.generateContent(summaryContents);
+      const summaryRequestOptions = preparedAttachments
+        ? { timeout: getHaruLawRemainingWorkMs(requestWorkDeadlineMs) }
+        : undefined;
+      const summaryResult = await summaryModel.generateContent(summaryContents, summaryRequestOptions);
+      if (preparedAttachments) getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
       const summaryText = summaryResult.response.text().trim();
       if (!summaryText) {
         throw new Error(attachments.length > 0 ? 'attachment content could not be read' : 'empty_answer');
