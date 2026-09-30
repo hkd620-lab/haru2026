@@ -6,6 +6,7 @@ const page = readFileSync(new URL('../src/app/pages/AiImportPage.tsx', `file://$
 const service = readFileSync(new URL('../src/app/services/aiImportService.ts', `file://${__filename}`), 'utf8');
 const library = readFileSync(new URL('../src/app/pages/AiLibraryPage.tsx', `file://${__filename}`), 'utf8');
 const app = readFileSync(new URL('../src/app/App.tsx', `file://${__filename}`), 'utf8');
+const authCallback = readFileSync(new URL('../src/app/pages/AuthCallbackPage.tsx', `file://${__filename}`), 'utf8');
 
 test('로그인하지 않은 사용자는 HARU 저장을 시도하지 않는다', () => {
   assert.match(page, /if \(!user\)/);
@@ -16,6 +17,13 @@ test('로그인하지 않은 사용자는 HARU 저장을 시도하지 않는다'
 test('/ai-import는 자체 안내를 렌더링하고 /ai-library만 개발자 guard를 유지한다', () => {
   assert.match(app, /<Route path="\/ai-import" element=\{<AiImportPage \/>\} \/>/);
   assert.match(app, /<Route path="\/ai-library" element=\{<AiLibraryRoute \/>\} \/>/);
+});
+
+test('OAuth 복귀 시 /ai-import는 확장 브리지 재주입을 위해 새 문서로 이동한다', () => {
+  assert.match(authCallback, /const returnPath = consumePostLoginReturnPath\(\)/);
+  assert.match(authCallback, /if \(isAllowedPostLoginReturnPath\(returnPath\)\)/);
+  assert.match(authCallback, /window\.location\.replace\(returnPath\)/);
+  assert.match(authCallback, /navigate\(returnPath, \{ replace: true \}\)/);
 });
 
 test('가져오기 저장은 권한을 검증하는 Callable을 통해 실행한다', () => {

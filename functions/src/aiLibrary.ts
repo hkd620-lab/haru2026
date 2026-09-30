@@ -97,12 +97,12 @@ export const deleteAiLibraryLogs = onCall({ region: 'asia-northeast3' }, async (
   const ids = Array.from(new Set(requestedIds as string[]));
   const db = admin.firestore();
   const refs = ids.map((id) => db.doc(`users/${uid}/records/${id}`));
-  const snaps = await db.getAll(...refs);
-  if (snaps.some((snap) => !snap.exists || snap.data()?.type !== 'ai_log')) {
-    throw new HttpsError('failed-precondition', 'AI 학습함 기록만 삭제할 수 있습니다.');
-  }
-  const batch = db.batch();
-  refs.forEach((ref) => batch.delete(ref));
-  await batch.commit();
+  await db.runTransaction(async (transaction) => {
+    const snaps = await transaction.getAll(...refs);
+    if (snaps.some((snap) => !snap.exists || snap.data()?.type !== 'ai_log')) {
+      throw new HttpsError('failed-precondition', 'AI 학습함 기록만 삭제할 수 있습니다.');
+    }
+    refs.forEach((ref) => transaction.delete(ref));
+  });
   return { deleted: refs.length };
 });
