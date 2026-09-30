@@ -576,7 +576,7 @@ export function HomePageV2() {
   const currentUserUidRef = useRef<string | null>(currentUserUid);
   currentUserUidRef.current = currentUserUid;
   const isDeveloper = user?.uid === DEVELOPER_UID;
-  const canUseAiLibrary = hasAiLibraryAccess(user?.email);
+  const canUseAiLibrary = hasAiLibraryAccess(user?.email, user?.emailVerified);
   // 숨김 기록 + 개발자 전용 항목은 일반 사용자 홈에서 비노출
   const visibleRecords = useMemo(
     () => RECORDS.filter((r) => !HIDDEN_RECORD_FORMATS.has(r.format) && (!r.developerOnly || isDeveloper)),

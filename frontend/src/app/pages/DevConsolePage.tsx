@@ -165,7 +165,7 @@ export function DevConsolePage() {
   const [backfillError, setBackfillError] = useState<string | null>(null);
   const [haruLawPendingCount, setHaruLawPendingCount] = useState<number | null>(null);
   const isDeveloper = user?.uid === DEVELOPER_UID;
-  const canUseAiLibrary = hasAiLibraryAccess(user?.email);
+  const canUseAiLibrary = hasAiLibraryAccess(user?.email, user?.emailVerified);
 
   useEffect(() => {
     if (!user) return;

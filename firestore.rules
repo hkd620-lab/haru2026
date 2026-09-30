@@ -19,7 +19,8 @@ service cloud.firestore {
     function isAiLibraryDeveloper(uid) {
       return signedIn()
         && request.auth.uid == uid
-        && request.auth.token.email == "hkd620@gmail.com";
+        && request.auth.token.email == "hkd620@gmail.com"
+        && request.auth.token.email_verified == true;
     }
 
     function canReadBook(book) {
@@ -186,13 +187,28 @@ service cloud.firestore {
     }
 
     match /users/{userId}/records/{recordId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Firestore Rules는 list 쿼리의 where(type) 조건을 검사할 수 없다.
+      // 일반 기록 목록 호환성을 위해 list는 소유자에게 유지하고,
+      // 직접 get은 ai_log만 검증된 개발자 이메일로 제한한다.
+      allow get: if request.auth != null && request.auth.uid == userId
+        && (!resource.data.keys().hasAny(['type'])
+          || resource.data.type != 'ai_log'
+          || isAiLibraryDeveloper(userId));
+      allow list: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null && request.auth.uid == userId
-        && (request.resource.data.type != 'ai_log' || isAiLibraryDeveloper(userId));
+        && (!request.resource.data.keys().hasAny(['type'])
+          || request.resource.data.type != 'ai_log'
+          || isAiLibraryDeveloper(userId));
       allow update: if request.auth != null && request.auth.uid == userId
-        && ((resource.data.type != 'ai_log' && request.resource.data.type != 'ai_log') || isAiLibraryDeveloper(userId));
+        && ((!resource.data.keys().hasAny(['type'])
+            || resource.data.type != 'ai_log')
+          && (!request.resource.data.keys().hasAny(['type'])
+            || request.resource.data.type != 'ai_log')
+          || isAiLibraryDeveloper(userId));
       allow delete: if request.auth != null && request.auth.uid == userId
-        && (resource.data.type != 'ai_log' || isAiLibraryDeveloper(userId));
+        && (!resource.data.keys().hasAny(['type'])
+          || resource.data.type != 'ai_log'
+          || isAiLibraryDeveloper(userId));
 
       match /resultThreads/{threadId} {
         allow read: if request.auth != null && request.auth.uid == userId;

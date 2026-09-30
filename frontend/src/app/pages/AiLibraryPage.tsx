@@ -349,7 +349,7 @@ export function AiLibraryPage() {
     setExpandedId(null);
     setLoading(true);
 
-    if (!user || !hasAiLibraryAccess(user.email)) {
+    if (!user || !hasAiLibraryAccess(user.email, user.emailVerified)) {
       setLoading(false);
       return () => { cancelled = true; };
     }
@@ -511,7 +511,7 @@ export function AiLibraryPage() {
       const data = (result.data || {}) as any;
       if (!data?.ok) throw new Error('AI 응답 형식 오류');
 
-      if (hasAiLibraryAccess(user?.email)) {
+      if (hasAiLibraryAccess(user?.email, user?.emailVerified)) {
         const freshLogs = await firestoreService.getAiLogs();
         const refreshed = freshLogs.find(item => item.id === log.id);
         setLogs(freshLogs.map(item =>

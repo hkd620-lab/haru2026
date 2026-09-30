@@ -87,7 +87,10 @@ export const convertToBookMaterial = onCall(
     const uid = request.auth.uid;
 
     // 2) Firebase가 검증한 ID 토큰 이메일만 권한 근거로 사용한다.
-    if (!hasAiLibraryDeveloperEmail(request.auth.token.email)) {
+    if (!hasAiLibraryDeveloperEmail(
+      request.auth.token.email,
+      request.auth.token.email_verified,
+    )) {
       logger.warn('convertToBookMaterial: 비개발자 호출 차단', { uid });
       throw new HttpsError('permission-denied', '책소재 변환은 개발자 전용 기능입니다.');
     }

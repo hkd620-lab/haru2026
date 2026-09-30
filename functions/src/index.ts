@@ -5868,6 +5868,7 @@ export const googleCallback = onRequest(
 
       const email = googleUser.email;
       if (!email || typeof email !== 'string') throw new Error('Google email missing');
+      if (googleUser.verified_email !== true) throw new Error('Google email is not verified');
       const displayName = googleUser.name || `google_user_${googleUser.id}`;
       const photoURL = googleUser.picture || null;
 
@@ -5876,10 +5877,10 @@ export const googleCallback = onRequest(
 
       await measureOAuthPhase(timings, 'authUserMs', async () => {
         try {
-          await admin.auth().updateUser(uid, { email, displayName, photoURL });
+          await admin.auth().updateUser(uid, { email, emailVerified: true, displayName, photoURL });
         } catch (error: any) {
           if (error.code === 'auth/user-not-found') {
-            await admin.auth().createUser({ uid, email, displayName, photoURL });
+            await admin.auth().createUser({ uid, email, emailVerified: true, displayName, photoURL });
           } else throw error;
         }
       });

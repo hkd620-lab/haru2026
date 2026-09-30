@@ -6,9 +6,11 @@ const aiLibrary = fs.readFileSync(path.join(__dirname, '../src/aiLibrary.ts'), '
 const bookMaterial = fs.readFileSync(path.join(__dirname, '../src/bookMaterial.ts'), 'utf8');
 
 assert.match(aiLibrary, /request\.auth\.token\.email/);
+assert.match(aiLibrary, /request\.auth\.token\.email_verified/);
 assert.match(aiLibrary, /hkd620@gmail\.com/);
 assert.doesNotMatch(aiLibrary, /naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8/);
 assert.match(bookMaterial, /request\.auth\.token\.email/);
+assert.match(bookMaterial, /request\.auth\.token\.email_verified/);
 assert.doesNotMatch(bookMaterial, /isInternalDeveloperUid\(uid\)/);
 
 console.log('ai library access policy tests passed');

@@ -10,7 +10,7 @@ export function BottomNav() {
   const location = useLocation();
   const { user, loading } = useAuth();
   const isDeveloper = user?.uid === DEVELOPER_UID;
-  const canUseAiLibrary = hasAiLibraryAccess(user?.email);
+  const canUseAiLibrary = hasAiLibraryAccess(user?.email, user?.emailVerified);
 
   const scrollToSayuTop = () => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });

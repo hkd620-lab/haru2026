@@ -25,7 +25,7 @@ export function AiImportPage() {
       setMessage('HARU에 로그인한 뒤 Slack에서 저장을 다시 눌러 주세요.');
       return;
     }
-    if (!hasAiLibraryAccess(user.email)) {
+    if (!hasAiLibraryAccess(user.email, user.emailVerified)) {
       setState('error');
       setMessage('이 기능은 허용된 개발자 계정에서만 사용할 수 있습니다.');
       return;

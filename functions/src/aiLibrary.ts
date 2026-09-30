@@ -5,13 +5,18 @@ const AI_LIBRARY_DEVELOPER_EMAIL = 'hkd620@gmail.com';
 const IMPORT_ID_PATTERN = /^[a-f0-9]{64}$/;
 const ALLOWED_SOURCES = new Set(['slack', 'chatgpt.com', 'claude.ai', 'gemini.google.com']);
 
-export function hasAiLibraryDeveloperEmail(email: unknown): boolean {
-  return typeof email === 'string' && email.trim().toLowerCase() === AI_LIBRARY_DEVELOPER_EMAIL;
+export function hasAiLibraryDeveloperEmail(email: unknown, emailVerified: unknown): boolean {
+  return typeof email === 'string'
+    && email.trim().toLowerCase() === AI_LIBRARY_DEVELOPER_EMAIL
+    && emailVerified === true;
 }
 
 function requireAiLibraryDeveloper(request: { auth?: { uid: string; token: Record<string, unknown> } | null }): string {
   if (!request.auth) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
-  if (!hasAiLibraryDeveloperEmail(request.auth.token.email)) {
+  if (!hasAiLibraryDeveloperEmail(
+    request.auth.token.email,
+    request.auth.token.email_verified,
+  )) {
     throw new HttpsError('permission-denied', 'AI 학습함은 허용된 개발자 계정 전용입니다.');
   }
   return request.auth.uid;

@@ -158,7 +158,7 @@ function DeveloperBookStudioRoute() {
 function AiLibraryRoute({ importMode = false }: { importMode?: boolean }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (!user || !hasAiLibraryAccess(user.email)) return <Navigate to="/" replace />;
+  if (!user || !hasAiLibraryAccess(user.email, user.emailVerified)) return <Navigate to="/" replace />;
   return importMode ? <AiImportPage /> : <AiLibraryPage />;
 }
 
