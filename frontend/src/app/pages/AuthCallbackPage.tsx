@@ -10,6 +10,7 @@ import {
 } from '../utils/authCallbackDiagnostics';
 import { normalizeLoginProvider, rememberLoginProviderLocally } from '../utils/loginProvider';
 import { failLoginTrace, markLoginTrace } from '../utils/loginPerformance';
+import { consumePostLoginReturnPath } from '../utils/postLoginReturn';
 
 const callbackInProgressKeys = new Set<string>();
 const callbackCompletedKeys = new Set<string>();
@@ -118,7 +119,7 @@ export function AuthCallbackPage() {
 
           toast.success('로그인 성공!');
           markLoginTrace('T7_home_route_start');
-          navigate('/', { replace: true });
+          navigate(consumePostLoginReturnPath(), { replace: true });
         } finally {
           callbackInProgressKeys.delete(callbackKey);
         }

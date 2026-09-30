@@ -9,14 +9,19 @@ const app = readFileSync(new URL('../src/app/App.tsx', `file://${__filename}`), 
 
 test('로그인하지 않은 사용자는 HARU 저장을 시도하지 않는다', () => {
   assert.match(page, /if \(!user\)/);
-  assert.match(page, /HARU에 로그인한 뒤 Slack에서 저장을 다시 눌러 주세요/);
+  assert.match(page, /로그인하면 이 가져오기 작업으로 돌아와 저장을 계속합니다/);
+  assert.match(page, /rememberPostLoginReturnPath\(`\/ai-import#\$\{importId\}`\)/);
 });
 
-test('현재 로그인 UID 아래 records에 멱등 문서로 저장하고 실제 문서를 재조회한다', () => {
-  assert.match(service, /doc\(db, 'users', uid, 'records', recordId\)/);
-  assert.match(service, /runTransaction/);
-  assert.match(service, /const verified = await getDoc\(recordRef\)/);
-  assert.match(service, /type: 'ai_log'/);
+test('/ai-import는 자체 안내를 렌더링하고 /ai-library만 개발자 guard를 유지한다', () => {
+  assert.match(app, /<Route path="\/ai-import" element=\{<AiImportPage \/>\} \/>/);
+  assert.match(app, /<Route path="\/ai-library" element=\{<AiLibraryRoute \/>\} \/>/);
+});
+
+test('가져오기 저장은 권한을 검증하는 Callable을 통해 실행한다', () => {
+  assert.match(service, /getFunctions\(undefined, 'asia-northeast3'\)/);
+  assert.match(service, /'saveAiLibraryImport'/);
+  assert.match(service, /const result = await callable\(payload\)/);
 });
 
 test('Slack 출처 라벨과 필터를 기록 유무와 관계없이 표시한다', () => {

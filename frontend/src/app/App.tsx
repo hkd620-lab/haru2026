@@ -155,11 +155,11 @@ function DeveloperBookStudioRoute() {
   return <BookStudio />;
 }
 
-function AiLibraryRoute({ importMode = false }: { importMode?: boolean }) {
+function AiLibraryRoute() {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user || !hasAiLibraryAccess(user.email, user.emailVerified)) return <Navigate to="/" replace />;
-  return importMode ? <AiImportPage /> : <AiLibraryPage />;
+  return <AiLibraryPage />;
 }
 
 function AppChrome() {
@@ -197,7 +197,7 @@ function AppChrome() {
           {/* 인증 */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
-          <Route path="/ai-import" element={<AiLibraryRoute importMode />} />
+          <Route path="/ai-import" element={<AiImportPage />} />
           <Route path="/ai-library" element={<AiLibraryRoute />} />
 
           {/* 기존 페이지들 */}
