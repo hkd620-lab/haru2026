@@ -1229,12 +1229,17 @@ async function run() {
   const finalizationMessagesBefore = (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length;
   const originalFinalizationDateNow = Date.now;
   const originalRunTransaction = db.runTransaction.bind(db);
+  let delayedAtomicTransactions = 0;
   let controlledFinalizationNowMs = originalFinalizationDateNow();
   Date.now = () => controlledFinalizationNowMs;
   advanceControlledClock = (elapsedMs) => { controlledFinalizationNowMs += elapsedMs; };
-  db.runTransaction = (updateFunction, options) => options?.maxAttempts === 1
-    ? sleep(50).then(() => originalRunTransaction(updateFunction, options))
-    : originalRunTransaction(updateFunction, options);
+  db.runTransaction = (updateFunction, options) => {
+    if (options?.maxAttempts === 1 && delayedAtomicTransactions === 0) {
+      delayedAtomicTransactions += 1;
+      return sleep(50).then(() => originalRunTransaction(updateFunction, options));
+    }
+    return originalRunTransaction(updateFunction, options);
+  };
   geminiFileUploadDelayQueueMs = [55_000];
   geminiModelDelayQueueMs = [4_000];
   geminiFileDeleteDelayQueueMs = [15_995];

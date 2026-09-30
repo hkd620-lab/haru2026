@@ -207,7 +207,7 @@ async function run() {
   assert.match(indexSource, /return db\.runTransaction\([\s\S]{0,2600}\{ maxAttempts: 1 \}\)/);
   assert.match(indexSource, /lastCommittedRequestId: params\.requestId/);
   assert.match(indexSource, /lastCancelledRequestId: params\.requestId/);
-  assert.match(indexSource, /runHaruLawOperationBeforeDeadline\(\s*recoveryDeadlineMs,[\s\S]{0,480}threadRef\.set/);
+  assert.match(indexSource, /runHaruLawOperationBeforeDeadline\(\s*recoveryDeadlineMs,[\s\S]{0,300}activeRequestId \|\| ''\) !== params\.requestId\) return/);
   assert.match(indexSource, /runHaruLawOperationBeforeDeadline\(\s*recoveryDeadlineMs,[\s\S]{0,160}threadRef\.get/);
   assert.match(indexSource, /usageForAnswer = await commitAttachedResultChatSuccessBeforeDeadline/);
   assert.match(indexSource, /await deleteTrackedHaruLawGeminiFiles\(haruLawFileClient, trackedGeminiFiles\)[\s\S]{0,220}commitAttachedResultChatSuccessBeforeDeadline/);

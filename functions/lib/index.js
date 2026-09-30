@@ -3504,13 +3504,19 @@ async function commitAttachedResultChatSuccessBeforeDeadline(params, deadlineMs,
     // Change the thread version and clear this request's lock. The success
     // transaction reads the same document and has maxAttempts=1, so it cannot
     // commit after this fence. If it won the race first, its marker is preserved.
-    await runHaruLawOperationBeforeDeadline(recoveryDeadlineMs, () => params.exchange.threadRef.set({
-        activeRequestId: admin.firestore.FieldValue.delete(),
-        activeRequestStartedMs: admin.firestore.FieldValue.delete(),
-        activeRequestStartedAt: admin.firestore.FieldValue.delete(),
-        lastCancelledRequestId: params.requestId,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true }));
+    await runHaruLawOperationBeforeDeadline(recoveryDeadlineMs, () => db.runTransaction(async (tx) => {
+        var _a;
+        const snap = await tx.get(params.exchange.threadRef);
+        if (String(((_a = snap.data()) === null || _a === void 0 ? void 0 : _a.activeRequestId) || '') !== params.requestId)
+            return;
+        tx.set(params.exchange.threadRef, {
+            activeRequestId: admin.firestore.FieldValue.delete(),
+            activeRequestStartedMs: admin.firestore.FieldValue.delete(),
+            activeRequestStartedAt: admin.firestore.FieldValue.delete(),
+            lastCancelledRequestId: params.requestId,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }, { maxAttempts: 1 }));
     const fencedSnap = await runHaruLawOperationBeforeDeadline(recoveryDeadlineMs, () => params.exchange.threadRef.get());
     commitPromise.catch(() => { });
     if (String(((_a = fencedSnap.data()) === null || _a === void 0 ? void 0 : _a.lastCommittedRequestId) || '') === params.requestId) {

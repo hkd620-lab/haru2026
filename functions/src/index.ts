@@ -4144,13 +4144,17 @@ async function commitAttachedResultChatSuccessBeforeDeadline(
   // commit after this fence. If it won the race first, its marker is preserved.
   await runHaruLawOperationBeforeDeadline(
     recoveryDeadlineMs,
-    () => params.exchange.threadRef.set({
-      activeRequestId: admin.firestore.FieldValue.delete(),
-      activeRequestStartedMs: admin.firestore.FieldValue.delete(),
-      activeRequestStartedAt: admin.firestore.FieldValue.delete(),
-      lastCancelledRequestId: params.requestId,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true }),
+    () => db.runTransaction(async (tx) => {
+      const snap = await tx.get(params.exchange.threadRef);
+      if (String(snap.data()?.activeRequestId || '') !== params.requestId) return;
+      tx.set(params.exchange.threadRef, {
+        activeRequestId: admin.firestore.FieldValue.delete(),
+        activeRequestStartedMs: admin.firestore.FieldValue.delete(),
+        activeRequestStartedAt: admin.firestore.FieldValue.delete(),
+        lastCancelledRequestId: params.requestId,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }, { maxAttempts: 1 }),
   );
   const fencedSnap = await runHaruLawOperationBeforeDeadline(
     recoveryDeadlineMs,
