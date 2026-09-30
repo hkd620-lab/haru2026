@@ -12,6 +12,7 @@ import * as crypto from 'crypto';
 const PDFDocument = require('pdfkit');
 const sharp = require('sharp');
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
 import {
@@ -97,6 +98,16 @@ import {
   sha256Hex,
   validateLawEasyExplainInput,
 } from './lawEasyExplainCore';
+import {
+  classifyHaruLawAiError,
+  getHaruLawAttachmentContentError,
+  getHaruLawErrorDescriptor,
+  HaruLawApiTemporaryError,
+  isAllowedHaruLawAttachmentMime,
+  runHaruLawApiRequestWithRetry,
+  type HaruLawErrorReason,
+  type HaruLawProcessingStage,
+} from './haruLawErrorCore';
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
 import { GoogleGenAI } from '@google/genai';
 // HARU가계부 카카오뱅크 XLSX 잠금 해제 전용 (msoffcrypto-tool TS 포트)
@@ -3199,14 +3210,15 @@ async function finalizeWebSearchSlot(
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(threadRef);
     const current = getWebSearchUsageFromData(snap.data(), plan);
-    const reservedCount = Math.max(0, current.reservedCount - 1);
-    const usedCount = success ? current.usedCount + 1 : current.usedCount;
+    const hasReservation = current.reservedCount > 0;
+    const reservedCount = hasReservation ? current.reservedCount - 1 : 0;
+    const usedCount = success && hasReservation ? current.usedCount + 1 : current.usedCount;
     const next: Record<string, any> = {
       webSearchReservedCount: reservedCount,
       webSearchUsedCount: usedCount,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
-    if (success) next.lastWebSearchAt = admin.firestore.FieldValue.serverTimestamp();
+    if (success && hasReservation) next.lastWebSearchAt = admin.firestore.FieldValue.serverTimestamp();
     tx.set(threadRef, next, { merge: true });
     return {
       limit: current.limit,
@@ -3215,6 +3227,15 @@ async function finalizeWebSearchSlot(
       remainingCount: Math.max(0, current.limit - usedCount - reservedCount),
     };
   });
+}
+
+function previewSuccessfulWebSearchFinalization(usage: WebSearchUsage): WebSearchUsage {
+  if (usage.reservedCount <= 0) return usage;
+  return {
+    ...usage,
+    usedCount: usage.usedCount + 1,
+    reservedCount: usage.reservedCount - 1,
+  };
 }
 
 async function acquireResultChatLock(
@@ -3797,7 +3818,7 @@ function findReusableResultChatAnswer(
   return null;
 }
 
-async function saveResultChatExchange(params: {
+type ResultChatExchangeParams = {
   threadRef: admin.firestore.DocumentReference;
   messagesRef: admin.firestore.CollectionReference;
   question: string;
@@ -3815,7 +3836,9 @@ async function saveResultChatExchange(params: {
   professionalApiUsed: boolean;
   cached?: boolean;
   attachmentMeta?: { fileName: string; storagePath: string; mimeType: string }[];
-}): Promise<void> {
+};
+
+async function saveResultChatExchange(params: ResultChatExchangeParams): Promise<void> {
   const now = admin.firestore.FieldValue.serverTimestamp();
   const userMessage: Record<string, unknown> = {
     role: 'user',
@@ -3851,7 +3874,7 @@ async function saveResultChatExchange(params: {
   }, { merge: true });
 }
 
-async function logResultChatUsage(params: {
+type ResultChatUsageLogParams = {
   uid: string;
   actualPlan: UserPlan;
   recordId: string;
@@ -3868,8 +3891,10 @@ async function logResultChatUsage(params: {
   success: boolean;
   errorCode: string | null;
   isDev: boolean;
-}): Promise<void> {
-  await logAiUsage({
+};
+
+function buildResultChatUsageLogData(params: ResultChatUsageLogParams) {
+  return {
     uid: params.uid,
     featureName: 'result_chat',
     plan: params.actualPlan,
@@ -3897,7 +3922,81 @@ async function logResultChatUsage(params: {
     success: params.success,
     errorCode: params.errorCode,
     isDev: params.isDev,
-  });
+  };
+}
+
+async function logResultChatUsage(params: ResultChatUsageLogParams): Promise<void> {
+  await logAiUsage(buildResultChatUsageLogData(params));
+}
+
+async function commitAttachedResultChatSuccess(params: {
+  exchange: ResultChatExchangeParams;
+  usageLog: ResultChatUsageLogParams;
+  plan: UserPlan;
+  requestId: string;
+}): Promise<WebSearchUsage> {
+  const userMessageRef = params.exchange.messagesRef.doc();
+  const assistantMessageRef = params.exchange.messagesRef.doc();
+  const usageLogRef = db.collection('aiUsageLogs').doc();
+
+  return db.runTransaction(async (tx) => {
+    const threadSnap = await tx.get(params.exchange.threadRef);
+    if (String(threadSnap.data()?.activeRequestId || '') !== params.requestId) {
+      throw createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE');
+    }
+    const currentUsage = getWebSearchUsageFromData(threadSnap.data(), params.plan);
+    const isWebSearch = params.exchange.answerRoute === 'web_search';
+    if (isWebSearch && currentUsage.reservedCount <= 0) {
+      throw createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE');
+    }
+    const finalizedUsage = isWebSearch
+      ? previewSuccessfulWebSearchFinalization(currentUsage)
+      : currentUsage;
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const userMessage: Record<string, unknown> = {
+      role: 'user',
+      content: params.exchange.question,
+      createdAt: now,
+    };
+    if (params.exchange.attachmentMeta && params.exchange.attachmentMeta.length > 0) {
+      userMessage.attachments = params.exchange.attachmentMeta;
+    }
+    tx.set(userMessageRef, userMessage);
+    tx.set(assistantMessageRef, {
+      role: 'assistant',
+      content: params.exchange.answer,
+      sources: params.exchange.sources.length > 0 ? params.exchange.sources : [],
+      answerRoute: params.exchange.answerRoute,
+      routeLabel: RESULT_ROUTE_LABELS[params.exchange.answerRoute],
+      webSearchUsed: params.exchange.webSearchUsed,
+      professionalApiUsed: params.exchange.professionalApiUsed,
+      inputTokens: params.exchange.inputTokens,
+      outputTokens: params.exchange.outputTokens,
+      model: params.exchange.model,
+      latencyMs: params.exchange.latencyMs,
+      cached: params.exchange.cached === true,
+      createdAt: now,
+    });
+    tx.set(params.exchange.threadRef, {
+      sourceKey: params.exchange.sourceKey,
+      sourceIndex: typeof params.exchange.sourceIndex === 'number' ? params.exchange.sourceIndex : null,
+      safetyMode: params.exchange.safetyMode,
+      updatedAt: now,
+      messageCount: admin.firestore.FieldValue.increment(2),
+      lastMessagePreview: params.exchange.answer.slice(0, 160),
+      lastCommittedRequestId: params.requestId,
+      ...(isWebSearch ? {
+        webSearchReservedCount: finalizedUsage.reservedCount,
+        webSearchUsedCount: finalizedUsage.usedCount,
+        lastWebSearchAt: now,
+      } : {}),
+    }, { merge: true });
+    tx.set(usageLogRef, {
+      ...buildResultChatUsageLogData(params.usageLog),
+      createdAt: now,
+    });
+    return finalizedUsage;
+  }, { maxAttempts: 1 });
 }
 
 type HaruLawAttachmentRef = {
@@ -3906,19 +4005,185 @@ type HaruLawAttachmentRef = {
   fileName: string;
 };
 type HaruLawGeminiFilePart = {
-  inlineData: {
+  fileData: {
     mimeType: string;
-    data: string;
+    fileUri: string;
   };
+};
+type PreparedHaruLawAttachment = {
+  tempPath: string;
+  mimeType: string;
+};
+type PreparedHaruLawAttachments = {
+  tempDir: string;
+  files: PreparedHaruLawAttachment[];
+  attachmentMeta: HaruLawAttachmentRef[];
+};
+type TrackedHaruLawGeminiFile = {
+  name: string;
+  cleanupDocRef: FirebaseFirestore.DocumentReference;
 };
 
 const HARULAW_ATTACH_MAX_FILES = 5;
 const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
-const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
+const HARULAW_ATTACH_MAX_PDF_BYTES = 50_000_000;
+const HARULAW_ATTACH_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+const HARULAW_GEMINI_FILE_CLEANUP_COLLECTION = 'haruLawGeminiFileCleanup';
+const HARULAW_GEMINI_FILE_CLEANUP_DELAY_MS = 10 * 60 * 1000;
+const HARULAW_CALLABLE_TIMEOUT_MS = 90_000;
+const HARULAW_GEMINI_FINALIZATION_RESERVE_MS = 15_000;
+const HARULAW_POST_MODEL_WRITE_BUDGET_MS = 15_000;
+const HARULAW_ROLLBACK_DEADLINE_MARGIN_MS = 5_000;
+const HARULAW_CLEANUP_LEDGER_TIMEOUT_MS = 2_000;
+// Finish uploads and attachment-backed model calls before post-model writes,
+// while preserving a final 15 seconds for rollback and File cleanup.
+const HARULAW_GEMINI_FILE_TIMEOUT_MS = HARULAW_CALLABLE_TIMEOUT_MS
+  - HARULAW_POST_MODEL_WRITE_BUDGET_MS
+  - HARULAW_GEMINI_FINALIZATION_RESERVE_MS;
+const HARULAW_GEMINI_FILE_DELETE_TIMEOUT_MS = 10_000;
+const HARULAW_GEMINI_FILE_NAME_PATTERN = /^files\/harulaw-[a-f0-9]{32}$/;
+
+function getHaruLawRemainingWorkMs(workDeadlineMs: number): number {
+  const remainingMs = workDeadlineMs - Date.now();
+  if (remainingMs <= 0) {
+    throw createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE');
+  }
+  return remainingMs;
+}
+
+function isHaruLawDeadlineAbortError(error: unknown): boolean {
+  const candidate = error as { name?: unknown; code?: unknown } | null;
+  return candidate?.name === 'AbortError'
+    || candidate?.name === 'TimeoutError'
+    || candidate?.name === 'GoogleGenerativeAIAbortError'
+    || candidate?.code === 20;
+}
+
+async function runHaruLawOperationBeforeDeadline<T>(
+  deadlineMs: number,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const remainingMs = getHaruLawRemainingWorkMs(deadlineMs);
+  let timeout: NodeJS.Timeout | null = null;
+  try {
+    return await Promise.race([
+      operation(),
+      new Promise<T>((_resolve, reject) => {
+        timeout = setTimeout(
+          () => reject(createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE')),
+          remainingMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
+async function runHaruLawModelBeforeDeadline<T>(
+  deadlineMs: number,
+  operation: (options: { timeoutMs: number; abortSignal: AbortSignal }) => Promise<T>,
+): Promise<T> {
+  const timeoutMs = getHaruLawRemainingWorkMs(deadlineMs);
+  const abortSignal = AbortSignal.timeout(timeoutMs);
+  try {
+    return await operation({ timeoutMs, abortSignal });
+  } catch (error) {
+    if (abortSignal.aborted || isHaruLawDeadlineAbortError(error)) {
+      throw createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE');
+    }
+    throw error;
+  }
+}
+
+async function settleHaruLawRollbacksBeforeDeadline(
+  deadlineMs: number,
+  rollbacks: Promise<unknown>[],
+): Promise<void> {
+  const remainingMs = Math.max(0, deadlineMs - Date.now());
+  if (remainingMs === 0) {
+    logger.warn('하루LAW 사용량 롤백이 함수 마감 전 완료되지 않음');
+    return;
+  }
+  let timeout: NodeJS.Timeout | null = null;
+  const settled = await Promise.race([
+    Promise.allSettled(rollbacks).then(() => true),
+    new Promise<boolean>((resolve) => {
+      timeout = setTimeout(() => resolve(false), remainingMs);
+    }),
+  ]);
+  if (timeout) clearTimeout(timeout);
+  if (!settled) {
+    logger.warn('하루LAW 사용량 롤백이 함수 마감 전 완료되지 않음');
+  }
+}
+
+async function commitAttachedResultChatSuccessBeforeDeadline(
+  params: Parameters<typeof commitAttachedResultChatSuccess>[0],
+  deadlineMs: number,
+  recoveryDeadlineMs: number,
+): Promise<WebSearchUsage> {
+  const remainingMs = getHaruLawRemainingWorkMs(deadlineMs);
+  let timeout: NodeJS.Timeout | null = null;
+  const commitPromise = commitAttachedResultChatSuccess(params);
+  const first = await Promise.race([
+    commitPromise.then(
+      (usage) => ({ kind: 'committed' as const, usage }),
+      (error) => ({ kind: 'failed' as const, error }),
+    ),
+    new Promise<{ kind: 'deadline' }>((resolve) => {
+      timeout = setTimeout(() => resolve({ kind: 'deadline' }), remainingMs);
+    }),
+  ]);
+  if (timeout) clearTimeout(timeout);
+  if (first.kind === 'committed') return first.usage;
+  if (first.kind === 'failed') throw first.error;
+
+  // Change the thread version and clear this request's lock. The success
+  // transaction reads the same document and has maxAttempts=1, so it cannot
+  // commit after this fence. If it won the race first, its marker is preserved.
+  await runHaruLawOperationBeforeDeadline(
+    recoveryDeadlineMs,
+    () => db.runTransaction(async (tx) => {
+      const snap = await tx.get(params.exchange.threadRef);
+      if (String(snap.data()?.activeRequestId || '') !== params.requestId) return;
+      tx.set(params.exchange.threadRef, {
+        activeRequestId: admin.firestore.FieldValue.delete(),
+        activeRequestStartedMs: admin.firestore.FieldValue.delete(),
+        activeRequestStartedAt: admin.firestore.FieldValue.delete(),
+        lastCancelledRequestId: params.requestId,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }, { maxAttempts: 1 }),
+  );
+  const fencedSnap = await runHaruLawOperationBeforeDeadline(
+    recoveryDeadlineMs,
+    () => params.exchange.threadRef.get(),
+  );
+  commitPromise.catch(() => {});
+  if (String(fencedSnap.data()?.lastCommittedRequestId || '') === params.requestId) {
+    return getWebSearchUsageFromData(fencedSnap.data(), params.plan);
+  }
+  throw createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE');
+}
+
+async function settleHaruLawCleanupLedgerWrite(operation: Promise<unknown>): Promise<void> {
+  let timeout: NodeJS.Timeout | null = null;
+  await Promise.race([
+    operation.catch(() => undefined),
+    new Promise<void>((resolve) => {
+      timeout = setTimeout(resolve, HARULAW_CLEANUP_LEDGER_TIMEOUT_MS);
+    }),
+  ]);
+  if (timeout) clearTimeout(timeout);
+}
 
 function readHaruLawAttachments(raw: unknown): HaruLawAttachmentRef[] {
   if (!Array.isArray(raw)) return [];
-  return raw.slice(0, HARULAW_ATTACH_MAX_FILES).map((item) => {
+  if (raw.length > HARULAW_ATTACH_MAX_FILES) {
+    throw new HttpsError('invalid-argument', '첨부파일은 최대 5개까지 추가할 수 있습니다.');
+  }
+  return raw.map((item) => {
     const source = item as Partial<HaruLawAttachmentRef>;
     const storagePath = clampResultChatText(source?.storagePath, 512);
     const mimeType = clampResultChatText(source?.mimeType, 120).toLowerCase();
@@ -3930,76 +4195,291 @@ function readHaruLawAttachments(raw: unknown): HaruLawAttachmentRef[] {
   });
 }
 
-function isAllowedHaruLawAttachmentMime(mimeType: string): boolean {
-  return mimeType === 'application/pdf' || /^image\/[-+.\w]+$/i.test(mimeType);
+function createHaruLawHttpsError(reason: HaruLawErrorReason): HttpsError {
+  const descriptor = getHaruLawErrorDescriptor(reason);
+  return new HttpsError(descriptor.code, descriptor.message, descriptor.details);
 }
 
 function getHaruLawAttachmentSizeLimit(mimeType: string): number {
   return mimeType.startsWith('image/') ? HARULAW_ATTACH_MAX_IMAGE_BYTES : HARULAW_ATTACH_MAX_PDF_BYTES;
 }
 
-async function loadHaruLawAttachmentParts(
+async function prepareHaruLawAttachments(
   uid: string,
-  attachments: HaruLawAttachmentRef[]
-): Promise<{ fileParts: HaruLawGeminiFilePart[]; attachmentMeta: HaruLawAttachmentRef[] }> {
-  const fileParts: HaruLawGeminiFilePart[] = [];
+  attachments: HaruLawAttachmentRef[],
+  workDeadlineMs: number,
+): Promise<PreparedHaruLawAttachments> {
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'harulaw-attachments-'));
+  const preparedFiles: PreparedHaruLawAttachment[] = [];
   const attachmentMeta: HaruLawAttachmentRef[] = [];
+  const validatedAttachments: Array<{
+    attachment: HaruLawAttachmentRef;
+    file: ReturnType<ReturnType<typeof bucket>['file']>;
+    effectiveMimeType: string;
+    sizeLimit: number;
+  }> = [];
+  let metadataTotalBytes = 0;
 
-  for (const att of attachments) {
-    if (!att.storagePath.startsWith(`users/${uid}/haruLawAttachments/`)) {
-      throw new HttpsError('permission-denied', '허용되지 않은 파일 경로입니다.');
-    }
-    if (!isAllowedHaruLawAttachmentMime(att.mimeType)) {
-      throw new HttpsError('invalid-argument', '지원하지 않는 파일 형식입니다.');
+  try {
+    for (const att of attachments) {
+      if (!att.storagePath.startsWith(`users/${uid}/haruLawAttachments/`)) {
+        throw new HttpsError('permission-denied', '허용되지 않은 파일 경로입니다.');
+      }
+      if (!isAllowedHaruLawAttachmentMime(att.mimeType)) {
+        throw createHaruLawHttpsError('ATTACHMENT_UNSUPPORTED_TYPE');
+      }
+
+      const file = bucket().file(att.storagePath);
+      let metadata: any;
+      try {
+        [metadata] = await runHaruLawOperationBeforeDeadline(
+          workDeadlineMs,
+          () => file.getMetadata(),
+        );
+      } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        logger.warn('하루LAW 첨부 메타데이터 조회 실패', { errorCode: (error as any)?.code });
+        throw new HttpsError('not-found', '첨부 파일을 찾을 수 없습니다.');
+      }
+
+      const storedMimeType = String(metadata?.contentType || '').trim().toLowerCase();
+      const effectiveMimeType = storedMimeType || att.mimeType;
+      if (!isAllowedHaruLawAttachmentMime(effectiveMimeType) || (storedMimeType && storedMimeType !== att.mimeType)) {
+        throw createHaruLawHttpsError('ATTACHMENT_UNSUPPORTED_TYPE');
+      }
+
+      const sizeLimit = getHaruLawAttachmentSizeLimit(effectiveMimeType);
+      const metadataSize = Number(metadata?.size);
+      if (!Number.isSafeInteger(metadataSize) || metadataSize < 0) {
+        throw new HttpsError('internal', '첨부 파일 크기를 확인하지 못했습니다.');
+      }
+      if (metadataSize > sizeLimit) {
+        throw new HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+      }
+      metadataTotalBytes += metadataSize;
+      if (metadataTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES) {
+        throw createHaruLawHttpsError('ATTACHMENT_TOTAL_SIZE_EXCEEDED');
+      }
+      validatedAttachments.push({ attachment: att, file, effectiveMimeType, sizeLimit });
     }
 
-    const file = bucket().file(att.storagePath);
-    let metadata: any;
-    try {
-      [metadata] = await file.getMetadata();
-    } catch (error) {
-      logger.warn('하루LAW 첨부 메타데이터 조회 실패:', { storagePath: att.storagePath, message: (error as any)?.message });
-      throw new HttpsError('not-found', '첨부 파일을 찾을 수 없습니다.');
+    let downloadedTotalBytes = 0;
+    for (let index = 0; index < validatedAttachments.length; index += 1) {
+      const { attachment: att, file, effectiveMimeType, sizeLimit } = validatedAttachments[index];
+      const tempPath = path.join(tempDir, `${index}.upload`);
+      try {
+        await runHaruLawOperationBeforeDeadline(
+          workDeadlineMs,
+          () => file.download({ destination: tempPath }).then(() => undefined),
+        );
+      } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        logger.warn('하루LAW 첨부 다운로드 실패', { errorCode: (error as any)?.code });
+        throw new HttpsError('not-found', '첨부 파일을 다운로드하지 못했습니다.');
+      }
+      const actualSize = (await fs.promises.stat(tempPath)).size;
+      if (actualSize > sizeLimit) {
+        throw new HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
+      }
+      downloadedTotalBytes += actualSize;
+      if (downloadedTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES) {
+        throw createHaruLawHttpsError('ATTACHMENT_TOTAL_SIZE_EXCEEDED');
+      }
+      const contentError = await getHaruLawAttachmentContentError(
+        effectiveMimeType,
+        await fs.promises.readFile(tempPath),
+      );
+      if (contentError) {
+        throw createHaruLawHttpsError(contentError);
+      }
+
+      preparedFiles.push({ tempPath, mimeType: effectiveMimeType });
+      attachmentMeta.push({ storagePath: att.storagePath, mimeType: effectiveMimeType, fileName: att.fileName });
     }
 
-    const storedMimeType = String(metadata?.contentType || '').trim().toLowerCase();
-    const effectiveMimeType = storedMimeType || att.mimeType;
-    if (!isAllowedHaruLawAttachmentMime(effectiveMimeType) || (storedMimeType && storedMimeType !== att.mimeType)) {
-      throw new HttpsError('invalid-argument', '첨부 파일 형식이 허용 범위와 다릅니다.');
-    }
-
-    const sizeLimit = getHaruLawAttachmentSizeLimit(effectiveMimeType);
-    const metadataSize = Number(metadata?.size);
-    if (Number.isFinite(metadataSize) && metadataSize > sizeLimit) {
-      throw new HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
-    }
-
-    let buf: Buffer;
-    try {
-      [buf] = await file.download();
-    } catch (error) {
-      logger.warn('하루LAW 첨부 다운로드 실패:', { storagePath: att.storagePath, message: (error as any)?.message });
-      throw new HttpsError('not-found', '첨부 파일을 다운로드하지 못했습니다.');
-    }
-    if (buf.length > sizeLimit) {
-      throw new HttpsError('invalid-argument', '파일 크기가 허용 범위를 초과했습니다.');
-    }
-
-    fileParts.push({ inlineData: { mimeType: effectiveMimeType, data: buf.toString('base64') } });
-    attachmentMeta.push({ storagePath: att.storagePath, mimeType: effectiveMimeType, fileName: att.fileName });
+    return { tempDir, files: preparedFiles, attachmentMeta };
+  } catch (error) {
+    await fs.promises.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    throw error;
   }
-
-  return { fileParts, attachmentMeta };
 }
+
+async function removePreparedHaruLawAttachments(prepared: PreparedHaruLawAttachments | null): Promise<void> {
+  if (!prepared) return;
+  await fs.promises.rm(prepared.tempDir, { recursive: true, force: true }).catch((error) => {
+    logger.warn('하루LAW 로컬 임시 첨부 정리 실패', { errorCode: (error as any)?.code });
+  });
+}
+
+function getHaruLawGeminiFileName(uploadGroupId: string, index: number): string {
+  const opaqueId = crypto
+    .createHash('sha256')
+    .update(`harulaw:${uploadGroupId}:${index}`)
+    .digest('hex')
+    .slice(0, 32);
+  return `files/harulaw-${opaqueId}`;
+}
+
+function getHaruLawGeminiCleanupDocRef(fileName: string): FirebaseFirestore.DocumentReference {
+  const docId = crypto.createHash('sha256').update(fileName).digest('hex');
+  return db.collection(HARULAW_GEMINI_FILE_CLEANUP_COLLECTION).doc(docId);
+}
+
+function isHaruLawGeminiFileNotFound(error: unknown): boolean {
+  const candidate = error as { code?: unknown; status?: unknown; response?: { status?: unknown } } | null;
+  return Number(candidate?.response?.status ?? candidate?.status ?? candidate?.code) === 404;
+}
+
+async function deleteTrackedHaruLawGeminiFile(
+  ai: GoogleGenAI,
+  tracked: TrackedHaruLawGeminiFile,
+): Promise<boolean> {
+  try {
+    await ai.files.delete({
+      name: tracked.name,
+      config: { httpOptions: { timeout: HARULAW_GEMINI_FILE_DELETE_TIMEOUT_MS } },
+    });
+    await settleHaruLawCleanupLedgerWrite(tracked.cleanupDocRef.delete());
+    return true;
+  } catch (error) {
+    if (isHaruLawGeminiFileNotFound(error)) {
+      await settleHaruLawCleanupLedgerWrite(tracked.cleanupDocRef.delete());
+      return true;
+    }
+    await settleHaruLawCleanupLedgerWrite(
+      tracked.cleanupDocRef.set({
+        cleanupAfter: admin.firestore.Timestamp.fromMillis(Date.now() + HARULAW_GEMINI_FILE_CLEANUP_DELAY_MS),
+        lastAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+        attempts: admin.firestore.FieldValue.increment(1),
+      }, { merge: true }),
+    );
+    logger.warn('하루LAW Gemini 임시 File 삭제 실패', {
+      errorCode: (error as any)?.code,
+      errorStatus: (error as any)?.response?.status ?? (error as any)?.status,
+    });
+    return false;
+  }
+}
+
+async function deleteTrackedHaruLawGeminiFiles(
+  ai: GoogleGenAI | null,
+  trackedFiles: TrackedHaruLawGeminiFile[],
+): Promise<void> {
+  if (!ai) return;
+  // At most five request-owned Files exist. Delete them concurrently so the
+  // 10-second per-delete cap fits inside the 15-second finalization reserve.
+  const results = await Promise.all(
+    trackedFiles.map(async (tracked) => ({
+      tracked,
+      deleted: await deleteTrackedHaruLawGeminiFile(ai, tracked),
+    })),
+  );
+  trackedFiles.splice(0, trackedFiles.length, ...results
+    .filter((result) => !result.deleted)
+    .map((result) => result.tracked));
+}
+
+async function uploadPreparedHaruLawAttachments(
+  apiKey: string,
+  prepared: PreparedHaruLawAttachments,
+  uploadGroupId: string,
+  trackedFiles: TrackedHaruLawGeminiFile[],
+  workDeadlineMs: number,
+): Promise<HaruLawGeminiFilePart[]> {
+  const fileParts: HaruLawGeminiFilePart[] = [];
+  for (let index = 0; index < prepared.files.length; index += 1) {
+    const preparedFile = prepared.files[index];
+    const name = getHaruLawGeminiFileName(uploadGroupId, index);
+    const cleanupDocRef = getHaruLawGeminiCleanupDocRef(name);
+    try {
+      getHaruLawRemainingWorkMs(workDeadlineMs);
+      await cleanupDocRef.set({
+        fileName: name,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        cleanupAfter: admin.firestore.Timestamp.fromMillis(Date.now() + HARULAW_GEMINI_FILE_CLEANUP_DELAY_MS),
+        attempts: 0,
+      });
+      trackedFiles.push({ name, cleanupDocRef });
+      const remainingUploadMs = Math.min(
+        HARULAW_GEMINI_FILE_TIMEOUT_MS,
+        getHaruLawRemainingWorkMs(workDeadlineMs),
+      );
+      const uploadClient = new GoogleGenAI({
+        apiKey,
+        httpOptions: { timeout: remainingUploadMs },
+      });
+      const uploaded = await uploadClient.files.upload({
+        file: preparedFile.tempPath,
+        config: {
+          name,
+          mimeType: preparedFile.mimeType,
+        },
+      });
+      if (uploaded.name !== name || !uploaded.uri) {
+        throw new Error('HARULAW_GEMINI_FILE_UPLOAD_INVALID_RESPONSE');
+      }
+      fileParts.push({ fileData: { mimeType: preparedFile.mimeType, fileUri: uploaded.uri } });
+    } catch (error) {
+      logger.warn('하루LAW Gemini 임시 File 업로드 실패', {
+        errorCode: (error as any)?.code,
+        errorStatus: (error as any)?.response?.status ?? (error as any)?.status,
+      });
+      throw createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE');
+    }
+  }
+  return fileParts;
+}
+
+export const cleanupHaruLawGeminiFiles = onSchedule(
+  {
+    schedule: 'every 30 minutes',
+    region: 'asia-northeast3',
+    secrets: [GEMINI_API_KEY_SECRET],
+    timeoutSeconds: 300,
+    memory: '256MiB',
+  },
+  async () => {
+    const snapshot = await db.collection(HARULAW_GEMINI_FILE_CLEANUP_COLLECTION)
+      .where('cleanupAfter', '<=', admin.firestore.Timestamp.now())
+      .limit(100)
+      .get();
+    if (snapshot.empty) return;
+
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
+    let deletedCount = 0;
+    let failedCount = 0;
+    for (const doc of snapshot.docs) {
+      const fileName = String(doc.data()?.fileName || '');
+      if (!HARULAW_GEMINI_FILE_NAME_PATTERN.test(fileName)) {
+        await doc.ref.delete();
+        continue;
+      }
+      const deleted = await deleteTrackedHaruLawGeminiFile(ai, { name: fileName, cleanupDocRef: doc.ref });
+      if (deleted) deletedCount += 1;
+      else failedCount += 1;
+    }
+    logger.info('하루LAW Gemini 임시 File 재정리 완료', { deletedCount, failedCount });
+  },
+);
 
 export const chatWithResult = onCall(
   {
     region: 'asia-northeast3',
     memory: '512MiB',
+    concurrency: 1,
     secrets: [GEMINI_API_KEY_SECRET],
     timeoutSeconds: 90,
   },
   async (request) => {
+    const requestStartedAt = Date.now();
+    const requestWorkDeadlineMs = requestStartedAt
+      + HARULAW_GEMINI_FILE_TIMEOUT_MS;
+    const requestFinalizationDeadlineMs = requestStartedAt
+      + HARULAW_CALLABLE_TIMEOUT_MS
+      - HARULAW_GEMINI_FINALIZATION_RESERVE_MS;
+    const requestRollbackDeadlineMs = requestStartedAt
+      + HARULAW_CALLABLE_TIMEOUT_MS
+      - HARULAW_ROLLBACK_DEADLINE_MARGIN_MS;
     if (!request.auth?.uid) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -4092,6 +4572,10 @@ export const chatWithResult = onCall(
     let webSearchFinalized = false;
     let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
     let attemptedAnswerRoute: ResultAnswerRoute = 'ambiguous';
+    let haruLawProcessingStage: HaruLawProcessingStage = 'attachment_load';
+    let haruLawFileClient: GoogleGenAI | null = null;
+    let preparedAttachments: PreparedHaruLawAttachments | null = null;
+    const trackedGeminiFiles: TrackedHaruLawGeminiFile[] = [];
 
     try {
       await acquireResultChatLock(threadRef, requestId);
@@ -4099,6 +4583,9 @@ export const chatWithResult = onCall(
       await enforceResultChatRateLimit(uid);
 
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
+      if (attachments.length > 0) {
+        haruLawFileClient = new GoogleGenAI({ apiKey: GEMINI_API_KEY_SECRET.value() });
+      }
       const currentUsage = await getThreadWebSearchUsage(threadRef, actualPlan);
       const answerRoute: ResultAnswerRoute = searchPreference === 'web_confirmed' ? 'web_search' : 'record_only';
       attemptedAnswerRoute = answerRoute;
@@ -4170,6 +4657,13 @@ export const chatWithResult = onCall(
           });
         }
       }
+      // Validate and download attachments before reserving monthly/search usage.
+      // The paid model and web-search calls still remain behind their existing
+      // transactional reservations, so quota competition and billing semantics
+      // are unchanged while slow Storage reads cannot strand a reservation.
+      preparedAttachments = attachments.length > 0
+        ? await prepareHaruLawAttachments(uid, attachments, requestWorkDeadlineMs)
+        : null;
       try {
         monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'chatWithResult');
       } catch (error: any) {
@@ -4343,20 +4837,40 @@ export const chatWithResult = onCall(
         recordOnlyChosen,
         questionSafetyGuide,
       });
-      const { fileParts, attachmentMeta } = attachments.length > 0
-        ? await loadHaruLawAttachmentParts(uid, attachments)
-        : { fileParts: [] as HaruLawGeminiFilePart[], attachmentMeta: [] as HaruLawAttachmentRef[] };
+      const fileParts = preparedAttachments
+        ? await uploadPreparedHaruLawAttachments(
+          GEMINI_API_KEY_SECRET.value(),
+          preparedAttachments,
+          requestId,
+          trackedGeminiFiles,
+          requestWorkDeadlineMs,
+        )
+        : [] as HaruLawGeminiFilePart[];
+      const attachmentMeta = preparedAttachments?.attachmentMeta ?? [];
+      haruLawProcessingStage = 'summary_ai';
       const contents: any = fileParts.length > 0
         ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
         : prompt;
       const startedAt = Date.now();
-      let response = await ai.models.generateContent({
-        model: RESULT_CHAT_MODEL_NAME,
-        contents,
-        config: answerRoute === 'web_search'
-          ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
-          : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
-      });
+      let response = preparedAttachments
+        ? await runHaruLawModelBeforeDeadline(
+          requestWorkDeadlineMs,
+          ({ abortSignal }) => ai.models.generateContent({
+            model: RESULT_CHAT_MODEL_NAME,
+            contents,
+            config: answerRoute === 'web_search'
+              ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS, abortSignal }
+              : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS, abortSignal },
+          }),
+        )
+        : await ai.models.generateContent({
+          model: RESULT_CHAT_MODEL_NAME,
+          contents,
+          config: answerRoute === 'web_search'
+            ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
+            : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
+        });
+      if (preparedAttachments) getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
       let inputTokens = addOptionalTokenCounts(null, response.usageMetadata?.promptTokenCount);
       let outputTokens = addOptionalTokenCounts(null, response.usageMetadata?.candidatesTokenCount);
 
@@ -4378,11 +4892,21 @@ export const chatWithResult = onCall(
         const retryContents: any = fileParts.length > 0
           ? [{ role: 'user', parts: [{ text: retryPrompt }, ...fileParts] }]
           : retryPrompt;
-        response = await ai.models.generateContent({
-          model: RESULT_CHAT_MODEL_NAME,
-          contents: retryContents,
-          config: { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
-        });
+        response = preparedAttachments
+          ? await runHaruLawModelBeforeDeadline(
+            requestWorkDeadlineMs,
+            ({ abortSignal }) => ai.models.generateContent({
+              model: RESULT_CHAT_MODEL_NAME,
+              contents: retryContents,
+              config: { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS, abortSignal },
+            }),
+          )
+          : await ai.models.generateContent({
+            model: RESULT_CHAT_MODEL_NAME,
+            contents: retryContents,
+            config: { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
+          });
+        if (preparedAttachments) getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
         inputTokens = addOptionalTokenCounts(inputTokens, response.usageMetadata?.promptTokenCount);
         outputTokens = addOptionalTokenCounts(outputTokens, response.usageMetadata?.candidatesTokenCount);
         ({ sources, usedWebSearch } = getResultChatSources(response));
@@ -4403,18 +4927,21 @@ export const chatWithResult = onCall(
 
       const latencyMs = Date.now() - startedAt;
       const rawAnswer = clampResultChatText(response.text || '', RESULT_CHAT_ANSWER_MAX_LENGTH);
+      if (!rawAnswer) {
+        throw new Error(attachments.length > 0 ? 'attachment content could not be read' : 'empty_answer');
+      }
 
-      if (answerRoute === 'web_search') {
+      const attachmentBacked = preparedAttachments !== null;
+      if (!attachmentBacked && answerRoute === 'web_search') {
         usageForAnswer = await finalizeWebSearchSlot(threadRef, actualPlan, true);
         webSearchFinalized = true;
       }
+      const answerUsage = attachmentBacked && answerRoute === 'web_search'
+        ? previewSuccessfulWebSearchFinalization(usageForAnswer)
+        : usageForAnswer;
+      const answer = decorateResultChatAnswer(rawAnswer, answerRoute, answerUsage, recordOnlyChosen);
 
-      const answer = decorateResultChatAnswer(rawAnswer, answerRoute, usageForAnswer, recordOnlyChosen);
-      if (!answer) {
-        throw new Error('empty_answer');
-      }
-
-      await logResultChatUsage({
+      const usageLog: ResultChatUsageLogParams = {
         uid,
         actualPlan,
         recordId,
@@ -4431,9 +4958,9 @@ export const chatWithResult = onCall(
         success: true,
         errorCode: null,
         isDev,
-      });
+      };
 
-      await saveResultChatExchange({
+      const exchange: ResultChatExchangeParams = {
         threadRef,
         messagesRef,
         question,
@@ -4450,7 +4977,23 @@ export const chatWithResult = onCall(
         webSearchUsed: answerRoute === 'web_search' && usedWebSearch,
         professionalApiUsed: false,
         attachmentMeta: attachmentMeta.length > 0 ? attachmentMeta : undefined,
-      });
+      };
+      if (attachmentBacked) {
+        // Gemini Files are no longer needed after the model response. Clean them
+        // before any Firestore success commit so a slow commit cannot strand Files.
+        await deleteTrackedHaruLawGeminiFiles(haruLawFileClient, trackedGeminiFiles);
+        await removePreparedHaruLawAttachments(preparedAttachments);
+        preparedAttachments = null;
+        usageForAnswer = await commitAttachedResultChatSuccessBeforeDeadline(
+          { exchange, usageLog, plan: actualPlan, requestId },
+          requestFinalizationDeadlineMs,
+          requestRollbackDeadlineMs,
+        );
+        if (answerRoute === 'web_search') webSearchFinalized = true;
+      } else {
+        await logResultChatUsage(usageLog);
+        await saveResultChatExchange(exchange);
+      }
 
       return {
         threadId,
@@ -4470,11 +5013,25 @@ export const chatWithResult = onCall(
         monthlyAiRemainingCount: monthlyQuotaReservation?.remaining ?? monthlyUsageForChoice.remaining,
       };
     } catch (error: any) {
-      await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+      // File cleanup owns the first part of the final reserve. Usage rollback
+      // follows, so a slow Firestore rollback cannot prevent File deletion.
+      await deleteTrackedHaruLawGeminiFiles(haruLawFileClient, trackedGeminiFiles);
+      await removePreparedHaruLawAttachments(preparedAttachments);
+      preparedAttachments = null;
+      const monthlyRollback = rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
       monthlyQuotaReservation = null;
+      let webSearchRollback: Promise<unknown> = Promise.resolve();
       if (reservedWebSearch && !webSearchFinalized) {
-        await finalizeWebSearchSlot(threadRef, actualPlan, false);
+        webSearchRollback = finalizeWebSearchSlot(threadRef, actualPlan, false);
         reservedWebSearch = false;
+      }
+      if (attachments.length > 0) {
+        await settleHaruLawRollbacksBeforeDeadline(
+          requestRollbackDeadlineMs,
+          [monthlyRollback, webSearchRollback],
+        );
+      } else {
+        await Promise.all([monthlyRollback, webSearchRollback]);
       }
       if (error?.message === 'web_search_not_grounded') {
         const [usageAfterRollback, monthlyUsageAfterRollback] = await Promise.all([
@@ -4513,6 +5070,37 @@ export const chatWithResult = onCall(
       if (error instanceof HttpsError) {
         throw error;
       }
+      if (sourceKey === 'haruraw_sayu') {
+        const reason = classifyHaruLawAiError(error, attachments.length > 0);
+        logger.error('chatWithResult 하루LAW 처리 실패:', {
+          stage: haruLawProcessingStage,
+          reason,
+          errorName: error?.name,
+          errorCode: error?.code,
+          errorStatus: error?.response?.status ?? error?.status,
+          recordId,
+          sourceKey,
+        });
+        await logResultChatUsage({
+          uid,
+          actualPlan,
+          recordId,
+          sourceKey,
+          answerRoute: 'ambiguous',
+          model: null,
+          inputTokens: null,
+          outputTokens: null,
+          webSearchUsed: false,
+          professionalApiUsed: false,
+          searchSourceCount: 0,
+          latencyMs: null,
+          requestId,
+          success: false,
+          errorCode: reason,
+          isDev,
+        });
+        throw createHaruLawHttpsError(reason);
+      }
       logger.error('chatWithResult 실패:', {
         errorName: error?.name,
         errorMessage: error?.message,
@@ -4544,6 +5132,8 @@ export const chatWithResult = onCall(
       });
       throw new HttpsError('internal', 'AI 응답 생성에 실패했습니다.');
     } finally {
+      await deleteTrackedHaruLawGeminiFiles(haruLawFileClient, trackedGeminiFiles);
+      await removePreparedHaruLawAttachments(preparedAttachments);
       if (locked) await releaseResultChatLock(threadRef, requestId);
     }
   }
@@ -9381,8 +9971,15 @@ export const lawSearch = onCall(
     secrets: [LAW_API_KEY_SECRET, GEMINI_API_KEY_SECRET],
     timeoutSeconds: 90,
     memory: '1GiB',
+    concurrency: 1,
   },
   async (request) => {
+    const requestStartedAt = Date.now();
+    const requestWorkDeadlineMs = requestStartedAt
+      + HARULAW_GEMINI_FILE_TIMEOUT_MS;
+    const requestFinalizationDeadlineMs = requestStartedAt
+      + HARULAW_CALLABLE_TIMEOUT_MS
+      - HARULAW_GEMINI_FINALIZATION_RESERVE_MS;
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -9413,13 +10010,21 @@ export const lawSearch = onCall(
       timeout: 10000,
     };
 
+    let processingStage: HaruLawProcessingStage = 'attachment_load';
+    let haruLawFileClient: GoogleGenAI | null = null;
+    let preparedAttachments: PreparedHaruLawAttachments | null = null;
+    const trackedGeminiFiles: TrackedHaruLawGeminiFile[] = [];
+    const uploadGroupId = crypto.randomUUID();
     try {
       const { XMLParser } = await import('fast-xml-parser');
       const LAW_API_KEY = LAW_API_KEY_SECRET.value().trim();
       const GEMINI_KEY = GEMINI_API_KEY_SECRET.value().trim();
-      const { fileParts } = attachments.length > 0
-        ? await loadHaruLawAttachmentParts(uid, attachments)
-        : { fileParts: [] as HaruLawGeminiFilePart[] };
+      preparedAttachments = attachments.length > 0
+        ? await prepareHaruLawAttachments(uid, attachments, requestWorkDeadlineMs)
+        : null;
+      if (preparedAttachments) {
+        haruLawFileClient = new GoogleGenAI({ apiKey: GEMINI_KEY });
+      }
 
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
       const axiosConfig = {
@@ -9432,37 +10037,22 @@ export const lawSearch = onCall(
       };
 
       const getLawXmlWithRetry = async (url: string) => {
-        let lastError: any;
-        for (let attempt = 1; attempt <= 3; attempt += 1) {
-          try {
-            return await axios.get(url, axiosConfig);
-          } catch (error: any) {
-            lastError = error;
-            const status = error?.response?.status;
-            const retriable =
-              error?.code === 'ECONNRESET' ||
-              error?.code === 'ETIMEDOUT' ||
-              error?.code === 'ECONNABORTED' ||
-              !error?.response ||
-              status >= 500;
-
-            if (!retriable || attempt === 3) {
-              throw error;
-            }
-
-            logger.warn('HARUraw 법제처 API 재시도', {
-              attempt,
-              code: error?.code,
-              status,
-            });
-            await new Promise((resolve) => setTimeout(resolve, attempt * 700));
-          }
-        }
-
-        throw lastError;
+        return runHaruLawApiRequestWithRetry(
+          () => axios.get(url, axiosConfig),
+          {
+            onRetry: (attempt, error: any) => {
+              logger.warn('HARUraw 법제처 API 재시도', {
+                attempt,
+                code: error?.code,
+                status: error?.response?.status,
+              });
+            },
+          },
+        );
       };
 
       // 0단계: Gemini로 정확한 법령 이름 추출
+      processingStage = 'keyword_ai';
       const genAI = new GoogleGenerativeAI(GEMINI_KEY);
       const kwModelName = 'gemini-3.1-flash-lite';
       const kwModel = genAI.getGenerativeModel({ model: kwModelName });
@@ -9504,6 +10094,7 @@ export const lawSearch = onCall(
       console.log('HARUraw 추출 키워드:', lawKeyword);
 
       // 1단계: 법제처 검색
+      processingStage = 'law_api_search';
       const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?OC=${LAW_API_KEY}&target=law&type=XML&query=${encodeURIComponent(lawKeyword)}`;
       const searchRes = await getLawXmlWithRetry(searchUrl);
       const searchJson = parser.parse(searchRes.data);
@@ -9529,6 +10120,7 @@ export const lawSearch = onCall(
       }
 
       // 2단계: 법령 전문 조회
+      processingStage = 'law_api_detail';
       const serviceUrl = `https://www.law.go.kr/DRF/lawService.do?OC=${LAW_API_KEY}&target=law&MST=${mstId}&type=XML`;
       const serviceRes = await getLawXmlWithRetry(serviceUrl);
       const lawJson = parser.parse(serviceRes.data);
@@ -9548,6 +10140,7 @@ export const lawSearch = onCall(
         .filter((j: any) => j.articleStr !== '제undefined조' && j.content.length > 5);
 
       // 3단계: Gemini로 관련 조문만 선별 (최대 5개)
+      processingStage = 'article_select_ai';
       const jomunCatalog = allJomuns
         .map((j: any) => `${j.articleStr}(${j.title})`)
         .join('\n');
@@ -9593,6 +10186,7 @@ export const lawSearch = onCall(
       const finalJomuns = cleanedJomuns.length > 0 ? cleanedJomuns : allJomuns.slice(0, 3);
 
       // 4단계: Gemini로 전체 요약 생성
+      processingStage = 'summary_ai';
       const summaryModelName = 'gemini-3.1-pro-preview';
       const summaryModel = genAI.getGenerativeModel({ model: summaryModelName });
       const lawText = finalJomuns
@@ -9638,14 +10232,33 @@ export const lawSearch = onCall(
 
 사용자 질문: ${query}
 관련 법령(${lawName}):
-	${lawText}`;
+		${lawText}`;
+      const fileParts = preparedAttachments && haruLawFileClient
+        ? await uploadPreparedHaruLawAttachments(
+          GEMINI_KEY,
+          preparedAttachments,
+          uploadGroupId,
+          trackedGeminiFiles,
+          requestWorkDeadlineMs,
+        )
+        : [] as HaruLawGeminiFilePart[];
       const summaryContents: any = fileParts.length > 0
         ? [{ text: summaryPrompt }, ...fileParts]
         : summaryPrompt;
-      const summaryResult = await summaryModel.generateContent(summaryContents);
+      const summaryResult = preparedAttachments
+        ? await runHaruLawModelBeforeDeadline(
+          requestWorkDeadlineMs,
+          ({ timeoutMs }) => summaryModel.generateContent(summaryContents, { timeout: timeoutMs }),
+        )
+        : await summaryModel.generateContent(summaryContents);
+      if (preparedAttachments) getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
+      const summaryText = summaryResult.response.text().trim();
+      if (!summaryText) {
+        throw new Error(attachments.length > 0 ? 'attachment content could not be read' : 'empty_answer');
+      }
       const summaryUsage = getGeminiUsage(summaryResult);
-      await logAiUsage({
-        uid: request.auth.uid,
+      const logSuccess = () => logAiUsage({
+        uid,
         featureName: 'law_search',
         plan: AI_USAGE_PLAN,
         model: summaryModelName,
@@ -9658,20 +10271,40 @@ export const lawSearch = onCall(
         requestId: null,
         success: true,
         errorCode: null,
-        isDev: DEVELOPER_UIDS.has(request.auth.uid),
+        isDev: DEVELOPER_UIDS.has(uid),
       });
+      if (preparedAttachments) {
+        await deleteTrackedHaruLawGeminiFiles(haruLawFileClient, trackedGeminiFiles);
+        await removePreparedHaruLawAttachments(preparedAttachments);
+        preparedAttachments = null;
+        getHaruLawRemainingWorkMs(requestFinalizationDeadlineMs);
+        await logSuccess();
+      } else {
+        await logSuccess();
+      }
 
       return {
         success: true,
         data: finalJomuns,
-        aiSummary: summaryResult.response.text(),
+        aiSummary: summaryText,
       };
 
     } catch (error: any) {
       if (error instanceof HttpsError) {
         throw error;
       }
-      logger.error('HARUraw 법령 검색 실패:', error);
+      const reason: HaruLawErrorReason = error instanceof HaruLawApiTemporaryError
+        ? 'LAW_API_TEMPORARY_UNAVAILABLE'
+        : processingStage === 'keyword_ai' || processingStage === 'article_select_ai' || processingStage === 'summary_ai'
+          ? classifyHaruLawAiError(error, processingStage === 'summary_ai' && attachments.length > 0)
+          : 'HARULAW_PROCESSING_FAILED';
+      logger.error('HARUraw 법령 검색 실패:', {
+        stage: processingStage,
+        reason,
+        errorName: error?.name,
+        errorCode: error?.code,
+        errorStatus: error?.response?.status ?? error?.status,
+      });
       if (request.auth?.uid) {
         await logAiUsage({
           uid: request.auth.uid,
@@ -9686,11 +10319,14 @@ export const lawSearch = onCall(
           groundingUsed: false,
           requestId: null,
           success: false,
-          errorCode: getAiUsageErrorCode(error),
+          errorCode: reason,
           isDev: DEVELOPER_UIDS.has(request.auth.uid),
         });
       }
-      throw new HttpsError('internal', '법령 검색에 실패했습니다.');
+      throw createHaruLawHttpsError(reason);
+    } finally {
+      await deleteTrackedHaruLawGeminiFiles(haruLawFileClient, trackedGeminiFiles);
+      await removePreparedHaruLawAttachments(preparedAttachments);
     }
   }
 );

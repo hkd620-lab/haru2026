@@ -27,6 +27,14 @@ import {
   type HaruLawAttachmentCleanupEntry,
 } from '../services/haruLawAttachmentCleanup';
 import { useSubscription } from '../hooks/useSubscription';
+import {
+  HARULAW_ATTACH_MAX_TOTAL_BYTES,
+  HARULAW_ATTACH_MAX_PDF_BYTES,
+  getHaruLawUserError,
+  getHaruLawUserErrorByReason,
+  hasReadableHaruLawPdfHeader,
+  type HaruLawUserError,
+} from '../utils/haruLawError';
 
 // functions/src/index.ts 의 WEB_SEARCH_LIMITS 와 동일하게 유지할 것
 const WEB_SEARCH_LIMITS_UI: Record<string, number> = { free: 1, basic: 2, premium: 4, developer: 4 };
@@ -162,6 +170,14 @@ type PendingConfirmation = {
   attachments?: HaruLawAttachmentRef[];
 };
 
+type HaruLawErrorNotice = {
+  userError: HaruLawUserError;
+  retryRequest?: {
+    question: string;
+    searchPreference: ResultChatSearchPreference;
+  };
+};
+
 const HARULAW_ATTACH_MAX_FILES = 5;
 const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
   'image/png',
@@ -172,7 +188,6 @@ const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
   'application/pdf',
 ]);
 const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
-const HARULAW_ATTACH_MAX_PDF_BYTES = 50 * 1024 * 1024;
 
 async function deleteHaruLawAttachmentPath(storagePath: string): Promise<void> {
   await deleteObject(storageRef(storage, storagePath));
@@ -218,6 +233,7 @@ export function ResultChatModal({
   const [savedMemoIds, setSavedMemoIds] = useState<Record<number, string>>({});
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  const [haruLawErrorNotice, setHaruLawErrorNotice] = useState<HaruLawErrorNotice | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [webSearchUsage, setWebSearchUsage] = useState<{ limit: number; remaining: number } | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<HaruLawAttachmentRef[]>([]);
@@ -244,6 +260,7 @@ export function ResultChatModal({
     setLoaded(false);
     setMessages([]);
     setStatusNotice(null);
+    setHaruLawErrorNotice(null);
     setPendingConfirmation(null);
     requestInFlightRef.current = false;
     setSavedMemoIds({});
@@ -309,8 +326,8 @@ export function ResultChatModal({
           scheduleDeferredHaruLawAttachmentCleanup(uid, result.nextRetryAt, dependencies);
         }
       })
-      .catch((error) => {
-        console.warn('하루LAW 첨부 지연 정리 재시도 실패:', error);
+      .catch(() => {
+        console.warn('하루LAW 첨부 지연 정리 재시도 실패');
       });
   }, [isOpen, uid]);
 
@@ -449,22 +466,6 @@ export function ResultChatModal({
     }
 
     const toUpload = files.slice(0, remainingSlots);
-    for (const file of toUpload) {
-      if (!HARULAW_ATTACH_ALLOWED_TYPES.has(file.type)) {
-        toast.error(`${file.name}: PNG, JPEG, WebP, HEIC, PDF만 첨부할 수 있습니다.`);
-        event.target.value = '';
-        return;
-      }
-      const sizeLimit = file.type === 'application/pdf'
-        ? HARULAW_ATTACH_MAX_PDF_BYTES
-        : HARULAW_ATTACH_MAX_IMAGE_BYTES;
-      if (file.size > sizeLimit) {
-        toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB 이하)`);
-        event.target.value = '';
-        return;
-      }
-    }
-
     const uploaded: HaruLawAttachmentRef[] = [];
     const uploadScopeId = attachmentScopeRef.current;
     activeUploadScopeRef.current = uploadScopeId;
@@ -472,12 +473,62 @@ export function ResultChatModal({
     uploadingFilesRef.current = true;
     setUploadingFiles(true);
     try {
+      for (const file of toUpload) {
+        if (!HARULAW_ATTACH_ALLOWED_TYPES.has(file.type)) {
+          const userError = getHaruLawUserErrorByReason('ATTACHMENT_UNSUPPORTED_TYPE');
+          setHaruLawErrorNotice({ userError });
+          toast.error(userError.title);
+          return;
+        }
+        const sizeLimit = file.type === 'application/pdf'
+          ? HARULAW_ATTACH_MAX_PDF_BYTES
+          : HARULAW_ATTACH_MAX_IMAGE_BYTES;
+        if (file.size > sizeLimit) {
+          toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB 이하)`);
+          return;
+        }
+      }
+      const selectedTotalBytes = toUpload.reduce((total, file) => total + file.size, 0);
+      const pendingTotalBytes = pendingAttachmentsRef.current.reduce(
+        (total, attachment) => total + (attachment.sizeBytes || 0),
+        0,
+      );
+      if (pendingTotalBytes + selectedTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES) {
+        const userError = getHaruLawUserErrorByReason('ATTACHMENT_TOTAL_SIZE_EXCEEDED');
+        setHaruLawErrorNotice({ userError });
+        toast.error(userError.title);
+        return;
+      }
+      for (const file of toUpload) {
+        if (file.type === 'application/pdf') {
+          let header: Uint8Array;
+          try {
+            header = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+          } catch {
+            if (attachmentScopeRef.current !== uploadScopeId) return;
+            const userError = getHaruLawUserErrorByReason('ATTACHMENT_PDF_UNREADABLE');
+            setHaruLawErrorNotice({ userError });
+            toast.error(userError.title);
+            return;
+          }
+          if (attachmentScopeRef.current !== uploadScopeId) return;
+          if (!hasReadableHaruLawPdfHeader(header)) {
+            const userError = getHaruLawUserErrorByReason('ATTACHMENT_PDF_UNREADABLE');
+            setHaruLawErrorNotice({ userError });
+            toast.error(userError.title);
+            return;
+          }
+        }
+      }
+
+      if (attachmentScopeRef.current !== uploadScopeId) return;
+      setHaruLawErrorNotice(null);
       for (let i = 0; i < toUpload.length; i += 1) {
         const file = toUpload[i];
         const safeName = `${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
         const path = `users/${uid}/haruLawAttachments/${recordId}/${safeName}`;
         await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
-        const attachment = { storagePath: path, mimeType: file.type, fileName: file.name };
+        const attachment = { storagePath: path, mimeType: file.type, fileName: file.name, sizeBytes: file.size };
         uploaded.push(attachment);
         uploadingAttachmentsRef.current = [...uploaded];
         if (attachmentScopeRef.current !== uploadScopeId) {
@@ -504,8 +555,8 @@ export function ResultChatModal({
       uploadingAttachmentsRef.current = [];
       pendingAttachmentsRef.current = next;
       setPendingAttachments(next);
-    } catch (error) {
-      console.error('하루LAW 첨부 업로드 실패:', error);
+    } catch {
+      console.error('하루LAW 첨부 업로드 실패');
       if (uploaded.length > 0) {
         await cleanupHaruLawAttachments(
           buildHaruLawCleanupEntries(uid, recordId, threadId, uploaded, new Set()),
@@ -581,6 +632,7 @@ export function ResultChatModal({
     setLoading(true);
     setQuestion('');
     setStatusNotice(null);
+    setHaruLawErrorNotice(null);
     const optimistic: ResultChatMessage | null = options.skipOptimisticUser || searchPreference === 'auto'
       ? null
       : { role: 'user', content: trimmed, ...(attachmentsToSend?.length ? { attachments: attachmentsToSend } : {}) };
@@ -652,9 +704,19 @@ export function ResultChatModal({
       }
     } catch (error: any) {
       console.error('결과 대화 실패:', error);
-      toast.error(error?.message || 'AI 응답을 생성하지 못했습니다.');
       if (optimistic) setMessages((prev) => prev.filter((item) => item !== optimistic));
       setQuestion(trimmed);
+      if (isHaruLaw) {
+        const userError = getHaruLawUserError(error);
+        setHaruLawErrorNotice({
+          userError,
+          retryRequest: userError.retryable
+            ? { question: trimmed, searchPreference }
+            : undefined,
+        });
+      } else {
+        toast.error('AI 응답을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      }
     } finally {
       requestInFlightRef.current = false;
       setLoading(false);
@@ -948,6 +1010,31 @@ export function ResultChatModal({
         {statusNotice && (
           <div style={{ padding: '12px 16px', borderTop: '1px solid #E5E7EB', backgroundColor: '#FFFBEB', color: '#92400E', fontSize: 12.5, lineHeight: 1.6, fontWeight: 700, wordBreak: 'keep-all' }}>
             {statusNotice}
+          </div>
+        )}
+
+        {haruLawErrorNotice && (
+          <div style={{ padding: '12px 16px', borderTop: '1px solid #FECACA', backgroundColor: '#FEF2F2', color: '#991B1B', fontSize: 12.5, lineHeight: 1.6, wordBreak: 'keep-all' }}>
+            <strong style={{ display: 'block', marginBottom: 3 }}>{haruLawErrorNotice.userError.title}</strong>
+            <span style={{ display: 'block' }}>{haruLawErrorNotice.userError.message}</span>
+            {haruLawErrorNotice.userError.actionLabel && haruLawErrorNotice.retryRequest && (
+              <button
+                type="button"
+                disabled={loading || uploadingFiles || closingAttachments}
+                onClick={() => {
+                  const retry = haruLawErrorNotice.retryRequest;
+                  if (!retry) return;
+                  sendQuestion(retry.question, retry.searchPreference, {
+                    attachments: pendingAttachmentsRef.current.length > 0
+                      ? pendingAttachmentsRef.current
+                      : undefined,
+                  });
+                }}
+                style={{ marginTop: 8, minHeight: 30, padding: '0 10px', borderRadius: 7, border: '1px solid #DC2626', backgroundColor: '#FFFFFF', color: '#991B1B', fontSize: 12, fontWeight: 900, cursor: loading ? 'wait' : 'pointer' }}
+              >
+                {haruLawErrorNotice.userError.actionLabel}
+              </button>
+            )}
           </div>
         )}
 
