@@ -2741,8 +2741,9 @@ async function finalizeWebSearchSlot(threadRef, plan, success) {
     return db.runTransaction(async (tx) => {
         const snap = await tx.get(threadRef);
         const current = getWebSearchUsageFromData(snap.data(), plan);
-        const reservedCount = Math.max(0, current.reservedCount - 1);
-        const usedCount = success ? current.usedCount + 1 : current.usedCount;
+        const hasReservation = current.reservedCount > 0;
+        const reservedCount = hasReservation ? current.reservedCount - 1 : 0;
+        const usedCount = success && hasReservation ? current.usedCount + 1 : current.usedCount;
         const next = {
             webSearchReservedCount: reservedCount,
             webSearchUsedCount: usedCount,
@@ -2758,6 +2759,15 @@ async function finalizeWebSearchSlot(threadRef, plan, success) {
             remainingCount: Math.max(0, current.limit - usedCount - reservedCount),
         };
     });
+}
+function previewSuccessfulWebSearchFinalization(usage) {
+    if (usage.reservedCount <= 0)
+        return usage;
+    return {
+        ...usage,
+        usedCount: usage.usedCount + 1,
+        reservedCount: usage.reservedCount - 1,
+    };
 }
 async function acquireResultChatLock(threadRef, requestId) {
     await db.runTransaction(async (tx) => {
@@ -3335,8 +3345,11 @@ const HARULAW_GEMINI_FILE_CLEANUP_COLLECTION = 'haruLawGeminiFileCleanup';
 const HARULAW_GEMINI_FILE_CLEANUP_DELAY_MS = 10 * 60 * 1000;
 const HARULAW_CALLABLE_TIMEOUT_MS = 90000;
 const HARULAW_GEMINI_FINALIZATION_RESERVE_MS = 15000;
-// Stop starting/continuing uploads with enough callable time left for catch/finally.
+const HARULAW_POST_MODEL_WRITE_BUDGET_MS = 15000;
+// Finish uploads and attachment-backed model calls before post-model writes,
+// while preserving a final 15 seconds for rollback and File cleanup.
 const HARULAW_GEMINI_FILE_TIMEOUT_MS = HARULAW_CALLABLE_TIMEOUT_MS
+    - HARULAW_POST_MODEL_WRITE_BUDGET_MS
     - HARULAW_GEMINI_FINALIZATION_RESERVE_MS;
 const HARULAW_GEMINI_FILE_DELETE_TIMEOUT_MS = 10000;
 const HARULAW_GEMINI_FILE_NAME_PATTERN = /^files\/harulaw-[a-f0-9]{32}$/;
@@ -3347,8 +3360,41 @@ function getHaruLawRemainingWorkMs(workDeadlineMs) {
     }
     return remainingMs;
 }
-function getHaruLawWorkAbortSignal(workDeadlineMs) {
-    return AbortSignal.timeout(getHaruLawRemainingWorkMs(workDeadlineMs));
+function isHaruLawDeadlineAbortError(error) {
+    const candidate = error;
+    return (candidate === null || candidate === void 0 ? void 0 : candidate.name) === 'AbortError'
+        || (candidate === null || candidate === void 0 ? void 0 : candidate.name) === 'TimeoutError'
+        || (candidate === null || candidate === void 0 ? void 0 : candidate.name) === 'GoogleGenerativeAIAbortError'
+        || (candidate === null || candidate === void 0 ? void 0 : candidate.code) === 20;
+}
+async function runHaruLawBeforeDeadline(deadlineMs, operation) {
+    const remainingMs = getHaruLawRemainingWorkMs(deadlineMs);
+    let timeout = null;
+    try {
+        return await Promise.race([
+            operation(),
+            new Promise((_resolve, reject) => {
+                timeout = setTimeout(() => reject(createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE')), remainingMs);
+            }),
+        ]);
+    }
+    finally {
+        if (timeout)
+            clearTimeout(timeout);
+    }
+}
+async function runHaruLawModelBeforeDeadline(deadlineMs, operation) {
+    const timeoutMs = getHaruLawRemainingWorkMs(deadlineMs);
+    const abortSignal = AbortSignal.timeout(timeoutMs);
+    try {
+        return await operation({ timeoutMs, abortSignal });
+    }
+    catch (error) {
+        if (abortSignal.aborted || isHaruLawDeadlineAbortError(error)) {
+            throw createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE');
+        }
+        throw error;
+    }
 }
 function readHaruLawAttachments(raw) {
     if (!Array.isArray(raw))
@@ -3592,6 +3638,9 @@ exports.chatWithResult = (0, https_2.onCall)({
     const requestStartedAt = Date.now();
     const requestWorkDeadlineMs = requestStartedAt
         + HARULAW_GEMINI_FILE_TIMEOUT_MS;
+    const requestFinalizationDeadlineMs = requestStartedAt
+        + HARULAW_CALLABLE_TIMEOUT_MS
+        - HARULAW_GEMINI_FINALIZATION_RESERVE_MS;
     if (!((_a = request.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -3941,23 +3990,21 @@ exports.chatWithResult = (0, https_2.onCall)({
             ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
             : prompt;
         const startedAt = Date.now();
-        const firstModelAbortSignal = preparedAttachments
-            ? getHaruLawWorkAbortSignal(requestWorkDeadlineMs)
-            : undefined;
-        let response = await ai.models.generateContent({
-            model: RESULT_CHAT_MODEL_NAME,
-            contents,
-            config: answerRoute === 'web_search'
-                ? {
-                    tools: [{ googleSearch: {} }],
-                    maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS,
-                    ...(firstModelAbortSignal ? { abortSignal: firstModelAbortSignal } : {}),
-                }
-                : {
-                    maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS,
-                    ...(firstModelAbortSignal ? { abortSignal: firstModelAbortSignal } : {}),
-                },
-        });
+        let response = preparedAttachments
+            ? await runHaruLawModelBeforeDeadline(requestWorkDeadlineMs, ({ abortSignal }) => ai.models.generateContent({
+                model: RESULT_CHAT_MODEL_NAME,
+                contents,
+                config: answerRoute === 'web_search'
+                    ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS, abortSignal }
+                    : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS, abortSignal },
+            }))
+            : await ai.models.generateContent({
+                model: RESULT_CHAT_MODEL_NAME,
+                contents,
+                config: answerRoute === 'web_search'
+                    ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
+                    : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
+            });
         if (preparedAttachments)
             getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
         let inputTokens = addOptionalTokenCounts(null, (_l = response.usageMetadata) === null || _l === void 0 ? void 0 : _l.promptTokenCount);
@@ -3980,18 +4027,17 @@ exports.chatWithResult = (0, https_2.onCall)({
             const retryContents = fileParts.length > 0
                 ? [{ role: 'user', parts: [{ text: retryPrompt }, ...fileParts] }]
                 : retryPrompt;
-            const retryAbortSignal = preparedAttachments
-                ? getHaruLawWorkAbortSignal(requestWorkDeadlineMs)
-                : undefined;
-            response = await ai.models.generateContent({
-                model: RESULT_CHAT_MODEL_NAME,
-                contents: retryContents,
-                config: {
-                    tools: [{ googleSearch: {} }],
-                    maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS,
-                    ...(retryAbortSignal ? { abortSignal: retryAbortSignal } : {}),
-                },
-            });
+            response = preparedAttachments
+                ? await runHaruLawModelBeforeDeadline(requestWorkDeadlineMs, ({ abortSignal }) => ai.models.generateContent({
+                    model: RESULT_CHAT_MODEL_NAME,
+                    contents: retryContents,
+                    config: { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS, abortSignal },
+                }))
+                : await ai.models.generateContent({
+                    model: RESULT_CHAT_MODEL_NAME,
+                    contents: retryContents,
+                    config: { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
+                });
             if (preparedAttachments)
                 getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
             inputTokens = addOptionalTokenCounts(inputTokens, (_4 = response.usageMetadata) === null || _4 === void 0 ? void 0 : _4.promptTokenCount);
@@ -4016,12 +4062,11 @@ exports.chatWithResult = (0, https_2.onCall)({
         if (!rawAnswer) {
             throw new Error(attachments.length > 0 ? 'attachment content could not be read' : 'empty_answer');
         }
-        if (answerRoute === 'web_search') {
-            usageForAnswer = await finalizeWebSearchSlot(threadRef, actualPlan, true);
-            webSearchFinalized = true;
-        }
-        const answer = decorateResultChatAnswer(rawAnswer, answerRoute, usageForAnswer, recordOnlyChosen);
-        await logResultChatUsage({
+        const answerUsage = answerRoute === 'web_search'
+            ? previewSuccessfulWebSearchFinalization(usageForAnswer)
+            : usageForAnswer;
+        const answer = decorateResultChatAnswer(rawAnswer, answerRoute, answerUsage, recordOnlyChosen);
+        const logSuccess = () => logResultChatUsage({
             uid,
             actualPlan,
             recordId,
@@ -4039,7 +4084,13 @@ exports.chatWithResult = (0, https_2.onCall)({
             errorCode: null,
             isDev,
         });
-        await saveResultChatExchange({
+        if (preparedAttachments) {
+            await runHaruLawBeforeDeadline(requestFinalizationDeadlineMs, logSuccess);
+        }
+        else {
+            await logSuccess();
+        }
+        const saveExchange = () => saveResultChatExchange({
             threadRef,
             messagesRef,
             question,
@@ -4057,6 +4108,18 @@ exports.chatWithResult = (0, https_2.onCall)({
             professionalApiUsed: false,
             attachmentMeta: attachmentMeta.length > 0 ? attachmentMeta : undefined,
         });
+        if (preparedAttachments) {
+            await runHaruLawBeforeDeadline(requestFinalizationDeadlineMs, saveExchange);
+        }
+        else {
+            await saveExchange();
+        }
+        if (answerRoute === 'web_search') {
+            usageForAnswer = preparedAttachments
+                ? await runHaruLawBeforeDeadline(requestFinalizationDeadlineMs, () => finalizeWebSearchSlot(threadRef, actualPlan, true))
+                : await finalizeWebSearchSlot(threadRef, actualPlan, true);
+            webSearchFinalized = true;
+        }
         return {
             threadId,
             answer,
@@ -4076,12 +4139,14 @@ exports.chatWithResult = (0, https_2.onCall)({
         };
     }
     catch (error) {
-        await (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
+        const monthlyRollback = (0, monthlyAiQuota_1.rollbackMonthlyAiQuotaReservation)(monthlyQuotaReservation);
         monthlyQuotaReservation = null;
+        let webSearchRollback = Promise.resolve();
         if (reservedWebSearch && !webSearchFinalized) {
-            await finalizeWebSearchSlot(threadRef, actualPlan, false);
+            webSearchRollback = finalizeWebSearchSlot(threadRef, actualPlan, false);
             reservedWebSearch = false;
         }
+        await Promise.all([monthlyRollback, webSearchRollback]);
         if ((error === null || error === void 0 ? void 0 : error.message) === 'web_search_not_grounded') {
             const [usageAfterRollback, monthlyUsageAfterRollback] = await Promise.all([
                 getThreadWebSearchUsage(threadRef, actualPlan),
@@ -8472,6 +8537,9 @@ exports.lawSearch = (0, https_2.onCall)({
     const requestStartedAt = Date.now();
     const requestWorkDeadlineMs = requestStartedAt
         + HARULAW_GEMINI_FILE_TIMEOUT_MS;
+    const requestFinalizationDeadlineMs = requestStartedAt
+        + HARULAW_CALLABLE_TIMEOUT_MS
+        - HARULAW_GEMINI_FINALIZATION_RESERVE_MS;
     if (!request.auth) {
         throw new https_2.HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
@@ -8701,10 +8769,9 @@ exports.lawSearch = (0, https_2.onCall)({
         const summaryContents = fileParts.length > 0
             ? [{ text: summaryPrompt }, ...fileParts]
             : summaryPrompt;
-        const summaryRequestOptions = preparedAttachments
-            ? { timeout: getHaruLawRemainingWorkMs(requestWorkDeadlineMs) }
-            : undefined;
-        const summaryResult = await summaryModel.generateContent(summaryContents, summaryRequestOptions);
+        const summaryResult = preparedAttachments
+            ? await runHaruLawModelBeforeDeadline(requestWorkDeadlineMs, ({ timeoutMs }) => summaryModel.generateContent(summaryContents, { timeout: timeoutMs }))
+            : await summaryModel.generateContent(summaryContents);
         if (preparedAttachments)
             getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
         const summaryText = summaryResult.response.text().trim();
@@ -8712,8 +8779,8 @@ exports.lawSearch = (0, https_2.onCall)({
             throw new Error(attachments.length > 0 ? 'attachment content could not be read' : 'empty_answer');
         }
         const summaryUsage = getGeminiUsage(summaryResult);
-        await (0, aiUsageLogger_1.logAiUsage)({
-            uid: request.auth.uid,
+        const logSuccess = () => (0, aiUsageLogger_1.logAiUsage)({
+            uid,
             featureName: 'law_search',
             plan: AI_USAGE_PLAN,
             model: summaryModelName,
@@ -8726,8 +8793,14 @@ exports.lawSearch = (0, https_2.onCall)({
             requestId: null,
             success: true,
             errorCode: null,
-            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+            isDev: DEVELOPER_UIDS.has(uid),
         });
+        if (preparedAttachments) {
+            await runHaruLawBeforeDeadline(requestFinalizationDeadlineMs, logSuccess);
+        }
+        else {
+            await logSuccess();
+        }
         return {
             success: true,
             data: finalJomuns,

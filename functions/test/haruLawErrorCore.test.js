@@ -169,6 +169,11 @@ async function run() {
   assert.match(indexSource, /const HARULAW_ATTACH_MAX_PDF_BYTES = 50_000_000/);
   assert.match(indexSource, /const HARULAW_ATTACH_MAX_TOTAL_BYTES = 50 \* 1024 \* 1024/);
   assert.match(indexSource, /const HARULAW_GEMINI_FINALIZATION_RESERVE_MS = 15_000/);
+  assert.match(indexSource, /const HARULAW_POST_MODEL_WRITE_BUDGET_MS = 15_000/);
+  assert.match(
+    indexSource,
+    /HARULAW_GEMINI_FILE_TIMEOUT_MS = HARULAW_CALLABLE_TIMEOUT_MS\s*- HARULAW_POST_MODEL_WRITE_BUDGET_MS\s*- HARULAW_GEMINI_FINALIZATION_RESERVE_MS/,
+  );
   assert.ok(
     attachmentLoaderSource.indexOf('await file.getMetadata()') < attachmentLoaderSource.indexOf('await file.download({ destination: tempPath })'),
     'all metadata validation must precede attachment downloads',
@@ -177,6 +182,9 @@ async function run() {
   assert.match(attachmentLoaderSource, /downloadedTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES/);
   assert.match(attachmentLoaderSource, /await fs\.promises\.readFile\(tempPath\)/);
   assert.match(indexSource, /function getHaruLawRemainingWorkMs\(workDeadlineMs: number\)/);
+  assert.match(indexSource, /candidate\?\.name === 'GoogleGenerativeAIAbortError'/);
+  assert.match(indexSource, /async function runHaruLawModelBeforeDeadline<T>/);
+  assert.match(indexSource, /async function runHaruLawBeforeDeadline<T>/);
   assert.match(attachmentLoaderSource, /httpOptions: \{ timeout: remainingUploadMs \}/);
   assert.match(attachmentLoaderSource, /uploadClient\.files\.upload\(/);
   assert.match(attachmentLoaderSource, /Promise\.all\(trackedFiles\.map/);
@@ -189,7 +197,9 @@ async function run() {
   assert.doesNotMatch(attachmentLoaderSource, /inlineData|toString\('base64'\)/);
   assert.match(attachmentLoaderSource, /export const cleanupHaruLawGeminiFiles = onSchedule\(/);
   assert.match(indexSource, /export const chatWithResult = onCall\([\s\S]{0,160}memory: '512MiB',[\s\S]{0,80}concurrency: 1/);
-  assert.match(indexSource, /firstModelAbortSignal[\s\S]{0,700}abortSignal: firstModelAbortSignal/);
+  assert.match(indexSource, /runHaruLawModelBeforeDeadline\([\s\S]{0,700}abortSignal/);
+  assert.match(indexSource, /runHaruLawBeforeDeadline\(requestFinalizationDeadlineMs, logSuccess\)/);
+  assert.match(indexSource, /runHaruLawBeforeDeadline\(requestFinalizationDeadlineMs, saveExchange\)/);
   assert.match(indexSource, /export const lawSearch = onCall\([\s\S]{0,220}memory: '1GiB',[\s\S]{0,80}concurrency: 1/);
   const lawSearchSource = indexSource.slice(
     indexSource.indexOf('export const lawSearch = onCall('),
@@ -197,7 +207,8 @@ async function run() {
   );
   assert.match(lawSearchSource, /processingStage = 'law_api_search'/);
   assert.match(lawSearchSource, /processingStage = 'law_api_detail'/);
-  assert.match(lawSearchSource, /summaryModel\.generateContent\(summaryContents, summaryRequestOptions\)/);
+  assert.match(lawSearchSource, /runHaruLawModelBeforeDeadline\([\s\S]{0,300}summaryModel\.generateContent\(summaryContents, \{ timeout: timeoutMs \}\)/);
+  assert.match(lawSearchSource, /runHaruLawBeforeDeadline\(requestFinalizationDeadlineMs, logSuccess\)/);
   assert.match(lawSearchSource, /createHaruLawHttpsError\(reason\)/);
   assert.equal(lawSearchSource.includes("throw new HttpsError('internal', '법령 검색에 실패했습니다.')"), false);
 }

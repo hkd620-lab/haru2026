@@ -38,7 +38,9 @@ let failGeminiFileUploadAtAttempt = 0;
 let forceGeminiFileDeleteError = false;
 let geminiFileUploadDelayQueueMs = [];
 let geminiModelDelayQueueMs = [];
+let geminiModelAbortNameQueue = [];
 let advanceControlledClock = null;
+let scheduleControlledClockAfterModel = null;
 
 function makePaddedPdf(size) {
   const result = Buffer.alloc(size, 0x20);
@@ -198,6 +200,14 @@ class InstrumentedGoogleGenAI {
           if (injectedModelDelayMs > 0 && advanceControlledClock) {
             advanceControlledClock(injectedModelDelayMs);
           }
+          const abortName = geminiModelAbortNameQueue.shift();
+          if (abortName) {
+            const error = new Error('injected_native_model_abort');
+            error.name = abortName;
+            if (abortName === 'AbortError') error.code = 20;
+            throw error;
+          }
+          if (scheduleControlledClockAfterModel) scheduleControlledClockAfterModel();
         }
         const currentQuestion = capturedCurrentQuestion(captured.contents);
         if (captured.hasGoogleSearchTool && webSearchDelayMs > 0) {
@@ -339,10 +349,21 @@ class InstrumentedGoogleGenerativeAI {
           contents: serialized.slice(0, 12000),
           requestTimeout: requestOptions?.timeout ?? null,
         });
+        const abortName = serialized.includes('fileData')
+          ? geminiModelAbortNameQueue.shift()
+          : null;
+        if (abortName) {
+          const error = new Error('injected_native_model_abort');
+          error.name = abortName;
+          throw error;
+        }
         if (requestOptions?.timeout && injectedModelDelayMs > requestOptions.timeout) {
           const error = new Error('injected_model_timeout');
           error.code = 'ETIMEDOUT';
           throw error;
+        }
+        if (serialized.includes('fileData') && scheduleControlledClockAfterModel) {
+          scheduleControlledClockAfterModel();
         }
         const text = model === 'gemini-3.1-flash-lite'
           ? (serialized.includes('조문 목차:') ? '제1조' : '민법')
@@ -529,6 +550,13 @@ async function resetResultChatRateLimit(uid) {
     throw new Error('resetResultChatRateLimit은 FIRESTORE_EMULATOR_HOST가 설정된 에뮬레이터 환경에서만 호출할 수 있습니다.');
   }
   await db.collection('users').doc(uid).collection('rateLimits').doc('resultChat').delete().catch(() => {});
+}
+
+async function resetLawSearchRateLimit(uid) {
+  if (!process.env.FIRESTORE_EMULATOR_HOST) {
+    throw new Error('resetLawSearchRateLimit은 FIRESTORE_EMULATOR_HOST가 설정된 에뮬레이터 환경에서만 호출할 수 있습니다.');
+  }
+  await db.collection('users').doc(uid).collection('rateLimits').doc('lawSearch').delete().catch(() => {});
 }
 
 async function getThread(uid, recordId, threadId) {
@@ -1047,7 +1075,7 @@ async function run() {
   let controlledNowMs = originalDateNow();
   Date.now = () => controlledNowMs;
   advanceControlledClock = (elapsedMs) => { controlledNowMs += elapsedMs; };
-  geminiFileUploadDelayQueueMs = [60_000, 16_000];
+  geminiFileUploadDelayQueueMs = [45_000, 16_000];
   try {
     await assert.rejects(
       callable(USERS.developer, {
@@ -1066,8 +1094,8 @@ async function run() {
     geminiFileUploadDelayQueueMs = [];
   }
   const deadlineAttempts = geminiFileUploadAttempts.slice(deadlineAttemptsBefore);
-  assert.deepStrictEqual(deadlineAttempts.map((attempt) => attempt.injectedDelayMs), [60_000, 16_000]);
-  assert.deepStrictEqual(deadlineAttempts.map((attempt) => attempt.clientTimeout), [75_000, 15_000]);
+  assert.deepStrictEqual(deadlineAttempts.map((attempt) => attempt.injectedDelayMs), [45_000, 16_000]);
+  assert.deepStrictEqual(deadlineAttempts.map((attempt) => attempt.clientTimeout), [60_000, 15_000]);
   assert.ok(geminiFileDeletes.length >= deadlineDeletesBefore + 2);
   assert.strictEqual(activeGeminiFiles.size, 0);
   assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
@@ -1102,8 +1130,9 @@ async function run() {
   let controlledModelNowMs = originalModelDateNow();
   Date.now = () => controlledModelNowMs;
   advanceControlledClock = (elapsedMs) => { controlledModelNowMs += elapsedMs; };
-  geminiFileUploadDelayQueueMs = [70_000];
+  geminiFileUploadDelayQueueMs = [55_000];
   geminiModelDelayQueueMs = [6_000];
+  geminiModelAbortNameQueue = ['AbortError'];
   try {
     await assert.rejects(
       callable(USERS.developer, {
@@ -1121,6 +1150,7 @@ async function run() {
     advanceControlledClock = null;
     geminiFileUploadDelayQueueMs = [];
     geminiModelDelayQueueMs = [];
+    geminiModelAbortNameQueue = [];
   }
   assert.strictEqual(genaiCalls.length, modelDeadlineAttemptsBefore + 1);
   assert.strictEqual(genaiCalls.at(-1).hasAbortSignal, true);
@@ -1133,6 +1163,60 @@ async function run() {
     'haruraw_sayu',
     modelDeadlineThreadBefore.webSearchUsedCount || 0,
     0,
+  );
+
+  await resetResultChatRateLimit(USERS.developer);
+  const finalizationMonthlyBefore = await getMonthlyUsed(USERS.developer);
+  const finalizationThreadBefore = await getThread(USERS.developer, 'law', 'haruraw_sayu');
+  const finalizationMessagesBefore = (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length;
+  const originalFinalizationDateNow = Date.now;
+  let controlledFinalizationNowMs = originalFinalizationDateNow();
+  let dateNowCallsBeforeFinalizationAdvance = null;
+  Date.now = () => {
+    if (dateNowCallsBeforeFinalizationAdvance === 0) {
+      controlledFinalizationNowMs += 16_000;
+      dateNowCallsBeforeFinalizationAdvance = null;
+    } else if (typeof dateNowCallsBeforeFinalizationAdvance === 'number') {
+      dateNowCallsBeforeFinalizationAdvance -= 1;
+    }
+    return controlledFinalizationNowMs;
+  };
+  advanceControlledClock = (elapsedMs) => { controlledFinalizationNowMs += elapsedMs; };
+  scheduleControlledClockAfterModel = () => { dateNowCallsBeforeFinalizationAdvance = 2; };
+  geminiFileUploadDelayQueueMs = [55_000];
+  geminiModelDelayQueueMs = [4_000];
+  try {
+    await assert.rejects(
+      callable(USERS.developer, {
+        recordId: 'law',
+        sourceKey: 'haruraw_sayu',
+        question: '모델 성공 뒤 마무리 마감과 롤백을 확인해줘.',
+        searchPreference: 'web_confirmed',
+        attachments: [attachment],
+      }),
+      (error) => error?.code === 'unavailable'
+        && error?.details?.reason === 'HARULAW_AI_TEMPORARY_UNAVAILABLE',
+    );
+  } finally {
+    Date.now = originalFinalizationDateNow;
+    advanceControlledClock = null;
+    scheduleControlledClockAfterModel = null;
+    geminiFileUploadDelayQueueMs = [];
+    geminiModelDelayQueueMs = [];
+  }
+  assert.strictEqual(activeGeminiFiles.size, 0);
+  assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
+  assert.strictEqual(await getMonthlyUsed(USERS.developer), finalizationMonthlyBefore);
+  await assertThreadSearchUsage(
+    USERS.developer,
+    'law',
+    'haruraw_sayu',
+    finalizationThreadBefore.webSearchUsedCount || 0,
+    0,
+  );
+  assert.strictEqual(
+    (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length,
+    finalizationMessagesBefore,
   );
 
   forceGeminiFileDeleteError = true;
@@ -1270,7 +1354,7 @@ async function run() {
   let controlledLawNowMs = originalLawDateNow();
   Date.now = () => controlledLawNowMs;
   advanceControlledClock = (elapsedMs) => { controlledLawNowMs += elapsedMs; };
-  geminiFileUploadDelayQueueMs = [60_000, 16_000];
+  geminiFileUploadDelayQueueMs = [45_000, 16_000];
   try {
     await assert.rejects(
       lawCallable(USERS.developer, {
@@ -1286,8 +1370,8 @@ async function run() {
     geminiFileUploadDelayQueueMs = [];
   }
   const lawDeadlineAttempts = geminiFileUploadAttempts.slice(lawDeadlineAttemptsBefore);
-  assert.deepStrictEqual(lawDeadlineAttempts.map((attempt) => attempt.injectedDelayMs), [60_000, 16_000]);
-  assert.deepStrictEqual(lawDeadlineAttempts.map((attempt) => attempt.clientTimeout), [75_000, 15_000]);
+  assert.deepStrictEqual(lawDeadlineAttempts.map((attempt) => attempt.injectedDelayMs), [45_000, 16_000]);
+  assert.deepStrictEqual(lawDeadlineAttempts.map((attempt) => attempt.clientTimeout), [60_000, 15_000]);
   assert.ok(geminiFileDeletes.length >= lawDeadlineDeletesBefore + 2);
   assert.strictEqual(activeGeminiFiles.size, 0);
   assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
@@ -1297,8 +1381,9 @@ async function run() {
   let controlledLawModelNowMs = originalLawModelDateNow();
   Date.now = () => controlledLawModelNowMs;
   advanceControlledClock = (elapsedMs) => { controlledLawModelNowMs += elapsedMs; };
-  geminiFileUploadDelayQueueMs = [70_000];
+  geminiFileUploadDelayQueueMs = [55_000];
   geminiModelDelayQueueMs = [6_000];
+  geminiModelAbortNameQueue = ['GoogleGenerativeAIAbortError'];
   try {
     await assert.rejects(
       lawCallable(USERS.developer, {
@@ -1313,6 +1398,7 @@ async function run() {
     advanceControlledClock = null;
     geminiFileUploadDelayQueueMs = [];
     geminiModelDelayQueueMs = [];
+    geminiModelAbortNameQueue = [];
   }
   const lawModelDeadlineCalls = legacyGenaiCalls.slice(lawModelDeadlineCallsBefore);
   assert.strictEqual(lawModelDeadlineCalls.length, 3);
@@ -1320,6 +1406,45 @@ async function run() {
   assert.strictEqual(activeGeminiFiles.size, 0);
   assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
 
+  const lawFinalizationCallsBefore = legacyGenaiCalls.length;
+  const originalLawFinalizationDateNow = Date.now;
+  let controlledLawFinalizationNowMs = originalLawFinalizationDateNow();
+  let dateNowCallsBeforeLawFinalizationAdvance = null;
+  Date.now = () => {
+    if (dateNowCallsBeforeLawFinalizationAdvance === 0) {
+      controlledLawFinalizationNowMs += 16_000;
+      dateNowCallsBeforeLawFinalizationAdvance = null;
+    } else if (typeof dateNowCallsBeforeLawFinalizationAdvance === 'number') {
+      dateNowCallsBeforeLawFinalizationAdvance -= 1;
+    }
+    return controlledLawFinalizationNowMs;
+  };
+  advanceControlledClock = (elapsedMs) => { controlledLawFinalizationNowMs += elapsedMs; };
+  scheduleControlledClockAfterModel = () => { dateNowCallsBeforeLawFinalizationAdvance = 1; };
+  geminiFileUploadDelayQueueMs = [55_000];
+  geminiModelDelayQueueMs = [4_000];
+  try {
+    await assert.rejects(
+      lawCallable(USERS.developer, {
+        query: '모델 성공 뒤 마무리 마감이 적용되는 민법 조항을 알려줘.',
+        attachments: [attachment],
+      }),
+      (error) => error?.code === 'unavailable'
+        && error?.details?.reason === 'HARULAW_AI_TEMPORARY_UNAVAILABLE',
+    );
+  } finally {
+    Date.now = originalLawFinalizationDateNow;
+    advanceControlledClock = null;
+    scheduleControlledClockAfterModel = null;
+    geminiFileUploadDelayQueueMs = [];
+    geminiModelDelayQueueMs = [];
+  }
+  assert.strictEqual(legacyGenaiCalls.length, lawFinalizationCallsBefore + 3);
+  assert.strictEqual(activeGeminiFiles.size, 0);
+  assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
+
+  await resetResultChatRateLimit(USERS.developer);
+  await resetLawSearchRateLimit(USERS.developer);
   const lawSearchUploadsBefore = geminiFileUploads.length;
   const lawSearchLegacyCallsBefore = legacyGenaiCalls.length;
   const lawSearchResult = await lawCallable(USERS.developer, {
@@ -1329,9 +1454,9 @@ async function run() {
   assert.strictEqual(lawSearchResult.success, true);
   assert.strictEqual(geminiFileUploads.length, lawSearchUploadsBefore + 1);
   assert.ok(geminiFileUploads.every((upload) => upload.requestTimeout === null));
-  assert.ok(geminiFileUploads.every((upload) => upload.clientTimeout > 0 && upload.clientTimeout <= 75_000));
+  assert.ok(geminiFileUploads.every((upload) => upload.clientTimeout > 0 && upload.clientTimeout <= 60_000));
   assert.ok(googleGenAiClientOptions.some((options) => options.timeout === null));
-  assert.ok(googleGenAiClientOptions.some((options) => options.timeout === 75_000));
+  assert.ok(googleGenAiClientOptions.some((options) => options.timeout === 60_000));
   const lawSearchCalls = legacyGenaiCalls.slice(lawSearchLegacyCallsBefore);
   assert.strictEqual(lawSearchCalls.length, 3);
   assert.ok(lawSearchCalls.at(-1).contents.includes('fileData'));
