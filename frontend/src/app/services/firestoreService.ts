@@ -17,6 +17,10 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db } from '../../firebase';  // ✅ 수정됨: ../firebase → ../../firebase
+import {
+  assertAiLibraryDeleteResult,
+  validateAiLibraryDeleteRequest,
+} from '../utils/aiLibraryDeletion';
 import { 
   RecordFormatKorean,
   DiaryStats,
@@ -2439,13 +2443,17 @@ class FirestoreService {
     return Array.isArray(result.data?.logs) ? result.data.logs : [];
   }
 
-  async deleteAiLogs(ids: Set<string>): Promise<void> {
+  async deleteAiLogs(ids: Set<string>): Promise<Set<string>> {
+    const requestedIds = Array.from(ids);
+    validateAiLibraryDeleteRequest(requestedIds);
     const { getFunctions, httpsCallable } = await import('firebase/functions');
     const callable = httpsCallable<{ ids: string[] }, { deleted: number }>(
       getFunctions(undefined, 'asia-northeast3'),
       'deleteAiLibraryLogs',
     );
-    await callable({ ids: Array.from(ids) });
+    const result = await callable({ ids: requestedIds });
+    assertAiLibraryDeleteResult(requestedIds.length, result.data?.deleted);
+    return new Set(requestedIds);
   }
 
   /**

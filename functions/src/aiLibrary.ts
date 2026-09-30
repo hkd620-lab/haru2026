@@ -84,10 +84,17 @@ export const saveAiLibraryImport = onCall({ region: 'asia-northeast3' }, async (
 
 export const deleteAiLibraryLogs = onCall({ region: 'asia-northeast3' }, async (request) => {
   const uid = requireAiLibraryDeveloper(request);
-  const ids = Array.isArray(request.data?.ids)
-    ? Array.from(new Set(request.data.ids.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0))).slice(0, 100)
-    : [];
-  if (ids.length === 0) throw new HttpsError('invalid-argument', '삭제할 기록이 없습니다.');
+  const requestedIds = request.data?.ids;
+  if (!Array.isArray(requestedIds) || requestedIds.length === 0) {
+    throw new HttpsError('invalid-argument', '삭제할 기록이 없습니다.');
+  }
+  if (requestedIds.length > 100) {
+    throw new HttpsError('invalid-argument', '한 번에 최대 100개까지 삭제할 수 있습니다.');
+  }
+  if (requestedIds.some((id: unknown) => typeof id !== 'string' || !id || id.includes('/'))) {
+    throw new HttpsError('invalid-argument', '삭제할 기록 식별자가 올바르지 않습니다.');
+  }
+  const ids = Array.from(new Set(requestedIds as string[]));
   const db = admin.firestore();
   const refs = ids.map((id) => db.doc(`users/${uid}/records/${id}`));
   const snaps = await db.getAll(...refs);

@@ -74,3 +74,43 @@ test('검증된 개발자 토큰은 본인 UID 경로에서 저장·조회·삭�
   assert.equal(deleted.deleted, 1);
   assert.equal((await ownRef.get()).exists, false);
 });
+
+test('100개 삭제는 성공하고 101개 요청은 전체를 명시적으로 거부한다', async () => {
+  const auth = {
+    uid: 'bulk-developer',
+    token: { email: 'hkd620@gmail.com', email_verified: true },
+  };
+  const ids = Array.from({ length: 100 }, (_, index) => `bulk-${index}`);
+  const batch = admin.firestore().batch();
+  for (const id of ids) {
+    batch.set(admin.firestore().doc(`users/${auth.uid}/records/${id}`), { type: 'ai_log' });
+  }
+  await batch.commit();
+
+  const deleted = await deleteLogs(callableRequest({ ids }, auth));
+  assert.equal(deleted.deleted, 100);
+
+  await expectCode(
+    deleteLogs(callableRequest({ ids: [...ids, 'bulk-100'] }, auth)),
+    'invalid-argument',
+  );
+});
+
+test('없는 문서나 ai_log가 아닌 문서가 포함되면 전체 삭제를 시작하지 않는다', async () => {
+  const auth = {
+    uid: 'atomic-developer',
+    token: { email: 'hkd620@gmail.com', email_verified: true },
+  };
+  const validRef = admin.firestore().doc(`users/${auth.uid}/records/valid-ai-log`);
+  const wrongTypeRef = admin.firestore().doc(`users/${auth.uid}/records/not-ai-log`);
+  await validRef.set({ type: 'ai_log' });
+  await wrongTypeRef.set({ type: '일기' });
+
+  for (const invalidId of ['missing-ai-log', 'not-ai-log']) {
+    await expectCode(
+      deleteLogs(callableRequest({ ids: ['valid-ai-log', invalidId] }, auth)),
+      'failed-precondition',
+    );
+    assert.equal((await validRef.get()).exists, true);
+  }
+});

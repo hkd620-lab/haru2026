@@ -3,6 +3,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
+import { addAiLibrarySelection, AI_LIBRARY_DELETE_LIMIT } from '../utils/aiLibraryDeletion';
 
 type SourceFilter = string;
 
@@ -422,13 +423,13 @@ export function AiLibraryPage() {
     if (!deleteMode) return;
     e.stopPropagation();
 
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedIds(newSelected);
+    setSelectedIds((current) => {
+      const result = addAiLibrarySelection(current, id);
+      if (result.limitReached) {
+        alert(`한 번에 최대 ${AI_LIBRARY_DELETE_LIMIT}개까지 선택할 수 있습니다.`);
+      }
+      return result.selectedIds;
+    });
   };
 
   const handleCardClick = (id: string) => {
@@ -447,10 +448,10 @@ export function AiLibraryPage() {
     }
 
     try {
-      await firestoreService.deleteAiLogs(selectedIds);
+      const confirmedIds = await firestoreService.deleteAiLogs(new Set(selectedIds));
 
-      // logs 상태에서 삭제된 항목들 제거
-      setLogs(prevLogs => prevLogs.filter(log => !selectedIds.has(log.id)));
+      // 서버가 요청 개수 전체를 확인한 경우에만 삭제된 항목을 화면에서 제거한다.
+      setLogs(prevLogs => prevLogs.filter(log => !confirmedIds.has(log.id)));
 
       // 삭제 모드 종료 및 선택 초기화
       setDeleteMode(false);
@@ -468,8 +469,8 @@ export function AiLibraryPage() {
     if (!confirm(`'${title}' 기록을 삭제하시겠습니까?`)) return;
 
     try {
-      await firestoreService.deleteAiLogs(new Set([log.id]));
-      setLogs(prevLogs => prevLogs.filter(item => item.id !== log.id));
+      const confirmedIds = await firestoreService.deleteAiLogs(new Set([log.id]));
+      setLogs(prevLogs => prevLogs.filter(item => !confirmedIds.has(item.id)));
       setSelectedIds(prev => {
         const next = new Set(prev);
         next.delete(log.id);

@@ -14,7 +14,7 @@
     "test:harulaw-errors": "node --import tsx test/haruLawError.test.mjs",
     "test:sns-thumbnails": "node test/snsThumbnailRequestQueue.test.mjs && node test/snsThumbnailAuthCache.test.mjs && node test/snsThumbnailPersistentCache.test.mjs && node test/snsThumbnailTieredLoad.test.mjs && node test/snsPrivateThumbnails.policy.test.cjs",
     "test:sns-story": "node test/snsStoryCreator.policy.test.cjs && node test/snsStoryRequestState.test.mjs",
-    "test:ai-import": "node --test test/aiImport.policy.test.cjs"
+    "test:ai-import": "node --test test/aiImport.policy.test.cjs && node --import tsx --test test/aiImportReturn.test.mjs test/aiLibraryDeletion.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
