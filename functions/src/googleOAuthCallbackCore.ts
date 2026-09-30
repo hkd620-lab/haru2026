@@ -125,13 +125,13 @@ export async function handleGoogleOAuthCallback(
       'profileMs',
       () => dependencies.getUserInfo(accessToken),
     );
-    reportPhase('success', userResponse.status);
-
-    setPhase('custom_token');
     const googleUser = userResponse.data;
     const email = googleUser.email;
     if (!email || typeof email !== 'string') throw new Error('Google email missing');
     if (googleUser.verified_email !== true) throw new Error('Google email is not verified');
+    reportPhase('success', userResponse.status);
+
+    setPhase('custom_token');
     const displayName = typeof googleUser.name === 'string'
       ? googleUser.name
       : `google_user_${String(googleUser.id || '')}`;

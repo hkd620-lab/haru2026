@@ -43,6 +43,14 @@ assert(
   callbackCoreSrc.indexOf("setPhase('token_exchange');")
     < callbackCoreSrc.indexOf('dependencies.exchangeToken(tokenRequestBody.toString())'),
 );
+const emailValidationIndex = callbackCoreSrc.indexOf("throw new Error('Google email missing')");
+const verifiedEmailValidationIndex = callbackCoreSrc.indexOf("throw new Error('Google email is not verified')");
+const userinfoSuccessIndex = callbackCoreSrc.indexOf("reportPhase('success', userResponse.status)");
+const customTokenPhaseIndex = callbackCoreSrc.indexOf("setPhase('custom_token')");
+assert(emailValidationIndex >= 0);
+assert(verifiedEmailValidationIndex > emailValidationIndex);
+assert(userinfoSuccessIndex > verifiedEmailValidationIndex);
+assert(customTokenPhaseIndex > userinfoSuccessIndex);
 
 const form = buildGoogleTokenRequestBody({
   code: 'code with + and &',

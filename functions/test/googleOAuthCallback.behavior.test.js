@@ -111,16 +111,17 @@ async function run() {
     }
   }
 
-  for (const verifiedEmail of [false, undefined]) {
+  for (const userInfo of [
+    { verified_email: true },
+    { email: 'unverified@example.com', verified_email: false },
+    { email: 'unverified@example.com' },
+  ]) {
     const harness = createHarness({
       getUserInfo: async () => {
         harness.calls.userinfo += 1;
         return {
           status: 200,
-          data: {
-            email: 'unverified@example.com',
-            ...(verifiedEmail === undefined ? {} : { verified_email: verifiedEmail }),
-          },
+          data: userInfo,
         };
       },
     });
@@ -133,6 +134,41 @@ async function run() {
     assert.equal(harness.calls.upsertAuthUser, 0);
     assert.equal(harness.calls.customToken, 0);
     assert.equal(harness.completed.length, 0);
+    assert.deepEqual(
+      harness.logs.map(({ phase, outcome, httpStatus }) => ({ phase, outcome, httpStatus })),
+      [
+        { phase: 'token_exchange', outcome: 'success', httpStatus: 200 },
+        { phase: 'userinfo', outcome: 'error', httpStatus: null },
+      ],
+    );
+    assert.equal(harness.redirects.length, 1);
+    assert.equal(harness.redirects[0], 'https://haru2026.com/login?error=google_login_failed');
+  }
+
+  {
+    const harness = createHarness({
+      createCustomToken: async () => {
+        harness.calls.customToken += 1;
+        throw new Error('custom token generation failed');
+      },
+    });
+    await handleGoogleOAuthCallback(
+      { code: 'authorization-code', state: 'oauth-state' },
+      harness.response,
+      harness.dependencies,
+    );
+    assert.equal(harness.calls.getOrCreateUid, 1);
+    assert.equal(harness.calls.upsertAuthUser, 1);
+    assert.equal(harness.calls.customToken, 1);
+    assert.equal(harness.completed.length, 0);
+    assert.deepEqual(
+      harness.logs.map(({ phase, outcome, httpStatus }) => ({ phase, outcome, httpStatus })),
+      [
+        { phase: 'token_exchange', outcome: 'success', httpStatus: 200 },
+        { phase: 'userinfo', outcome: 'success', httpStatus: 200 },
+        { phase: 'custom_token', outcome: 'error', httpStatus: null },
+      ],
+    );
     assert.equal(harness.redirects.length, 1);
     assert.equal(harness.redirects[0], 'https://haru2026.com/login?error=google_login_failed');
   }
