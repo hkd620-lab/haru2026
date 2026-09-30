@@ -18,13 +18,27 @@ const callbackCoreSrc = fs.readFileSync(
 
 assert(googleCallbackSrc.includes("headers: { 'Content-Type': 'application/x-www-form-urlencoded' }"));
 assert(googleCallbackSrc.includes('await handleGoogleOAuthCallback(req.query, res'));
+assert(googleCallbackSrc.includes("onCompleted: (startedAt, timings) => logOAuthCallbackCompleted('google', startedAt, timings)"));
 assert.equal(googleCallbackSrc.includes("logger.error('❌ 구글 콜백 실패:', getSafeOAuthError(error))"), false);
+assert(indexSrc.includes("logger.info('OAuth callback completed', {"));
+assert(indexSrc.includes('totalMs: Date.now() - startedAt,'));
+assert(indexSrc.includes('...timings,'));
 assert(callbackCoreSrc.includes("let currentPhase: OAuthCallbackPhase = 'initialization'"));
 assert(callbackCoreSrc.includes("setPhase('state_validation')"));
 assert(callbackCoreSrc.includes("setPhase('provider_response')"));
 assert(callbackCoreSrc.includes("setPhase('userinfo')"));
 assert(callbackCoreSrc.includes("setPhase('custom_token')"));
 assert(callbackCoreSrc.includes("setPhase('app_redirect')"));
+for (const timingField of [
+  'stateMs',
+  'tokenMs',
+  'profileMs',
+  'uidMs',
+  'authUserMs',
+  'customTokenMs',
+]) {
+  assert(callbackCoreSrc.includes(`'${timingField}'`));
+}
 assert(
   callbackCoreSrc.indexOf("setPhase('token_exchange');")
     < callbackCoreSrc.indexOf('dependencies.exchangeToken(tokenRequestBody.toString())'),

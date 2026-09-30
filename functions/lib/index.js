@@ -5010,6 +5010,7 @@ exports.googleCallback = (0, https_1.onRequest)({
             return typeof status === 'number' ? status : null;
         },
         onPhase: (input) => logger[input.outcome === 'success' ? 'info' : 'error']('Google OAuth callback phase', (0, oauthCallbackDiagnostics_1.buildOAuthPhaseLog)(input)),
+        onCompleted: (startedAt, timings) => logOAuthCallbackCompleted('google', startedAt, timings),
         createRequestId: () => crypto.randomUUID(),
         now: Date.now,
     });

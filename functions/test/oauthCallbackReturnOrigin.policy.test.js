@@ -50,12 +50,12 @@ for (const provider of ['kakao', 'naver', 'google']) {
     assertBefore(
       googleCallbackCoreSrc,
       "if (!state || typeof state !== 'string') throw new Error('Invalid state');",
-      'const oauthState = await dependencies.consumeState(state);',
+      '() => dependencies.consumeState(state)',
       'google must validate state before consuming it',
     );
     assertBefore(
       googleCallbackCoreSrc,
-      'const oauthState = await dependencies.consumeState(state);',
+      '() => dependencies.consumeState(state)',
       'frontendOrigin = dependencies.resolveFrontendOrigin(oauthState?.returnOrigin);',
       'google must consume state before using returnOrigin',
     );

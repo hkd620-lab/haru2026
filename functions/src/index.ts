@@ -5869,6 +5869,7 @@ export const googleCallback = onRequest(
         'Google OAuth callback phase',
         buildOAuthPhaseLog(input),
       ),
+      onCompleted: (startedAt, timings) => logOAuthCallbackCompleted('google', startedAt, timings),
       createRequestId: () => crypto.randomUUID(),
       now: Date.now,
     });

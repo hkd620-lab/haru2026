@@ -8,6 +8,7 @@ const {
 
 function createHarness(overrides = {}) {
   const logs = [];
+  const completed = [];
   const redirects = [];
   const calls = { exchangeToken: 0, userinfo: 0, customToken: 0 };
   let clock = 1000;
@@ -50,6 +51,7 @@ function createHarness(overrides = {}) {
     buildErrorRedirect: (origin) => `${origin}/login?error=google_login_failed`,
     getHttpStatus: (error) => error?.response?.status || null,
     onPhase: (input) => logs.push(buildOAuthPhaseLog(input)),
+    onCompleted: (startedAt, timings) => completed.push({ startedAt, timings: { ...timings } }),
     createRequestId: () => 'safe-request-id',
     now: () => {
       clock += 5;
@@ -59,6 +61,7 @@ function createHarness(overrides = {}) {
   };
   return {
     calls,
+    completed,
     logs,
     redirects,
     dependencies,
@@ -85,6 +88,19 @@ async function run() {
     );
     assert.equal(harness.redirects.length, 1);
     assert(harness.redirects[0].includes('firebase-custom-token'));
+    assert.equal(harness.completed.length, 1);
+    assert.deepEqual(Object.keys(harness.completed[0].timings).sort(), [
+      'authUserMs',
+      'customTokenMs',
+      'profileMs',
+      'stateMs',
+      'tokenMs',
+      'uidMs',
+    ]);
+    for (const duration of Object.values(harness.completed[0].timings)) {
+      assert.equal(typeof duration, 'number');
+      assert(duration >= 0);
+    }
   }
 
   {
@@ -115,15 +131,17 @@ async function run() {
       harness.response,
       harness.dependencies,
     );
-    assert.deepEqual(harness.logs[0], {
+    const { elapsedMs, ...tokenErrorLog } = harness.logs[0];
+    assert(elapsedMs >= 0);
+    assert.deepEqual(tokenErrorLog, {
       requestId: 'safe-request-id',
       provider: 'google',
       phase: 'token_exchange',
       outcome: 'error',
       httpStatus: 401,
-      elapsedMs: 5,
       providerErrorCode: 'invalid_client',
     });
+    assert.equal(harness.completed.length, 0);
     const serializedLogs = JSON.stringify(harness.logs);
     for (const sensitiveValue of [
       'authorization-code',
@@ -150,6 +168,7 @@ async function run() {
     assert.equal(harness.calls.exchangeToken, 0);
     assert.equal(harness.logs[0].phase, 'state_validation');
     assert.equal(harness.logs[0].outcome, 'error');
+    assert.equal(harness.completed.length, 0);
   }
 
   {
@@ -162,6 +181,7 @@ async function run() {
     assert.equal(harness.calls.exchangeToken, 0);
     assert.equal(harness.logs[0].phase, 'provider_response');
     assert.equal(harness.logs[0].outcome, 'error');
+    assert.equal(harness.completed.length, 0);
   }
 
   {
@@ -177,6 +197,7 @@ async function run() {
     assert.equal(harness.logs[0].phase, 'initialization');
     assert.equal(harness.logs[0].outcome, 'error');
     assert.equal(JSON.stringify(harness.logs).includes('secret initialization failed'), false);
+    assert.equal(harness.completed.length, 0);
   }
 
   console.log('google OAuth callback behavior tests passed');
