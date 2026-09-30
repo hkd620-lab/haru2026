@@ -171,6 +171,7 @@ async function run() {
   assert.match(indexSource, /const HARULAW_GEMINI_FINALIZATION_RESERVE_MS = 15_000/);
   assert.match(indexSource, /const HARULAW_POST_MODEL_WRITE_BUDGET_MS = 15_000/);
   assert.match(indexSource, /const HARULAW_ROLLBACK_DEADLINE_MARGIN_MS = 5_000/);
+  assert.match(indexSource, /const HARULAW_CLEANUP_LEDGER_TIMEOUT_MS = 2_000/);
   assert.match(
     indexSource,
     /HARULAW_GEMINI_FILE_TIMEOUT_MS = HARULAW_CALLABLE_TIMEOUT_MS\s*- HARULAW_POST_MODEL_WRITE_BUDGET_MS\s*- HARULAW_GEMINI_FINALIZATION_RESERVE_MS/,
@@ -202,9 +203,13 @@ async function run() {
   assert.match(indexSource, /export const chatWithResult = onCall\([\s\S]{0,160}memory: '512MiB',[\s\S]{0,80}concurrency: 1/);
   assert.match(indexSource, /runHaruLawModelBeforeDeadline\([\s\S]{0,700}abortSignal/);
   assert.match(indexSource, /async function commitAttachedResultChatSuccess/);
+  assert.match(indexSource, /async function commitAttachedResultChatSuccessBeforeDeadline/);
   assert.match(indexSource, /return db\.runTransaction\([\s\S]{0,2600}\{ maxAttempts: 1 \}\)/);
-  assert.match(indexSource, /usageForAnswer = await commitAttachedResultChatSuccess/);
-  assert.match(indexSource, /await deleteTrackedHaruLawGeminiFiles\(haruLawFileClient, trackedGeminiFiles\)[\s\S]{0,220}commitAttachedResultChatSuccess/);
+  assert.match(indexSource, /lastCommittedRequestId: params\.requestId/);
+  assert.match(indexSource, /lastCancelledRequestId: params\.requestId/);
+  assert.match(indexSource, /usageForAnswer = await commitAttachedResultChatSuccessBeforeDeadline/);
+  assert.match(indexSource, /await deleteTrackedHaruLawGeminiFiles\(haruLawFileClient, trackedGeminiFiles\)[\s\S]{0,220}commitAttachedResultChatSuccessBeforeDeadline/);
+  assert.match(indexSource, /settleHaruLawCleanupLedgerWrite\(tracked\.cleanupDocRef\.delete\(\)\)/);
   assert.match(indexSource, /settleHaruLawRollbacksBeforeDeadline\([\s\S]{0,160}\[monthlyRollback, webSearchRollback\]/);
   assert.match(indexSource, /export const lawSearch = onCall\([\s\S]{0,220}memory: '1GiB',[\s\S]{0,80}concurrency: 1/);
   const lawSearchSource = indexSource.slice(

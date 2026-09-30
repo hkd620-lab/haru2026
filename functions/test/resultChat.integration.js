@@ -39,6 +39,7 @@ let geminiFileUploadAttemptCount = 0;
 let failGeminiFileUploadAtAttempt = 0;
 let forceGeminiFileDeleteError = false;
 let geminiFileUploadDelayQueueMs = [];
+let geminiFileDeleteDelayQueueMs = [];
 let geminiModelDelayQueueMs = [];
 let geminiModelAbortNameQueue = [];
 let advanceControlledClock = null;
@@ -179,6 +180,10 @@ class InstrumentedGoogleGenAI {
         const { name } = params;
         geminiFileDeletes.push(name);
         if (this.inner) return this.inner.files.delete(params);
+        const injectedDeleteDelayMs = geminiFileDeleteDelayQueueMs.shift() ?? 0;
+        if (injectedDeleteDelayMs > 0 && advanceControlledClock) {
+          advanceControlledClock(injectedDeleteDelayMs);
+        }
         if (forceGeminiFileDeleteError) {
           const error = new Error('injected_file_delete_failure');
           error.code = 503;
@@ -1223,21 +1228,16 @@ async function run() {
   const finalizationThreadBefore = await getThread(USERS.developer, 'law', 'haruraw_sayu');
   const finalizationMessagesBefore = (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length;
   const originalFinalizationDateNow = Date.now;
+  const originalRunTransaction = db.runTransaction.bind(db);
   let controlledFinalizationNowMs = originalFinalizationDateNow();
-  let dateNowCallsBeforeFinalizationAdvance = null;
-  Date.now = () => {
-    if (dateNowCallsBeforeFinalizationAdvance === 0) {
-      controlledFinalizationNowMs += 16_000;
-      dateNowCallsBeforeFinalizationAdvance = null;
-    } else if (typeof dateNowCallsBeforeFinalizationAdvance === 'number') {
-      dateNowCallsBeforeFinalizationAdvance -= 1;
-    }
-    return controlledFinalizationNowMs;
-  };
+  Date.now = () => controlledFinalizationNowMs;
   advanceControlledClock = (elapsedMs) => { controlledFinalizationNowMs += elapsedMs; };
-  scheduleControlledClockAfterModel = () => { dateNowCallsBeforeFinalizationAdvance = 2; };
+  db.runTransaction = (updateFunction, options) => options?.maxAttempts === 1
+    ? sleep(50).then(() => originalRunTransaction(updateFunction, options))
+    : originalRunTransaction(updateFunction, options);
   geminiFileUploadDelayQueueMs = [55_000];
   geminiModelDelayQueueMs = [4_000];
+  geminiFileDeleteDelayQueueMs = [15_995];
   try {
     await assert.rejects(
       callable(USERS.developer, {
@@ -1252,11 +1252,13 @@ async function run() {
     );
   } finally {
     Date.now = originalFinalizationDateNow;
+    db.runTransaction = originalRunTransaction;
     advanceControlledClock = null;
-    scheduleControlledClockAfterModel = null;
     geminiFileUploadDelayQueueMs = [];
     geminiModelDelayQueueMs = [];
+    geminiFileDeleteDelayQueueMs = [];
   }
+  await sleep(60);
   assert.strictEqual(activeGeminiFiles.size, 0);
   assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
   assert.strictEqual(await getMonthlyUsed(USERS.developer), finalizationMonthlyBefore);

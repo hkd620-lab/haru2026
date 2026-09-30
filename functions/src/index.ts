@@ -3933,6 +3933,7 @@ async function commitAttachedResultChatSuccess(params: {
   exchange: ResultChatExchangeParams;
   usageLog: ResultChatUsageLogParams;
   plan: UserPlan;
+  requestId: string;
 }): Promise<WebSearchUsage> {
   const userMessageRef = params.exchange.messagesRef.doc();
   const assistantMessageRef = params.exchange.messagesRef.doc();
@@ -3940,6 +3941,9 @@ async function commitAttachedResultChatSuccess(params: {
 
   return db.runTransaction(async (tx) => {
     const threadSnap = await tx.get(params.exchange.threadRef);
+    if (String(threadSnap.data()?.activeRequestId || '') !== params.requestId) {
+      throw createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE');
+    }
     const currentUsage = getWebSearchUsageFromData(threadSnap.data(), params.plan);
     const isWebSearch = params.exchange.answerRoute === 'web_search';
     if (isWebSearch && currentUsage.reservedCount <= 0) {
@@ -3980,6 +3984,7 @@ async function commitAttachedResultChatSuccess(params: {
       updatedAt: now,
       messageCount: admin.firestore.FieldValue.increment(2),
       lastMessagePreview: params.exchange.answer.slice(0, 160),
+      lastCommittedRequestId: params.requestId,
       ...(isWebSearch ? {
         webSearchReservedCount: finalizedUsage.reservedCount,
         webSearchUsedCount: finalizedUsage.usedCount,
@@ -4029,6 +4034,7 @@ const HARULAW_CALLABLE_TIMEOUT_MS = 90_000;
 const HARULAW_GEMINI_FINALIZATION_RESERVE_MS = 15_000;
 const HARULAW_POST_MODEL_WRITE_BUDGET_MS = 15_000;
 const HARULAW_ROLLBACK_DEADLINE_MARGIN_MS = 5_000;
+const HARULAW_CLEANUP_LEDGER_TIMEOUT_MS = 2_000;
 // Finish uploads and attachment-backed model calls before post-model writes,
 // while preserving a final 15 seconds for rollback and File cleanup.
 const HARULAW_GEMINI_FILE_TIMEOUT_MS = HARULAW_CALLABLE_TIMEOUT_MS
@@ -4110,6 +4116,55 @@ async function settleHaruLawRollbacksBeforeDeadline(
   if (!settled) {
     logger.warn('하루LAW 사용량 롤백이 함수 마감 전 완료되지 않음');
   }
+}
+
+async function commitAttachedResultChatSuccessBeforeDeadline(
+  params: Parameters<typeof commitAttachedResultChatSuccess>[0],
+  deadlineMs: number,
+): Promise<WebSearchUsage> {
+  const remainingMs = getHaruLawRemainingWorkMs(deadlineMs);
+  let timeout: NodeJS.Timeout | null = null;
+  const commitPromise = commitAttachedResultChatSuccess(params);
+  const first = await Promise.race([
+    commitPromise.then(
+      (usage) => ({ kind: 'committed' as const, usage }),
+      (error) => ({ kind: 'failed' as const, error }),
+    ),
+    new Promise<{ kind: 'deadline' }>((resolve) => {
+      timeout = setTimeout(() => resolve({ kind: 'deadline' }), remainingMs);
+    }),
+  ]);
+  if (timeout) clearTimeout(timeout);
+  if (first.kind === 'committed') return first.usage;
+  if (first.kind === 'failed') throw first.error;
+
+  // Change the thread version and clear this request's lock. The success
+  // transaction reads the same document and has maxAttempts=1, so it cannot
+  // commit after this fence. If it won the race first, its marker is preserved.
+  await params.exchange.threadRef.set({
+    activeRequestId: admin.firestore.FieldValue.delete(),
+    activeRequestStartedMs: admin.firestore.FieldValue.delete(),
+    activeRequestStartedAt: admin.firestore.FieldValue.delete(),
+    lastCancelledRequestId: params.requestId,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  const fencedSnap = await params.exchange.threadRef.get();
+  commitPromise.catch(() => {});
+  if (String(fencedSnap.data()?.lastCommittedRequestId || '') === params.requestId) {
+    return getWebSearchUsageFromData(fencedSnap.data(), params.plan);
+  }
+  throw createHaruLawHttpsError('HARULAW_AI_TEMPORARY_UNAVAILABLE');
+}
+
+async function settleHaruLawCleanupLedgerWrite(operation: Promise<unknown>): Promise<void> {
+  let timeout: NodeJS.Timeout | null = null;
+  await Promise.race([
+    operation.catch(() => undefined),
+    new Promise<void>((resolve) => {
+      timeout = setTimeout(resolve, HARULAW_CLEANUP_LEDGER_TIMEOUT_MS);
+    }),
+  ]);
+  if (timeout) clearTimeout(timeout);
 }
 
 function readHaruLawAttachments(raw: unknown): HaruLawAttachmentRef[] {
@@ -4273,18 +4328,20 @@ async function deleteTrackedHaruLawGeminiFile(
       name: tracked.name,
       config: { httpOptions: { timeout: HARULAW_GEMINI_FILE_DELETE_TIMEOUT_MS } },
     });
-    await tracked.cleanupDocRef.delete();
+    await settleHaruLawCleanupLedgerWrite(tracked.cleanupDocRef.delete());
     return true;
   } catch (error) {
     if (isHaruLawGeminiFileNotFound(error)) {
-      await tracked.cleanupDocRef.delete().catch(() => {});
+      await settleHaruLawCleanupLedgerWrite(tracked.cleanupDocRef.delete());
       return true;
     }
-    await tracked.cleanupDocRef.set({
-      cleanupAfter: admin.firestore.Timestamp.fromMillis(Date.now() + HARULAW_GEMINI_FILE_CLEANUP_DELAY_MS),
-      lastAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
-      attempts: admin.firestore.FieldValue.increment(1),
-    }, { merge: true }).catch(() => {});
+    await settleHaruLawCleanupLedgerWrite(
+      tracked.cleanupDocRef.set({
+        cleanupAfter: admin.firestore.Timestamp.fromMillis(Date.now() + HARULAW_GEMINI_FILE_CLEANUP_DELAY_MS),
+        lastAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+        attempts: admin.firestore.FieldValue.increment(1),
+      }, { merge: true }),
+    );
     logger.warn('하루LAW Gemini 임시 File 삭제 실패', {
       errorCode: (error as any)?.code,
       errorStatus: (error as any)?.response?.status ?? (error as any)?.status,
@@ -4916,12 +4973,10 @@ export const chatWithResult = onCall(
         await deleteTrackedHaruLawGeminiFiles(haruLawFileClient, trackedGeminiFiles);
         await removePreparedHaruLawAttachments(preparedAttachments);
         preparedAttachments = null;
-        getHaruLawRemainingWorkMs(requestFinalizationDeadlineMs);
-        usageForAnswer = await commitAttachedResultChatSuccess({
-          exchange,
-          usageLog,
-          plan: actualPlan,
-        });
+        usageForAnswer = await commitAttachedResultChatSuccessBeforeDeadline(
+          { exchange, usageLog, plan: actualPlan, requestId },
+          requestFinalizationDeadlineMs,
+        );
         if (answerRoute === 'web_search') webSearchFinalized = true;
       } else {
         await logResultChatUsage(usageLog);
