@@ -2429,40 +2429,23 @@ class FirestoreService {
     }
   }
 
-  async getAiLogs(userEmail: string): Promise<HaruRecord[]> {
-    try {
-      const { db, auth } = await import('../../firebase');
-      const { collection, query, where, orderBy, getDocs } = await import('firebase/firestore');
-      const uid = auth.currentUser?.uid;
-      if (!uid) return [];
-      const ref = collection(db, `users/${uid}/records`);
-      const q = query(
-        ref,
-        where('type', '==', 'ai_log'),
-        orderBy('createdAt', 'desc')
-      );
-      const snap = await getDocs(q);
-      return snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.().toISOString()
-          ?? doc.data().createdAt ?? '',
-      })) as HaruRecord[];
-    } catch (error) {
-      console.error('[getAiLogs] 실패:', error);
-      return [];
-    }
+  async getAiLogs(): Promise<HaruRecord[]> {
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const callable = httpsCallable<Record<string, never>, { logs: HaruRecord[] }>(
+      getFunctions(undefined, 'asia-northeast3'),
+      'listAiLibraryLogs',
+    );
+    const result = await callable({});
+    return Array.isArray(result.data?.logs) ? result.data.logs : [];
   }
 
   async deleteAiLogs(ids: Set<string>): Promise<void> {
-    const { db, auth } = await import('../../firebase');
-    const { doc, deleteDoc } = await import('firebase/firestore');
-    const uid = auth.currentUser?.uid;
-    if (!uid) throw new Error('로그인이 필요합니다.');
-    const promises = Array.from(ids).map(id =>
-      deleteDoc(doc(db, 'users', uid, 'records', id))
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const callable = httpsCallable<{ ids: string[] }, { deleted: number }>(
+      getFunctions(undefined, 'asia-northeast3'),
+      'deleteAiLibraryLogs',
     );
-    await Promise.all(promises);
+    await callable({ ids: Array.from(ids) });
   }
 
   /**

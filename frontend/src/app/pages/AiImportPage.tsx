@@ -8,6 +8,7 @@ import {
   parseAiImportPayload,
   saveAiImportForUser,
 } from '../services/aiImportService';
+import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
 
 type ImportState = 'waiting' | 'saving' | 'success' | 'duplicate' | 'error' | 'login';
 
@@ -24,6 +25,11 @@ export function AiImportPage() {
       setMessage('HARU에 로그인한 뒤 Slack에서 저장을 다시 눌러 주세요.');
       return;
     }
+    if (!hasAiLibraryAccess(user.email)) {
+      setState('error');
+      setMessage('이 기능은 허용된 개발자 계정에서만 사용할 수 있습니다.');
+      return;
+    }
 
     let handled = false;
     const handlePayload = async (event: MessageEvent) => {
@@ -34,7 +40,7 @@ export function AiImportPage() {
         setState('saving');
         setMessage('로그인한 HARU 계정에 저장하고 있습니다.');
         const payload = parseAiImportPayload(event.data.payload, importId);
-        const result = await saveAiImportForUser(user.uid, payload);
+        const result = await saveAiImportForUser(payload);
         setState(result.duplicate ? 'duplicate' : 'success');
         setMessage(result.duplicate
           ? '이미 같은 기록이 HARU AI 학습함에 저장되어 있습니다.'

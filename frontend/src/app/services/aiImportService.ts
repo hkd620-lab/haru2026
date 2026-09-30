@@ -1,5 +1,4 @@
-import { doc, getDoc, runTransaction, Timestamp } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 export const AI_IMPORT_REQUEST_EVENT = 'haru:ai-import-request';
 export const AI_IMPORT_PAYLOAD_EVENT = 'haru:ai-import-payload';
@@ -48,34 +47,11 @@ export function parseAiImportPayload(value: unknown, expectedImportId: string): 
   };
 }
 
-export async function saveAiImportForUser(uid: string, payload: AiImportPayload) {
-  const recordId = `ai_import_${payload.importId}`;
-  const recordRef = doc(db, 'users', uid, 'records', recordId);
-  let duplicate = false;
-
-  await runTransaction(db, async (transaction) => {
-    const existing = await transaction.get(recordRef);
-    if (existing.exists()) {
-      duplicate = true;
-      return;
-    }
-    const createdAt = Timestamp.fromDate(new Date(payload.capturedAt));
-    transaction.set(recordRef, {
-      title: `[AI수집] ${payload.source === 'slack' ? 'Slack' : payload.source}`,
-      content: payload.content,
-      type: 'ai_log',
-      source: payload.source,
-      createdAt,
-      updatedAt: createdAt,
-      importedAt: Timestamp.now(),
-      externalImportId: payload.importId,
-      ...(payload.sourceUrl ? { sourceUrl: payload.sourceUrl } : {}),
-    });
-  });
-
-  const verified = await getDoc(recordRef);
-  if (!verified.exists() || verified.data().type !== 'ai_log' || verified.data().source !== payload.source) {
-    throw new Error('HARU 기록 생성 여부를 확인하지 못했습니다.');
-  }
-  return { recordId, duplicate };
+export async function saveAiImportForUser(payload: AiImportPayload) {
+  const callable = httpsCallable<AiImportPayload, { recordId: string; duplicate: boolean }>(
+    getFunctions(undefined, 'asia-northeast3'),
+    'saveAiLibraryImport',
+  );
+  const result = await callable(payload);
+  return result.data;
 }

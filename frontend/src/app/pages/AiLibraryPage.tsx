@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, type ReactNode } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
+import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
 
 type SourceFilter = string;
 
@@ -342,19 +343,27 @@ export function AiLibraryPage() {
   const [bookMaterialBusy, setBookMaterialBusy] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    console.log('[AiLibraryPage] user 상태:', user);
-    if (!user || !user.email) {
-      console.warn('[AiLibraryPage] user 또는 email 없음 — 로그인 필요');
+    let cancelled = false;
+    setLogs([]);
+    setSelectedIds(new Set());
+    setExpandedId(null);
+    setLoading(true);
+
+    if (!user || !hasAiLibraryAccess(user.email)) {
       setLoading(false);
-      return;
+      return () => { cancelled = true; };
     }
-    console.log('[AiLibraryPage] getAiLogs 호출, email:', user.email);
-    firestoreService.getAiLogs(user.email).then((data) => {
-      console.log('[AiLibraryPage] 받은 데이터:', data);
+    const requestUid = user.uid;
+    firestoreService.getAiLogs().then((data) => {
+      if (cancelled || requestUid !== user.uid) return;
       setLogs(data);
-      setLoading(false);
+    }).catch((error) => {
+      if (!cancelled) console.error('[AiLibraryPage] 조회 실패:', error);
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
     });
-  }, [user]);
+    return () => { cancelled = true; };
+  }, [user?.uid, user?.email]);
 
   const getSource = (r: HaruRecord): string => {
     if (r.source) return r.source;
@@ -502,8 +511,8 @@ export function AiLibraryPage() {
       const data = (result.data || {}) as any;
       if (!data?.ok) throw new Error('AI 응답 형식 오류');
 
-      if (user?.email) {
-        const freshLogs = await firestoreService.getAiLogs(user.email);
+      if (hasAiLibraryAccess(user?.email)) {
+        const freshLogs = await firestoreService.getAiLogs();
         const refreshed = freshLogs.find(item => item.id === log.id);
         setLogs(freshLogs.map(item =>
           item.id === log.id && !item.bookMaterial && data.bookMaterial

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { setOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
+import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
 import { TimelineCollageModal } from '../components/TimelineCollageModal';
 import { HomePersonalizationModal } from '../components/HomePersonalizationModal';
 import { shouldShowAssistantOnboarding } from '../services/assistantOnboardingService';
@@ -575,6 +576,7 @@ export function HomePageV2() {
   const currentUserUidRef = useRef<string | null>(currentUserUid);
   currentUserUidRef.current = currentUserUid;
   const isDeveloper = user?.uid === DEVELOPER_UID;
+  const canUseAiLibrary = hasAiLibraryAccess(user?.email);
   // 숨김 기록 + 개발자 전용 항목은 일반 사용자 홈에서 비노출
   const visibleRecords = useMemo(
     () => RECORDS.filter((r) => !HIDDEN_RECORD_FORMATS.has(r.format) && (!r.developerOnly || isDeveloper)),
@@ -1028,11 +1030,11 @@ export function HomePageV2() {
                 }}
               />
             </button>
-            {isDeveloper && (
+            {(isDeveloper || canUseAiLibrary) && (
               <button
                 type="button"
-                aria-label="개발자 콘솔"
-                onClick={() => navigate('/admin/console')}
+                aria-label={canUseAiLibrary ? 'AI 학습함' : '개발자 콘솔'}
+                onClick={() => navigate(canUseAiLibrary ? '/ai-library' : '/admin/console')}
                 className="v2-pill"
                 style={{
                   width: 44,

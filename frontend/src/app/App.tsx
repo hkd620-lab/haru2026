@@ -92,6 +92,7 @@ import { PublicLegalBoundary } from './components/PublicLegalBoundary';
 import { Footer } from './components/Footer';
 import { TodayQuote } from './components/TodayQuote';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
+import { hasAiLibraryAccess } from './utils/aiLibraryAccess';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -154,6 +155,13 @@ function DeveloperBookStudioRoute() {
   return <BookStudio />;
 }
 
+function AiLibraryRoute({ importMode = false }: { importMode?: boolean }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user || !hasAiLibraryAccess(user.email)) return <Navigate to="/" replace />;
+  return importMode ? <AiImportPage /> : <AiLibraryPage />;
+}
+
 function AppChrome() {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -189,8 +197,8 @@ function AppChrome() {
           {/* 인증 */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
-          <Route path="/ai-import" element={<AiImportPage />} />
-          <Route path="/ai-library" element={<AiLibraryPage />} />
+          <Route path="/ai-import" element={<AiLibraryRoute importMode />} />
+          <Route path="/ai-library" element={<AiLibraryRoute />} />
 
           {/* 기존 페이지들 */}
           <Route path="/household" element={<HouseholdPage />} />
