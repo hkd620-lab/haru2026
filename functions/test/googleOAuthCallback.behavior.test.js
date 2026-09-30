@@ -10,7 +10,7 @@ function createHarness(overrides = {}) {
   const logs = [];
   const completed = [];
   const redirects = [];
-  const calls = { exchangeToken: 0, userinfo: 0, customToken: 0 };
+  const calls = { exchangeToken: 0, userinfo: 0, getOrCreateUid: 0, upsertAuthUser: 0, customToken: 0 };
   let clock = 1000;
   const dependencies = {
     defaultFrontendOrigin: 'https://haru2026.com',
@@ -41,8 +41,13 @@ function createHarness(overrides = {}) {
         },
       };
     },
-    getOrCreateUid: async () => 'firebase-uid',
-    upsertAuthUser: async () => {},
+    getOrCreateUid: async () => {
+      calls.getOrCreateUid += 1;
+      return 'firebase-uid';
+    },
+    upsertAuthUser: async () => {
+      calls.upsertAuthUser += 1;
+    },
     createCustomToken: async () => {
       calls.customToken += 1;
       return 'firebase-custom-token';
@@ -89,6 +94,9 @@ async function run() {
     assert.equal(harness.redirects.length, 1);
     assert(harness.redirects[0].includes('firebase-custom-token'));
     assert.equal(harness.completed.length, 1);
+    assert.equal(harness.calls.getOrCreateUid, 1);
+    assert.equal(harness.calls.upsertAuthUser, 1);
+    assert.equal(harness.calls.customToken, 1);
     assert.deepEqual(Object.keys(harness.completed[0].timings).sort(), [
       'authUserMs',
       'customTokenMs',
@@ -101,6 +109,32 @@ async function run() {
       assert.equal(typeof duration, 'number');
       assert(duration >= 0);
     }
+  }
+
+  for (const verifiedEmail of [false, undefined]) {
+    const harness = createHarness({
+      getUserInfo: async () => {
+        harness.calls.userinfo += 1;
+        return {
+          status: 200,
+          data: {
+            email: 'unverified@example.com',
+            ...(verifiedEmail === undefined ? {} : { verified_email: verifiedEmail }),
+          },
+        };
+      },
+    });
+    await handleGoogleOAuthCallback(
+      { code: 'authorization-code', state: 'oauth-state' },
+      harness.response,
+      harness.dependencies,
+    );
+    assert.equal(harness.calls.getOrCreateUid, 0);
+    assert.equal(harness.calls.upsertAuthUser, 0);
+    assert.equal(harness.calls.customToken, 0);
+    assert.equal(harness.completed.length, 0);
+    assert.equal(harness.redirects.length, 1);
+    assert.equal(harness.redirects[0], 'https://haru2026.com/login?error=google_login_failed');
   }
 
   {
