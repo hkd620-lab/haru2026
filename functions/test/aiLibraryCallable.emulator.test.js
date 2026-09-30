@@ -75,12 +75,12 @@ test('검증된 개발자 토큰은 본인 UID 경로에서 저장·조회·삭�
   assert.equal((await ownRef.get()).exists, false);
 });
 
-test('100개 삭제는 성공하고 101개 요청은 전체를 명시적으로 거부한다', async () => {
+test('10개 삭제는 성공하고 11개 요청은 트랜잭션 전에 거부한다', async () => {
   const auth = {
     uid: 'bulk-developer',
     token: { email: 'hkd620@gmail.com', email_verified: true },
   };
-  const ids = Array.from({ length: 100 }, (_, index) => `bulk-${index}`);
+  const ids = Array.from({ length: 10 }, (_, index) => `bulk-${index}`);
   const batch = admin.firestore().batch();
   for (const id of ids) {
     batch.set(admin.firestore().doc(`users/${auth.uid}/records/${id}`), { type: 'ai_log' });
@@ -88,12 +88,38 @@ test('100개 삭제는 성공하고 101개 요청은 전체를 명시적으로 �
   await batch.commit();
 
   const deleted = await deleteLogs(callableRequest({ ids }, auth));
-  assert.equal(deleted.deleted, 100);
+  assert.equal(deleted.deleted, 10);
 
   await expectCode(
-    deleteLogs(callableRequest({ ids: [...ids, 'bulk-100'] }, auth)),
+    deleteLogs(callableRequest({ ids: [...ids, 'bulk-10'] }, auth)),
     'invalid-argument',
   );
+});
+
+test('최대 크기에 가까운 멀티바이트 본문 10건을 트랜잭션으로 삭제한다', async () => {
+  const auth = {
+    uid: 'large-content-developer',
+    token: { email: 'hkd620@gmail.com', email_verified: true },
+  };
+  const ids = Array.from({ length: 10 }, (_, index) => `large-${index}`);
+  const nearLimitMultibyteContent = '하'.repeat(199_000);
+  assert.equal(Buffer.byteLength(nearLimitMultibyteContent, 'utf8'), 597_000);
+
+  const batch = admin.firestore().batch();
+  for (const id of ids) {
+    batch.set(admin.firestore().doc(`users/${auth.uid}/records/${id}`), {
+      type: 'ai_log',
+      content: nearLimitMultibyteContent,
+    });
+  }
+  await batch.commit();
+
+  const deleted = await deleteLogs(callableRequest({ ids }, auth));
+  assert.equal(deleted.deleted, 10);
+  const remaining = await admin.firestore().getAll(
+    ...ids.map((id) => admin.firestore().doc(`users/${auth.uid}/records/${id}`)),
+  );
+  assert.equal(remaining.some((snap) => snap.exists), false);
 });
 
 test('없는 문서나 ai_log가 아닌 문서가 포함되면 전체 삭제를 시작하지 않는다', async () => {

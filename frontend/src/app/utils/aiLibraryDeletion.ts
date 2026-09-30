@@ -1,4 +1,4 @@
-export const AI_LIBRARY_DELETE_LIMIT = 100;
+export const AI_LIBRARY_DELETE_LIMIT = 10;
 
 export function addAiLibrarySelection(
   selectedIds: Set<string>,

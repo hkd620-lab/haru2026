@@ -4,6 +4,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 const AI_LIBRARY_DEVELOPER_EMAIL = 'hkd620@gmail.com';
 const IMPORT_ID_PATTERN = /^[a-f0-9]{64}$/;
 const ALLOWED_SOURCES = new Set(['slack', 'chatgpt.com', 'claude.ai', 'gemini.google.com']);
+export const AI_LIBRARY_DELETE_LIMIT = 10;
 
 export function hasAiLibraryDeveloperEmail(email: unknown, emailVerified: unknown): boolean {
   return typeof email === 'string'
@@ -88,8 +89,11 @@ export const deleteAiLibraryLogs = onCall({ region: 'asia-northeast3' }, async (
   if (!Array.isArray(requestedIds) || requestedIds.length === 0) {
     throw new HttpsError('invalid-argument', '삭제할 기록이 없습니다.');
   }
-  if (requestedIds.length > 100) {
-    throw new HttpsError('invalid-argument', '한 번에 최대 100개까지 삭제할 수 있습니다.');
+  if (requestedIds.length > AI_LIBRARY_DELETE_LIMIT) {
+    throw new HttpsError(
+      'invalid-argument',
+      `한 번에 최대 ${AI_LIBRARY_DELETE_LIMIT}개까지 삭제할 수 있습니다.`,
+    );
   }
   if (requestedIds.some((id: unknown) => typeof id !== 'string' || !id || id.includes('/'))) {
     throw new HttpsError('invalid-argument', '삭제할 기록 식별자가 올바르지 않습니다.');
