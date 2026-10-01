@@ -16,12 +16,10 @@ assert(
 );
 assert(
   app.includes('function AssistantEntryScrollReset()')
-    && app.includes('useEffect(() => {')
-    && app.includes('window.requestAnimationFrame(() => {')
+    && app.includes('useLayoutEffect(() => {')
     && app.includes("window.scrollTo({ top: 0, left: 0, behavior: 'auto' });")
-    && app.includes('window.cancelAnimationFrame(frameId)')
     && app.includes('[location.key, shouldReset]'),
-  'the reset must run on the first rendered frame and only once for each marked navigation',
+  'the reset must run before paint and only once for each marked navigation',
 );
 assert(
   !app.includes('setTimeout(() => window.scrollTo'),

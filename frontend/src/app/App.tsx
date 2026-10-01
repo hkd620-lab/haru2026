@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, type CSSProperties } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -167,13 +167,9 @@ function AssistantEntryScrollReset() {
   const shouldReset =
     (location.state as { resetAssistantScroll?: boolean } | null)?.resetAssistantScroll === true;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!shouldReset) return;
-    const frameId = window.requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    });
-
-    return () => window.cancelAnimationFrame(frameId);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [location.key, shouldReset]);
 
   return null;
