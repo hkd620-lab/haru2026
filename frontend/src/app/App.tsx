@@ -162,6 +162,23 @@ function AiLibraryRoute() {
   return <AiLibraryPage />;
 }
 
+function AssistantEntryScrollReset() {
+  const location = useLocation();
+  const shouldReset =
+    (location.state as { resetAssistantScroll?: boolean } | null)?.resetAssistantScroll === true;
+
+  useEffect(() => {
+    if (!shouldReset) return;
+    const frameId = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [location.key, shouldReset]);
+
+  return null;
+}
+
 function AppChrome() {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -315,6 +332,7 @@ function App() {
           <AuthProvider>
             <LoadingProvider>
               <AppInitializer />
+              <AssistantEntryScrollReset />
               <AppChrome />
             </LoadingProvider>
           </AuthProvider>

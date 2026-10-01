@@ -1783,7 +1783,13 @@ export function HomePageV2() {
                     return;
                   }
                   if (!a.path) return;
-                  navigate(a.path, { state: { ...(a.state || {}), from: '/v2' } });
+                  navigate(a.path, {
+                    state: {
+                      ...(a.state || {}),
+                      from: '/v2',
+                      resetAssistantScroll: true,
+                    },
+                  });
                 }}
                 className={disabled ? '' : 'v2-agent'}
                 data-v2="agent"
