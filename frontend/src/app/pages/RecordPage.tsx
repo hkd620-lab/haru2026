@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Calendar, Check, Paperclip, Pencil, X } from 'lucide-react';
@@ -337,6 +337,7 @@ export function RecordPage() {
   const [activeLawAttachments, setActiveLawAttachments] = useState<HaruLawAttachmentRef[]>([]);
   const [uploadingLawFiles, setUploadingLawFiles] = useState(false);
   const lawFileInputRef = useRef<HTMLInputElement>(null);
+  const lawEntrySectionRef = useRef<HTMLElement>(null);
   const [openCard, setOpenCard] = useState<{
     idx: number;
     type: 'explain' | 'prec';
@@ -352,6 +353,13 @@ export function RecordPage() {
       }
     };
   }, []);
+
+  // 하루LAW 안내→입력 전환은 라우트 이동이 아니므로 새 입력 섹션을 직접 노출한다.
+  useLayoutEffect(() => {
+    if (!lawGuideConfirmed || !lawEntrySectionRef.current) return;
+    const targetTop = lawEntrySectionRef.current.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top: targetTop, left: 0, behavior: 'auto' });
+  }, [lawGuideConfirmed]);
 
   useEffect(() => {
     const count = parseInt(localStorage.getItem('envToastCount') || '0');
@@ -1184,7 +1192,7 @@ export function RecordPage() {
         </section>
 
         {/* Format Selection */}
-        <section className="bg-white rounded-lg p-3 shadow-sm">
+        <section ref={lawEntrySectionRef} className="bg-white rounded-lg p-3 shadow-sm">
           <div className="mb-2">
             <h2 className="text-xs tracking-wider" style={{ color: '#666666' }}>
               형식 선택
