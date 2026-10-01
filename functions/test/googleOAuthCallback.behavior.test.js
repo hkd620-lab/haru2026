@@ -111,6 +111,32 @@ async function run() {
     }
   }
 
+  for (const invalidAccessToken of [undefined, 123, '']) {
+    const harness = createHarness({
+      exchangeToken: async () => {
+        harness.calls.exchangeToken += 1;
+        return { status: 200, data: { access_token: invalidAccessToken } };
+      },
+    });
+    await handleGoogleOAuthCallback(
+      { code: 'authorization-code', state: 'oauth-state' },
+      harness.response,
+      harness.dependencies,
+    );
+    assert.equal(harness.calls.exchangeToken, 1);
+    assert.equal(harness.calls.userinfo, 0);
+    assert.equal(harness.calls.getOrCreateUid, 0);
+    assert.equal(harness.calls.upsertAuthUser, 0);
+    assert.equal(harness.calls.customToken, 0);
+    assert.equal(harness.completed.length, 0);
+    assert.deepEqual(
+      harness.logs.map(({ phase, outcome, httpStatus }) => ({ phase, outcome, httpStatus })),
+      [{ phase: 'token_exchange', outcome: 'error', httpStatus: null }],
+    );
+    assert.equal(harness.redirects.length, 1);
+    assert.equal(harness.redirects[0], 'https://haru2026.com/login?error=google_login_failed');
+  }
+
   for (const userInfo of [
     { verified_email: true },
     { email: 'unverified@example.com', verified_email: false },

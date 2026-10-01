@@ -116,9 +116,9 @@ export async function handleGoogleOAuthCallback(
       'tokenMs',
       () => dependencies.exchangeToken(tokenRequestBody.toString()),
     );
-    reportPhase('success', tokenResponse.status);
     const accessToken = tokenResponse.data.access_token;
-    if (!accessToken || typeof accessToken !== 'string') throw new Error('Google access token missing');
+    if (typeof accessToken !== 'string' || !accessToken.trim()) throw new Error('Google access token missing');
+    reportPhase('success', tokenResponse.status);
 
     setPhase('userinfo');
     const userResponse = await measurePerformancePhase(
