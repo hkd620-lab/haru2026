@@ -19,14 +19,28 @@ assert(
   'the router must install the assistant-entry scroll reset',
 );
 assert(
-  app.includes('function AssistantEntryScrollReset()')
+  app.includes('const assistantEntryScrollResetLocationKeys = new Set<string>();')
+    && app.indexOf('const assistantEntryScrollResetLocationKeys = new Set<string>();')
+      < app.indexOf('function AssistantEntryScrollReset()')
+    && app.includes('function AssistantEntryScrollReset()')
     && app.includes('useLayoutEffect(() => {')
-    && app.includes('resetLocationKeysRef.current.has(location.key)')
-    && app.includes('resetLocationKeysRef.current.add(location.key)')
+    && app.includes('assistantEntryScrollResetLocationKeys.has(location.key)')
+    && app.includes('assistantEntryScrollResetLocationKeys.add(location.key)')
     && app.includes("window.scrollTo({ top: 0, left: 0, behavior: 'auto' });")
-    && app.includes('[location.key, shouldReset]'),
-  'the reset must run before paint and only once for each marked navigation',
+    && app.includes('[location.key, shouldReset]')
+    && !app.includes('resetLocationKeysRef'),
+  'the reset must run before paint and must not repeat for a processed key after component remount',
 );
+
+const processedKeys = new Set();
+const shouldApplyReset = (key, requested) => {
+  if (!requested || processedKeys.has(key)) return false;
+  processedKeys.add(key);
+  return true;
+};
+assert.strictEqual(shouldApplyReset('same-key', true), true, 'a new marked key must reset');
+assert.strictEqual(shouldApplyReset('same-key', true), false, 'a processed key must not reset after remount');
+assert.strictEqual(shouldApplyReset('new-key', true), true, 'a different marked key must still reset');
 assert(
   healthHub.includes("state: { from: '/sayu-health', resetAssistantScroll: true }")
     && legalHome.includes('state: { resetAssistantScroll: true }')

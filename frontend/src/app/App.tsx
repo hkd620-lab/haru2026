@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, type CSSProperties } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -162,15 +162,16 @@ function AiLibraryRoute() {
   return <AiLibraryPage />;
 }
 
+const assistantEntryScrollResetLocationKeys = new Set<string>();
+
 function AssistantEntryScrollReset() {
   const location = useLocation();
-  const resetLocationKeysRef = useRef(new Set<string>());
   const shouldReset =
     (location.state as { resetAssistantScroll?: boolean } | null)?.resetAssistantScroll === true;
 
   useLayoutEffect(() => {
-    if (!shouldReset || resetLocationKeysRef.current.has(location.key)) return;
-    resetLocationKeysRef.current.add(location.key);
+    if (!shouldReset || assistantEntryScrollResetLocationKeys.has(location.key)) return;
+    assistantEntryScrollResetLocationKeys.add(location.key);
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [location.key, shouldReset]);
 
