@@ -200,12 +200,17 @@ export default function ELitigationBeginnerGuidePage() {
 
   const goHomeAfterCompletion = () => {
     markBeginnerGuideCompleted();
-    navigate('/legal-assistant', { replace: true });
+    navigate('/legal-assistant', {
+      replace: true,
+      state: { resetAssistantScroll: true },
+    });
   };
 
   const goDocumentHelper = () => {
     markBeginnerGuideCompleted();
-    navigate('/legal-assistant/document-helper');
+    navigate('/legal-assistant/document-helper', {
+      state: { resetAssistantScroll: true },
+    });
   };
 
   const moveNext = () => {
