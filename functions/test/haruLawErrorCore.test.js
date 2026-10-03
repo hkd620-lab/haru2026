@@ -122,6 +122,7 @@ async function run() {
   }
   // An eventual success must not be reported as a terminal failure.
   let recoveryAttempts = 0;
+  let recoveryFailureCalls = 0;
   assert.equal(await runHaruLawApiRequestWithRetry(async () => {
     recoveryAttempts += 1;
     if (recoveryAttempts < 3) throw { code: 'ECONNRESET' };
@@ -129,9 +130,10 @@ async function run() {
   }, {
     wait: async () => {},
     onRetry: () => { throw new Error('mock logger failure'); },
-    onFailure: () => assert.fail('success must not emit terminal failure'),
+    onFailure: () => { recoveryFailureCalls += 1; },
   }), 'recovered');
   assert.equal(recoveryAttempts, 3);
+  assert.equal(recoveryFailureCalls, 0, 'success must not emit terminal failure');
   await assert.rejects(runHaruLawApiRequestWithRetry(async () => { throw parseError; }, {
     onFailure: () => { throw new Error('mock logger failure'); },
   }), (error) => error === parseError);
