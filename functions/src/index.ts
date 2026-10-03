@@ -109,6 +109,7 @@ import {
   HaruLawApiTemporaryError,
   isAllowedHaruLawAttachmentMime,
   runHaruLawApiRequestWithRetry,
+  type HaruLawApiFailureDiagnostics,
   type HaruLawErrorReason,
   type HaruLawProcessingStage,
 } from './haruLawErrorCore';
@@ -9987,6 +9988,7 @@ export const lawSearch = onCall(
     };
 
     let processingStage: HaruLawProcessingStage = 'attachment_load';
+    let lawApiFailure: HaruLawApiFailureDiagnostics | undefined;
     let haruLawFileClient: GoogleGenAI | null = null;
     let preparedAttachments: PreparedHaruLawAttachments | null = null;
     const trackedGeminiFiles: TrackedHaruLawGeminiFile[] = [];
@@ -10016,13 +10018,16 @@ export const lawSearch = onCall(
         return runHaruLawApiRequestWithRetry(
           () => axios.get(url, axiosConfig),
           {
-            onRetry: (attempt, error: any) => {
+            onRetry: (attempt, _error, diagnostics) => {
               logger.warn('HARUraw 법제처 API 재시도', {
                 attempt,
-                code: error?.code,
-                status: error?.response?.status,
+                code: diagnostics.upstreamErrorCode ?? undefined,
+                status: diagnostics.upstreamHttpStatus ?? undefined,
+                stage: processingStage,
+                ...diagnostics,
               });
             },
+            onFailure: (diagnostics) => { lawApiFailure = diagnostics; },
           },
         );
       };
@@ -10067,7 +10072,7 @@ export const lawSearch = onCall(
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
       const lawKeyword = kwResult.response.text().trim().split('\n')[0].trim();
-      console.log('HARUraw 추출 키워드:', lawKeyword);
+      logger.debug('HARUraw 키워드 추출 완료', { stage: 'keyword_ai' });
 
       // 1단계: 법제처 검색
       processingStage = 'law_api_search';
@@ -10089,7 +10094,7 @@ export const lawSearch = onCall(
       const targetLaw = exactMatch || lawList[0];
       const mstId = targetLaw?.법령일련번호;
       const lawName = targetLaw?.법령명한글 || lawKeyword;
-      console.log('HARUraw 선택 법령:', lawName, 'MST:', mstId);
+      logger.debug('HARUraw 법령 선택 완료', { stage: 'law_api_search' });
 
       if (!mstId) {
         return { success: false, message: '법령 정보를 가져올 수 없습니다.', data: [], aiSummary: '' };
@@ -10277,9 +10282,14 @@ export const lawSearch = onCall(
       logger.error('HARUraw 법령 검색 실패:', {
         stage: processingStage,
         reason,
-        errorName: error?.name,
-        errorCode: error?.code,
-        errorStatus: error?.response?.status ?? error?.status,
+        errorName: lawApiFailure
+          ? error instanceof HaruLawApiTemporaryError ? 'HaruLawApiTemporaryError' : 'LawApiRequestError'
+          : error?.name,
+        errorCode: lawApiFailure
+          ? error instanceof HaruLawApiTemporaryError ? error.code : lawApiFailure.upstreamErrorCode
+          : error?.code,
+        errorStatus: lawApiFailure ? lawApiFailure.upstreamHttpStatus : error?.response?.status ?? error?.status,
+        ...lawApiFailure,
       });
       if (request.auth?.uid) {
         await logAiUsage({
