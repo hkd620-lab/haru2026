@@ -8726,6 +8726,7 @@ exports.lawSearch = (0, https_2.onCall)({
         timeout: 10000,
     };
     let processingStage = 'attachment_load';
+    let lawApiFailure;
     let haruLawFileClient = null;
     let preparedAttachments = null;
     const trackedGeminiFiles = [];
@@ -8751,14 +8752,17 @@ exports.lawSearch = (0, https_2.onCall)({
         };
         const getLawXmlWithRetry = async (url) => {
             return (0, haruLawErrorCore_1.runHaruLawApiRequestWithRetry)(() => axios_1.default.get(url, axiosConfig), {
-                onRetry: (attempt, error) => {
-                    var _a;
+                onRetry: (attempt, _error, diagnostics) => {
+                    var _a, _b;
                     logger.warn('HARUraw 법제처 API 재시도', {
                         attempt,
-                        code: error === null || error === void 0 ? void 0 : error.code,
-                        status: (_a = error === null || error === void 0 ? void 0 : error.response) === null || _a === void 0 ? void 0 : _a.status,
+                        code: (_a = diagnostics.upstreamErrorCode) !== null && _a !== void 0 ? _a : undefined,
+                        status: (_b = diagnostics.upstreamHttpStatus) !== null && _b !== void 0 ? _b : undefined,
+                        stage: processingStage,
+                        ...diagnostics,
                     });
                 },
+                onFailure: (diagnostics) => { lawApiFailure = diagnostics; },
             });
         };
         // 0단계: Gemini로 정확한 법령 이름 추출
@@ -8799,7 +8803,7 @@ exports.lawSearch = (0, https_2.onCall)({
             isDev: DEVELOPER_UIDS.has(request.auth.uid),
         });
         const lawKeyword = kwResult.response.text().trim().split('\n')[0].trim();
-        console.log('HARUraw 추출 키워드:', lawKeyword);
+        logger.debug('HARUraw 키워드 추출 완료', { stage: 'keyword_ai' });
         // 1단계: 법제처 검색
         processingStage = 'law_api_search';
         const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?OC=${LAW_API_KEY}&target=law&type=XML&query=${encodeURIComponent(lawKeyword)}`;
@@ -8815,7 +8819,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const targetLaw = exactMatch || lawList[0];
         const mstId = targetLaw === null || targetLaw === void 0 ? void 0 : targetLaw.법령일련번호;
         const lawName = (targetLaw === null || targetLaw === void 0 ? void 0 : targetLaw.법령명한글) || lawKeyword;
-        console.log('HARUraw 선택 법령:', lawName, 'MST:', mstId);
+        logger.debug('HARUraw 법령 선택 완료', { stage: 'law_api_search' });
         if (!mstId) {
             return { success: false, message: '법령 정보를 가져올 수 없습니다.', data: [], aiSummary: '' };
         }
@@ -8982,9 +8986,14 @@ exports.lawSearch = (0, https_2.onCall)({
         logger.error('HARUraw 법령 검색 실패:', {
             stage: processingStage,
             reason,
-            errorName: error === null || error === void 0 ? void 0 : error.name,
-            errorCode: error === null || error === void 0 ? void 0 : error.code,
-            errorStatus: (_j = (_h = error === null || error === void 0 ? void 0 : error.response) === null || _h === void 0 ? void 0 : _h.status) !== null && _j !== void 0 ? _j : error === null || error === void 0 ? void 0 : error.status,
+            errorName: lawApiFailure
+                ? error instanceof haruLawErrorCore_1.HaruLawApiTemporaryError ? 'HaruLawApiTemporaryError' : 'LawApiRequestError'
+                : error === null || error === void 0 ? void 0 : error.name,
+            errorCode: lawApiFailure
+                ? error instanceof haruLawErrorCore_1.HaruLawApiTemporaryError ? error.code : lawApiFailure.upstreamErrorCode
+                : error === null || error === void 0 ? void 0 : error.code,
+            errorStatus: lawApiFailure ? lawApiFailure.upstreamHttpStatus : (_j = (_h = error === null || error === void 0 ? void 0 : error.response) === null || _h === void 0 ? void 0 : _h.status) !== null && _j !== void 0 ? _j : error === null || error === void 0 ? void 0 : error.status,
+            ...lawApiFailure,
         });
         if ((_k = request.auth) === null || _k === void 0 ? void 0 : _k.uid) {
             await (0, aiUsageLogger_1.logAiUsage)({
