@@ -17,6 +17,10 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db } from '../../firebase';  // ✅ 수정됨: ../firebase → ../../firebase
+import {
+  assertAiLibraryDeleteResult,
+  validateAiLibraryDeleteRequest,
+} from '../utils/aiLibraryDeletion';
 import { 
   RecordFormatKorean,
   DiaryStats,
@@ -42,6 +46,11 @@ export interface HaruRecord {
   formats: RecordFormat[];
   content?: string;
   [key: string]: any;
+}
+
+export interface AiLibraryLogPage {
+  logs: HaruRecord[];
+  nextCursor?: string;
 }
 
 export interface GardenCrops {
@@ -2429,40 +2438,41 @@ class FirestoreService {
     }
   }
 
-  async getAiLogs(userEmail: string): Promise<HaruRecord[]> {
-    try {
-      const { db, auth } = await import('../../firebase');
-      const { collection, query, where, orderBy, getDocs } = await import('firebase/firestore');
-      const uid = auth.currentUser?.uid;
-      if (!uid) return [];
-      const ref = collection(db, `users/${uid}/records`);
-      const q = query(
-        ref,
-        where('type', '==', 'ai_log'),
-        orderBy('createdAt', 'desc')
-      );
-      const snap = await getDocs(q);
-      return snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.().toISOString()
-          ?? doc.data().createdAt ?? '',
-      })) as HaruRecord[];
-    } catch (error) {
-      console.error('[getAiLogs] 실패:', error);
-      return [];
+  async getAiLogPage(cursor?: string): Promise<AiLibraryLogPage> {
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const callable = httpsCallable<{ cursor?: string }, AiLibraryLogPage>(
+      getFunctions(undefined, 'asia-northeast3'),
+      'listAiLibraryLogs',
+    );
+    const result = await callable(cursor ? { cursor } : {});
+    if (!Array.isArray(result.data?.logs)) {
+      throw new Error('AI 학습함 목록 응답이 올바르지 않습니다.');
     }
+    if (result.data.nextCursor !== undefined && typeof result.data.nextCursor !== 'string') {
+      throw new Error('AI 학습함 페이지 커서가 올바르지 않습니다.');
+    }
+    return {
+      logs: result.data.logs,
+      ...(result.data.nextCursor ? { nextCursor: result.data.nextCursor } : {}),
+    };
   }
 
-  async deleteAiLogs(ids: Set<string>): Promise<void> {
-    const { db, auth } = await import('../../firebase');
-    const { doc, deleteDoc } = await import('firebase/firestore');
-    const uid = auth.currentUser?.uid;
-    if (!uid) throw new Error('로그인이 필요합니다.');
-    const promises = Array.from(ids).map(id =>
-      deleteDoc(doc(db, 'users', uid, 'records', id))
+  // 비활성 레거시 호출부의 배열 계약을 유지한다.
+  async getAiLogs(): Promise<HaruRecord[]> {
+    return (await this.getAiLogPage()).logs;
+  }
+
+  async deleteAiLogs(ids: Set<string>): Promise<Set<string>> {
+    const requestedIds = Array.from(ids);
+    validateAiLibraryDeleteRequest(requestedIds);
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const callable = httpsCallable<{ ids: string[] }, { deleted: number }>(
+      getFunctions(undefined, 'asia-northeast3'),
+      'deleteAiLibraryLogs',
     );
-    await Promise.all(promises);
+    const result = await callable({ ids: requestedIds });
+    assertAiLibraryDeleteResult(requestedIds.length, result.data?.deleted);
+    return new Set(requestedIds);
   }
 
   /**

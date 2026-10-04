@@ -5,24 +5,50 @@ const { test } = require('node:test');
 const page = readFileSync(new URL('../src/app/pages/AiImportPage.tsx', `file://${__filename}`), 'utf8');
 const service = readFileSync(new URL('../src/app/services/aiImportService.ts', `file://${__filename}`), 'utf8');
 const library = readFileSync(new URL('../src/app/pages/AiLibraryPage.tsx', `file://${__filename}`), 'utf8');
+const firestoreService = readFileSync(new URL('../src/app/services/firestoreService.ts', `file://${__filename}`), 'utf8');
 const app = readFileSync(new URL('../src/app/App.tsx', `file://${__filename}`), 'utf8');
+const authCallback = readFileSync(new URL('../src/app/pages/AuthCallbackPage.tsx', `file://${__filename}`), 'utf8');
 
 test('로그인하지 않은 사용자는 HARU 저장을 시도하지 않는다', () => {
   assert.match(page, /if \(!user\)/);
-  assert.match(page, /HARU에 로그인한 뒤 Slack에서 저장을 다시 눌러 주세요/);
+  assert.match(page, /로그인하면 이 가져오기 작업으로 돌아와 저장을 계속합니다/);
+  assert.match(page, /rememberPostLoginReturnPath\(`\/ai-import#\$\{importId\}`\)/);
 });
 
-test('현재 로그인 UID 아래 records에 멱등 문서로 저장하고 실제 문서를 재조회한다', () => {
-  assert.match(service, /doc\(db, 'users', uid, 'records', recordId\)/);
-  assert.match(service, /runTransaction/);
-  assert.match(service, /const verified = await getDoc\(recordRef\)/);
-  assert.match(service, /type: 'ai_log'/);
+test('/ai-import는 자체 안내를 렌더링하고 /ai-library만 개발자 guard를 유지한다', () => {
+  assert.match(app, /<Route path="\/ai-import" element=\{<AiImportPage \/>\} \/>/);
+  assert.match(app, /<Route path="\/ai-library" element=\{<AiLibraryRoute \/>\} \/>/);
+});
+
+test('OAuth 복귀 시 /ai-import는 확장 브리지 재주입을 위해 새 문서로 이동한다', () => {
+  assert.match(authCallback, /const returnPath = consumePostLoginReturnPath\(\)/);
+  assert.match(authCallback, /if \(isAllowedPostLoginReturnPath\(returnPath\)\)/);
+  assert.match(authCallback, /window\.location\.replace\(returnPath\)/);
+  assert.match(authCallback, /navigate\(returnPath, \{ replace: true \}\)/);
+});
+
+test('가져오기 저장은 권한을 검증하는 Callable을 통해 실행한다', () => {
+  assert.match(service, /getFunctions\(undefined, 'asia-northeast3'\)/);
+  assert.match(service, /'saveAiLibraryImport'/);
+  assert.match(service, /const result = await callable\(payload\)/);
 });
 
 test('Slack 출처 라벨과 필터를 기록 유무와 관계없이 표시한다', () => {
   assert.match(library, /'slack': 'Slack'/);
   assert.match(library, /PRIMARY_SOURCES = \['chatgpt\.com', 'claude\.ai', 'gemini\.google\.com', 'slack'\]/);
   assert.match(library, /\.\.\.PRIMARY_SOURCES\.map/);
+});
+
+test('AI 학습함은 페이지 단위로 조회하고 더 불러온 기록을 누적한다', () => {
+  assert.match(firestoreService, /async getAiLogPage\(cursor\?: string\)/);
+  assert.match(library, /firestoreService\.getAiLogPage\(\)/);
+  assert.match(library, /firestoreService\.getAiLogPage\(cursor\)/);
+  assert.match(library, /mergeAiLibraryLogs\(current, page\.logs\)/);
+  assert.match(library, /더 불러오기/);
+  assert.match(library, /검색과 필터는 현재 불러온 기록에 적용됩니다/);
+  assert.match(library, /requestGuard\.startSession\(\)/);
+  assert.match(library, /requestGuard\.startRequest\(generation, `next:\$\{cursor\}`\)/);
+  assert.doesNotMatch(library, /const freshLogs = await firestoreService\.getAiLogs\(\)/);
 });
 
 test('AI 가져오기 화면은 일반 푸터와 하단 내비게이션을 숨기는 독립 레이아웃이다', () => {

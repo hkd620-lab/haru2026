@@ -8,6 +8,8 @@ import {
   parseAiImportPayload,
   saveAiImportForUser,
 } from '../services/aiImportService';
+import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
+import { rememberPostLoginReturnPath } from '../utils/postLoginReturn';
 
 type ImportState = 'waiting' | 'saving' | 'success' | 'duplicate' | 'error' | 'login';
 
@@ -21,7 +23,12 @@ export function AiImportPage() {
     if (loading) return;
     if (!user) {
       setState('login');
-      setMessage('HARU에 로그인한 뒤 Slack에서 저장을 다시 눌러 주세요.');
+      setMessage('HARU에 로그인하면 이 가져오기 작업으로 돌아와 저장을 계속합니다.');
+      return;
+    }
+    if (!hasAiLibraryAccess(user.email, user.emailVerified)) {
+      setState('error');
+      setMessage('이 기능은 허용된 개발자 계정에서만 사용할 수 있습니다.');
       return;
     }
 
@@ -34,7 +41,7 @@ export function AiImportPage() {
         setState('saving');
         setMessage('로그인한 HARU 계정에 저장하고 있습니다.');
         const payload = parseAiImportPayload(event.data.payload, importId);
-        const result = await saveAiImportForUser(user.uid, payload);
+        const result = await saveAiImportForUser(payload);
         setState(result.duplicate ? 'duplicate' : 'success');
         setMessage(result.duplicate
           ? '이미 같은 기록이 HARU AI 학습함에 저장되어 있습니다.'
@@ -114,7 +121,13 @@ export function AiImportPage() {
           {message}
         </p>
         {state === 'login' && (
-          <Link to="/login" style={primaryLinkStyle}>HARU 로그인</Link>
+          <Link
+            to="/login"
+            onClick={() => rememberPostLoginReturnPath(`/ai-import#${importId}`)}
+            style={primaryLinkStyle}
+          >
+            HARU 로그인 후 계속
+          </Link>
         )}
         {completed && (
           <Link to="/ai-library" style={primaryLinkStyle}>AI 학습함 열기</Link>

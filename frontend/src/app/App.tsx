@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, type CSSProperties } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -92,6 +92,7 @@ import { PublicLegalBoundary } from './components/PublicLegalBoundary';
 import { Footer } from './components/Footer';
 import { TodayQuote } from './components/TodayQuote';
 import { setupForegroundMessageListener, requestNotificationPermission } from './services/notificationService';
+import { hasAiLibraryAccess } from './utils/aiLibraryAccess';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -154,6 +155,29 @@ function DeveloperBookStudioRoute() {
   return <BookStudio />;
 }
 
+function AiLibraryRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user || !hasAiLibraryAccess(user.email, user.emailVerified)) return <Navigate to="/" replace />;
+  return <AiLibraryPage />;
+}
+
+const assistantEntryScrollResetLocationKeys = new Set<string>();
+
+function AssistantEntryScrollReset() {
+  const location = useLocation();
+  const shouldReset =
+    (location.state as { resetAssistantScroll?: boolean } | null)?.resetAssistantScroll === true;
+
+  useLayoutEffect(() => {
+    if (!shouldReset || assistantEntryScrollResetLocationKeys.has(location.key)) return;
+    assistantEntryScrollResetLocationKeys.add(location.key);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.key, shouldReset]);
+
+  return null;
+}
+
 function AppChrome() {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -190,7 +214,7 @@ function AppChrome() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/ai-import" element={<AiImportPage />} />
-          <Route path="/ai-library" element={<AiLibraryPage />} />
+          <Route path="/ai-library" element={<AiLibraryRoute />} />
 
           {/* 기존 페이지들 */}
           <Route path="/household" element={<HouseholdPage />} />
@@ -307,6 +331,7 @@ function App() {
           <AuthProvider>
             <LoadingProvider>
               <AppInitializer />
+              <AssistantEntryScrollReset />
               <AppChrome />
             </LoadingProvider>
           </AuthProvider>

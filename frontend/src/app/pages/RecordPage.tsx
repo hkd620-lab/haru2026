@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Calendar, Check, Paperclip, Pencil, X } from 'lucide-react';
@@ -334,10 +334,12 @@ export function RecordPage() {
   const [activeLawQuery, setActiveLawQuery] = useState('');
   const [isSavingLaw, setIsSavingLaw] = useState(false);
   const [lawSaved, setLawSaved] = useState(false);
+  const [lawSaveError, setLawSaveError] = useState<Pick<HaruLawUserError, 'title' | 'message' | 'retryable'> | null>(null);
   const [lawAttachments, setLawAttachments] = useState<HaruLawAttachmentRef[]>([]);
   const [activeLawAttachments, setActiveLawAttachments] = useState<HaruLawAttachmentRef[]>([]);
   const [uploadingLawFiles, setUploadingLawFiles] = useState(false);
   const lawFileInputRef = useRef<HTMLInputElement>(null);
+  const lawEntrySectionRef = useRef<HTMLElement>(null);
   const [openCard, setOpenCard] = useState<{
     idx: number;
     type: 'explain' | 'prec';
@@ -353,6 +355,13 @@ export function RecordPage() {
       }
     };
   }, []);
+
+  // 하루LAW 안내→입력 전환은 라우트 이동이 아니므로 새 입력 섹션을 직접 노출한다.
+  useLayoutEffect(() => {
+    if (!lawGuideConfirmed || !lawEntrySectionRef.current) return;
+    const targetTop = lawEntrySectionRef.current.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top: targetTop, left: 0, behavior: 'auto' });
+  }, [lawGuideConfirmed]);
 
   useEffect(() => {
     const count = parseInt(localStorage.getItem('envToastCount') || '0');
@@ -807,6 +816,7 @@ export function RecordPage() {
     setLawSummary('');
     setLawError(null);
     const attachmentsToSend = [...lawAttachments];
+    setLawSaveError(null);
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const lawSearch = httpsCallable(functions, 'lawSearch');
@@ -842,8 +852,25 @@ export function RecordPage() {
   };
 
   const handleSaveLawResult = async () => {
-    if (!user || !lawResults.length) return;
+    if (!user) {
+      setLawSaveError({
+        title: '로그인이 필요합니다',
+        message: '로그인 상태를 확인한 뒤 다시 저장해 주세요. 질문·분석 결과·첨부파일은 그대로 유지했습니다.',
+        retryable: false,
+      });
+      return;
+    }
+    if (!lawResults.length) {
+      setLawSaveError({
+        title: '저장할 분석 결과가 없습니다',
+        message: '하루LAW 분석 결과가 표시된 뒤 저장해 주세요. 질문과 첨부파일은 그대로 유지했습니다.',
+        retryable: false,
+      });
+      return;
+    }
+    setLawSaveError(null);
     setIsSavingLaw(true);
+    let saveStage: 'getDoc' | 'saveRecord' = 'getDoc';
     try {
       const dateStr = getLocalDateString(currentDate);
       const articlesText = lawResults
@@ -854,6 +881,7 @@ export function RecordPage() {
       const existingRecord = existingSnap.exists() ? existingSnap.data() : null;
       const existingFormats = Array.isArray(existingRecord?.formats) ? existingRecord.formats : [];
       const mergedFormats = Array.from(new Set([...existingFormats, 'HARUraw'])) as RecordFormat[];
+      saveStage = 'saveRecord';
       await firestoreService.saveRecord(user.uid, {
         id: dateStr,
         date: dateStr,
@@ -874,7 +902,29 @@ export function RecordPage() {
       toast.success('하루LAW 분석 결과가 사유-나의 기록에 저장되었습니다.');
       setTimeout(() => navigate('/sayu', { state: { filterFormat: '하루LAW' } }), 1000);
     } catch (err) {
-      toast.error('저장에 실패했습니다.');
+      const rawCode = err && typeof err === 'object' && 'code' in err ? err.code : undefined;
+      const candidateCode = typeof rawCode === 'string' ? rawCode.replace(/^firestore\//, '') : '';
+      const safeCode = [
+        'permission-denied', 'unauthenticated', 'unavailable', 'deadline-exceeded',
+        'cancelled', 'resource-exhausted', 'aborted', 'failed-precondition',
+        'invalid-argument', 'not-found', 'already-exists', 'out-of-range',
+        'unimplemented', 'internal', 'data-loss', 'unknown',
+      ].includes(candidateCode) ? candidateCode : 'unknown';
+      console.error('하루LAW 저장 실패', { stage: saveStage, code: safeCode });
+      const cause = safeCode === 'permission-denied' || safeCode === 'unauthenticated'
+        ? '접근 권한 또는 로그인 상태를 확인해 주세요.'
+        : safeCode === 'unavailable' || safeCode === 'deadline-exceeded'
+          ? '네트워크 연결을 확인한 뒤 잠시 후 다시 시도해 주세요.'
+          : '잠시 후 다시 시도해 주세요.';
+      const title = saveStage === 'getDoc'
+        ? '선택 날짜의 기존 기록을 확인하지 못했습니다'
+        : '분석 결과를 기록에 저장하지 못했습니다';
+      setLawSaveError({
+        title,
+        message: `${cause} 질문·분석 결과·첨부파일은 그대로 유지했습니다. 오류 코드: ${safeCode}`,
+        retryable: true,
+      });
+      toast.error(title);
     } finally {
       setIsSavingLaw(false);
     }
@@ -1194,7 +1244,7 @@ export function RecordPage() {
         </section>
 
         {/* Format Selection */}
-        <section className="bg-white rounded-lg p-3 shadow-sm">
+        <section ref={lawEntrySectionRef} className="bg-white rounded-lg p-3 shadow-sm">
           <div className="mb-2">
             <h2 className="text-xs tracking-wider" style={{ color: '#666666' }}>
               형식 선택
@@ -1585,6 +1635,33 @@ export function RecordPage() {
                   )}
                 </div>
               ))}
+
+              {lawSaveError && (
+                <div role="alert" style={{
+                  padding: 12, backgroundColor: '#fff3f3',
+                  border: '1px solid #ffcccc', borderRadius: 8,
+                  color: '#cc0000', fontSize: 13, marginBottom: 8,
+                }}>
+                  <strong style={{ display: 'block', marginBottom: 4 }}>{lawSaveError.title}</strong>
+                  <span style={{ display: 'block', lineHeight: 1.6 }}>{lawSaveError.message}</span>
+                  {lawSaveError.retryable && (
+                    <button
+                      type="button"
+                      disabled={isSavingLaw || lawSaved}
+                      onClick={handleSaveLawResult}
+                      style={{
+                        marginTop: 8, padding: '6px 10px',
+                        border: '1px solid #cc0000', borderRadius: 7,
+                        backgroundColor: '#FFFFFF', color: '#A00000',
+                        fontSize: 12, fontWeight: 800,
+                        cursor: isSavingLaw ? 'wait' : 'pointer',
+                      }}
+                    >
+                      저장 다시 시도
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* 저장 버튼 */}
               {lawResults.length > 0 && (

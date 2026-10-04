@@ -1,7 +1,14 @@
-import { useEffect, useState, useMemo, type ReactNode } from 'react';
+import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
+import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
+import { addAiLibrarySelection, AI_LIBRARY_DELETE_LIMIT } from '../utils/aiLibraryDeletion';
+import {
+  AiLibraryPageRequestGuard,
+  hasAiLibraryNextPage,
+  mergeAiLibraryLogs,
+} from '../utils/aiLibraryPagination';
 
 type SourceFilter = string;
 
@@ -336,25 +343,50 @@ export function AiLibraryPage() {
   const [filter, setFilter] = useState<SourceFilter>('all');
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | undefined>();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bookMaterialBusy, setBookMaterialBusy] = useState<Set<string>>(new Set());
+  const requestGuardRef = useRef(new AiLibraryPageRequestGuard());
+  const requestGenerationRef = useRef(0);
 
   useEffect(() => {
-    console.log('[AiLibraryPage] user 상태:', user);
-    if (!user || !user.email) {
-      console.warn('[AiLibraryPage] user 또는 email 없음 — 로그인 필요');
+    const requestGuard = requestGuardRef.current;
+    const generation = requestGuard.startSession();
+    requestGenerationRef.current = generation;
+    setLogs([]);
+    setNextCursor(undefined);
+    setSelectedIds(new Set());
+    setExpandedId(null);
+    setDeleteMode(false);
+    setBookMaterialBusy(new Set());
+    setLoading(true);
+    setLoadingMore(false);
+
+    if (!user || !hasAiLibraryAccess(user.email, user.emailVerified)) {
       setLoading(false);
-      return;
+      return () => requestGuard.endSession(generation);
     }
-    console.log('[AiLibraryPage] getAiLogs 호출, email:', user.email);
-    firestoreService.getAiLogs(user.email).then((data) => {
-      console.log('[AiLibraryPage] 받은 데이터:', data);
-      setLogs(data);
+    const ticket = requestGuard.startRequest(generation, 'first-page');
+    if (!ticket) {
       setLoading(false);
+      return () => requestGuard.endSession(generation);
+    }
+    firestoreService.getAiLogPage().then((page) => {
+      if (!requestGuard.isCurrent(generation)) return;
+      setLogs(page.logs);
+      setNextCursor(page.nextCursor);
+    }).catch((error) => {
+      if (requestGuard.isCurrent(generation)) {
+        console.error('[AiLibraryPage] 조회 실패:', error);
+      }
+    }).finally(() => {
+      if (requestGuard.finishRequest(ticket)) setLoading(false);
     });
-  }, [user]);
+    return () => requestGuard.endSession(generation);
+  }, [user?.uid, user?.email, user?.emailVerified]);
 
   const getSource = (r: HaruRecord): string => {
     if (r.source) return r.source;
@@ -395,6 +427,29 @@ export function AiLibraryPage() {
     return matchTab && matchKeyword;
   });
 
+  const handleLoadMore = async () => {
+    if (!hasAiLibraryNextPage(nextCursor)) return;
+    const requestGuard = requestGuardRef.current;
+    const generation = requestGenerationRef.current;
+    const cursor = nextCursor;
+    const ticket = requestGuard.startRequest(generation, `next:${cursor}`);
+    if (!ticket) return;
+
+    setLoadingMore(true);
+    try {
+      const page = await firestoreService.getAiLogPage(cursor);
+      if (!requestGuard.isCurrent(generation)) return;
+      setLogs(current => mergeAiLibraryLogs(current, page.logs));
+      setNextCursor(page.nextCursor);
+    } catch (error) {
+      if (requestGuard.isCurrent(generation)) {
+        console.error('[AiLibraryPage] 다음 페이지 조회 실패:', error);
+      }
+    } finally {
+      if (requestGuard.finishRequest(ticket)) setLoadingMore(false);
+    }
+  };
+
   const formatDate = (iso: string) => {
     if (!iso) return '';
     return new Date(iso).toLocaleDateString('ko-KR', {
@@ -413,13 +468,13 @@ export function AiLibraryPage() {
     if (!deleteMode) return;
     e.stopPropagation();
 
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedIds(newSelected);
+    setSelectedIds((current) => {
+      const result = addAiLibrarySelection(current, id);
+      if (result.limitReached) {
+        alert(`한 번에 최대 ${AI_LIBRARY_DELETE_LIMIT}개까지 선택할 수 있습니다.`);
+      }
+      return result.selectedIds;
+    });
   };
 
   const handleCardClick = (id: string) => {
@@ -438,10 +493,10 @@ export function AiLibraryPage() {
     }
 
     try {
-      await firestoreService.deleteAiLogs(selectedIds);
+      const confirmedIds = await firestoreService.deleteAiLogs(new Set(selectedIds));
 
-      // logs 상태에서 삭제된 항목들 제거
-      setLogs(prevLogs => prevLogs.filter(log => !selectedIds.has(log.id)));
+      // 서버가 요청 개수 전체를 확인한 경우에만 삭제된 항목을 화면에서 제거한다.
+      setLogs(prevLogs => prevLogs.filter(log => !confirmedIds.has(log.id)));
 
       // 삭제 모드 종료 및 선택 초기화
       setDeleteMode(false);
@@ -459,8 +514,8 @@ export function AiLibraryPage() {
     if (!confirm(`'${title}' 기록을 삭제하시겠습니까?`)) return;
 
     try {
-      await firestoreService.deleteAiLogs(new Set([log.id]));
-      setLogs(prevLogs => prevLogs.filter(item => item.id !== log.id));
+      const confirmedIds = await firestoreService.deleteAiLogs(new Set([log.id]));
+      setLogs(prevLogs => prevLogs.filter(item => !confirmedIds.has(item.id)));
       setSelectedIds(prev => {
         const next = new Set(prev);
         next.delete(log.id);
@@ -486,13 +541,14 @@ export function AiLibraryPage() {
       return;
     }
 
-    try {
-      setBookMaterialBusy(prev => {
-        const next = new Set(prev);
-        next.add(log.id);
-        return next;
-      });
+    const generation = requestGenerationRef.current;
+    setBookMaterialBusy(prev => {
+      const next = new Set(prev);
+      next.add(log.id);
+      return next;
+    });
 
+    try {
       const fns = getFunctions(undefined, 'asia-northeast3');
       const convertFn = httpsCallable(fns, 'convertToBookMaterial');
       const result = await convertFn({
@@ -501,26 +557,18 @@ export function AiLibraryPage() {
       });
       const data = (result.data || {}) as any;
       if (!data?.ok) throw new Error('AI 응답 형식 오류');
+      if (!requestGuardRef.current.isCurrent(generation)) return;
 
-      if (user?.email) {
-        const freshLogs = await firestoreService.getAiLogs(user.email);
-        const refreshed = freshLogs.find(item => item.id === log.id);
-        setLogs(freshLogs.map(item =>
-          item.id === log.id && !item.bookMaterial && data.bookMaterial
-            ? { ...item, bookMaterial: data.bookMaterial }
-            : item
-        ));
-        if (!refreshed?.bookMaterial && !data.bookMaterial) {
-          alert('변환은 완료됐지만 화면 갱신값을 바로 읽지 못했습니다. 새로고침하면 반영됩니다.');
-        }
-      } else {
-        setLogs(prevLogs => prevLogs.map(item =>
-          item.id === log.id ? { ...item, bookMaterial: data.bookMaterial } : item
-        ));
+      setLogs(prevLogs => prevLogs.map(item =>
+        item.id === log.id ? { ...item, bookMaterial: data.bookMaterial } : item
+      ));
+      if (!data.bookMaterial) {
+        alert('변환은 완료됐지만 화면 갱신값을 바로 읽지 못했습니다. 새로고침하면 반영됩니다.');
       }
       setExpandedId(log.id);
       alert('책소재 변환이 완료되었습니다.');
     } catch (error: any) {
+      if (!requestGuardRef.current.isCurrent(generation)) return;
       console.error('[handleConvertToBookMaterial] 변환 실패:', error);
       const code = error?.code || '';
       const message = error?.message || '알 수 없는 오류';
@@ -528,6 +576,7 @@ export function AiLibraryPage() {
       else if (code === 'functions/not-found') alert('원본 기록을 찾을 수 없습니다.');
       else alert(`변환 실패: ${message}`);
     } finally {
+      if (!requestGuardRef.current.isCurrent(generation)) return;
       setBookMaterialBusy(prev => {
         const next = new Set(prev);
         next.delete(log.id);
@@ -628,12 +677,19 @@ export function AiLibraryPage() {
           fontSize: '13px', outline: 'none',
         }}
       />
+      <p style={{ margin: '-8px 4px 14px', fontSize: 11, color: '#6B7280' }}>
+        검색과 필터는 현재 불러온 기록에 적용됩니다. 불러온 기록 {logs.length}개
+      </p>
 
       {/* 목록 */}
       {loading ? (
         <p style={{ color: '#999', fontSize: '14px' }}>불러오는 중...</p>
       ) : filtered.length === 0 ? (
-        <p style={{ color: '#999', fontSize: '14px' }}>저장된 AI 학습 기록이 없습니다.</p>
+        <p style={{ color: '#999', fontSize: '14px' }}>
+          {logs.length === 0
+            ? '저장된 AI 학습 기록이 없습니다.'
+            : '현재 불러온 기록 중 검색·필터 조건에 맞는 기록이 없습니다.'}
+        </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map((log) => {
@@ -820,6 +876,28 @@ export function AiLibraryPage() {
             );
           })}
         </div>
+      )}
+      {!loading && hasAiLibraryNextPage(nextCursor) && (
+        <button
+          onClick={handleLoadMore}
+          disabled={loadingMore}
+          style={{
+            display: 'block',
+            width: '100%',
+            marginTop: 16,
+            padding: '10px 14px',
+            border: '1px solid #B8C7DC',
+            borderRadius: 8,
+            background: '#fff',
+            color: '#1A3C6E',
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: loadingMore ? 'wait' : 'pointer',
+            opacity: loadingMore ? 0.6 : 1,
+          }}
+        >
+          {loadingMore ? '불러오는 중...' : '더 불러오기'}
+        </button>
       )}
     </div>
   );

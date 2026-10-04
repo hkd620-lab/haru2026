@@ -37,8 +37,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reviewHaruLawSharedCard = exports.listPendingHaruLawSharedCards = exports.unpublishHaruLawSharedCard = exports.publishHaruLawSharedCard = exports.prepareHaruLawSharePreview = exports.lawSearch = exports.removeAllTags = exports.portoneWebhook = exports.verifySinglePayment = exports.processRecurringSubscriptions = exports.cancelSubscription = exports.subscribeWithBillingKey = exports.verifyPayment = exports.recoverSubscriptionBillingRequest = exports.createSubscriptionBillingRequest = exports.createSinglePaymentRequest = exports.generateGrowthTimelinePdf = exports.decryptKakaoXlsx = exports.extractHouseholdTextFromImage = exports.extractLedgerTextFromImage = exports.extractStockTradeTextFromPhoto = exports.extractReadingBookTextFromPhoto = exports.deleteRecordImage = exports.cleanupHeicTemp = exports.convertHeic = exports.sendBroadcastNotification = exports.scheduledPushNotification = exports.sendTestNotification = exports.copyHaruDriveAssets = exports.getHaruDriveCandidates = exports.haruDriveCallback = exports.startHaruDriveConnect = exports.googleCallback = exports.googleLoginStart = exports.naverCallback = exports.naverLoginStart = exports.kakaoCallback = exports.kakaoLoginStart = exports.generateTitlesForAll = exports.chatWithResult = exports.cleanupHaruLawGeminiFiles = exports.recordPaidServiceUsage = exports.clearKeywordsCache = exports.extractKeywords = exports.generateHaruMemo = exports.extractTitle = exports.getMonthlyAiQuotaStatus = exports.polishContent = exports.searchOfficialDrugs = exports.reverseGeocodeKakao = void 0;
-exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.getSnsThumbnailData = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = void 0;
-exports.generateSnsStoryFinal = exports.generateSnsStorySynopsis = exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = exports.getSubscriptionRefundEligibility = exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = void 0;
+exports.getKoreanPlantInfo = exports.copyOneDriveAssets = exports.getOneDriveCandidates = exports.getOneDriveConnectionState = exports.ensureOneDriveHaruFolder = exports.oneDriveCallback = exports.startOneDriveConnect = exports.testNibrPlantSearch = exports.getGrammarExplainV2 = exports.detectPlantAdvanced = exports.analyzePlantPhoto = exports.extractKNewsMetadata = exports.analyzeSymptomsForSpecialty = exports.analyzeDrugPhoto = exports.getHospitalList = exports.getDrugInfo = exports.getOnbidRealEstateList = exports.getCustomToken = exports.getVerseWordMapping = exports.getVerseTranslation = exports.generateHaruProphecy = exports.analyzeRecordForProphecy = exports.refreshNews = exports.translateToEnglish = exports.getVerseQuiz = exports.preloadChapterGrammar = exports.getGrammarExplain = exports.getWordMeaning = exports.polishElderBookChapters = exports.draftElderBookChapters = exports.assignElderBookSources = exports.buildElderBookOutline = exports.gatherElderBookSources = exports.deleteAiLibraryLogs = exports.saveAiLibraryImport = exports.listAiLibraryLogs = exports.convertToBookMaterial = exports.generateLawsuitClaimReason = exports.convertSnsToDiary = exports.getSnsThumbnailData = exports.analyzeFacebookZip = exports.applyBookPublishRevision = exports.suggestBookPublishRevision = exports.reviewBookForPublish = exports.suggestChapterTitle = exports.generateBook = exports.cleanupTtsUsage = exports.generateTTS = exports.lawPrecedent = exports.lawEasyExplain = void 0;
+exports.generateSnsStoryFinal = exports.generateSnsStorySynopsis = exports.rejectSubscriptionRefund = exports.approveSubscriptionRefund = exports.listSubscriptionRefundRequests = exports.requestSubscriptionRefund = exports.getSubscriptionRefundEligibility = exports.executeScheduledDeletion = exports.cancelAccountDeletion = exports.requestAccountDeletion = exports.petFoodCheck = exports.exportEpub = exports.uploadReceiptToDrive = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
@@ -66,6 +66,8 @@ const PortOne = __importStar(require("@portone/server-sdk"));
 const monthlyAiQuota_1 = require("./utils/monthlyAiQuota");
 const internalEntitlements_1 = require("./internalEntitlements");
 const oauthStateCore_1 = require("./oauthStateCore");
+const oauthCallbackDiagnostics_1 = require("./oauthCallbackDiagnostics");
+const googleOAuthCallbackCore_1 = require("./googleOAuthCallbackCore");
 const lawEasyExplainCore_1 = require("./lawEasyExplainCore");
 const haruLawErrorCore_1 = require("./haruLawErrorCore");
 // 신 SDK — 현재는 chatWithResult(웹검색 grounding) 전용. 다른 함수는 legacy 유지.
@@ -4970,58 +4972,48 @@ exports.googleCallback = (0, https_1.onRequest)({
     memory: '512MiB',
     secrets: [GOOGLE_CLIENT_ID_SECRET, GOOGLE_CLIENT_SECRET_SECRET] // 🔐 Secret 연결
 }, async (req, res) => {
-    let frontendOrigin = FRONTEND_URL;
-    try {
-        const callbackStartedAt = Date.now();
-        const timings = {};
-        const GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID_SECRET.value(); // 🔐 Secret 값 사용
-        const GOOGLE_CLIENT_SECRET = GOOGLE_CLIENT_SECRET_SECRET.value(); // 🔐 Secret 값 사용
-        const { code, state, error: providerError } = req.query;
-        if (!state || typeof state !== 'string')
-            throw new Error('Invalid state');
-        const oauthState = await measureOAuthPhase(timings, 'stateMs', () => consumeLoginOAuthState(state, 'google'));
-        frontendOrigin = (0, oauthStateCore_1.resolveLoginFrontendOrigin)(oauthState === null || oauthState === void 0 ? void 0 : oauthState.returnOrigin);
-        const callbackCode = (0, oauthStateCore_1.getLoginOAuthCallbackCode)(code, providerError);
-        const tokenResponse = await measureOAuthPhase(timings, 'tokenMs', () => axios_1.default.post('https://oauth2.googleapis.com/token', {
-            code: callbackCode,
-            client_id: GOOGLE_CLIENT_ID,
-            client_secret: GOOGLE_CLIENT_SECRET,
-            redirect_uri: GOOGLE_REDIRECT_URI,
-            grant_type: 'authorization_code',
-        }, { timeout: OAUTH_TOKEN_TIMEOUT_MS }));
-        const { access_token } = tokenResponse.data;
-        const userResponse = await measureOAuthPhase(timings, 'profileMs', () => axios_1.default.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-            headers: { Authorization: `Bearer ${access_token}` },
+    await (0, googleOAuthCallbackCore_1.handleGoogleOAuthCallback)(req.query, res, {
+        defaultFrontendOrigin: FRONTEND_URL,
+        redirectUri: GOOGLE_REDIRECT_URI,
+        getClientId: () => GOOGLE_CLIENT_ID_SECRET.value(),
+        getClientSecret: () => GOOGLE_CLIENT_SECRET_SECRET.value(),
+        consumeState: (state) => consumeLoginOAuthState(state, 'google'),
+        resolveFrontendOrigin: (origin) => (0, oauthStateCore_1.resolveLoginFrontendOrigin)(origin),
+        getCallbackCode: (code, providerError) => (0, oauthStateCore_1.getLoginOAuthCallbackCode)(code, providerError),
+        exchangeToken: (body) => axios_1.default.post('https://oauth2.googleapis.com/token', body, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: OAUTH_TOKEN_TIMEOUT_MS,
+        }),
+        getUserInfo: (accessToken) => axios_1.default.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { Authorization: `Bearer ${accessToken}` },
             timeout: OAUTH_PROFILE_TIMEOUT_MS,
-        }));
-        const googleUser = userResponse.data;
-        const email = googleUser.email;
-        if (!email || typeof email !== 'string')
-            throw new Error('Google email missing');
-        const displayName = googleUser.name || `google_user_${googleUser.id}`;
-        const photoURL = googleUser.picture || null;
-        // 🔑 통합 UID 생성/조회
-        const uid = await measureOAuthPhase(timings, 'uidMs', () => getOrCreateUnifiedUid(email, 'google'));
-        await measureOAuthPhase(timings, 'authUserMs', async () => {
+        }),
+        getOrCreateUid: (email) => getOrCreateUnifiedUid(email, 'google'),
+        upsertAuthUser: async ({ uid, email, displayName, photoURL }) => {
             try {
-                await admin.auth().updateUser(uid, { email, displayName, photoURL });
+                await admin.auth().updateUser(uid, { email, emailVerified: true, displayName, photoURL });
             }
             catch (error) {
                 if (error.code === 'auth/user-not-found') {
-                    await admin.auth().createUser({ uid, email, displayName, photoURL });
+                    await admin.auth().createUser({ uid, email, emailVerified: true, displayName, photoURL });
                 }
                 else
                     throw error;
             }
-        });
-        const customToken = await measureOAuthPhase(timings, 'customTokenMs', () => admin.auth().createCustomToken(uid));
-        logOAuthCallbackCompleted('google', callbackStartedAt, timings);
-        res.redirect(buildFrontendAuthCallbackUrl(customToken, 'google', frontendOrigin));
-    }
-    catch (error) {
-        logger.error('❌ 구글 콜백 실패:', getSafeOAuthError(error));
-        res.redirect(buildLoginErrorRedirect('google', frontendOrigin));
-    }
+        },
+        createCustomToken: (uid) => admin.auth().createCustomToken(uid),
+        buildSuccessRedirect: (customToken, frontendOrigin) => (buildFrontendAuthCallbackUrl(customToken, 'google', frontendOrigin)),
+        buildErrorRedirect: (frontendOrigin) => buildLoginErrorRedirect('google', frontendOrigin),
+        getHttpStatus: (error) => {
+            var _a;
+            const status = axios_1.default.isAxiosError(error) ? (_a = error.response) === null || _a === void 0 ? void 0 : _a.status : null;
+            return typeof status === 'number' ? status : null;
+        },
+        onPhase: (input) => logger[input.outcome === 'success' ? 'info' : 'error']('Google OAuth callback phase', (0, oauthCallbackDiagnostics_1.buildOAuthPhaseLog)(input)),
+        onCompleted: (startedAt, timings) => logOAuthCallbackCompleted('google', startedAt, timings),
+        createRequestId: () => crypto.randomUUID(),
+        now: Date.now,
+    });
 });
 const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 const HARU_DRIVE_SCOPES = [
@@ -8734,6 +8726,7 @@ exports.lawSearch = (0, https_2.onCall)({
         timeout: 10000,
     };
     let processingStage = 'attachment_load';
+    let lawApiFailure;
     let haruLawFileClient = null;
     let preparedAttachments = null;
     const trackedGeminiFiles = [];
@@ -8759,14 +8752,17 @@ exports.lawSearch = (0, https_2.onCall)({
         };
         const getLawXmlWithRetry = async (url) => {
             return (0, haruLawErrorCore_1.runHaruLawApiRequestWithRetry)(() => axios_1.default.get(url, axiosConfig), {
-                onRetry: (attempt, error) => {
-                    var _a;
+                onRetry: (attempt, _error, diagnostics) => {
+                    var _a, _b;
                     logger.warn('HARUraw 법제처 API 재시도', {
                         attempt,
-                        code: error === null || error === void 0 ? void 0 : error.code,
-                        status: (_a = error === null || error === void 0 ? void 0 : error.response) === null || _a === void 0 ? void 0 : _a.status,
+                        code: (_a = diagnostics.upstreamErrorCode) !== null && _a !== void 0 ? _a : undefined,
+                        status: (_b = diagnostics.upstreamHttpStatus) !== null && _b !== void 0 ? _b : undefined,
+                        stage: processingStage,
+                        ...diagnostics,
                     });
                 },
+                onFailure: (diagnostics) => { lawApiFailure = diagnostics; },
             });
         };
         // 0단계: Gemini로 정확한 법령 이름 추출
@@ -8807,7 +8803,7 @@ exports.lawSearch = (0, https_2.onCall)({
             isDev: DEVELOPER_UIDS.has(request.auth.uid),
         });
         const lawKeyword = kwResult.response.text().trim().split('\n')[0].trim();
-        console.log('HARUraw 추출 키워드:', lawKeyword);
+        logger.debug('HARUraw 키워드 추출 완료', { stage: 'keyword_ai' });
         // 1단계: 법제처 검색
         processingStage = 'law_api_search';
         const searchUrl = `https://www.law.go.kr/DRF/lawSearch.do?OC=${LAW_API_KEY}&target=law&type=XML&query=${encodeURIComponent(lawKeyword)}`;
@@ -8823,7 +8819,7 @@ exports.lawSearch = (0, https_2.onCall)({
         const targetLaw = exactMatch || lawList[0];
         const mstId = targetLaw === null || targetLaw === void 0 ? void 0 : targetLaw.법령일련번호;
         const lawName = (targetLaw === null || targetLaw === void 0 ? void 0 : targetLaw.법령명한글) || lawKeyword;
-        console.log('HARUraw 선택 법령:', lawName, 'MST:', mstId);
+        logger.debug('HARUraw 법령 선택 완료', { stage: 'law_api_search' });
         if (!mstId) {
             return { success: false, message: '법령 정보를 가져올 수 없습니다.', data: [], aiSummary: '' };
         }
@@ -8990,9 +8986,14 @@ exports.lawSearch = (0, https_2.onCall)({
         logger.error('HARUraw 법령 검색 실패:', {
             stage: processingStage,
             reason,
-            errorName: error === null || error === void 0 ? void 0 : error.name,
-            errorCode: error === null || error === void 0 ? void 0 : error.code,
-            errorStatus: (_j = (_h = error === null || error === void 0 ? void 0 : error.response) === null || _h === void 0 ? void 0 : _h.status) !== null && _j !== void 0 ? _j : error === null || error === void 0 ? void 0 : error.status,
+            errorName: lawApiFailure
+                ? error instanceof haruLawErrorCore_1.HaruLawApiTemporaryError ? 'HaruLawApiTemporaryError' : 'LawApiRequestError'
+                : error === null || error === void 0 ? void 0 : error.name,
+            errorCode: lawApiFailure
+                ? error instanceof haruLawErrorCore_1.HaruLawApiTemporaryError ? error.code : lawApiFailure.upstreamErrorCode
+                : error === null || error === void 0 ? void 0 : error.code,
+            errorStatus: lawApiFailure ? lawApiFailure.upstreamHttpStatus : (_j = (_h = error === null || error === void 0 ? void 0 : error.response) === null || _h === void 0 ? void 0 : _h.status) !== null && _j !== void 0 ? _j : error === null || error === void 0 ? void 0 : error.status,
+            ...lawApiFailure,
         });
         if ((_k = request.auth) === null || _k === void 0 ? void 0 : _k.uid) {
             await (0, aiUsageLogger_1.logAiUsage)({
@@ -9912,6 +9913,10 @@ var generateLawsuitClaimReason_1 = require("./generateLawsuitClaimReason");
 Object.defineProperty(exports, "generateLawsuitClaimReason", { enumerable: true, get: function () { return generateLawsuitClaimReason_1.generateLawsuitClaimReason; } });
 var bookMaterial_1 = require("./bookMaterial");
 Object.defineProperty(exports, "convertToBookMaterial", { enumerable: true, get: function () { return bookMaterial_1.convertToBookMaterial; } });
+var aiLibrary_1 = require("./aiLibrary");
+Object.defineProperty(exports, "listAiLibraryLogs", { enumerable: true, get: function () { return aiLibrary_1.listAiLibraryLogs; } });
+Object.defineProperty(exports, "saveAiLibraryImport", { enumerable: true, get: function () { return aiLibrary_1.saveAiLibraryImport; } });
+Object.defineProperty(exports, "deleteAiLibraryLogs", { enumerable: true, get: function () { return aiLibrary_1.deleteAiLibraryLogs; } });
 var elderBook_1 = require("./elderBook");
 Object.defineProperty(exports, "gatherElderBookSources", { enumerable: true, get: function () { return elderBook_1.gatherElderBookSources; } });
 Object.defineProperty(exports, "buildElderBookOutline", { enumerable: true, get: function () { return elderBook_1.buildElderBookOutline; } });

@@ -139,7 +139,9 @@ export function SayuHealthHubPage() {
           <button
             key={f.path}
             type="button"
-            onClick={() => navigate(f.path, { state: { from: '/sayu-health' } })}
+            onClick={() => navigate(f.path, {
+              state: { from: '/sayu-health', resetAssistantScroll: true },
+            })}
             className="block w-full text-left rounded-2xl p-4 md:p-5 transition-all hover:shadow-md active:scale-[0.99]"
             style={{
               background: 'linear-gradient(135deg, #E0E8B8 0%, #ffffff 70%)',
