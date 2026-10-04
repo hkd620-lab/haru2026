@@ -77,6 +77,25 @@ export function getHaruLawUserError(error: unknown): HaruLawUserError {
   return getHaruLawUserErrorByReason(readReason(error));
 }
 
+export function getHaruLawPdfReadErrorName(error: unknown): string {
+  if (!error || typeof error !== 'object') return 'UnknownError';
+  try {
+    const name = (error as { name?: unknown }).name;
+    switch (name) {
+      case 'NotReadableError':
+      case 'SecurityError':
+      case 'AbortError':
+      case 'InvalidStateError':
+      case 'TypeError':
+        return name;
+      default:
+        return 'UnknownError';
+    }
+  } catch {
+    return 'UnknownError';
+  }
+}
+
 export function hasReadableHaruLawPdfHeader(bytes: Uint8Array): boolean {
   const signature = [0x25, 0x50, 0x44, 0x46, 0x2d];
   return bytes.length >= 8 && signature.every((value, index) => bytes[index] === value);

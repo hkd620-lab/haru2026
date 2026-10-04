@@ -5,6 +5,7 @@ import {
   HARULAW_ATTACH_MAX_TOTAL_BYTES,
   getHaruLawUserError,
   getHaruLawUserErrorByReason,
+  getHaruLawPdfReadErrorName,
   hasReadableHaruLawPdfHeader,
 } from '../src/app/utils/haruLawError.ts';
 
@@ -82,6 +83,37 @@ assert.equal(hasReadableHaruLawPdfHeader(Buffer.from('%PDF-1.7')), true);
 assert.equal(hasReadableHaruLawPdfHeader(Buffer.from('not pdf content')), false);
 assert.equal(hasReadableHaruLawPdfHeader(Buffer.from('%PDF-')), false);
 
+for (const name of ['NotReadableError', 'SecurityError', 'AbortError', 'InvalidStateError', 'TypeError']) {
+  const error = new Error('synthetic private message');
+  error.name = name;
+  error.stack = 'synthetic private stack';
+  assert.equal(getHaruLawPdfReadErrorName(error), name);
+  assert.equal(getHaruLawPdfReadErrorName(new DOMException('synthetic private message', name)), name);
+}
+
+for (const input of [
+  new Error('synthetic private message'),
+  { name: 'synthetic private unknown name', message: 'synthetic private message', stack: 'synthetic private stack' },
+  { name: 123 },
+  {},
+  null,
+  undefined,
+  'synthetic private string',
+  123,
+  true,
+  Symbol('synthetic private symbol'),
+]) {
+  assert.equal(getHaruLawPdfReadErrorName(input), 'UnknownError');
+}
+assert.equal(getHaruLawPdfReadErrorName({ name: 'AbortError' }), 'AbortError');
+assert.equal(getHaruLawPdfReadErrorName({ get name() { throw new Error('synthetic private getter failure'); } }), 'UnknownError');
+assert.equal(getHaruLawPdfReadErrorName({
+  name: 'SecurityError',
+  get message() { assert.fail('normalization must not read message'); },
+  get stack() { assert.fail('normalization must not read stack'); },
+  get cause() { assert.fail('normalization must not read cause'); },
+}), 'SecurityError');
+
 const resultChatSource = await readFile(new URL('../src/app/components/ResultChatModal.tsx', import.meta.url), 'utf8');
 const recordPageSource = await readFile(new URL('../src/app/pages/RecordPage.tsx', import.meta.url), 'utf8');
 assert.match(
@@ -102,7 +134,7 @@ assert.match(
 );
 assert.match(
   recordPageSource,
-  /setUploadingLawFiles\(true\);[\s\S]*try \{[\s\S]*try \{[\s\S]*await file\.slice\(0, 8\)\.arrayBuffer\(\)\);[\s\S]*catch \{[\s\S]*ATTACHMENT_PDF_UNREADABLE[\s\S]*finally \{[\s\S]*event\.target\.value = ''/,
+  /setUploadingLawFiles\(true\);[\s\S]*try \{[\s\S]*try \{[\s\S]*await file\.slice\(0, 8\)\.arrayBuffer\(\)\);[\s\S]*catch \(error\) \{[\s\S]*ATTACHMENT_PDF_UNREADABLE[\s\S]*finally \{[\s\S]*event\.target\.value = ''/,
   'RecordPage must report PDF header read failures and always reset the file input',
 );
 for (const [source, surface] of [[resultChatSource, 'ResultChatModal'], [recordPageSource, 'RecordPage']]) {

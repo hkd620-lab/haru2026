@@ -25,6 +25,7 @@ import {
   HARULAW_ATTACH_MAX_PDF_BYTES,
   getHaruLawUserError,
   getHaruLawUserErrorByReason,
+  getHaruLawPdfReadErrorName,
   hasReadableHaruLawPdfHeader,
   type HaruLawUserError,
 } from '../utils/haruLawError';
@@ -750,13 +751,22 @@ export function RecordPage() {
           let header: Uint8Array;
           try {
             header = new Uint8Array(await file.slice(0, 8).arrayBuffer());
-          } catch {
+          } catch (error) {
+            console.warn('[HARULAW_PDF_PREFLIGHT]', {
+              stage: 'pdf_header_read',
+              errorName: getHaruLawPdfReadErrorName(error),
+            });
             const userError = getHaruLawUserErrorByReason('ATTACHMENT_PDF_UNREADABLE');
             setLawError(userError);
             toast.error(userError.title);
             return;
           }
           if (!hasReadableHaruLawPdfHeader(header)) {
+            console.warn('[HARULAW_PDF_PREFLIGHT]', {
+              stage: 'pdf_header_validate',
+              bytesRead: header.length,
+              headerValid: false,
+            });
             const userError = getHaruLawUserErrorByReason('ATTACHMENT_PDF_UNREADABLE');
             setLawError(userError);
             toast.error(userError.title);
