@@ -325,6 +325,12 @@ export function RecordPage() {
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
   const [savedAssistantRecommendations, setSavedAssistantRecommendations] = useState<AssistantRecommendation[]>([]);
   const [lawQuery, setLawQuery] = useState('');
+  const [lawSaveDate, setLawSaveDate] = useState(() => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date());
+    return ['year', 'month', 'day'].map((type) => parts.find((part) => part.type === type)?.value).join('-');
+  });
   const [lawGuideConfirmed, setLawGuideConfirmed] = useState(false);
   const [lawLoading, setLawLoading] = useState(false);
   const [lawResults, setLawResults] = useState<any[]>([]);
@@ -851,6 +857,13 @@ export function RecordPage() {
     }
   };
 
+  const handleLawSaveDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (uploadingLawFiles || lawLoading || isSavingLaw) return;
+    setLawSaveDate(event.target.value);
+    setLawSaved(false);
+    setLawSaveError(null);
+  };
+
   const handleSaveLawResult = async () => {
     if (!user) {
       setLawSaveError({
@@ -868,11 +881,22 @@ export function RecordPage() {
       });
       return;
     }
+    const parsedSaveDate = new Date(`${lawSaveDate}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(lawSaveDate)
+      || Number.isNaN(parsedSaveDate.getTime())
+      || parsedSaveDate.toISOString().slice(0, 10) !== lawSaveDate) {
+      setLawSaveError({
+        title: '저장 날짜를 선택해 주세요',
+        message: '유효한 저장 날짜를 선택한 뒤 다시 저장해 주세요. 질문·분석 결과·첨부파일은 그대로 유지했습니다.',
+        retryable: true,
+      });
+      return;
+    }
     setLawSaveError(null);
     setIsSavingLaw(true);
     let saveStage: 'getDoc' | 'saveRecord' = 'getDoc';
     try {
-      const dateStr = getLocalDateString(currentDate);
+      const dateStr = lawSaveDate;
       const articlesText = lawResults
         .map((a: any) => `[${a.lawName}] ${a.articleStr}(${a.title})\n${a.content}`)
         .join('\n\n');
@@ -1396,6 +1420,17 @@ export function RecordPage() {
     </div>
   ) : (
             <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <label htmlFor="law-save-date" style={{ fontSize: 13, color: '#1A3C6E' }}>저장 날짜</label>
+                <input
+                  id="law-save-date"
+                  type="date"
+                  value={lawSaveDate}
+                  onChange={handleLawSaveDateChange}
+                  disabled={uploadingLawFiles || lawLoading || isSavingLaw}
+                  style={{ padding: '8px 10px', fontSize: 16, border: '1px solid #1A3C6E', borderRadius: 8 }}
+                />
+              </div>
               {/* 검색창 */}
               <form onSubmit={handleLawSearch} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', gap: 8 }}>
