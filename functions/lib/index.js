@@ -3276,6 +3276,7 @@ function findReusableResultChatAnswer(messages, question, route, options = {}) {
 async function saveResultChatExchange(params) {
     const now = admin.firestore.FieldValue.serverTimestamp();
     const userMessage = {
+        requestId: params.requestId,
         role: 'user',
         content: params.question,
         createdAt: now,
@@ -3285,6 +3286,7 @@ async function saveResultChatExchange(params) {
     }
     await params.messagesRef.add(userMessage);
     await params.messagesRef.add({
+        requestId: params.requestId,
         role: 'assistant',
         content: params.answer,
         sources: params.sources.length > 0 ? params.sources : [],
@@ -3362,6 +3364,7 @@ async function commitAttachedResultChatSuccess(params) {
             : currentUsage;
         const now = admin.firestore.FieldValue.serverTimestamp();
         const userMessage = {
+            requestId: params.requestId,
             role: 'user',
             content: params.exchange.question,
             createdAt: now,
@@ -3371,6 +3374,7 @@ async function commitAttachedResultChatSuccess(params) {
         }
         tx.set(userMessageRef, userMessage);
         tx.set(assistantMessageRef, {
+            requestId: params.requestId,
             role: 'assistant',
             content: params.exchange.answer,
             sources: params.exchange.sources.length > 0 ? params.exchange.sources : [],
@@ -4039,6 +4043,7 @@ exports.chatWithResult = (0, https_2.onCall)({
             }
             const latencyMs = 0;
             await saveResultChatExchange({
+                requestId,
                 threadRef,
                 messagesRef,
                 question,
@@ -4248,6 +4253,7 @@ exports.chatWithResult = (0, https_2.onCall)({
             isDev,
         };
         const exchange = {
+            requestId,
             threadRef,
             messagesRef,
             question,
