@@ -3824,6 +3824,7 @@ function findReusableResultChatAnswer(
 }
 
 type ResultChatExchangeParams = {
+  requestId: string;
   threadRef: admin.firestore.DocumentReference;
   messagesRef: admin.firestore.CollectionReference;
   question: string;
@@ -3846,6 +3847,7 @@ type ResultChatExchangeParams = {
 async function saveResultChatExchange(params: ResultChatExchangeParams): Promise<void> {
   const now = admin.firestore.FieldValue.serverTimestamp();
   const userMessage: Record<string, unknown> = {
+    requestId: params.requestId,
     role: 'user',
     content: params.question,
     createdAt: now,
@@ -3855,6 +3857,7 @@ async function saveResultChatExchange(params: ResultChatExchangeParams): Promise
   }
   await params.messagesRef.add(userMessage);
   await params.messagesRef.add({
+    requestId: params.requestId,
     role: 'assistant',
     content: params.answer,
     sources: params.sources.length > 0 ? params.sources : [],
@@ -3959,6 +3962,7 @@ async function commitAttachedResultChatSuccess(params: {
       : currentUsage;
     const now = admin.firestore.FieldValue.serverTimestamp();
     const userMessage: Record<string, unknown> = {
+      requestId: params.requestId,
       role: 'user',
       content: params.exchange.question,
       createdAt: now,
@@ -3968,6 +3972,7 @@ async function commitAttachedResultChatSuccess(params: {
     }
     tx.set(userMessageRef, userMessage);
     tx.set(assistantMessageRef, {
+      requestId: params.requestId,
       role: 'assistant',
       content: params.exchange.answer,
       sources: params.exchange.sources.length > 0 ? params.exchange.sources : [],
@@ -4740,6 +4745,7 @@ export const chatWithResult = onCall(
         }
         const latencyMs = 0;
         await saveResultChatExchange({
+          requestId,
           threadRef,
           messagesRef,
           question,
@@ -4966,6 +4972,7 @@ export const chatWithResult = onCall(
       };
 
       const exchange: ResultChatExchangeParams = {
+        requestId,
         threadRef,
         messagesRef,
         question,

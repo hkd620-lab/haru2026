@@ -591,6 +591,30 @@ async function getLogs(filter = {}) {
     .filter((log) => Object.entries(filter).every(([key, value]) => log[key] === value));
 }
 
+async function assertRequestLinkedExchanges(uid, recordId, sourceKey) {
+  const messages = await getMessages(uid, recordId, sourceKey);
+  const logs = await getLogs({ uid, recordId, sourceKey, featureName: 'result_chat', success: true });
+  assert.ok(messages.length > 0);
+  const requestIds = new Set();
+  for (const message of messages) {
+    assert.ok(typeof message.requestId === 'string' && message.requestId.length > 0);
+    requestIds.add(message.requestId);
+  }
+  assert.strictEqual(requestIds.size, logs.length);
+  for (const requestId of requestIds) {
+    const pair = messages.filter((message) => message.requestId === requestId);
+    const matchingLogs = logs.filter((log) => log.requestId === requestId);
+    assert.deepStrictEqual(pair.map((message) => message.role).sort(), ['assistant', 'user']);
+    assert.strictEqual(matchingLogs.length, 1);
+    const assistant = pair.find((message) => message.role === 'assistant');
+    assert.strictEqual(assistant.answerRoute, matchingLogs[0].answerRoute);
+    assert.strictEqual(assistant.model, matchingLogs[0].model);
+    assert.strictEqual(assistant.inputTokens, matchingLogs[0].inputTokens);
+    assert.strictEqual(assistant.outputTokens, matchingLogs[0].outputTokens);
+  }
+  return messages;
+}
+
 function countWebSearchCalls() {
   return genaiCalls.filter((call) => call.hasGoogleSearchTool).length;
 }
@@ -738,6 +762,25 @@ async function run() {
     await assertThreadSearchUsage(USERS.basic, 'memo', 'memo_sayu', 0, 0);
     await assertMessageCounts(USERS.basic, 'memo', 'memo_sayu', i + 1, i + 1);
   }
+
+  const originalRecordMessages = await assertRequestLinkedExchanges(USERS.basic, 'memo', 'memo_sayu');
+  const cachedRecordCallsBefore = genaiCalls.length;
+  const cachedRecordMonthlyBefore = await getMonthlyUsed(USERS.basic);
+  const cachedRecord = await callable(USERS.basic, {
+    recordId: 'memo',
+    sourceKey: 'memo_sayu',
+    question: recordOnlyQuestions[0],
+    searchPreference: 'record_only',
+  });
+  assert.strictEqual(cachedRecord.answerRoute, 'record_only');
+  assert.strictEqual(genaiCalls.length, cachedRecordCallsBefore);
+  assert.strictEqual(await getMonthlyUsed(USERS.basic), cachedRecordMonthlyBefore + 1);
+  const cachedRecordMessages = await assertRequestLinkedExchanges(USERS.basic, 'memo', 'memo_sayu');
+  assert.strictEqual(cachedRecordMessages.length, originalRecordMessages.length + 2);
+  const originalRequestIds = new Set(originalRecordMessages.map((message) => message.requestId));
+  const cachedPair = cachedRecordMessages.filter((message) => !originalRequestIds.has(message.requestId));
+  assert.strictEqual(cachedPair.length, 2);
+  assert.strictEqual(cachedPair.find((message) => message.role === 'assistant').cached, true);
 
   const webQuestions = [
     '주제는 무엇인가?',
@@ -989,6 +1032,8 @@ async function run() {
   assert.ok(genaiCalls[genaiCalls.length - 1].hasGoogleSearchTool);
   assert.ok(genaiCalls[genaiCalls.length - 1].contents.includes('fileData'));
   assert.strictEqual(activeGeminiFiles.size, 0);
+
+  await assertRequestLinkedExchanges(USERS.developer, 'law', 'haruraw_sayu');
 
   await resetResultChatRateLimit(USERS.developer);
   const exactBoundaryCallsBefore = genaiCalls.length;
