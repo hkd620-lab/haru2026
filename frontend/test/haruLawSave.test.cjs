@@ -22,7 +22,7 @@ function harness(overrides = {}) {
   const context = {
     user: { uid: 'fixture-owner' }, lawQuery: 'fixture question', activeLawQuery: 'fixture question',
     lawResults: [{ lawName: 'fixture law', articleStr: '1', title: 'fixture title', content: 'fixture article' }],
-    lawSummary: 'fixture summary', currentDate: new Date('2026-10-02T12:00:00Z'),
+    lawSummary: 'fixture summary', lawSaveDate: '2026-10-02', currentDate: new Date('2026-10-02T12:00:00Z'),
     weather: '쾌청', temperature: '쾌적', mood: '평온', getLocalDateString: () => '2026-10-02',
     lawAttachments: [{ storagePath: 'fixture.pdf', mimeType: 'application/pdf', fileName: 'fixture.pdf' }],
     activeLawAttachments: [{ storagePath: 'fixture.pdf', mimeType: 'application/pdf', fileName: 'fixture.pdf' }],
@@ -122,6 +122,97 @@ test('저장 진행 중 중복 재시도를 막고 완료 전 성공 표시를 �
   await run;
   assert.equal(h.state.saving, false);
   assert.equal(h.state.saved, true);
+});
+
+const dateStateSource = source.slice(source.indexOf('  const [lawSaveDate,'), source.indexOf('  const [lawGuideConfirmed,'));
+const dateInputSource = source.slice(source.indexOf('              <label htmlFor="law-save-date"'), source.indexOf('              {/* 검색창 */}', source.indexOf('              <label htmlFor="law-save-date"')));
+const dateInputJS = transformSync(`return (${dateInputSource});`, { loader: 'tsx' }).code;
+const lockExpression = source.match(/const lawDateLocked = (.+);/)[1];
+
+test('하루LAW 기본 날짜는 기기 시간대와 무관한 서울 오늘이며 공용 날짜는 그대로다', () => {
+  const stateJS = transformSync(`${dateStateSource}; return lawSaveDate;`, { loader: 'ts' }).code;
+  for (const [instant, expected] of [['2026-10-04T14:59:59Z', '2026-10-04'], ['2026-10-04T15:00:00Z', '2026-10-05']]) {
+    class Clock extends Date { constructor() { super(instant); } }
+    const initial = new Function('useState', 'Date', stateJS)((init) => [init(), () => {}], Clock);
+    assert.equal(initial, expected);
+  }
+  assert.match(source, /const \[currentDate\] = useState\(new Date\(\)\);/);
+  assert.doesNotMatch(handlerSource, /getLocalDateString\(currentDate\)/);
+  assert.equal((source.match(/getLocalDateString\(currentDate\)/g) || []).length, 3, '다른 기록 형식의 날짜 동작 유지');
+});
+
+test('실제 날짜 입력: 선택만 변경하고 질문·첨부·분석 결과 보존, IO 없음, 처리 중 잠금', () => {
+  const h = harness();
+  let selected = h.context.lawSaveDate;
+  const states = { uploadingLawFiles: false, lawLoading: false, openCard: null, isSavingLaw: false, isSaving: false };
+  const locked = (overrides = {}) => {
+    const flags = { ...states, ...overrides };
+    return new Function(...Object.keys(flags), `return ${lockExpression};`)(...Object.values(flags));
+  };
+  const renderInput = (busy) => new Function('React', 'lawSaveDate', 'lawDateLocked', 'setLawSaveDate', dateInputJS)(React, selected, busy, (value) => { selected = value; });
+  const input = (label) => React.Children.toArray(label.props.children).find((child) => child.type === 'input');
+  assert.match(renderToStaticMarkup(renderInput(false)), /저장 날짜/);
+  assert.equal(input(renderInput(false)).props.type, 'date');
+  assert.equal(input(renderInput(false)).props.disabled, false);
+  input(renderInput(false)).props.onChange({ target: { value: '2026-10-04' } });
+  assert.equal(input(renderInput(false)).props.value, '2026-10-04');
+  input(renderInput(false)).props.onChange({ target: { value: '' } });
+  assert.equal(selected, '2026-10-04', '빈 입력으로 저장 경로가 사라지지 않는다');
+  for (const flags of [{ uploadingLawFiles: true }, { lawLoading: true }, { openCard: { loading: true } }, { isSavingLaw: true }, { isSaving: true }]) {
+    const date = input(renderInput(locked(flags)));
+    assert.equal(date.props.disabled, true);
+    date.props.onChange({ target: { value: '2026-10-03' } });
+    assert.equal(selected, '2026-10-04');
+  }
+  assert.deepEqual(h.state.steps, []);
+  h.assertPreserved();
+  assert.match(dateInputSource, /if \(!lawDateLocked && e\.target\.value\) setLawSaveDate\(e\.target\.value\);/);
+  assert.equal((dateInputSource.match(/\bset\w+\(/g) || []).length, 1, '날짜 변경은 날짜 setter만 호출');
+});
+
+test('선택 날짜의 조회·실제 saveRecord 경로·id/date 일치와 기존 기록 merge 보존', async () => {
+  for (const exists of [false, true]) {
+    const date = '2026-10-04';
+    const selectedPath = `users/fixture-owner/records/${date}`;
+    const todayPath = 'users/fixture-owner/records/2026-10-05';
+    const records = new Map([[todayPath, { content: 'today untouched', formats: ['메모'] }]]);
+    if (exists) records.set(selectedPath, { id: date, date, content: 'preserved diary', formats: ['일기', 'HARUraw'], weather: '비', temperature: '쌀쌀', mood: '울적', memo: 'preserved memo', haruraw_attachments: [{ fileName: 'existing.pdf' }] });
+    const readPaths = [], writePaths = [];
+    const doc = (_db, ...segments) => segments.join('/');
+    const setDoc = async (ref, data, options) => {
+      writePaths.push(ref);
+      assert.deepEqual(options, { merge: true });
+      records.set(ref, { ...records.get(ref), ...data });
+    };
+    const service = new Function('db', 'doc', 'setDoc', serviceJS)({}, doc, setDoc);
+    service.recordPaidServiceUsage = async () => {};
+    const h = harness({
+      lawSaveDate: date, currentDate: new Date('2026-10-05T12:00:00Z'), getLocalDateString: () => '2026-10-05',
+      activeLawAttachments: exists ? [] : [{ fileName: 'new.pdf' }],
+      doc, getDoc: async (ref) => { readPaths.push(ref); return { exists: () => records.has(ref), data: () => records.get(ref) }; },
+      firestoreService: service,
+    });
+    await h.run();
+    assert.equal(h.state.saved, true);
+    assert.deepEqual(readPaths, [selectedPath]);
+    assert.deepEqual(writePaths, [selectedPath]);
+    const written = records.get(selectedPath);
+    assert.equal(written.id, date);
+    assert.equal(written.date, date);
+    assert.deepEqual(written.formats, exists ? ['일기', 'HARUraw'] : ['HARUraw']);
+    assert.equal(written.haruraw_query, h.context.activeLawQuery);
+    assert.equal(written.haruraw_summary, h.context.lawSummary);
+    if (exists) {
+      assert.equal(written.content, 'preserved diary');
+      assert.equal(written.weather, '비');
+      assert.equal(written.temperature, '쌀쌀');
+      assert.equal(written.mood, '울적');
+      assert.equal(written.memo, 'preserved memo');
+      assert.deepEqual(written.haruraw_attachments, [{ fileName: 'existing.pdf' }]);
+    } else assert.deepEqual(written.haruraw_attachments, h.context.activeLawAttachments);
+    assert.deepEqual(records.get(todayPath), { content: 'today untouched', formats: ['메모'] });
+    h.assertPreserved();
+  }
 });
 
 const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST;

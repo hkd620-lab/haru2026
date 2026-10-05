@@ -325,6 +325,11 @@ export function RecordPage() {
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
   const [savedAssistantRecommendations, setSavedAssistantRecommendations] = useState<AssistantRecommendation[]>([]);
   const [lawQuery, setLawQuery] = useState('');
+  const [lawSaveDate, setLawSaveDate] = useState(() =>
+    new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date()),
+  );
   const [lawGuideConfirmed, setLawGuideConfirmed] = useState(false);
   const [lawLoading, setLawLoading] = useState(false);
   const [lawResults, setLawResults] = useState<any[]>([]);
@@ -347,6 +352,7 @@ export function RecordPage() {
     loading: boolean;
   } | null>(null);
   const petAlertTimerRef = useRef<number | null>(null);
+  const lawDateLocked = uploadingLawFiles || lawLoading || Boolean(openCard?.loading) || isSavingLaw || isSaving;
 
   useEffect(() => {
     return () => {
@@ -872,7 +878,7 @@ export function RecordPage() {
     setIsSavingLaw(true);
     let saveStage: 'getDoc' | 'saveRecord' = 'getDoc';
     try {
-      const dateStr = getLocalDateString(currentDate);
+      const dateStr = lawSaveDate;
       const articlesText = lawResults
         .map((a: any) => `[${a.lawName}] ${a.articleStr}(${a.title})\n${a.content}`)
         .join('\n\n');
@@ -1396,6 +1402,19 @@ export function RecordPage() {
     </div>
   ) : (
             <div>
+              <label htmlFor="law-save-date" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12, fontSize: 13, color: '#1A3C6E' }}>
+                저장 날짜
+                <input
+                  id="law-save-date"
+                  type="date"
+                  value={lawSaveDate}
+                  disabled={lawDateLocked}
+                  onChange={(e) => {
+                    if (!lawDateLocked && e.target.value) setLawSaveDate(e.target.value);
+                  }}
+                  style={{ padding: '8px 10px', border: '1px solid #c7d9f8', borderRadius: 8, fontSize: 16, backgroundColor: '#fff' }}
+                />
+              </label>
               {/* 검색창 */}
               <form onSubmit={handleLawSearch} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', gap: 8 }}>
