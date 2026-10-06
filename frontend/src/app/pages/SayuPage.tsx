@@ -29,6 +29,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSubscription } from '../hooks/useSubscription';
 import { compressImage } from '../services/imageService';
 import type { ReverseGeocodeCandidate } from '../services/reverseGeocodeService';
+import { fingerprintPlantEntry, readPlantDetectiveSelection, PLANT_EDIT_CONFLICT, type PlantDetectiveSelection } from '../utils/plantDetectiveEdit';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
 const FORMAT_FIRST_FIELD: Record<string, string> = {
@@ -76,6 +77,7 @@ type HaruLawAttachmentRef = {
   fileName: string;
 };
 type SayuNavigationState = {
+  plantDetectiveSelection?: PlantDetectiveSelection;
   filterFormat?: string;
   openRecordId?: string;
   tab?: 'records' | 'assistants';
@@ -319,6 +321,7 @@ interface PlantReadOnlyDetail {
   recordId?: string;
   entryIdx?: number;
   imageUrls?: string[];
+  editSnapshot?: unknown;
 }
 interface SayuPlantDiaryEditKey {
   recordId: string;
@@ -987,6 +990,7 @@ export function SayuPage() {
   const [plantDiaryDraft, setPlantDiaryDraft] = useState(emptyPlantDiaryDraft);
   const [plantDiarySaving, setPlantDiarySaving] = useState(false);
   const [plantDetectivePhotoBusy, setPlantDetectivePhotoBusy] = useState(false);
+  const plantDetectivePhotoBusyRef = useRef(false);
   const plantDetectivePhotoInputRef = useRef<HTMLInputElement>(null);
   const allSayuLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const sayuRouteStateLoadingRef = useRef('');
@@ -1355,7 +1359,25 @@ export function SayuPage() {
 
   // 해당 record 의 plantDetective 배열을 복사 → idx 원소의 imageUrls 에 새 URL append → 새 사진까지 포함해 재탐색한다.
   // imageUrl 이 없던 항목은 첫 추가 사진을 대표 이미지로도 지정한다. arrayUnion 미사용(객체 배열).
+  const handleEditPlantDetectiveRecord = async () => {
+    if (plantDetectivePhotoBusyRef.current) return;
+    const detail = plantReadOnlyDetail;
+    if (!detail?.recordId || !Number.isSafeInteger(detail.entryIdx) || !detail.editSnapshot) return;
+    try {
+      const fingerprint = await fingerprintPlantEntry(detail.editSnapshot);
+      // A photo operation may have started while the digest was being calculated.
+      if (plantDetectivePhotoBusyRef.current) return;
+      navigate('/plant-detective', { state: {
+        recordId: detail.recordId, idx: detail.entryIdx,
+        fingerprint, from: 'sayu', mode: 'edit',
+      } });
+    } catch {
+      toast.error('편집할 식물 기록을 찾지 못했습니다. 다시 선택해 주세요.');
+    }
+  };
+
   const handleAddPlantDetectivePhoto = async (recordId: string, idx: number, file: File | null) => {
+    if (plantDetectivePhotoBusyRef.current) return;
     if (!file) return;
     if (!user?.uid) { toast.error('로그인이 필요합니다.'); return; }
     if (!recordId) { toast.error('기록을 찾을 수 없습니다.'); return; }
@@ -1364,6 +1386,7 @@ export function SayuPage() {
       ? [...((record as any).plantDetective as any[])]
       : [];
     if (!current[idx]) { toast.error('해당 판독 기록을 찾을 수 없습니다.'); return; }
+    plantDetectivePhotoBusyRef.current = true;
     setPlantDetectivePhotoBusy(true);
     let uploadedUrl = '';
     let uploadedPhotoPersisted = false;
@@ -1389,6 +1412,17 @@ export function SayuPage() {
       next[idx] = target;
       await updateDoc(doc(db, 'users', user.uid, 'records', recordId), { plantDetective: next });
       uploadedPhotoPersisted = true;
+      // Keep the last persisted snapshot even if the subsequent reanalysis save fails.
+      const persistedPhotoEntry = { ...target };
+      const persistedPhotoEntries = [...next];
+      persistedPhotoEntries[idx] = persistedPhotoEntry;
+      setRecords((prev) => prev.map((r) => r.id === recordId
+        ? ({ ...r, plantDetective: persistedPhotoEntries } as HaruRecord)
+        : r));
+      setPlantReadOnlyDetail((prev) => {
+        if (!prev || prev.recordId !== recordId || prev.entryIdx !== idx) return prev;
+        return { ...prev, editSnapshot: persistedPhotoEntry, imageUrl: target.imageUrl, imageUrls: nextImageUrls };
+      });
 
       let reanalysisDone = false;
       let reanalysisImageCount = 1;
@@ -1438,6 +1472,7 @@ export function SayuPage() {
         ].filter((value) => String(value || '').trim()).join(' · ');
         return {
           ...prev,
+          editSnapshot: target,
           title: updatedTitle,
           subtitle: getPlantScientificLine(target),
           imageUrl: String(prev.imageUrl || '').trim() || uploadedUrl,
@@ -1481,11 +1516,13 @@ export function SayuPage() {
         }
       }
     } finally {
+      plantDetectivePhotoBusyRef.current = false;
       setPlantDetectivePhotoBusy(false);
     }
   };
 
   const handleDeletePlantDetectivePhoto = async (recordId: string, idx: number, imageUrl: string) => {
+    if (plantDetectivePhotoBusyRef.current) return;
     if (!user?.uid) { toast.error('로그인이 필요합니다.'); return; }
     if (!window.confirm('이 사진을 삭제할까요?\n삭제하면 현재 식물탐정 기록에서 이 사진이 제외됩니다.')) return;
 
@@ -1514,6 +1551,8 @@ export function SayuPage() {
 
     const next = [...current];
     next[idx] = target;
+    plantDetectivePhotoBusyRef.current = true;
+    setPlantDetectivePhotoBusy(true);
     try {
       await updateDoc(doc(db, 'users', user.uid, 'records', recordId), { plantDetective: next });
       setRecords((prev) =>
@@ -1523,6 +1562,7 @@ export function SayuPage() {
         if (!prev || prev.recordId !== recordId || prev.entryIdx !== idx) return prev;
         return {
           ...prev,
+          editSnapshot: target,
           imageUrl: prev.imageUrl === imageUrl ? nextImageUrls[0] : prev.imageUrl,
           imageUrls: nextImageUrls,
         };
@@ -1531,6 +1571,9 @@ export function SayuPage() {
     } catch (error) {
       console.error('식물 판독 사진 삭제 실패:', error);
       toast.error('사진 삭제에 실패했습니다.');
+    } finally {
+      plantDetectivePhotoBusyRef.current = false;
+      setPlantDetectivePhotoBusy(false);
     }
   };
 
@@ -2467,11 +2510,61 @@ export function SayuPage() {
     });
   };
 
+  // Plant returns fetch the exact document; unrelated list loads must not restart that read.
+  const sayuRouteRecords = (location.state as SayuNavigationState)?.plantDetectiveSelection !== undefined ? null : records;
   useEffect(() => {
     if (location.pathname !== '/sayu') return;
     if (!user?.uid) return;
 
     const routeState = (location.state ?? null) as SayuNavigationState;
+    if (routeState?.plantDetectiveSelection !== undefined) {
+      const selection = readPlantDetectiveSelection(routeState.plantDetectiveSelection);
+      if (!selection || routeState.openRecordId !== selection.recordId) {
+        toast.error('선택한 식물 기록을 찾을 수 없습니다. SAYU에서 다시 선택해 주세요.');
+        navigate('/sayu', { replace: true, state: null });
+        return;
+      }
+      const routeKey = `plant:${selection.recordId}:${selection.idx}:${selection.fingerprint}`;
+      if (sayuRouteStateLoadingRef.current === routeKey) return;
+      sayuRouteStateLoadingRef.current = routeKey;
+      setSayuTab('assistants');
+      setViewMode('list');
+      setSelectedSayuLabels(prev => ({ ...prev, assistants: '하루식물탐정' }));
+      let cancelled = false;
+      (async () => {
+        try {
+          const snapshot = await getDoc(doc(db, 'users', user.uid, 'records', selection.recordId));
+          if (!snapshot.exists()) throw new Error(PLANT_EDIT_CONFLICT);
+          const record = { ...snapshot.data(), id: snapshot.id } as HaruRecord;
+          const selected = (record as any).plantDetective?.[selection.idx];
+          if (!selected || await fingerprintPlantEntry(selected) !== selection.fingerprint) throw new Error(PLANT_EDIT_CONFLICT);
+          if (cancelled) return;
+          const entry = buildPlantDetectiveEntry(record, selection.idx);
+          if (!entry || isKnowledgeWarehouseRecord(record)) throw new Error(PLANT_EDIT_CONFLICT);
+          const date = new Date(`${record.date}T00:00:00`);
+          if (!Number.isNaN(date.getTime())) setCurrentMonth(date);
+          setSayuScope('month');
+          setSayuTab('assistants');
+          setViewMode('list');
+          setPlantSayuFilter('detective');
+          setSayuSearchInput('');
+          setDebouncedSayuSearch('');
+          setSelectedSayuLabels(prev => ({ ...prev, assistants: '하루식물탐정' }));
+          setRecords(prev => [...prev.filter(item => item.id !== record.id), record]);
+          entry.onOpen();
+        } catch (error) {
+          if (cancelled) return;
+          toast.error(error instanceof Error ? error.message : '선택한 식물 기록을 불러오지 못했습니다.');
+        } finally {
+          if (sayuRouteStateLoadingRef.current === routeKey) sayuRouteStateLoadingRef.current = '';
+          if (!cancelled) navigate('/sayu', { replace: true, state: null });
+        }
+      })();
+      return () => {
+        cancelled = true;
+        if (sayuRouteStateLoadingRef.current === routeKey) sayuRouteStateLoadingRef.current = '';
+      };
+    }
     const filterFormat = typeof routeState?.filterFormat === 'string' ? routeState.filterFormat.trim() : '';
     const openRecordId = typeof routeState?.openRecordId === 'string' ? routeState.openRecordId.trim() : '';
     if (!filterFormat && !openRecordId) return;
@@ -2535,7 +2628,7 @@ export function SayuPage() {
     }
     navigate('/sayu', { replace: true, state: null });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.state, user?.uid, records]);
+  }, [location.pathname, location.state, user?.uid, sayuRouteRecords]);
 
   const handleFormatClick = (formatKey: string, formatLabel: string, recordId?: string) => {
     if (!selectedDate) return;
@@ -4064,86 +4157,93 @@ export function SayuPage() {
   const growthTimelineEntries = allRecordEntries.filter((entry) => entry.label === GROWTH_TIMELINE_SAYU_LABEL);
   const recordEntries = allRecordEntries.filter((entry) => entry.label !== GROWTH_TIMELINE_SAYU_LABEL);
 
+  function buildPlantDetectiveEntry(record: any, idx: number): FlatSayuEntry | null {
+    const entry = Array.isArray(record.plantDetective) ? record.plantDetective[idx] : null;
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+    const imageUrl = getPlantImageUrl(entry);
+    const title = getPlantDisplayName(entry).slice(0, 48);
+    const subtitle = getPlantScientificLine(entry);
+    const aiSummary = getPlantAiSummary(entry);
+    const memoSummary = getPlantMemoSummary(entry);
+    const confirmedName = String(entry?.userConfirmedName || entry?.humanReportedName || entry?.title || '').trim();
+    const aiName = String(entry?.aiKoName || entry?.aiPrediction || '').trim();
+    const scientificName = String(entry?.scientificName || entry?.latinName || entry?.finalLatinName || '').trim();
+    const locationLabel = String(entry?.locationLabel || entry?.publicLocation || '').trim();
+    const sourceLabel = entry?.source
+      ? (PLANT_SAYU_SOURCE_LABEL[String(entry.source)] || String(entry.source))
+      : '';
+    const sourceSummary = [
+      sourceLabel,
+      entry?.aiPrediction,
+      entry?.englishName,
+      entry?.confidence ? `PlantNet 신뢰도 ${entry.confidence}` : '',
+    ].filter((value) => String(value || '').trim()).join(' · ');
+    const detectiveImageUrls: string[] = (() => {
+      const urls: string[] = [];
+      const add = (value: any) => {
+        const url = typeof value === 'string' ? value.trim() : '';
+        if (url && url.startsWith('http') && !urls.includes(url)) urls.push(url);
+      };
+      add(imageUrl);
+      if (Array.isArray(entry?.imageUrls)) entry.imageUrls.forEach(add);
+      return urls;
+    })();
+    const onOpen = () => openPlantReadOnlyDetail({
+      type: 'detective',
+      title,
+      date: record.date,
+      subtitle,
+      imageUrl,
+      recordId: record.id,
+      entryIdx: idx,
+      editSnapshot: entry,
+      imageUrls: detectiveImageUrls,
+      summary: '이 기록은 식물탐정이 판독하고 사용자가 확정한 식물 기록입니다.',
+      coreFields: [
+        { label: '사용자 확정명', value: confirmedName || title },
+        { label: 'PlantNet 판독명', value: aiName },
+        { label: '학명', value: scientificName },
+        { label: '기록일', value: formatKoreanDate(record.date) },
+      ],
+      detailSections: buildPlantDetectiveDetailSections(entry, sourceSummary, [
+        { label: '촬영 지역', value: locationLabel },
+        { label: '사용자 메모', value: memoSummary },
+      ]),
+    });
+    return {
+      id: `${record.id}_plant_detective_${idx}`,
+      date: record.date,
+      label: '하루식물탐정',
+      title,
+      subtitle,
+      color: '#10b981',
+      plantType: 'detective' as const,
+      plantMergeKey: getPlantMergeKey(entry, record.date, `${record.id}_plant_detective_${idx}`),
+      plantPreviewImageUrl: imageUrl,
+      plantPreviewLines: [
+        aiSummary ? `AI 요약: ${aiSummary}` : '',
+        memoSummary ? `메모: ${memoSummary}` : '',
+      ],
+      searchText: buildSearchText('하루식물탐정', title, subtitle, aiSummary, memoSummary, sourceSummary, confirmedName, aiName, scientificName, locationLabel),
+      onOpen,
+      extra: renderPlantReadOnlyPreview({
+        imageUrl,
+        badge: PLANT_SAYU_TYPE_LABEL.detective,
+        lines: [
+          aiSummary ? `AI 요약: ${aiSummary}` : '',
+          memoSummary ? `메모: ${memoSummary}` : '',
+        ],
+        onOpen,
+      }),
+    };
+  }
+
   const plantDetectiveEntries: FlatSayuEntry[] = records
     .filter((record) => isSayuScopeDate(record.date) && !isKnowledgeWarehouseRecord(record))
     .flatMap((record: any) =>
-      (Array.isArray(record.plantDetective) ? record.plantDetective : []).map((entry: any, idx: number) => {
-        const imageUrl = getPlantImageUrl(entry);
-        const title = getPlantDisplayName(entry).slice(0, 48);
-        const subtitle = getPlantScientificLine(entry);
-        const aiSummary = getPlantAiSummary(entry);
-        const memoSummary = getPlantMemoSummary(entry);
-        const confirmedName = String(entry?.userConfirmedName || entry?.humanReportedName || entry?.title || '').trim();
-        const aiName = String(entry?.aiKoName || entry?.aiPrediction || '').trim();
-        const scientificName = String(entry?.scientificName || entry?.latinName || entry?.finalLatinName || '').trim();
-        const locationLabel = String(entry?.locationLabel || entry?.publicLocation || '').trim();
-        const sourceLabel = entry?.source
-          ? (PLANT_SAYU_SOURCE_LABEL[String(entry.source)] || String(entry.source))
-          : '';
-        const sourceSummary = [
-          sourceLabel,
-          entry?.aiPrediction,
-          entry?.englishName,
-          entry?.confidence ? `PlantNet 신뢰도 ${entry.confidence}` : '',
-        ].filter((value) => String(value || '').trim()).join(' · ');
-        const detectiveImageUrls: string[] = (() => {
-          const urls: string[] = [];
-          const add = (value: any) => {
-            const url = typeof value === 'string' ? value.trim() : '';
-            if (url && url.startsWith('http') && !urls.includes(url)) urls.push(url);
-          };
-          add(imageUrl);
-          if (Array.isArray(entry?.imageUrls)) entry.imageUrls.forEach(add);
-          return urls;
-        })();
-        const onOpen = () => openPlantReadOnlyDetail({
-          type: 'detective',
-          title,
-          date: record.date,
-          subtitle,
-          imageUrl,
-          recordId: record.id,
-          entryIdx: idx,
-          imageUrls: detectiveImageUrls,
-          summary: '이 기록은 식물탐정이 판독하고 사용자가 확정한 식물 기록입니다.',
-          coreFields: [
-            { label: '사용자 확정명', value: confirmedName || title },
-            { label: 'PlantNet 판독명', value: aiName },
-            { label: '학명', value: scientificName },
-            { label: '기록일', value: formatKoreanDate(record.date) },
-          ],
-          detailSections: buildPlantDetectiveDetailSections(entry, sourceSummary, [
-            { label: '촬영 지역', value: locationLabel },
-            { label: '사용자 메모', value: memoSummary },
-          ]),
-        });
-        return {
-          id: `${record.id}_plant_detective_${idx}`,
-          date: record.date,
-          label: '하루식물탐정',
-          title,
-          subtitle,
-          color: '#10b981',
-          plantType: 'detective' as const,
-          plantMergeKey: getPlantMergeKey(entry, record.date, `${record.id}_plant_detective_${idx}`),
-          plantPreviewImageUrl: imageUrl,
-          plantPreviewLines: [
-            aiSummary ? `AI 요약: ${aiSummary}` : '',
-            memoSummary ? `메모: ${memoSummary}` : '',
-          ],
-          searchText: buildSearchText('하루식물탐정', title, subtitle, aiSummary, memoSummary, sourceSummary, confirmedName, aiName, scientificName, locationLabel),
-          onOpen,
-          extra: renderPlantReadOnlyPreview({
-            imageUrl,
-            badge: PLANT_SAYU_TYPE_LABEL.detective,
-            lines: [
-              aiSummary ? `AI 요약: ${aiSummary}` : '',
-              memoSummary ? `메모: ${memoSummary}` : '',
-            ],
-            onOpen,
-          }),
-        };
-      }),
+      (Array.isArray(record.plantDetective) ? record.plantDetective : [])
+        .map((_: unknown, idx: number) => buildPlantDetectiveEntry(record, idx))
+        .filter((entry: FlatSayuEntry | null): entry is FlatSayuEntry => entry !== null),
     );
 
   const plantDiaryEntries: FlatSayuEntry[] = records
@@ -5870,6 +5970,18 @@ export function SayuPage() {
               )}
             </section>
 
+            {plantReadOnlyDetail.type === 'detective' && plantReadOnlyDetail.recordId
+              && Number.isSafeInteger(plantReadOnlyDetail.entryIdx) && Boolean(plantReadOnlyDetail.editSnapshot) && (
+              <button
+                type="button"
+                disabled={plantDetectivePhotoBusy}
+                onClick={handleEditPlantDetectiveRecord}
+                style={{ marginTop: 14, padding: '10px 16px', borderRadius: 10, border: '1px solid #4A5A2C', background: '#fffdf4', color: '#4A5A2C', fontWeight: 800 }}
+              >
+                기록 편집
+              </button>
+            )}
+
             {plantReadOnlyDetail.type === 'detective'
               && plantReadOnlyDetail.recordId
               && typeof plantReadOnlyDetail.entryIdx === 'number' && (
@@ -5915,6 +6027,7 @@ export function SayuPage() {
                               {detectiveImages.length > 1 && (
                                 <button
                                   type="button"
+                                  disabled={plantDetectivePhotoBusy}
                                   onClick={() => handleDeletePlantDetectivePhoto(
                                     plantReadOnlyDetail.recordId || '',
                                     plantReadOnlyDetail.entryIdx as number,
@@ -5952,6 +6065,7 @@ export function SayuPage() {
                   ref={plantDetectivePhotoInputRef}
                   type="file"
                   accept="image/*"
+                  disabled={plantDetectivePhotoBusy}
                   style={{ display: 'none' }}
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
@@ -5979,7 +6093,7 @@ export function SayuPage() {
                     cursor: plantDetectivePhotoBusy ? 'wait' : 'pointer',
                   }}
                 >
-                  {plantDetectivePhotoBusy ? '다시 판독 중...' : '사진 추가 · 다시 판독'}
+                  {plantDetectivePhotoBusy ? '사진 처리 중...' : '사진 추가 · 다시 판독'}
                 </button>
                 <p style={{ margin: '9px 0 0', fontSize: 11, color: '#6B7280' }}>
                   새 사진은 기존 판독 사진과 함께 다시 분석되어 해당 기록에 반영됩니다.
