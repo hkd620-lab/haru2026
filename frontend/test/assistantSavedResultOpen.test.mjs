@@ -251,6 +251,8 @@ function readSavedRoute(routeState, records) {
     setSelectedDateFormats: noop, setHaruLawShareState: noop, navigate: noop,
     setHarurawModal: value => { state.detail = value; }, setSayuModalState: value => { state.detail = value; },
     normalizeTimelineItems: items => items ?? [], META_SUFFIXES: ['_title'],
+    // C has its own structured-reader tests; these routes remain generic formats.
+    isStructuredAssistantPrefix: () => false, setStructuredRecord: noop,
   };
   new Function(...Object.keys(env), `${routeCode}\napplyRoute();`)(...Object.values(env));
   return state;
