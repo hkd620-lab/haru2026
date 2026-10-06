@@ -278,6 +278,10 @@ export function RecordPage() {
   const isLawPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
   const [fromPath, setFromPath] = useState<string | null>(() => (location.state as any)?.from ?? null);
   const closeToOrigin = () => {
+    if (lawSaveRef.current) {
+      toast.info('저장 중입니다. 완료 후 닫을 수 있습니다.');
+      return;
+    }
     if (fromPath) {
       navigate(fromPath);
       return;
@@ -339,6 +343,12 @@ export function RecordPage() {
   const lawSearchHistory = useRef<{query: string, summary: string, articles: any[]}[]>([]);
   const [activeLawQuery, setActiveLawQuery] = useState('');
   const [isSavingLaw, setIsSavingLaw] = useState(false);
+  const lawSaveRef = useRef(false);
+  const lawSaveMountedRef = useRef(true);
+  useEffect(() => {
+    lawSaveMountedRef.current = true;
+    return () => { lawSaveMountedRef.current = false; };
+  }, []);
   const [lawSaved, setLawSaved] = useState(false);
   const [lawSaveError, setLawSaveError] = useState<Pick<HaruLawUserError, 'title' | 'message' | 'retryable'> | null>(null);
   const [lawAttachments, setLawAttachments] = useState<HaruLawAttachmentRef[]>([]);
@@ -858,13 +868,14 @@ export function RecordPage() {
   };
 
   const handleLawSaveDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (uploadingLawFiles || lawLoading || isSavingLaw) return;
+    if (uploadingLawFiles || lawLoading || isSavingLaw || lawSaveRef.current) return;
     setLawSaveDate(event.target.value);
     setLawSaved(false);
     setLawSaveError(null);
   };
 
   const handleSaveLawResult = async () => {
+    if (lawSaveRef.current || lawSaved) return;
     if (!user) {
       setLawSaveError({
         title: '로그인이 필요합니다',
@@ -892,6 +903,7 @@ export function RecordPage() {
       });
       return;
     }
+    lawSaveRef.current = true;
     setLawSaveError(null);
     setIsSavingLaw(true);
     let saveStage: 'getDoc' | 'saveRecord' = 'getDoc';
@@ -906,7 +918,7 @@ export function RecordPage() {
       const existingFormats = Array.isArray(existingRecord?.formats) ? existingRecord.formats : [];
       const mergedFormats = Array.from(new Set([...existingFormats, 'HARUraw'])) as RecordFormat[];
       saveStage = 'saveRecord';
-      await firestoreService.saveRecord(user.uid, {
+      const recordId = await firestoreService.saveRecord(user.uid, {
         id: dateStr,
         date: dateStr,
         weather: existingRecord?.weather || weather,
@@ -924,7 +936,9 @@ export function RecordPage() {
       });
       setLawSaved(true);
       toast.success('하루LAW 분석 결과가 사유-나의 기록에 저장되었습니다.');
-      setTimeout(() => navigate('/sayu', { state: { filterFormat: '하루LAW' } }), 1000);
+      if (lawSaveMountedRef.current) {
+        navigate('/sayu', { state: { filterFormat: '하루LAW', tab: 'assistants', openRecordId: recordId } });
+      }
     } catch (err) {
       const rawCode = err && typeof err === 'object' && 'code' in err ? err.code : undefined;
       const candidateCode = typeof rawCode === 'string' ? rawCode.replace(/^firestore\//, '') : '';
@@ -950,6 +964,7 @@ export function RecordPage() {
       });
       toast.error(title);
     } finally {
+      lawSaveRef.current = false;
       setIsSavingLaw(false);
     }
   };

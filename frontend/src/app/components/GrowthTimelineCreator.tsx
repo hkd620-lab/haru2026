@@ -29,7 +29,8 @@ type DraftTimelineItem = TimelineItem & {
 
 interface GrowthTimelineCreatorProps {
   uid: string;
-  onDone?: () => void;
+  onDone?: (recordId: string) => void;
+  onSavingChange?: (saving: boolean) => void;
 }
 
 interface GrowthTimelineLibraryProps {
@@ -291,7 +292,7 @@ function normalizeRecordTimeline(id: string, data: any): SavedGrowthTimeline | n
   };
 }
 
-export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProps) {
+export function GrowthTimelineCreator({ uid, onDone, onSavingChange }: GrowthTimelineCreatorProps) {
   const [title, setTitle] = useState('성장타임라인');
   const [items, setItems] = useState<DraftTimelineItem[]>([]);
   const [isReading, setIsReading] = useState(false);
@@ -299,6 +300,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
   const [isDocumentOpen, setIsDocumentOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewUrlsRef = useRef<string[]>([]);
+  const savingRef = useRef(false);
   const today = todayKey();
 
   const sortedItems = useMemo(() => sortDraftItems(items), [items]);
@@ -430,13 +432,15 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
   };
 
   const finalizeTimeline = async () => {
-    if (isSaving) return;
+    if (savingRef.current) return;
     if (sortedItems.length === 0) {
       toast.warning('사진을 먼저 선택해주세요.');
       return;
     }
 
+    savingRef.current = true;
     setIsSaving(true);
+    onSavingChange?.(true);
     const timelineId = `growth_${Date.now()}`;
     try {
       const savedItems: TimelineRecordItem[] = [];
@@ -455,7 +459,7 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
       const content = buildTimelineSummary(savedItems, periodStart, periodEnd);
       const resolvedTitle = await createTimelineTitle(title, content, buildFallbackTimelineTitle(periodStart));
 
-      await firestoreService.saveRecord(uid, {
+      const recordId = await firestoreService.saveRecord(uid, {
         date: todayKey(),
         formats: ['성장타임라인'],
         format: '성장타임라인',
@@ -476,12 +480,14 @@ export function GrowthTimelineCreator({ uid, onDone }: GrowthTimelineCreatorProp
       setItems([]);
       setTitle('성장타임라인');
       setIsDocumentOpen(false);
-      onDone?.();
+      onDone?.(recordId);
     } catch (error) {
       console.error('HARU타임라인 최종 저장 실패:', error);
       toast.error('HARU타임라인 최종 저장에 실패했습니다.');
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
+      onSavingChange?.(false);
     }
   };
 
