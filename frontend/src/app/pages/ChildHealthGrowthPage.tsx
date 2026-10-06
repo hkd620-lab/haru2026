@@ -1,7 +1,8 @@
+import { useRecordReadConsent } from '../hooks/useRecordReadConsent';
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { collection, doc, getDocs, query, setDoc, serverTimestamp, arrayUnion, where } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { auth, db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
 import { PageHeaderActions } from '../components/PageHeaderActions';
@@ -35,10 +36,24 @@ const FIELD_LABEL: Record<string, string> = {
 
 export function ChildHealthGrowthPage() {
   const { user } = useAuth();
+  return <ChildHealthGrowthSession key={user?.uid || 'signed-out'} />;
+}
+
+function ChildHealthGrowthSession() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const fromPath = (location.state as any)?.from as string | undefined;
-  const { hasConsent, isSaving: isSavingConsent, grantConsent } = useSensitiveConsent('sensitiveHealth');
+  const { isSaving: isSavingConsent, grantConsent } = useSensitiveConsent('sensitiveHealth');
+  const hasConsent = useRecordReadConsent(user?.uid, 'sensitiveHealth');
+  const activeRef = useRef(true);
+  const consentRef = useRef(hasConsent);
+  consentRef.current = hasConsent;
+  useEffect(() => {
+    activeRef.current = true;
+    return () => { activeRef.current = false; };
+  }, []);
+  const isCurrentSession = () => activeRef.current && auth.currentUser?.uid === user?.uid && consentRef.current === true;
 
   const [subjects, setSubjects] = useState<GrowthSubject[]>([]);
   const [selectedId, setSelectedId] = useState('');
@@ -61,7 +76,8 @@ export function ChildHealthGrowthPage() {
 
   // 성장대상 목록 로드
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid || hasConsent !== true) return;
+    let active = true;
     (async () => {
       try {
         const q = query(
@@ -82,12 +98,13 @@ export function ChildHealthGrowthPage() {
           })
           .filter((s) => s.name)
           .sort((a, b) => (b.latestRecordDate || '').localeCompare(a.latestRecordDate || ''));
-        setSubjects(list);
+        if (active && isCurrentSession()) setSubjects(list);
       } catch (e) {
         console.warn('성장대상 로드 실패:', e);
       }
     })();
-  }, [user?.uid]);
+    return () => { active = false; };
+  }, [user?.uid, hasConsent]);
 
   const selectedSubject = subjects.find((s) => s.id === selectedId);
   const effectiveBirthdate = selectedSubject?.birthdate || birthdate;
@@ -145,7 +162,7 @@ export function ChildHealthGrowthPage() {
   };
 
   const handleSave = async () => {
-    if (!user?.uid || !hasConsent || savingRef.current) return;
+    if (!user?.uid || hasConsent !== true || !isCurrentSession() || savingRef.current) return;
     const draftKey = JSON.stringify([selectedId, newName, birthdate, gender, measuredate, height, weight, headcircum]);
     const pendingLink = pendingLinkRef.current;
     if (pendingLink && pendingLink.uid !== user.uid) return;
@@ -163,6 +180,7 @@ export function ChildHealthGrowthPage() {
     try {
       if (pendingLink) {
         await pendingLink.link();
+        if (!isCurrentSession()) return;
         pendingLinkRef.current = null;
         setGrowthSaveStatus('complete');
         if (pendingLink.draftKey === currentDraftKeyRef.current) {
@@ -195,11 +213,13 @@ export function ChildHealthGrowthPage() {
         ...(effectiveGender ? { growthSubjectGender: effectiveGender } : {}),
         ...recordFields,
       });
+      if (!isCurrentSession()) return;
       setSavedGrowthRecordId(recordId);
 
       // growthSubjects 문서 upsert
       let subjectLinked = false;
       const link = async () => {
+        if (!isCurrentSession()) throw new Error('성장기록 저장 세션이 변경되었습니다.');
         if (!subjectLinked) await setDoc(
           doc(db, 'users', user.uid, 'growthSubjects', subjectId),
           {
@@ -215,6 +235,7 @@ export function ChildHealthGrowthPage() {
           { merge: true },
         );
         subjectLinked = true;
+        if (!isCurrentSession()) throw new Error('성장기록 저장 세션이 변경되었습니다.');
 
         // entries 서브컬렉션
         const memoLines = [
@@ -240,6 +261,7 @@ export function ChildHealthGrowthPage() {
       };
       pendingLinkRef.current = { uid: user.uid, draftKey, link };
       await link();
+      if (!isCurrentSession()) return;
       pendingLinkRef.current = null;
       setGrowthSaveStatus('complete');
 
@@ -248,6 +270,7 @@ export function ChildHealthGrowthPage() {
         setHeight(''); setWeight(''); setHeadcircum(''); setMeasuredate(getTodayStr());
       }
     } catch (e) {
+      if (!isCurrentSession()) return;
       console.error('성장기록 저장 실패:', e);
       if (pendingLinkRef.current) {
         setGrowthSaveStatus('partial');
@@ -260,7 +283,7 @@ export function ChildHealthGrowthPage() {
   };
 
   const handleViewGrowthRecord = () => {
-    if (!savedGrowthRecordId || savingRef.current) return;
+    if (!savedGrowthRecordId || !isCurrentSession() || savingRef.current) return;
     navigate('/sayu', { state: { filterFormat: '성장기록', openRecordId: savedGrowthRecordId } });
   };
 

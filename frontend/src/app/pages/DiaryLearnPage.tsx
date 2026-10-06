@@ -1,3 +1,4 @@
+import { auth } from '../../firebase';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -72,6 +73,11 @@ interface QuizPopup {
 }
 
 export function DiaryLearnPage() {
+  const { user } = useAuth();
+  return <DiaryLearnSession key={user?.uid || 'signed-out'} />;
+}
+
+function DiaryLearnSession() {
   const navigate = useNavigate();
   const location = useLocation();
   const fromPath = (location.state as any)?.from as string | undefined;
@@ -92,6 +98,12 @@ export function DiaryLearnPage() {
     }
   };
   const { user } = useAuth();
+  const activeRef = useRef(true);
+  useEffect(() => {
+    activeRef.current = true;
+    return () => { activeRef.current = false; };
+  }, []);
+  const isCurrentSession = () => activeRef.current && auth.currentUser?.uid === user?.uid;
   const fns = getFunctions(undefined, 'asia-northeast3');
 
   const [step, setStep] = useState<'sourceSelect' | 'list' | 'detail' | 'learn' | 'write'>('sourceSelect');
@@ -223,7 +235,7 @@ export function DiaryLearnPage() {
 
   // 영어 번역
   const handleTranslate = async () => {
-    if (!selected || !user) return;
+    if (!selected || !user || !isCurrentSession()) return;
     setTranslating(true);
     try {
       // 캐시 확인: 영어 번역이 이미 있고 본문 길이가 일치하면 재사용 (API 호출 0회)
@@ -238,6 +250,7 @@ export function DiaryLearnPage() {
       // 캐시 없거나 본문 변경 → 새로 번역
       const fn = httpsCallable(fns, 'translateToEnglish');
       const res: any = await fn({ text: selected.content });
+      if (!isCurrentSession()) return;
       const sentences: string[] = res.data.sentences || [res.data.translated];
       setTranslatedSentences(sentences);
       setActiveTab('english');
@@ -250,6 +263,7 @@ export function DiaryLearnPage() {
           _english_source_length: selected.content.length,
         });
       } catch (saveErr) {
+        if (!isCurrentSession()) return;
         console.error('영어 번역 캐시 저장 실패:', saveErr);
       }
     } catch (e) {
@@ -262,13 +276,14 @@ export function DiaryLearnPage() {
   // 직접 작성 → 영어 번역 + Firestore 저장
   const handleDirectTranslate = async () => {
     const trimmed = koreanInput.trim();
-    if (!trimmed || !user) return;
+    if (!trimmed || !user || !isCurrentSession()) return;
     setDirectTranslating(true);
     setDirectSavedRecordId(null);
     setDirectSaveFailed(false);
     try {
       const fn = httpsCallable(fns, 'translateToEnglish');
       const res: any = await fn({ text: trimmed });
+      if (!isCurrentSession()) return;
       const sentences: string[] = res.data.sentences || [res.data.translated];
 
       // 오늘 날짜
@@ -296,8 +311,10 @@ export function DiaryLearnPage() {
           _english_translated_at: new Date(),
           _english_source_length: trimmed.length,
         } as any);
+        if (!isCurrentSession()) return;
         setDirectSavedRecordId(savedId);
       } catch (saveErr) {
+        if (!isCurrentSession()) return;
         setDirectSaveFailed(true);
         console.error('직접 작성 영어일기 저장 실패:', saveErr);
       }
@@ -323,7 +340,7 @@ export function DiaryLearnPage() {
   };
 
   const handleViewEnglishRecord = () => {
-    if (!directSavedRecordId || directTranslating) return;
+    if (!directSavedRecordId || !isCurrentSession() || directTranslating) return;
     navigate('/sayu', { state: { filterFormat: '직접작성영어일기', openRecordId: directSavedRecordId } });
   };
 

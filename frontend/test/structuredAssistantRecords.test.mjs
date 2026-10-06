@@ -123,12 +123,12 @@ function growthFixture() {
   const state = { id: null, status: 'idle', creates: [], links: [], routes: [], height: '45.50', weight: '6.0', head: '35', date: '2026-09-01' };
   const savingRef = { current: false }, pendingLinkRef = { current: null }, currentDraftKeyRef = { current: '' };
   const fixtureHandlers = () => {
-    const env = { user: { uid: 'fixture-user' }, hasConsent: true, savingRef, pendingLinkRef, currentDraftKeyRef,
+    const env = { user: { uid: 'fixture-user' }, hasConsent: 'hasConsent' in state ? state.hasConsent : true, isCurrentSession: () => state.sessionActive !== false, savingRef, pendingLinkRef, currentDraftKeyRef,
       selectedId: 'child-existing', newName: '', birthdate: '', gender: '', measuredate: state.date, height: state.height, weight: state.weight, headcircum: state.head,
       selectedSubject: { name: '합성 대상' }, effectiveBirthdate: '2026-01-01', effectiveGender: 'F', savedGrowthRecordId: state.id,
       db: {}, getTodayStr: () => '2026-10-06', doc: (...parts) => parts.slice(1).join('/'),
-      firestoreService: { saveRecord: async (uid, data) => { state.creates.push(data); if (state.recordFail) throw new Error('fixture'); return 'exact-growth'; } },
-      setDoc: async (path, data) => { state.links.push({ path, data }); if (state.links.length === state.failAt) throw new Error('fixture'); },
+      firestoreService: { saveRecord: async (uid, data) => { state.creates.push(data); if (state.recordPending) await state.recordPending; if (state.recordFail) throw new Error('fixture'); return 'exact-growth'; } },
+      setDoc: async (path, data) => { state.links.push({ path, data }); if (state.linkPending && state.links.length === state.pendingAt) await state.linkPending; if (state.links.length === state.failAt) throw new Error('fixture'); },
       serverTimestamp: () => 'fixture-time', arrayUnion: value => [value], collection() {},
       setIsSaving() {}, setSavedGrowthRecordId: value => { state.id = value; }, setGrowthSaveStatus: value => { state.status = value; },
       setHeight: value => { state.height = value; }, setWeight: value => { state.weight = value; }, setHeadcircum: value => { state.head = value; }, setMeasuredate: value => { state.date = value; },
@@ -162,9 +162,9 @@ test('growth initial record failure has no view target or linkage writes', async
 function englishFixture() {
   const state = { id: null, failed: false, step: null, selected: null, routes: [] };
   const fixtureHandlers = () => handlers(read('pages/DiaryLearnPage.tsx'), ['handleDirectTranslate', 'handleViewEnglishRecord'], {
-    koreanInput: '합성 원문', user: { uid: 'fixture-user' }, fns: {}, directSavedRecordId: state.id, directTranslating: false,
-    httpsCallable: () => async () => ({ data: { sentences: ['Synthetic original.'] } }),
-    firestoreService: { saveRecord: async () => { if (state.failWrite) throw new Error('fixture'); return 'actual-english-id'; } },
+    koreanInput: '합성 원문', user: { uid: 'fixture-user' }, isCurrentSession: () => state.sessionActive !== false, fns: {}, directSavedRecordId: state.id, directTranslating: false,
+    httpsCallable: () => async () => { if (state.translationPending) await state.translationPending; return { data: { sentences: ['Synthetic original.'] } }; },
+    firestoreService: { saveRecord: async () => { state.writes = (state.writes ?? 0) + 1; if (state.savePending) await state.savePending; if (state.failWrite) throw new Error('fixture'); return 'actual-english-id'; } },
     setDirectTranslating() {}, setDirectSavedRecordId: value => { state.id = value; }, setDirectSaveFailed: value => { state.failed = value; },
     setSelected: value => { state.selected = value; }, setTranslatedSentences() {}, setActiveTab() {}, setStep: value => { state.step = value; },
     navigate: (path, options) => state.routes.push({ path, ...options }), console: { error() {} },
@@ -180,4 +180,69 @@ test('English save failure still enters learning, clears an old saved target and
   const f = englishFixture(); f.state.id = 'old-target'; f.state.failWrite = true; await f.handlers().handleDirectTranslate();
   f.handlers().handleViewEnglishRecord(); assert.equal(f.state.failed, true); assert.equal(f.state.id, null);
   assert.equal(f.state.step, 'learn'); assert.equal(f.state.selected.content, '합성 원문'); assert.equal(f.state.routes.length, 0);
+});
+
+const deferredSession = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
+test('health pending and nonboolean consent cannot start growth persistence', async () => {
+  for (const hasConsent of [null, false, 'true']) {
+    const f = growthFixture(); f.state.hasConsent = hasConsent; await f.handlers().handleSave();
+    assert.equal(f.state.creates.length, 0); assert.equal(f.state.links.length, 0);
+  }
+});
+test('account departure during growth record save prevents subsequent subject/entry writes and view publication', async () => {
+  const f = growthFixture(), pending = deferredSession(); f.state.recordPending = pending.promise;
+  const saving = f.handlers().handleSave(); f.state.sessionActive = false; pending.resolve(); await saving;
+  assert.equal(f.state.creates.length, 1); assert.equal(f.state.links.length, 0); assert.equal(f.state.id, null);
+  f.handlers().handleViewGrowthRecord(); assert.equal(f.state.routes.length, 0);
+});
+test('account departure during growth subject linkage stops the entry write', async () => {
+  const f = growthFixture(), pending = deferredSession(); f.state.linkPending = pending.promise; f.state.pendingAt = 1;
+  const saving = f.handlers().handleSave(); await new Promise(done => setImmediate(done));
+  f.state.sessionActive = false; pending.resolve(); await saving;
+  assert.equal(f.state.links.length, 1); assert.notEqual(f.state.status, 'complete');
+  f.handlers().handleViewGrowthRecord(); assert.equal(f.state.routes.length, 0);
+});
+test('late translation from a departed account cannot start an English record save or enter learning', async () => {
+  const f = englishFixture(), pending = deferredSession(); f.state.translationPending = pending.promise;
+  const translating = f.handlers().handleDirectTranslate(); f.state.sessionActive = false; pending.resolve(); await translating;
+  assert.equal(f.state.writes ?? 0, 0); assert.equal(f.state.selected, null); assert.equal(f.state.step, null);
+});
+test('late English save from a departed account cannot publish a view target', async () => {
+  const f = englishFixture(), pending = deferredSession(); f.state.savePending = pending.promise;
+  const translating = f.handlers().handleDirectTranslate(); await new Promise(done => setImmediate(done));
+  f.state.sessionActive = false; pending.resolve(); await translating;
+  assert.equal(f.state.writes, 1); assert.equal(f.state.id, null); assert.equal(f.state.step, null);
+  f.handlers().handleViewEnglishRecord(); assert.equal(f.state.routes.length, 0);
+});
+
+test('departed account cannot start a selected-diary translation or cache persistence', async () => {
+  let calls = 0, writes = 0;
+  const env = { selected: { id: 'old-id', content: '합성 원문' }, user: { uid: 'fixture-user' }, isCurrentSession: () => false,
+    setTranslating() {}, fns: {}, httpsCallable: () => async () => { calls++; }, firestoreService: { updateRecord: async () => { writes++; } } };
+  await handlers(read('pages/DiaryLearnPage.tsx'), ['handleTranslate'], env).handleTranslate();
+  assert.equal(calls, 0); assert.equal(writes, 0);
+});
+test('late selected-diary translation cannot start cache persistence after account departure', async () => {
+  const pending = deferredSession(); let active = true, writes = 0;
+  const env = { selected: { id: 'old-id', content: '합성 원문' }, user: { uid: 'fixture-user' }, isCurrentSession: () => active,
+    setTranslating() {}, fns: {}, httpsCallable: () => async () => { await pending.promise; return { data: { sentences: ['Synthetic.'] } }; },
+    firestoreService: { updateRecord: async () => { writes++; } }, console: { error() {} } };
+  const translating = handlers(read('pages/DiaryLearnPage.tsx'), ['handleTranslate'], env).handleTranslate();
+  active = false; pending.resolve(); await translating; assert.equal(writes, 0);
+});
+
+test('actual page session guards reject changed Firebase owners before React rerenders and after cleanup', () => {
+  for (const [file, health] of [['DiaryLearnPage.tsx', false], ['ChildHealthGrowthPage.tsx', true], ['SayuHealthVoidingPage.tsx', true]]) {
+    const source = read('pages/' + file);
+    const start = source.indexOf('  const activeRef = useRef(true);');
+    const guard = source.slice(start).match(/[\s\S]*?  const isCurrentSession = .*?;/)[0];
+    let cleanup; const auth = { currentUser: { uid: 'user-A' } };
+    const env = { user: { uid: 'user-A' }, auth, hasConsent: true,
+      useRef: value => ({ current: value }), useEffect: effect => { cleanup = effect(); } };
+    const create = consent => new Function(...Object.keys(env), guard + '\nreturn isCurrentSession;')(...Object.values({ ...env, hasConsent: consent }));
+    const current = create(true); assert.equal(current(), true);
+    auth.currentUser = { uid: 'user-B' }; assert.equal(current(), false);
+    auth.currentUser = { uid: 'user-A' }; cleanup(); assert.equal(current(), false);
+    if (health) for (const value of [null, false, 'true']) assert.equal(create(value)(), false);
+  }
 });
