@@ -4,7 +4,7 @@ import { ArrowLeft, Camera, Leaf, Loader2, Search, X, Save, AlertTriangle, Chevr
 import { useLocation, useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, getDocs, query, where, limit, serverTimestamp, increment, orderBy, addDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, getDocs, query, where, limit, serverTimestamp, increment, orderBy, addDoc, onSnapshot, deleteDoc, runTransaction } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,6 +15,7 @@ import { firestoreService } from '../services/firestoreService';
 import { useSubscription } from '../hooks/useSubscription';
 import { readOriginalImageMeta } from '../services/photoMetadataService';
 import { getLocationCandidateFromGps } from '../services/reverseGeocodeService';
+import { applyPlantDetectiveEdit, fingerprintPlantEntry, PLANT_EDIT_CONFLICT, type PlantDetectiveSelection } from '../utils/plantDetectiveEdit';
 
 // ===========================================
 // 응답 타입 — functions/src/index.ts detectPlantAdvanced 와 동기
@@ -448,6 +449,7 @@ export function PlantDetectivePage() {
         entryIndex?: number;
         from?: string;
         mode?: 'view' | 'edit';
+        fingerprint?: string;
       }
     | null;
   const selectedRecordId = sayuSelectedPlant?.recordId;
@@ -463,7 +465,10 @@ export function PlantDetectivePage() {
   const [result, setResult] = useState<AdvancedResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedToToday, setSavedToToday] = useState(false);
-  const [editingSavedEntryKey, setEditingSavedEntryKey] = useState<{ recordId: string; idx: number } | null>(null);
+  const isSavedEntryRoute = Boolean(sayuSelectedPlant?.recordId || sayuSelectedPlant?.mode === 'edit');
+  const [savedEntryLoadError, setSavedEntryLoadError] = useState('');
+  const [editingSavedEntryKey, setEditingSavedEntryKey] = useState<PlantDetectiveSelection | null>(null);
+  const editingSavedEntryOwnerUidRef = useRef<string | null>(null);
   const [activeTab, setActiveTab] = useState<'detect' | 'recent' | 'library' | 'diary' | 'catalog'>('detect');
   const [plantLibrary, setPlantLibrary] = useState<PlantLibraryItem[]>([]);
   const [plantDiary, setPlantDiary] = useState<PlantDiaryEntry[]>([]);
@@ -614,12 +619,19 @@ export function PlantDetectivePage() {
   }, [isAdmin, isPremium, user?.uid]);
 
   useEffect(() => {
-    if (!selectedRecordId || selectedPlantIndex === null) return;
-    if (!user?.uid) return;
+    if (!isSavedEntryRoute || !user?.uid) return;
+    if (typeof selectedRecordId !== 'string' || !selectedRecordId.trim() || selectedRecordId.includes('/')
+      || !Number.isSafeInteger(selectedPlantIndex) || (selectedPlantIndex as number) < 0) {
+      setSavedEntryLoadError('선택한 식물 기록을 찾을 수 없습니다. SAYU에서 다시 선택해 주세요.');
+      return;
+    }
 
-    const selectionKey = `${user.uid}:${selectedRecordId}:${selectedPlantIndex}`;
+    const selectionKey = `${user.uid}:${selectedRecordId}:${selectedPlantIndex}:${sayuSelectedPlant?.fingerprint || ''}`;
     if (loadedSayuSelectionKeyRef.current === selectionKey) return;
     loadedSayuSelectionKeyRef.current = selectionKey;
+    setEditingSavedEntryKey(null);
+    editingSavedEntryOwnerUidRef.current = null;
+    setSavedEntryLoadError('');
 
     let cancelled = false;
     const loadSelectedPlantDetectiveEntry = async () => {
@@ -627,11 +639,13 @@ export function PlantDetectivePage() {
         const recordSnap = await getDoc(doc(db, 'users', user.uid, 'records', selectedRecordId));
         const data = recordSnap.exists() ? recordSnap.data() : null;
         const entries = Array.isArray(data?.plantDetective) ? data.plantDetective : [];
-        const entry = entries[selectedPlantIndex];
+        const entry = entries[selectedPlantIndex as number];
         if (!entry || typeof entry !== 'object') {
-          toast.warning('선택한 식물 판독 기록을 찾을 수 없습니다.');
-          return;
+          throw new Error('선택한 식물 판독 기록을 찾을 수 없습니다.');
         }
+        const fingerprint = await fingerprintPlantEntry(entry);
+        if ((sayuSelectedPlant?.from === 'sayu' && sayuSelectedPlant?.mode === 'edit' && !sayuSelectedPlant?.fingerprint)
+          || (sayuSelectedPlant?.fingerprint && sayuSelectedPlant.fingerprint !== fingerprint)) throw new Error(PLANT_EDIT_CONFLICT);
         if (cancelled) return;
 
         const imageUrls = Array.isArray(entry.imageUrls)
@@ -719,21 +733,25 @@ export function PlantDetectivePage() {
         setObsSavedAt(null);
         setConfirmedLocation(savedLocation);
         setLocationTouched(Boolean(savedLocation));
-        setEditingSavedEntryKey({ recordId: selectedRecordId, idx: selectedPlantIndex });
+        setEditingSavedEntryKey({ recordId: selectedRecordId, idx: selectedPlantIndex as number, fingerprint });
+        editingSavedEntryOwnerUidRef.current = user.uid;
         setActiveTab('detect');
         setShowGuide(false);
         toast.success('선택한 식물 판독 기록을 열었습니다.');
       } catch (error) {
-        console.error('선택한 식물 판독 기록 조회 실패:', error);
-        toast.error('선택한 식물 판독 기록을 찾을 수 없습니다.');
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : '선택한 식물 판독 기록을 찾을 수 없습니다.';
+        setSavedEntryLoadError(message);
+        toast.error(message);
       }
     };
 
     loadSelectedPlantDetectiveEntry();
     return () => {
       cancelled = true;
+      if (loadedSayuSelectionKeyRef.current === selectionKey) loadedSayuSelectionKeyRef.current = null;
     };
-  }, [selectedRecordId, selectedPlantIndex, user?.uid]);
+  }, [selectedRecordId, selectedPlantIndex, sayuSelectedPlant?.fingerprint, isSavedEntryRoute, user?.uid]);
 
   const resetSessionState = () => {
     setResult(null);
@@ -2069,7 +2087,7 @@ export function PlantDetectivePage() {
   };
 
   const updateSelectedPlantDetectiveRecord = async () => {
-    if (!user || !editingSavedEntryKey) {
+    if (!user || !editingSavedEntryKey || editingSavedEntryOwnerUidRef.current !== user.uid) {
       toast.error('수정할 식물 기록을 찾을 수 없습니다.');
       return;
     }
@@ -2079,102 +2097,30 @@ export function PlantDetectivePage() {
     }
     setIsSaving(true);
     try {
-      const { recordId, idx } = editingSavedEntryKey;
-      const recordRef = doc(db, 'users', user.uid, 'records', recordId);
-      const recordSnap = await getDoc(recordRef);
-      const data = recordSnap.exists() ? recordSnap.data() : null;
-      const current = Array.isArray(data?.plantDetective) ? [...data.plantDetective] : [];
-      const prev = current[idx];
-      if (!prev || typeof prev !== 'object') {
-        throw new Error('수정할 식물 판독 기록을 찾을 수 없습니다.');
-      }
-
-      const updatedAt = Date.now();
-      const editedAt = new Date(updatedAt).toISOString();
-      const { name: displayName, latin: displayLatin, englishName, scientificName } = buildDisplayName();
-      const imageUrls = activePlantImageUrls.length > 0
-        ? activePlantImageUrls
-        : Array.isArray(prev.imageUrls)
-          ? prev.imageUrls.filter((url: any) => typeof url === 'string' && url.trim())
-          : typeof prev.imageUrl === 'string' && prev.imageUrl.trim()
-            ? [prev.imageUrl]
-            : [];
-      const imageMetas = activePlantImageMetas.length > 0
-        ? activePlantImageMetas
-        : imageUrls.map((url, imageIndex) => ({
-            imageUrl: url,
-            storagePath: Array.isArray(prev.storagePaths) ? String(prev.storagePaths[imageIndex] || '') : '',
-            fileName: Array.isArray(prev.fileNames) ? String(prev.fileNames[imageIndex] || '') : '',
-            uploadedAt:
-              toFiniteNumber(Array.isArray(prev.uploadedAts) ? prev.uploadedAts[imageIndex] : null) ||
-              toFiniteNumber(prev.uploadedAt) ||
-              updatedAt,
-          }));
-      const resultSaveFields = buildResultSaveFields(imageMetas, updatedAt);
-      const observation = obsObservation.trim();
-      const aiDifference = obsAiDifference.trim();
-      const memo = obsMemo.trim();
-      const userName = userConfirmedName.trim();
-      const editHistory = Array.isArray(prev.editHistory) ? prev.editHistory : [];
-      const resolvedLocation =
-        confirmedLocation.trim() ||
-        resultSaveFields.locationLabel ||
-        prev.locationLabel ||
-        prev.publicLocation ||
-        '';
-
-      current[idx] = removeUndefinedForFirestore({
-        ...prev,
-        ...resultSaveFields,
-        updatedAt,
-        editedAt,
-        editCount: editHistory.length + 1,
-        editHistory: [
-          ...editHistory,
-          {
-            editedAt,
-            previousTitle: String(prev.title || prev.plantName || ''),
-            previousUserConfirmedName: String(prev.userConfirmedName || prev.humanReportedName || ''),
-            previousEnglishName: String(prev.englishName || ''),
-            previousScientificName: String(prev.scientificName || prev.latinName || ''),
-            previousObservation: String(prev.observation || ''),
-            previousAiDifference: String(prev.aiDifference || ''),
-            previousMemo: String(prev.memo || ''),
-          },
-        ],
-        plantId: prev.plantId || activePlantDocId || '',
-        imageUrl: imageUrls[0] || prev.imageUrl || '',
-        imageUrls,
-        title: displayName,
-        plantName: displayName,
-        latinName: displayLatin,
+      const selection = editingSavedEntryKey;
+      const recordRef = doc(db, 'users', user.uid, 'records', selection.recordId);
+      const { name: displayName, englishName, scientificName } = buildDisplayName();
+      const draft = {
+        displayName,
+        userConfirmedName,
         englishName,
         scientificName,
-        userConfirmedName: userName,
-        humanReportedName: userName || prev.humanReportedName || '',
-        aiKoName: result.plantNet?.koName || result.gemini?.finalGuess || prev.aiKoName || '',
-        aiPrediction: result.plantNet?.name || result.plantId?.name || result.gemini?.finalGuess || prev.aiPrediction || '',
-        condition: result.gemini?.analysis || prev.condition || '',
-        confidence: result.gemini?.confidence || prev.confidence || 'low',
-        warningSigns: result.gemini?.warning
-          ? [result.gemini.warning]
-          : Array.isArray(prev.warningSigns)
-            ? prev.warningSigns
-            : [],
-        note: result.gemini?.warning || prev.note || '',
-        observation,
-        aiDifference,
-        memo,
-        locationLabel: resolvedLocation,
-        publicLocation: resolvedLocation,
+        observation: obsObservation,
+        aiDifference: obsAiDifference,
+        memo: obsMemo,
+        locationLabel: confirmedLocation,
+      };
+      const editedAt = Date.now();
+      const savedSelection = await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(recordRef);
+        if (!snapshot.exists()) throw new Error(PLANT_EDIT_CONFLICT);
+        const edited = await applyPlantDetectiveEdit(snapshot.data().plantDetective, selection, draft, editedAt);
+        transaction.update(recordRef, { plantDetective: edited.entries, updatedAt: serverTimestamp() });
+        return edited.selection;
       });
-
-      await updateDoc(recordRef, {
-        plantDetective: current,
-        updatedAt: serverTimestamp(),
-      });
-      setSavedToToday(true);
+      setEditingSavedEntryKey(savedSelection);
       toast.success('식물 판독 기록을 수정했습니다.');
+      returnToSayu(savedSelection);
     } catch (error: any) {
       console.error('식물 판독 기록 수정 실패:', error);
       toast.error(error?.message || '수정에 실패했습니다.');
@@ -2185,9 +2131,18 @@ export function PlantDetectivePage() {
 
   const gemini = result?.gemini;
   const showPoisonAlert = Boolean(gemini?.poisonousRisk || gemini?.warning);
-  const userConfirmSaveDisabled = isConfirming || (!result && photos.length === 0);
-  const isEditingSavedEntry = editingSavedEntryKey !== null;
-  const primarySaveDisabled = isSaving || (!isEditingSavedEntry && savedToToday);
+  const userConfirmSaveDisabled = isSavedEntryRoute || editingSavedEntryKey !== null || isConfirming || (!result && photos.length === 0);
+  const isEditingSavedEntry = isSavedEntryRoute || editingSavedEntryKey !== null;
+  const primarySaveDisabled = isSaving || (isEditingSavedEntry ? !editingSavedEntryKey || !result : savedToToday);
+  const returnToSayu = (selection: PlantDetectiveSelection | null = editingSavedEntryKey) => {
+    navigate('/sayu', {
+      replace: true,
+      state: selection ? {
+        tab: 'assistants', filterFormat: '하루식물탐정', openRecordId: selection.recordId,
+        plantDetectiveSelection: selection,
+      } : { tab: 'assistants', filterFormat: '하루식물탐정' },
+    });
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: '#FEFBE8', color: '#24301f' }}>
@@ -2213,8 +2168,9 @@ export function PlantDetectivePage() {
         >
           <button
             type="button"
-            onClick={() => navigate(-1)}
-            aria-label="뒤로가기"
+            onClick={() => isSavedEntryRoute ? returnToSayu() : navigate(-1)}
+            disabled={isSaving}
+            aria-label={isSavedEntryRoute ? "편집 취소하고 SAYU로 돌아가기" : "뒤로가기"}
             style={{
               width: 38,
               height: 38,
@@ -2239,6 +2195,12 @@ export function PlantDetectivePage() {
       </header>
 
       <main style={{ maxWidth: 880, margin: '0 auto', padding: '18px 16px 96px' }}>
+        <fieldset disabled={isSaving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        {isSavedEntryRoute && !editingSavedEntryKey && (
+          <p role={savedEntryLoadError ? 'alert' : 'status'} style={{ padding: 12, color: savedEntryLoadError ? '#9F3322' : '#4A5A2C' }}>
+            {savedEntryLoadError || '저장된 판독 기록을 불러오고 있습니다.'}
+          </p>
+        )}
         <div
           style={{
             display: 'grid',
@@ -2260,6 +2222,7 @@ export function PlantDetectivePage() {
             <button
               key={key}
               type="button"
+              disabled={isSavedEntryRoute && key !== 'detect'}
               onClick={() => {
                 setActiveTab(key as 'detect' | 'recent' | 'library' | 'diary' | 'catalog');
               }}
@@ -2307,6 +2270,7 @@ export function PlantDetectivePage() {
           <button
             type="button"
             onClick={() => setShowV1Form((v) => !v)}
+            disabled={isEditingSavedEntry}
             style={{
               width: '100%',
               display: 'flex',
@@ -2694,6 +2658,7 @@ export function PlantDetectivePage() {
             type="file"
             accept="image/*,.heic,.heif"
             multiple
+            disabled={isEditingSavedEntry}
             onChange={handleFileChange}
             style={{ display: 'none' }}
           />
@@ -3466,7 +3431,7 @@ export function PlantDetectivePage() {
                 <button
                   type="button"
                   onClick={saveAsUserConfirmed}
-                  disabled={userConfirmSaveDisabled}
+                  disabled={userConfirmSaveDisabled || isEditingSavedEntry}
                   style={{
                     marginTop: 12,
                     width: '100%',
@@ -3515,7 +3480,7 @@ export function PlantDetectivePage() {
             <ResultCard title="✍️ 직접 이름 수정·기록" accent="#15803D" bg="#F0FDF4">
               <p style={{ margin: '0 0 8px', fontSize: 12, color: '#3d4734', lineHeight: 1.55 }}>
                 AI 결과가 틀렸다면 진짜 식물 이름을 직접 입력해 주세요.<br />
-                내 도감에 정답으로 저장됩니다. 다음에 같은 식물을 찍으면 우선 보여드릴게요.
+                {isEditingSavedEntry ? '수정 저장을 누르면 선택한 판독 기록에만 반영됩니다.' : '내 도감에 정답으로 저장됩니다. 다음에 같은 식물을 찍으면 우선 보여드릴게요.'}
               </p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <input
@@ -3773,7 +3738,7 @@ export function PlantDetectivePage() {
                 lineHeight: 1.55,
               }}
             >
-              {isEditingSavedEntry ? '사유에서 불러온 식물 기록을 수정합니다' : '오늘의 관찰과 식물 정보를 함께 저장합니다'}
+              {isEditingSavedEntry ? (savedEntryLoadError || (editingSavedEntryKey ? '선택한 판독 기록을 수정합니다. 사진과 기존 AI 결과는 그대로 유지합니다.' : '저장된 판독 기록을 불러오고 있습니다.')) : '오늘의 관찰과 식물 정보를 함께 저장합니다'}
             </p>
             <button
               type="button"
@@ -3813,6 +3778,7 @@ export function PlantDetectivePage() {
         )}
           </>
         )}
+        </fieldset>
       </main>
     </div>
   );
