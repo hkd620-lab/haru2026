@@ -10,6 +10,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
+import { StructuredAssistantRecordModal } from '../components/StructuredAssistantRecordModal';
+import { useRecordReadConsent } from '../hooks/useRecordReadConsent';
+import { buildStructuredAssistantView, hasStructuredAssistantRecord, isGrowthMeasurementField, isStructuredAssistantPrefix, structuredAssistantSourceText, type StructuredAssistantPrefix } from '../utils/structuredAssistantRecords';
 import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
 import { ResultChatButton } from '../components/ResultChatButton';
 import { ResultChatModal } from '../components/ResultChatModal';
@@ -425,6 +428,7 @@ function extractPreviewKeywords(text: string): string[] {
 // 레코드 본문 필드를 하나의 문자열로 합치는 헬퍼 (AI 추출과 fallback 양쪽에서 재사용)
 function getRecordSourceText(r: any, prefix: string): string {
   if (!r) return '';
+  if (isStructuredAssistantPrefix(prefix)) return structuredAssistantSourceText(r, prefix);
   if (prefix === 'growthTimeline') {
     const items = normalizeTimelineItems(r.timelineItems);
     return [
@@ -438,6 +442,7 @@ function getRecordSourceText(r: any, prefix: string): string {
   if (typeof sayu === 'string') parts.push(sayu);
   Object.keys(r).forEach((k) => {
     if (!k.startsWith(`${prefix}_`)) return;
+    if (prefix === 'child' && hasStructuredAssistantRecord(r, 'child_measure') && isGrowthMeasurementField(k)) return;
     if (k.endsWith('_sayu') || k.endsWith('_keywords') || k.endsWith('_ai_title') || k.endsWith('_title') || k.endsWith('_polished') || k.endsWith('_polishedAt') || k.endsWith('_mode') || k.endsWith('_stats') || k.endsWith('_images') || k.endsWith('_imageMeta') || k.endsWith('_rating') || k.endsWith('_tags') || k.endsWith('_space') || k.endsWith('_style')) return;
     const v = r[k];
     if (typeof v === 'string' && v.trim()) parts.push(v);
@@ -810,6 +815,9 @@ export function SayuPage() {
   const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [records, setRecords] = useState<HaruRecord[]>([]);
+  const [recordsOwnerUid, setRecordsOwnerUid] = useState<string | undefined>();
+  const currentRecordsUidRef = useRef(user?.uid);
+  currentRecordsUidRef.current = user?.uid;
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
@@ -825,6 +833,9 @@ export function SayuPage() {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   const [timelineRefreshKey, setTimelineRefreshKey] = useState(0);
+  const healthReadConsent = useRecordReadConsent(user?.uid, 'sensitiveHealth');
+  const [structuredRecord, setStructuredRecord] = useState<{ record: HaruRecord; prefix: StructuredAssistantPrefix; ownerUid: string } | null>(null);
+  useEffect(() => { setStructuredRecord(null); }, [user?.uid]);
   // 📊 통계/합치기 모달
   const [formatStatModal, setFormatStatModal] = useState<{
     isOpen: boolean;
@@ -2145,7 +2156,9 @@ export function SayuPage() {
     setLoading(true);
     try {
       const data = await firestoreService.getRecords(user.uid);
+      if (currentRecordsUidRef.current !== user.uid) return;
       setRecords(data);
+      setRecordsOwnerUid(user.uid);
     } catch (error) {
       console.error('기록 불러오기 실패:', error);
       toast.error('기록을 불러오는데 실패했습니다.');
@@ -2218,6 +2231,7 @@ export function SayuPage() {
     '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child',
     '메모': 'memo',
     '성장타임라인': 'growthTimeline',
+    '직접작성영어일기': 'english_diary', '성장기록': 'child_measure', '배뇨일지': 'voiding',
     'HARU주식관리': 'stock',
     '주식거래일지': 'stock',
     'HARU보조장부': 'ledger',
@@ -2372,6 +2386,23 @@ export function SayuPage() {
       ? records.find((r) => r.id === recordId)
       : records.find((r) => r.date === dateStr);
     if (!record) return;
+
+    if (isStructuredAssistantPrefix(formatKey)) {
+      if (recordsOwnerUid !== user?.uid) return;
+      if (!hasStructuredAssistantRecord(record, formatKey)) {
+        toast.info('선택한 기록에 해당 형식이 없습니다.');
+        return;
+      }
+      if (formatKey !== 'english_diary' && healthReadConsent !== true) {
+        toast.info('건강 기록 화면에서 민감정보 열람 동의를 확인해 주세요.');
+        return;
+      }
+      setSayuModalState(prev => ({ ...prev, isOpen: false }));
+      setHarurawModal(prev => ({ ...prev, isOpen: false }));
+      if (user?.uid) setStructuredRecord({ record, prefix: formatKey, ownerUid: user.uid });
+      return;
+    }
+    setStructuredRecord(null);
 
     // HARUraw handling
     if (formatKey === 'haruraw') {
@@ -2568,6 +2599,8 @@ export function SayuPage() {
     const filterFormat = typeof routeState?.filterFormat === 'string' ? routeState.filterFormat.trim() : '';
     const openRecordId = typeof routeState?.openRecordId === 'string' ? routeState.openRecordId.trim() : '';
     if (!filterFormat && !openRecordId) return;
+    if (['성장기록', '배뇨일지'].includes(filterFormat) && healthReadConsent === null) return;
+    if (isStructuredAssistantPrefix(ALL_FORMAT_PREFIXES[filterFormat] || '') && recordsOwnerUid !== user?.uid) return;
 
     const routeKey = `${filterFormat}|${openRecordId}`;
     const targetTab = routeState?.tab === 'assistants' || filterFormat === '하루LAW' || filterFormat === SNS_GALMURI_LABEL ? 'assistants' : 'records';
@@ -2596,7 +2629,9 @@ export function SayuPage() {
       (async () => {
         try {
           const data = await firestoreService.getRecords(user.uid);
+          if (currentRecordsUidRef.current !== user.uid) return;
           setRecords(data);
+          setRecordsOwnerUid(user.uid);
           if (!data.some((record) => record.id === openRecordId)) {
             toast.error('저장한 메모를 찾지 못했습니다.');
             navigate('/sayu', { replace: true, state: null });
@@ -2628,7 +2663,7 @@ export function SayuPage() {
     }
     navigate('/sayu', { replace: true, state: null });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.state, user?.uid, sayuRouteRecords]);
+  }, [location.pathname, location.state, user?.uid, sayuRouteRecords, healthReadConsent, recordsOwnerUid]);
 
   const handleFormatClick = (formatKey: string, formatLabel: string, recordId?: string) => {
     if (!selectedDate) return;
@@ -2647,7 +2682,9 @@ export function SayuPage() {
     setLoading(true);
     try {
       const data = await firestoreService.getRecords(user!.uid);
+      if (currentRecordsUidRef.current !== user!.uid) return;
       setRecords(data);
+      setRecordsOwnerUid(user!.uid);
 
       if (deleted) {
         const dayRecords = data.filter((r) => r.date === currentDate);
@@ -3983,6 +4020,11 @@ export function SayuPage() {
   const hasCompletedFormatForRecord = (record: HaruRecord, prefix: string) => {
     if (isCompletedSnsStoryRecord(record)) return false;
     if (isKnowledgeWarehouseRecord(record)) return false;
+    if (isStructuredAssistantPrefix(prefix)) {
+      if (recordsOwnerUid !== user?.uid) return false;
+      if (prefix !== 'english_diary' && healthReadConsent !== true) return false;
+      return hasStructuredAssistantRecord(record, prefix);
+    }
     if (prefix === 'growthTimeline') {
       return isGrowthTimelineRecord(record) && normalizeTimelineItems((record as any).timelineItems).length > 0;
     }
@@ -3996,6 +4038,7 @@ export function SayuPage() {
     // 예: 텃밭일지를 기록만 하고 SAYU 저장을 안 한 경우에도 사유 목록에서 보이도록.
     const hasWrittenContent = Object.keys(record).some((key) =>
       key.startsWith(`${prefix}_`) &&
+      !(prefix === 'child' && hasStructuredAssistantRecord(record, 'child_measure') && isGrowthMeasurementField(key)) &&
       !META_SUFFIXES.some((suffix) => key.endsWith(suffix)) &&
       typeof record[key] === 'string' &&
       (record[key] as string).trim().length > 0,
@@ -4010,6 +4053,7 @@ export function SayuPage() {
   };
 
   const getRecordDisplayTitle = (record: HaruRecord, prefix: string, label: string) => {
+    if (isStructuredAssistantPrefix(prefix)) return buildStructuredAssistantView(record, prefix).title.slice(0, 48);
     if (prefix === 'growthTimeline') {
       return (String((record as any).title || '').trim() || label).slice(0, 48);
     }
@@ -5690,6 +5734,10 @@ export function SayuPage() {
         </div>
       )}
 
+      {structuredRecord && structuredRecord.ownerUid === user?.uid
+        && (structuredRecord.prefix === 'english_diary' || healthReadConsent === true) && (
+        <StructuredAssistantRecordModal record={structuredRecord.record} prefix={structuredRecord.prefix} onClose={() => setStructuredRecord(null)} />
+      )}
       <SayuModal
         isOpen={sayuModalState.isOpen}
         onClose={(deleted?: boolean) => handleModalClose(deleted)}
