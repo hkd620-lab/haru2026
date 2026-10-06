@@ -11,6 +11,7 @@ import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
 import { SayuModal } from '../components/SayuModal';
 import { StructuredAssistantRecordModal } from '../components/StructuredAssistantRecordModal';
+import { OriginalAssistantRecords } from '../components/OriginalAssistantRecords';
 import { useRecordReadConsent } from '../hooks/useRecordReadConsent';
 import { buildStructuredAssistantView, hasStructuredAssistantRecord, isGrowthMeasurementField, isStructuredAssistantPrefix, structuredAssistantSourceText, type StructuredAssistantPrefix } from '../utils/structuredAssistantRecords';
 import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
@@ -5404,6 +5405,7 @@ export function SayuPage() {
         })}
       </div>
 
+      {sayuTab === 'assistants' && user?.uid && <OriginalAssistantRecords key={user.uid} uid={user.uid} />}
       {renderSayuScopeTabs()}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
