@@ -1,5 +1,9 @@
 import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText, Pencil } from 'lucide-react';
 import { useState, useEffect, useRef, Fragment } from 'react';
+import { ReadingAiChat } from './ReadingAiChat';
+import { ReadingBookFields } from './ReadingBookFields';
+import { useReadingDraft } from '../hooks/useReadingDraft';
+import { applyReadingAiReference, buildPreviousReadingSummary, buildReadingSnapshot, parseReadingAiReference, readingAiReferenceText, resetReadingBookDraft } from '../services/readingAiCore';
 import { useNavigate } from 'react-router';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -574,6 +578,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     readingBookText: string;
     readingJournal: string;
     readingSayu: string;
+    readingAiContext: string;
   };
   const [knownReadingBooks, setKnownReadingBooks] = useState<KnownReadingBook[]>([]);
   const [readingEntriesByBook, setReadingEntriesByBook] = useState<Record<string, KnownReadingEntry[]>>({});
@@ -583,6 +588,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isReadingBookLocked, setIsReadingBookLocked] = useState(false);
   const [blockedBookMessage, setBlockedBookMessage] = useState<string>('');
   const isDeveloper = !!user?.uid && DEVELOPER_UIDS.includes(user.uid);
+  const [isReadingChatBusy, setIsReadingChatBusy] = useState(false);
+  const readingDraft = useReadingDraft({
+    enabled: isOpen && format === '독서사유', uid: user?.uid || '', input: recordStep === 'input',
+    formData, selectedBookId: selectedExistingBookId, entryId: editingReadingEntryId, entryDate: editingReadingEntryDate,
+  });
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -789,6 +799,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                   readingBookText: String(data.reading_book_text || ''),
                   readingJournal: String(data.reading_journal || ''),
                   readingSayu: String(data.reading_sayu || ''),
+                  readingAiContext: String(data.reading_ai_context || ''),
                 };
                 if (entry.readingBookText.trim() || entry.readingJournal.trim() || entry.readingSayu.trim()) {
                   const entries = entriesByBookId.get(bookId) || [];
@@ -832,7 +843,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
             const initTitle = String((initialData as any)?.reading_book_title || '').trim();
             const initAuthor = String((initialData as any)?.reading_author || '').trim();
             if (initTitle && initAuthor) {
-              const initId = makeReadingBookId(initTitle, initAuthor);
+              const initId = String((initialData as any)?.readingId || (initialData as any)?.readingBookId || makeReadingBookId(initTitle, initAuthor));
               const matched = list.find((b) => b.readingBookId === initId);
               if (matched && !matched.hasFinalReflection) {
                 setSelectedExistingBookId(initId);
@@ -1430,6 +1441,7 @@ ${contentValues}`,
   };
 
   const handleExtractSelectedBookText = async () => {
+    if (isReadingChatBusy) { toast.warning('AI 답변이 끝난 뒤 본문을 추가해 주세요.'); return; }
     if (selectedBookOcrFiles.length === 0) {
       toast.warning('먼저 책 본문 사진을 추가해 주세요.');
       return;
@@ -2019,11 +2031,16 @@ ${contentValues}`,
   };
 
   const closeAfterCommit = () => {
+    if (format === '독서사유') readingDraft.clear(selectedExistingBookId || makeReadingBookId(formData.reading_book_title || '', formData.reading_author || ''));
     committedCloseRef.current = true;
     onClose();
   };
 
   const handleCloseRequest = async () => {
+    if (format === '독서사유' && (isReadingChatBusy || isPolishing || isReadingFinishing || isExtractingBookText)) {
+      toast.warning('AI 처리 또는 독서장 저장이 끝난 뒤 닫아주세요.');
+      return;
+    }
     if (isUploading || isSaving || isSavingLedgerXlsx || isCleaningSessionUploadsRef.current) {
       toast.warning('사진 업로드 또는 저장이 끝난 뒤 닫아주세요.');
       return;
@@ -2842,19 +2859,14 @@ ${contentValues}`,
   };
 
   const buildCurrentReadingEntry = () => {
-    const labels: Record<string, string> = {
-      reading_book_title: '책 제목',
-      reading_author: '저자',
-      reading_book_text: '본문 내용',
-      reading_journal: '독서장',
-    };
-    return Object.entries(labels)
-      .map(([key, label]) => {
-        const value = formData[key];
-        return typeof value === 'string' && value.trim() ? `${label}: ${value.trim()}` : '';
-      })
-      .filter(Boolean)
-      .join('\n');
+    const bookId = selectedExistingBookId || makeReadingBookId(formData.reading_book_title || '', formData.reading_author || '');
+    const reference = readingAiReferenceText(formData.reading_ai_context, bookId);
+    if (!formData.reading_book_text?.trim() && !formData.reading_journal?.trim() && !reference) return '';
+    return [
+      formData.reading_journal ? `독서장(사용자가 작성): ${formData.reading_journal}` : '',
+      reference,
+      formData.reading_book_text ? `본문 내용(책 인용): ${formData.reading_book_text}` : '',
+    ].filter(Boolean).join('\n\n');
   };
 
   // 📚 독서사유 — 책 묶음 메타
@@ -2870,16 +2882,18 @@ ${contentValues}`,
     const author = String(formData.reading_author || '').trim();
     if (!title) return {};
     const startedAt = String(formData.reading_started_at || '').trim();
-    return buildReadingMetaCombined({
+    const meta = buildReadingMetaCombined({
       bookTitle: title,
       author,
       entryType,
       startedAt: startedAt || undefined,
     });
+    return selectedExistingBookId ? { ...meta, readingId: selectedExistingBookId, readingBookId: selectedExistingBookId } : meta;
   };
 
   // 📚 기존 책 선택 핸들러 — 책 제목/저자 자동 채움 + readonly + 마무리 책 차단
   const onSelectExistingBook = (bookId: string) => {
+    if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
     if (!bookId) {
       setSelectedExistingBookId('');
       setIsReadingBookLocked(false);
@@ -2894,36 +2908,33 @@ ${contentValues}`,
       setIsReadingBookLocked(false);
       return;
     }
+    if (bookId !== selectedExistingBookId) { setSelectedBookOcrFiles([]); setReadingOcrUsedCount(null); }
     setSelectedExistingBookId(bookId);
     setEditingReadingEntryId('');
     setEditingReadingEntryDate('');
     setIsReadingBookLocked(true);
     setBlockedBookMessage('');
-    setFormData((prev) => ({
-      ...prev,
-      reading_book_title: book.bookTitle,
-      reading_author: book.author,
-    }));
+    setFormData((prev) => bookId !== selectedExistingBookId
+      ? resetReadingBookDraft(prev, book.bookTitle, book.author, book.lastDate || new Date().toISOString().slice(0, 10))
+      : { ...prev, reading_book_title: book.bookTitle, reading_author: book.author });
   };
 
   // 📚 "새 책 시작" — 잠금 해제 + 책 제목/저자 비우기
   const onStartNewBook = () => {
+    if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
     setSelectedExistingBookId('');
     setEditingReadingEntryId('');
     setEditingReadingEntryDate('');
     setIsReadingBookLocked(false);
     setBlockedBookMessage('');
     setReadingBookTextMode('photo');
-    setFormData((prev) => ({
-      ...prev,
-      reading_book_title: '',
-      reading_author: '',
-      reading_book_text: '',
-      reading_journal: '',
-    }));
+    setSelectedBookOcrFiles([]);
+    setReadingOcrUsedCount(null);
+    setFormData((prev) => resetReadingBookDraft(prev, '', '', new Date().toISOString().slice(0, 10)));
   };
 
   const prepareReadingAppend = (bookId: string) => {
+    if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
     onSelectExistingBook(bookId);
     setEditingReadingEntryId('');
     setEditingReadingEntryDate('');
@@ -2932,6 +2943,7 @@ ${contentValues}`,
       ...prev,
       reading_book_text: '',
       reading_journal: '',
+      reading_ai_context: '',
     }));
     window.setTimeout(() => {
       readingJournalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2941,6 +2953,7 @@ ${contentValues}`,
   };
 
   const prepareReadingEdit = (bookId: string, entry: KnownReadingEntry, entryIndex: number) => {
+    if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
     const book = knownReadingBooks.find((b) => b.readingBookId === bookId);
     if (!book || book.hasFinalReflection) return;
 
@@ -2956,6 +2969,7 @@ ${contentValues}`,
       reading_book_text: entry.readingBookText,
       reading_journal: entry.readingJournal,
       reading_sayu: entry.readingSayu,
+      reading_ai_context: entry.readingAiContext,
       reading_note_createdAt: entry.noteCreatedAt || prev.reading_note_createdAt || '',
     }));
     setRecordStep('input');
@@ -2967,6 +2981,7 @@ ${contentValues}`,
   };
 
   const cancelReadingEdit = () => {
+    if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
     setEditingReadingEntryId('');
     setEditingReadingEntryDate('');
     setReadingBookTextMode('manual');
@@ -2975,6 +2990,7 @@ ${contentValues}`,
       reading_book_text: '',
       reading_journal: '',
       reading_sayu: '',
+      reading_ai_context: '',
     }));
     toast.info('회차 수정을 취소했습니다.');
   };
@@ -3007,7 +3023,7 @@ ${contentValues}`,
       return;
     }
     // 이미 마무리한 책이면 차단
-    const currentBookId = makeReadingBookId(bookTitle, bookAuthor);
+    const currentBookId = selectedExistingBookId || makeReadingBookId(bookTitle, bookAuthor);
     const matched = knownReadingBooks.find((b) => b.readingBookId === currentBookId);
     if (matched?.hasFinalReflection) {
       toast.warning('이미 마무리한 책입니다. 새 독서사유로 시작해 주세요.');
@@ -3043,8 +3059,9 @@ ${contentValues}`,
         if (data.readingEntryType === READING_ENTRY_TYPES.LEGACY_FINAL) return;
         const text = [
           data.reading_today_part ? `오늘 읽은 챕터: ${data.reading_today_part}` : '',
-          data.reading_book_text ? `본문 내용: ${data.reading_book_text}` : '',
-          data.reading_journal ? `독서장: ${data.reading_journal}` : '',
+          data.reading_journal ? `독서장(사용자가 작성): ${data.reading_journal}` : '',
+          readingAiReferenceText(data.reading_ai_context, currentBookId),
+          data.reading_book_text ? `본문 내용(책 인용): ${data.reading_book_text}` : '',
           data.reading_sentence ? `기억 문장: ${data.reading_sentence}` : '',
           data.reading_thought ? `떠오른 생각: ${data.reading_thought}` : '',
           data.reading_life_link ? `내 삶과 연결: ${data.reading_life_link}` : '',
@@ -3062,17 +3079,15 @@ ${contentValues}`,
         return;
       }
       entries.sort((a, b) => a.date.localeCompare(b.date));
-      const entriesText = entries
-        .map((entry, index) => `[${index + 1}] ${entry.date || '날짜 없음'}\n${entry.text}`)
-        .join('\n\n')
-        .slice(0, 4300);
+      const entriesText = buildReadingSnapshot(entries);
 
       const functions = getFunctions(undefined, 'asia-northeast3');
       const polishContentFunc = httpsCallable(functions, 'polishContent');
       const result = await polishContentFunc({
-        text: `다음은 한 권의 책 "${bookTitle}"을 읽는 동안 남긴 독서사유 누적 기록입니다.
+        text: `다음은 한 권의 책 "${bookTitle.slice(0, 200)}"을 읽는 동안 남긴 독서사유 누적 기록입니다.
 사용자가 쓰지 않은 사건, 감정, 판단을 추가하지 말고, 기록에 드러난 흐름만 차분히 분석하세요.
 문체는 HARU SAYU처럼 절제되고 사실 기반이어야 합니다.
+AI 참고 메모는 보조자료이며 사용자의 생각·경험·판단으로 바꾸지 마세요. 사용자가 실제로 던진 질문과 직접 쓴 독서장, 생각의 변화에 초점을 맞추세요.
 
 포함할 내용:
 1. 독서 흐름 요약
@@ -3115,7 +3130,7 @@ ${entriesText}`,
       return;
     }
     // 마무리한 책 차단
-    const currentBookId = makeReadingBookId(bookTitle, bookAuthor);
+    const currentBookId = selectedExistingBookId || makeReadingBookId(bookTitle, bookAuthor);
     const matched = knownReadingBooks.find((b) => b.readingBookId === currentBookId);
     if (matched?.hasFinalReflection) {
       toast.warning('이미 마무리한 책입니다. 새 독서사유로 시작해 주세요.');
@@ -3124,8 +3139,9 @@ ${entriesText}`,
     }
 
     const contentValues = [
-      formData.reading_book_text ? `본문 내용:\n${formData.reading_book_text}` : '',
-      formData.reading_journal ? `독서장:\n${formData.reading_journal}` : '',
+      formData.reading_journal ? `독서장(사용자가 작성):\n${formData.reading_journal}` : '',
+      readingAiReferenceText(formData.reading_ai_context, currentBookId),
+      formData.reading_book_text ? `본문 내용(책 인용):\n${formData.reading_book_text}` : '',
     ].filter((v) => typeof v === 'string' && v.trim()).join('\n\n');
     if (!contentValues.trim()) {
       toast.error('본문 내용이나 독서장을 한 줄이라도 작성해 주세요.');
@@ -3145,10 +3161,11 @@ AI 다듬기 강도 6 수준(10단계 중 6)으로 다듬어 주세요 — 사�
 2. 원문에 없는 사실·감정·해석을 추가하지 마세요. 책 인용 문장은 원문 그대로 보존.
 3. 짧은 글이어도 강제로 늘리지 말 것. 한 줄이면 한 줄로 정돈.
 4. 공백 제외 2500자 이내.
+5. 사용자 질문과 직접 쓴 생각이 중심입니다. AI 참고 메모는 사용자의 생각이 아니므로 1인칭 의견으로 바꾸지 말고 출처를 구분하세요.
 
-책: ${bookTitle}${bookAuthor ? ` / 저자: ${bookAuthor}` : ''}
+책: ${bookTitle.slice(0, 200)}${bookAuthor ? ` / 저자: ${bookAuthor.slice(0, 120)}` : ''}
 
-${contentValues}`,
+${contentValues.slice(0, 4100)}`,
         format: 'reading',
         mode: 'PREMIUM',
       });
@@ -3160,6 +3177,7 @@ ${contentValues}`,
 
       const updateData: Record<string, any> = {
         ...formData,
+        reading_ai_context: JSON.stringify(parseReadingAiReference(formData.reading_ai_context, currentBookId)),
         _recordId: targetRecordId,
         ...(editingReadingEntryDate ? { _recordDate: editingReadingEntryDate } : {}),
         reading_started_at: formData.reading_started_at || startedAt,
@@ -3200,6 +3218,7 @@ ${contentValues}`,
     const finalSayu = `${readingAnalysis.trim()}\n\n[자기성찰 답변]\n${answers}`.trim();
     const updateData: Record<string, any> = {
       ...formData,
+      reading_ai_context: JSON.stringify(parseReadingAiReference(formData.reading_ai_context, selectedExistingBookId || makeReadingBookId(formData.reading_book_title || '', formData.reading_author || ''))),
       [imagesKey]: JSON.stringify(uploadedImages),
       [imageMetaKey]: getUploadedImageMetaForSave(),
       [`${prefix}_style`]: recordStyle,
@@ -3349,6 +3368,7 @@ ${contentValues}`,
             </div>
             <button
               onClick={handleCloseRequest}
+              aria-label="닫기"
               style={{
                 background: 'none',
                 border: 'none',
@@ -3392,6 +3412,24 @@ ${contentValues}`,
 
           {/* Content */}
           {/* Step 1 — 공통 선택 화면 (독서사유는 이어작성/새작성 분기) */}
+          {format === '독서사유' && readingDraft.recoverable && recordStep === 'select' && (
+            <div role="status" style={{ marginBottom: 12, padding: 12, border: '1px solid #d0dff0', borderRadius: 8 }}>
+              <p style={{ fontSize: 13 }}>이 기기에 저장 전 독서 초안이 있습니다: {readingDraft.recoverable.formData.reading_book_title || '제목 없음'}</p>
+              <button type="button" onClick={() => {
+                const draft = readingDraft.recoverable;
+                if (!draft) return;
+                const id = draft.selectedBookId || makeReadingBookId(draft.formData.reading_book_title || '', draft.formData.reading_author || '');
+                if (knownReadingBooks.find((book) => book.readingBookId === id)?.hasFinalReflection) { toast.warning('이미 마무리한 책의 초안입니다. 새 독서사유를 시작해 주세요.'); return; }
+                setFormData(draft.formData); setSelectedExistingBookId(draft.selectedBookId);
+                setIsReadingBookLocked(!!draft.selectedBookId); setEditingReadingEntryId(draft.entryId); setEditingReadingEntryDate(draft.entryDate);
+                setRecordStep('input'); readingDraft.dismissRecovery();
+              }}>독서 초안 이어쓰기</button>
+              <button type="button" style={{ marginLeft: 10 }} onClick={readingDraft.dismissRecovery}>새로 작성</button>
+              <p style={{ fontSize: 12 }}>본문·독서장·대화는 이 기기에 보관하며 7일 동안 이어쓸 수 있습니다. 모달을 닫아도 SAYU에 자동 저장되지 않습니다.</p>
+            </div>
+          )}
+          {format === '독서사유' && readingDraft.storageError && <p role="alert">이 기기에 독서 초안을 보관할 수 없습니다. 닫기 전에 저장해 주세요.</p>}
+
           {recordStep === 'select' && format === '독서사유' && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
               <p style={{ textAlign: 'center', fontSize: '14px', fontWeight: 600, color: '#1A3C6E', marginBottom: '4px' }}>
@@ -3432,14 +3470,7 @@ ${contentValues}`,
                     setSelectedExistingBookId('');
                     setIsReadingBookLocked(false);
                     setBlockedBookMessage('');
-                    setFormData((prev) => ({
-                      ...prev,
-                      reading_book_title: '',
-                      reading_author: '',
-                      reading_started_at: new Date().toISOString().slice(0, 10),
-                      reading_book_text: '',
-                      reading_journal: '',
-                    }));
+                    setFormData((prev) => resetReadingBookDraft(prev, '', '', new Date().toISOString().slice(0, 10)));
                     setRecordStep('input');
                   }}
                   style={{
@@ -3639,6 +3670,15 @@ ${contentValues}`,
                   />
                 </div>
               )}
+
+              {format === '독서사유' && <ReadingBookFields
+                title={formData.reading_book_title || ''} author={formData.reading_author || ''}
+                locked={isReadingBookLocked} disabled={isReadingChatBusy || isExtractingBookText || isPolishing || isSaving || isReadingFinishing}
+                onChange={(key, value) => {
+                  handleChange(key, value);
+                  checkFinalReflectionBlock(key === 'reading_book_title' ? value : formData.reading_book_title || '', key === 'reading_author' ? value : formData.reading_author || '');
+                }}
+              />}
 
               {/* 📚 독서사유 — 새 책 / 기존 책 이어쓰기 선택 UI */}
               {format === '독서사유' && (
@@ -3944,6 +3984,8 @@ ${contentValues}`,
                     <textarea
                       value={formData.reading_book_text || ''}
                       onChange={(e) => handleChange('reading_book_text', e.target.value)}
+                      disabled={isPolishing || isSaving || isReadingFinishing}
+                      aria-label="현재 읽는 본문"
                       placeholder={readingBookTextMode === 'photo'
                         ? '사진에서 추출된 본문 텍스트가 여기에 들어옵니다.'
                         : '읽은 본문 내용을 직접 입력하세요.'}
@@ -3965,6 +4007,31 @@ ${contentValues}`,
                     />
                   </div>
                 </div>
+              )}
+
+              {format === '독서사유' && (
+                <ReadingAiChat
+                  key={`${user?.uid || ''}:${selectedExistingBookId || makeReadingBookId(formData.reading_book_title || '', formData.reading_author || '')}:${editingReadingEntryId}`}
+                  uid={user?.uid || ''}
+                  bookId={selectedExistingBookId || makeReadingBookId(formData.reading_book_title || '', formData.reading_author || '')}
+                  entryId={editingReadingEntryId}
+                  context={{
+                    bookTitle: formData.reading_book_title || '', author: formData.reading_author || '',
+                    currentBookText: formData.reading_book_text || '', readingJournal: formData.reading_journal || '',
+                    previousReadingSummary: buildPreviousReadingSummary((readingEntriesByBook[selectedExistingBookId || makeReadingBookId(formData.reading_book_title || '', formData.reading_author || '')] || []).filter((entry) => entry.id !== editingReadingEntryId)),
+                  }}
+                  reference={formData.reading_ai_context}
+                  disabled={isSaving || isPolishing || isReadingFinishing || isExtractingBookText || !!blockedBookMessage}
+                  onBusy={setIsReadingChatBusy}
+                  onApply={(selected, memo) => {
+                    const bookId = selectedExistingBookId || makeReadingBookId(formData.reading_book_title || '', formData.reading_author || '');
+                    const applied = applyReadingAiReference(formData.reading_journal || '', bookId, selected, memo);
+                    setFormData((prev) => ({ ...prev, reading_journal: applied.journal, reading_ai_context: JSON.stringify(applied.reference) }));
+                    toast.info('독서장에 질문과 별도 AI 참고자료를 반영했습니다. 내용을 확인하고 저장해 주세요.');
+                  }}
+                  onClearReference={() => handleChange('reading_ai_context', '')}
+                  onAddThought={() => { readingJournalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); readingJournalRef.current?.focus(); }}
+                />
               )}
 
               {(format === '육아일기' || format === '텃밭일지' || format === '성장기록') && (
@@ -5709,7 +5776,7 @@ ${contentValues}`,
                         )}
                       </div>
                     ) : fields
-                      .filter((field) => !(format === '독서사유' && field.key === 'reading_book_text'))
+                      .filter((field) => !(format === '독서사유' && ['reading_book_text', 'reading_book_title', 'reading_author'].includes(field.key)))
                       .map((field) => {
                         // 📚 독서사유 — 이어쓰기 모드면 책 제목·저자 readonly
                         const isReadingBookField =
@@ -5728,6 +5795,8 @@ ${contentValues}`,
                             </label>
                             <textarea
                               ref={field.key === 'reading_journal' ? readingJournalRef : undefined}
+                              aria-label={field.key === 'reading_journal' ? '내 독서장' : undefined}
+                              disabled={format === '독서사유' && (isPolishing || isSaving || isReadingFinishing)}
                               value={formData[field.key] || ''}
                               onChange={(e) => {
                                 handleChange(field.key, e.target.value);
@@ -5743,6 +5812,7 @@ ${contentValues}`,
                               readOnly={isLocked}
                               style={{
                                 width: '100%', padding: '12px 16px', fontSize: 14,
+                                boxSizing: format === '독서사유' ? 'border-box' : undefined,
                                 border: '1px solid #e5e5e5', borderRadius: 8,
                                 backgroundColor: isLocked ? '#f3f4f6' : '#fff',
                                 color: isLocked ? '#6b7280' : '#333',
@@ -6270,7 +6340,7 @@ ${contentValues}`,
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <button
                   onClick={handleSaveChapterNote}
-                  disabled={isPolishing || isSaving || isReadingFinishing}
+                  disabled={isReadingChatBusy || isExtractingBookText || isPolishing || isSaving || isReadingFinishing}
                   style={{
                     padding: '12px 16px',
                     fontSize: 14,
@@ -6299,7 +6369,7 @@ ${contentValues}`,
                 </button>
                 <button
                   onClick={isEditingReadingEntry ? cancelReadingEdit : handleReadingFinishClick}
-                  disabled={isReadingFinishing || isSaving || isPolishing}
+                  disabled={isReadingChatBusy || isExtractingBookText || isReadingFinishing || isSaving || isPolishing}
                   style={{
                     padding: '12px 16px',
                     fontSize: 14,
