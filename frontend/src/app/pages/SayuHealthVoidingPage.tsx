@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, CartesianGrid,
@@ -85,6 +85,7 @@ export function SayuHealthVoidingPage() {
   // 원버튼 입력 state
   const [amountInput, setAmountInput] = useState('');
   const [isSavingEntry, setIsSavingEntry] = useState(false);
+  const writeRef = useRef(false);
 
   const closeToOrigin = () => {
     if (fromPath) { navigate(fromPath); return; }
@@ -145,7 +146,8 @@ export function SayuHealthVoidingPage() {
 
   // 원버튼 빠른 기록
   const handleQuickRecord = async () => {
-    if (!user?.uid || isSavingEntry) return;
+    if (!user?.uid || loading || writeRef.current) return;
+    writeRef.current = true;
     setIsSavingEntry(true);
     try {
       const now = new Date();
@@ -161,32 +163,41 @@ export function SayuHealthVoidingPage() {
       const existingEntries = todayRecord ? parseVoidingRecord(todayRecord).entries : [];
       const updatedEntries = [...existingEntries, newEntry].sort((a,b) => a.time.localeCompare(b.time));
       if (todayRecord) {
-        await firestoreService.updateRecord(user.uid, today, { voiding_entries: JSON.stringify(updatedEntries) } as any);
+        await firestoreService.updateRecord(user.uid, todayRecord.id, { voiding_entries: JSON.stringify(updatedEntries) } as any);
+        setRecords(prev => prev.map(record => record.id === todayRecord.id
+          ? { ...record, voiding_entries: JSON.stringify(updatedEntries) } : record));
       } else {
-        await firestoreService.saveRecord(user.uid, {
+        const recordData = {
           formats: ['배뇨일지'],
           date: today,
           title: `${today} 배뇨일지`,
           voiding_bedtime: '22:30',
           voiding_waketime: '06:30',
           voiding_entries: JSON.stringify(updatedEntries),
-        } as any);
+        };
+        const recordId = await firestoreService.saveRecord(user.uid, recordData as any);
+        setRecords(prev => [{ ...recordData, id: recordId } as HaruRecord, ...prev]);
       }
-      await loadRecords(user.uid);
       setAmountInput('');
       toast.success(`${time} 기록됐습니다.`);
     } catch (e) {
       console.error(e);
       toast.error('저장 실패');
     } finally {
+      writeRef.current = false;
       setIsSavingEntry(false);
     }
   };
 
   const handleGenerateSayu = async () => {
-    if (!user?.uid || isGeneratingSayu) return;
+    if (!user?.uid || loading || writeRef.current) return;
+    if (!todayRecord?.id || todayEntries.length === 0) {
+      toast.error('오늘 배뇨 기록을 먼저 저장해 주세요.');
+      return;
+    }
+    writeRef.current = true;
     setIsGeneratingSayu(true);
-    const today = getTodayStr();
+    const recordId = todayRecord.id;
     try {
       const statsText = `총 음료 섭취량 ${stats.totalDrinkMl}ml, 총 배뇨량 ${stats.totalVoidMl}ml, 주간 배뇨 ${stats.dayVoidMl}ml(${stats.dayVoidCount}회), 야간 배뇨 ${stats.nightVoidMl}ml(${stats.nightVoidCount}회), 야간뇨 비율 ${stats.nightRatioPercent}%, 총 배뇨 횟수 ${stats.totalVoidCount}회, 취침 ${todayBedtime} 기상 ${todayWaketime}`;
       const fns = getFunctions(undefined, 'asia-northeast3');
@@ -197,13 +208,15 @@ export function SayuHealthVoidingPage() {
         toast.error('AI 해석 검증 실패: 계산값과 불일치합니다.');
         return;
       }
-      await firestoreService.updateRecord(user.uid, today, { voiding_sayu: generated } as any);
+      await firestoreService.updateRecord(user.uid, recordId, { voiding_sayu: generated } as any);
+      setRecords(prev => prev.map(record => record.id === recordId ? { ...record, voiding_sayu: generated } : record));
       setVoidingSayuText(generated);
       toast.success('AI 해석이 저장되었습니다.');
     } catch (e) {
       console.error(e);
       toast.error('AI 해석 생성에 실패했습니다.');
     } finally {
+      writeRef.current = false;
       setIsGeneratingSayu(false);
     }
   };
