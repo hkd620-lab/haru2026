@@ -17,7 +17,7 @@ function fixture(initial = []) {
   const handlers = () => {
     const todayRecord = state.records.find(r => r.date === today) ?? null;
     const env = {
-      user: { uid: 'fixture-user' }, loading: state.loading, writeRef: busy, amountInput: state.input, todayRecord,
+      user: { uid: 'fixture-user' }, hasConsent: state.hasConsent !== false, loading: state.loading, writeRef: busy, amountInput: state.input, todayRecord,
       todayEntries: todayRecord ? JSON.parse(todayRecord.voiding_entries) : [], todayBedtime: '22:30', todayWaketime: '06:30',
       stats: {}, getTodayStr: () => today, isSayuSafe: text => text === '합성 해석',
       setIsSavingEntry() {}, setIsGeneratingSayu() {}, setVoidingSayuText() {},
@@ -55,6 +55,12 @@ test('loading blocks writes and analysis; missing today record blocks analysis b
   const f = fixture(); f.state.loading = true;
   await f.handlers().handleQuickRecord(); await f.handlers().handleGenerateSayu();
   f.state.loading = false; await f.handlers().handleGenerateSayu();
+  assert.equal(f.state.calls, 0); assert.equal(f.state.creates.length, 0); assert.equal(f.state.updates.length, 0);
+});
+
+test('missing health consent blocks record writes and interpretation calls', async () => {
+  const f = fixture([original]); f.state.hasConsent = false;
+  await f.handlers().handleQuickRecord(); await f.handlers().handleGenerateSayu();
   assert.equal(f.state.calls, 0); assert.equal(f.state.creates.length, 0); assert.equal(f.state.updates.length, 0);
 });
 

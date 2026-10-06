@@ -13,6 +13,8 @@ import { PageHeaderActions } from '../components/PageHeaderActions';
 import { calcVoidingStats } from '../utils/voidingStats';
 import type { VoidingEntry, VoidingStats } from '../utils/voidingStats';
 import { exportVoidingToXlsx } from '../services/voidingExportService';
+import { useSensitiveConsent } from '../hooks/useSensitiveConsent';
+import { SensitiveConsentGate } from '../components/SensitiveConsentGate';
 
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
 
@@ -73,6 +75,7 @@ export function SayuHealthVoidingPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { hasConsent, isSaving: isSavingConsent, grantConsent } = useSensitiveConsent('sensitiveHealth');
   const fromPath = (location.state as any)?.from as string | undefined;
 
   const [records, setRecords] = useState<HaruRecord[]>([]);
@@ -102,10 +105,10 @@ export function SayuHealthVoidingPage() {
 
   // 레코드 로드 (최근 30일)
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid || hasConsent !== true) return;
     setLoading(true);
     loadRecords(user.uid).catch(console.error).finally(() => setLoading(false));
-  }, [user?.uid]);
+  }, [user?.uid, hasConsent]);
 
   // 오늘 레코드
   const todayRecord = useMemo(() => records.find(r => r.date === getTodayStr()) ?? null, [records]);
@@ -144,9 +147,14 @@ export function SayuHealthVoidingPage() {
 
   const hasAnyRecord = records.length > 0;
 
+  const handleViewVoidingRecord = () => {
+    if (!todayRecord?.id || writeRef.current || loading) return;
+    navigate('/sayu', { state: { filterFormat: '배뇨일지', openRecordId: todayRecord.id } });
+  };
+
   // 원버튼 빠른 기록
   const handleQuickRecord = async () => {
-    if (!user?.uid || loading || writeRef.current) return;
+    if (!user?.uid || hasConsent !== true || loading || writeRef.current) return;
     writeRef.current = true;
     setIsSavingEntry(true);
     try {
@@ -190,7 +198,7 @@ export function SayuHealthVoidingPage() {
   };
 
   const handleGenerateSayu = async () => {
-    if (!user?.uid || loading || writeRef.current) return;
+    if (!user?.uid || hasConsent !== true || loading || writeRef.current) return;
     if (!todayRecord?.id || todayEntries.length === 0) {
       toast.error('오늘 배뇨 기록을 먼저 저장해 주세요.');
       return;
@@ -243,6 +251,9 @@ export function SayuHealthVoidingPage() {
 
   // ─── 렌더링 ────────────────────────────────────────────────────────────────
 
+  if (hasConsent !== true) {
+    return <SensitiveConsentGate category="health" onAgree={grantConsent} isSaving={isSavingConsent} />;
+  }
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"
       style={{ minHeight: 'calc(100vh - 56px - 80px)' }}>
@@ -298,6 +309,7 @@ export function SayuHealthVoidingPage() {
           </div>
 
           {/* 오늘 항목 리스트 */}
+          {todayRecord && <button type="button" onClick={handleViewVoidingRecord} disabled={isSavingEntry || isGeneratingSayu} style={{ width: '100%', padding: 12, marginBottom: 12 }}>나의 기록에서 보기</button>}
           {todayEntries.length > 0 && (
             <div style={cardStyle}>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#0369a1', marginBottom: 10 }}>

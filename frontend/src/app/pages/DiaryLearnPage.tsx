@@ -103,6 +103,8 @@ export function DiaryLearnPage() {
   // 직접 작성용 상태
   const [koreanInput, setKoreanInput] = useState('');
   const [directTranslating, setDirectTranslating] = useState(false);
+  const [directSavedRecordId, setDirectSavedRecordId] = useState<string | null>(null);
+  const [directSaveFailed, setDirectSaveFailed] = useState(false);
   const [translatedSentences, setTranslatedSentences] = useState<string[]>([]);
   const [showOriginalText, setShowOriginalText] = useState(false);
   const [showGrammarDetails, setShowGrammarDetails] = useState(false);
@@ -262,6 +264,8 @@ export function DiaryLearnPage() {
     const trimmed = koreanInput.trim();
     if (!trimmed || !user) return;
     setDirectTranslating(true);
+    setDirectSavedRecordId(null);
+    setDirectSaveFailed(false);
     try {
       const fn = httpsCallable(fns, 'translateToEnglish');
       const res: any = await fn({ text: trimmed });
@@ -279,7 +283,7 @@ export function DiaryLearnPage() {
 
       // Firestore에 저장 (실패해도 학습은 계속 진행)
       try {
-        await firestoreService.saveRecord(user.uid, {
+        const savedId = await firestoreService.saveRecord(user.uid, {
           id: recordId,
           date: dateStr,
           formats: ['직접작성영어일기' as any],
@@ -292,7 +296,9 @@ export function DiaryLearnPage() {
           _english_translated_at: new Date(),
           _english_source_length: trimmed.length,
         } as any);
+        setDirectSavedRecordId(savedId);
       } catch (saveErr) {
+        setDirectSaveFailed(true);
         console.error('직접 작성 영어일기 저장 실패:', saveErr);
       }
 
@@ -314,6 +320,11 @@ export function DiaryLearnPage() {
     } finally {
       setDirectTranslating(false);
     }
+  };
+
+  const handleViewEnglishRecord = () => {
+    if (!directSavedRecordId || directTranslating) return;
+    navigate('/sayu', { state: { filterFormat: '직접작성영어일기', openRecordId: directSavedRecordId } });
   };
 
   // TTS
@@ -800,6 +811,10 @@ export function DiaryLearnPage() {
         {/* 학습 화면 */}
         {step === 'learn' && selected && (
           <div>
+            {selected.format === '직접작성' && directSaveFailed && <p role="status">번역은 완료됐지만 기록 저장에 실패했습니다. 학습은 계속할 수 있습니다.</p>}
+            {selected.format === '직접작성' && directSavedRecordId && (
+              <button type="button" onClick={handleViewEnglishRecord} style={{ padding: 12, marginBottom: 16 }}>나의 기록에서 보기</button>
+            )}
             {/* 한국어/영어 탭 */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
               {(['korean', 'english'] as const).map(tab => (

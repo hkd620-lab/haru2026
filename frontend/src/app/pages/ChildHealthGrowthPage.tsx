@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { collection, doc, getDocs, query, setDoc, serverTimestamp, arrayUnion, where } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -52,6 +52,12 @@ export function ChildHealthGrowthPage() {
   const [headcircum, setHeadcircum] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [savedGrowthRecordId, setSavedGrowthRecordId] = useState<string | null>(null);
+  const [growthSaveStatus, setGrowthSaveStatus] = useState<'idle' | 'complete' | 'partial'>('idle');
+  const pendingLinkRef = useRef<{ uid: string; draftKey: string; link: () => Promise<void> } | null>(null);
+  const currentDraftKeyRef = useRef('');
+  currentDraftKeyRef.current = JSON.stringify([selectedId, newName, birthdate, gender, measuredate, height, weight, headcircum]);
 
   // 성장대상 목록 로드
   useEffect(() => {
@@ -139,18 +145,34 @@ export function ChildHealthGrowthPage() {
   };
 
   const handleSave = async () => {
-    if (!user?.uid) return;
+    if (!user?.uid || !hasConsent || savingRef.current) return;
+    const draftKey = JSON.stringify([selectedId, newName, birthdate, gender, measuredate, height, weight, headcircum]);
+    const pendingLink = pendingLinkRef.current;
+    if (pendingLink && pendingLink.uid !== user.uid) return;
     const subjectName = newName.trim() || selectedSubject?.name || '';
-    if (!subjectName) {
+    if (!pendingLink && !subjectName) {
       toast.warning('아이 이름을 입력하거나 선택해 주세요.');
       return;
     }
-    if (!height && !weight && !headcircum) {
+    if (!pendingLink && !height && !weight && !headcircum) {
       toast.warning('키, 몸무게, 머리둘레 중 하나 이상 입력해 주세요.');
       return;
     }
+    savingRef.current = true;
     setIsSaving(true);
     try {
+      if (pendingLink) {
+        await pendingLink.link();
+        pendingLinkRef.current = null;
+        setGrowthSaveStatus('complete');
+        if (pendingLink.draftKey === currentDraftKeyRef.current) {
+          setHeight(''); setWeight(''); setHeadcircum(''); setMeasuredate(getTodayStr());
+        }
+        toast.success('저장한 성장기록의 대상 연결을 완료했습니다.');
+        return;
+      }
+      setGrowthSaveStatus('idle');
+      setSavedGrowthRecordId(null);
       const today = getTodayStr();
       const subjectId = selectedId || doc(collection(db, 'users', user.uid, 'growthSubjects')).id;
       const recordFields: Record<string, string> = {
@@ -173,56 +195,73 @@ export function ChildHealthGrowthPage() {
         ...(effectiveGender ? { growthSubjectGender: effectiveGender } : {}),
         ...recordFields,
       });
+      setSavedGrowthRecordId(recordId);
 
       // growthSubjects 문서 upsert
-      await setDoc(
-        doc(db, 'users', user.uid, 'growthSubjects', subjectId),
-        {
-          subjectType: 'child',
-          name: subjectName,
-          ...(effectiveBirthdate ? { birthdate: effectiveBirthdate } : {}),
-          ...(effectiveGender ? { gender: effectiveGender } : {}),
-          ...(selectedId ? {} : { createdAt: serverTimestamp() }),
-          updatedAt: serverTimestamp(),
-          latestRecordDate: today,
-          linkedRecordDates: arrayUnion(today),
-        },
-        { merge: true },
-      );
+      let subjectLinked = false;
+      const link = async () => {
+        if (!subjectLinked) await setDoc(
+          doc(db, 'users', user.uid, 'growthSubjects', subjectId),
+          {
+            subjectType: 'child',
+            name: subjectName,
+            ...(effectiveBirthdate ? { birthdate: effectiveBirthdate } : {}),
+            ...(effectiveGender ? { gender: effectiveGender } : {}),
+            ...(selectedId ? {} : { createdAt: serverTimestamp() }),
+            updatedAt: serverTimestamp(),
+            latestRecordDate: today,
+            linkedRecordDates: arrayUnion(today),
+          },
+          { merge: true },
+        );
+        subjectLinked = true;
 
-      // entries 서브컬렉션
-      const memoLines = [
-        height ? `키 ${height}cm` : '',
-        weight ? `몸무게 ${weight}kg` : '',
-        headcircum ? `머리둘레 ${headcircum}cm` : '',
-      ].filter(Boolean);
-      await setDoc(
-        doc(db, 'users', user.uid, 'growthSubjects', subjectId, 'entries', recordId),
-        {
-          recordDate: today,
-          recordId,
-          subjectType: 'child',
-          subjectName: subjectName,
-          ...(effectiveBirthdate ? { subjectBirthdate: effectiveBirthdate } : {}),
-          ...(effectiveGender ? { subjectGender: effectiveGender } : {}),
-          memo: memoLines.join(' / '),
-          createdAt: serverTimestamp(),
-          sourceFormat: '성장기록',
-        },
-        { merge: true },
-      );
+        // entries 서브컬렉션
+        const memoLines = [
+          height ? `키 ${height}cm` : '',
+          weight ? `몸무게 ${weight}kg` : '',
+          headcircum ? `머리둘레 ${headcircum}cm` : '',
+        ].filter(Boolean);
+        await setDoc(
+          doc(db, 'users', user.uid, 'growthSubjects', subjectId, 'entries', recordId),
+          {
+            recordDate: today,
+            recordId,
+            subjectType: 'child',
+            subjectName: subjectName,
+            ...(effectiveBirthdate ? { subjectBirthdate: effectiveBirthdate } : {}),
+            ...(effectiveGender ? { subjectGender: effectiveGender } : {}),
+            memo: memoLines.join(' / '),
+            createdAt: serverTimestamp(),
+            sourceFormat: '성장기록',
+          },
+          { merge: true },
+        );
+      };
+      pendingLinkRef.current = { uid: user.uid, draftKey, link };
+      await link();
+      pendingLinkRef.current = null;
+      setGrowthSaveStatus('complete');
 
       toast.success('성장기록이 저장되었습니다!');
-      setHeight('');
-      setWeight('');
-      setHeadcircum('');
-      setMeasuredate(getTodayStr());
+      if (draftKey === currentDraftKeyRef.current) {
+        setHeight(''); setWeight(''); setHeadcircum(''); setMeasuredate(getTodayStr());
+      }
     } catch (e) {
       console.error('성장기록 저장 실패:', e);
-      toast.error('저장에 실패했습니다.');
+      if (pendingLinkRef.current) {
+        setGrowthSaveStatus('partial');
+        toast.warning('기록은 저장됐지만 성장대상 연결이 완료되지 않았습니다. 연결을 다시 시도해 주세요.');
+      } else toast.error('저장에 실패했습니다.');
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
+  };
+
+  const handleViewGrowthRecord = () => {
+    if (!savedGrowthRecordId || savingRef.current) return;
+    navigate('/sayu', { state: { filterFormat: '성장기록', openRecordId: savedGrowthRecordId } });
   };
 
   const inputStyle: React.CSSProperties = {
@@ -432,8 +471,10 @@ export function ChildHealthGrowthPage() {
             cursor: isSaving ? 'default' : 'pointer',
           }}
         >
-          {isSaving ? '저장 중...' : '저장하기'}
+          {isSaving ? '저장 중...' : growthSaveStatus === 'partial' ? '성장대상 연결 다시 시도' : '저장하기'}
         </button>
+        {growthSaveStatus === 'partial' && <p role="status">기록은 저장됐지만 성장대상 연결은 미완료입니다. 다시 시도하면 같은 기록의 연결만 진행합니다.</p>}
+        {savedGrowthRecordId && <button type="button" onClick={handleViewGrowthRecord} disabled={isSaving} style={{ width: '100%', padding: 12, marginTop: 10 }}>나의 기록에서 보기</button>}
 
       </div>
     </div>
