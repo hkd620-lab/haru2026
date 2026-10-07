@@ -1,0 +1,5 @@
+/* 격리 하네스 전용 — 이 서버에는 한글 글꼴이 없어 스크린샷이 깨지므로 Noto Sans KR로 통일한다.
+   (운영은 Pretendard를 쓴다. 글자 폭·줄바꿈이 실기기와 조금 다를 수 있다.) */
+*, *::before, *::after {
+  font-family: 'Noto Sans KR', sans-serif !important;
+}

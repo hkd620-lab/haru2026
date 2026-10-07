@@ -1,0 +1,13 @@
+{
+  "name": "persona-sim",
+  "private": true,
+  "type": "module",
+  "description": "HARU2026 가상사용자(페르소나) 격리 시뮬레이션 하네스 — 운영 Firebase·AI에 연결하지 않는다",
+  "scripts": {
+    "sim": "node runner/run.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/noto-sans-kr": "^5.2.0",
+    "playwright-core": "^1.56.1"
+  }
+}
