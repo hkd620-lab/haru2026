@@ -2,13 +2,13 @@
 // 원칙: 실제 사용자처럼 "홈 → 형식 카드 → 작성 → 저장 → SAYU" 순서로 화면을 눌러서 쓴다.
 //       (주소창으로 /record 에 바로 들어가면 뒤로 갈 곳이 없어 닫기 동작이 달라진다.)
 import path from 'node:path';
-import { BASE_URL, ensureDir, readQa } from './lib.mjs';
+import { BASE_URL, ensureDir, readQa, setSimulatedTime } from './lib.mjs';
 
 const slug = (s) => s.replace(/[^0-9A-Za-z가-힣]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 
 export const SEVERITY = ['치명', '중대', '경미', '제안', '참고'];
 
-export function createContext({ page, context, events, blocked, outDir, meta }) {
+export function createContext({ page, events, blocked, outDir, meta }) {
   const steps = [];
   const findings = [];
   const checks = [];
@@ -36,7 +36,7 @@ export function createContext({ page, context, events, blocked, outDir, meta }) 
       const findingsBefore = findings.length;
       const t0 = Date.now();
       let ok = true; let error; let note;
-      try { const ret = await fn(); if (ret && ret.note) note = ret.note; } catch (e) { ok = false; error = String(e?.message || e).split('\n')[0]; }
+      try { const ret = await fn(); if (ret && ret.note) note = ret.note; } catch (e) { ok = false; error = String(e?.message || e); }
       const rec = {
         n: steps.length + 1, name, ok, ms: Date.now() - t0, error, note,
         url: (() => { try { return new URL(page.url()).pathname; } catch { return page.url(); } })(),
@@ -46,6 +46,7 @@ export function createContext({ page, context, events, blocked, outDir, meta }) 
       // 이 단계에서 생긴 발견 중 증거 캡처가 없는 것은 단계 마지막 화면을 증거로 쓴다
       for (let k = findingsBefore; k < findings.length; k += 1) if (!findings[k].shot) findings[k].shot = rec.shot || null;
       steps.push(rec);
+      if (!ok) throw new Error(`${name}: ${error}`);
       return rec;
     },
 
@@ -70,10 +71,7 @@ export function createContext({ page, context, events, blocked, outDir, meta }) 
 
     // 하루 단위 시간 이동 — 한국 시간 저녁에 기록하는 사용자를 흉내 낸다.
     async setDay(dateStr, hhmm = '21:30') {
-      const target = new Date(`${dateStr}T${hhmm}:00+09:00`).getTime();
-      const setAtReal = Date.now();
-      await context.addInitScript(([t, s]) => { window.__QA_BASE__ = { target: t, setAtReal: s }; }, [target, setAtReal]);
-      await page.evaluate(([t, s]) => { window.__QA_BASE__ = { target: t, setAtReal: s }; }, [target, setAtReal]).catch(() => {});
+      await setSimulatedTime(page, new Date(`${dateStr}T${hhmm}:00+09:00`));
     },
   };
   return ctx;
@@ -135,18 +133,20 @@ export async function attachPhotos(page, files) {
 
 // 형식마다 저장 버튼 이름이 다르다(일기: 간편·프리미엄 모두 "원본 저장"/"AI 다듬은 글 저장",
 // 육아일기 등 프리미엄: "다듬지 않고 SAYU-나의기록 저장"/"AI 다듬은 후 SAYU-나의기록 저장").
+// 버튼에 아이콘이 붙어 이름 전체가 정확히 일치하지 않는 환경이 있어 정규식으로 찾는다.
 const ORIGINAL_BTN = /(^원본 저장$|다듬지 않고 SAYU-나의기록 저장)/;
 const AI_BTN = /(AI 다듬은 글 저장|AI 다듬은 후 SAYU-나의기록 저장)/;
 
-export async function saveOriginal(page) {
+// style 인자는 이전 호출부와의 호환용이다(화면에 보이는 버튼으로 판단한다).
+export async function saveOriginal(page, _style) {
   await page.getByRole('button', { name: ORIGINAL_BTN }).first().click({ timeout: 8000 });
 }
 
 // AI 사용 안내 → 실행 → 미리보기 → 저장까지. 한도 초과 등은 호출한 쪽에서 토스트로 판단한다.
-export async function saveWithAi(page, { onPreview } = {}) {
+export async function saveWithAi(page, _style, { onPreview } = {}) {
   await page.getByRole('button', { name: AI_BTN }).first().click({ timeout: 8000 });
   await page.getByRole('button', { name: 'AI 다듬기 실행' }).click({ timeout: 8000 });
-  // 미리보기 창의 저장 버튼 — 형식 화면 아래쪽의 "…SAYU-나의기록 저장" 버튼과 구분하려고 💾 로 찾는다.
+  // 미리보기 창의 저장 버튼 — 형식 화면 아래쪽 "…SAYU-나의기록 저장" 버튼과 구분하려고 💾 로 찾는다.
   const save = page.getByRole('button', { name: '💾 SAYU-나의기록 저장' });
   await save.waitFor({ timeout: 10000 });
   if (onPreview) await onPreview();
@@ -154,7 +154,8 @@ export async function saveWithAi(page, { onPreview } = {}) {
 }
 
 export async function waitForSayu(page) {
-  await page.waitForURL('**/sayu', { timeout: 10000 });
+  // SAYU 상세 모달이 실제로 열린 뒤 검증한다.
+  await page.getByRole('button', { name: '수정하기', exact: false }).waitFor({ timeout: 10000 });
   await page.waitForTimeout(1200);
 }
 

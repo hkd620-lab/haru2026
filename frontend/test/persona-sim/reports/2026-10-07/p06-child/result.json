@@ -1,0 +1,667 @@
+{
+ "runId": "2026-10-07T09-57-36",
+ "meta": {
+  "id": "p06-child",
+  "format": "육아일기",
+  "persona": {
+   "name": "박지우",
+   "age": 32,
+   "gender": "여",
+   "job": "회사원·양육자",
+   "goal": "아이의 일상을 일주일 동안 남기고 다시 읽는다."
+  },
+  "identity": {
+   "uid": "qa-p06-park-jiwoo",
+   "displayName": "박지우",
+   "email": "p06@example.invalid",
+   "plan": "free"
+  },
+  "scenario": [
+   "7일 7건: 간편 기록 5건, 항목별 기록 2건, 모의 AI 1회, 사진 1장, 새로고침 뒤 목록·본문 보존"
+  ]
+ },
+ "startedAt": "2026-10-07T09:58:27.020Z",
+ "durationMs": 35175,
+ "steps": [
+  {
+   "n": 1,
+   "name": "1일차 진입·작성",
+   "ok": true,
+   "ms": 3702,
+   "url": "/record",
+   "toasts": [],
+   "shot": "01-1일차-진입-작성.png"
+  },
+  {
+   "n": 2,
+   "name": "1일차 저장·검증",
+   "ok": true,
+   "ms": 1345,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "02-1일차-저장-검증.png"
+  },
+  {
+   "n": 3,
+   "name": "2일차 진입·작성",
+   "ok": true,
+   "ms": 2802,
+   "url": "/record",
+   "toasts": [],
+   "shot": "03-2일차-진입-작성.png"
+  },
+  {
+   "n": 4,
+   "name": "2일차 저장·검증",
+   "ok": true,
+   "ms": 1328,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "04-2일차-저장-검증.png"
+  },
+  {
+   "n": 5,
+   "name": "3일차 진입·작성",
+   "ok": true,
+   "ms": 2751,
+   "url": "/record",
+   "toasts": [],
+   "shot": "05-3일차-진입-작성.png"
+  },
+  {
+   "n": 6,
+   "name": "3일차 저장·검증",
+   "ok": true,
+   "ms": 1824,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "AI 다듬기 완료!",
+    "육아일기 AI 다듬기를 시작합니다... (PREMIUM 모드)"
+   ],
+   "shot": "06-3일차-저장-검증.png"
+  },
+  {
+   "n": 7,
+   "name": "4일차 진입·작성",
+   "ok": true,
+   "ms": 2829,
+   "url": "/record",
+   "toasts": [],
+   "shot": "07-4일차-진입-작성.png"
+  },
+  {
+   "n": 8,
+   "name": "4일차 저장·검증",
+   "ok": true,
+   "ms": 1315,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "08-4일차-저장-검증.png"
+  },
+  {
+   "n": 9,
+   "name": "5일차 진입·작성",
+   "ok": true,
+   "ms": 4544,
+   "url": "/record",
+   "toasts": [
+    "1장의 사진이 업로드되었습니다!"
+   ],
+   "shot": "09-5일차-진입-작성.png"
+  },
+  {
+   "n": 10,
+   "name": "5일차 저장·검증",
+   "ok": true,
+   "ms": 1341,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "1장의 사진이 업로드되었습니다!"
+   ],
+   "shot": "10-5일차-저장-검증.png"
+  },
+  {
+   "n": 11,
+   "name": "6일차 진입·작성",
+   "ok": true,
+   "ms": 2656,
+   "url": "/record",
+   "toasts": [],
+   "shot": "11-6일차-진입-작성.png"
+  },
+  {
+   "n": 12,
+   "name": "6일차 저장·검증",
+   "ok": true,
+   "ms": 1326,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "12-6일차-저장-검증.png"
+  },
+  {
+   "n": 13,
+   "name": "7일차 진입·작성",
+   "ok": true,
+   "ms": 2701,
+   "url": "/record",
+   "toasts": [],
+   "shot": "13-7일차-진입-작성.png"
+  },
+  {
+   "n": 14,
+   "name": "7일차 저장·검증",
+   "ok": true,
+   "ms": 1337,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "14-7일차-저장-검증.png"
+  },
+  {
+   "n": 15,
+   "name": "재접속 후 7건 목록 확인",
+   "ok": true,
+   "ms": 2083,
+   "url": "/sayu",
+   "toasts": [],
+   "shot": "15-재접속-후-7건-목록-확인.png"
+  }
+ ],
+ "checks": [
+  {
+   "step": "1일차 저장·검증",
+   "name": "하루 기록 1건씩 누적",
+   "ok": true,
+   "detail": "actual=1"
+  },
+  {
+   "step": "1일차 저장·검증",
+   "name": "날짜·제목·형식 보존",
+   "ok": true,
+   "detail": "{\"date\":\"2026-10-01\",\"title\":\"하은의 하루 1\",\"formats\":[\"육아일기\"]}"
+  },
+  {
+   "step": "1일차 저장·검증",
+   "name": "본문 보존",
+   "ok": true,
+   "detail": "블록을 세 개 쌓았다. 무너져도 웃으며 다시 시도했다."
+  },
+  {
+   "step": "1일차 저장·검증",
+   "name": "기록 경로 유지",
+   "ok": true,
+   "detail": "users/qa-p06-park-jiwoo/records/2026-10-01_1790857803818"
+  },
+  {
+   "step": "2일차 저장·검증",
+   "name": "하루 기록 1건씩 누적",
+   "ok": true,
+   "detail": "actual=2"
+  },
+  {
+   "step": "2일차 저장·검증",
+   "name": "날짜·제목·형식 보존",
+   "ok": true,
+   "detail": "{\"date\":\"2026-10-02\",\"title\":\"하은의 하루 2\",\"formats\":[\"육아일기\"]}"
+  },
+  {
+   "step": "2일차 저장·검증",
+   "name": "본문 보존",
+   "ok": true,
+   "detail": "바나나 반 개를 먹고 노란색이라고 말했다."
+  },
+  {
+   "step": "2일차 저장·검증",
+   "name": "기록 경로 유지",
+   "ok": true,
+   "detail": "users/qa-p06-park-jiwoo/records/2026-10-02_1790944202928"
+  },
+  {
+   "step": "3일차 저장·검증",
+   "name": "하루 기록 1건씩 누적",
+   "ok": true,
+   "detail": "actual=3"
+  },
+  {
+   "step": "3일차 저장·검증",
+   "name": "날짜·제목·형식 보존",
+   "ok": true,
+   "detail": "{\"date\":\"2026-10-03\",\"title\":\"하은의 하루 3\",\"formats\":[\"육아일기\"]}"
+  },
+  {
+   "step": "3일차 저장·검증",
+   "name": "본문 보존",
+   "ok": true,
+   "detail": "[모의 다듬기 결과 — 실제 AI 아님]\n\n비가 와서 집에서 그림책을 읽었다. 우산 그림을 좋아했다."
+  },
+  {
+   "step": "3일차 저장·검증",
+   "name": "기록 경로 유지",
+   "ok": true,
+   "detail": "users/qa-p06-park-jiwoo/records/2026-10-03_1791030603380"
+  },
+  {
+   "step": "3일차 저장·검증",
+   "name": "모의 AI 표시·통계 저장",
+   "ok": false,
+   "detail": ""
+  },
+  {
+   "step": "4일차 저장·검증",
+   "name": "하루 기록 1건씩 누적",
+   "ok": true,
+   "detail": "actual=4"
+  },
+  {
+   "step": "4일차 저장·검증",
+   "name": "날짜·제목·형식 보존",
+   "ok": true,
+   "detail": "{\"date\":\"2026-10-04\",\"title\":\"하은의 하루 4\",\"formats\":[\"육아일기\"]}"
+  },
+  {
+   "step": "4일차 저장·검증",
+   "name": "본문 보존",
+   "ok": true,
+   "detail": "하은\n\n놀이터에서 친구에게 장난감을 건넸다.\n\n밥과 야채를 먹었다.\n\n함께 그림책을 읽었다.\n\n함께한 시간이 고맙다."
+  },
+  {
+   "step": "4일차 저장·검증",
+   "name": "기록 경로 유지",
+   "ok": true,
+   "detail": "users/qa-p06-park-jiwoo/records/2026-10-04_1791117002940"
+  },
+  {
+   "step": "5일차 저장·검증",
+   "name": "하루 기록 1건씩 누적",
+   "ok": true,
+   "detail": "actual=5"
+  },
+  {
+   "step": "5일차 저장·검증",
+   "name": "날짜·제목·형식 보존",
+   "ok": true,
+   "detail": "{\"date\":\"2026-10-05\",\"title\":\"하은의 하루 5\",\"formats\":[\"육아일기\"]}"
+  },
+  {
+   "step": "5일차 저장·검증",
+   "name": "본문 보존",
+   "ok": true,
+   "detail": "종이로 만든 왕관을 쓰고 활짝 웃었다."
+  },
+  {
+   "step": "5일차 저장·검증",
+   "name": "기록 경로 유지",
+   "ok": true,
+   "detail": "users/qa-p06-park-jiwoo/records/2026-10-05_1791203404659"
+  },
+  {
+   "step": "5일차 저장·검증",
+   "name": "사진 1장 보존",
+   "ok": true,
+   "detail": "[\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p06-park-jiwoo%2Fformat_photos%2F2026-10-05_child_1791203402738_3olxygi.jpg?alt=media&token=qa\"]"
+  },
+  {
+   "step": "6일차 저장·검증",
+   "name": "하루 기록 1건씩 누적",
+   "ok": true,
+   "detail": "actual=6"
+  },
+  {
+   "step": "6일차 저장·검증",
+   "name": "날짜·제목·형식 보존",
+   "ok": true,
+   "detail": "{\"date\":\"2026-10-06\",\"title\":\"하은의 하루 6\",\"formats\":[\"육아일기\"]}"
+  },
+  {
+   "step": "6일차 저장·검증",
+   "name": "본문 보존",
+   "ok": true,
+   "detail": "낮잠을 짧게 자서 저녁에는 일찍 잠들었다."
+  },
+  {
+   "step": "6일차 저장·검증",
+   "name": "기록 경로 유지",
+   "ok": true,
+   "detail": "users/qa-p06-park-jiwoo/records/2026-10-06_1791289802767"
+  },
+  {
+   "step": "7일차 저장·검증",
+   "name": "하루 기록 1건씩 누적",
+   "ok": true,
+   "detail": "actual=7"
+  },
+  {
+   "step": "7일차 저장·검증",
+   "name": "날짜·제목·형식 보존",
+   "ok": true,
+   "detail": "{\"date\":\"2026-10-07\",\"title\":\"하은의 하루 7\",\"formats\":[\"육아일기\"]}"
+  },
+  {
+   "step": "7일차 저장·검증",
+   "name": "본문 보존",
+   "ok": true,
+   "detail": "하은\n\n지난주보다 계단을 더 안정적으로 오른다. 천천히 함께 걸었다.\n\n밥과 야채를 먹었다.\n\n함께 그림책을 읽었다.\n\n함께한 시간이 고맙다."
+  },
+  {
+   "step": "7일차 저장·검증",
+   "name": "기록 경로 유지",
+   "ok": true,
+   "detail": "users/qa-p06-park-jiwoo/records/2026-10-07_1791376202806"
+  },
+  {
+   "step": "재접속 후 7건 목록 확인",
+   "name": "목록 제목 1",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "재접속 후 7건 목록 확인",
+   "name": "목록 제목 2",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "재접속 후 7건 목록 확인",
+   "name": "목록 제목 3",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "재접속 후 7건 목록 확인",
+   "name": "목록 제목 4",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "재접속 후 7건 목록 확인",
+   "name": "목록 제목 5",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "재접속 후 7건 목록 확인",
+   "name": "목록 제목 6",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "재접속 후 7건 목록 확인",
+   "name": "목록 제목 7",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "재접속 후 7건 목록 확인",
+   "name": "새로고침 뒤 7건 보존",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "findings": [
+  {
+   "step": "3일차 저장·검증",
+   "severity": "중대",
+   "title": "모의 AI 표시·통계 저장",
+   "detail": ""
+  }
+ ],
+ "network": {
+  "blockedExternalCount": 0,
+  "hosts": []
+ },
+ "console": [],
+ "pageErrors": [],
+ "dialogs": [],
+ "qa": {
+  "calls": [
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "getMonthlyAiQuotaStatus",
+    "ok": true
+   },
+   {
+    "name": "polishContent",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   }
+  ],
+  "unknownCallables": [],
+  "uploads": [
+   {
+    "path": "users/qa-p06-park-jiwoo/format_photos/2026-10-05_child_1791203402738_3olxygi.jpg",
+    "size": 6342,
+    "contentType": "image/jpeg"
+   }
+  ],
+  "writeCount": 8
+ },
+ "db": [
+  [
+   "users/qa-p06-park-jiwoo",
+   {
+    "assistantOnboardingV1SeenAt": "2026-10-01T12:30:01.389Z",
+    "utmSource": null,
+    "utmMedium": null,
+    "utmCampaign": null,
+    "signupReferrerOrigin": null,
+    "signupAt": {
+     "__ts": 1790857801390
+    }
+   }
+  ],
+  [
+   "users/qa-p06-park-jiwoo/records/2026-10-01_1790857803818",
+   {
+    "date": "2026-10-01",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "육아일기"
+    ],
+    "content": "",
+    "child_measuredate": "2026-10-01",
+    "child_title": "하은의 하루 1",
+    "child_simple": "블록을 세 개 쌓았다. 무너져도 웃으며 다시 시도했다.",
+    "child_sayu": "블록을 세 개 쌓았다. 무너져도 웃으며 다시 시도했다.",
+    "child_images": "[]",
+    "child_imageMeta": "[]",
+    "child_style": "simple",
+    "child_mode": "ORIGINAL",
+    "createdAt": "2026-10-01T12:30:03.818Z",
+    "updatedAt": "2026-10-01T12:30:03.818Z"
+   }
+  ],
+  [
+   "users/qa-p06-park-jiwoo/records/2026-10-02_1790944202928",
+   {
+    "date": "2026-10-02",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "육아일기"
+    ],
+    "content": "",
+    "child_measuredate": "2026-10-02",
+    "child_title": "하은의 하루 2",
+    "child_simple": "바나나 반 개를 먹고 노란색이라고 말했다.",
+    "child_sayu": "바나나 반 개를 먹고 노란색이라고 말했다.",
+    "child_images": "[]",
+    "child_imageMeta": "[]",
+    "child_style": "simple",
+    "child_mode": "ORIGINAL",
+    "createdAt": "2026-10-02T12:30:02.928Z",
+    "updatedAt": "2026-10-02T12:30:02.928Z"
+   }
+  ],
+  [
+   "users/qa-p06-park-jiwoo/records/2026-10-03_1791030603380",
+   {
+    "date": "2026-10-03",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "육아일기"
+    ],
+    "content": "",
+    "child_measuredate": "2026-10-03",
+    "child_title": "하은의 하루 3",
+    "child_simple": "비가 와서 집에서 그림책을 읽었다. 우산 그림을 좋아했다.",
+    "child_sayu": "[모의 다듬기 결과 — 실제 AI 아님]\n\n비가 와서 집에서 그림책을 읽었다. 우산 그림을 좋아했다.",
+    "child_images": "[]",
+    "child_imageMeta": "[]",
+    "child_polishedAt": "2026-10-03T12:30:03.380Z",
+    "child_mode": "PREMIUM",
+    "child_style": "simple",
+    "createdAt": "2026-10-03T12:30:03.380Z",
+    "updatedAt": "2026-10-03T12:30:03.380Z"
+   }
+  ],
+  [
+   "users/qa-p06-park-jiwoo/records/2026-10-04_1791117002940",
+   {
+    "date": "2026-10-04",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "육아일기"
+    ],
+    "content": "",
+    "child_measuredate": "2026-10-04",
+    "child_title": "하은의 하루 4",
+    "child_name": "하은",
+    "child_growth": "놀이터에서 친구에게 장난감을 건넸다.",
+    "child_meal": "밥과 야채를 먹었다.",
+    "child_activity": "함께 그림책을 읽었다.",
+    "child_emotion": "함께한 시간이 고맙다.",
+    "child_sayu": "하은\n\n놀이터에서 친구에게 장난감을 건넸다.\n\n밥과 야채를 먹었다.\n\n함께 그림책을 읽었다.\n\n함께한 시간이 고맙다.",
+    "child_images": "[]",
+    "child_imageMeta": "[]",
+    "child_style": "premium",
+    "child_mode": "ORIGINAL",
+    "createdAt": "2026-10-04T12:30:02.940Z",
+    "updatedAt": "2026-10-04T12:30:02.940Z"
+   }
+  ],
+  [
+   "users/qa-p06-park-jiwoo/records/2026-10-05_1791203404659",
+   {
+    "date": "2026-10-05",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "육아일기"
+    ],
+    "content": "",
+    "child_measuredate": "2026-10-05",
+    "child_title": "하은의 하루 5",
+    "child_simple": "종이로 만든 왕관을 쓰고 활짝 웃었다.",
+    "child_sayu": "종이로 만든 왕관을 쓰고 활짝 웃었다.",
+    "child_images": "[\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p06-park-jiwoo%2Fformat_photos%2F2026-10-05_child_1791203402738_3olxygi.jpg?alt=media&token=qa\"]",
+    "child_imageMeta": "[{\"originalName\":\"p06-crown.png\",\"metadataSource\":\"none\",\"url\":\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p06-park-jiwoo%2Fformat_photos%2F2026-10-05_child_1791203402738_3olxygi.jpg?alt=media&token=qa\",\"uploadedAt\":\"2026-10-05T12:30:02.760Z\"}]",
+    "child_style": "simple",
+    "child_mode": "ORIGINAL",
+    "createdAt": "2026-10-05T12:30:04.659Z",
+    "updatedAt": "2026-10-05T12:30:04.659Z"
+   }
+  ],
+  [
+   "users/qa-p06-park-jiwoo/records/2026-10-06_1791289802767",
+   {
+    "date": "2026-10-06",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "육아일기"
+    ],
+    "content": "",
+    "child_measuredate": "2026-10-06",
+    "child_title": "하은의 하루 6",
+    "child_simple": "낮잠을 짧게 자서 저녁에는 일찍 잠들었다.",
+    "child_sayu": "낮잠을 짧게 자서 저녁에는 일찍 잠들었다.",
+    "child_images": "[]",
+    "child_imageMeta": "[]",
+    "child_style": "simple",
+    "child_mode": "ORIGINAL",
+    "createdAt": "2026-10-06T12:30:02.767Z",
+    "updatedAt": "2026-10-06T12:30:02.767Z"
+   }
+  ],
+  [
+   "users/qa-p06-park-jiwoo/records/2026-10-07_1791376202806",
+   {
+    "date": "2026-10-07",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "육아일기"
+    ],
+    "content": "",
+    "child_measuredate": "2026-10-07",
+    "child_title": "하은의 하루 7",
+    "child_name": "하은",
+    "child_growth": "지난주보다 계단을 더 안정적으로 오른다. 천천히 함께 걸었다.",
+    "child_meal": "밥과 야채를 먹었다.",
+    "child_activity": "함께 그림책을 읽었다.",
+    "child_emotion": "함께한 시간이 고맙다.",
+    "child_sayu": "하은\n\n지난주보다 계단을 더 안정적으로 오른다. 천천히 함께 걸었다.\n\n밥과 야채를 먹었다.\n\n함께 그림책을 읽었다.\n\n함께한 시간이 고맙다.",
+    "child_images": "[]",
+    "child_imageMeta": "[]",
+    "child_style": "premium",
+    "child_mode": "ORIGINAL",
+    "createdAt": "2026-10-07T12:30:02.806Z",
+    "updatedAt": "2026-10-07T12:30:02.806Z"
+   }
+  ]
+ ]
+}

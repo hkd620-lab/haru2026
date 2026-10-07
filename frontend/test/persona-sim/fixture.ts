@@ -32,25 +32,24 @@ export interface CallLog { name: string; at: number; input: unknown; ok?: boolea
 export interface WriteLog { op: string; path: string; merge?: boolean; keys: string[]; data?: unknown }
 export interface UploadLog { path: string; size: number; contentType?: string }
 
-// 페이지를 새로 읽어도(hard navigation) 호출·저장 기록이 이어지도록 sessionStorage 에 보관한다.
-const QA_KEY = `persona-sim-qa:${persona.uid}`;
-const restored = (() => {
-  try { return JSON.parse(sessionStorage.getItem(QA_KEY) || 'null'); } catch { return null; }
-})();
-
 export const qa = {
   persona,
-  calls: (restored?.calls ?? []) as CallLog[],
-  writes: (restored?.writes ?? []) as WriteLog[],
-  uploads: (restored?.uploads ?? []) as UploadLog[],
-  deletedObjects: (restored?.deletedObjects ?? []) as string[],
-  unknownCallables: (restored?.unknownCallables ?? []) as string[],
+  calls: [] as CallLog[],
+  writes: [] as WriteLog[],
+  uploads: [] as UploadLog[],
+  deletedObjects: [] as string[],
+  unknownCallables: [] as string[],
 };
 
-window.addEventListener('pagehide', () => {
-  try { sessionStorage.setItem(QA_KEY, JSON.stringify(qa)); } catch { /* 용량 초과 등은 무시 */ }
-});
-
+// 페이지 이동마다 모의 호출·저장 증거가 사라지지 않도록 인물별로 누적한다.
+const EVIDENCE_KEY = `persona-sim-evidence:${persona.uid}`;
+try {
+  const prior = JSON.parse(localStorage.getItem(EVIDENCE_KEY) || '{}');
+  for (const key of ['calls', 'writes', 'uploads', 'deletedObjects', 'unknownCallables'] as const) {
+    if (Array.isArray(prior[key])) (qa[key] as unknown[]).push(...prior[key]);
+  }
+} catch { /* 새 세션 */ }
+window.addEventListener('pagehide', () => localStorage.setItem(EVIDENCE_KEY, JSON.stringify(qa)));
 (window as any).__qa = qa;
 
 // 월 AI 한도 사용량은 새로고침해도 유지한다(운영과 같은 달 단위 카운터를 흉내).

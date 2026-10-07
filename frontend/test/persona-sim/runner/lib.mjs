@@ -52,7 +52,7 @@ export async function launchBrowser() {
  * - 로컬 하네스 서버 외의 모든 요청은 차단하고 목록으로 남긴다(운영 Firebase·AI 접촉 0건의 증거).
  * - 콘솔 오류·페이지 오류·대화상자를 수집한다.
  */
-export async function newPersonaSession(browser, identity, { device = IPHONE } = {}) {
+export async function newPersonaSession(browser, identity, { device = IPHONE, fixedNow } = {}) {
   const context = await browser.newContext({
     ...device,
     locale: 'ko-KR',
@@ -62,7 +62,7 @@ export async function newPersonaSession(browser, identity, { device = IPHONE } =
   const blocked = [];
   await context.route('**/*', (route) => {
     const url = route.request().url();
-    if (url.startsWith(BASE_URL) || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
+    if (new URL(url).origin === BASE_URL || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
     if (new URL(url).hostname === 'qa-storage.invalid') {
       return route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL_PNG });
     }
@@ -70,21 +70,27 @@ export async function newPersonaSession(browser, identity, { device = IPHONE } =
     return route.abort('blockedbyclient');
   });
   await context.addInitScript((id) => { window.__QA_PERSONA__ = id; }, identity);
-  // 날짜 이동 — 시간이 멈추지 않고 자연스럽게 흐르되 "오늘"만 다른 날로 옮긴다.
-  // (Playwright 의 setFixedTime 은 Date.now() 를 얼려 두어, 경과 시간으로 동작하는 화면 효과가 끝나지 않는다.)
+  // Date만 이동한다. Playwright 전체 clock은 Motion의 Web Animations 시간과
+  // 어긋나 종료된 로딩 오버레이를 남길 수 있으므로 RAF·performance·타이머는 원본 유지.
   await context.addInitScript(() => {
-    const RealDate = Date;
-    const nowMs = () => {
-      const b = window.__QA_BASE__;
-      return b ? b.target + (RealDate.now() - b.setAtReal) : RealDate.now();
-    };
-    class FakeDate extends RealDate {
-      constructor(...args) { if (args.length === 0) super(nowMs()); else super(...args); }
-      static now() { return nowMs(); }
-    }
-    window.Date = FakeDate;
+    const NativeDate = window.Date;
+    let offset = Number(document.cookie.split('; ').find(x => x.startsWith('persona-sim-offset='))?.split('=')[1] || 0);
+    window.__qaSetOffset = value => { offset = value; };
+    const SimDate = new Proxy(NativeDate, {
+      get(target, prop, receiver) {
+        if (prop === 'now') return () => NativeDate.now() + offset;
+        return Reflect.get(target, prop, receiver);
+      },
+      construct(target, args, newTarget) {
+        return Reflect.construct(target, args.length ? args : [NativeDate.now() + offset], newTarget === SimDate ? target : newTarget);
+      },
+      apply() { return new NativeDate(NativeDate.now() + offset).toString(); },
+    });
+    window.Date = SimDate;
   });
   const page = await context.newPage();
+  page.setDefaultTimeout(10000);
+  if (fixedNow) await setSimulatedTime(page, fixedNow);
 
   const events = { console: [], pageErrors: [], dialogs: [] };
   page.on('console', (msg) => {
@@ -109,6 +115,12 @@ export async function readQa(page) {
     const qa = window.__qa;
     return qa ? JSON.parse(JSON.stringify({ calls: qa.calls, writes: qa.writes, uploads: qa.uploads, unknownCallables: qa.unknownCallables })) : null;
   });
+}
+
+export async function setSimulatedTime(page, time) {
+  const offset = new Date(time).getTime() - Date.now();
+  await page.context().addCookies([{ name: 'persona-sim-offset', value: String(offset), url: BASE_URL }]);
+  await page.evaluate(value => window.__qaSetOffset?.(value), offset);
 }
 
 // 사용자가 이미 기록해 둔 상태에서 시작하고 싶을 때 가상 DB에 문서를 미리 넣는다.

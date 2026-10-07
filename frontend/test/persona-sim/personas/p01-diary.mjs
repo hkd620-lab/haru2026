@@ -175,15 +175,17 @@ export async function run(ctx) {
       // 저장 직후 SAYU 화면의 "관련 AI 비서" 추천이 직업 맥락과 맞는지(교사의 '아이들' → 육아 비서)
       if (i === 0) {
         const text = await pageText(page);
-        const kws = [...text.matchAll(/이 기록에서 '([^']+)' 이야기가 보여요/g)].map((m) => m[1]);
+        // 카드 문구는 "이 기록에서 '아이', '학교' 이야기가 보여요." 처럼 키워드가 여러 개일 수 있다
+        const kws = [...text.matchAll(/이 기록에서 ((?:'[^']+'[,\s]*)+)이야기가 보여요/g)]
+          .flatMap((m) => [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]));
         await page.getByText('HARU 육아·교육 비서').first().scrollIntoViewIfNeeded().catch(() => {});
         await page.waitForTimeout(400);
         await ctx.snap('증거-비서 추천');
         if (/육아일기로 정리/.test(text)) {
           ctx.finding({
             severity: '제안',
-            title: '"아이들" 단어만으로 육아 비서를 추천한다(교사 기록 오탐)',
-            detail: `초등학교 교사가 학급 아이들 이야기를 쓴 일기인데 저장 직후 "HARU 육아·교육 비서 — 감지된 키워드: 아이 → 육아일기로 정리"가 추천됐다. 같은 화면에서 추천된 키워드는 ${JSON.stringify(kws)} 이며, 소풍 "준비"만으로도 생활 비서가 추천된다. 키워드 포함 여부만 보고 직업·맥락을 구분하지 않는다.`,
+            title: '교사의 학급 일기에 육아일기 변환을 추천한다(맥락 검토 제안)',
+            detail: `초등학교 교사가 학급 아이들 이야기를 쓴 일기인데 저장 직후 "HARU 육아·교육 비서 — 감지된 키워드: 아이, 학교 → 육아일기로 정리"가 추천됐다. 같은 화면에서 추천된 키워드는 ${JSON.stringify(kws)} 이며, 소풍 "준비"만으로도 생활 비서가 추천된다. 육아·교육 비서는 교육 고민도 다루므로 추천 전체를 오류로 단정하지는 않지만, 교사 맥락에서 "육아일기로 정리" 변환이 적절한지는 검토가 필요하다(키워드 규칙: utils/assistantRecommendations.ts).`,
           });
         }
       }

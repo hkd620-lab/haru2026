@@ -60,6 +60,9 @@ try {
   await browser.close();
   await server.close();
 }
-fs.writeFileSync(path.join(runDir, 'summary.json'), JSON.stringify(results.map((r) => ({ id: r.meta.id, durationMs: r.durationMs, steps: r.steps.length, checks: r.checks.length, failedChecks: r.checks.filter((c) => !c.ok).length, findings: r.findings.length })), null, 1));
+fs.writeFileSync(path.join(runDir, 'summary.json'), JSON.stringify(results.map((r) => ({ id: r.meta.id, durationMs: r.durationMs, steps: r.steps.length, checks: r.checks.length, failedChecks: r.checks.filter((c) => !c.ok).length, failedSteps: r.steps.filter((s) => !s.ok).length, crashed: Boolean(r.crashed), findings: r.findings.length })), null, 1));
 fs.writeFileSync(path.join(outRoot, 'latest-run.txt'), runId);
 console.log(`\n결과 폴더: ${runDir}`);
+
+// 제품 기대값 미충족과 시나리오 중단을 성공 종료로 숨기지 않는다.
+process.exitCode = results.some(r => r.crashed || r.checks.some(c => !c.ok) || r.steps.some(s => !s.ok)) ? 1 : 0;

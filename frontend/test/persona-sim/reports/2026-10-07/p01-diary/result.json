@@ -1,0 +1,1108 @@
+{
+ "runId": "2026-10-07T09-57-36",
+ "meta": {
+  "id": "p01-diary",
+  "format": "일기",
+  "persona": {
+   "name": "김서연",
+   "age": 34,
+   "gender": "여",
+   "job": "초등학교 교사",
+   "device": "iPhone 모양(Chromium 모바일 에뮬레이션, 390×844)",
+   "itLevel": "중",
+   "plan": "무료(월 AI 도움 10회)",
+   "goal": "퇴근 후 폰으로 하루를 짧게 남기고 싶다. 쓰다 보면 습관이 되길 바란다."
+  },
+  "identity": {
+   "uid": "qa-p01-kim-seoyeon",
+   "displayName": "김서연",
+   "email": "p01@example.invalid",
+   "plan": "free"
+  },
+  "scenario": [
+   "1일차: 처음 설치한 사용자 — 첫 안내 화면에서 \"바로 첫 기록 쓰기\"를 누르고, 제목 없이 저장을 시도했다가 막힌 뒤 제목을 넣어 저장",
+   "2일차: 이모지가 섞인 아주 짧은 간편 기록",
+   "3일차: \"AI 다듬은 글 저장\" 사용(월 한도 차감 확인)",
+   "4일차: 프리미엄(항목별 4칸) 기록",
+   "5일차: 사진 1장을 붙인 기록",
+   "6일차: 한 줄짜리 극단적으로 짧은 기록",
+   "7일차: 같은 날 아침·저녁 2건 작성 → 내 기록(SAYU) 목록에서 8건 확인"
+  ]
+ },
+ "startedAt": "2026-10-07T09:57:37.906Z",
+ "durationMs": 48930,
+ "steps": [
+  {
+   "n": 1,
+   "name": "1번째 기록(2026-10-01) 진입",
+   "ok": true,
+   "ms": 9423,
+   "url": "/record",
+   "toasts": [],
+   "shot": "01-1번째-기록-2026-10-01-진입.png"
+  },
+  {
+   "n": 2,
+   "name": "1번째 기록(2026-10-01) 작성",
+   "ok": true,
+   "ms": 235,
+   "url": "/record",
+   "toasts": [
+    "제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다."
+   ],
+   "shot": "02-1번째-기록-2026-10-01-작성.png"
+  },
+  {
+   "n": 3,
+   "name": "1번째 기록(2026-10-01) 원본 저장",
+   "ok": true,
+   "ms": 1400,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다."
+   ],
+   "shot": "03-1번째-기록-2026-10-01-원본-저장.png"
+  },
+  {
+   "n": 4,
+   "name": "1번째 기록(2026-10-01) 저장 결과 확인",
+   "ok": true,
+   "ms": 4,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다."
+   ],
+   "shot": "04-1번째-기록-2026-10-01-저장-결과-확인.png"
+  },
+  {
+   "n": 5,
+   "name": "2번째 기록(2026-10-02) 진입",
+   "ok": true,
+   "ms": 3049,
+   "url": "/record",
+   "toasts": [],
+   "shot": "05-2번째-기록-2026-10-02-진입.png"
+  },
+  {
+   "n": 6,
+   "name": "2번째 기록(2026-10-02) 작성",
+   "ok": true,
+   "ms": 10,
+   "url": "/record",
+   "toasts": [],
+   "shot": "06-2번째-기록-2026-10-02-작성.png"
+  },
+  {
+   "n": 7,
+   "name": "2번째 기록(2026-10-02) 원본 저장",
+   "ok": true,
+   "ms": 1325,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "07-2번째-기록-2026-10-02-원본-저장.png"
+  },
+  {
+   "n": 8,
+   "name": "2번째 기록(2026-10-02) 저장 결과 확인",
+   "ok": true,
+   "ms": 18,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "08-2번째-기록-2026-10-02-저장-결과-확인.png"
+  },
+  {
+   "n": 9,
+   "name": "3번째 기록(2026-10-03) 진입",
+   "ok": true,
+   "ms": 3052,
+   "url": "/record",
+   "toasts": [],
+   "shot": "09-3번째-기록-2026-10-03-진입.png"
+  },
+  {
+   "n": 10,
+   "name": "3번째 기록(2026-10-03) 작성",
+   "ok": true,
+   "ms": 13,
+   "url": "/record",
+   "toasts": [],
+   "shot": "10-3번째-기록-2026-10-03-작성.png"
+  },
+  {
+   "n": 11,
+   "name": "3번째 기록(2026-10-03) AI 다듬어 저장",
+   "ok": true,
+   "ms": 1927,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "AI 다듬기 완료!",
+    "일기 AI 다듬기를 시작합니다... (PREMIUM 모드)"
+   ],
+   "shot": "11-3번째-기록-2026-10-03-AI-다듬어-저장.png"
+  },
+  {
+   "n": 12,
+   "name": "3번째 기록(2026-10-03) 저장 결과 확인",
+   "ok": true,
+   "ms": 3,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "AI 다듬기 완료!",
+    "일기 AI 다듬기를 시작합니다... (PREMIUM 모드)"
+   ],
+   "shot": "12-3번째-기록-2026-10-03-저장-결과-확인.png"
+  },
+  {
+   "n": 13,
+   "name": "4번째 기록(2026-10-04) 진입",
+   "ok": true,
+   "ms": 3117,
+   "url": "/record",
+   "toasts": [],
+   "shot": "13-4번째-기록-2026-10-04-진입.png"
+  },
+  {
+   "n": 14,
+   "name": "4번째 기록(2026-10-04) 작성",
+   "ok": true,
+   "ms": 23,
+   "url": "/record",
+   "toasts": [],
+   "shot": "14-4번째-기록-2026-10-04-작성.png"
+  },
+  {
+   "n": 15,
+   "name": "4번째 기록(2026-10-04) 원본 저장",
+   "ok": true,
+   "ms": 1336,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "15-4번째-기록-2026-10-04-원본-저장.png"
+  },
+  {
+   "n": 16,
+   "name": "4번째 기록(2026-10-04) 저장 결과 확인",
+   "ok": true,
+   "ms": 2,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "16-4번째-기록-2026-10-04-저장-결과-확인.png"
+  },
+  {
+   "n": 17,
+   "name": "5번째 기록(2026-10-05) 진입",
+   "ok": true,
+   "ms": 3178,
+   "url": "/record",
+   "toasts": [],
+   "shot": "17-5번째-기록-2026-10-05-진입.png"
+  },
+  {
+   "n": 18,
+   "name": "5번째 기록(2026-10-05) 작성",
+   "ok": true,
+   "ms": 1852,
+   "url": "/record",
+   "toasts": [
+    "1장의 사진이 업로드되었습니다!"
+   ],
+   "shot": "18-5번째-기록-2026-10-05-작성.png"
+  },
+  {
+   "n": 19,
+   "name": "5번째 기록(2026-10-05) 원본 저장",
+   "ok": true,
+   "ms": 1332,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "1장의 사진이 업로드되었습니다!"
+   ],
+   "shot": "19-5번째-기록-2026-10-05-원본-저장.png"
+  },
+  {
+   "n": 20,
+   "name": "5번째 기록(2026-10-05) 저장 결과 확인",
+   "ok": true,
+   "ms": 2,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "1장의 사진이 업로드되었습니다!"
+   ],
+   "shot": "20-5번째-기록-2026-10-05-저장-결과-확인.png"
+  },
+  {
+   "n": 21,
+   "name": "6번째 기록(2026-10-06) 진입",
+   "ok": true,
+   "ms": 2713,
+   "url": "/record",
+   "toasts": [],
+   "shot": "21-6번째-기록-2026-10-06-진입.png"
+  },
+  {
+   "n": 22,
+   "name": "6번째 기록(2026-10-06) 작성",
+   "ok": true,
+   "ms": 11,
+   "url": "/record",
+   "toasts": [],
+   "shot": "22-6번째-기록-2026-10-06-작성.png"
+  },
+  {
+   "n": 23,
+   "name": "6번째 기록(2026-10-06) 원본 저장",
+   "ok": true,
+   "ms": 1339,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "23-6번째-기록-2026-10-06-원본-저장.png"
+  },
+  {
+   "n": 24,
+   "name": "6번째 기록(2026-10-06) 저장 결과 확인",
+   "ok": true,
+   "ms": 2,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "24-6번째-기록-2026-10-06-저장-결과-확인.png"
+  },
+  {
+   "n": 25,
+   "name": "7번째 기록(2026-10-07 07:30) 진입",
+   "ok": true,
+   "ms": 2926,
+   "url": "/record",
+   "toasts": [],
+   "shot": "25-7번째-기록-2026-10-07-07-30-진입.png"
+  },
+  {
+   "n": 26,
+   "name": "7번째 기록(2026-10-07 07:30) 작성",
+   "ok": true,
+   "ms": 9,
+   "url": "/record",
+   "toasts": [],
+   "shot": "26-7번째-기록-2026-10-07-07-30-작성.png"
+  },
+  {
+   "n": 27,
+   "name": "7번째 기록(2026-10-07 07:30) 원본 저장",
+   "ok": true,
+   "ms": 1335,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "27-7번째-기록-2026-10-07-07-30-원본-저장.png"
+  },
+  {
+   "n": 28,
+   "name": "7번째 기록(2026-10-07 07:30) 저장 결과 확인",
+   "ok": true,
+   "ms": 2,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "28-7번째-기록-2026-10-07-07-30-저장-결과-확인.png"
+  },
+  {
+   "n": 29,
+   "name": "8번째 기록(2026-10-07 21:40) 진입",
+   "ok": true,
+   "ms": 2721,
+   "url": "/record",
+   "toasts": [],
+   "shot": "29-8번째-기록-2026-10-07-21-40-진입.png"
+  },
+  {
+   "n": 30,
+   "name": "8번째 기록(2026-10-07 21:40) 작성",
+   "ok": true,
+   "ms": 10,
+   "url": "/record",
+   "toasts": [],
+   "shot": "30-8번째-기록-2026-10-07-21-40-작성.png"
+  },
+  {
+   "n": 31,
+   "name": "8번째 기록(2026-10-07 21:40) 원본 저장",
+   "ok": true,
+   "ms": 1333,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "31-8번째-기록-2026-10-07-21-40-원본-저장.png"
+  },
+  {
+   "n": 32,
+   "name": "8번째 기록(2026-10-07 21:40) 저장 결과 확인",
+   "ok": true,
+   "ms": 3,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "32-8번째-기록-2026-10-07-21-40-저장-결과-확인.png"
+  },
+  {
+   "n": 33,
+   "name": "7일 뒤 내 기록(SAYU) 목록 점검",
+   "ok": true,
+   "ms": 2028,
+   "url": "/sayu",
+   "toasts": [],
+   "shot": "33-7일-뒤-내-기록-SAYU-목록-점검.png"
+  }
+ ],
+ "checks": [
+  {
+   "step": "1번째 기록(2026-10-01) 진입",
+   "name": "처음 사용자에게 첫 안내 화면이 보인다",
+   "ok": true,
+   "detail": "/ 접속 시 /onboarding 으로 이동해야 함"
+  },
+  {
+   "step": "1번째 기록(2026-10-01) 작성",
+   "name": "제목 없이 저장하면 안내 문구와 함께 막힌다",
+   "ok": true,
+   "detail": "토스트: [\"제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다.\"]"
+  },
+  {
+   "step": "1번째 기록(2026-10-01) 작성",
+   "name": "제목 없는 저장은 기록을 만들지 않는다",
+   "ok": true,
+   "detail": "저장 시도 후에도 /record 에 머무르고 문서가 없어야 함"
+  },
+  {
+   "step": "1번째 기록(2026-10-01) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 0건 → 현재 1건"
+  },
+  {
+   "step": "1번째 기록(2026-10-01) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p01-kim-seoyeon/records/2026-10-01_1790857809893"
+  },
+  {
+   "step": "1번째 기록(2026-10-01) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-01"
+  },
+  {
+   "step": "1번째 기록(2026-10-01) 저장 결과 확인",
+   "name": "형식이 [\"일기\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"일기\"]"
+  },
+  {
+   "step": "1번째 기록(2026-10-01) 저장 결과 확인",
+   "name": "입력한 제목이 그대로 저장된다",
+   "ok": true,
+   "detail": "diary_title=소풍 준비하던 날"
+  },
+  {
+   "step": "1번째 기록(2026-10-01) 저장 결과 확인",
+   "name": "SAYU 본문(diary_sayu)이 비어 있지 않다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "1번째 기록(2026-10-01) 저장 결과 확인",
+   "name": "원본 저장은 diary_mode 가 ORIGINAL 이다(프리미엄 포함)",
+   "ok": true,
+   "detail": "diary_mode=ORIGINAL"
+  },
+  {
+   "step": "2번째 기록(2026-10-02) 진입",
+   "name": "홈 상단 연속기록·최근기록 문구가 실제 기록과 일치한다",
+   "ok": false,
+   "detail": "이 사용자는 1일째 일기만 기록했는데 홈에는 \"연속 기록 12일째\"/\"어젯밤 적어두신 ‘텃밭일지’\" 문구가 그대로 보임"
+  },
+  {
+   "step": "2번째 기록(2026-10-02) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 1건 → 현재 2건"
+  },
+  {
+   "step": "2번째 기록(2026-10-02) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p01-kim-seoyeon/records/2026-10-02_1790944203239"
+  },
+  {
+   "step": "2번째 기록(2026-10-02) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-02"
+  },
+  {
+   "step": "2번째 기록(2026-10-02) 저장 결과 확인",
+   "name": "형식이 [\"일기\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"일기\"]"
+  },
+  {
+   "step": "2번째 기록(2026-10-02) 저장 결과 확인",
+   "name": "입력한 제목이 그대로 저장된다",
+   "ok": true,
+   "detail": "diary_title=치킨데이"
+  },
+  {
+   "step": "2번째 기록(2026-10-02) 저장 결과 확인",
+   "name": "SAYU 본문(diary_sayu)이 비어 있지 않다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "2번째 기록(2026-10-02) 저장 결과 확인",
+   "name": "원본 저장은 diary_mode 가 ORIGINAL 이다(프리미엄 포함)",
+   "ok": true,
+   "detail": "diary_mode=ORIGINAL"
+  },
+  {
+   "step": "3번째 기록(2026-10-03) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 2건 → 현재 3건"
+  },
+  {
+   "step": "3번째 기록(2026-10-03) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p01-kim-seoyeon/records/2026-10-03_1791030603835"
+  },
+  {
+   "step": "3번째 기록(2026-10-03) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-03"
+  },
+  {
+   "step": "3번째 기록(2026-10-03) 저장 결과 확인",
+   "name": "형식이 [\"일기\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"일기\"]"
+  },
+  {
+   "step": "3번째 기록(2026-10-03) 저장 결과 확인",
+   "name": "입력한 제목이 그대로 저장된다",
+   "ok": true,
+   "detail": "diary_title=느린 토요일"
+  },
+  {
+   "step": "3번째 기록(2026-10-03) 저장 결과 확인",
+   "name": "SAYU 본문(diary_sayu)이 비어 있지 않다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "3번째 기록(2026-10-03) 저장 결과 확인",
+   "name": "AI 다듬기 저장은 polished 표시와 통계가 남는다",
+   "ok": false,
+   "detail": "polished=undefined, stats=undefined"
+  },
+  {
+   "step": "3번째 기록(2026-10-03) 저장 결과 확인",
+   "name": "월 AI 한도가 1회 차감된다(0→1/10)",
+   "ok": true,
+   "detail": "used=1"
+  },
+  {
+   "step": "4번째 기록(2026-10-04) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 3건 → 현재 4건"
+  },
+  {
+   "step": "4번째 기록(2026-10-04) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p01-kim-seoyeon/records/2026-10-04_1791117003343"
+  },
+  {
+   "step": "4번째 기록(2026-10-04) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-04"
+  },
+  {
+   "step": "4번째 기록(2026-10-04) 저장 결과 확인",
+   "name": "형식이 [\"일기\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"일기\"]"
+  },
+  {
+   "step": "4번째 기록(2026-10-04) 저장 결과 확인",
+   "name": "입력한 제목이 그대로 저장된다",
+   "ok": true,
+   "detail": "diary_title=일요일 정리"
+  },
+  {
+   "step": "4번째 기록(2026-10-04) 저장 결과 확인",
+   "name": "SAYU 본문(diary_sayu)이 비어 있지 않다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "4번째 기록(2026-10-04) 저장 결과 확인",
+   "name": "원본 저장은 diary_mode 가 ORIGINAL 이다(프리미엄 포함)",
+   "ok": true,
+   "detail": "diary_mode=ORIGINAL"
+  },
+  {
+   "step": "5번째 기록(2026-10-05) 작성",
+   "name": "사진 1장이 업로드 처리된다",
+   "ok": true,
+   "detail": "업로드 기록 1건: [\"users/qa-p01-kim-seoyeon/format_photos/2026-10-05_diary_1791203403314_kcyirue.jpg\"]"
+  },
+  {
+   "step": "5번째 기록(2026-10-05) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 4건 → 현재 5건"
+  },
+  {
+   "step": "5번째 기록(2026-10-05) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p01-kim-seoyeon/records/2026-10-05_1791203405233"
+  },
+  {
+   "step": "5번째 기록(2026-10-05) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-05"
+  },
+  {
+   "step": "5번째 기록(2026-10-05) 저장 결과 확인",
+   "name": "형식이 [\"일기\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"일기\"]"
+  },
+  {
+   "step": "5번째 기록(2026-10-05) 저장 결과 확인",
+   "name": "입력한 제목이 그대로 저장된다",
+   "ok": true,
+   "detail": "diary_title=교정의 코스모스"
+  },
+  {
+   "step": "5번째 기록(2026-10-05) 저장 결과 확인",
+   "name": "SAYU 본문(diary_sayu)이 비어 있지 않다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "5번째 기록(2026-10-05) 저장 결과 확인",
+   "name": "원본 저장은 diary_mode 가 ORIGINAL 이다(프리미엄 포함)",
+   "ok": true,
+   "detail": "diary_mode=ORIGINAL"
+  },
+  {
+   "step": "5번째 기록(2026-10-05) 저장 결과 확인",
+   "name": "사진 URL 1개가 기록에 저장된다",
+   "ok": true,
+   "detail": "diary_images=[\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p01-kim-seoyeon%2Fformat_photos%2F2026-10-05_diary_1791203403314_kcyirue.jpg?alt=media&token=qa\"]"
+  },
+  {
+   "step": "6번째 기록(2026-10-06) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 5건 → 현재 6건"
+  },
+  {
+   "step": "6번째 기록(2026-10-06) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p01-kim-seoyeon/records/2026-10-06_1791289802921"
+  },
+  {
+   "step": "6번째 기록(2026-10-06) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-06"
+  },
+  {
+   "step": "6번째 기록(2026-10-06) 저장 결과 확인",
+   "name": "형식이 [\"일기\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"일기\"]"
+  },
+  {
+   "step": "6번째 기록(2026-10-06) 저장 결과 확인",
+   "name": "입력한 제목이 그대로 저장된다",
+   "ok": true,
+   "detail": "diary_title=피곤"
+  },
+  {
+   "step": "6번째 기록(2026-10-06) 저장 결과 확인",
+   "name": "SAYU 본문(diary_sayu)이 비어 있지 않다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "6번째 기록(2026-10-06) 저장 결과 확인",
+   "name": "원본 저장은 diary_mode 가 ORIGINAL 이다(프리미엄 포함)",
+   "ok": true,
+   "detail": "diary_mode=ORIGINAL"
+  },
+  {
+   "step": "7번째 기록(2026-10-07 07:30) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 6건 → 현재 7건"
+  },
+  {
+   "step": "7번째 기록(2026-10-07 07:30) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p01-kim-seoyeon/records/2026-10-07_1791325803112"
+  },
+  {
+   "step": "7번째 기록(2026-10-07 07:30) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-07"
+  },
+  {
+   "step": "7번째 기록(2026-10-07 07:30) 저장 결과 확인",
+   "name": "형식이 [\"일기\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"일기\"]"
+  },
+  {
+   "step": "7번째 기록(2026-10-07 07:30) 저장 결과 확인",
+   "name": "입력한 제목이 그대로 저장된다",
+   "ok": true,
+   "detail": "diary_title=비 오는 아침"
+  },
+  {
+   "step": "7번째 기록(2026-10-07 07:30) 저장 결과 확인",
+   "name": "SAYU 본문(diary_sayu)이 비어 있지 않다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "7번째 기록(2026-10-07 07:30) 저장 결과 확인",
+   "name": "원본 저장은 diary_mode 가 ORIGINAL 이다(프리미엄 포함)",
+   "ok": true,
+   "detail": "diary_mode=ORIGINAL"
+  },
+  {
+   "step": "8번째 기록(2026-10-07 21:40) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 7건 → 현재 8건"
+  },
+  {
+   "step": "8번째 기록(2026-10-07 21:40) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p01-kim-seoyeon/records/2026-10-07_1791376802933"
+  },
+  {
+   "step": "8번째 기록(2026-10-07 21:40) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-07"
+  },
+  {
+   "step": "8번째 기록(2026-10-07 21:40) 저장 결과 확인",
+   "name": "형식이 [\"일기\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"일기\"]"
+  },
+  {
+   "step": "8번째 기록(2026-10-07 21:40) 저장 결과 확인",
+   "name": "입력한 제목이 그대로 저장된다",
+   "ok": true,
+   "detail": "diary_title=비에 젖은 퇴근길"
+  },
+  {
+   "step": "8번째 기록(2026-10-07 21:40) 저장 결과 확인",
+   "name": "SAYU 본문(diary_sayu)이 비어 있지 않다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "8번째 기록(2026-10-07 21:40) 저장 결과 확인",
+   "name": "원본 저장은 diary_mode 가 ORIGINAL 이다(프리미엄 포함)",
+   "ok": true,
+   "detail": "diary_mode=ORIGINAL"
+  },
+  {
+   "step": "7일 뒤 내 기록(SAYU) 목록 점검",
+   "name": "내 기록 목록의 \"이달 결과\"가 실제 저장 건수(8건)와 같다",
+   "ok": true,
+   "detail": "화면: 이달 결과 8건"
+  },
+  {
+   "step": "7일 뒤 내 기록(SAYU) 목록 점검",
+   "name": "목록에 \"소풍 준비하던 날\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "7일 뒤 내 기록(SAYU) 목록 점검",
+   "name": "목록에 \"치킨데이\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "7일 뒤 내 기록(SAYU) 목록 점검",
+   "name": "목록에 \"느린 토요일\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "7일 뒤 내 기록(SAYU) 목록 점검",
+   "name": "목록에 \"일요일 정리\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "7일 뒤 내 기록(SAYU) 목록 점검",
+   "name": "목록에 \"교정의 코스모스\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "7일 뒤 내 기록(SAYU) 목록 점검",
+   "name": "목록에 \"피곤\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "7일 뒤 내 기록(SAYU) 목록 점검",
+   "name": "목록에 \"비 오는 아침\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "7일 뒤 내 기록(SAYU) 목록 점검",
+   "name": "목록에 \"비에 젖은 퇴근길\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "findings": [
+  {
+   "step": "1번째 기록(2026-10-01) 저장 결과 확인",
+   "severity": "제안",
+   "title": "교사의 학급 일기에 육아일기 변환을 추천한다(맥락 검토 제안)",
+   "detail": "초등학교 교사가 학급 아이들 이야기를 쓴 일기인데 저장 직후 \"HARU 육아·교육 비서 — 감지된 키워드: 아이 → 육아일기로 정리\"가 추천됨."
+  },
+  {
+   "step": "2번째 기록(2026-10-02) 진입",
+   "severity": "중대",
+   "title": "홈 상단 연속기록·최근기록 문구가 실제 기록과 일치한다",
+   "detail": "이 사용자는 1일째 일기만 기록했는데 홈에는 \"연속 기록 12일째\"/\"어젯밤 적어두신 ‘텃밭일지’\" 문구가 그대로 보임"
+  },
+  {
+   "step": "3번째 기록(2026-10-03) 저장 결과 확인",
+   "severity": "중대",
+   "title": "AI 다듬기 저장은 polished 표시와 통계가 남는다",
+   "detail": "polished=undefined, stats=undefined"
+  },
+  {
+   "step": "7번째 기록(2026-10-07 07:30) 저장 결과 확인",
+   "severity": "제안",
+   "title": "날씨·체감기온·기분 기본값이 선택하지 않아도 저장된다",
+   "detail": "본문에 \"비가 온다\"고 썼지만 날씨 칸을 건드리지 않아 weather=\"쾌청\", temperature=\"쾌적\", mood=\"평온\" 로 저장됨. 목록 화면에도 그대로 표시됨."
+  }
+ ],
+ "network": {
+  "blockedExternalCount": 0,
+  "hosts": []
+ },
+ "console": [],
+ "pageErrors": [],
+ "dialogs": [],
+ "qa": {
+  "calls": [
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "getMonthlyAiQuotaStatus",
+    "ok": true
+   },
+   {
+    "name": "polishContent",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   }
+  ],
+  "unknownCallables": [],
+  "uploads": [
+   {
+    "path": "users/qa-p01-kim-seoyeon/format_photos/2026-10-05_diary_1791203403314_kcyirue.jpg",
+    "size": 6474,
+    "contentType": "image/jpeg"
+   }
+  ],
+  "writeCount": 9
+ },
+ "db": [
+  [
+   "users/qa-p01-kim-seoyeon",
+   {
+    "assistantOnboardingV1SeenAt": "2026-10-01T12:30:06.947Z",
+    "utmSource": null,
+    "utmMedium": null,
+    "utmCampaign": null,
+    "signupReferrerOrigin": null,
+    "signupAt": {
+     "__ts": 1790857806948
+    }
+   }
+  ],
+  [
+   "users/qa-p01-kim-seoyeon/records/2026-10-01_1790857809893",
+   {
+    "date": "2026-10-01",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "일기"
+    ],
+    "content": "",
+    "diary_simple": "오늘 학교에서 아이들이랑 가을 소풍 준비를 했다. 반 아이들이 도시락 메뉴 얘기를 하느라 정신이 없었다. 퇴근하고 나니 목이 좀 아프다.",
+    "diary_title": "소풍 준비하던 날",
+    "diary_sayu": "오늘 학교에서 아이들이랑 가을 소풍 준비를 했다. 반 아이들이 도시락 메뉴 얘기를 하느라 정신이 없었다. 퇴근하고 나니 목이 좀 아프다.",
+    "diary_images": "[]",
+    "diary_imageMeta": "[]",
+    "diary_style": "simple",
+    "diary_mode": "ORIGINAL",
+    "createdAt": "2026-10-01T12:30:09.893Z",
+    "updatedAt": "2026-10-01T12:30:09.893Z"
+   }
+  ],
+  [
+   "users/qa-p01-kim-seoyeon/records/2026-10-02_1790944203239",
+   {
+    "date": "2026-10-02",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "일기"
+    ],
+    "content": "",
+    "diary_title": "치킨데이",
+    "diary_simple": "금요일! 오늘은 일찍 퇴근해서 치킨 시켜 먹음 🍗 행복",
+    "diary_sayu": "금요일! 오늘은 일찍 퇴근해서 치킨 시켜 먹음 🍗 행복",
+    "diary_images": "[]",
+    "diary_imageMeta": "[]",
+    "diary_style": "simple",
+    "diary_mode": "ORIGINAL",
+    "createdAt": "2026-10-02T12:30:03.239Z",
+    "updatedAt": "2026-10-02T12:30:03.239Z"
+   }
+  ],
+  [
+   "users/qa-p01-kim-seoyeon/records/2026-10-03_1791030603835",
+   {
+    "date": "2026-10-03",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "일기"
+    ],
+    "content": "",
+    "diary_title": "느린 토요일",
+    "diary_simple": "주말이라 늦잠을 잤다. 오후엔 동네 도서관에 갔는데 읽고 싶던 책이 대출 중이어서 아쉬웠다. 저녁엔 엄마랑 통화했다. 엄마가 김치를 보내주신다고 하셨다.",
+    "diary_sayu": "[모의 다듬기 결과 — 실제 AI 아님]\n\n주말이라 늦잠을 잤다. 오후엔 동네 도서관에 갔는데 읽고 싶던 책이 대출 중이어서 아쉬웠다. 저녁엔 엄마랑 통화했다. 엄마가 김치를 보내주신다고 하셨다.",
+    "diary_images": "[]",
+    "diary_imageMeta": "[]",
+    "diary_polishedAt": "2026-10-03T12:30:03.835Z",
+    "diary_mode": "PREMIUM",
+    "diary_style": "simple",
+    "createdAt": "2026-10-03T12:30:03.835Z",
+    "updatedAt": "2026-10-03T12:30:03.835Z"
+   }
+  ],
+  [
+   "users/qa-p01-kim-seoyeon/records/2026-10-04_1791117003343",
+   {
+    "date": "2026-10-04",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "일기"
+    ],
+    "content": "",
+    "diary_title": "일요일 정리",
+    "diary_오늘한일": "빨래하고 방 청소, 다음 주 수업 자료 만들기",
+    "diary_좋았던일": "청소하고 나니 집이 환해져서 기분이 좋았다",
+    "diary_아쉬웠던일": "수업 자료를 다 못 만든 것",
+    "diary_여백": "내일은 일찍 자야지",
+    "diary_sayu": "빨래하고 방 청소, 다음 주 수업 자료 만들기\n\n청소하고 나니 집이 환해져서 기분이 좋았다\n\n수업 자료를 다 못 만든 것\n\n내일은 일찍 자야지",
+    "diary_images": "[]",
+    "diary_imageMeta": "[]",
+    "diary_style": "premium",
+    "diary_mode": "ORIGINAL",
+    "createdAt": "2026-10-04T12:30:03.343Z",
+    "updatedAt": "2026-10-04T12:30:03.343Z"
+   }
+  ],
+  [
+   "users/qa-p01-kim-seoyeon/records/2026-10-05_1791203405233",
+   {
+    "date": "2026-10-05",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "일기"
+    ],
+    "content": "",
+    "diary_title": "교정의 코스모스",
+    "diary_simple": "오늘 학교 화단에서 코스모스가 피었다. 아이들이 신기해서 한참을 들여다봤다. 사진을 찍어 두었다.",
+    "diary_sayu": "오늘 학교 화단에서 코스모스가 피었다. 아이들이 신기해서 한참을 들여다봤다. 사진을 찍어 두었다.",
+    "diary_images": "[\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p01-kim-seoyeon%2Fformat_photos%2F2026-10-05_diary_1791203403314_kcyirue.jpg?alt=media&token=qa\"]",
+    "diary_imageMeta": "[{\"originalName\":\"p01-cosmos.png\",\"metadataSource\":\"none\",\"url\":\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p01-kim-seoyeon%2Fformat_photos%2F2026-10-05_diary_1791203403314_kcyirue.jpg?alt=media&token=qa\",\"uploadedAt\":\"2026-10-05T12:30:03.338Z\"}]",
+    "diary_style": "simple",
+    "diary_mode": "ORIGINAL",
+    "createdAt": "2026-10-05T12:30:05.233Z",
+    "updatedAt": "2026-10-05T12:30:05.233Z"
+   }
+  ],
+  [
+   "users/qa-p01-kim-seoyeon/records/2026-10-06_1791289802921",
+   {
+    "date": "2026-10-06",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "일기"
+    ],
+    "content": "",
+    "diary_title": "피곤",
+    "diary_simple": "피곤..",
+    "diary_sayu": "피곤..",
+    "diary_images": "[]",
+    "diary_imageMeta": "[]",
+    "diary_style": "simple",
+    "diary_mode": "ORIGINAL",
+    "createdAt": "2026-10-06T12:30:02.921Z",
+    "updatedAt": "2026-10-06T12:30:02.921Z"
+   }
+  ],
+  [
+   "users/qa-p01-kim-seoyeon/records/2026-10-07_1791325803112",
+   {
+    "date": "2026-10-07",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "일기"
+    ],
+    "content": "",
+    "diary_title": "비 오는 아침",
+    "diary_simple": "아침에 일어나 보니 비가 온다. 출근길이 걱정이다.",
+    "diary_sayu": "아침에 일어나 보니 비가 온다. 출근길이 걱정이다.",
+    "diary_images": "[]",
+    "diary_imageMeta": "[]",
+    "diary_style": "simple",
+    "diary_mode": "ORIGINAL",
+    "createdAt": "2026-10-06T22:30:03.112Z",
+    "updatedAt": "2026-10-06T22:30:03.112Z"
+   }
+  ],
+  [
+   "users/qa-p01-kim-seoyeon/records/2026-10-07_1791376802933",
+   {
+    "date": "2026-10-07",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "일기"
+    ],
+    "content": "",
+    "diary_title": "비에 젖은 퇴근길",
+    "diary_simple": "퇴근길에 우산이 없어서 흠뻑 젖었다. 감기 걸릴까 걱정.",
+    "diary_sayu": "퇴근길에 우산이 없어서 흠뻑 젖었다. 감기 걸릴까 걱정.",
+    "diary_images": "[]",
+    "diary_imageMeta": "[]",
+    "diary_style": "simple",
+    "diary_mode": "ORIGINAL",
+    "createdAt": "2026-10-07T12:40:02.933Z",
+    "updatedAt": "2026-10-07T12:40:02.933Z"
+   }
+  ]
+ ]
+}

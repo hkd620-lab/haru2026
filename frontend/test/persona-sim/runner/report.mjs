@@ -12,6 +12,8 @@ const runId = args.find((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWit
 const name = argVal('--name') || `${runId.slice(0, 10)}-pilot`;
 const costFile = argVal('--cost-file');
 const costNote = costFile ? fs.readFileSync(costFile, 'utf8') : (argVal('--cost') || '');
+const introFile = argVal('--intro-file');
+const introNote = introFile ? fs.readFileSync(introFile, 'utf8') : '';
 const title = argVal('--title') || `가상사용자 시뮬레이션 결과 보고 — ${name}`;
 const runDir = path.join(outRoot, 'runs', runId);
 const reportDir = ensureDir(path.join(harnessRoot, 'reports', name));
@@ -27,10 +29,43 @@ const sec = (ms) => `${(ms / 1000).toFixed(1)}초`;
 const sevRank = (s) => { const i = SEVERITY.indexOf(s); return i < 0 ? 99 : i; };
 
 // ── 발견 종합 ──
-const all = [];
+// 같은 문제를 여러 인물·단계에서 따로 기록한 경우(점검 이름이 곧 발견 제목이 되는 경우 등)는 하나로 합친다.
+const CANONICAL = [
+  { re: /모의 AI 표시·통계 저장|AI 다듬기 1회에 서버가 Gemini를 3번/, title: 'AI 다듬기로 저장해도 다듬음 표시(polished)·통계(stats)가 기록에 남지 않는다 — 서버는 한 번에 Gemini를 3번 호출한다 (비용 확인 권장)' },
+  { re: /사용자 입력 제목 보존|가계부에서 직접 입력한 제목이 저장되지 않고/, title: '가계부에서 직접 입력한 제목이 저장되지 않고 자동 제목으로 바뀐다' },
+];
+const canonicalTitle = (t) => CANONICAL.find((c) => c.re.test(t))?.title || t;
+
+const perPersona = [];
 for (const r of results) {
-  for (const f of r.findings) all.push({ ...f, personaId: r.meta.id, personaName: r.meta.persona.name, format: r.meta.format });
+  const merged = new Map();
+  for (const f of r.findings) {
+    const key = canonicalTitle(f.title);
+    if (!merged.has(key)) merged.set(key, { ...f, title: key, personaId: r.meta.id, personaName: r.meta.persona.name, format: r.meta.format, steps: [f.step] });
+    else {
+      const g = merged.get(key);
+      g.steps.push(f.step);
+      if (sevRank(f.severity) < sevRank(g.severity)) g.severity = f.severity;
+      if ((f.detail || '').length > (g.detail || '').length) { g.detail = f.detail; g.shot = f.shot || g.shot; }
+    }
+  }
+  for (const f of merged.values()) {
+    if (f.steps.length > 1) f.detail = `${f.detail} (같은 인물에서 ${f.steps.length}회 재현: ${[...new Set(f.steps)].slice(0, 3).join(' / ')}${f.steps.length > 3 ? ' …' : ''})`;
+    perPersona.push(f);
+  }
 }
+const byTitle = new Map();
+for (const f of perPersona) {
+  const g = byTitle.get(f.title);
+  if (!g) byTitle.set(f.title, { ...f, who: [{ id: f.personaId, name: f.personaName, format: f.format }] });
+  else {
+    g.who.push({ id: f.personaId, name: f.personaName, format: f.format });
+    if (sevRank(f.severity) < sevRank(g.severity)) g.severity = f.severity;
+    if ((f.detail || '').length > (g.detail || '').length) { g.detail = f.detail; g.shot = f.shot; g.personaId = f.personaId; g.step = f.step; }
+  }
+}
+const all = [...byTitle.values()];
+all.forEach((f) => { f.personaName = f.who.map((w) => w.name).join('·'); f.format = [...new Set(f.who.map((w) => w.format))].join('·'); });
 all.sort((a, b) => sevRank(a.severity) - sevRank(b.severity) || a.personaId.localeCompare(b.personaId));
 all.forEach((f, i) => { f.id = `F-${String(i + 1).padStart(2, '0')}`; });
 
@@ -57,6 +92,7 @@ push(`# ${title}`, '');
 push(`- 실행 ID: \`${runId}\` · 대상: 가상인물 ${results.length}명 · 방식: **A단계(격리 검증)** — 실제 앱 화면을 모바일 브라우저로 조작하고 Firebase·AI만 모의 (운영 DB·AI·서버 접속 0건)`);
 push(`- 점검 ${totalChecks}개 중 ${totalChecks - failedChecks}개 충족, ${failedChecks}개 미충족 · 발견 ${all.length}건(치명 ${countBy('치명')} / 중대 ${countBy('중대')} / 경미 ${countBy('경미')} / 제안 ${countBy('제안')} / 참고 ${countBy('참고')}) · 실행 시간 합계 ${sec(totalMs)}`, '');
 
+if (introNote) push('## 작성 경위', '', introNote, '');
 const top = all.filter((f) => f.severity === '치명' || f.severity === '중대');
 push('## 먼저 볼 것', '');
 if (top.length) {
@@ -75,12 +111,12 @@ push('');
 
 push('## 2. 발견 사항 종합', '');
 push('| ID | 심각도 | 제목 | 형식·인물 |', '|---|---|---|---|');
-for (const f of all) push(`| ${f.id} | ${f.severity} | ${cell(f.title)} | ${cell(f.format)}·${cell(f.personaName)} |`);
+for (const f of all) push(`| ${f.id} | ${f.severity} | ${cell(f.title)} | ${cell(f.format)} / ${cell(f.personaName)} |`);
 push('');
 push('> 심각도: **치명**(데이터 손실·저장 실패) / **중대**(결과가 틀리게 보이거나 흐름이 막힘) / **경미**(불편·일관성) / **제안**(개선 아이디어·비용 확인) / **참고**(맥락 정보)', '');
 for (const f of all) {
   push(`### ${f.id} [${f.severity}] ${f.title}`, '');
-  push(`- 발견 인물: ${f.personaName}(${f.format}) · 단계: ${f.step}`);
+  push(`- 재현 인물: ${f.who.map((w) => `${w.name}(${w.format})`).join(', ')} · 대표 단계: ${f.step}`);
   push(`- 내용: ${f.detail}`);
   if (f.img) push(`- 증거 화면: ![${f.id}](${f.img})`);
   push('');
