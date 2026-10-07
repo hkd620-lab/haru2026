@@ -34,6 +34,8 @@ test('등록부: 역할별 값이 소비처의 기존 값과 같다(육아일기
   assert.equal(registry.getFormatKey('성장기록', 'sayu'), 'child_measure');
   assert.equal(registry.getFormatKey('육아일기', 'sayu'), 'child'); // SAYU 키는 통계 키(parenting)와 다르다
   assert.equal(registry.getFormatKey('배뇨일지'), 'voiding');
+  // 역매핑은 객체 기본 속성 이름(constructor 등)과 겹치는 키도 정상으로 다룬다
+  assert.deepEqual(registry.invertFormatKeyMap({ 일기: 'constructor', 에세이: 'toString' }), { constructor: '일기', toString: '에세이' });
   // 모든 형식(RecordFormat 19개)이 등록부에 있다
   assert.equal(registry.ALL_REGISTERED_FORMATS.length, 19);
 });
@@ -71,7 +73,8 @@ test('SAYU 계열(P3.5b): 공개 허용 키·SAYU 형식 키·삭제 라벨·콜
   assert.match(sayuPage, /\] as RecordFormat\[\]\)\.map\(\(format\) => getFormatKey\(format\)\)\);/);
   assert.match(sayuPage, /const SAYU_FORMAT_PREFIXES: Record<string, string> = Object\.fromEntries\(SAYU_FORMAT_LABELS\.map\(\(label\) => \[\s*label,\s*SAYU_EXTRA_LABEL_KEYS\[label\] \?\? getFormatKey\(label as RecordFormat, 'sayu'\),\s*\]\)\);/);
   assert.match(sayuPage, /  const ALL_FORMAT_PREFIXES: Record<string, string> = \{\n    \.\.\.SAYU_FORMAT_PREFIXES,\n  \};/);
-  assert.match(sayuModal, /const formatLabelMap: Record<string, string> = invertFormatKeyMap\(buildFormatKeyMap\(\[/);
+  // 역할 인자 없이 저장 필드 접두어로 만들어야 한다(stats 역할을 쓰면 육아일기 라벨이 지워지지 않는다)
+  assert.match(sayuModal, /const formatLabelMap: Record<string, string> = invertFormatKeyMap\(buildFormatKeyMap\(\[[^\]]*\]\)\);/);
   assert.match(collage, /\] as RecordFormat\[\]\)\.map\(\(format\) => getFormatKey\(format\)\);/);
 
   const publicFormats = arrayLiteral(sayuPage, 'const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(([');
