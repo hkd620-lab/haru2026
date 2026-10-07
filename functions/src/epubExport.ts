@@ -7,6 +7,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { hasInternalPremiumAccess } from './internalEntitlements';
+import { buildFormatPrefixMap } from './formats/formatRegistry';
 import Epub from 'epub-gen-memory';
 
 const db = admin.firestore();
@@ -18,23 +19,11 @@ const EPUB_INCLUDE_FORMATS = [
   '메모', '성장타임라인',
 ];
 
-const FORMAT_PREFIX: Record<string, string> = {
-  '일기': 'diary',
-  '에세이': 'essay',
-  '선교보고': 'mission',
-  '일반보고': 'report',
-  '업무일지': 'work',
-  '여행기록': 'travel',
-  '독서사유': 'reading',
-  '텃밭일지': 'garden',
-  '애완동물관찰일지': 'pet',
-  '육아일기': 'child',
-  '성장기록': 'growth',
-  'HARU주식관리': 'stock',
-  '주식거래일지': 'stock',
-  '메모': 'memo',
-  '성장타임라인': 'growthTimeline',
-};
+// 형식별 저장 필드 접두어(값은 Functions 형식 등록부, 내보내는 15개 형식, 순서 유지)
+const FORMAT_PREFIX: Record<string, string> = buildFormatPrefixMap([
+  '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '독서사유', '텃밭일지',
+  '애완동물관찰일지', '육아일기', '성장기록', 'HARU주식관리', '주식거래일지', '메모', '성장타임라인',
+]);
 
 function dateLabel(date: string): string {
   return date.replace(/-/g, '.');
