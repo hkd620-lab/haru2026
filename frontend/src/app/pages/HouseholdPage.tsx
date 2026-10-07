@@ -44,10 +44,10 @@ interface ExpandedEntry {
   balanceAfter?: string;
 }
 
-// 거래 날짜가 비었거나 YYYY.MM / YYYY-MM 형식으로 읽을 수 없으면 기록 문서의 날짜(저장일)로 보여 준다.
+// 거래 날짜가 비었거나 YYYY.MM / YYYY-MM 형식(월 01~12)으로 읽을 수 없으면 기록 문서의 날짜(저장일)로 보여 준다.
 // 그대로 두면 월 필터(toMonthKey)에서 빠져 합계·목록에서 사라진다. 저장된 값은 바꾸지 않는다.
 function entryDateOrRecordDate(entryDate: string, recordDate: string): string {
-  return /^\d{4}-\d{2}$/.test(toMonthKey(entryDate)) ? entryDate : recordDate;
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(toMonthKey(entryDate)) ? entryDate : recordDate;
 }
 
 function expandRecord(r: HaruRecord): ExpandedEntry[] {
