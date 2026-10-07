@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildSync, transformSync } from 'esbuild';
+import { evalComponentConst } from './sayuGrowthTimeline.harness.mjs';
 
 // Execute the real handlers and SAYU route reader against memory-only services.
 // No Firebase initialization, Storage, AI, login, or production record is used.
@@ -241,6 +242,8 @@ const routeStart = sayu.indexOf('    const filterFormat = typeof routeState?.fil
 const routeEnd = sayu.indexOf('\n  // eslint-disable-next-line react-hooks/exhaustive-deps', routeStart);
 assert.ok(routeStart > 0 && routeEnd > routeStart);
 const prefixSource = sayu.match(/  const ALL_FORMAT_PREFIXES:[\s\S]*?\n  };/)[0];
+// P3.5b: ALL_FORMAT_PREFIXES 의 값은 모듈 상단 SAYU_FORMAT_PREFIXES(형식 등록부)에서 온다. 같은 소스에서 값을 만들어 실행 환경에 넘긴다.
+const SAYU_FORMAT_PREFIXES = evalComponentConst(sayu, 'ALL_FORMAT_PREFIXES', { SNS_GALMURI_LABEL: 'SNS 갈무리' });
 // P2c: 성장타임라인 판정·상세 열기 상태는 SAYU 어댑터로 옮겨졌다. 실제 어댑터를 묶어 실행 환경에 넘긴다.
 const sayuAdapterBundle = buildSync({ entryPoints: [new URL('../src/app/assistants/sayuAdapters.ts', import.meta.url).pathname], bundle: true, format: 'cjs', platform: 'node', write: false }).outputFiles[0].text;
 const sayuAdapter = (() => { const module = { exports: {} }; new Function('module', 'exports', sayuAdapterBundle)(module, module.exports); return module.exports; })();
@@ -248,7 +251,7 @@ const routeCode = transformSync(`${prefixSource}\n${extract(sayu, 'openFormatSay
 function readSavedRoute(routeState, records) {
   const state = { detail: null, tab: null };
   const env = {
-    routeState, records, user: { uid: 'fixture-user' }, SNS_GALMURI_LABEL: 'SNS 갈무리', GROWTH_TIMELINE_SAYU_LABEL: 'HARU타임라인',
+    routeState, records, user: { uid: 'fixture-user' }, SNS_GALMURI_LABEL: 'SNS 갈무리', GROWTH_TIMELINE_SAYU_LABEL: 'HARU타임라인', SAYU_FORMAT_PREFIXES,
     setSayuTab: value => { state.tab = value; }, setViewMode: noop, setSayuSearchInput: noop, setDebouncedSayuSearch: noop,
     setSelectedSayuLabels: noop, setExpandedSayuGroups: noop, setCurrentMonth: noop, setSayuScope: noop, setSelectedDate: noop,
     setSelectedDateFormats: noop, setHaruLawShareState: noop, navigate: noop,

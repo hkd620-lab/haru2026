@@ -11,6 +11,7 @@ import { httpsCallable, getFunctions } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
+import { buildFormatKeyMap, invertFormatKeyMap } from '../records/formatRegistry';
 import { exportRecordsToEpub } from '../services/epubExportService';
 import GrapeLoadingMini from './GrapeLoadingMini';
 import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './GrowthTimelineDocumentModal';
@@ -907,18 +908,10 @@ export function SayuModal({
             !['weather', 'temperature', 'mood', 'date', 'formats'].includes(k)
         );
 
-        const formatLabelMap: Record<string, string> = {
-          diary: '일기',
-          essay: '에세이',
-          travel: '여행기록',
-          garden: '텃밭일지',
-          pet: '애완동물관찰일지',
-          child: '육아일기',
-          mission: '선교보고',
-          report: '일반보고',
-          work: '업무일지',
-          memo: '메모',
-        };
+        // prefix → 형식 이름(값은 형식 등록부)
+        const formatLabelMap: Record<string, string> = invertFormatKeyMap(buildFormatKeyMap([
+          '일기', '에세이', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기', '선교보고', '일반보고', '업무일지', '메모',
+        ]));
         const formatLabel = formatLabelMap[formatKey] ?? formatKey;
 
         if (remainingFormatFields.length === 0) {

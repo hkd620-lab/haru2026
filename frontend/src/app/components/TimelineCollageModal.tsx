@@ -4,6 +4,8 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../firebase';
 import { firestoreService } from '../services/firestoreService';
 import type { HaruRecord } from '../services/firestoreService';
+import type { RecordFormat } from '../types/haruTypes';
+import { getFormatKey } from '../records/formatRegistry';
 import { toast } from 'sonner';
 import { GrowthTimelineCreator } from './GrowthTimelineCreator';
 
@@ -30,10 +32,11 @@ interface TimelineCollageModalProps {
   isLoadingRecords?: boolean;
 }
 
-const FORMAT_PREFIXES = [
-  'diary', 'essay', 'mission', 'report', 'work',
-  'travel', 'garden', 'pet', 'child', 'memo', 'reading', 'stock',
-];
+// 사진을 찾을 형식의 저장 필드 접두어(값은 형식 등록부)
+const FORMAT_PREFIXES = ([
+  '일기', '에세이', '선교보고', '일반보고', '업무일지',
+  '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기', '메모', '독서사유', 'HARU주식관리',
+] as RecordFormat[]).map((format) => getFormatKey(format));
 
 function extractPhotos(records: HaruRecord[]): PhotoItem[] {
   const photos: PhotoItem[] = [];

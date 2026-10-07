@@ -52,6 +52,7 @@ import { ResultChatModal } from '../components/ResultChatModal';
 import { GrowthTimelineLibrary } from '../components/GrowthTimelineCreator';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
+import { getFormatKey } from '../records/formatRegistry';
 import { getResultChatConfig, getResultChatConfigForFormatKey, type ResultChatConfig } from '../config/resultChatConfig';
 import {
   buildRecommendationTextFromFields,
@@ -90,7 +91,39 @@ const PAGE_SIZE = 10;
 const SAYU_ALL_PAGE_SIZE = 20;
 const PUBLIC_SAYU_REQUIRED_MESSAGE = '먼저 SAYU 다듬기를 완료한 뒤 공개할 수 있습니다.';
 // firestoreService.ts의 PUBLIC_ALLOWED_FORMATS(핵심 10종) + HARU타임라인(별도 분기) — 여기서도 별도 관리되므로 형식 추가 시 항상 함께 대조할 것
-const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(['diary', 'essay', 'travel', 'garden', 'pet', 'memo', 'reading', 'child', 'work', 'household', 'growthTimeline']);
+// 키 값은 형식 등록부(records/formatRegistry.ts)에서 읽는다.
+const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(([
+  '일기', '에세이', '여행기록', '텃밭일지', '애완동물관찰일지', '메모', '독서사유', '육아일기', '업무일지', 'HARU가계부', '성장타임라인',
+] as RecordFormat[]).map((format) => getFormatKey(format)));
+// SAYU 화면이 다루는 라벨 목록(순서 유지 — 필드로 형식을 찾을 때 앞의 것이 먼저 맞는다).
+// 형식이 아닌 비서 라벨(직접작성영어일기·SNS 갈무리)은 SAYU_EXTRA_LABEL_KEYS 의 키를 쓰고, 나머지는 등록부의 SAYU 키를 쓴다.
+const SAYU_EXTRA_LABEL_KEYS: Record<string, string> = { '직접작성영어일기': 'english_diary', [SNS_GALMURI_LABEL]: 'essay' };
+const SAYU_FORMAT_LABELS: string[] = [
+  '일기',
+  '에세이',
+  '선교보고',
+  '일반보고',
+  '업무일지',
+  '여행기록',
+  '독서사유',
+  '텃밭일지',
+  '애완동물관찰일지',
+  '육아일기',
+  '메모',
+  '성장타임라인',
+  '직접작성영어일기',
+  '성장기록',
+  '배뇨일지',
+  'HARU주식관리',
+  '주식거래일지',
+  'HARU보조장부',
+  'HARU가계부',
+  SNS_GALMURI_LABEL,
+];
+const SAYU_FORMAT_PREFIXES: Record<string, string> = Object.fromEntries(SAYU_FORMAT_LABELS.map((label) => [
+  label,
+  SAYU_EXTRA_LABEL_KEYS[label] ?? getFormatKey(label as RecordFormat, 'sayu'),
+]));
 // 공개 시 별도 확인창을 띄우는 민감 형식 — 가감은 이 배열만 수정
 const SENSITIVE_PUBLIC_FORMATS: RecordFormat[] = ['HARU가계부', '업무일지'];
 type PlantSayuFilter = 'all' | PlantSayuEntryType;
@@ -2173,20 +2206,9 @@ export function SayuPage() {
     setViewMode(mode);
   };
 
-  // 모든 형식 prefix 매핑
+  // 모든 형식 prefix 매핑(라벨 순서·값은 모듈 상단 SAYU_FORMAT_PREFIXES — 형식 등록부에서 만든다)
   const ALL_FORMAT_PREFIXES: Record<string, string> = {
-    '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
-    '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
-    '독서사유': 'reading',
-    '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child',
-    '메모': 'memo',
-    '성장타임라인': 'growthTimeline',
-    '직접작성영어일기': 'english_diary', '성장기록': 'child_measure', '배뇨일지': 'voiding',
-    'HARU주식관리': 'stock',
-    '주식거래일지': 'stock',
-    'HARU보조장부': 'ledger',
-    'HARU가계부': 'household',
-    [SNS_GALMURI_LABEL]: 'essay',
+    ...SAYU_FORMAT_PREFIXES,
   };
 
   const META_SUFFIXES = ['_sayu', '_final_sayu', '_polished', '_polishedAt', '_mode', '_stats', '_images', '_imageMeta', '_rating', '_status', '_completedAt', '_reflection_questions', '_reflection_answers', '_entries_snapshot'];

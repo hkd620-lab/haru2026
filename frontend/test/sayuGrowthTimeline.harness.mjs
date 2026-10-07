@@ -4,12 +4,15 @@ import { transformSync } from 'esbuild';
 import * as structuredViews from '../src/app/utils/structuredAssistantRecords.ts';
 import { getResultChatConfigForFormatKey } from '../src/app/config/resultChatConfig.ts';
 import { READING_ENTRY_TYPES, READING_STATUS } from '../src/app/types/haruTypes.ts';
+import { getFormatKey } from '../src/app/records/formatRegistry.ts';
 
 // 최상위(들여쓰기 0) 선언과 SayuPage 컴포넌트 안(들여쓰기 2) 선언 — 소스에 없는 이름은 건너뛴다(이동 전/후 차이).
 const TOP_LEVEL = [
   'GROWTH_TIMELINE_FORMAT_LABEL', 'GROWTH_TIMELINE_SAYU_LABEL', 'FORMAT_FIRST_FIELD',
   'isGrowthTimelineRecord', 'normalizeTimelineItems', 'KW_STOP', 'KW_NUMUNIT_RE', 'KW_TAIL', 'stripKwTail', 'extractPreviewKeywords',
   'getRecordSourceText', 'getResultChatSourceKey', 'hasResultChatSource', 'getRecordPreviewKeywords',
+  // P3.5b: ALL_FORMAT_PREFIXES 의 값은 모듈 상단 SAYU_FORMAT_PREFIXES(형식 등록부)에서 온다.
+  'SAYU_EXTRA_LABEL_KEYS', 'SAYU_FORMAT_LABELS', 'SAYU_FORMAT_PREFIXES',
 ];
 const COMPONENT = [
   'formatDateString', 'ALL_FORMAT_PREFIXES', 'META_SUFFIXES', 'hasSayu', 'FORMAT_COLORS', 'getFormatDotsForDay', 'handleDateClick',
@@ -36,10 +39,18 @@ function extractStatement(lines, header) {
 }
 
 // 컴포넌트 안 상수 하나만 떼어 값으로 돌려준다(예: ALL_FORMAT_PREFIXES).
+// P3.5b: ALL_FORMAT_PREFIXES 가 기대는 모듈 상단 SAYU_* 선언(형식 등록부 사용)이 있으면 함께 떼어 실행한다.
+const SAYU_FORMAT_DEPENDENCIES = ['SAYU_EXTRA_LABEL_KEYS', 'SAYU_FORMAT_LABELS', 'SAYU_FORMAT_PREFIXES'];
 export function evalComponentConst(source, name, env = {}) {
-  const found = extractStatement(source.split('\n'), new RegExp(`^  const ${name}\\b`));
-  const code = transformSync(found.code, { loader: 'ts' }).code;
-  return new Function(...Object.keys(env), `${code}\nreturn ${name};`)(...Object.values(env));
+  const lines = source.split('\n');
+  const found = extractStatement(lines, new RegExp(`^  const ${name}\\b`));
+  const dependencies = SAYU_FORMAT_DEPENDENCIES
+    .map((dependency) => extractStatement(lines, new RegExp(`^const ${dependency}\\b`)))
+    .filter(Boolean)
+    .map((statement) => statement.code);
+  const code = transformSync([...dependencies, found.code].join('\n'), { loader: 'ts' }).code;
+  const fullEnv = { getFormatKey, ...env };
+  return new Function(...Object.keys(fullEnv), `${code}\nreturn ${name};`)(...Object.values(fullEnv));
 }
 
 export function extractSayuBlocks(source) {
@@ -70,7 +81,7 @@ export async function runSayuTimelineScenarios({ source, adapter, records, openC
   const baseEnv = {
     ...adapter,
     ...structuredViews,
-    getResultChatConfigForFormatKey, READING_ENTRY_TYPES, READING_STATUS,
+    getResultChatConfigForFormatKey, READING_ENTRY_TYPES, READING_STATUS, getFormatKey,
     h, Fragment: 'Fragment',
     records,
     user: { uid: 'fixture-user' },
