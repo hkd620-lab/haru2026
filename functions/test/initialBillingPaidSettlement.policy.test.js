@@ -232,7 +232,7 @@ assert(!storedInitialSettlementSection.includes('cleanupInitialBillingKeyAfterIn
 const recurringSettlementSection = section(
   indexSrc,
   'async function settleRecurringBillingPayment(params: {',
-  'type HaruLawSharePreview',
+  'function getSafeOAuthError',
 );
 assert(recurringSettlementSection.includes('const payment = normalizePortOnePaymentResponse(params.payment)'));
 assert(recurringSettlementSection.includes('const portoneStatus = getPortOnePaymentStatus(payment)'));

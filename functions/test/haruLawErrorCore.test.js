@@ -237,10 +237,16 @@ async function run() {
   );
   assert.equal(classifyHaruLawAiError(new Error('unexpected implementation error'), false), 'HARULAW_PROCESSING_FAILED');
 
-  const indexSource = fs.readFileSync(path.resolve(__dirname, '../src/index.ts'), 'utf8');
-  const attachmentLoaderSource = indexSource.slice(
-    indexSource.indexOf('async function prepareHaruLawAttachments('),
-    indexSource.indexOf('export const chatWithResult = onCall('),
+  // 하루LAW 분리(P3): 하루LAW 코드는 haruLaw/ 두 파일로 옮겼다. 원문 고정 단언은 index.ts 와 두 파일을 합친 원문에서 확인한다.
+  const haruLawAttachmentsSource = fs.readFileSync(path.resolve(__dirname, '../src/haruLaw/haruLawAttachments.ts'), 'utf8');
+  const indexSource = [
+    fs.readFileSync(path.resolve(__dirname, '../src/index.ts'), 'utf8'),
+    haruLawAttachmentsSource,
+    fs.readFileSync(path.resolve(__dirname, '../src/haruLaw/haruLawFunctions.ts'), 'utf8'),
+  ].join('\n');
+  // 첨부 처리 구간(prepareHaruLawAttachments 부터 cleanupHaruLawGeminiFiles 까지)은 haruLawAttachments.ts 의 해당 위치부터 끝까지다.
+  const attachmentLoaderSource = haruLawAttachmentsSource.slice(
+    haruLawAttachmentsSource.indexOf('async function prepareHaruLawAttachments('),
   );
   assert.match(indexSource, /const HARULAW_ATTACH_MAX_PDF_BYTES = 50_000_000/);
   assert.match(indexSource, /const HARULAW_ATTACH_MAX_TOTAL_BYTES = 50 \* 1024 \* 1024/);
