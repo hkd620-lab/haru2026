@@ -62,7 +62,7 @@ export async function newPersonaSession(browser, identity, { device = IPHONE, fi
   const blocked = [];
   await context.route('**/*', (route) => {
     const url = route.request().url();
-    if (url.startsWith(BASE_URL) || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
+    if (new URL(url).origin === BASE_URL || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
     if (new URL(url).hostname === 'qa-storage.invalid') {
       return route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL_PNG });
     }
@@ -70,8 +70,27 @@ export async function newPersonaSession(browser, identity, { device = IPHONE, fi
     return route.abort('blockedbyclient');
   });
   await context.addInitScript((id) => { window.__QA_PERSONA__ = id; }, identity);
+  // Date만 이동한다. Playwright 전체 clock은 Motion의 Web Animations 시간과
+  // 어긋나 종료된 로딩 오버레이를 남길 수 있으므로 RAF·performance·타이머는 원본 유지.
+  await context.addInitScript(() => {
+    const NativeDate = window.Date;
+    let offset = Number(document.cookie.split('; ').find(x => x.startsWith('persona-sim-offset='))?.split('=')[1] || 0);
+    window.__qaSetOffset = value => { offset = value; };
+    const SimDate = new Proxy(NativeDate, {
+      get(target, prop, receiver) {
+        if (prop === 'now') return () => NativeDate.now() + offset;
+        return Reflect.get(target, prop, receiver);
+      },
+      construct(target, args, newTarget) {
+        return Reflect.construct(target, args.length ? args : [NativeDate.now() + offset], newTarget === SimDate ? target : newTarget);
+      },
+      apply() { return new NativeDate(NativeDate.now() + offset).toString(); },
+    });
+    window.Date = SimDate;
+  });
   const page = await context.newPage();
-  if (fixedNow) await page.clock.setFixedTime(fixedNow);
+  page.setDefaultTimeout(10000);
+  if (fixedNow) await setSimulatedTime(page, fixedNow);
 
   const events = { console: [], pageErrors: [], dialogs: [] };
   page.on('console', (msg) => {
@@ -96,4 +115,10 @@ export async function readQa(page) {
     const qa = window.__qa;
     return qa ? JSON.parse(JSON.stringify({ calls: qa.calls, writes: qa.writes, uploads: qa.uploads, unknownCallables: qa.unknownCallables })) : null;
   });
+}
+
+export async function setSimulatedTime(page, time) {
+  const offset = new Date(time).getTime() - Date.now();
+  await page.context().addCookies([{ name: 'persona-sim-offset', value: String(offset), url: BASE_URL }]);
+  await page.evaluate(value => window.__qaSetOffset?.(value), offset);
 }

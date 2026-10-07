@@ -158,8 +158,8 @@ export async function run(ctx) {
         if (/육아일기로 정리/.test(text)) {
           ctx.finding({
             severity: '제안',
-            title: '"아이들" 단어만으로 육아 비서를 추천한다(교사 기록 오탐)',
-            detail: '초등학교 교사가 학급 아이들 이야기를 쓴 일기인데 저장 직후 "HARU 육아·교육 비서 — 감지된 키워드: 아이 → 육아일기로 정리"가 추천됨. 같은 화면에서 "운동"(피구/산책) 단어로 건강관리 비서도 추천될 수 있음.',
+            title: '교사의 학급 일기에 육아일기 변환을 추천한다(맥락 검토 제안)',
+            detail: '초등학교 교사가 학급 아이들 이야기를 쓴 일기인데 저장 직후 "HARU 육아·교육 비서 — 감지된 키워드: 아이 → 육아일기로 정리"가 추천됨.',
           });
         }
       }
@@ -170,6 +170,8 @@ export async function run(ctx) {
   await ctx.step('7일 뒤 내 기록(SAYU) 목록 점검', async () => {
     await ctx.setDay('2026-10-07', '22:10');
     await page.goto(new URL('/sayu', page.url()).href, { waitUntil: 'load' });
+    await page.getByRole('tab', { name: '목록', exact: true }).click();
+    await page.locator('section > button').filter({ hasText: /^일기/ }).click();
     await page.waitForTimeout(1500);
     const text = await pageText(page);
     const m = text.match(/이달 결과\s*(\d+)건/);

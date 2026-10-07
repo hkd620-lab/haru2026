@@ -1,0 +1,32 @@
+[
+ {
+  "id": "p01-diary",
+  "durationMs": 48930,
+  "steps": 33,
+  "checks": 72,
+  "failedChecks": 2,
+  "failedSteps": 0,
+  "crashed": false,
+  "findings": 4
+ },
+ {
+  "id": "p06-child",
+  "durationMs": 35175,
+  "steps": 15,
+  "checks": 38,
+  "failedChecks": 1,
+  "failedSteps": 0,
+  "crashed": false,
+  "findings": 1
+ },
+ {
+  "id": "p11-household",
+  "durationMs": 25743,
+  "steps": 15,
+  "checks": 42,
+  "failedChecks": 7,
+  "failedSteps": 0,
+  "crashed": false,
+  "findings": 7
+ }
+]

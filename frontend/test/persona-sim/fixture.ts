@@ -41,6 +41,15 @@ export const qa = {
   unknownCallables: [] as string[],
 };
 
+// 페이지 이동마다 모의 호출·저장 증거가 사라지지 않도록 인물별로 누적한다.
+const EVIDENCE_KEY = `persona-sim-evidence:${persona.uid}`;
+try {
+  const prior = JSON.parse(localStorage.getItem(EVIDENCE_KEY) || '{}');
+  for (const key of ['calls', 'writes', 'uploads', 'deletedObjects', 'unknownCallables'] as const) {
+    if (Array.isArray(prior[key])) (qa[key] as unknown[]).push(...prior[key]);
+  }
+} catch { /* 새 세션 */ }
+window.addEventListener('pagehide', () => localStorage.setItem(EVIDENCE_KEY, JSON.stringify(qa)));
 (window as any).__qa = qa;
 
 // 월 AI 한도 사용량은 새로고침해도 유지한다(운영과 같은 달 단위 카운터를 흉내).

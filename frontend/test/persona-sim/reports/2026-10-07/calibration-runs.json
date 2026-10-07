@@ -1,0 +1,106 @@
+[
+  {
+    "runId": "2026-10-07T06-26-01",
+    "summary": [
+      {
+        "id": "p01-diary",
+        "durationMs": 128943,
+        "steps": 33,
+        "checks": 72,
+        "failedChecks": 22,
+        "findings": 24
+      }
+    ],
+    "status": "하네스 보정 실행: 확정 제품 결함 수치에서 제외"
+  },
+  {
+    "runId": "2026-10-07T06-30-05",
+    "summary": [
+      {
+        "id": "p01-diary",
+        "durationMs": 29090,
+        "steps": 11,
+        "checks": 18,
+        "failedChecks": 1,
+        "findings": 3
+      },
+      {
+        "id": "p06-child",
+        "durationMs": 13970,
+        "steps": 2,
+        "checks": 0,
+        "failedChecks": 0,
+        "findings": 1
+      },
+      {
+        "id": "p11-household",
+        "durationMs": 26625,
+        "steps": 15,
+        "checks": 42,
+        "failedChecks": 7,
+        "findings": 7
+      }
+    ],
+    "status": "하네스 보정 실행: 확정 제품 결함 수치에서 제외"
+  },
+  {
+    "runId": "2026-10-07T09-52-34",
+    "summary": [
+      {
+        "id": "p01-diary",
+        "durationMs": 27623,
+        "steps": 11,
+        "checks": 18,
+        "failedChecks": 1,
+        "findings": 3
+      },
+      {
+        "id": "p06-child",
+        "durationMs": 24039,
+        "steps": 6,
+        "checks": 8,
+        "failedChecks": 0,
+        "findings": 1
+      },
+      {
+        "id": "p11-household",
+        "durationMs": 29120,
+        "steps": 15,
+        "checks": 42,
+        "failedChecks": 7,
+        "findings": 7
+      }
+    ],
+    "status": "하네스 보정 실행: 확정 제품 결함 수치에서 제외"
+  },
+  {
+    "runId": "2026-10-07T09-54-48",
+    "summary": [
+      {
+        "id": "p01-diary",
+        "durationMs": 45063,
+        "steps": 33,
+        "checks": 72,
+        "failedChecks": 10,
+        "findings": 12
+      },
+      {
+        "id": "p06-child",
+        "durationMs": 35695,
+        "steps": 15,
+        "checks": 38,
+        "failedChecks": 8,
+        "findings": 8
+      },
+      {
+        "id": "p11-household",
+        "durationMs": 25906,
+        "steps": 15,
+        "checks": 42,
+        "failedChecks": 7,
+        "findings": 7
+      }
+    ],
+    "status": "하네스 보정 실행: 확정 제품 결함 수치에서 제외"
+  }
+]

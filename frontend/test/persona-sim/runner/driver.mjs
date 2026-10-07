@@ -2,7 +2,7 @@
 // 원칙: 실제 사용자처럼 "홈 → 형식 카드 → 작성 → 저장 → SAYU" 순서로 화면을 눌러서 쓴다.
 //       (주소창으로 /record 에 바로 들어가면 뒤로 갈 곳이 없어 닫기 동작이 달라진다.)
 import path from 'node:path';
-import { BASE_URL, ensureDir, readQa } from './lib.mjs';
+import { BASE_URL, ensureDir, readQa, setSimulatedTime } from './lib.mjs';
 
 const slug = (s) => s.replace(/[^0-9A-Za-z가-힣]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 
@@ -32,7 +32,7 @@ export function createContext({ page, events, blocked, outDir, meta }) {
       currentStep = name;
       const t0 = Date.now();
       let ok = true; let error;
-      try { await fn(); } catch (e) { ok = false; error = String(e?.message || e).split('\n')[0]; }
+      try { await fn(); } catch (e) { ok = false; error = String(e?.message || e); }
       const rec = {
         n: steps.length + 1, name, ok, ms: Date.now() - t0, error,
         url: (() => { try { return new URL(page.url()).pathname; } catch { return page.url(); } })(),
@@ -40,6 +40,7 @@ export function createContext({ page, events, blocked, outDir, meta }) {
       };
       if (shot) rec.shot = await ctx.snap(name);
       steps.push(rec);
+      if (!ok) throw new Error(`${name}: ${error}`);
       return rec;
     },
 
@@ -64,7 +65,7 @@ export function createContext({ page, events, blocked, outDir, meta }) {
 
     // 하루 단위 시간 이동 — 한국 시간 저녁에 기록하는 사용자를 흉내 낸다.
     async setDay(dateStr, hhmm = '21:30') {
-      await page.clock.setFixedTime(new Date(`${dateStr}T${hhmm}:00+09:00`));
+      await setSimulatedTime(page, new Date(`${dateStr}T${hhmm}:00+09:00`));
     },
   };
   return ctx;
@@ -130,21 +131,24 @@ const SAVE_LABELS = {
 };
 
 export async function saveOriginal(page, style) {
-  await page.getByRole('button', { name: SAVE_LABELS[style].original }).click();
+  const modern = page.getByRole('button', { name: '원본 저장', exact: true });
+  await (await modern.count() ? modern : page.getByRole('button', { name: SAVE_LABELS.premium.original, exact: true })).click();
 }
 
 // AI 사용 안내 → 실행 → 미리보기 → 저장까지. 한도 초과 등은 호출한 쪽에서 토스트로 판단한다.
 export async function saveWithAi(page, style, { onPreview } = {}) {
-  await page.getByRole('button', { name: SAVE_LABELS[style].ai }).click();
+  const modern = page.getByRole('button', { name: 'AI 다듬은 글 저장', exact: true });
+  await (await modern.count() ? modern : page.getByRole('button', { name: SAVE_LABELS.premium.ai, exact: true })).click();
   await page.getByRole('button', { name: 'AI 다듬기 실행' }).click({ timeout: 8000 });
-  const save = page.getByRole('button', { name: /SAYU-나의기록 저장/ }).last();
+  const save = page.getByRole('button', { name: '💾 SAYU-나의기록 저장', exact: true });
   await save.waitFor({ timeout: 10000 });
   if (onPreview) await onPreview();
   await save.click();
 }
 
 export async function waitForSayu(page) {
-  await page.waitForURL('**/sayu', { timeout: 10000 });
+  // SAYU 상세 모달이 실제로 열린 뒤 검증한다.
+  await page.getByRole('button', { name: '수정하기', exact: false }).waitFor({ timeout: 10000 });
   await page.waitForTimeout(1200);
 }
 
