@@ -366,7 +366,7 @@ export function HouseholdPage() {
           ) : thisMonthEntries.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
               이번 달 기록이 없습니다.<br />
-              <button onClick={() => navigate('/record', { state: { format: 'HARU가계부' } })}
+              <button onClick={() => navigate('/record', { state: { format: 'HARU가계부', from: '/household' } })}
                 style={{ marginTop: 10, background: '#166534', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 14, cursor: 'pointer' }}>
                 첫 기록 추가
               </button>
