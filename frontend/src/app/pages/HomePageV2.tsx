@@ -553,6 +553,22 @@ function todayLabel(now: Date) {
   };
 }
 
+// 홈 상단 시각 칩 — "오전/오후 H시 M분" 형식 (기기 현재 시각 기준)
+function clockLabel(now: Date) {
+  const hours = now.getHours();
+  const meridiem = hours < 12 ? '오전' : '오후';
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${meridiem} ${hour12}시 ${now.getMinutes()}분`;
+}
+
+// 홈 상단 인사말 — 05~11시 MORNING / 12~17시 AFTERNOON / 그 외 EVENING
+function greetingLabel(now: Date) {
+  const hours = now.getHours();
+  if (hours >= 5 && hours < 12) return 'GOOD MORNING';
+  if (hours >= 12 && hours < 18) return 'GOOD AFTERNOON';
+  return 'GOOD EVENING';
+}
+
 function getAgentKey(agent: Agent) {
   if (agent.action) return `action:${agent.action}`;
   return `path:${agent.path || 'none'}:${JSON.stringify(agent.state || {})}`;
@@ -589,6 +605,14 @@ export function HomePageV2() {
     [isDeveloper],
   );
   const today = useMemo(() => todayLabel(new Date()), []);
+  // 시각 칩·인사말 표시용 — 1분마다 갱신 (Firestore·외부 API 호출 없음)
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(new Date()), 60000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+  const timeText = clockLabel(now);
+  const greetingText = greetingLabel(now);
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
   const [personalizationModalOpen, setPersonalizationModalOpen] = useState(false);
   const [personalizationSaving, setPersonalizationSaving] = useState(false);
@@ -856,10 +880,10 @@ export function HomePageV2() {
           [data-v2="header-actions"] .v2-pill { font-size: 0 !important; padding: 0 !important; width: 36px !important; height: 36px !important; gap: 0 !important; justify-content: center !important; }
           [data-v2="header-actions"] .v2-pill svg { width: 16px !important; height: 16px !important; }
           [data-v2="header-actions"] .v2-pill > span { display: none !important; }
-          /* 히어로 날짜: 5월 7일 한 줄, "입하 立夏"는 다음 줄 */
+          /* 히어로 날짜: 한 줄 유지 */
           [data-v2="hero-date-num"] { flex-wrap: wrap !important; align-items: baseline !important; white-space: nowrap !important; word-break: keep-all !important; }
           [data-v2="hero-date-num"] small { flex-basis: 100% !important; margin-top: 4px !important; white-space: nowrap !important; }
-          /* "오늘 0건" 태그가 큰 폰 글자와 겹치지 않게 */
+          /* 히어로 우상단 태그 (현재 렌더되지 않음) */
           [data-v2="hero-date-tag"] { font-size: 9px !important; padding: 3px 8px !important; gap: 5px !important; top: 10px !important; right: 10px !important; }
           /* 히어로 칩들 줄바꿈 안 깨지게 */
           [data-v2="hero-date-chips"] { gap: 5px !important; }
@@ -1269,37 +1293,6 @@ export function HomePageV2() {
               }}
             />
 
-            <div
-              data-v2="hero-date-tag"
-              style={{
-                position: 'absolute',
-                top: 32,
-                right: 36,
-                zIndex: 2,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                background: 'rgba(255,255,255,0.78)',
-                backdropFilter: 'blur(2px)',
-                border: '1px solid #E5DFD0',
-                borderRadius: 999,
-                padding: '7px 14px 7px 12px',
-                fontSize: 12,
-                fontWeight: 600,
-                color: '#4A5A2C',
-              }}
-            >
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: 999,
-                  background: '#7A8B4E',
-                }}
-              />
-              오늘 0건
-            </div>
-
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div
                 data-v2="hero-date-cap"
@@ -1332,18 +1325,6 @@ export function HomePageV2() {
                 }}
               >
                 {today.big}
-                <small
-                  style={{
-                    fontFamily: FONT_SERIF,
-                    fontSize: 16,
-                    fontWeight: 400,
-                    color: '#7A6F5A',
-                    letterSpacing: '-0.01em',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  · 입하 立夏
-                </small>
               </div>
               <div
                 data-v2="hero-date-headline"
@@ -1369,27 +1350,12 @@ export function HomePageV2() {
                   flexWrap: 'wrap',
                 }}
               >
-                <Chip color="warm">
-                  <ChipSvg>
-                    <circle cx="12" cy="12" r="4" />
-                    <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4l1.4-1.4M17 7l1.4-1.4" />
-                  </ChipSvg>
-                  맑음 · 22°
-                </Chip>
-                <Chip color="nature">
-                  <ChipSvg>
-                    <path d="M12 22V8" />
-                    <path d="M12 8c-3 0-5-2-5-5 3 0 5 2 5 5z" />
-                    <path d="M12 12c3 0 5-2 5-5-3 0-5 2-5 5z" />
-                  </ChipSvg>
-                  연속 기록 12일째
-                </Chip>
                 <Chip color="calm">
                   <ChipSvg>
                     <circle cx="12" cy="12" r="9" />
                     <path d="M12 7v5l3 2" />
                   </ChipSvg>
-                  오전 7시 14분
+                  {timeText}
                 </Chip>
               </div>
             </div>
@@ -1436,7 +1402,7 @@ export function HomePageV2() {
                   color: '#888780',
                 }}
               >
-                GOOD MORNING
+                {greetingText}
               </div>
               <h3
                 data-v2="hero-greet-title"
@@ -1451,47 +1417,6 @@ export function HomePageV2() {
               >
                 오늘도 한 줄, 남겨볼까요?
               </h3>
-              <p
-                data-v2="hero-greet-body"
-                style={{
-                  fontSize: 13,
-                  color: '#7A6F5A',
-                  lineHeight: 1.7,
-                  margin: 0,
-                }}
-              >
-                어젯밤 적어두신{' '}
-                <b style={{ color: '#B85C2E' }}>‘텃밭일지’</b>는<br />
-                SAYU가 곱게 다듬어 두었어요.
-              </p>
-            </div>
-
-            <div
-              data-v2="hero-greet-streak"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                marginTop: 22,
-                paddingTop: 18,
-                borderTop: '1px dashed #E5DFD0',
-                position: 'relative',
-                zIndex: 1,
-              }}
-            >
-              <div style={{ display: 'flex', gap: 6 }} aria-label="지난 7일 기록 현황">
-                <StreakDot state="on" />
-                <StreakDot state="on" />
-                <StreakDot state="on" />
-                <StreakDot state="semi" />
-                <StreakDot state="on" />
-                <StreakDot state="on" />
-                <StreakDot state="off" />
-              </div>
-              <div style={{ fontSize: 11, color: '#7A6F5A' }}>
-                이번 주{' '}
-                <b style={{ color: '#4A5A2C', fontWeight: 700 }}>6일</b> · 평균 7분
-              </div>
             </div>
           </aside>
         </div>
