@@ -95,11 +95,11 @@ const PUBLIC_SAYU_REQUIRED_MESSAGE = '먼저 SAYU 다듬기를 완료한 뒤 공
 const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(([
   '일기', '에세이', '여행기록', '텃밭일지', '애완동물관찰일지', '메모', '독서사유', '육아일기', '업무일지', 'HARU가계부', '성장타임라인',
 ] as RecordFormat[]).map((format) => getFormatKey(format)));
+// 형식이 아닌 비서 라벨(직접작성영어일기·SNS 갈무리)은 SAYU_EXTRA_LABEL_KEYS 의 키를 쓰고, 나머지는 등록부의 SAYU 키를 쓴다.
+const SAYU_EXTRA_LABEL_KEYS: Record<string, string> = { '직접작성영어일기': 'english_diary', [SNS_GALMURI_LABEL]: 'essay' };
 // SAYU 화면이 다루는 라벨 목록(순서 유지 — 필드로 형식을 찾을 때 앞의 것이 먼저 맞는다).
 // 한 줄에 하나씩 쓴다: 건강 동의 대기 목록이 SayuPage 에 다시 생기지 않는지 감시하는 테스트(sayuGrowthTimeline.test)가
 // 성장기록·배뇨일지 두 라벨이 따옴표째 한 줄에 나란히 붙은 모양을 찾기 때문이다. 이 목록은 동의 목록이 아니다.
-// 형식이 아닌 비서 라벨(직접작성영어일기·SNS 갈무리)은 SAYU_EXTRA_LABEL_KEYS 의 키를 쓰고, 나머지는 등록부의 SAYU 키를 쓴다.
-const SAYU_EXTRA_LABEL_KEYS: Record<string, string> = { '직접작성영어일기': 'english_diary', [SNS_GALMURI_LABEL]: 'essay' };
 const SAYU_FORMAT_LABELS: string[] = [
   '일기',
   '에세이',
