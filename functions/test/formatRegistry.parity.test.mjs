@@ -42,9 +42,16 @@ test('polishContent SAYU 그룹·generateTitlesForAll·epubExport 의 값이 기
     Object.entries(functionsRegistry.buildFormatPrefixMap(arrayAfter(epub, 'const FORMAT_PREFIX: Record<string, string> = buildFormatPrefixMap('))),
     snapshot.epubExport_FORMAT_PREFIX,
   );
-  // 바꾼 곳에 접두어 표가 다시 생기지 않는다
-  for (const source of [index, epub]) {
-    assert.doesNotMatch(source, /['"]?일기['"]?\s*:\s*['"]diary['"]/);
-    assert.doesNotMatch(source, /RICH_FORMATS = \['diary'/);
+  // 바꾼 곳에 접두어 표가 다시 생기지 않는다 — 등록부의 어느 형식·접두어 쌍이든, 접두어 두 개가 나란히 붙은 배열이든 잡는다.
+  const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const entries = Object.entries(functionsRegistry.FORMAT_FIELD_PREFIX);
+  const prefixes = [...new Set(entries.map(([, prefix]) => prefix))].map(escape).join('|');
+  const prefixArray = new RegExp(`['"](?:${prefixes})['"]\\s*,\\s*['"](?:${prefixes})['"]`);
+  for (const [name, source] of [['index.ts', index], ['epubExport.ts', epub]]) {
+    for (const [format, prefix] of entries) {
+      const pair = new RegExp(`['"]?${escape(format)}['"]?\\s*:\\s*['"]${escape(prefix)}['"]`);
+      assert.doesNotMatch(source, pair, `${name}: ${format} → ${prefix} 리터럴 표가 다시 생김`);
+    }
+    assert.doesNotMatch(source, prefixArray, `${name}: 접두어 리터럴 배열이 다시 생김`);
   }
 });
