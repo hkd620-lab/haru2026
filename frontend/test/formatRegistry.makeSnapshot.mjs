@@ -1,4 +1,4 @@
-// P3.5 형식 등록부 스냅샷 — 기준 커밋(112f497)의 원래 형식·접두어 정의 값을 뽑아 저장한다(P3.5a 6곳, P3.5b 4곳, P3.5c1 1곳).
+// P3.5 형식 등록부 스냅샷 — 기준 커밋(112f497)의 원래 형식·접두어 정의 값을 뽑아 저장한다(P3.5a 6곳, P3.5b 4곳, P3.5c 5곳).
 // 실행: node test/formatRegistry.makeSnapshot.mjs [--check]
 //   --check: 저장된 스냅샷이 기준 커밋에서 다시 뽑은 값과 같은지 확인한다.
 import { execFileSync } from 'node:child_process';
@@ -13,6 +13,9 @@ const sayuPage = show('frontend/src/app/pages/SayuPage.tsx');
 const sayuModal = show('frontend/src/app/components/SayuModal.tsx');
 const timelineCollage = show('frontend/src/app/components/TimelineCollageModal.tsx');
 const formatModal = show('frontend/src/app/components/FormatModal.tsx');
+const mergeViewer = show('frontend/src/app/pages/MergeViewerPage.tsx');
+const prophecy = show('frontend/src/app/pages/ProphecyFromRecord.tsx');
+const recommendations = show('frontend/src/app/utils/assistantRecommendations.ts');
 
 const literalAfter = (source, marker, open, close) => {
   const at = source.indexOf(marker);
@@ -43,6 +46,11 @@ const snapshot = {
   timelineCollage_FORMAT_PREFIXES: evaluate(literalAfter(timelineCollage, 'const FORMAT_PREFIXES = [', '[', ']')),
   // P3.5c1
   formatModal_FORMAT_PREFIX: entries(evaluate(literalAfter(formatModal, 'const FORMAT_PREFIX: Record<RecordFormat, string> = {', '{', '}'))),
+  // P3.5c3·c4·c5
+  mergeViewer_formatPrefix: entries(evaluate(literalAfter(mergeViewer, 'const formatPrefix = {', '{', '}'))),
+  prophecy_FORMAT_PREFIX: entries(evaluate(literalAfter(prophecy, 'const FORMAT_PREFIX: Record<string, string> = {', '{', '}'))),
+  recommendations_FORMAT_PRIORITY: entries(evaluate(literalAfter(recommendations, "const FORMAT_PRIORITY: Record<string, AssistantRecommendation['category'][]> = {", '{', '}'))),
+  recommendations_FORMAT_ALIASES: entries(evaluate(literalAfter(recommendations, 'const FORMAT_ALIASES: Record<string, string> = {', '{', '}'))),
 };
 
 const file = new URL('./formatRegistry.snapshot.json', import.meta.url);

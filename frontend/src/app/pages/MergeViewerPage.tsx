@@ -6,6 +6,12 @@ import { getOrigin } from '../services/v2Origin';
 import { toast } from 'sonner';
 import { exportRecordsToEpub } from '../services/epubExportService';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
+import { buildFormatKeyMap } from '../records/formatRegistry';
+
+// 합본 보기에서 사진을 찾을 형식(그 밖의 형식은 일기 접두어로 찾는다)
+const MERGE_VIEWER_FORMATS: RecordFormat[] = [
+  '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기', '메모',
+];
 
 
 interface ViewerRecord {
@@ -57,19 +63,8 @@ export function MergeViewerPage() {
   const { records, format, startDate, endDate, threshold } = state;
   const totalPages = records.length + 2;
 
-  // 형식별 prefix
-  const formatPrefix = {
-    '일기': 'diary',
-    '에세이': 'essay',
-    '선교보고': 'mission',
-    '일반보고': 'report',
-    '업무일지': 'work',
-    '여행기록': 'travel',
-    '텃밭일지': 'garden',
-    '애완동물관찰일지': 'pet',
-    '육아일기': 'child',
-    '메모': 'memo',
-  }[format as string] || 'diary';
+  // 형식별 prefix (값은 형식 등록부, 범위는 MERGE_VIEWER_FORMATS)
+  const formatPrefix = buildFormatKeyMap(MERGE_VIEWER_FORMATS)[format as RecordFormat] || 'diary';
 
   // 사진 파싱 함수
   const getImages = (record: ViewerRecord): string[] => {
