@@ -1,4 +1,4 @@
-// P3.5 형식 등록부 스냅샷 — 기준 커밋(112f497)의 원래 형식·접두어 정의 값을 뽑아 저장한다(P3.5a 6곳, P3.5b 4곳).
+// P3.5 형식 등록부 스냅샷 — 기준 커밋(112f497)의 원래 형식·접두어 정의 값을 뽑아 저장한다(P3.5a 6곳, P3.5b 4곳, P3.5c1 1곳).
 // 실행: node test/formatRegistry.makeSnapshot.mjs [--check]
 //   --check: 저장된 스냅샷이 기준 커밋에서 다시 뽑은 값과 같은지 확인한다.
 import { execFileSync } from 'node:child_process';
@@ -12,6 +12,7 @@ const firestoreService = show('frontend/src/app/services/firestoreService.ts');
 const sayuPage = show('frontend/src/app/pages/SayuPage.tsx');
 const sayuModal = show('frontend/src/app/components/SayuModal.tsx');
 const timelineCollage = show('frontend/src/app/components/TimelineCollageModal.tsx');
+const formatModal = show('frontend/src/app/components/FormatModal.tsx');
 
 const literalAfter = (source, marker, open, close) => {
   const at = source.indexOf(marker);
@@ -40,6 +41,8 @@ const snapshot = {
   sayuPage_ALL_FORMAT_PREFIXES: entries(evaluate(literalAfter(sayuPage, 'const ALL_FORMAT_PREFIXES: Record<string, string> = {', '{', '}'))),
   sayuModal_formatLabelMap: entries(evaluate(literalAfter(sayuModal, 'const formatLabelMap: Record<string, string> = {', '{', '}'))),
   timelineCollage_FORMAT_PREFIXES: evaluate(literalAfter(timelineCollage, 'const FORMAT_PREFIXES = [', '[', ']')),
+  // P3.5c1
+  formatModal_FORMAT_PREFIX: entries(evaluate(literalAfter(formatModal, 'const FORMAT_PREFIX: Record<RecordFormat, string> = {', '{', '}'))),
 };
 
 const file = new URL('./formatRegistry.snapshot.json', import.meta.url);

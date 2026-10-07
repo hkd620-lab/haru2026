@@ -1,4 +1,4 @@
-// P3.5 형식 등록부 — 등록부로 바꾼 곳(P3.5a 6곳, P3.5b 4곳)의 값이 바꾸기 전(기준 커밋)과 같은지 확인한다.
+// P3.5 형식 등록부 — 등록부로 바꾼 곳(P3.5a 6곳, P3.5b 4곳, P3.5c1 1곳)의 값이 바꾸기 전(기준 커밋)과 같은지 확인한다.
 // 기준 값: test/formatRegistry.snapshot.json (node test/formatRegistry.makeSnapshot.mjs --check 로 기준 커밋과 대조)
 // 실행: node --import tsx --test test/formatRegistry.test.mjs
 import test from 'node:test';
@@ -92,11 +92,19 @@ test('SAYU 계열(P3.5b): 공개 허용 키·SAYU 형식 키·삭제 라벨·콜
   assert.deepEqual(collageFormats.map((format) => registry.getFormatKey(format)), snapshot.timelineCollage_FORMAT_PREFIXES);
 });
 
+test('기록 입력(P3.5c1): FormatModal 의 FORMAT_PREFIX 가 기존과 같다(순서 포함)', () => {
+  const formatModal = read('components/FormatModal.tsx');
+  assert.match(formatModal, /const FORMAT_PREFIX: Record<RecordFormat, string> = buildFormatKeyMap\(\[[\s\S]*?\] as RecordFormat\[\]\);/);
+  const formats = arrayLiteral(formatModal, 'const FORMAT_PREFIX: Record<RecordFormat, string> = buildFormatKeyMap([');
+  assert.deepEqual(entries(registry.buildFormatKeyMap(formats)), snapshot.formatModal_FORMAT_PREFIX);
+});
+
 test('바꾼 곳에 형식·접두어 표가 다시 생기지 않는다', () => {
   const haruTypesSource = readFileSync(new URL('../src/app/types/haruTypes.ts', import.meta.url), 'utf8');
   for (const [name, source] of [
     ['haruTypes', haruTypesSource], ['firestoreService', serviceSource],
     ['SayuPage', read('pages/SayuPage.tsx')], ['SayuModal', read('components/SayuModal.tsx')], ['TimelineCollageModal', read('components/TimelineCollageModal.tsx')],
+    ['FormatModal', read('components/FormatModal.tsx')],
   ]) {
     assert.doesNotMatch(source, /['"]?일기['"]?\s*:\s*['"]diary['"]|['"]?diary['"]?\s*:\s*['"]일기['"]/, name);
     assert.doesNotMatch(source, /name: '일기', prefix|['"]diary_?['"]\s*,\s*['"]essay/, name);
