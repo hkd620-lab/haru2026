@@ -1,3 +1,5 @@
+import { buildFormatKeyMap, getFormatRecommendationPriorities, invertFormatKeyMap } from '../records/formatRegistry';
+
 export type AssistantRecommendation = {
   id: string;
   title: string;
@@ -154,38 +156,17 @@ export const ASSISTANT_RECOMMENDATION_SAFETY_NOTE =
 
 const KOREAN_PARTICLES = '(?:은|는|이|가|을|를|에|에서|으로|로|도|만|과|와|의)?';
 
+// 형식별 추천 범주 우선순위는 형식 등록부(recommendationPriority)에 있다. 하루LAW 는 형식이 아닌 비서 라벨이라 여기 둔다.
 const FORMAT_PRIORITY: Record<string, AssistantRecommendation['category'][]> = {
-  일기: ['health', 'life', 'law', 'finance'],
-  에세이: ['life', 'health'],
-  여행기록: ['travel', 'finance', 'health'],
-  독서사유: ['life'],
-  텃밭일지: ['plant', 'health'],
-  애완동물관찰일지: ['pet', 'health'],
-  육아일기: ['childcare', 'health', 'life'],
-  업무일지: ['finance', 'law', 'life'],
-  메모: ['life', 'health', 'finance'],
-  HARU보조장부: ['finance', 'law'],
-  선교보고: ['life', 'travel'],
-  일반보고: ['life', 'finance'],
+  ...getFormatRecommendationPriorities(),
   하루LAW: ['law', 'finance', 'life'],
-  HARUraw: ['law', 'finance', 'life'],
 };
 
-const FORMAT_ALIASES: Record<string, string> = {
-  diary: '일기',
-  essay: '에세이',
-  travel: '여행기록',
-  reading: '독서사유',
-  garden: '텃밭일지',
-  pet: '애완동물관찰일지',
-  child: '육아일기',
-  work: '업무일지',
-  memo: '메모',
-  ledger: 'HARU보조장부',
-  mission: '선교보고',
-  report: '일반보고',
-  haruraw: 'HARUraw',
-};
+// 접두어로 적힌 형식 이름(예: diary)을 형식 이름으로 바꾼다(값은 형식 등록부 역매핑)
+const FORMAT_ALIASES: Record<string, string> = invertFormatKeyMap(buildFormatKeyMap([
+  '일기', '에세이', '여행기록', '독서사유', '텃밭일지', '애완동물관찰일지', '육아일기',
+  '업무일지', '메모', 'HARU보조장부', '선교보고', '일반보고', 'HARUraw',
+]));
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

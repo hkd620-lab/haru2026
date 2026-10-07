@@ -30,6 +30,7 @@ import {
   READING_ENTRY_TYPES,
   READING_STATUS,
 } from '../types/haruTypes';
+import { buildFormatKeyMap } from '../records/formatRegistry';
 import { findGrowthLMS, type GrowthGender } from '../../data/growthLMS';
 import { calcAgeInMonths, calcPercentile } from '../../utils/growthCalc';
 import { GrowthChart } from '../../components/GrowthChart';
@@ -320,23 +321,11 @@ const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placehol
   '배뇨일지': [],
 };
 
-// 형식별 prefix 매핑
-const FORMAT_PREFIX: Record<RecordFormat, string> = {
-  '일기': 'diary',
-  '에세이': 'essay',
-  '선교보고': 'mission',
-  '일반보고': 'report',
-  '업무일지': 'work',
-  '여행기록': 'travel',
-  '독서사유': 'reading',
-  '텃밭일지': 'garden',
-  '애완동물관찰일지': 'pet',
-  '육아일기': 'child',
-  'HARU주식관리': 'stock',
-  '주식거래일지': 'stock',
-  '메모': 'memo',
-  'HARU보조장부': 'ledger',
-};
+// 형식별 prefix 매핑(값은 형식 등록부 records/formatRegistry.ts. 입력 화면이 다루는 14개 형식, 순서 유지)
+const FORMAT_PREFIX: Record<RecordFormat, string> = buildFormatKeyMap([
+  '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '독서사유',
+  '텃밭일지', '애완동물관찰일지', '육아일기', 'HARU주식관리', '주식거래일지', '메모', 'HARU보조장부',
+] as RecordFormat[]);
 
 // 형식별 제목 입력 예시 (placeholder) — 형식 성격에 맞게 차별화
 const TITLE_EXAMPLE: Partial<Record<RecordFormat, string>> = {

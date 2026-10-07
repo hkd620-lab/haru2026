@@ -1,4 +1,4 @@
-// P3.5 형식 등록부 — 등록부로 바꾼 곳(P3.5a 6곳, P3.5b 4곳)의 값이 바꾸기 전(기준 커밋)과 같은지 확인한다.
+// P3.5 형식 등록부 — 등록부로 바꾼 곳(P3.5a 6곳, P3.5b 4곳, P3.5c 5곳)의 값이 바꾸기 전(기준 커밋)과 같은지 확인한다.
 // 기준 값: test/formatRegistry.snapshot.json (node test/formatRegistry.makeSnapshot.mjs --check 로 기준 커밋과 대조)
 // 실행: node --import tsx --test test/formatRegistry.test.mjs
 import test from 'node:test';
@@ -34,6 +34,8 @@ test('등록부: 역할별 값이 소비처의 기존 값과 같다(육아일기
   assert.equal(registry.getFormatKey('성장기록', 'sayu'), 'child_measure');
   assert.equal(registry.getFormatKey('육아일기', 'sayu'), 'child'); // SAYU 키는 통계 키(parenting)와 다르다
   assert.equal(registry.getFormatKey('배뇨일지'), 'voiding');
+  // 역매핑은 객체 기본 속성 이름(constructor 등)과 겹치는 키도 정상으로 다룬다
+  assert.deepEqual(registry.invertFormatKeyMap({ 일기: 'constructor', 에세이: 'toString' }), { constructor: '일기', toString: '에세이' });
   // 모든 형식(RecordFormat 19개)이 등록부에 있다
   assert.equal(registry.ALL_REGISTERED_FORMATS.length, 19);
 });
@@ -71,7 +73,8 @@ test('SAYU 계열(P3.5b): 공개 허용 키·SAYU 형식 키·삭제 라벨·콜
   assert.match(sayuPage, /\] as RecordFormat\[\]\)\.map\(\(format\) => getFormatKey\(format\)\)\);/);
   assert.match(sayuPage, /const SAYU_FORMAT_PREFIXES: Record<string, string> = Object\.fromEntries\(SAYU_FORMAT_LABELS\.map\(\(label\) => \[\s*label,\s*SAYU_EXTRA_LABEL_KEYS\[label\] \?\? getFormatKey\(label as RecordFormat, 'sayu'\),\s*\]\)\);/);
   assert.match(sayuPage, /  const ALL_FORMAT_PREFIXES: Record<string, string> = \{\n    \.\.\.SAYU_FORMAT_PREFIXES,\n  \};/);
-  assert.match(sayuModal, /const formatLabelMap: Record<string, string> = invertFormatKeyMap\(buildFormatKeyMap\(\[/);
+  // 역할 인자 없이 저장 필드 접두어로 만들어야 한다(stats 역할을 쓰면 육아일기 라벨이 지워지지 않는다)
+  assert.match(sayuModal, /const formatLabelMap: Record<string, string> = invertFormatKeyMap\(buildFormatKeyMap\(\[[^\]]*\]\)\);/);
   assert.match(collage, /\] as RecordFormat\[\]\)\.map\(\(format\) => getFormatKey\(format\)\);/);
 
   const publicFormats = arrayLiteral(sayuPage, 'const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(([');
@@ -92,11 +95,42 @@ test('SAYU 계열(P3.5b): 공개 허용 키·SAYU 형식 키·삭제 라벨·콜
   assert.deepEqual(collageFormats.map((format) => registry.getFormatKey(format)), snapshot.timelineCollage_FORMAT_PREFIXES);
 });
 
+test('기록 입력(P3.5c1): FormatModal 의 FORMAT_PREFIX 가 기존과 같다(순서 포함)', () => {
+  const formatModal = read('components/FormatModal.tsx');
+  assert.match(formatModal, /const FORMAT_PREFIX: Record<RecordFormat, string> = buildFormatKeyMap\(\[[\s\S]*?\] as RecordFormat\[\]\);/);
+  const formats = arrayLiteral(formatModal, 'const FORMAT_PREFIX: Record<RecordFormat, string> = buildFormatKeyMap([');
+  assert.deepEqual(entries(registry.buildFormatKeyMap(formats)), snapshot.formatModal_FORMAT_PREFIX);
+});
+
+test('합본·미래전망·추천(P3.5c3·c4·c5): 기존 값과 같다', () => {
+  const mergeViewer = read('pages/MergeViewerPage.tsx');
+  const prophecy = read('pages/ProphecyFromRecord.tsx');
+  const recommendations = read('utils/assistantRecommendations.ts');
+  assert.match(mergeViewer, /const formatPrefix = buildFormatKeyMap\(MERGE_VIEWER_FORMATS\)\[format as RecordFormat\] \|\| 'diary';/);
+  assert.deepEqual(entries(registry.buildFormatKeyMap(arrayLiteral(mergeViewer, 'const MERGE_VIEWER_FORMATS: RecordFormat[] = ['))), snapshot.mergeViewer_formatPrefix);
+
+  assert.match(prophecy, /const FORMAT_PREFIX: Record<string, string> = buildFormatKeyMap\(\[[\s\S]*?\] as RecordFormat\[\], 'prophecy'\);/);
+  const prophecyFormats = arrayLiteral(prophecy, 'const FORMAT_PREFIX: Record<string, string> = buildFormatKeyMap([');
+  assert.deepEqual(entries(registry.buildFormatKeyMap(prophecyFormats, 'prophecy')), snapshot.prophecy_FORMAT_PREFIX); // 순서 포함(Object.entries 로 쓰임)
+
+  // 추천 우선순위: 키로만 찾으므로 순서는 보지 않고 값을 비교한다. 하루LAW 는 형식이 아닌 라벨이라 추천 파일에 남는다.
+  assert.match(recommendations, /const FORMAT_PRIORITY: Record<string, AssistantRecommendation\['category'\]\[\]> = \{\n  \.\.\.getFormatRecommendationPriorities\(\),\n  하루LAW: \['law', 'finance', 'life'\],\n\};/);
+  const priorities = { ...registry.getFormatRecommendationPriorities(), 하루LAW: ['law', 'finance', 'life'] };
+  const sortEntries = (list) => [...list].sort(([a], [b]) => a.localeCompare(b));
+  assert.deepEqual(sortEntries(entries(priorities)), sortEntries(snapshot.recommendations_FORMAT_PRIORITY));
+
+  assert.match(recommendations, /const FORMAT_ALIASES: Record<string, string> = invertFormatKeyMap\(buildFormatKeyMap\(\[/);
+  const aliasFormats = arrayLiteral(recommendations, 'invertFormatKeyMap(buildFormatKeyMap([');
+  assert.deepEqual(entries(registry.invertFormatKeyMap(registry.buildFormatKeyMap(aliasFormats))), snapshot.recommendations_FORMAT_ALIASES);
+});
+
 test('바꾼 곳에 형식·접두어 표가 다시 생기지 않는다', () => {
   const haruTypesSource = readFileSync(new URL('../src/app/types/haruTypes.ts', import.meta.url), 'utf8');
   for (const [name, source] of [
     ['haruTypes', haruTypesSource], ['firestoreService', serviceSource],
     ['SayuPage', read('pages/SayuPage.tsx')], ['SayuModal', read('components/SayuModal.tsx')], ['TimelineCollageModal', read('components/TimelineCollageModal.tsx')],
+    ['FormatModal', read('components/FormatModal.tsx')], ['MergeViewerPage', read('pages/MergeViewerPage.tsx')],
+    ['ProphecyFromRecord', read('pages/ProphecyFromRecord.tsx')], ['assistantRecommendations', read('utils/assistantRecommendations.ts')],
   ]) {
     assert.doesNotMatch(source, /['"]?일기['"]?\s*:\s*['"]diary['"]|['"]?diary['"]?\s*:\s*['"]일기['"]/, name);
     assert.doesNotMatch(source, /name: '일기', prefix|['"]diary_?['"]\s*,\s*['"]essay/, name);
