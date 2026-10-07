@@ -1,17 +1,15 @@
 import { onCall } from 'firebase-functions/v2/https';
-import { defineSecret } from 'firebase-functions/params';
-import { callAi } from './ai/aiGateway';
+import { aiSecretsFor, callAi } from './ai/aiGateway';
 import { enforceRateLimit } from './utils/rateLimit';
 import { reserveMonthlyAiQuota, rollbackMonthlyAiQuotaReservation, type MonthlyAiQuotaReservation } from './utils/monthlyAiQuota';
 import { logAiUsage } from './aiUsageLogger';
 import { isInternalDeveloperUid } from './internalEntitlements';
 import { buildReadingAiPrompt, createReadingAiHandler, READING_AI_MODEL, READING_AI_SYSTEM } from './readingAiCore';
 
-const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 
 export const chatWithReadingContext = onCall({
   region: 'asia-northeast3', memory: '512MiB', timeoutSeconds: 60,
-  secrets: [GEMINI_API_KEY],
+  secrets: aiSecretsFor('readingChat'),
 }, createReadingAiHandler<MonthlyAiQuotaReservation>({
   rateLimit: (uid) => enforceRateLimit(uid, 'chatWithReadingContext', 10, 60),
   reserve: (uid) => reserveMonthlyAiQuota(uid, 'chatWithReadingContext'),
@@ -20,7 +18,6 @@ export const chatWithReadingContext = onCall({
     // Leave time inside the callable deadline to refund failed reservations.
     const result = await callAi({
       purpose: 'readingChat',
-      keys: { gemini: GEMINI_API_KEY.value() },
       input: buildReadingAiPrompt(input),
       systemInstruction: READING_AI_SYSTEM,
       generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 4096, temperature: 0.4 },

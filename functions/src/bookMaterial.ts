@@ -8,13 +8,10 @@
 // - 원본 type 이 'ai_log' 가 아니면 거부
 // - 저장은 merge 로 bookMaterial 만 부착, 원본 필드 절대 미수정
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { defineSecret } from 'firebase-functions/params';
-import { callAi } from './ai/aiGateway';
+import { aiSecretsFor, callAi } from './ai/aiGateway';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import { hasAiLibraryDeveloperEmail } from './aiLibrary';
-
-const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 
 const BOOK_PROJECT_ID = 'book_haru2026_ai_platform';
 const BOOK_TITLE = '65세 할아버지, AI와 HARU2026 플랫폼을 만들다';
@@ -76,7 +73,7 @@ export const convertToBookMaterial = onCall(
   {
     region: 'asia-northeast3',
     memory: '512MiB',
-    secrets: [GEMINI_API_KEY],
+    secrets: aiSecretsFor('bookMaterial'),
     timeoutSeconds: 60,
   },
   async (request) => {
@@ -133,7 +130,6 @@ export const convertToBookMaterial = onCall(
       : (typeof doc.title === 'string' ? doc.title : '');
 
     // 8) Gemini 호출
-    const aiKeys = { gemini: GEMINI_API_KEY.value() };
     const generationConfig = {
       responseMimeType: 'application/json',
       temperature: 0.25,
@@ -231,7 +227,7 @@ ${text}
 
     let parsed: any;
     try {
-      const result = await callAi({ purpose: 'bookMaterial', keys: aiKeys, input: prompt, generationConfig });
+      const result = await callAi({ purpose: 'bookMaterial', input: prompt, generationConfig });
       const raw = result.text().trim();
       parsed = extractJson(raw);
     } catch (e: any) {

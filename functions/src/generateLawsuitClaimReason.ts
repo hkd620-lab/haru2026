@@ -1,6 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { defineSecret } from 'firebase-functions/params';
-import { callAi } from './ai/aiGateway';
+import { aiSecretsFor, callAi } from './ai/aiGateway';
 import * as logger from 'firebase-functions/logger';
 import * as admin from 'firebase-admin';
 import { isInternalDeveloperUid } from './internalEntitlements';
@@ -9,7 +8,6 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 const db = admin.firestore();
 // 현재 1차 운영값입니다. HARU 공식 최종 AI 정책 확정값이 아니며 한 곳에서 조정합니다.
 const CURRENT_CLAIM_REASON_DAILY_LIMITS: Record<'free' | 'basic' | 'premium', number> = {
@@ -105,7 +103,7 @@ export const generateLawsuitClaimReason = onCall(
     region: 'asia-northeast3',
     memory: '512MiB',
     cors: ALLOWED_CALLABLE_ORIGINS,
-    secrets: [GEMINI_API_KEY],
+    secrets: aiSecretsFor('lawsuitClaimReason'),
     timeoutSeconds: 120,
   },
   async (request) => {
@@ -187,7 +185,6 @@ ${safeClaimPurpose || '미입력'}
     try {
       const result = await callAi({
         purpose: 'lawsuitClaimReason',
-        keys: { gemini: GEMINI_API_KEY.value() },
         input: userPrompt,
         systemInstruction: systemPrompt,
       });

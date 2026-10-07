@@ -1,6 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { defineSecret } from 'firebase-functions/params';
-import { callAi } from './ai/aiGateway';
+import { aiSecretsFor, callAi } from './ai/aiGateway';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import {
@@ -9,7 +8,6 @@ import {
   type MonthlyAiQuotaReservation,
 } from './utils/monthlyAiQuota';
 
-const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 
 // 사용자 입력 이름의 prompt injection / 위험 문자 차단 (HARU예언과 동일 정책)
 function sanitizeName(raw: unknown): string {
@@ -25,7 +23,7 @@ export const convertSnsToDiary = onCall(
   {
     region: 'asia-northeast3',
     memory: '512MiB',
-    secrets: [GEMINI_API_KEY],
+    secrets: aiSecretsFor('snsToDiary'),
     timeoutSeconds: 120,
   },
   async (request) => {
@@ -98,7 +96,6 @@ ${text}
     try {
       const result = await callAi({
         purpose: 'snsToDiary',
-        keys: { gemini: GEMINI_API_KEY.value() },
         input: userPrompt,
         systemInstruction: systemPrompt,
       });
