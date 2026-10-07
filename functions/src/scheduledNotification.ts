@@ -1,5 +1,6 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
+import { getSeoulClock, isNotificationDue } from './scheduledNotificationCore';
 
 export const scheduledPushNotification = onSchedule(
   {
@@ -9,11 +10,10 @@ export const scheduledPushNotification = onSchedule(
     memory: '512MiB',
   },
   async (event) => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
+    // 알림 시각·'오늘'은 한국 시간 기준(실행 환경 기본 시간대는 UTC)
+    const clock = getSeoulClock(new Date());
 
-    console.log(`알림 스케줄러 실행: ${currentHour}:${currentMinute}`);
+    console.log(`알림 스케줄러 실행: ${clock.dateKey} ${clock.hour}:${clock.minute} (KST)`);
 
     const db = admin.firestore();
     const usersSnapshot = await db.collection('users').get();
@@ -43,24 +43,21 @@ export const scheduledPushNotification = onSchedule(
         continue;
       }
 
-      const notificationTime = settings.notificationTime || '21:00';
-      const [targetHour, targetMinute] = notificationTime.split(':').map(Number);
-
-      if (currentHour !== targetHour || currentMinute !== 0) {
+      if (!isNotificationDue(settings.notificationTime, clock)) {
         skippedCount++;
         continue;
       }
 
-      const today = now.toISOString().split('T')[0];
-
-      const recordDoc = await db
+      // 기록 문서 ID는 {date}_{timestamp} 형식도 있으므로 ID가 아니라 date 필드로 오늘 기록을 찾는다.
+      const todayRecords = await db
         .collection('users')
         .doc(userId)
         .collection('records')
-        .doc(today)
+        .where('date', '==', clock.dateKey)
+        .limit(1)
         .get();
 
-      if (recordDoc.exists) {
+      if (!todayRecords.empty) {
         skippedCount++;
         continue;
       }
