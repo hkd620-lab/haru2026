@@ -1,6 +1,6 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
-import { getZonedClock, isNotificationDue, resolveNotificationTimeZone } from './scheduledNotificationCore';
+import { getNotificationClocks, isNotificationDue, resolveNotificationTimeZone } from './scheduledNotificationCore';
 
 export const scheduledPushNotification = onSchedule(
   {
@@ -43,8 +43,8 @@ export const scheduledPushNotification = onSchedule(
         continue;
       }
 
-      const clock = getZonedClock(now, resolveNotificationTimeZone(settings.notificationTimeZone));
-      if (!isNotificationDue(settings.notificationTime, clock)) {
+      const { clock, hourBefore } = getNotificationClocks(now, resolveNotificationTimeZone(settings.notificationTimeZone));
+      if (!isNotificationDue(settings.notificationTime, clock, hourBefore)) {
         skippedCount++;
         continue;
       }

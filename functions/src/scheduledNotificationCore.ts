@@ -43,8 +43,19 @@ export function getZonedClock(now: Date, timeZone: string): ZonedClock {
 
 // 스케줄러는 매시 정각(UTC 기준 매시)에 한 번 돈다. 그 실행 시점의 사용자 현지 '시'가 설정한 시와 같으면 보낸다.
 // 분은 보지 않는다(기존 동작). 30·45분 시차 지역은 현지 HH:30·HH:45 에 발송된다.
-export function isNotificationDue(notificationTime: unknown, clock: ZonedClock): boolean {
+// 서머타임이 끝나는 날 같은 현지 시가 두 번 오면, 1시간 전 실행도 같은 날짜·같은 시였는지 보고 두 번째는 보내지 않는다.
+export function isNotificationDue(notificationTime: unknown, clock: ZonedClock, hourBefore?: ZonedClock): boolean {
   const time = typeof notificationTime === 'string' && notificationTime ? notificationTime : DEFAULT_NOTIFICATION_TIME;
   const [targetHour] = time.split(':').map(Number);
-  return clock.hour === targetHour;
+  if (clock.hour !== targetHour) return false;
+  if (hourBefore && hourBefore.dateKey === clock.dateKey && hourBefore.hour === clock.hour) return false;
+  return true;
+}
+
+// 사용자 현지 기준 지금 시각과 1시간 전 시각(서머타임 반복 시각 판정용)
+export function getNotificationClocks(now: Date, timeZone: string): { clock: ZonedClock; hourBefore: ZonedClock } {
+  return {
+    clock: getZonedClock(now, timeZone),
+    hourBefore: getZonedClock(new Date(now.getTime() - 60 * 60 * 1000), timeZone),
+  };
 }
