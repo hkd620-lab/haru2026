@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { transformSync } from 'esbuild';
+import { buildSync, transformSync } from 'esbuild';
 
 // Execute the real handlers and SAYU route reader against memory-only services.
 // No Firebase initialization, Storage, AI, login, or production record is used.
@@ -240,8 +240,10 @@ const routeStart = sayu.indexOf('    const filterFormat = typeof routeState?.fil
 const routeEnd = sayu.indexOf('\n  // eslint-disable-next-line react-hooks/exhaustive-deps', routeStart);
 assert.ok(routeStart > 0 && routeEnd > routeStart);
 const prefixSource = sayu.match(/  const ALL_FORMAT_PREFIXES:[\s\S]*?\n  };/)[0];
-const growthPredicate = sayu.match(/function isGrowthTimelineRecord[\s\S]*?\n}/)[0];
-const routeCode = transformSync(`${prefixSource}\n${growthPredicate}\n${extract(sayu, 'openFormatSayu')}\nconst applyRoute = () => {\n${sayu.slice(routeStart, routeEnd)}\n};`, { loader: 'ts', target: 'es2022' }).code;
+// P2c: 성장타임라인 판정·상세 열기 상태는 SAYU 어댑터로 옮겨졌다. 실제 어댑터를 묶어 실행 환경에 넘긴다.
+const sayuAdapterBundle = buildSync({ entryPoints: [new URL('../src/app/assistants/sayuAdapters.ts', import.meta.url).pathname], bundle: true, format: 'cjs', platform: 'node', write: false }).outputFiles[0].text;
+const sayuAdapter = (() => { const module = { exports: {} }; new Function('module', 'exports', sayuAdapterBundle)(module, module.exports); return module.exports; })();
+const routeCode = transformSync(`${prefixSource}\n${extract(sayu, 'openFormatSayu')}\nconst applyRoute = () => {\n${sayu.slice(routeStart, routeEnd)}\n};`, { loader: 'ts', target: 'es2022' }).code;
 function readSavedRoute(routeState, records) {
   const state = { detail: null, tab: null };
   const env = {
@@ -251,6 +253,9 @@ function readSavedRoute(routeState, records) {
     setSelectedDateFormats: noop, setHaruLawShareState: noop, navigate: noop,
     setHarurawModal: value => { state.detail = value; }, setSayuModalState: value => { state.detail = value; },
     normalizeTimelineItems: items => items ?? [], META_SUFFIXES: ['_title'],
+    isGrowthTimelineRecord: sayuAdapter.isGrowthTimelineRecord, GROWTH_TIMELINE_FORMAT_KEY: sayuAdapter.GROWTH_TIMELINE_FORMAT_KEY,
+    growthTimelineSelectedFormat: sayuAdapter.growthTimelineSelectedFormat, buildGrowthTimelineSayuModalState: sayuAdapter.buildGrowthTimelineSayuModalState,
+    structuredViewNeedsHealthConsent: sayuAdapter.structuredViewNeedsHealthConsent,
     // C has its own structured-reader tests; these routes remain generic formats.
     isStructuredAssistantPrefix: () => false, setStructuredRecord: noop,
   };
