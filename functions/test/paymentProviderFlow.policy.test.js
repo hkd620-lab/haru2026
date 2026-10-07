@@ -32,7 +32,7 @@ const verifySingleSection = section(indexSrc, 'export const verifySinglePayment 
 const webhookSection = section(indexSrc, 'export const portoneWebhook = onRequest', '// ===== 🗑️ 일회성 마이그레이션');
 const initialBillingCompletionSection = section(indexSrc, 'async function completeInitialBillingSubscription', 'async function markInitialBillingPaymentPending');
 const initialBillingAlreadyProcessedSection = section(indexSrc, 'async function isInitialBillingSubscriptionAlreadyProcessed', 'async function completeInitialBillingSubscription');
-const initialBillingSettlementSection = section(indexSrc, 'async function settleInitialBillingPayment', 'type HaruLawSharePreview');
+const initialBillingSettlementSection = section(indexSrc, 'async function settleInitialBillingPayment', 'function getSafeOAuthError');
 const createSubscriptionSection = section(indexSrc, 'export const createSubscriptionBillingRequest = onCall', 'export const recoverSubscriptionBillingRequest = onCall');
 const recoverSubscriptionSection = section(indexSrc, 'export const recoverSubscriptionBillingRequest = onCall', '// ===== 💳 결제 검증 (PortOne V2) =====');
 const subscriptionRedirectSection = section(subscriptionPageSrc, 'const redirectedCode = searchParams.get', 'const handleSubscribe = async');

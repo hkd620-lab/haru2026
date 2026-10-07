@@ -114,7 +114,8 @@ async function run() {
     assert.equal(writeCalls, 0);
   }
 
-  const indexSource = fs.readFileSync(path.resolve(__dirname, '../src/index.ts'), 'utf8');
+  // 하루LAW 분리(P3): lawEasyExplain 은 haruLaw/haruLawFunctions.ts 로 옮겼다.
+  const indexSource = fs.readFileSync(path.resolve(__dirname, '../src/haruLaw/haruLawFunctions.ts'), 'utf8');
   const handlerStart = indexSource.indexOf('export const lawEasyExplain = onCall(');
   const handlerEnd = indexSource.indexOf('export const lawPrecedent = onCall(', handlerStart);
   const handlerSource = indexSource.slice(handlerStart, handlerEnd);
