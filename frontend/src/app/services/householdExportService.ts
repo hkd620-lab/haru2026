@@ -4,12 +4,11 @@
  */
 
 import type { HaruRecord } from './firestoreService';
+import { parseHouseholdAmountText } from '../utils/householdAmount';
 
 function parseAmount(amountStr: string): number {
   if (!amountStr) return 0;
-  const cleaned = amountStr.replace(/[^0-9.-]/g, '');
-  const n = parseFloat(cleaned);
-  return isNaN(n) ? 0 : n;
+  return parseHouseholdAmountText(amountStr) ?? 0;
 }
 
 interface HouseholdExpandedEntry {

@@ -9,6 +9,7 @@ import { db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
 import type { HaruRecord } from '../services/firestoreService';
+import { parseHouseholdAmountText } from '../utils/householdAmount';
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
 
@@ -81,8 +82,7 @@ function expandRecord(r: HaruRecord): ExpandedEntry[] {
 }
 
 function parseAmount(s: string): number {
-  const n = parseFloat(s.replace(/[^0-9.-]/g, ''));
-  return isNaN(n) ? 0 : n;
+  return parseHouseholdAmountText(s) ?? 0;
 }
 
 function isHousehold(r: HaruRecord): boolean {

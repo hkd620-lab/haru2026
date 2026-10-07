@@ -71,6 +71,7 @@ import {
   type KakaoXlsxMonthGroup,
   type KakaoXlsxPreviewRow,
 } from '../services/householdKakaoImport';
+import { parseHouseholdAmountText } from '../utils/householdAmount';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부' | '배뇨일지';
 type SayuMode = 'BASIC' | 'PREMIUM';
@@ -172,8 +173,7 @@ function newHouseholdEntry(overrides?: Partial<HouseholdEntry>): HouseholdEntry 
 }
 
 function parseHouseholdAmount(value: string): number {
-  const n = parseFloat(String(value || '').replace(/[^0-9.-]/g, ''));
-  return Number.isFinite(n) ? n : 0;
+  return parseHouseholdAmountText(value) ?? 0;
 }
 
 // 날짜를 비워 둔 거래는 기록 저장일로 채운다. 가계부 화면은 거래 날짜로 월을 나누므로 빈 날짜는 합계·목록에서 빠진다.
@@ -2526,6 +2526,9 @@ ${contentValues}`,
     // 수입·이체는 사용처가 없어도 됨 — 지출만 체크
     const emptyVendors = householdEntries.filter(e => e.transactionType === '지출' && !e.vendor.trim()).length;
     if (emptyAmounts > 0) { toast.warning(`금액이 비어 있는 거래(${emptyAmounts}건)를 확인해 주세요.`); return; }
+    // 숫자로 읽을 수 없는 금액("오천원" 등)은 0원으로 조용히 저장하지 않고 다시 입력받는다
+    const unreadableAmounts = householdEntries.filter(e => e.amount.trim() && parseHouseholdAmountText(e.amount) === null).length;
+    if (unreadableAmounts > 0) { toast.warning(`금액을 숫자로 읽을 수 없는 거래(${unreadableAmounts}건)를 확인해 주세요. (예: 5000, 5천원, 1만5천원)`); return; }
     if (emptyVendors > 0) { toast.warning(`사용처가 비어 있는 지출 거래(${emptyVendors}건)를 확인해 주세요.`); return; }
 
     setIsSaving(true);
