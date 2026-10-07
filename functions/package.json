@@ -6,6 +6,7 @@
     "build": "tsc && mkdir -p lib/fonts && cp src/fonts/*.ttf lib/fonts/",
     "test:reading-ai": "npm run build && node --test test/readingAi.test.js",
     "test:ai-gateway": "npm run build && node --test test/aiGateway.test.js",
+    "test:format-registry-parity": "npm run build && node --experimental-strip-types --test test/formatRegistry.parity.test.mjs",
     "test:english-bible-word": "node test/englishBibleWordMeaning.test.js",
     "test:internal-entitlements": "node test/internalEntitlements.policy.test.js",
     "test:result-chat": "node test/resultChat.integration.js",

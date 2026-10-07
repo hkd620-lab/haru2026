@@ -14,6 +14,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
 import { aiSecretsFor, callAi } from './ai/aiGateway';
+import { buildFormatPrefixMap, formatPrefixesOf } from './formats/formatRegistry';
 import { getAiRoute } from './ai/aiModels';
 export { chatWithReadingContext } from './readingAi';
 import {
@@ -2355,9 +2356,10 @@ export const polishContent = onCall(
       // 풍성형: 감성·문학 표현 환영
       // 균형형: 사실+감정 균형
       // 보수형: 사실 중심, 보수적 (디폴트 — 알 수 없는 format도 여기로)
-      const RICH_FORMATS = ['diary', 'essay', 'travel'];
-      const BALANCED_FORMATS = ['garden', 'pet', 'child'];
-      const CONSERVATIVE_FORMATS = ['mission', 'report', 'work', 'memo'];
+      // 접두어 값은 Functions 형식 등록부(formats/formatRegistry.ts)에서 읽는다.
+      const RICH_FORMATS = formatPrefixesOf(['일기', '에세이', '여행기록']);
+      const BALANCED_FORMATS = formatPrefixesOf(['텃밭일지', '애완동물관찰일지', '육아일기']);
+      const CONSERVATIVE_FORMATS = formatPrefixesOf(['선교보고', '일반보고', '업무일지', '메모']);
       const normalizedFormat = typeof format === 'string' ? format.toLowerCase().trim() : '';
       let formatGroup: 'rich' | 'balanced' | 'conservative';
       if (RICH_FORMATS.includes(normalizedFormat)) {
@@ -4677,11 +4679,11 @@ export const generateTitlesForAll = onCall(
     }
     const uid = request.auth.uid;
 
-    const FORMAT_PREFIX_MAP: Record<string, string> = {
-      '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
-      '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
-      '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child', '메모': 'memo',
-    };
+    // 제목을 보정할 10개 형식(값은 Functions 형식 등록부, 순서 유지)
+    const FORMAT_PREFIX_MAP: Record<string, string> = buildFormatPrefixMap([
+      '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록',
+      '텃밭일지', '애완동물관찰일지', '육아일기', '메모',
+    ]);
     const EXCLUDE_ENDINGS = [
       '_images', '_style', '_sayu', '_rating', '_polished',
       '_polishedAt', '_mode', '_stats', '_space', '_title', '_tags',
