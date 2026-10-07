@@ -1,0 +1,846 @@
+[
+  {
+    "id": "plant_library_lib-nomemo",
+    "date": "2026-10-08",
+    "label": "하루식물탐정",
+    "title": "메모 없는 식물",
+    "subtitle": "",
+    "color": "#4A5A2C",
+    "plantType": "library",
+    "plantMergeKey": "-|2026-10-08|plant_library_lib-nomemo|true",
+    "plantPreviewImageUrl": "",
+    "plantPreviewLines": [
+      "특징: 제미나이 분석문",
+      "비공개/미공개"
+    ],
+    "searchText": "하루식물탐정 메모 없는 식물 제미나이 분석문 비공개/미공개",
+    "opened": [
+      {
+        "fn": "openPlantReadOnlyDetail",
+        "detail": {
+          "type": "library",
+          "title": "메모 없는 식물",
+          "date": "2026-10-08",
+          "subtitle": "",
+          "imageUrl": "",
+          "summary": "이 기록은 사용자가 확정한 내 식물도감 기록입니다.",
+          "coreFields": [
+            {
+              "label": "식물명",
+              "value": "메모 없는 식물"
+            },
+            {
+              "label": "학명",
+              "value": ""
+            },
+            {
+              "label": "최근 갱신일",
+              "value": "K(2026-10-08)"
+            },
+            {
+              "label": "공개 여부",
+              "value": "비공개/미공개"
+            }
+          ],
+          "detailSections": [
+            {
+              "label": "학명/영문명",
+              "value": ""
+            },
+            {
+              "label": "특징 설명",
+              "value": "제미나이 분석문"
+            },
+            {
+              "label": "재배 메모",
+              "value": ""
+            },
+            {
+              "label": "도감 출처",
+              "value": "내 식물도감"
+            }
+          ]
+        }
+      }
+    ],
+    "preview": {
+      "imageUrl": "",
+      "badge": "도감기록",
+      "lines": [
+        "특징: 제미나이 분석문",
+        "비공개/미공개"
+      ],
+      "sameOnOpen": true
+    }
+  },
+  {
+    "id": "plant-rec_plant_diary_0",
+    "date": "2026-10-06",
+    "label": "하루식물탐정",
+    "title": "방울토마토",
+    "subtitle": "개화",
+    "color": "#34a853",
+    "plantType": "diary",
+    "plantMergeKey": "-|2026-10-06|plant-rec_plant_diary_0|false",
+    "plantPreviewImageUrl": "https://img/3.jpg",
+    "plantPreviewLines": [
+      "꽃이 피었다",
+      "성장 단계: 개화"
+    ],
+    "searchText": "하루식물탐정 방울토마토 개화 꽃이 피었다 개화 어제보다 꽃 2개 증가 k(2026-10-06) 기록",
+    "opened": [
+      {
+        "fn": "openPlantReadOnlyDetail",
+        "detail": {
+          "type": "diary",
+          "title": "방울토마토",
+          "date": "2026-10-06",
+          "subtitle": "개화",
+          "imageUrl": "https://img/3.jpg",
+          "summary": "이 기록은 사용자가 직접 남긴 식물 성장 관찰 기록입니다.",
+          "coreFields": [
+            {
+              "label": "식물명",
+              "value": "방울토마토"
+            },
+            {
+              "label": "관찰일",
+              "value": "K(2026-10-06)"
+            },
+            {
+              "label": "성장 단계",
+              "value": "개화"
+            },
+            {
+              "label": "경과일",
+              "value": ""
+            }
+          ],
+          "detailSections": [
+            {
+              "label": "본문/메모 요약",
+              "value": "꽃이 피었다"
+            },
+            {
+              "label": "AI 차이/관찰",
+              "value": "어제보다 꽃 2개 증가"
+            },
+            {
+              "label": "기록 기준일",
+              "value": "K(2026-10-06) 기록"
+            },
+            {
+              "label": "수정 이력",
+              "value": ""
+            }
+          ]
+        }
+      }
+    ],
+    "preview": {
+      "imageUrl": "https://img/3.jpg",
+      "badge": "성장일기",
+      "lines": [
+        "꽃이 피었다",
+        "성장 단계: 개화"
+      ],
+      "sameOnOpen": true
+    }
+  },
+  {
+    "id": "law-legacy_haruraw",
+    "date": "2026-10-05",
+    "label": "하루LAW",
+    "title": "전세 보증금을 돌려받지 못하면 어떻게 하나요",
+    "subtitle": "전세 · 보증금 · 임대차 · 반환",
+    "color": "#3B5BDB",
+    "keywords": [
+      "전세",
+      "보증금",
+      "임대차",
+      "반환",
+      "소송"
+    ],
+    "searchText": "하루law 전세 보증금을 돌려받지 못하면 어떻게 하나요 전세 · 보증금 · 임대차 · 반환 전세 보증금 임대차 반환 소송 임대차보호법 검토 요약 제3조",
+    "opened": [
+      {
+        "fn": "openFormatSayu",
+        "args": [
+          "2026-10-05",
+          "haruraw",
+          "HARUraw",
+          "law-legacy"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "law-new_haruraw",
+    "date": "2026-10-05",
+    "label": "하루LAW",
+    "title": "(질문 없음)",
+    "subtitle": "",
+    "color": "#3B5BDB",
+    "keywords": [],
+    "searchText": "하루law (질문 없음) 법령 본문",
+    "opened": [
+      {
+        "fn": "openFormatSayu",
+        "args": [
+          "2026-10-05",
+          "haruraw",
+          "HARUraw",
+          "law-new"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "plant-rec_plant_detective_0",
+    "date": "2026-10-04",
+    "label": "하루식물탐정",
+    "title": "산국",
+    "subtitle": "Wild chrysanthemum / Chrysanthemum boreale",
+    "color": "#10b981",
+    "plantType": "detective",
+    "plantMergeKey": "p-1|2026-10-04|plant-rec_plant_detective_0|false",
+    "plantPreviewImageUrl": "https://img/1.jpg",
+    "plantPreviewLines": [
+      "AI 요약: 건강함",
+      "메모: 길가에서 발견"
+    ],
+    "searchText": "하루식물탐정 산국 wild chrysanthemum / chrysanthemum boreale 건강함 길가에서 발견 plantnet · wild chrysanthemum · plantnet 신뢰도 0.91 산국 감국 chrysanthemum boreale 북한산",
+    "opened": [
+      {
+        "fn": "openPlantReadOnlyDetail",
+        "detail": {
+          "type": "detective",
+          "title": "산국",
+          "date": "2026-10-04",
+          "subtitle": "Wild chrysanthemum / Chrysanthemum boreale",
+          "imageUrl": "https://img/1.jpg",
+          "recordId": "plant-rec",
+          "entryIdx": 0,
+          "editSnapshot": {
+            "title": "산국",
+            "userConfirmedName": "산국",
+            "aiKoName": "감국",
+            "scientificName": "Chrysanthemum boreale",
+            "englishName": "Wild chrysanthemum",
+            "imageUrl": "https://img/1.jpg",
+            "imageUrls": [
+              "https://img/1.jpg",
+              "https://img/2.jpg",
+              "ftp://x",
+              ""
+            ],
+            "condition": "건강함",
+            "memo": "길가에서 발견",
+            "source": "plantnet",
+            "confidence": "0.91",
+            "locationLabel": "북한산",
+            "plantId": "p-1"
+          },
+          "imageUrls": [
+            "https://img/1.jpg",
+            "https://img/2.jpg"
+          ],
+          "summary": "이 기록은 식물탐정이 판독하고 사용자가 확정한 식물 기록입니다.",
+          "coreFields": [
+            {
+              "label": "사용자 확정명",
+              "value": "산국"
+            },
+            {
+              "label": "PlantNet 판독명",
+              "value": "감국"
+            },
+            {
+              "label": "학명",
+              "value": "Chrysanthemum boreale"
+            },
+            {
+              "label": "기록일",
+              "value": "K(2026-10-04)"
+            }
+          ],
+          "detailSections": [
+            {
+              "label": "출처",
+              "value": "PlantNet · Wild chrysanthemum · PlantNet 신뢰도 0.91"
+            },
+            {
+              "label": "촬영 지역",
+              "value": "북한산"
+            },
+            {
+              "label": "사용자 메모",
+              "value": "길가에서 발견"
+            }
+          ]
+        }
+      }
+    ],
+    "preview": {
+      "imageUrl": "https://img/1.jpg",
+      "badge": "판독기록",
+      "lines": [
+        "AI 요약: 건강함",
+        "메모: 길가에서 발견"
+      ],
+      "sameOnOpen": true
+    }
+  },
+  {
+    "id": "plant-rec_plant_detective_3",
+    "date": "2026-10-04",
+    "label": "하루식물탐정",
+    "title": "이름만 있는 판독",
+    "subtitle": "",
+    "color": "#10b981",
+    "plantType": "detective",
+    "plantMergeKey": "-|2026-10-04|plant-rec_plant_detective_3|false",
+    "plantPreviewImageUrl": "",
+    "plantPreviewLines": [
+      "",
+      ""
+    ],
+    "searchText": "하루식물탐정 이름만 있는 판독 unknown_source 이름만 있는 판독",
+    "opened": [
+      {
+        "fn": "openPlantReadOnlyDetail",
+        "detail": {
+          "type": "detective",
+          "title": "이름만 있는 판독",
+          "date": "2026-10-04",
+          "subtitle": "",
+          "imageUrl": "",
+          "recordId": "plant-rec",
+          "entryIdx": 3,
+          "editSnapshot": {
+            "title": "이름만 있는 판독",
+            "source": "unknown_source"
+          },
+          "imageUrls": [],
+          "summary": "이 기록은 식물탐정이 판독하고 사용자가 확정한 식물 기록입니다.",
+          "coreFields": [
+            {
+              "label": "사용자 확정명",
+              "value": "이름만 있는 판독"
+            },
+            {
+              "label": "PlantNet 판독명",
+              "value": ""
+            },
+            {
+              "label": "학명",
+              "value": ""
+            },
+            {
+              "label": "기록일",
+              "value": "K(2026-10-04)"
+            }
+          ],
+          "detailSections": [
+            {
+              "label": "출처",
+              "value": "unknown_source"
+            },
+            {
+              "label": "촬영 지역",
+              "value": ""
+            },
+            {
+              "label": "사용자 메모",
+              "value": ""
+            }
+          ]
+        }
+      }
+    ],
+    "preview": {
+      "imageUrl": "",
+      "badge": "판독기록",
+      "lines": [
+        "",
+        ""
+      ],
+      "sameOnOpen": true
+    }
+  },
+  {
+    "id": "plant-rec_plant_diary_1",
+    "date": "2026-10-04",
+    "label": "하루식물탐정",
+    "title": "바질",
+    "subtitle": "",
+    "color": "#34a853",
+    "plantType": "diary",
+    "plantMergeKey": "-|2026-10-04|plant-rec_plant_diary_1|false",
+    "plantPreviewImageUrl": "",
+    "plantPreviewLines": [
+      "잎이 커짐",
+      ""
+    ],
+    "searchText": "하루식물탐정 바질 잎이 커짐 k(2026-10-04) 기록 k(2026-10-07) 수정 · 2일 지나서 기록",
+    "opened": [
+      {
+        "fn": "openPlantReadOnlyDetail",
+        "detail": {
+          "type": "diary",
+          "title": "바질",
+          "date": "2026-10-04",
+          "subtitle": "",
+          "imageUrl": "",
+          "summary": "이 기록은 사용자가 직접 남긴 식물 성장 관찰 기록입니다.",
+          "coreFields": [
+            {
+              "label": "식물명",
+              "value": "바질"
+            },
+            {
+              "label": "관찰일",
+              "value": "K(2026-10-04)"
+            },
+            {
+              "label": "성장 단계",
+              "value": ""
+            },
+            {
+              "label": "경과일",
+              "value": "3일 지나서 기록"
+            }
+          ],
+          "detailSections": [
+            {
+              "label": "본문/메모 요약",
+              "value": "잎이 커짐"
+            },
+            {
+              "label": "AI 차이/관찰",
+              "value": ""
+            },
+            {
+              "label": "기록 기준일",
+              "value": "K(2026-10-04) 기록"
+            },
+            {
+              "label": "수정 이력",
+              "value": "K(2026-10-07) 수정 · 2일 지나서 기록"
+            }
+          ]
+        }
+      }
+    ],
+    "preview": {
+      "imageUrl": "",
+      "badge": "성장일기",
+      "lines": [
+        "잎이 커짐",
+        ""
+      ],
+      "sameOnOpen": true
+    }
+  },
+  {
+    "id": "sns-done_sns_galmuri",
+    "recordId": "sns-done",
+    "date": "2026-10-03",
+    "label": "SNS 갈무리",
+    "title": "가을 산책 이야기",
+    "subtitle": "SNS 기록 2건 · 오늘은 단풍길을 걸었다. 오늘은 단풍길을 걸었다. 오늘은 단풍길을 걸었다. 오늘은 단풍길을 걸었다. 오늘은 단풍길을 걸었다. 오늘은 단풍길을 걸...",
+    "color": "#10b981",
+    "keywords": [
+      "산책",
+      "단풍"
+    ],
+    "searchText": "sns 갈무리 가을 산책 이야기 sns 기록 2건 · 오늘은 단풍길을 걸었다. 오늘은 단풍길을 걸었다. 오늘은 단풍길을 걸었다. 오늘은 단풍길을 걸었다. 오늘은 단풍길을 걸었다. 오늘은 단풍길을 걸... 산책 단풍 오늘은   단풍길을 걸었다.   오늘은   단풍길을 걸었다.   오늘은   단풍길을 걸었다.   오늘은   단풍길을 걸었다.   오늘은   단풍길을 걸었다.   오늘은   단풍길을 걸었다.   오늘은   단풍길을 걸었다.   오늘은   단풍길을 걸었다.",
+    "opened": [
+      {
+        "fn": "openFormatSayu",
+        "args": [
+          "2026-10-03",
+          "essay",
+          "SNS 갈무리",
+          "sns-done"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "plant_public_catalog_cat-own",
+    "date": "2026-10-03",
+    "label": "하루식물탐정",
+    "title": "내 공개 소나무",
+    "subtitle": "",
+    "color": "#0f766e",
+    "plantType": "catalog",
+    "plantMergeKey": "-|2026-10-03|plant_public_catalog_cat-own|false",
+    "plantPreviewImageUrl": "",
+    "plantPreviewLines": [
+      "바늘잎",
+      "공개 지역 미표시"
+    ],
+    "searchText": "하루식물탐정 내 공개 소나무 바늘잎",
+    "opened": [
+      {
+        "fn": "openPlantReadOnlyDetail",
+        "detail": {
+          "type": "catalog",
+          "title": "내 공개 소나무",
+          "date": "2026-10-03",
+          "subtitle": "",
+          "imageUrl": "",
+          "summary": "이 기록은 공개 연결 정보가 확인된 식물 공개기록입니다.",
+          "coreFields": [
+            {
+              "label": "공개 식물명",
+              "value": "내 공개 소나무"
+            },
+            {
+              "label": "공개용 지역명",
+              "value": ""
+            },
+            {
+              "label": "공개 상태",
+              "value": "공개 읽기 전용"
+            },
+            {
+              "label": "공개일",
+              "value": "K(2026-10-03)"
+            }
+          ],
+          "detailSections": [
+            {
+              "label": "공개 제목/설명",
+              "value": "바늘잎"
+            },
+            {
+              "label": "학명/영문명",
+              "value": ""
+            }
+          ]
+        }
+      }
+    ],
+    "preview": {
+      "imageUrl": "",
+      "badge": "공개기록",
+      "lines": [
+        "바늘잎",
+        "공개 지역 미표시"
+      ],
+      "sameOnOpen": true
+    }
+  },
+  {
+    "id": "plant_library_lib-pub",
+    "date": "2026-10-02",
+    "label": "하루식물탐정",
+    "title": "공개 장미",
+    "subtitle": "Rosa",
+    "color": "#4A5A2C",
+    "plantType": "library",
+    "plantMergeKey": "p-2|2026-10-02|plant_library_lib-pub|true",
+    "plantPreviewImageUrl": "",
+    "plantPreviewLines": [
+      "특징: 붉은 장미",
+      "공개 연결 있음"
+    ],
+    "searchText": "하루식물탐정 공개 장미 rosa 붉은 장미 공개 연결 있음",
+    "opened": [
+      {
+        "fn": "openPlantReadOnlyDetail",
+        "detail": {
+          "type": "library",
+          "title": "공개 장미",
+          "date": "2026-10-02",
+          "subtitle": "Rosa",
+          "imageUrl": "",
+          "summary": "이 기록은 사용자가 확정한 내 식물도감 기록입니다.",
+          "coreFields": [
+            {
+              "label": "식물명",
+              "value": "공개 장미"
+            },
+            {
+              "label": "학명",
+              "value": "Rosa"
+            },
+            {
+              "label": "최근 갱신일",
+              "value": "K(2026-10-02)"
+            },
+            {
+              "label": "공개 여부",
+              "value": "공개 연결 있음"
+            }
+          ],
+          "detailSections": [
+            {
+              "label": "학명/영문명",
+              "value": "Rosa"
+            },
+            {
+              "label": "특징 설명",
+              "value": "붉은 장미"
+            },
+            {
+              "label": "재배 메모",
+              "value": ""
+            },
+            {
+              "label": "도감 출처",
+              "value": "내 식물도감"
+            }
+          ]
+        }
+      }
+    ],
+    "preview": {
+      "imageUrl": "",
+      "badge": "도감기록",
+      "lines": [
+        "특징: 붉은 장미",
+        "공개 연결 있음"
+      ],
+      "sameOnOpen": true
+    }
+  },
+  {
+    "id": "plant_library_lib-priv",
+    "date": "2026-10-02",
+    "label": "하루식물탐정",
+    "title": "비공개 국화",
+    "subtitle": "Chrysanthemum",
+    "color": "#4A5A2C",
+    "plantType": "library",
+    "plantMergeKey": "-|2026-10-02|plant_library_lib-priv|true",
+    "plantPreviewImageUrl": "",
+    "plantPreviewLines": [
+      "특징: 노란 꽃",
+      "재배 메모: 물 주기 주 2회"
+    ],
+    "searchText": "하루식물탐정 비공개 국화 chrysanthemum 노란 꽃 물 주기 주 2회 비공개/미공개",
+    "opened": [
+      {
+        "fn": "openPlantReadOnlyDetail",
+        "detail": {
+          "type": "library",
+          "title": "비공개 국화",
+          "date": "2026-10-02",
+          "subtitle": "Chrysanthemum",
+          "imageUrl": "",
+          "summary": "이 기록은 사용자가 확정한 내 식물도감 기록입니다.",
+          "coreFields": [
+            {
+              "label": "식물명",
+              "value": "비공개 국화"
+            },
+            {
+              "label": "학명",
+              "value": "Chrysanthemum"
+            },
+            {
+              "label": "최근 갱신일",
+              "value": "K(2026-10-02)"
+            },
+            {
+              "label": "공개 여부",
+              "value": "비공개/미공개"
+            }
+          ],
+          "detailSections": [
+            {
+              "label": "학명/영문명",
+              "value": "Chrysanthemum"
+            },
+            {
+              "label": "특징 설명",
+              "value": "노란 꽃"
+            },
+            {
+              "label": "재배 메모",
+              "value": "물 주기 주 2회"
+            },
+            {
+              "label": "도감 출처",
+              "value": "내 식물도감"
+            }
+          ]
+        }
+      }
+    ],
+    "preview": {
+      "imageUrl": "",
+      "badge": "도감기록",
+      "lines": [
+        "특징: 노란 꽃",
+        "재배 메모: 물 주기 주 2회"
+      ],
+      "sameOnOpen": true
+    }
+  },
+  {
+    "id": "plant_public_library_lib-pub",
+    "date": "2026-10-02",
+    "label": "하루식물탐정",
+    "title": "공개 장미",
+    "subtitle": "서울 종로구",
+    "color": "#0f766e",
+    "plantType": "catalog",
+    "plantMergeKey": "p-2|2026-10-02|plant_public_library_lib-pub|true",
+    "plantPreviewImageUrl": "",
+    "plantPreviewLines": [
+      "붉은 장미",
+      "공개 지역: 서울 종로구"
+    ],
+    "searchText": "하루식물탐정 공개 장미 서울 종로구 붉은 장미 서울 종로구",
+    "opened": [
+      {
+        "fn": "openPlantReadOnlyDetail",
+        "detail": {
+          "type": "catalog",
+          "title": "공개 장미",
+          "date": "2026-10-02",
+          "subtitle": "서울 종로구",
+          "imageUrl": "",
+          "summary": "이 기록은 공개 연결 정보가 확인된 식물 공개기록입니다.",
+          "coreFields": [
+            {
+              "label": "공개 식물명",
+              "value": "공개 장미"
+            },
+            {
+              "label": "공개용 지역명",
+              "value": "서울 종로구"
+            },
+            {
+              "label": "공개 상태",
+              "value": "공개 읽기 전용"
+            },
+            {
+              "label": "공개일",
+              "value": "K(2026-10-02)"
+            }
+          ],
+          "detailSections": [
+            {
+              "label": "공개 제목/설명",
+              "value": "붉은 장미"
+            },
+            {
+              "label": "학명/영문명",
+              "value": "Rosa"
+            }
+          ]
+        }
+      }
+    ],
+    "preview": {
+      "imageUrl": "",
+      "badge": "공개기록",
+      "lines": [
+        "붉은 장미",
+        "공개 지역: 서울 종로구"
+      ],
+      "sameOnOpen": true
+    }
+  },
+  {
+    "id": "sns-legacy_sns_galmuri",
+    "recordId": "sns-legacy",
+    "date": "2026-10-01",
+    "label": "SNS 갈무리",
+    "title": "SNS 갈무리 이야기",
+    "subtitle": "SNS 갈무리 작품 · 제목 없는 옛 작품",
+    "color": "#10b981",
+    "keywords": [],
+    "searchText": "sns 갈무리 sns 갈무리 이야기 sns 갈무리 작품 · 제목 없는 옛 작품 제목 없는 옛 작품",
+    "opened": [
+      {
+        "fn": "openFormatSayu",
+        "args": [
+          "2026-10-01",
+          "essay",
+          "SNS 갈무리",
+          "sns-legacy"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "plant-old_plant_diary_0",
+    "date": "2026-10-01",
+    "label": "하루식물탐정",
+    "title": "10월로 옮긴 관찰",
+    "subtitle": "발아",
+    "color": "#34a853",
+    "plantType": "diary",
+    "plantMergeKey": "-|2026-10-01|plant-old_plant_diary_0|false",
+    "plantPreviewImageUrl": "",
+    "plantPreviewLines": [
+      "",
+      "성장 단계: 발아"
+    ],
+    "searchText": "하루식물탐정 10월로 옮긴 관찰 발아 발아 k(2026-10-01) 기록",
+    "opened": [
+      {
+        "fn": "openPlantReadOnlyDetail",
+        "detail": {
+          "type": "diary",
+          "title": "10월로 옮긴 관찰",
+          "date": "2026-10-01",
+          "subtitle": "발아",
+          "imageUrl": "",
+          "summary": "이 기록은 사용자가 직접 남긴 식물 성장 관찰 기록입니다.",
+          "coreFields": [
+            {
+              "label": "식물명",
+              "value": "10월로 옮긴 관찰"
+            },
+            {
+              "label": "관찰일",
+              "value": "K(2026-10-01)"
+            },
+            {
+              "label": "성장 단계",
+              "value": "발아"
+            },
+            {
+              "label": "경과일",
+              "value": ""
+            }
+          ],
+          "detailSections": [
+            {
+              "label": "본문/메모 요약",
+              "value": ""
+            },
+            {
+              "label": "AI 차이/관찰",
+              "value": ""
+            },
+            {
+              "label": "기록 기준일",
+              "value": "K(2026-10-01) 기록"
+            },
+            {
+              "label": "수정 이력",
+              "value": ""
+            }
+          ]
+        }
+      }
+    ],
+    "preview": {
+      "imageUrl": "",
+      "badge": "성장일기",
+      "lines": [
+        "",
+        "성장 단계: 발아"
+      ],
+      "sameOnOpen": true
+    }
+  }
+]
