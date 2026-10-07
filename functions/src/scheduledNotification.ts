@@ -1,6 +1,6 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
-import { getSeoulClock, isNotificationDue } from './scheduledNotificationCore';
+import { getZonedClock, isNotificationDue, resolveNotificationTimeZone } from './scheduledNotificationCore';
 
 export const scheduledPushNotification = onSchedule(
   {
@@ -10,10 +10,10 @@ export const scheduledPushNotification = onSchedule(
     memory: '512MiB',
   },
   async (event) => {
-    // 알림 시각·'오늘'은 한국 시간 기준(실행 환경 기본 시간대는 UTC)
-    const clock = getSeoulClock(new Date());
+    // 알림 시각·'오늘'은 사용자 시간대 기준(실행 환경 기본 시간대는 UTC). 사용자마다 아래에서 계산한다.
+    const now = new Date();
 
-    console.log(`알림 스케줄러 실행: ${clock.dateKey} ${clock.hour}:${clock.minute} (KST)`);
+    console.log(`알림 스케줄러 실행: ${now.toISOString()}`);
 
     const db = admin.firestore();
     const usersSnapshot = await db.collection('users').get();
@@ -43,6 +43,7 @@ export const scheduledPushNotification = onSchedule(
         continue;
       }
 
+      const clock = getZonedClock(now, resolveNotificationTimeZone(settings.notificationTimeZone));
       if (!isNotificationDue(settings.notificationTime, clock)) {
         skippedCount++;
         continue;

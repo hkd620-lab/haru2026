@@ -123,11 +123,22 @@ export async function requestNotificationPermission(userId: string): Promise<boo
   }
 }
 
+// 기기 시간대(IANA, 예: 'Asia/Seoul'). 기록 알림이 이 시간대의 시각·날짜로 판정된다(Functions scheduledNotificationCore).
+export function getDeviceTimeZone(): string | undefined {
+  try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return typeof timeZone === 'string' && timeZone ? timeZone : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function updateNotificationSettings(
   userId: string,
   settings: {
     notificationEnabled?: boolean;
     notificationTime?: string;
+    notificationTimeZone?: string;
   }
 ): Promise<void> {
   const settingsRef = doc(db, `users/${userId}/settings/settings`);
