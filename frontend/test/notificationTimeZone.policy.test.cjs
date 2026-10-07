@@ -21,4 +21,19 @@ assert.ok(withTimeZone.some((c) => /notificationEnabled: true/.test(c)));
 assert.ok(withTimeZone.some((c) => /notificationTime: newTime/.test(c)));
 assert.equal((settings.match(/const notificationTimeZone = getDeviceTimeZone\(\);/g) || []).length, 2);
 
+// 기존 활성 사용자 보완: 설정 화면을 열 때와 토큰 등록 때, 시간대가 없으면 한 번 채우고 있으면 덮어쓰지 않는다
+assert.match(service, /export async function backfillNotificationTimeZone\(userId: string, settings: Record<string, unknown>\)/);
+assert.match(service, /if \(settings\.notificationEnabled === false \|\| typeof settings\.notificationTimeZone === 'string'\) return;/);
+assert.match(settings, /void backfillNotificationTimeZone\(user\.uid, data\);/);
+assert.match(service, /\.\.\.\(deviceTimeZone && !hasTimeZone \? \{ notificationTimeZone: deviceTimeZone \} : \{\}\)/);
+
+// getDeviceTimeZone 실제 동작: Intl 값을 돌려주고, 예외·빈 값이면 undefined
+const { transformSync } = require('esbuild');
+const fnSrc = service.match(/export function getDeviceTimeZone\(\)[\s\S]*?\n\}/)[0].replace('export ', '');
+const js = transformSync(fnSrc, { loader: 'ts' }).code;
+const run = (IntlStub) => new Function('Intl', `${js}\nreturn getDeviceTimeZone();`)(IntlStub);
+assert.equal(run({ DateTimeFormat: () => ({ resolvedOptions: () => ({ timeZone: 'Europe/Paris' }) }) }), 'Europe/Paris');
+assert.equal(run({ DateTimeFormat: () => ({ resolvedOptions: () => ({ timeZone: '' }) }) }), undefined);
+assert.equal(run({ DateTimeFormat: () => { throw new Error('x'); } }), undefined);
+
 console.log('notificationTimeZone policy test passed');

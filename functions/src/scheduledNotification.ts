@@ -43,8 +43,8 @@ export const scheduledPushNotification = onSchedule(
         continue;
       }
 
-      const { clock, hourBefore } = getNotificationClocks(now, resolveNotificationTimeZone(settings.notificationTimeZone));
-      if (!isNotificationDue(settings.notificationTime, clock, hourBefore)) {
+      const { clock, earlier } = getNotificationClocks(now, resolveNotificationTimeZone(settings.notificationTimeZone));
+      if (!isNotificationDue(settings.notificationTime, clock, earlier)) {
         skippedCount++;
         continue;
       }

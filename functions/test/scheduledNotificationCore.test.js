@@ -50,8 +50,8 @@ assert.equal(isNotificationDue('21:00', clock('2026-10-07T21:00:00Z')), false);
 
 // 서머타임 종료일 반복 시각: 뉴욕 2026-11-01 01:00 은 05:00Z·06:00Z 두 번 온다 → 한 번만 보낸다
 const due = (time, iso, tz) => {
-  const { clock: c, hourBefore } = getNotificationClocks(new Date(iso), tz);
-  return isNotificationDue(time, c, hourBefore);
+  const { clock: c, earlier } = getNotificationClocks(new Date(iso), tz);
+  return isNotificationDue(time, c, earlier);
 };
 assert.deepEqual(clock('2026-11-01T05:00:00Z', 'America/New_York'), { timeZone: 'America/New_York', hour: 1, minute: 0, dateKey: '2026-11-01' });
 assert.deepEqual(clock('2026-11-01T06:00:00Z', 'America/New_York'), { timeZone: 'America/New_York', hour: 1, minute: 0, dateKey: '2026-11-01' });
@@ -63,14 +63,25 @@ assert.equal(due('02:00', '2026-11-01T07:00:00Z', 'America/New_York'), true);
 assert.equal(due('21:00', '2026-10-07T12:00:00Z', 'Asia/Seoul'), true);
 // 자정 직후(날짜가 바뀐 같은 시는 반복이 아님)
 assert.equal(due('00:00', '2026-10-06T15:00:00Z', 'Asia/Seoul'), true);
+// 2시간 후퇴(Antarctica/Troll 2026-10-25): 23:00Z·01:00Z 가 모두 현지 01:00 → 처음 한 번만
+assert.equal(clock('2026-10-25T01:00:00Z', 'Antarctica/Troll').hour, 1);
+assert.equal(due('01:00', '2026-10-24T23:00:00Z', 'Antarctica/Troll'), true);
+assert.equal(due('01:00', '2026-10-25T01:00:00Z', 'Antarctica/Troll'), false);
+assert.equal(due('02:00', '2026-10-25T00:00:00Z', 'Antarctica/Troll'), true);
+assert.equal(due('02:00', '2026-10-25T02:00:00Z', 'Antarctica/Troll'), false);
+// 30분 후퇴(Australia/Lord_Howe 2026-04-05): 14:00Z 현지 01:00, 15:00Z 현지 01:30 → 01시는 한 번만
+assert.equal(due('01:00', '2026-04-04T14:00:00Z', 'Australia/Lord_Howe'), true);
+assert.equal(due('01:00', '2026-04-04T15:00:00Z', 'Australia/Lord_Howe'), false);
+// 평소 날에는 직전 3시간 안에 같은 날짜·같은 시가 없어 그대로 보낸다
+assert.equal(due('23:00', '2026-10-07T14:00:00Z', 'Asia/Seoul'), true);
 
 // 스케줄러가 문서 ID(records/{date})가 아니라 사용자 시간대 날짜의 date 필드로 오늘 기록을 찾는지 고정한다.
 const source = fs.readFileSync(path.join(__dirname, '../src/scheduledNotification.ts'), 'utf8');
 assert.match(source, /\.collection\('records'\)\s*\.where\('date', '==', clock\.dateKey\)\s*\.limit\(1\)/);
 assert.doesNotMatch(source, /\.collection\('records'\)\s*\.doc\(/);
 assert.doesNotMatch(source, /\.getHours\(\)|\.toISOString\(\)\.split\('T'\)/);
-assert.match(source, /const \{ clock, hourBefore \} = getNotificationClocks\(now, resolveNotificationTimeZone\(settings\.notificationTimeZone\)\);/);
-assert.match(source, /isNotificationDue\(settings\.notificationTime, clock, hourBefore\)/);
+assert.match(source, /const \{ clock, earlier \} = getNotificationClocks\(now, resolveNotificationTimeZone\(settings\.notificationTimeZone\)\);/);
+assert.match(source, /isNotificationDue\(settings\.notificationTime, clock, earlier\)/);
 // 오늘 기록이 있으면 건너뛴다(조건이 뒤집히면 기록한 사용자에게만 알림이 간다)
 assert.match(source, /if \(!todayRecords\.empty\) \{\s*skippedCount\+\+;\s*continue;\s*\}/);
 assert.match(source, /region: 'asia-northeast3'/);

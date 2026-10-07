@@ -95,8 +95,12 @@ export async function requestNotificationPermission(userId: string): Promise<boo
     // 최대 5개 유지
     const finalTokens = uniqueTokens.slice(-5);
 
+    // 시간대가 아직 없는 사용자(이 기능 전 가입)는 토큰 등록 때 기기 시간대를 채운다. 이미 있으면 덮어쓰지 않는다.
+    const deviceTimeZone = getDeviceTimeZone();
+    const hasTimeZone = settingsDoc.exists() && typeof settingsDoc.data().notificationTimeZone === 'string';
     await setDoc(settingsRef, {
       fcmTokens: finalTokens,
+      ...(deviceTimeZone && !hasTimeZone ? { notificationTimeZone: deviceTimeZone } : {}),
       updatedAt: new Date().toISOString(),
     }, { merge: true });
 
@@ -130,6 +134,18 @@ export function getDeviceTimeZone(): string | undefined {
     return typeof timeZone === 'string' && timeZone ? timeZone : undefined;
   } catch {
     return undefined;
+  }
+}
+
+// 알림을 켜 둔 기존 사용자에게 시간대가 없으면 기기 시간대로 한 번 채운다(설정 화면을 열 때). 이미 있으면 바꾸지 않는다.
+export async function backfillNotificationTimeZone(userId: string, settings: Record<string, unknown>): Promise<void> {
+  if (settings.notificationEnabled === false || typeof settings.notificationTimeZone === 'string') return;
+  const notificationTimeZone = getDeviceTimeZone();
+  if (!notificationTimeZone) return;
+  try {
+    await updateDoc(doc(db, `users/${userId}/settings/settings`), { notificationTimeZone });
+  } catch (error) {
+    console.error('알림 시간대 보완 실패:', error);
   }
 }
 

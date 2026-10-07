@@ -43,19 +43,22 @@ export function getZonedClock(now: Date, timeZone: string): ZonedClock {
 
 // 스케줄러는 매시 정각(UTC 기준 매시)에 한 번 돈다. 그 실행 시점의 사용자 현지 '시'가 설정한 시와 같으면 보낸다.
 // 분은 보지 않는다(기존 동작). 30·45분 시차 지역은 현지 HH:30·HH:45 에 발송된다.
-// 서머타임이 끝나는 날 같은 현지 시가 두 번 오면, 1시간 전 실행도 같은 날짜·같은 시였는지 보고 두 번째는 보내지 않는다.
-export function isNotificationDue(notificationTime: unknown, clock: ZonedClock, hourBefore?: ZonedClock): boolean {
+// 서머타임이 끝나는 날 같은 현지 시가 다시 오면(1시간 후퇴, Antarctica/Troll 같은 2시간 후퇴 포함), 직전 실행들 중
+// 같은 현지 날짜·같은 시가 이미 있었는지 보고 처음 한 번만 보낸다.
+export const DST_REPEAT_LOOKBACK_HOURS = 3;
+
+export function isNotificationDue(notificationTime: unknown, clock: ZonedClock, earlier: ZonedClock[] = []): boolean {
   const time = typeof notificationTime === 'string' && notificationTime ? notificationTime : DEFAULT_NOTIFICATION_TIME;
   const [targetHour] = time.split(':').map(Number);
   if (clock.hour !== targetHour) return false;
-  if (hourBefore && hourBefore.dateKey === clock.dateKey && hourBefore.hour === clock.hour) return false;
-  return true;
+  return !earlier.some((past) => past.dateKey === clock.dateKey && past.hour === clock.hour);
 }
 
-// 사용자 현지 기준 지금 시각과 1시간 전 시각(서머타임 반복 시각 판정용)
-export function getNotificationClocks(now: Date, timeZone: string): { clock: ZonedClock; hourBefore: ZonedClock } {
-  return {
-    clock: getZonedClock(now, timeZone),
-    hourBefore: getZonedClock(new Date(now.getTime() - 60 * 60 * 1000), timeZone),
-  };
+// 사용자 현지 기준 지금 시각과 직전 1~3시간 실행 시각(서머타임 반복 시각 판정용)
+export function getNotificationClocks(now: Date, timeZone: string): { clock: ZonedClock; earlier: ZonedClock[] } {
+  const earlier: ZonedClock[] = [];
+  for (let hours = 1; hours <= DST_REPEAT_LOOKBACK_HOURS; hours += 1) {
+    earlier.push(getZonedClock(new Date(now.getTime() - hours * 60 * 60 * 1000), timeZone));
+  }
+  return { clock: getZonedClock(now, timeZone), earlier };
 }

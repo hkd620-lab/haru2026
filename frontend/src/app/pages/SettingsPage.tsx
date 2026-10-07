@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken, getDeviceTimeZone } from '../services/notificationService';
+import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken, getDeviceTimeZone, backfillNotificationTimeZone } from '../services/notificationService';
 import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -389,6 +389,7 @@ export function SettingsPage() {
         const data = settingsDoc.data();
         setNotificationEnabled(data.notificationEnabled ?? true);
         setNotificationTime(data.notificationTime || '21:00');
+        void backfillNotificationTimeZone(user.uid, data);
       }
     } catch (error) {
       console.error('알림 설정 로딩 실패:', error);
