@@ -15,6 +15,8 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
+import { aiSecretsFor, callAi } from './ai/aiGateway';
+import { getAiRoute } from './ai/aiModels';
 export { chatWithReadingContext } from './readingAi';
 import {
   cancelSubscriptionForUid,
@@ -2366,7 +2368,7 @@ export const polishContent = onCall(
   {
     region: 'asia-northeast3',
     memory: '512MiB',
-    secrets: [GEMINI_API_KEY_SECRET]  // 🔐 Secret 연결
+    secrets: aiSecretsFor('sayuPolish', 'sayuPolishComment', 'recordStats')  // 🔐 Secret 연결
   },
   async (request) => {
     if (!request.auth) {
@@ -2465,22 +2467,15 @@ export const polishContent = onCall(
 본문만 자연스럽게 이어지는 문단으로 작성하세요.`;
       }
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());  // 🔐 Secret 값 사용
-      const modelName = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        systemInstruction: systemPrompt
-      });
-
-      const result = await model.generateContent(text);
-      const mainUsage = getGeminiUsage(result);
+      const modelName = getAiRoute('sayuPolish').model;
+      const result = await callAi({ purpose: 'sayuPolish', input: text, systemInstruction: systemPrompt });
       await logAiUsage({
         uid: request.auth.uid,
         featureName: 'sayu_polish',
         plan: AI_USAGE_PLAN,
         model: modelName,
-        inputTokens: mainUsage.inputTokens,
-        outputTokens: mainUsage.outputTokens,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
         imageCount: 0,
         externalApiProvider: null,
         externalApiCalled: false,
@@ -2490,12 +2485,12 @@ export const polishContent = onCall(
         errorCode: null,
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
-      const polishedText = result.response.text();
+      const polishedText = result.text();
 
       // ===== 통계 분석 (모든 형식) =====
       let stats = null;
       if (format) {
-        stats = await analyzeStats(text, format, GEMINI_API_KEY_SECRET.value(), {
+        stats = await analyzeStats(text, format, {
           uid: request.auth.uid,
           featureName: 'sayu_polish',
           isDev: DEVELOPER_UIDS.has(request.auth.uid),
@@ -2505,18 +2500,16 @@ export const polishContent = onCall(
       // ===== 💬 AI 한마디 생성 (SAYU와 동시, 별도 호출 없음) =====
       let aiComment = '';
       try {
-        const commentModelName = 'gemini-3.1-flash-lite';
-        const commentModel = genAI.getGenerativeModel({ model: commentModelName });
+        const commentModelName = getAiRoute('sayuPolishComment').model;
         const commentPrompt = buildAiCommentPrompt(polishedText, formatGroup);
-        const commentResult = await commentModel.generateContent(commentPrompt);
-        const commentUsage = getGeminiUsage(commentResult);
+        const commentResult = await callAi({ purpose: 'sayuPolishComment', input: commentPrompt });
         await logAiUsage({
           uid: request.auth.uid,
           featureName: 'sayu_polish',
           plan: AI_USAGE_PLAN,
           model: commentModelName,
-          inputTokens: commentUsage.inputTokens,
-          outputTokens: commentUsage.outputTokens,
+          inputTokens: commentResult.inputTokens,
+          outputTokens: commentResult.outputTokens,
           imageCount: 0,
           externalApiProvider: null,
           externalApiCalled: false,
@@ -2526,7 +2519,7 @@ export const polishContent = onCall(
           errorCode: null,
           isDev: DEVELOPER_UIDS.has(request.auth.uid),
         });
-        const rawComment = (commentResult.response.text() || '').trim();
+        const rawComment = (commentResult.text() || '').trim();
         aiComment = rawComment
           .replace(/^["'`*#\-•·]+|["'`*#\-•·]+$/g, '')
           .replace(/\*\*|__/g, '')
@@ -2601,7 +2594,7 @@ function isValidTitle(title: string): boolean {
 export const extractTitle = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET]
+    secrets: aiSecretsFor('recordTitle')
   },
   async (request) => {
     if (!request.auth) {
@@ -2613,9 +2606,7 @@ export const extractTitle = onCall(
         throw new HttpsError('invalid-argument', '텍스트가 필요합니다.');
       }
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const modelName = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({ model: modelName });
+      const modelName = getAiRoute('recordTitle').model;
 
       const prompt = `다음 기록의 핵심을 담은 짧은 제목을 만들어주세요.
 제목만 한 줄로 출력하세요. 10자 이내. 따옴표·마크다운 기호(*, #) 없이 텍스트만.
@@ -2624,8 +2615,8 @@ export const extractTitle = onCall(
 기록 내용:
 ${text.slice(0, 600)}`;
 
-      const result = await model.generateContent(prompt);
-      const raw = result.response.text().trim();
+      const result = await callAi({ purpose: 'recordTitle', input: prompt });
+      const raw = result.text().trim();
       const title = raw
         .replace(/^\*\*(.+)\*\*$/, '$1')
         .replace(/^["']|["']$/g, '')
@@ -2671,7 +2662,7 @@ export const generateHaruMemo = onCall(
   {
     region: 'asia-northeast3',
     memory: '512MiB',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('haruMemo'),
   },
   async (request) => {
     if (!request.auth) {
@@ -2727,11 +2718,9 @@ export const generateHaruMemo = onCall(
 기록 본문:
 ${bodyText}`;
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const modelId = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({ model: modelId });
-      const result = await model.generateContent(prompt);
-      const raw = (result.response.text() || '').trim();
+      const modelId = getAiRoute('haruMemo').model;
+      const result = await callAi({ purpose: 'haruMemo', input: prompt });
+      const raw = (result.text() || '').trim();
 
       // 마크다운/이모지/따옴표 잡음 제거
       const cleaned = raw
@@ -2756,7 +2745,7 @@ ${bodyText}`;
 export const extractKeywords = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET]
+    secrets: aiSecretsFor('recordKeywords')
   },
   async (request) => {
     if (!request.auth) {
@@ -2772,8 +2761,6 @@ export const extractKeywords = onCall(
       const limit = Math.max(3, Math.min(6, requested));
       const titleLine = typeof title === 'string' && title.trim() ? title.trim().slice(0, 80) : '';
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
       const prompt = `다음 기록에서 핵심 키워드를 3~${limit}개만 추출하세요.
 
@@ -2810,13 +2797,13 @@ JSON 배열 한 줄만. 마크다운·번호·콜론·설명 절대 금지. 배�
 ${titleLine ? `제목: "${titleLine}"\n` : ''}기록 내용:
 ${text.slice(0, 4000)}`;
 
-      const result = await model.generateContent(prompt);
-      const usage = getGeminiUsage(result);
+      const result = await callAi({ purpose: 'recordKeywords', input: prompt });
+      const usage = { inputTokens: result.inputTokens, outputTokens: result.outputTokens };
       await logAiUsage({
         uid: request.auth.uid,
         featureName: 'law_keyword',
         plan: AI_USAGE_PLAN,
-        model: 'gemini-3.1-flash-lite',
+        model: getAiRoute('recordKeywords').model,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
         imageCount: 0,
@@ -2828,7 +2815,7 @@ ${text.slice(0, 4000)}`;
         errorCode: null,
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
-      const raw = (result.response.text() || '').trim();
+      const raw = (result.text() || '').trim();
 
       const cleaned = raw
         .replace(/^```(?:json)?\s*/i, '')
@@ -5157,7 +5144,7 @@ export const generateTitlesForAll = onCall(
   {
     region: 'asia-northeast3',
     memory: '512MiB',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('recordTitleBackfill'),
     timeoutSeconds: 300,
   },
   async (request) => {
@@ -5179,8 +5166,6 @@ export const generateTitlesForAll = onCall(
       '_polishedAt', '_mode', '_stats', '_space', '_title', '_tags',
     ];
 
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
     const snapshot = await db
       .collection('users').doc(uid).collection('records')
@@ -5223,8 +5208,8 @@ export const generateTitlesForAll = onCall(
 기록 내용:
 ${contentForTitle.slice(0, 600)}`;
 
-          const result = await model.generateContent(prompt);
-          const raw = result.response.text().trim();
+          const result = await callAi({ purpose: 'recordTitleBackfill', input: prompt });
+          const raw = result.text().trim();
           const title = raw
             .replace(/^\*\*(.+)\*\*$/, '$1')
             .replace(/^["']|["']$/g, '')
@@ -5435,7 +5420,6 @@ JSON만 출력:
 async function analyzeStats(
   text: string,
   format: string,
-  apiKey: string,
   usageContext?: { uid: string; featureName: string; isDev: boolean }
 ) {
   try {
@@ -5450,22 +5434,16 @@ async function analyzeStats(
 기록 내용:
 ${text}`;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const modelName = 'gemini-3.1-flash-lite';
-    const model = genAI.getGenerativeModel({ 
-      model: modelName
-    });
-
-    const result = await model.generateContent(analysisPrompt);
+    const modelName = getAiRoute('recordStats').model;
+    const result = await callAi({ purpose: 'recordStats', input: analysisPrompt });
     if (usageContext) {
-      const usage = getGeminiUsage(result);
       await logAiUsage({
         uid: usageContext.uid,
         featureName: usageContext.featureName,
         plan: AI_USAGE_PLAN,
         model: modelName,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
         imageCount: 0,
         externalApiProvider: null,
         externalApiCalled: false,
@@ -5476,7 +5454,7 @@ ${text}`;
         isDev: usageContext.isDev,
       });
     }
-    const responseText = result.response.text();
+    const responseText = result.text();
     
     // JSON 파싱
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -6602,7 +6580,7 @@ export const deleteRecordImage = onCall(
 export const extractReadingBookTextFromPhoto = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('bookPhotoOcr'),
     memory: '512MiB',
     timeoutSeconds: 60,
   },
@@ -6694,11 +6672,9 @@ export const extractReadingBookTextFromPhoto = onCall(
 - 응답은 텍스트 본문만. 마크다운 코드펜스 금지
 - 사진에 책 본문이 없으면 빈 문자열만 반환`;
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const modelName = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({ model: modelName });
+      const modelName = getAiRoute('bookPhotoOcr').model;
       // 책 본문 사진 원본은 Storage/Firestore에 저장하지 않고 OCR 요청 메모리에서만 사용한다.
-      const result = await model.generateContent([
+      const result = await callAi({ purpose: 'bookPhotoOcr', input: [
         prompt,
         {
           inlineData: {
@@ -6706,8 +6682,8 @@ export const extractReadingBookTextFromPhoto = onCall(
             mimeType,
           },
         },
-      ]);
-      const usage = getGeminiUsage(result);
+      ] });
+      const usage = { inputTokens: result.inputTokens, outputTokens: result.outputTokens };
       await logAiUsage({
         uid,
         featureName: 'book_ocr',
@@ -6725,7 +6701,7 @@ export const extractReadingBookTextFromPhoto = onCall(
         isDev: DEVELOPER_UIDS.has(uid),
       });
 
-      const extractedText = result.response.text()
+      const extractedText = result.text()
         .replace(/^```(?:text)?\s*/i, '')
         .replace(/```\s*$/i, '')
         .trim()
@@ -6782,7 +6758,7 @@ export const extractReadingBookTextFromPhoto = onCall(
 export const extractStockTradeTextFromPhoto = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('stockPhotoOcr'),
     memory: '512MiB',
     timeoutSeconds: 60,
   },
@@ -6829,9 +6805,7 @@ export const extractStockTradeTextFromPhoto = onCall(
   }
 }`;
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
-      const result = await model.generateContent([
+      const result = await callAi({ purpose: 'stockPhotoOcr', input: [
         prompt,
         {
           inlineData: {
@@ -6839,9 +6813,9 @@ export const extractStockTradeTextFromPhoto = onCall(
             mimeType,
           },
         },
-      ]);
+      ] });
 
-      const rawText = result.response.text()
+      const rawText = result.text()
         .replace(/^```(?:json)?\s*/i, '')
         .replace(/```\s*$/i, '')
         .trim();
@@ -6926,7 +6900,7 @@ function normalizeLedgerType(value: unknown): string {
 export const extractLedgerTextFromImage = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('subledgerPhotoOcr'),
     memory: '512MiB',
     timeoutSeconds: 60,
   },
@@ -7028,14 +7002,12 @@ export const extractLedgerTextFromImage = onCall(
   "warnings": []
 }`;
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const modelName = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent([
+      const modelName = getAiRoute('subledgerPhotoOcr').model;
+      const result = await callAi({ purpose: 'subledgerPhotoOcr', input: [
         prompt,
         ...inlineParts,
-      ]);
-      const usage = getGeminiUsage(result);
+      ] });
+      const usage = { inputTokens: result.inputTokens, outputTokens: result.outputTokens };
       await logAiUsage({
         uid: request.auth.uid,
         featureName: 'subleger_ocr',
@@ -7053,7 +7025,7 @@ export const extractLedgerTextFromImage = onCall(
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
 
-      const responseText = result.response.text()
+      const responseText = result.text()
         .replace(/^```(?:json)?\s*/i, '')
         .replace(/```\s*$/i, '')
         .trim();
@@ -7131,7 +7103,7 @@ export const extractLedgerTextFromImage = onCall(
 export const extractHouseholdTextFromImage = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('householdPhotoOcr'),
     memory: '512MiB',
     timeoutSeconds: 60,
   },
@@ -7210,11 +7182,9 @@ export const extractHouseholdTextFromImage = onCall(
   "warnings": []
 }`;
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const modelName = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent([prompt, ...inlineParts]);
-      const usage = getGeminiUsage(result);
+      const modelName = getAiRoute('householdPhotoOcr').model;
+      const result = await callAi({ purpose: 'householdPhotoOcr', input: [prompt, ...inlineParts] });
+      const usage = { inputTokens: result.inputTokens, outputTokens: result.outputTokens };
       await logAiUsage({
         uid: request.auth.uid,
         featureName: 'ledger_ocr',
@@ -7232,7 +7202,7 @@ export const extractHouseholdTextFromImage = onCall(
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
 
-      const responseText = result.response.text()
+      const responseText = result.text()
         .replace(/^```(?:json)?\s*/i, '')
         .replace(/```\s*$/i, '')
         .trim();
@@ -11315,7 +11285,7 @@ export { gatherElderBookSources, buildElderBookOutline, assignElderBookSources, 
 
 // ===== 단어 뜻 조회 =====
 export const getWordMeaning = onCall(
-  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
+  { region: 'asia-northeast3', secrets: aiSecretsFor('bibleWordMeaning') },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -11371,17 +11341,13 @@ export const getWordMeaning = onCall(
         );
       }
 
-      const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
       let lastErrors: string[] = [];
       for (let attempt = 1; attempt <= 2; attempt += 1) {
         try {
           const prompt = buildBibleWordMeaningPrompt(context, lastErrors);
-          const result = await model.generateContent(prompt);
-          const parsed = parseJsonObject(result.response.text());
+          const result = await callAi({ purpose: 'bibleWordMeaning', input: prompt });
+          const parsed = parseJsonObject(result.text());
           const validation = validateBibleWordMeaningPayload(parsed, context);
 
           if (validation.ok && validation.payload) {
@@ -11425,17 +11391,13 @@ export const getWordMeaning = onCall(
     }
 
     // 2. Gemini API 호출
-    const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
     const prompt = `영어 단어 "${requestedWord}"의 정보를 알려주세요.
 JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 {"meaning": "한국어 뜻 (짧게 1~3개)", "partOfSpeech": "품사 (명사/동사/형용사/부사/전치사/접속사/관사 중)", "phonetic": "미국식 발음기호 (예: /ɪn/)", "koreanPronunciation": "한국어 발음 (예: 인)", "example": "중학생도 이해할 수 있는 쉬운 일상 생활 예문 (성경 문장 사용 금지)", "exampleKo": "위 예문 한국어 번역", "phrasalVerb": "이 단어가 포함된 대표 구동사 (예: bring forth, give up) — 없으면 빈 문자열", "phrasalVerbMeaning": "구동사 한국어 뜻 — 없으면 빈 문자열", "phrasalVerbExample": "구동사 생활 예문 영어 — 없으면 빈 문자열", "phrasalVerbExampleKo": "구동사 예문 한국어 번역 — 없으면 빈 문자열"}`;
 
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim();
+    const result = await callAi({ purpose: 'bibleWordMeaning', input: prompt });
+    const raw = result.text().trim();
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
@@ -11877,7 +11839,7 @@ export const preloadChapterGrammar = onCall(
 
 // ===== 퀴즈 생성 =====
 export const getVerseQuiz = onCall(
-  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
+  { region: 'asia-northeast3', secrets: aiSecretsFor('bibleVerseQuiz') },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -11899,10 +11861,6 @@ export const getVerseQuiz = onCall(
     }
 
     // 2. Gemini API 호출
-    const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
     const levelRules = level === 'advanced'
       ? `- 한국어 번역을 보여주고 영어 단어를 모두 빈칸으로 만들기
@@ -11937,8 +11895,8 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
   "koreanText": "한국어 번역 (고급 모드에서만 사용, 나머지는 빈 문자열)"
 }`;
 
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim();
+    const result = await callAi({ purpose: 'bibleVerseQuiz', input: prompt });
+    const raw = result.text().trim();
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
@@ -11955,7 +11913,7 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 
 // 영어 일기 학습 — 한국어 → 영어 번역
 export const translateToEnglish = onCall(
-  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
+  { region: 'asia-northeast3', secrets: aiSecretsFor('englishTranslate') },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -11966,10 +11924,6 @@ export const translateToEnglish = onCall(
     const text: string = request.data.text || '';
     if (!text) throw new Error('텍스트가 없습니다');
 
-    const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
     const prompt = `다음 한국어 일기를 자연스러운 영어로 번역해주세요.
 문장 단위로 나눠서 배열로 반환하세요.
@@ -11983,8 +11937,8 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
   "sentences": ["영어 문장1", "영어 문장2", "영어 문장3"]
 }`;
 
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim();
+    const result = await callAi({ purpose: 'englishTranslate', input: prompt });
+    const raw = result.text().trim();
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
     return parsed;
@@ -11999,7 +11953,7 @@ export const fetchTopNews = onSchedule(
     schedule: 'every 30 minutes',
     timeZone: 'Asia/Seoul',
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('newsDigest'),
   },
   async () => {
     try {
@@ -12027,8 +11981,6 @@ export const fetchTopNews = onSchedule(
         } catch (e) { logger.warn('RSS 수집 실패:', url); }
       }
       if (allItems.length === 0) { logger.warn('수집된 뉴스 없음'); return; }
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
       const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
 미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
 
@@ -12062,8 +12014,8 @@ ${allItems.join('\n\n---\n\n')}
     "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
   }
 ]`;
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().replace(/```json|```/g, '').trim();
+      const result = await callAi({ purpose: 'newsDigest', input: prompt });
+      const text = result.text().replace(/```json|```/g, '').trim();
       const newsArray = JSON.parse(text);
       const batch = db.batch();
       for (const item of newsArray) {
@@ -12079,7 +12031,7 @@ ${allItems.join('\n\n---\n\n')}
 
 // ===== 뉴스 수동 새로고침 (개발자용) =====
 export const refreshNews = onCall(
-  { secrets: [GEMINI_API_KEY_SECRET], region: 'asia-northeast3', memory: '512MiB' },
+  { secrets: aiSecretsFor('newsDigestRefresh'), region: 'asia-northeast3', memory: '512MiB' },
   async (request) => {
     // 개발자 UID — 향후 일반 사용자 개방 시 한도 체크 로직 추가 예정
     const isDeveloper = isInternalDeveloperUid(request.auth?.uid);
@@ -12115,8 +12067,6 @@ export const refreshNews = onCall(
         } catch (e) { logger.warn('RSS 수집 실패:', url); }
       }
       if (allItems.length === 0) return { success: false, message: '뉴스 없음' };
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
       const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
 미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
 
@@ -12150,8 +12100,8 @@ ${allItems.join('\n\n---\n\n')}
     "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
   }
 ]`;
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().replace(/```json|```/g, '').trim();
+      const result = await callAi({ purpose: 'newsDigestRefresh', input: prompt });
+      const text = result.text().replace(/```json|```/g, '').trim();
       const newsArray = JSON.parse(text);
       const batch = db.batch();
       for (const item of newsArray) {
@@ -12172,7 +12122,7 @@ export const analyzeRecordForProphecy = onCall(
   {
     region: 'asia-northeast3',
     memory: '512MiB',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('prophecyAnalysis'),
     timeoutSeconds: 60,
   },
   async (request) => {
@@ -12275,13 +12225,8 @@ ${content.slice(0, 4000)}
     }
 
     try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite',
-        systemInstruction: systemPrompt,
-      });
-      const result = await model.generateContent(userPrompt);
-      let text = result.response.text().trim();
+      const result = await callAi({ purpose: 'prophecyAnalysis', input: userPrompt, systemInstruction: systemPrompt });
+      let text = result.text().trim();
       text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
       let parsed: any = {
@@ -12328,7 +12273,7 @@ export const generateHaruProphecy = onCall(
   {
     region: 'asia-northeast3',
     memory: '512MiB',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('prophecyStory', 'prophecySynopsis'),
     timeoutSeconds: 120,
   },
   async (request) => {
@@ -12578,14 +12523,12 @@ ${type === 'story'
 `;
       }
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({
-        model: type === 'story' ? 'gemini-2.5-flash' : 'gemini-3.1-flash-lite',
+      const result = await callAi({
+        purpose: type === 'story' ? 'prophecyStory' : 'prophecySynopsis',
+        input: userPrompt,
         systemInstruction: systemPrompt,
       });
-
-      const result = await model.generateContent(userPrompt);
-      const text = result.response.text();
+      const text = result.text();
 
       // ── 사용량 업데이트 ──
       await usageRef.set({
@@ -12605,7 +12548,7 @@ ${type === 'story'
 );
 
 export const getVerseTranslation = onCall(
-  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
+  { region: 'asia-northeast3', secrets: aiSecretsFor('bibleVerseTranslation') },
   async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -12623,11 +12566,9 @@ export const getVerseTranslation = onCall(
   }
 
   // Gemini로 번역
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
   const prompt = `다음 KJV 성경 구절을 자연스러운 한국어로 번역해주세요. 번역문만 출력하세요.\n\n${text}`;
-  const result = await model.generateContent(prompt);
-  const translation = result.response.text().trim();
+  const result = await callAi({ purpose: 'bibleVerseTranslation', input: prompt });
+  const translation = result.text().trim();
 
   // Firestore 캐시 저장
   await cacheRef.set({ translation, verseKey, createdAt: new Date() });
@@ -12637,7 +12578,7 @@ export const getVerseTranslation = onCall(
 );
 
 export const getVerseWordMapping = onCall(
-  { region: 'asia-northeast3', secrets: [GEMINI_API_KEY_SECRET] },
+  { region: 'asia-northeast3', secrets: aiSecretsFor('bibleVerseWordMapping') },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -12652,8 +12593,6 @@ export const getVerseWordMapping = onCall(
     const cached = await cacheRef.get();
     if (cached.exists) return cached.data();
 
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
     const prompt = `다음 영어 성경 구절과 한국어 번역이 있습니다.
 한국어 번역을 단어/어절 단위로 분리하고, 각 한국어 단어/어절이 영어 원문의 어떤 단어(들)에 해당하는지 매핑해주세요.
 
@@ -12667,8 +12606,8 @@ JSON 형식으로만 출력하세요 (다른 설명 없이):
     ...
   ]
 }`;
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim().replace(/```json|```/g, '').trim();
+    const result = await callAi({ purpose: 'bibleVerseWordMapping', input: prompt });
+    const raw = result.text().trim().replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(raw);
 
     await cacheRef.set({ ...parsed, verseKey, createdAt: new Date() });
@@ -13591,7 +13530,7 @@ export const getHospitalList = onCall(
 export const analyzeDrugPhoto = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('drugPhoto'),
     timeoutSeconds: 60,
     memory: '512MiB',
   },
@@ -13654,9 +13593,7 @@ export const analyzeDrugPhoto = onCall(
 - 추측·환각 금지. 확실하지 않은 이름은 포함하지 마세요.
 - 최대 10개까지만 추출`;
 
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const modelName = 'gemini-3.1-flash-lite';
-    const visionModel = genAI.getGenerativeModel({ model: modelName });
+    const modelName = getAiRoute('drugPhoto').model;
 
     type ParsedDrug = { name: string; dosage?: string; confidence?: number };
 
@@ -13672,10 +13609,10 @@ export const analyzeDrugPhoto = onCall(
           },
         });
       }
-      const result = await visionModel.generateContent({
+      const result = await callAi({ purpose: 'drugPhoto', input: {
         contents: [{ role: 'user', parts }],
-      });
-      const usage = getGeminiUsage(result);
+      } });
+      const usage = { inputTokens: result.inputTokens, outputTokens: result.outputTokens };
       await logAiUsage({
         uid: request.auth.uid,
         featureName: 'drug_photo',
@@ -13692,7 +13629,7 @@ export const analyzeDrugPhoto = onCall(
         errorCode: null,
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
-      let raw = result.response.text().trim();
+      let raw = result.text().trim();
       // 마크다운 코드펜스 제거
       raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
       const parsed = JSON.parse(raw);
@@ -13782,7 +13719,7 @@ export const analyzeDrugPhoto = onCall(
 export const analyzeSymptomsForSpecialty = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('symptomSpecialty'),
     timeoutSeconds: 30,
   },
   async (request) => {
@@ -13834,13 +13771,8 @@ export const analyzeSymptomsForSpecialty = onCall(
 위 증상에 어울리는 진료과를 분석해 JSON으로만 응답하세요.`;
 
     try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite',
-        systemInstruction: systemPrompt,
-      });
-      const result = await model.generateContent(userPrompt);
-      const raw = result.response.text().trim();
+      const result = await callAi({ purpose: 'symptomSpecialty', input: userPrompt, systemInstruction: systemPrompt });
+      const raw = result.text().trim();
       // Gemini가 가끔 ```json ... ``` 으로 감쌀 수 있어 정리
       const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```\s*$/, '').trim();
       let parsed: any;
@@ -13882,7 +13814,7 @@ export const analyzeSymptomsForSpecialty = onCall(
 export const extractKNewsMetadata = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('newsMetadata'),
     memory: '512MiB',
     timeoutSeconds: 60,
   },
@@ -13915,10 +13847,8 @@ export const extractKNewsMetadata = onCall(
 반드시 위 JSON 키 구조 그대로. category는 반드시 6개 중 정확히 하나.`;
 
     try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
-      const result = await model.generateContent([
+      const result = await callAi({ purpose: 'newsMetadata', input: [
         prompt,
         {
           inlineData: {
@@ -13926,9 +13856,9 @@ export const extractKNewsMetadata = onCall(
             mimeType: mimeType || 'image/png',
           },
         },
-      ]);
+      ] });
 
-      const text = result.response.text();
+      const text = result.text();
       const cleaned = text.replace(/```json|```/g, '').trim();
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -14081,7 +14011,6 @@ type GeminiAdviceResult = {
 async function callGeminiAdvice(
   base64: string,
   mimeType: string,
-  apiKey: string,
   identifiedName?: string,
 ): Promise<GeminiAdviceResult> {
   const nameHint = identifiedName
@@ -14109,16 +14038,14 @@ ${nameHint}
   "note": "사진 분석은 참고용이라는 짧은 안내"
 }`;
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const modelName = 'gemini-3.1-flash-lite';
-  const model = genAI.getGenerativeModel({ model: modelName });
-  const result = await model.generateContent([
+  const modelName = getAiRoute('plantAdvice').model;
+  const result = await callAi({ purpose: 'plantAdvice', input: [
     prompt,
     { inlineData: { data: base64, mimeType: mimeType || 'image/jpeg' } },
-  ]);
-  const usage = getGeminiUsage(result);
+  ] });
+  const usage = { inputTokens: result.inputTokens, outputTokens: result.outputTokens };
 
-  const text = result.response.text();
+  const text = result.text();
   const cleaned = text.replace(/```json|```/g, '').trim();
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Gemini 응답에서 JSON을 찾을 수 없습니다.');
@@ -14145,7 +14072,7 @@ ${nameHint}
 export const analyzePlantPhoto = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET, KINDWISE_PLANT_ID_API_KEY_SECRET],
+    secrets: [...aiSecretsFor('plantAdvice'), KINDWISE_PLANT_ID_API_KEY_SECRET],
     memory: '512MiB',
     timeoutSeconds: 60,
   },
@@ -14190,7 +14117,6 @@ export const analyzePlantPhoto = onCall(
       advice = await callGeminiAdvice(
         cleanBase64,
         finalMime,
-        GEMINI_API_KEY_SECRET.value(),
         kindwise?.topPlantName,
       );
     } catch (err: any) {
@@ -14198,7 +14124,7 @@ export const analyzePlantPhoto = onCall(
         uid: request.auth.uid,
         featureName: 'plant_photo',
         plan: AI_USAGE_PLAN,
-        model: 'gemini-3.1-flash-lite',
+        model: getAiRoute('plantAdvice').model,
         inputTokens: null,
         outputTokens: null,
         imageCount: 1,
@@ -14232,7 +14158,7 @@ export const analyzePlantPhoto = onCall(
       uid: request.auth.uid,
       featureName: 'plant_photo',
       plan: AI_USAGE_PLAN,
-      model: 'gemini-3.1-flash-lite',
+      model: getAiRoute('plantAdvice').model,
       inputTokens: advice.usage?.inputTokens ?? null,
       outputTokens: advice.usage?.outputTokens ?? null,
       imageCount: 1,
@@ -14427,7 +14353,6 @@ function normalizeScientificKey(scientific: string): string {
 async function resolveKoreanPlantName(
   scientificName: string,
   englishName: string,
-  geminiApiKey: string,
 ): Promise<{ koName: string | null; scientificKey: string; cached: boolean }> {
   const scientificKey = normalizeScientificKey(scientificName);
   if (!scientificKey) return { koName: null, scientificKey: '', cached: false };
@@ -14476,10 +14401,8 @@ No explanation.
 - note: 짧은 한국어 설명 (없으면 빈 문자열)
 - JSON 하나만 출력, 마크다운/코드펜스 금지`;
 
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const result = await callAi({ purpose: 'plantKoreanName', input: prompt });
+    const text = result.text();
     const cleaned = text.replace(/```json|```/g, '').trim();
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -14545,7 +14468,6 @@ async function callGeminiCrossVerification(
   plantId: KindwiseIdResult | null,
   plantNet: PlantNetIdResult | null,
   images: { base64: string; mimeType: string }[],
-  apiKey: string,
 ): Promise<CrossVerificationResult> {
   // 두 API 결과 요약을 JSON 문자열로 직렬화 (Gemini가 비교 분석)
   const plantIdSummary = plantId
@@ -14626,8 +14548,6 @@ ${plantNetSummary ? JSON.stringify(plantNetSummary, null, 2) : '(호출 실패 �
   "careSummary": "오늘 사용자가 바로 할 일 1~2문장"
 }`;
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
   // 사진들을 모두 첨부 (Gemini는 multi-image 지원)
   const parts: any[] = [prompt];
@@ -14635,8 +14555,8 @@ ${plantNetSummary ? JSON.stringify(plantNetSummary, null, 2) : '(호출 실패 �
     parts.push({ inlineData: { data: img.base64, mimeType: img.mimeType || 'image/jpeg' } });
   }
 
-  const result = await model.generateContent(parts);
-  const text = result.response.text();
+  const result = await callAi({ purpose: 'plantCrossVerification', input: parts });
+  const text = result.text();
   const cleaned = text.replace(/```json|```/g, '').trim();
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Gemini 응답에서 JSON을 찾을 수 없습니다.');
@@ -14680,7 +14600,7 @@ ${plantNetSummary ? JSON.stringify(plantNetSummary, null, 2) : '(호출 실패 �
 export const detectPlantAdvanced = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET, KINDWISE_PLANT_ID_API_KEY_SECRET, PLANTNET_API_KEY_SECRET],
+    secrets: [...aiSecretsFor('plantKoreanName', 'plantCrossVerification'), KINDWISE_PLANT_ID_API_KEY_SECRET, PLANTNET_API_KEY_SECRET],
     memory: '1GiB',
     timeoutSeconds: 120,
   },
@@ -14763,7 +14683,6 @@ export const detectPlantAdvanced = onCall(
         plantIdResult,
         plantNetResult,
         images,
-        GEMINI_API_KEY_SECRET.value(),
       );
     } catch (e: any) {
       geminiError = e?.message || 'Gemini 교차검증 실패';
@@ -14801,7 +14720,6 @@ export const detectPlantAdvanced = onCall(
       const resolution = await resolveKoreanPlantName(
         plantNetResult.top.scientificName,
         plantNetResult.top.name || '',
-        GEMINI_API_KEY_SECRET.value(),
       ).catch((e: any) => {
         logger.warn('한국어명 검정 fallback — ' + (e?.message || ''));
         return { koName: null as string | null, scientificKey: '', cached: false };
@@ -15932,7 +15850,7 @@ export { exportEpub } from './epubExport';
 export const petFoodCheck = onCall(
   {
     region: 'asia-northeast3',
-    secrets: [GEMINI_API_KEY_SECRET],
+    secrets: aiSecretsFor('petFoodCheck'),
   },
   async (request) => {
     if (!request.auth) {
@@ -16007,10 +15925,6 @@ export const petFoodCheck = onCall(
       };
     }
 
-    const apiKey = GEMINI_API_KEY_SECRET.value();
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
     const prompt = `아래 반려동물 식품 안전 정보를 바탕으로 보호자에게 전달할 안내문을 작성해.
 판정 결과를 바꾸거나 추가 판단하지 마.
 위험도: ${matched.riskLevel}
@@ -16020,8 +15934,8 @@ export const petFoodCheck = onCall(
 2~4문장으로 간결하게 정리해.
 마지막에는 반드시 "이 안내는 진료를 대신하지 않습니다."를 붙여.`;
 
-    const result = await model.generateContent(prompt);
-    const geminiText = result.response.text();
+    const result = await callAi({ purpose: 'petFoodCheck', input: prompt });
+    const geminiText = result.text();
 
     return {
       riskLevel: matched.riskLevel,

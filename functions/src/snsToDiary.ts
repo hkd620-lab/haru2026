@@ -1,6 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { defineSecret } from 'firebase-functions/params';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { aiSecretsFor, callAi } from './ai/aiGateway';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import {
@@ -9,7 +8,6 @@ import {
   type MonthlyAiQuotaReservation,
 } from './utils/monthlyAiQuota';
 
-const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 
 // 사용자 입력 이름의 prompt injection / 위험 문자 차단 (HARU예언과 동일 정책)
 function sanitizeName(raw: unknown): string {
@@ -25,7 +23,7 @@ export const convertSnsToDiary = onCall(
   {
     region: 'asia-northeast3',
     memory: '512MiB',
-    secrets: [GEMINI_API_KEY],
+    secrets: aiSecretsFor('snsToDiary'),
     timeoutSeconds: 120,
   },
   async (request) => {
@@ -96,13 +94,12 @@ ${text}
 ※ 원문에 없는 인물 이름은 절대 임의로 만들지 마세요. 1인칭 "나"는 그대로 유지하고, 다른 등장인물은 원문에 적힌 이름·관계 그대로만 사용합니다.`;
 
     try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite',
+      const result = await callAi({
+        purpose: 'snsToDiary',
+        input: userPrompt,
         systemInstruction: systemPrompt,
       });
-      const result = await model.generateContent(userPrompt);
-      const diaryText = result.response.text().trim();
+      const diaryText = result.text().trim();
       logger.info(`convertSnsToDiary 완료: uid=${request.auth.uid}, len=${diaryText.length}`);
       return { diaryText };
     } catch (error: any) {

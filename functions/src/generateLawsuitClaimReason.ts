@@ -1,6 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { defineSecret } from 'firebase-functions/params';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { aiSecretsFor, callAi } from './ai/aiGateway';
 import * as logger from 'firebase-functions/logger';
 import * as admin from 'firebase-admin';
 import { isInternalDeveloperUid } from './internalEntitlements';
@@ -9,7 +8,6 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 const db = admin.firestore();
 // 현재 1차 운영값입니다. HARU 공식 최종 AI 정책 확정값이 아니며 한 곳에서 조정합니다.
 const CURRENT_CLAIM_REASON_DAILY_LIMITS: Record<'free' | 'basic' | 'premium', number> = {
@@ -105,7 +103,7 @@ export const generateLawsuitClaimReason = onCall(
     region: 'asia-northeast3',
     memory: '512MiB',
     cors: ALLOWED_CALLABLE_ORIGINS,
-    secrets: [GEMINI_API_KEY],
+    secrets: aiSecretsFor('lawsuitClaimReason'),
     timeoutSeconds: 120,
   },
   async (request) => {
@@ -185,13 +183,12 @@ ${safeClaimPurpose || '미입력'}
 입력되지 않은 날짜, 장소, 거래 플랫폼, 연락 내용, 하자 내용, 배송 경위는 만들지 마세요.`;
 
     try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite',
+      const result = await callAi({
+        purpose: 'lawsuitClaimReason',
+        input: userPrompt,
         systemInstruction: systemPrompt,
       });
-      const result = await model.generateContent(userPrompt);
-      const claimReasonText = result.response.text().trim();
+      const claimReasonText = result.text().trim();
       logger.info(
         `generateLawsuitClaimReason 완료: uid=${request.auth.uid}, plan=${quota.plan}, used=${quota.usedAfter}/${quota.limit}, len=${claimReasonText.length}`,
       );

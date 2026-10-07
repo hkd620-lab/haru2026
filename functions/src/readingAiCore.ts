@@ -1,6 +1,9 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 
-export const READING_AI_MODEL = 'gemini-3.1-flash-lite';
+import { AI_ROUTES } from './ai/aiModels';
+
+// 모델은 AI 설정 표(ai/aiModels.ts)의 readingChat 값을 쓴다.
+export const READING_AI_MODEL = AI_ROUTES.readingChat.model;
 export const READING_AI_LIMITS = {
   bookTitle: 200, author: 120, currentBookText: 12000, readingJournal: 3000,
   previousReadingSummary: 3000, memory: 1600, question: 1000,
