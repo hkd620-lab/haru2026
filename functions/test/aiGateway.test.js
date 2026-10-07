@@ -178,3 +178,15 @@ test('별도 파일 기능 4개도 창구를 쓰고, 독서 대화 모델 상수
   assert.equal(require('../lib/readingAiCore.js').READING_AI_MODEL, models.AI_ROUTES.readingChat.model);
   assert.match(read('readingAi.ts'), /callOptions: \{ timeout: 45000 \}/);
 });
+
+test('OpenAI SDK 는 창구를 불러올 때 함께 불러오지 않는다(OpenAI 로 보낼 때만)', () => {
+  const { execFileSync } = require('node:child_process');
+  const out = execFileSync(process.execPath, ['-e', [
+    "const g = require('./lib/ai/aiGateway.js');",
+    "const loaded = () => Object.keys(require.cache).some((k) => k.includes('/node_modules/openai/'));",
+    "const before = loaded();",
+    "g.aiClientFactories.openai('sk-test');",
+    "console.log(JSON.stringify([before, loaded()]));",
+  ].join('\n')], { cwd: path.join(__dirname, '..'), encoding: 'utf8' });
+  assert.deepEqual(JSON.parse(out.trim()), [false, true]);
+});

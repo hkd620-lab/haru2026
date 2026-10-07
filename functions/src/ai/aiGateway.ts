@@ -2,7 +2,7 @@
 // 어느 회사·모델로 보낼지는 aiModels.ts 설정 표가 정한다. 회사별 차이(요청 형식·사용량 필드)는 여기서 맞춘다.
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { GenerateContentRequest, GenerationConfig, ModelParams, Part, RequestOptions, SingleRequestOptions } from '@google/generative-ai';
-import OpenAI from 'openai';
+import type OpenAI from 'openai';
 import { getAiRoute } from './aiModels';
 import type { AiProvider, AiPurpose } from './aiModels';
 
@@ -36,7 +36,11 @@ export interface CallAiResult {
 // 테스트에서 SDK 대역을 넣을 수 있게 생성 함수를 바꿔 끼울 수 있다.
 export const aiClientFactories = {
   gemini: (apiKey: string) => new GoogleGenerativeAI(apiKey),
-  openai: (apiKey: string) => new OpenAI({ apiKey }),
+  // OpenAI SDK 는 OpenAI 로 보내는 기능이 처음 호출될 때만 불러온다(모든 함수의 시작 시간에 더하지 않기 위함).
+  openai: (apiKey: string): OpenAI => {
+    const { default: OpenAIClient } = require('openai') as typeof import('openai');
+    return new OpenAIClient({ apiKey });
+  },
 };
 
 const finiteOrNull = (value: unknown): number | null => {
