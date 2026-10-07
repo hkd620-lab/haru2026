@@ -6,6 +6,7 @@ import { transformSync } from 'esbuild';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import * as views from '../src/app/utils/structuredAssistantRecords.ts';
+import { getStructuredViewAccess } from '../src/app/assistants/sayuAdapters.ts';
 
 const require = createRequire(import.meta.url);
 const read = path => readFileSync(new URL(`../src/app/${path}`, import.meta.url), 'utf8');
@@ -107,7 +108,7 @@ test('SAYU exact-ID reader preserves the selected structured record, consent and
   for (const [record, prefix] of [[english, 'english_diary'], [growth, 'child_measure'], [voiding, 'voiding']]) {
     let result = null;
     const env = { records: [{ ...record, id: 'same-date-sibling' }, record], user: { uid: 'fixture-user' }, recordsOwnerUid: 'fixture-user',
-      healthReadConsent: true, ...views, toast: { info() {} }, setStructuredRecord: value => { result = value; }, setSayuModalState() {}, setHarurawModal() {} };
+      healthReadConsent: true, ...views, getStructuredViewAccess, toast: { info() {} }, setStructuredRecord: value => { result = value; }, setSayuModalState() {}, setHarurawModal() {} };
     handlers(source, ['openFormatSayu'], env).openFormatSayu(record.date, prefix, 'label', record.id);
     assert.equal(result.record.id, record.id);
     result = null; env.recordsOwnerUid = 'other-session'; handlers(source, ['openFormatSayu'], env).openFormatSayu(record.date, prefix, 'label', record.id);

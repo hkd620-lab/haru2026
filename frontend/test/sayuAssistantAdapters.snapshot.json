@@ -1,5 +1,145 @@
 [
   {
+    "id": "plant_library_lib-pub-noloc",
+    "date": "2026-10-09",
+    "label": "하루식물탐정",
+    "title": "위치 없는 공개 식물",
+    "subtitle": "",
+    "color": "#4A5A2C",
+    "plantType": "library",
+    "plantMergeKey": "-|2026-10-09|plant_library_lib-pub-noloc|true",
+    "plantPreviewImageUrl": "",
+    "plantPreviewLines": [
+      "특징: 공개 설명만 있음",
+      "공개 연결 있음"
+    ],
+    "searchText": "하루식물탐정 위치 없는 공개 식물 공개 설명만 있음 공개 연결 있음",
+    "opened": [
+      {
+        "fn": "openPlantReadOnlyDetail",
+        "detail": {
+          "type": "library",
+          "title": "위치 없는 공개 식물",
+          "date": "2026-10-09",
+          "subtitle": "",
+          "imageUrl": "",
+          "summary": "이 기록은 사용자가 확정한 내 식물도감 기록입니다.",
+          "coreFields": [
+            {
+              "label": "식물명",
+              "value": "위치 없는 공개 식물"
+            },
+            {
+              "label": "학명",
+              "value": ""
+            },
+            {
+              "label": "최근 갱신일",
+              "value": "K(2026-10-09)"
+            },
+            {
+              "label": "공개 여부",
+              "value": "공개 연결 있음"
+            }
+          ],
+          "detailSections": [
+            {
+              "label": "학명/영문명",
+              "value": ""
+            },
+            {
+              "label": "특징 설명",
+              "value": "공개 설명만 있음"
+            },
+            {
+              "label": "재배 메모",
+              "value": ""
+            },
+            {
+              "label": "도감 출처",
+              "value": "내 식물도감"
+            }
+          ]
+        }
+      }
+    ],
+    "preview": {
+      "imageUrl": "",
+      "badge": "도감기록",
+      "lines": [
+        "특징: 공개 설명만 있음",
+        "공개 연결 있음"
+      ],
+      "sameOnOpen": true
+    }
+  },
+  {
+    "id": "plant_public_library_lib-pub-noloc",
+    "date": "2026-10-09",
+    "label": "하루식물탐정",
+    "title": "위치 없는 공개 식물",
+    "subtitle": "",
+    "color": "#0f766e",
+    "plantType": "catalog",
+    "plantMergeKey": "-|2026-10-09|plant_public_library_lib-pub-noloc|true",
+    "plantPreviewImageUrl": "",
+    "plantPreviewLines": [
+      "공개 설명만 있음",
+      "공개 지역 미표시"
+    ],
+    "searchText": "하루식물탐정 위치 없는 공개 식물 공개 설명만 있음",
+    "opened": [
+      {
+        "fn": "openPlantReadOnlyDetail",
+        "detail": {
+          "type": "catalog",
+          "title": "위치 없는 공개 식물",
+          "date": "2026-10-09",
+          "subtitle": "",
+          "imageUrl": "",
+          "summary": "이 기록은 공개 연결 정보가 확인된 식물 공개기록입니다.",
+          "coreFields": [
+            {
+              "label": "공개 식물명",
+              "value": "위치 없는 공개 식물"
+            },
+            {
+              "label": "공개용 지역명",
+              "value": ""
+            },
+            {
+              "label": "공개 상태",
+              "value": "공개 읽기 전용"
+            },
+            {
+              "label": "공개일",
+              "value": "K(2026-10-09)"
+            }
+          ],
+          "detailSections": [
+            {
+              "label": "공개 제목/설명",
+              "value": "공개 설명만 있음"
+            },
+            {
+              "label": "학명/영문명",
+              "value": ""
+            }
+          ]
+        }
+      }
+    ],
+    "preview": {
+      "imageUrl": "",
+      "badge": "공개기록",
+      "lines": [
+        "공개 설명만 있음",
+        "공개 지역 미표시"
+      ],
+      "sameOnOpen": true
+    }
+  },
+  {
     "id": "plant_library_lib-nomemo",
     "date": "2026-10-08",
     "label": "하루식물탐정",
