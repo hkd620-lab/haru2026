@@ -51,6 +51,8 @@ export const fixtureLibraryItems = [
   { id: 'lib-pub', recordDate: '2026-10-02', title: '공개 장미', visibility: 'public', publicLocation: '서울 종로구', description: '붉은 장미', scientificName: 'Rosa', plantId: 'p-2' },
   { id: 'lib-priv', recordDate: '2026-10-02', title: '비공개 국화', characteristics: '노란 꽃', cultivationMemo: '물 주기 주 2회', finalLatinName: 'Chrysanthemum' },
   { id: 'lib-nomemo', date: '2026-10-08', title: '메모 없는 식물', geminiAnalysis: { analysis: '제미나이 분석문' } },
+  // 공개 위치가 없는 공개 도감 — 공개 항목 미리보기의 '공개 지역 미표시' 대체 문구 회귀 확인용(P2a 독립 검토 지적 1)
+  { id: 'lib-pub-noloc', recordDate: '2026-10-09', title: '위치 없는 공개 식물', visibility: 'public', description: '공개 설명만 있음' },
   { id: 'lib-out', recordDate: '2026-08-01', title: '범위 밖 도감', visibility: 'public' },
 ];
 

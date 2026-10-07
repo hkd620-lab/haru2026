@@ -8,6 +8,7 @@ import {
   PLANT_SAYU_TYPE_LABEL,
   PLANT_SAYU_SOURCE_LABEL,
   isCompletedSnsStoryRecord,
+  getStructuredViewAccess,
   buildSayuAssistantEntries,
   buildSayuPlantDetectiveEntry,
 } from '../assistants/sayuAdapters';
@@ -2369,12 +2370,13 @@ export function SayuPage() {
     if (!record) return;
 
     if (isStructuredAssistantPrefix(formatKey)) {
-      if (recordsOwnerUid !== user?.uid) return;
+      const structuredAccess = getStructuredViewAccess(formatKey, recordsOwnerUid === user?.uid, healthReadConsent);
+      if (structuredAccess === 'not_owner') return;
       if (!hasStructuredAssistantRecord(record, formatKey)) {
         toast.info('선택한 기록에 해당 형식이 없습니다.');
         return;
       }
-      if (formatKey !== 'english_diary' && healthReadConsent !== true) {
+      if (structuredAccess === 'needs_health_consent') {
         toast.info('건강 기록 화면에서 민감정보 열람 동의를 확인해 주세요.');
         return;
       }
@@ -3982,8 +3984,7 @@ export function SayuPage() {
     if (isCompletedSnsStoryRecord(record)) return false;
     if (isKnowledgeWarehouseRecord(record)) return false;
     if (isStructuredAssistantPrefix(prefix)) {
-      if (recordsOwnerUid !== user?.uid) return false;
-      if (prefix !== 'english_diary' && healthReadConsent !== true) return false;
+      if (getStructuredViewAccess(prefix, recordsOwnerUid === user?.uid, healthReadConsent) !== 'allowed') return false;
       return hasStructuredAssistantRecord(record, prefix);
     }
     if (prefix === 'growthTimeline') {
@@ -5351,8 +5352,8 @@ export function SayuPage() {
         </div>
       )}
 
-      {structuredRecord && structuredRecord.ownerUid === user?.uid
-        && (structuredRecord.prefix === 'english_diary' || healthReadConsent === true) && (
+      {structuredRecord
+        && getStructuredViewAccess(structuredRecord.prefix, structuredRecord.ownerUid === user?.uid, healthReadConsent) === 'allowed' && (
         <StructuredAssistantRecordModal record={structuredRecord.record} prefix={structuredRecord.prefix} onClose={() => setStructuredRecord(null)} />
       )}
       <SayuModal

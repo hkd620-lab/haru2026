@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   buildSayuAssistantEntries,
   buildSayuPlantDetectiveEntry,
+  getStructuredViewAccess,
   isCompletedSnsStoryRecord,
 } from '../src/app/assistants/sayuAdapters.ts';
 import { createFixtureContext, fixtureRecords, serializeEntries } from './sayuAssistantAdapters.fixture.mjs';
@@ -53,4 +54,26 @@ test('판독기록 단건 빌더는 객체가 아닌 항목에 null 을 돌려�
   const [entry] = serializeEntries([buildSayuPlantDetectiveEntry(ctx, record, 0)], calls);
   assert.deepEqual(entry, snapshot.find((e) => e.id === 'plant-rec_plant_detective_0'));
   assert.deepEqual(entry.opened[0].detail.imageUrls, ['https://img/1.jpg', 'https://img/2.jpg']);
+});
+
+// P2b: 구조화 뷰 열람 판정 — 이동 전 SayuPage 세 곳의 조건식을 그대로 옮겨 적은 기준과 모든 조합에서 같아야 한다.
+test('구조화 뷰 열람 판정은 이동 전 세 곳의 조건과 같다', () => {
+  const prefixes = ['english_diary', 'child_measure', 'voiding'];
+  const consents = [true, false, null, undefined];
+  for (const prefix of prefixes) {
+    for (const isOwner of [true, false]) {
+      for (const healthReadConsent of consents) {
+        const access = getStructuredViewAccess(prefix, isOwner, healthReadConsent);
+        // openFormatSayu: 소유자 아님 → 조용히 종료, 그다음(기록 존재 확인 뒤) 동의 없음 → 안내 후 종료
+        const openOriginal = !isOwner ? 'not_owner' : (prefix !== 'english_diary' && healthReadConsent !== true) ? 'needs_health_consent' : 'allowed';
+        assert.equal(access, openOriginal, `open ${prefix} ${isOwner} ${healthReadConsent}`);
+        // hasCompletedFormatForRecord: 소유자 아님 또는 동의 없음이면 목록에서 제외
+        const listOriginal = !(!isOwner) && !(prefix !== 'english_diary' && healthReadConsent !== true);
+        assert.equal(access === 'allowed', listOriginal, `list ${prefix} ${isOwner} ${healthReadConsent}`);
+        // 모달 표시: ownerUid 일치 && (영어일기 || 동의 true)
+        const modalOriginal = isOwner && (prefix === 'english_diary' || healthReadConsent === true);
+        assert.equal(access === 'allowed', modalOriginal, `modal ${prefix} ${isOwner} ${healthReadConsent}`);
+      }
+    }
+  }
 });

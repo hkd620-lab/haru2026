@@ -26,6 +26,16 @@ export function isCompletedSnsStoryRecord(record: HaruRecord): boolean {
   return record.source === 'sns_story' && record.generationStatus === 'completed';
 }
 
+// 구조화 뷰(영어일기·성장기록·배뇨일지) 열람 조건 — P2b: SayuPage 세 곳(상세 열기·목록 노출·모달 표시)의 같은 판정을 모았다.
+// 본인 계정의 기록이어야 하고, 영어일기가 아니면 건강 민감정보 열람 동의가 true여야 한다.
+export type StructuredViewAccess = 'allowed' | 'not_owner' | 'needs_health_consent';
+
+export function getStructuredViewAccess(prefix: string, isOwner: boolean, healthReadConsent: boolean | null | undefined): StructuredViewAccess {
+  if (!isOwner) return 'not_owner';
+  if (prefix !== 'english_diary' && healthReadConsent !== true) return 'needs_health_consent';
+  return 'allowed';
+}
+
 export interface PlantReadOnlyDetail {
   type: PlantSayuEntryType;
   title: string;
