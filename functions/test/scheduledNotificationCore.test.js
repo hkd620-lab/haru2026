@@ -31,7 +31,10 @@ assert.equal(isNotificationDue('21:00', at('2026-10-07T21:00:00Z')), false);
 const source = fs.readFileSync(path.join(__dirname, '../src/scheduledNotification.ts'), 'utf8');
 assert.match(source, /\.collection\('records'\)\s*\.where\('date', '==', clock\.dateKey\)\s*\.limit\(1\)/);
 assert.doesNotMatch(source, /\.collection\('records'\)\s*\.doc\(/);
-assert.doesNotMatch(source, /getHours\(\)|toISOString\(\)/);
+assert.doesNotMatch(source, /\.getHours\(\)|\.toISOString\(\)\.split\('T'\)/);
+assert.match(source, /const clock = getSeoulClock\(new Date\(\)\);/);
+// 오늘 기록이 있으면 건너뛴다(조건이 뒤집히면 기록한 사용자에게만 알림이 간다)
+assert.match(source, /if \(!todayRecords\.empty\) \{\s*skippedCount\+\+;\s*continue;\s*\}/);
 assert.match(source, /region: 'asia-northeast3'/);
 assert.match(source, /isNotificationDue\(settings\.notificationTime, clock\)/);
 
