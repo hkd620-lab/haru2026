@@ -1,5 +1,5 @@
 // Functions 형식 등록부 — 프런트 형식 등록부(frontend/src/app/records/formatRegistry.ts)의 저장 필드 접두어를 복사한 공유 상수.
-// Functions 는 프런트 파일을 불러올 수 없어 값만 복사한다. 두 값이 같은지는 functions/test/formatRegistry.parity.test.js 가 확인한다.
+// Functions 는 프런트 파일을 불러올 수 없어 값만 복사한다. 두 값이 같은지는 functions/test/formatRegistry.parity.test.mjs 가 확인한다.
 // 형식을 추가하거나 접두어를 바꿀 때는 프런트 등록부와 이 파일을 함께 고친다.
 
 export const FORMAT_FIELD_PREFIX = {
