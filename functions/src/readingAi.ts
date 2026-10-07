@@ -1,6 +1,6 @@
 import { onCall } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { callAi } from './ai/aiGateway';
 import { enforceRateLimit } from './utils/rateLimit';
 import { reserveMonthlyAiQuota, rollbackMonthlyAiQuotaReservation, type MonthlyAiQuotaReservation } from './utils/monthlyAiQuota';
 import { logAiUsage } from './aiUsageLogger';
@@ -17,16 +17,19 @@ export const chatWithReadingContext = onCall({
   reserve: (uid) => reserveMonthlyAiQuota(uid, 'chatWithReadingContext'),
   rollback: rollbackMonthlyAiQuotaReservation,
   generate: async (input) => {
-    const model = new GoogleGenerativeAI(GEMINI_API_KEY.value()).getGenerativeModel({
-      model: READING_AI_MODEL, systemInstruction: READING_AI_SYSTEM,
-      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 4096, temperature: 0.4 },
-    });
     // Leave time inside the callable deadline to refund failed reservations.
-    const result = await model.generateContent(buildReadingAiPrompt(input), { timeout: 45000 });
+    const result = await callAi({
+      purpose: 'readingChat',
+      keys: { gemini: GEMINI_API_KEY.value() },
+      input: buildReadingAiPrompt(input),
+      systemInstruction: READING_AI_SYSTEM,
+      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 4096, temperature: 0.4 },
+      callOptions: { timeout: 45000 },
+    });
     return {
-      text: result.response.text(),
-      inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
-      outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+      text: result.text(),
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
     };
   },
   log: (uid, reservation, success, usage, errorCode) => logAiUsage({

@@ -49,6 +49,11 @@ export const AI_ROUTES = {
   plantAdvice: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '식물 관리 조언' },
   plantKoreanName: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '식물 한국어 이름 확인' },
   plantCrossVerification: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '식물 판독 교차 확인' },
+  // 별도 파일 기능
+  readingChat: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '독서 대화(chatWithReadingContext)' },
+  snsToDiary: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: 'SNS 글을 일기로 변환' },
+  bookMaterial: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '책 소재 구조화' },
+  lawsuitClaimReason: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '소송 청구원인 초안' },
 } as const satisfies Record<string, AiRoute>;
 
 export type AiPurpose = keyof typeof AI_ROUTES;

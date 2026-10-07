@@ -11,7 +11,12 @@ function fakeGemini(log, response) {
   return (apiKey) => ({
     getGenerativeModel(params, requestOptions) {
       log.push({ apiKey, params, requestOptions, argc: requestOptions === undefined ? 1 : 2 });
-      return { async generateContent(input) { log.push({ input }); return response; } };
+      return {
+        async generateContent(...args) {
+          log.push(args.length === 1 ? { input: args[0] } : { input: args[0], callOptions: args[1] });
+          return response;
+        },
+      };
     },
   });
 }
@@ -149,4 +154,27 @@ test('미래전망은 유형별 용도로, 식물 보조 함수 3개도 창구�
   }
   // 식물 사진 사용량 기록도 설정 표의 모델을 쓴다
   assert.equal((src.match(/featureName: 'plant_photo',\s*plan: AI_USAGE_PLAN,\s*model: getAiRoute\('plantAdvice'\)\.model,/g) || []).length, 2);
+});
+
+test('호출 옵션(callOptions)은 generateContent 두 번째 인자로만 넘긴다', async () => {
+  const log = [];
+  gateway.aiClientFactories.gemini = fakeGemini(log, { response: { text: () => '{}' } });
+  await gateway.callAi({
+    purpose: 'readingChat', keys: { gemini: 'k' }, input: 'q', systemInstruction: 's',
+    generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 4096, temperature: 0.4 }, callOptions: { timeout: 45000 },
+  });
+  assert.deepEqual(log[0].params, { model: 'gemini-3.1-flash-lite', systemInstruction: 's', generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 4096, temperature: 0.4 } });
+  assert.equal(log[0].argc, 1);
+  assert.deepEqual(log[1], { input: 'q', callOptions: { timeout: 45000 } });
+});
+
+test('별도 파일 기능 4개도 창구를 쓰고, 독서 대화 모델 상수는 설정 표 값과 같다', () => {
+  const read = (f) => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8');
+  for (const [file, purpose] of [['readingAi.ts', 'readingChat'], ['snsToDiary.ts', 'snsToDiary'], ['bookMaterial.ts', 'bookMaterial'], ['generateLawsuitClaimReason.ts', 'lawsuitClaimReason']]) {
+    const src = read(file);
+    assert.match(src, new RegExp(`purpose: '${purpose}'`), file);
+    assert.doesNotMatch(src, /new GoogleGenerativeAI|getGenerativeModel|'gemini-[\w.-]+'|\.response\./, file);
+  }
+  assert.equal(require('../lib/readingAiCore.js').READING_AI_MODEL, models.AI_ROUTES.readingChat.model);
+  assert.match(read('readingAi.ts'), /callOptions: \{ timeout: 45000 \}/);
 });

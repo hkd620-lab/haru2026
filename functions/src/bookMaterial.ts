@@ -9,7 +9,7 @@
 // - 저장은 merge 로 bookMaterial 만 부착, 원본 필드 절대 미수정
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { callAi } from './ai/aiGateway';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
 import { hasAiLibraryDeveloperEmail } from './aiLibrary';
@@ -133,14 +133,11 @@ export const convertToBookMaterial = onCall(
       : (typeof doc.title === 'string' ? doc.title : '');
 
     // 8) Gemini 호출
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.1-flash-lite',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0.25,
-      },
-    });
+    const aiKeys = { gemini: GEMINI_API_KEY.value() };
+    const generationConfig = {
+      responseMimeType: 'application/json',
+      temperature: 0.25,
+    };
 
     // v5-vibeflow — v4-verbatim 위에 "인간+AI 협업의 사고 흐름"을 한 층 더 얹는다.
     // v4 의 큐레이터 원칙은 그대로 유지: AI 는 작가가 아니다. 모든 신규 필드도 원문 보존 의무.
@@ -234,8 +231,8 @@ ${text}
 
     let parsed: any;
     try {
-      const result = await model.generateContent(prompt);
-      const raw = result.response.text().trim();
+      const result = await callAi({ purpose: 'bookMaterial', keys: aiKeys, input: prompt, generationConfig });
+      const raw = result.text().trim();
       parsed = extractJson(raw);
     } catch (e: any) {
       logger.error('책소재 구조화 실패:', { message: e?.message, logId });

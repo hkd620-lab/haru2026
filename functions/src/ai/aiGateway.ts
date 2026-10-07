@@ -1,7 +1,7 @@
 // AI 호출 창구 — 기능 코드는 회사별 SDK 를 직접 만들지 않고 callAi 하나만 부른다.
 // 어느 회사·모델로 보낼지는 aiModels.ts 설정 표가 정한다. 회사별 차이(요청 형식·사용량 필드)는 여기서 맞춘다.
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import type { GenerateContentRequest, GenerationConfig, ModelParams, Part, RequestOptions } from '@google/generative-ai';
+import type { GenerateContentRequest, GenerationConfig, ModelParams, Part, RequestOptions, SingleRequestOptions } from '@google/generative-ai';
 import OpenAI from 'openai';
 import { getAiRoute } from './aiModels';
 import type { AiProvider, AiPurpose } from './aiModels';
@@ -19,6 +19,8 @@ export interface CallAiRequest {
   // Gemini 전용 설정(tools·safetySettings 등). 다른 회사로 보내면 오류로 막는다.
   geminiParams?: Omit<ModelParams, 'model' | 'systemInstruction' | 'generationConfig'>;
   requestOptions?: RequestOptions;
+  // 호출 한 번에만 적용하는 옵션(예: { timeout }). Gemini generateContent 두 번째 인자로 그대로 넘긴다.
+  callOptions?: SingleRequestOptions;
 }
 
 export interface CallAiResult {
@@ -55,7 +57,9 @@ async function callGemini(model: string, request: CallAiRequest): Promise<CallAi
   const generativeModel = request.requestOptions
     ? aiClientFactories.gemini(request.keys.gemini).getGenerativeModel(params, request.requestOptions)
     : aiClientFactories.gemini(request.keys.gemini).getGenerativeModel(params);
-  const result = await generativeModel.generateContent(request.input);
+  const result = request.callOptions
+    ? await generativeModel.generateContent(request.input, request.callOptions)
+    : await generativeModel.generateContent(request.input);
   const usage = getGeminiUsage(result);
   return { provider: 'gemini', model, ...usage, text: () => result.response.text(), raw: result };
 }
