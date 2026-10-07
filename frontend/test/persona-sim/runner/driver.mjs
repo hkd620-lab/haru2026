@@ -8,12 +8,13 @@ const slug = (s) => s.replace(/[^0-9A-Za-z가-힣]+/g, '-').replace(/^-|-$/g, ''
 
 export const SEVERITY = ['치명', '중대', '경미', '제안', '참고'];
 
-export function createContext({ page, events, blocked, outDir, meta }) {
+export function createContext({ page, context, events, blocked, outDir, meta }) {
   const steps = [];
   const findings = [];
   const checks = [];
   let shotNo = 0;
   let currentStep = '';
+  let stepEvidence = null; // 현재 단계에서 "증거-" 로 찍은 가장 최근 스크린샷
   ensureDir(outDir);
 
   const ctx = {
@@ -25,25 +26,30 @@ export function createContext({ page, events, blocked, outDir, meta }) {
       shotNo += 1;
       const file = `${String(shotNo).padStart(2, '0')}-${slug(name)}.png`;
       await page.screenshot({ path: path.join(outDir, file) }).catch(() => {});
+      if (name.startsWith('증거')) stepEvidence = file;
       return file;
     },
 
     async step(name, fn, { shot = true } = {}) {
       currentStep = name;
+      stepEvidence = null;
+      const findingsBefore = findings.length;
       const t0 = Date.now();
-      let ok = true; let error;
-      try { await fn(); } catch (e) { ok = false; error = String(e?.message || e).split('\n')[0]; }
+      let ok = true; let error; let note;
+      try { const ret = await fn(); if (ret && ret.note) note = ret.note; } catch (e) { ok = false; error = String(e?.message || e).split('\n')[0]; }
       const rec = {
-        n: steps.length + 1, name, ok, ms: Date.now() - t0, error,
+        n: steps.length + 1, name, ok, ms: Date.now() - t0, error, note,
         url: (() => { try { return new URL(page.url()).pathname; } catch { return page.url(); } })(),
         toasts: await ctx.toasts().catch(() => []),
       };
       if (shot) rec.shot = await ctx.snap(name);
+      // 이 단계에서 생긴 발견 중 증거 캡처가 없는 것은 단계 마지막 화면을 증거로 쓴다
+      for (let k = findingsBefore; k < findings.length; k += 1) if (!findings[k].shot) findings[k].shot = rec.shot || null;
       steps.push(rec);
       return rec;
     },
 
-    finding(f) { findings.push({ step: currentStep, ...f }); },
+    finding(f) { findings.push({ step: currentStep, shot: f.shot || stepEvidence || null, ...f }); },
 
     // 기대와 다르면 failed 로 남기고, severity 를 주면 발견 사항으로도 올린다.
     check(name, ok, detail = '', severity) {
@@ -64,7 +70,10 @@ export function createContext({ page, events, blocked, outDir, meta }) {
 
     // 하루 단위 시간 이동 — 한국 시간 저녁에 기록하는 사용자를 흉내 낸다.
     async setDay(dateStr, hhmm = '21:30') {
-      await page.clock.setFixedTime(new Date(`${dateStr}T${hhmm}:00+09:00`));
+      const target = new Date(`${dateStr}T${hhmm}:00+09:00`).getTime();
+      const setAtReal = Date.now();
+      await context.addInitScript(([t, s]) => { window.__QA_BASE__ = { target: t, setAtReal: s }; }, [target, setAtReal]);
+      await page.evaluate(([t, s]) => { window.__QA_BASE__ = { target: t, setAtReal: s }; }, [target, setAtReal]).catch(() => {});
     },
   };
   return ctx;
@@ -124,20 +133,21 @@ export async function attachPhotos(page, files) {
 
 /* ───────── 저장 ───────── */
 
-const SAVE_LABELS = {
-  simple: { original: '원본 저장', ai: 'AI 다듬은 글 저장' },
-  premium: { original: '다듬지 않고 SAYU-나의기록 저장', ai: 'AI 다듬은 후 SAYU-나의기록 저장' },
-};
+// 형식마다 저장 버튼 이름이 다르다(일기: 간편·프리미엄 모두 "원본 저장"/"AI 다듬은 글 저장",
+// 육아일기 등 프리미엄: "다듬지 않고 SAYU-나의기록 저장"/"AI 다듬은 후 SAYU-나의기록 저장").
+const ORIGINAL_BTN = /(^원본 저장$|다듬지 않고 SAYU-나의기록 저장)/;
+const AI_BTN = /(AI 다듬은 글 저장|AI 다듬은 후 SAYU-나의기록 저장)/;
 
-export async function saveOriginal(page, style) {
-  await page.getByRole('button', { name: SAVE_LABELS[style].original }).click();
+export async function saveOriginal(page) {
+  await page.getByRole('button', { name: ORIGINAL_BTN }).first().click({ timeout: 8000 });
 }
 
 // AI 사용 안내 → 실행 → 미리보기 → 저장까지. 한도 초과 등은 호출한 쪽에서 토스트로 판단한다.
-export async function saveWithAi(page, style, { onPreview } = {}) {
-  await page.getByRole('button', { name: SAVE_LABELS[style].ai }).click();
+export async function saveWithAi(page, { onPreview } = {}) {
+  await page.getByRole('button', { name: AI_BTN }).first().click({ timeout: 8000 });
   await page.getByRole('button', { name: 'AI 다듬기 실행' }).click({ timeout: 8000 });
-  const save = page.getByRole('button', { name: /SAYU-나의기록 저장/ }).last();
+  // 미리보기 창의 저장 버튼 — 형식 화면 아래쪽의 "…SAYU-나의기록 저장" 버튼과 구분하려고 💾 로 찾는다.
+  const save = page.getByRole('button', { name: '💾 SAYU-나의기록 저장' });
   await save.waitFor({ timeout: 10000 });
   if (onPreview) await onPreview();
   await save.click();

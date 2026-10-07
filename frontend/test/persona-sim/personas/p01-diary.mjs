@@ -71,15 +71,26 @@ export async function run(ctx) {
       const { sawOnboarding } = await openApp(page, { onboarding: i === 0 ? 'first-record' : 'skip' });
       if (i === 0) {
         ctx.check('처음 사용자에게 첫 안내 화면이 보인다', sawOnboarding, '/ 접속 시 /onboarding 으로 이동해야 함');
+      } else {
+        ctx.check('기록을 남긴 뒤에는 첫 안내 화면이 다시 나오지 않는다', !sawOnboarding,
+          `${i}번 기록한 뒤 다시 접속했는데 첫 안내(/onboarding)로 이동함`, '경미');
       }
       if (!homeSeen && i > 0) {
         homeSeen = true;
         const text = await pageText(page);
+        await ctx.snap('증거-홈 상단 문구');
+        ctx.check('홈에 기록 형식 11가지·비서 11가지가 표시된다', /11가지 형식/.test(text) && /11가지 비서/.test(text), '일반 사용자에게 보이는 기록 11종·비서 11종');
         // 홈 상단 고정 문구가 실제 기록과 맞는지 — 이 사용자는 일기만 써 왔고 텃밭일지는 쓴 적이 없다.
         const hasStaticStreak = /연속 기록 12일째/.test(text);
         const hasStaticGarden = /어젯밤 적어두신\s*‘텃밭일지’/.test(text);
-        ctx.check('홈 상단 연속기록·최근기록 문구가 실제 기록과 일치한다', !(hasStaticStreak || hasStaticGarden),
-          `이 사용자는 ${i}일째 일기만 기록했는데 홈에는 "연속 기록 12일째"/"어젯밤 적어두신 ‘텃밭일지’" 문구가 그대로 보임`, '중대');
+        ctx.check('홈 상단 연속기록·최근기록 문구가 실제 기록과 일치한다', !(hasStaticStreak || hasStaticGarden), `${i}일 기록한 사용자의 홈에 "연속 기록 12일째"/"어젯밤 적어두신 ‘텃밭일지’" 문구가 보임`);
+        if (hasStaticStreak || hasStaticGarden) {
+          ctx.finding({
+            severity: '중대',
+            title: '홈 상단의 "연속 기록 12일째"·"어젯밤 적어두신 ‘텃밭일지’" 등이 실제 기록과 무관한 고정 문구다',
+            detail: `${i}일 동안 일기만 기록한 사용자의 홈에도(처음 접속한 신규 사용자 포함) "연속 기록 12일째", "어젯밤 적어두신 ‘텃밭일지’는 SAYU가 곱게 다듬어 두었어요", "이번 주 6일·평균 7분", "맑음 22°", "오전 7시 14분 GOOD MORNING"(밤 9시에도)이 그대로 보인다. HomePageV2.tsx 1377~1493줄에 문자열이 직접 적혀 있다(실제 기록·시각·날씨를 읽지 않음).`,
+          });
+        }
       }
       if (i === 0) await openFormatOnRecordPage(page, '일기');
       else await openFormatFromHome(page, '일기');
@@ -91,7 +102,7 @@ export async function run(ctx) {
       if (i === 0) {
         // 제목 없이 먼저 저장해 보는 초보 사용자
         await fillSimple(page, d.text);
-        await saveOriginal(page, 'simple');
+        await saveOriginal(page);
         const t = await toastMatch(ctx, /제목을 입력해 주세요/);
         ctx.check('제목 없이 저장하면 안내 문구와 함께 막힌다', t.some((x) => /제목을 입력해 주세요/.test(x)), `토스트: ${JSON.stringify(t)}`, '중대');
         const stillOnRecord = new URL(page.url()).pathname === '/record';
@@ -113,8 +124,8 @@ export async function run(ctx) {
     // ── 저장 ──
     const useAi = i === 2;
     await ctx.step(`${label} ${useAi ? 'AI 다듬어 저장' : '원본 저장'}`, async () => {
-      if (useAi) await saveWithAi(page, 'simple');
-      else await saveOriginal(page, premium ? 'premium' : 'simple');
+      if (useAi) await saveWithAi(page);
+      else await saveOriginal(page);
       await waitForSayu(page);
     });
 
@@ -131,7 +142,16 @@ export async function run(ctx) {
       ctx.check('입력한 제목이 그대로 저장된다', mine.diary_title === d.title, `diary_title=${mine.diary_title}`, '중대');
       ctx.check('SAYU 본문(diary_sayu)이 비어 있지 않다', typeof mine.diary_sayu === 'string' && mine.diary_sayu.trim().length > 0, '', '치명');
       if (useAi) {
-        ctx.check('AI 다듬기 저장은 polished 표시와 통계가 남는다', mine.diary_polished === true && !!mine.diary_stats, `polished=${mine.diary_polished}, stats=${JSON.stringify(mine.diary_stats)}`, '중대');
+        const kept = mine.diary_polished === true && !!mine.diary_stats;
+        ctx.check('AI 다듬기 저장 시 다듬음 표시(polished)와 통계(stats)가 기록에 남는다', kept,
+          `polished=${mine.diary_polished}, stats=${JSON.stringify(mine.diary_stats)}, 저장된 키=${Object.keys(mine).filter((k) => k.startsWith('diary_')).join(',')}`);
+        if (!kept) {
+          ctx.finding({
+            severity: '제안',
+            title: 'AI 다듬기 1회에 서버가 Gemini를 3번 부르는데, 저장 경로에서 통계·한마디 결과가 쓰이지 않는다 (비용 확인 권장)',
+            detail: '서버 polishContent(index.ts 2486~2552줄)는 한 번에 ①다듬기 ②통계 분석(analyzeStats) ③AI 한마디를 각각 Gemini로 호출한다. 그런데 일기 저장 결과에는 diary_polished(true)·diary_stats가 없다 — RecordPage 저장 함수(1085~1091줄)가 문자열 값만 통과시켜 boolean·객체가 버려진다. 한마디(aiComment)는 FormatModal 경로가 아예 읽지 않는다. 통계 화면은 저장된 stats가 아니라 기록을 다시 계산한다(firestoreService.calculateFormatStatistics). 결과가 쓰이는 곳이 따로 있는지 확인이 필요하며, 없다면 호출 3회 중 2회가 버려진다.',
+          });
+        }
         const quota = await page.evaluate(() => Number(localStorage.getItem(Object.keys(localStorage).find((k) => k.startsWith('persona-sim-quota:')) || '') || 0));
         ctx.check('월 AI 한도가 1회 차감된다(0→1/10)', quota === 1, `used=${quota}`, '중대');
       } else {
@@ -155,11 +175,15 @@ export async function run(ctx) {
       // 저장 직후 SAYU 화면의 "관련 AI 비서" 추천이 직업 맥락과 맞는지(교사의 '아이들' → 육아 비서)
       if (i === 0) {
         const text = await pageText(page);
+        const kws = [...text.matchAll(/이 기록에서 '([^']+)' 이야기가 보여요/g)].map((m) => m[1]);
+        await page.getByText('HARU 육아·교육 비서').first().scrollIntoViewIfNeeded().catch(() => {});
+        await page.waitForTimeout(400);
+        await ctx.snap('증거-비서 추천');
         if (/육아일기로 정리/.test(text)) {
           ctx.finding({
             severity: '제안',
             title: '"아이들" 단어만으로 육아 비서를 추천한다(교사 기록 오탐)',
-            detail: '초등학교 교사가 학급 아이들 이야기를 쓴 일기인데 저장 직후 "HARU 육아·교육 비서 — 감지된 키워드: 아이 → 육아일기로 정리"가 추천됨. 같은 화면에서 "운동"(피구/산책) 단어로 건강관리 비서도 추천될 수 있음.',
+            detail: `초등학교 교사가 학급 아이들 이야기를 쓴 일기인데 저장 직후 "HARU 육아·교육 비서 — 감지된 키워드: 아이 → 육아일기로 정리"가 추천됐다. 같은 화면에서 추천된 키워드는 ${JSON.stringify(kws)} 이며, 소풍 "준비"만으로도 생활 비서가 추천된다. 키워드 포함 여부만 보고 직업·맥락을 구분하지 않는다.`,
           });
         }
       }
@@ -167,15 +191,46 @@ export async function run(ctx) {
   }
 
   // ── 7일 뒤 내 기록 목록 점검 ──
-  await ctx.step('7일 뒤 내 기록(SAYU) 목록 점검', async () => {
+  await ctx.step('내 기록(SAYU) 월별 목록 점검', async () => {
     await ctx.setDay('2026-10-07', '22:10');
-    await page.goto(new URL('/sayu', page.url()).href, { waitUntil: 'load' });
-    await page.waitForTimeout(1500);
+    // 방금 저장한 기록의 상세 화면이 떠 있으면 닫고 목록으로 돌아간다
+    const closeBtn = page.getByText('닫기', { exact: true }).last();
+    if (await closeBtn.isVisible().catch(() => false)) await closeBtn.click();
+    await page.waitForTimeout(1200);
     const text = await pageText(page);
     const m = text.match(/이달 결과\s*(\d+)건/);
     ctx.check('내 기록 목록의 "이달 결과"가 실제 저장 건수(8건)와 같다', m && Number(m[1]) === 8, `화면: ${m ? m[0] : '표시 없음'}`, '치명');
-    for (const d of DAYS) {
-      ctx.check(`목록에 "${d.title}" 제목이 보인다`, text.includes(d.title), '', '중대');
+    // 형식별 묶음 카드의 제목("일기")을 눌러 펼친다. 방금 저장한 기록 때문에 이미 펼쳐져 있으면 건드리지 않는다.
+    const expanded = async () => (await pageText(page)).includes(DAYS[0].title);
+    for (let attempt = 0; attempt < 2 && !(await expanded()); attempt += 1) {
+      await page.locator('text=일기').filter({ hasText: /^일기$/ }).last().click();
+      await page.waitForTimeout(1500);
     }
+    const opened = await pageText(page);
+    for (const d of DAYS) {
+      ctx.check(`펼친 목록에 "${d.title}" 제목이 보인다`, opened.includes(d.title), '', '중대');
+    }
+    const kw = (await ctx.qa()).calls.filter((c) => c.name === 'extractKeywords').length;
+    if (kw > 0) {
+      ctx.finding({
+        severity: '참고',
+        title: '내 기록 목록을 펼치면 기록마다 AI 키워드 추출 호출이 일어난다',
+        detail: `일기 8건 목록을 열자 extractKeywords 호출 ${kw}회가 발생(결과는 기록에 저장되어 이후 재호출 없음). 월 AI 한도 안내(0/10)에는 포함되지 않는 호출이라 비용·한도 정책 확인 필요.`,
+      });
+    }
+  });
+
+  await ctx.step('내 기록(SAYU) 달력 점검', async () => {
+    await page.getByText('달력', { exact: true }).first().click();
+    await page.waitForTimeout(1200);
+    // 달력에서 기록이 있는 날 아래에 찍히는 작은 점의 개수 (10/1~10/7 = 7일)
+    const dots = await page.evaluate(() => {
+      const els = [...document.querySelectorAll('*')].filter((e) => {
+        const r = e.getBoundingClientRect(); const cs = getComputedStyle(e);
+        return e.children.length === 0 && r.width >= 3 && r.width <= 9 && Math.abs(r.width - r.height) < 1 && parseFloat(cs.borderRadius) >= r.width / 2 - 0.5 && r.top > 250;
+      });
+      return els.length;
+    });
+    ctx.check('달력에 기록한 7일이 점으로 표시된다', dots === 7, `점 ${dots}개(기대 7개)`, '중대');
   });
 }

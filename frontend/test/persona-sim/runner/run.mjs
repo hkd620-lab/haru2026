@@ -26,7 +26,7 @@ try {
     const outDir = ensureDir(path.join(runDir, meta.id));
     console.log(`\n▶ ${meta.id} — ${meta.persona.name}(${meta.persona.age}·${meta.persona.gender}·${meta.persona.job}) / ${meta.format}`);
     const session = await newPersonaSession(browser, meta.identity);
-    const ctx = createContext({ page: session.page, events: session.events, blocked: session.blocked, outDir, meta });
+    const ctx = createContext({ page: session.page, context: session.context, events: session.events, blocked: session.blocked, outDir, meta });
     const startedAt = new Date().toISOString();
     const t0 = Date.now();
     let crashed;

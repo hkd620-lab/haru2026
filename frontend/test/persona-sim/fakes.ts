@@ -82,6 +82,11 @@ export async function fakeCallable(name: string, data: any): Promise<any> {
     }
     case 'recordPaidServiceUsage':
       return { ok: true };
+    case 'extractKeywords': {
+      // SAYU 목록을 열면 기록마다 한 번씩 호출된다 — 응답 내용이 아니라 호출 횟수가 관찰 대상
+      const words = String(data?.text || '').split(/[\s,.!?…]+/).filter((w) => w.length >= 2);
+      return { keywords: [...new Set(words)].slice(0, Math.min(Number(data?.max) || 6, 4)) };
+    }
     default: {
       // 아직 모의하지 않은 함수 — 제품 결함이 아니라 하네스 공백이므로 별도로 집계한다.
       if (!qa.unknownCallables.includes(name)) qa.unknownCallables.push(name);
