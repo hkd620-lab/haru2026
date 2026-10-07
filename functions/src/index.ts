@@ -2607,9 +2607,8 @@ export const extractTitle = onCall(
         throw new HttpsError('invalid-argument', '텍스트가 필요합니다.');
       }
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const modelName = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({ model: modelName });
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
+      const modelName = getAiRoute('recordTitle').model;
 
       const prompt = `다음 기록의 핵심을 담은 짧은 제목을 만들어주세요.
 제목만 한 줄로 출력하세요. 10자 이내. 따옴표·마크다운 기호(*, #) 없이 텍스트만.
@@ -2618,8 +2617,8 @@ export const extractTitle = onCall(
 기록 내용:
 ${text.slice(0, 600)}`;
 
-      const result = await model.generateContent(prompt);
-      const raw = result.response.text().trim();
+      const result = await callAi({ purpose: 'recordTitle', keys: aiKeys, input: prompt });
+      const raw = result.text().trim();
       const title = raw
         .replace(/^\*\*(.+)\*\*$/, '$1')
         .replace(/^["']|["']$/g, '')
@@ -2721,11 +2720,10 @@ export const generateHaruMemo = onCall(
 기록 본문:
 ${bodyText}`;
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const modelId = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({ model: modelId });
-      const result = await model.generateContent(prompt);
-      const raw = (result.response.text() || '').trim();
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
+      const modelId = getAiRoute('haruMemo').model;
+      const result = await callAi({ purpose: 'haruMemo', keys: aiKeys, input: prompt });
+      const raw = (result.text() || '').trim();
 
       // 마크다운/이모지/따옴표 잡음 제거
       const cleaned = raw
@@ -2766,8 +2764,7 @@ export const extractKeywords = onCall(
       const limit = Math.max(3, Math.min(6, requested));
       const titleLine = typeof title === 'string' && title.trim() ? title.trim().slice(0, 80) : '';
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
 
       const prompt = `다음 기록에서 핵심 키워드를 3~${limit}개만 추출하세요.
 
@@ -2804,13 +2801,13 @@ JSON 배열 한 줄만. 마크다운·번호·콜론·설명 절대 금지. 배�
 ${titleLine ? `제목: "${titleLine}"\n` : ''}기록 내용:
 ${text.slice(0, 4000)}`;
 
-      const result = await model.generateContent(prompt);
-      const usage = getGeminiUsage(result);
+      const result = await callAi({ purpose: 'recordKeywords', keys: aiKeys, input: prompt });
+      const usage = { inputTokens: result.inputTokens, outputTokens: result.outputTokens };
       await logAiUsage({
         uid: request.auth.uid,
         featureName: 'law_keyword',
         plan: AI_USAGE_PLAN,
-        model: 'gemini-3.1-flash-lite',
+        model: getAiRoute('recordKeywords').model,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
         imageCount: 0,
@@ -2822,7 +2819,7 @@ ${text.slice(0, 4000)}`;
         errorCode: null,
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
-      const raw = (result.response.text() || '').trim();
+      const raw = (result.text() || '').trim();
 
       const cleaned = raw
         .replace(/^```(?:json)?\s*/i, '')
@@ -5173,8 +5170,7 @@ export const generateTitlesForAll = onCall(
       '_polishedAt', '_mode', '_stats', '_space', '_title', '_tags',
     ];
 
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
 
     const snapshot = await db
       .collection('users').doc(uid).collection('records')
@@ -5217,8 +5213,8 @@ export const generateTitlesForAll = onCall(
 기록 내용:
 ${contentForTitle.slice(0, 600)}`;
 
-          const result = await model.generateContent(prompt);
-          const raw = result.response.text().trim();
+          const result = await callAi({ purpose: 'recordTitleBackfill', keys: aiKeys, input: prompt });
+          const raw = result.text().trim();
           const title = raw
             .replace(/^\*\*(.+)\*\*$/, '$1')
             .replace(/^["']|["']$/g, '')
@@ -6682,11 +6678,10 @@ export const extractReadingBookTextFromPhoto = onCall(
 - 응답은 텍스트 본문만. 마크다운 코드펜스 금지
 - 사진에 책 본문이 없으면 빈 문자열만 반환`;
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const modelName = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({ model: modelName });
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
+      const modelName = getAiRoute('bookPhotoOcr').model;
       // 책 본문 사진 원본은 Storage/Firestore에 저장하지 않고 OCR 요청 메모리에서만 사용한다.
-      const result = await model.generateContent([
+      const result = await callAi({ purpose: 'bookPhotoOcr', keys: aiKeys, input: [
         prompt,
         {
           inlineData: {
@@ -6694,8 +6689,8 @@ export const extractReadingBookTextFromPhoto = onCall(
             mimeType,
           },
         },
-      ]);
-      const usage = getGeminiUsage(result);
+      ] });
+      const usage = { inputTokens: result.inputTokens, outputTokens: result.outputTokens };
       await logAiUsage({
         uid,
         featureName: 'book_ocr',
@@ -6713,7 +6708,7 @@ export const extractReadingBookTextFromPhoto = onCall(
         isDev: DEVELOPER_UIDS.has(uid),
       });
 
-      const extractedText = result.response.text()
+      const extractedText = result.text()
         .replace(/^```(?:text)?\s*/i, '')
         .replace(/```\s*$/i, '')
         .trim()
@@ -6817,9 +6812,8 @@ export const extractStockTradeTextFromPhoto = onCall(
   }
 }`;
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
-      const result = await model.generateContent([
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
+      const result = await callAi({ purpose: 'stockPhotoOcr', keys: aiKeys, input: [
         prompt,
         {
           inlineData: {
@@ -6827,9 +6821,9 @@ export const extractStockTradeTextFromPhoto = onCall(
             mimeType,
           },
         },
-      ]);
+      ] });
 
-      const rawText = result.response.text()
+      const rawText = result.text()
         .replace(/^```(?:json)?\s*/i, '')
         .replace(/```\s*$/i, '')
         .trim();
@@ -7016,14 +7010,13 @@ export const extractLedgerTextFromImage = onCall(
   "warnings": []
 }`;
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const modelName = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent([
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
+      const modelName = getAiRoute('subledgerPhotoOcr').model;
+      const result = await callAi({ purpose: 'subledgerPhotoOcr', keys: aiKeys, input: [
         prompt,
         ...inlineParts,
-      ]);
-      const usage = getGeminiUsage(result);
+      ] });
+      const usage = { inputTokens: result.inputTokens, outputTokens: result.outputTokens };
       await logAiUsage({
         uid: request.auth.uid,
         featureName: 'subleger_ocr',
@@ -7041,7 +7034,7 @@ export const extractLedgerTextFromImage = onCall(
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
 
-      const responseText = result.response.text()
+      const responseText = result.text()
         .replace(/^```(?:json)?\s*/i, '')
         .replace(/```\s*$/i, '')
         .trim();
@@ -7198,11 +7191,10 @@ export const extractHouseholdTextFromImage = onCall(
   "warnings": []
 }`;
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const modelName = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent([prompt, ...inlineParts]);
-      const usage = getGeminiUsage(result);
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
+      const modelName = getAiRoute('householdPhotoOcr').model;
+      const result = await callAi({ purpose: 'householdPhotoOcr', keys: aiKeys, input: [prompt, ...inlineParts] });
+      const usage = { inputTokens: result.inputTokens, outputTokens: result.outputTokens };
       await logAiUsage({
         uid: request.auth.uid,
         featureName: 'ledger_ocr',
@@ -7220,7 +7212,7 @@ export const extractHouseholdTextFromImage = onCall(
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
 
-      const responseText = result.response.text()
+      const responseText = result.text()
         .replace(/^```(?:json)?\s*/i, '')
         .replace(/```\s*$/i, '')
         .trim();

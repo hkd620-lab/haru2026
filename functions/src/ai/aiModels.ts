@@ -17,6 +17,16 @@ export const AI_ROUTES = {
   sayuPolish: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: 'SAYU 다듬기 본문' },
   sayuPolishComment: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: 'SAYU 다듬기 AI 한마디' },
   recordStats: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '기록 통계 분석' },
+  // 기록 보조
+  recordTitle: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '기록 제목 추출(extractTitle)' },
+  recordTitleBackfill: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '기록 제목 일괄 보정(generateTitlesForAll)' },
+  recordKeywords: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: 'SAYU 미리보기 키워드(extractKeywords)' },
+  haruMemo: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: 'HARU 메모(generateHaruMemo)' },
+  // 사진 글자 인식
+  bookPhotoOcr: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '독서 사진 본문 인식' },
+  stockPhotoOcr: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '주식 거래 사진 인식' },
+  subledgerPhotoOcr: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '보조장부 사진 인식' },
+  householdPhotoOcr: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '가계부 사진 인식' },
 } as const satisfies Record<string, AiRoute>;
 
 export type AiPurpose = keyof typeof AI_ROUTES;

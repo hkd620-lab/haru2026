@@ -81,7 +81,9 @@ test('OpenAI 어댑터: 회사를 바꾸면 같은 요청을 OpenAI 형식으로
 });
 
 test('설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(모델 변경 없음)', () => {
-  for (const purpose of ['sayuPolish', 'sayuPolishComment', 'recordStats']) {
+  const migrated = ['sayuPolish', 'sayuPolishComment', 'recordStats', 'recordTitle', 'recordTitleBackfill', 'recordKeywords', 'haruMemo',
+    'bookPhotoOcr', 'stockPhotoOcr', 'subledgerPhotoOcr', 'householdPhotoOcr'];
+  for (const purpose of migrated) {
     assert.deepEqual([models.AI_ROUTES[purpose].provider, models.AI_ROUTES[purpose].model], ['gemini', 'gemini-3.1-flash-lite'], purpose);
   }
 });
@@ -99,4 +101,25 @@ test('옮긴 호출부는 SDK 를 직접 만들지 않고 창구를 쓴다', () 
   assert.match(polishBlock, /callAi\(\{ purpose: 'sayuPolish'/);
   assert.match(polishBlock, /callAi\(\{ purpose: 'sayuPolishComment'/);
   assert.doesNotMatch(polishBlock, /new GoogleGenerativeAI|getGenerativeModel|gemini-3\.1/);
+});
+
+test('옮긴 함수 8곳도 창구만 쓰고, 모델 이름을 코드에 직접 적지 않는다', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../src/index.ts'), 'utf8');
+  const fnBody = (name) => {
+    const start = src.indexOf(`export const ${name} =`);
+    assert.ok(start > 0, name);
+    const next = src.slice(start + 1).search(/\nexport const \w+\s*=/);
+    return src.slice(start, next < 0 ? undefined : start + 1 + next);
+  };
+  const expected = {
+    extractTitle: 'recordTitle', generateHaruMemo: 'haruMemo', extractKeywords: 'recordKeywords',
+    generateTitlesForAll: 'recordTitleBackfill', extractReadingBookTextFromPhoto: 'bookPhotoOcr',
+    extractStockTradeTextFromPhoto: 'stockPhotoOcr', extractLedgerTextFromImage: 'subledgerPhotoOcr',
+    extractHouseholdTextFromImage: 'householdPhotoOcr',
+  };
+  for (const [name, purpose] of Object.entries(expected)) {
+    const body = fnBody(name);
+    assert.match(body, new RegExp(`callAi\\(\\{ purpose: '${purpose}'`), name);
+    assert.doesNotMatch(body, /new GoogleGenerativeAI|getGenerativeModel|'gemini-[\w.-]+'|\.response\.text\(\)/, name);
+  }
 });
