@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { HaruRecord } from '../services/firestoreService';
 import type { ReverseGeocodeCandidate } from '../services/reverseGeocodeService';
-import { hasStructuredAssistantRecord, isGrowthMeasurementField, type StructuredAssistantPrefix } from '../utils/structuredAssistantRecords';
+import { hasStructuredAssistantRecord, isGrowthMeasurementField, isStructuredAssistantPrefix, type StructuredAssistantPrefix } from '../utils/structuredAssistantRecords';
 
 // SAYU '비서' 탭 항목 어댑터 — SNS 갈무리·하루LAW·하루식물탐정(판독·성장일기·도감·공개) 목록 항목을 만든다.
 // 3단계 설계 P2a: SayuPage.tsx 에서 동작 변경 없이 옮겨 왔다. 화면 상태에 묶인 헬퍼는 SayuPage 가 컨텍스트로 넘긴다.
@@ -32,11 +32,10 @@ export function isCompletedSnsStoryRecord(record: HaruRecord): boolean {
 // 본인 계정의 기록이어야 하고, 영어일기가 아니면 건강 민감정보 열람 동의가 true여야 한다.
 export type StructuredViewAccess = 'allowed' | 'not_owner' | 'needs_health_consent';
 
-// 건강 민감정보 열람 동의가 필요한 구조화 뷰(성장기록·배뇨일지) — P2c: SayuPage 경로 진입 대기 조건과 같은 목록을 쓴다.
-const HEALTH_CONSENT_STRUCTURED_PREFIXES = ['child_measure', 'voiding'];
-
+// 건강 민감정보 열람 동의가 필요한 구조화 뷰 — 영어일기만 면제하고 나머지 구조화 비서(성장기록·배뇨일지, 이후 추가분 포함)는 동의가 필요하다.
+// P2c: SayuPage 경로 진입 대기 조건도 이 판정을 쓴다.
 export function structuredViewNeedsHealthConsent(prefix: string): boolean {
-  return HEALTH_CONSENT_STRUCTURED_PREFIXES.includes(prefix);
+  return isStructuredAssistantPrefix(prefix) && prefix !== 'english_diary';
 }
 
 export function getStructuredViewAccess(prefix: StructuredAssistantPrefix, isOwner: boolean, healthReadConsent: boolean | null | undefined): StructuredViewAccess {

@@ -72,3 +72,37 @@ test('육아일기 측정 필드 제외 조건은 이동 전 조건과 같다', 
     }
   }
 });
+
+// 낮음 지적(PR #248 독립 검토 2): SayuPage 경로 진입 effect 를 실제로 실행해, 동의 로딩 중(null)에는 성장기록·배뇨일지 진입을 멈추는지 본다.
+function runSayuRouteEntry(routeState, healthReadConsent) {
+  const routeStart = source.indexOf('    const filterFormat = typeof routeState?.filterFormat');
+  const routeEnd = source.indexOf('\n    const routeKey = ', routeStart);
+  assert.ok(routeStart > 0 && routeEnd > routeStart);
+  const ALL_FORMAT_PREFIXES = evalComponentConst(source, 'ALL_FORMAT_PREFIXES', { SNS_GALMURI_LABEL: adapter.SNS_GALMURI_LABEL });
+  const env = {
+    routeState, healthReadConsent, ALL_FORMAT_PREFIXES, user: { uid: 'fixture-user' }, recordsOwnerUid: 'fixture-user',
+    structuredViewNeedsHealthConsent: adapter.structuredViewNeedsHealthConsent,
+    isStructuredAssistantPrefix: (prefix) => ['english_diary', 'child_measure', 'voiding'].includes(prefix),
+  };
+  return new Function(...Object.keys(env), `${source.slice(routeStart, routeEnd)}\nreturn 'continued';`)(...Object.values(env)) ?? 'stopped';
+}
+
+test('경로 진입: 동의 로딩 중에는 성장기록·배뇨일지 진입을 멈추고, 다른 형식과 동의 확정 뒤에는 진행한다', () => {
+  for (const filterFormat of ['성장기록', '배뇨일지']) {
+    assert.equal(runSayuRouteEntry({ filterFormat, openRecordId: 'x' }, null), 'stopped', filterFormat);
+    assert.equal(runSayuRouteEntry({ filterFormat, openRecordId: 'x' }, true), 'continued', filterFormat);
+    assert.equal(runSayuRouteEntry({ filterFormat, openRecordId: 'x' }, false), 'continued', filterFormat);
+  }
+  for (const filterFormat of ['직접작성영어일기', '일기', 'HARU타임라인', '하루LAW']) {
+    assert.equal(runSayuRouteEntry({ filterFormat, openRecordId: 'x' }, null), 'continued', filterFormat);
+  }
+});
+
+test('구조화 뷰 동의 판정은 영어일기만 면제한다(새 구조화 비서도 기본은 동의 필요)', () => {
+  assert.equal(adapter.structuredViewNeedsHealthConsent('english_diary'), false);
+  assert.equal(adapter.structuredViewNeedsHealthConsent('child_measure'), true);
+  assert.equal(adapter.structuredViewNeedsHealthConsent('voiding'), true);
+  assert.equal(adapter.structuredViewNeedsHealthConsent('diary'), false);
+  const adapterSource = readFileSync(new URL('../src/app/assistants/sayuAdapters.ts', import.meta.url), 'utf8');
+  assert.match(adapterSource, /isStructuredAssistantPrefix\(prefix\) && prefix !== 'english_diary'/);
+});
