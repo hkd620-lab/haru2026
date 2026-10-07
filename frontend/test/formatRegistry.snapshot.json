@@ -1,0 +1,344 @@
+{
+  "base": "112f4974d2d1d22d1d1ee6019f5eca3c80364758",
+  "haruTypes_FORMAT_PREFIX": [
+    [
+      "일기",
+      "diary"
+    ],
+    [
+      "에세이",
+      "essay"
+    ],
+    [
+      "선교보고",
+      "mission"
+    ],
+    [
+      "일반보고",
+      "report"
+    ],
+    [
+      "업무일지",
+      "work"
+    ],
+    [
+      "여행기록",
+      "travel"
+    ],
+    [
+      "독서사유",
+      "reading"
+    ],
+    [
+      "텃밭일지",
+      "garden"
+    ],
+    [
+      "애완동물관찰일지",
+      "pet"
+    ],
+    [
+      "육아일기",
+      "child"
+    ],
+    [
+      "성장기록",
+      "growth"
+    ],
+    [
+      "HARU주식관리",
+      "stock"
+    ],
+    [
+      "주식거래일지",
+      "stock"
+    ],
+    [
+      "메모",
+      "memo"
+    ],
+    [
+      "성장타임라인",
+      "growthTimeline"
+    ],
+    [
+      "HARUraw",
+      "haruraw"
+    ],
+    [
+      "HARU보조장부",
+      "ledger"
+    ],
+    [
+      "HARU가계부",
+      "household"
+    ]
+  ],
+  "haruTypes_PREFIX_TO_FORMAT": [
+    [
+      "diary",
+      "일기"
+    ],
+    [
+      "essay",
+      "에세이"
+    ],
+    [
+      "mission",
+      "선교보고"
+    ],
+    [
+      "report",
+      "일반보고"
+    ],
+    [
+      "work",
+      "업무일지"
+    ],
+    [
+      "travel",
+      "여행기록"
+    ],
+    [
+      "reading",
+      "독서사유"
+    ],
+    [
+      "garden",
+      "텃밭일지"
+    ],
+    [
+      "pet",
+      "애완동물관찰일지"
+    ],
+    [
+      "child",
+      "육아일기"
+    ],
+    [
+      "growth",
+      "성장기록"
+    ],
+    [
+      "stock",
+      "HARU주식관리"
+    ],
+    [
+      "memo",
+      "메모"
+    ],
+    [
+      "growthTimeline",
+      "성장타임라인"
+    ],
+    [
+      "haruraw",
+      "HARUraw"
+    ],
+    [
+      "ledger",
+      "HARU보조장부"
+    ],
+    [
+      "household",
+      "HARU가계부"
+    ]
+  ],
+  "firestoreService_PUBLIC_FORMAT_PREFIX": [
+    [
+      "일기",
+      "diary"
+    ],
+    [
+      "에세이",
+      "essay"
+    ],
+    [
+      "선교보고",
+      "mission"
+    ],
+    [
+      "일반보고",
+      "report"
+    ],
+    [
+      "업무일지",
+      "work"
+    ],
+    [
+      "여행기록",
+      "travel"
+    ],
+    [
+      "독서사유",
+      "reading"
+    ],
+    [
+      "텃밭일지",
+      "garden"
+    ],
+    [
+      "애완동물관찰일지",
+      "pet"
+    ],
+    [
+      "육아일기",
+      "child"
+    ],
+    [
+      "성장기록",
+      "growth"
+    ],
+    [
+      "HARU주식관리",
+      "stock"
+    ],
+    [
+      "주식거래일지",
+      "stock"
+    ],
+    [
+      "메모",
+      "memo"
+    ],
+    [
+      "성장타임라인",
+      "growthTimeline"
+    ],
+    [
+      "HARUraw",
+      "haruraw"
+    ],
+    [
+      "HARU보조장부",
+      "ledger"
+    ],
+    [
+      "배뇨일지",
+      "voiding"
+    ],
+    [
+      "HARU가계부",
+      "household"
+    ]
+  ],
+  "firestoreService_statsPrefixMap": [
+    [
+      "일기",
+      "diary"
+    ],
+    [
+      "에세이",
+      "essay"
+    ],
+    [
+      "선교보고",
+      "mission"
+    ],
+    [
+      "일반보고",
+      "report"
+    ],
+    [
+      "업무일지",
+      "work"
+    ],
+    [
+      "여행기록",
+      "travel"
+    ],
+    [
+      "텃밭일지",
+      "garden"
+    ],
+    [
+      "애완동물관찰일지",
+      "pet"
+    ],
+    [
+      "육아일기",
+      "parenting"
+    ],
+    [
+      "HARU주식관리",
+      "stock"
+    ],
+    [
+      "주식거래일지",
+      "stock"
+    ],
+    [
+      "HARU보조장부",
+      "ledger"
+    ]
+  ],
+  "firestoreService_overviewFormatPrefixes": [
+    {
+      "name": "일기",
+      "prefix": "diary"
+    },
+    {
+      "name": "에세이",
+      "prefix": "essay"
+    },
+    {
+      "name": "선교보고",
+      "prefix": "mission"
+    },
+    {
+      "name": "일반보고",
+      "prefix": "report"
+    },
+    {
+      "name": "업무일지",
+      "prefix": "work"
+    },
+    {
+      "name": "여행기록",
+      "prefix": "travel"
+    },
+    {
+      "name": "텃밭일지",
+      "prefix": "garden"
+    },
+    {
+      "name": "애완동물관찰일지",
+      "prefix": "pet"
+    },
+    {
+      "name": "육아일기",
+      "prefix": "child"
+    },
+    {
+      "name": "HARU주식관리",
+      "prefix": "stock"
+    },
+    {
+      "name": "주식거래일지",
+      "prefix": "stock"
+    },
+    {
+      "name": "HARU보조장부",
+      "prefix": "ledger"
+    }
+  ],
+  "firestoreService_EXPORT_FORMAT_PREFIXES": [
+    "diary",
+    "essay",
+    "mission",
+    "report",
+    "work",
+    "travel",
+    "reading",
+    "garden",
+    "pet",
+    "child",
+    "parenting",
+    "stock",
+    "memo",
+    "growthTimeline",
+    "haruraw",
+    "ledger",
+    "voiding"
+  ]
+}
