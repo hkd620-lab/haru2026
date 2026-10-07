@@ -5,6 +5,8 @@
  * Single Source of Truth!
  */
 
+import { ALL_REGISTERED_FORMATS, buildFormatKeyMap, invertFormatKeyMap } from '../records/formatRegistry';
+
 // ===========================================
 // 형식 타입 정의
 // ===========================================
@@ -71,48 +73,14 @@ export const ALL_FORMATS: RecordFormat[] = [
   'HARUraw',
 ];
 
-// 형식별 Firestore prefix 매핑
-export const FORMAT_PREFIX: Record<RecordFormat, string> = {
-  '일기': 'diary',
-  '에세이': 'essay',
-  '선교보고': 'mission',
-  '일반보고': 'report',
-  '업무일지': 'work',
-  '여행기록': 'travel',
-  '독서사유': 'reading',
-  '텃밭일지': 'garden',
-  '애완동물관찰일지': 'pet',
-  '육아일기': 'child',
-  '성장기록': 'growth',
-  'HARU주식관리': 'stock',
-  '주식거래일지': 'stock',
-  '메모': 'memo',
-  '성장타임라인': 'growthTimeline',
-  'HARUraw': 'haruraw',
-  'HARU보조장부': 'ledger',
-  'HARU가계부': 'household',
-};
+// 형식별 Firestore prefix 매핑 — 값은 형식 등록부(records/formatRegistry.ts)에서 읽는다.
+// 배뇨일지는 원래 이 맵에 없어 그대로 뺀다(빼고 넣는 것은 동작 변경이라 구조 정리 범위 밖).
+export const FORMAT_PREFIX: Record<RecordFormat, string> = buildFormatKeyMap(
+  ALL_REGISTERED_FORMATS.filter((format) => format !== '배뇨일지'),
+) as Record<RecordFormat, string>;
 
-// prefix에서 형식명 찾기 (역매핑)
-export const PREFIX_TO_FORMAT: Record<string, RecordFormat> = {
-  'diary': '일기',
-  'essay': '에세이',
-  'mission': '선교보고',
-  'report': '일반보고',
-  'work': '업무일지',
-  'travel': '여행기록',
-  'reading': '독서사유',
-  'garden': '텃밭일지',
-  'pet': '애완동물관찰일지',
-  'child': '육아일기',
-  'growth': '성장기록',
-  'stock': 'HARU주식관리',
-  'memo': '메모',
-  'growthTimeline': '성장타임라인',
-  'haruraw': 'HARUraw',
-  'ledger': 'HARU보조장부',
-  'household': 'HARU가계부',
-};
+// prefix에서 형식명 찾기 (역매핑). 같은 prefix 는 먼저 나온 형식(stock → HARU주식관리)으로 찾는다.
+export const PREFIX_TO_FORMAT: Record<string, RecordFormat> = invertFormatKeyMap(FORMAT_PREFIX);
 
 // 형식별 이모지 (선택사항)
 export const FORMAT_EMOJI: Record<RecordFormat, string> = {

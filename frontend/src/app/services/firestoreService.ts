@@ -34,6 +34,7 @@ import {
   GrowthDiaryStats,
   ratioToStatScore,
 } from '../types/haruTypes';
+import { ALL_REGISTERED_FORMATS, buildFormatKeyMap, getFormatKey } from '../records/formatRegistry';
 
 export type RecordFormat = RecordFormatKorean;
 
@@ -232,27 +233,21 @@ const PUBLIC_ALLOWED_FORMATS: RecordFormat[] = [
 ];
 
 // RecordFormat 18종 전체 prefix — PUBLIC_ALLOWED_FORMATS가 참조하므로 누락 시 조용히 공개 불가 처리됨(성장기록·HARU가계부 보강)
-const PUBLIC_FORMAT_PREFIX: Record<RecordFormat, string> = {
-  '일기': 'diary',
-  '에세이': 'essay',
-  '선교보고': 'mission',
-  '일반보고': 'report',
-  '업무일지': 'work',
-  '여행기록': 'travel',
-  '독서사유': 'reading',
-  '텃밭일지': 'garden',
-  '애완동물관찰일지': 'pet',
-  '육아일기': 'child',
-  '성장기록': 'growth',
-  'HARU주식관리': 'stock',
-  '주식거래일지': 'stock',
-  '메모': 'memo',
-  '성장타임라인': 'growthTimeline',
-  'HARUraw': 'haruraw',
-  'HARU보조장부': 'ledger',
-  '배뇨일지': 'voiding',
-  'HARU가계부': 'household',
-};
+// 값은 형식 등록부(records/formatRegistry.ts)에서 읽는다.
+const PUBLIC_FORMAT_PREFIX: Record<RecordFormat, string> = buildFormatKeyMap(ALL_REGISTERED_FORMATS);
+
+// 형식 통계 대상 12개 형식(형식별 통계 prefixMap·전체 통계 formatPrefixes 가 함께 쓴다)
+const STATISTICS_FORMATS: RecordFormat[] = [
+  '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록',
+  '텃밭일지', '애완동물관찰일지', '육아일기', 'HARU주식관리', '주식거래일지', 'HARU보조장부',
+];
+
+// 내보내기 대상 형식(성장기록·HARU가계부는 원래 목록에 없어 그대로 뺀다)
+const EXPORT_FORMATS: RecordFormat[] = [
+  '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '독서사유', '텃밭일지',
+  '애완동물관찰일지', '육아일기', 'HARU주식관리', '주식거래일지', '메모', '성장타임라인',
+  'HARUraw', 'HARU보조장부', '배뇨일지',
+];
 
 const getCleanText = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 
@@ -1258,21 +1253,8 @@ class FirestoreService {
         return null; // 데이터 없음
       }
 
-      // 형식별 prefix
-      const prefixMap: Record<RecordFormat, string> = {
-        '일기': 'diary',
-        '에세이': 'essay',
-        '선교보고': 'mission',
-        '일반보고': 'report',
-        '업무일지': 'work',
-        '여행기록': 'travel',
-        '텃밭일지': 'garden',
-        '애완동물관찰일지': 'pet',
-        '육아일기': 'parenting',
-        'HARU주식관리': 'stock',
-        '주식거래일지': 'stock',
-        'HARU보조장부': 'ledger',
-      };
+      // 형식별 prefix (형식 통계 키: 육아일기는 parenting)
+      const prefixMap: Record<RecordFormat, string> = buildFormatKeyMap(STATISTICS_FORMATS, 'stats');
 
       const prefix = prefixMap[format];
       
@@ -2035,21 +2017,8 @@ class FirestoreService {
       // 형식별 SAYU 완료 카운트 (SAYU 기준)
       const formatSayuCounts: Record<string, number> = {};
       
-      // 9개 형식의 prefix
-      const formatPrefixes = [
-        { name: '일기', prefix: 'diary' },
-        { name: '에세이', prefix: 'essay' },
-        { name: '선교보고', prefix: 'mission' },
-        { name: '일반보고', prefix: 'report' },
-        { name: '업무일지', prefix: 'work' },
-        { name: '여행기록', prefix: 'travel' },
-        { name: '텃밭일지', prefix: 'garden' },
-        { name: '애완동물관찰일지', prefix: 'pet' },
-        { name: '육아일기', prefix: 'child' },
-        { name: 'HARU주식관리', prefix: 'stock' },
-        { name: '주식거래일지', prefix: 'stock' },
-        { name: 'HARU보조장부', prefix: 'ledger' },
-      ];
+      // 형식 통계 대상 형식의 prefix (저장 필드 접두어)
+      const formatPrefixes = STATISTICS_FORMATS.map((name) => ({ name, prefix: getFormatKey(name) }));
       
       records.forEach((record, index) => {
         console.log(`\n--- 기록 ${index + 1} (${record.date}) ---`);
@@ -2134,11 +2103,10 @@ class FirestoreService {
     return false;
   }
 
-  private readonly EXPORT_FORMAT_PREFIXES = [
-    'diary', 'essay', 'mission', 'report', 'work', 'travel',
-    'reading', 'garden', 'pet', 'child', 'parenting', 'stock',
-    'memo', 'growthTimeline', 'haruraw', 'ledger', 'voiding',
-  ];
+  // 내보내기 대상 형식의 저장 필드 접두어와 형식 통계 키(육아일기 child·parenting)
+  private readonly EXPORT_FORMAT_PREFIXES = Array.from(new Set(
+    EXPORT_FORMATS.flatMap((format) => [getFormatKey(format), getFormatKey(format, 'stats')]),
+  ));
 
   private toExportTimestamp(v: unknown): number {
     if (!v) return 0;
