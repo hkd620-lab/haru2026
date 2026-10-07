@@ -98,7 +98,8 @@ test('future story missing nickname releases the publication lock without saving
   assert.equal(f.state.writes.length, 0); assert.equal(f.state.publishes.length, 0); assert.equal(f.busy.current, false);
 });
 
-const law = compile(read('pages/RecordPage.tsx'), ['closeToOrigin', 'handleLawSaveDateChange', 'handleSaveLawResult']);
+// 하루LAW 코드는 assistants/haruLaw/HaruLawPanel.tsx 로 옮겼다(P4a). RecordPage 와 합친 원문에서 확인한다.
+const law = compile([read('pages/RecordPage.tsx'), read('assistants/haruLaw/HaruLawPanel.tsx')].join('\n'), ['closeToOrigin', 'handleLawSaveDateChange', 'handleSaveLawResult']);
 function lawFixture() {
   const original = { formats: ['일기'], content: '원본 합성 일기', weather: '맑음', mood: '평온', temperature: '21' };
   const state = { writes: [], reads: [], routes: [], saved: false, date: '2026-09-20', error: null, saving: false };

@@ -2,10 +2,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const recordPage = fs.readFileSync(
-  path.resolve(__dirname, '../src/app/pages/RecordPage.tsx'),
-  'utf8',
-);
+// 하루LAW 코드는 assistants/haruLaw/HaruLawPanel.tsx 로 옮겼다(P4a). RecordPage 와 합친 원문에서 확인한다.
+const recordPage = [
+  fs.readFileSync(path.resolve(__dirname, '../src/app/pages/RecordPage.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, '../src/app/assistants/haruLaw/HaruLawPanel.tsx'), 'utf8'),
+].join('\n');
 const handlerStart = recordPage.indexOf('const handleEasyExplain = async');
 const handlerEnd = recordPage.indexOf('\n  };', handlerStart);
 const handler = recordPage.slice(handlerStart, handlerEnd);

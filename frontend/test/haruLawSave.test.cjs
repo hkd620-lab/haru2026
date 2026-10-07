@@ -8,8 +8,13 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 
 const root = path.resolve(__dirname, '../..');
-const source = fs.readFileSync(path.join(root, 'frontend/src/app/pages/RecordPage.tsx'), 'utf8');
-const handlerSource = source.slice(source.indexOf('  const handleSaveLawResult = async () => {'), source.indexOf('\n  const handleAssistantRecommendationSelect'));
+// 하루LAW 코드는 assistants/haruLaw/HaruLawPanel.tsx 로 옮겼다(P4a). RecordPage 와 합친 원문에서 확인한다.
+// handleSaveLawResult 다음 선언은 옮긴 뒤 handleEasyExplain 이다(구간 원문은 이전과 같음).
+const source = [
+  fs.readFileSync(path.join(root, 'frontend/src/app/pages/RecordPage.tsx'), 'utf8'),
+  fs.readFileSync(path.join(root, 'frontend/src/app/assistants/haruLaw/HaruLawPanel.tsx'), 'utf8'),
+].join('\n');
+const handlerSource = source.slice(source.indexOf('  const handleSaveLawResult = async () => {'), source.indexOf('\n  const handleEasyExplain'));
 const handlerJS = transformSync(handlerSource, { loader: 'ts' }).code;
 const dateChangeSource = source.slice(source.indexOf('  const handleLawSaveDateChange'), source.indexOf('  const handleSaveLawResult'));
 const dateChangeJS = transformSync(dateChangeSource, { loader: 'ts' }).code;
