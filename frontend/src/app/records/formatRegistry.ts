@@ -4,12 +4,14 @@
 // - fieldPrefix: Firestore 기록 문서의 필드 접두어(예: 일기 → diary_content).
 // - keys: 같은 형식이라도 소비처마다 다른 키를 쓰는 경우의 역할별 값. 없으면 fieldPrefix 를 쓴다.
 //   예) 육아일기는 저장 필드가 child_* 이지만 형식 통계 키는 parenting 이다.
+//       성장기록은 저장 필드가 growth_* 이지만 SAYU 화면은 구조화 비서 뷰 키 child_measure 로 다룬다.
 //   역할 값을 하나로 합치면 통계·SAYU 동작이 바뀌므로 구조 정리에서는 그대로 보존한다.
 //
 // 소비처마다 다루는 형식 범위(어떤 형식을 포함하는지)는 소비처 쪽 목록에 그대로 두고, 값만 이 표에서 읽는다.
 import type { RecordFormat } from '../types/haruTypes';
 
-export type FormatRoleKey = 'stats';
+// stats: 형식 통계 키, sayu: SAYU 화면의 형식 키(성장기록은 구조화 비서 뷰 키 child_measure)
+export type FormatRoleKey = 'stats' | 'sayu';
 
 export interface FormatDefinition {
   fieldPrefix: string;
@@ -27,7 +29,7 @@ export const FORMAT_REGISTRY: Record<RecordFormat, FormatDefinition> = {
   '텃밭일지': { fieldPrefix: 'garden' },
   '애완동물관찰일지': { fieldPrefix: 'pet' },
   '육아일기': { fieldPrefix: 'child', keys: { stats: 'parenting' } },
-  '성장기록': { fieldPrefix: 'growth' },
+  '성장기록': { fieldPrefix: 'growth', keys: { sayu: 'child_measure' } },
   'HARU주식관리': { fieldPrefix: 'stock' },
   '주식거래일지': { fieldPrefix: 'stock' },
   '메모': { fieldPrefix: 'memo' },
@@ -58,7 +60,7 @@ export function buildFormatKeyMap<F extends RecordFormat>(formats: readonly F[],
 export function invertFormatKeyMap(map: Partial<Record<RecordFormat, string>>): Record<string, RecordFormat> {
   const inverse: Record<string, RecordFormat> = {};
   for (const [format, key] of Object.entries(map) as Array<[RecordFormat, string]>) {
-    if (!(key in inverse)) inverse[key] = format;
+    if (!Object.prototype.hasOwnProperty.call(inverse, key)) inverse[key] = format;
   }
   return inverse;
 }
