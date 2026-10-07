@@ -604,13 +604,13 @@ export function HomePageV2() {
     ),
     [isDeveloper],
   );
-  const today = useMemo(() => todayLabel(new Date()), []);
-  // 시각 칩·인사말 표시용 — 1분마다 갱신 (Firestore·외부 API 호출 없음)
+  // 날짜·시각 칩·인사말 표시용 — 1분마다 갱신 (Firestore·외부 API 호출 없음)
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const intervalId = window.setInterval(() => setNow(new Date()), 60000);
     return () => window.clearInterval(intervalId);
   }, []);
+  const today = useMemo(() => todayLabel(now), [now]);
   const timeText = clockLabel(now);
   const greetingText = greetingLabel(now);
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
