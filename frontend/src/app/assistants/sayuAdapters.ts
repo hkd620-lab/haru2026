@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import type { HaruRecord } from '../services/firestoreService';
+import type { ReverseGeocodeCandidate } from '../services/reverseGeocodeService';
+import { hasStructuredAssistantRecord, isGrowthMeasurementField, isStructuredAssistantPrefix, type StructuredAssistantPrefix } from '../utils/structuredAssistantRecords';
 
 // SAYU '비서' 탭 항목 어댑터 — SNS 갈무리·하루LAW·하루식물탐정(판독·성장일기·도감·공개) 목록 항목을 만든다.
 // 3단계 설계 P2a: SayuPage.tsx 에서 동작 변경 없이 옮겨 왔다. 화면 상태에 묶인 헬퍼는 SayuPage 가 컨텍스트로 넘긴다.
@@ -30,10 +32,21 @@ export function isCompletedSnsStoryRecord(record: HaruRecord): boolean {
 // 본인 계정의 기록이어야 하고, 영어일기가 아니면 건강 민감정보 열람 동의가 true여야 한다.
 export type StructuredViewAccess = 'allowed' | 'not_owner' | 'needs_health_consent';
 
-export function getStructuredViewAccess(prefix: string, isOwner: boolean, healthReadConsent: boolean | null | undefined): StructuredViewAccess {
+// 건강 민감정보 열람 동의가 필요한 구조화 뷰 — 영어일기만 면제하고 나머지 구조화 비서(성장기록·배뇨일지, 이후 추가분 포함)는 동의가 필요하다.
+// P2c: SayuPage 경로 진입 대기 조건도 이 판정을 쓴다.
+export function structuredViewNeedsHealthConsent(prefix: string): boolean {
+  return isStructuredAssistantPrefix(prefix) && prefix !== 'english_diary';
+}
+
+export function getStructuredViewAccess(prefix: StructuredAssistantPrefix, isOwner: boolean, healthReadConsent: boolean | null | undefined): StructuredViewAccess {
   if (!isOwner) return 'not_owner';
-  if (prefix !== 'english_diary' && healthReadConsent !== true) return 'needs_health_consent';
+  if (structuredViewNeedsHealthConsent(prefix) && healthReadConsent !== true) return 'needs_health_consent';
   return 'allowed';
+}
+
+// 육아일기(child) 본문에서 성장기록 측정 필드를 빼는 조건 — P2c: SayuPage 두 곳(본문 합치기·작성 여부 판정)의 같은 조건을 모았다.
+export function isStructuredMeasurementFieldOfFormat(record: Record<string, any>, prefix: string, key: string): boolean {
+  return prefix === 'child' && hasStructuredAssistantRecord(record, 'child_measure') && isGrowthMeasurementField(key);
 }
 
 export interface PlantReadOnlyDetail {
@@ -536,4 +549,148 @@ export function buildSayuAssistantEntries(ctx: SayuAssistantEntriesContext): Fla
   ].sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
 
   return assistantEntries;
+}
+
+// 성장타임라인(HARU타임라인) 어댑터 — 3단계 설계 P2c(§4.1 timelineView): SayuPage.tsx 에서 동작 변경 없이 옮겨 왔다.
+// 판정·정규화·본문·완료 판정·제목/부제·목록 항목·상세 열기 상태를 여기서 만들고, SayuPage 는 분기 위치에서 이 함수들을 부른다.
+export const GROWTH_TIMELINE_FORMAT_KEY = 'growthTimeline';
+export const GROWTH_TIMELINE_FORMAT_LABEL = '성장타임라인';
+export const GROWTH_TIMELINE_SAYU_LABEL = 'HARU타임라인';
+
+export type GrowthTimelineRecordItem = {
+  url: string;
+  takenDate: string;
+  memo: string;
+  order: number;
+  locationLabel?: string;
+  locationCandidate?: ReverseGeocodeCandidate;
+  locationStatus?: 'none' | 'loading' | 'found' | 'not_found' | 'error';
+  latitude?: number;
+  longitude?: number;
+};
+
+export function isGrowthTimelineRecord(record: any) {
+  return record?.recordType === 'growthTimeline'
+    || record?.format === '성장타임라인'
+    || (Array.isArray(record?.formats) && record.formats.includes('성장타임라인'));
+}
+
+export function normalizeTimelineItems(value: unknown): GrowthTimelineRecordItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item: any) => typeof item?.url === 'string' && item.url.startsWith('http'))
+    .map((item: any, index: number) => ({
+      url: item.url,
+      takenDate: typeof item.takenDate === 'string' ? item.takenDate : '',
+      memo: typeof item.memo === 'string' ? item.memo : '',
+      order: typeof item.order === 'number' ? item.order : index,
+      locationLabel: typeof item.locationLabel === 'string' ? item.locationLabel : '',
+      locationCandidate: item.locationCandidate,
+      locationStatus: item.locationStatus,
+      latitude: typeof item.latitude === 'number' ? item.latitude : undefined,
+      longitude: typeof item.longitude === 'number' ? item.longitude : undefined,
+    }))
+    .sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
+}
+
+// 날짜 클릭·형식 목록에서 쓰는 형식 항목({ label, prefix })과 선택 형식 항목({ key, label, recordId })
+export function growthTimelineFormatOption() {
+  return { label: GROWTH_TIMELINE_SAYU_LABEL, prefix: GROWTH_TIMELINE_FORMAT_KEY };
+}
+
+export function growthTimelineSelectedFormat(recordId: string) {
+  return { key: GROWTH_TIMELINE_FORMAT_KEY, label: GROWTH_TIMELINE_SAYU_LABEL, recordId };
+}
+
+// 검색·키워드용 본문: 제목·본문·사진 메모
+export function growthTimelineSourceText(r: any): string {
+  const items = normalizeTimelineItems(r.timelineItems);
+  return [
+    typeof r.title === 'string' ? r.title : '',
+    typeof r.content === 'string' ? r.content : '',
+    ...items.map((item) => item.memo),
+  ].filter((value) => value.trim()).join(' ');
+}
+
+// 결과물 AI 대화를 열 수 있는 본문이 있는지(본문 또는 사진)
+export function hasGrowthTimelineResultChatSource(record: Record<string, any>): boolean {
+  return String(record.content || '').trim().length > 0 || normalizeTimelineItems(record.timelineItems).length > 0;
+}
+
+// SAYU 목록에 보일 완료 기록인지(사진이 1장 이상)
+export function isCompletedGrowthTimelineRecord(record: HaruRecord): boolean {
+  return isGrowthTimelineRecord(record) && normalizeTimelineItems((record as any).timelineItems).length > 0;
+}
+
+export function getGrowthTimelineDisplayTitle(record: HaruRecord, label: string): string {
+  return (String((record as any).title || '').trim() || label).slice(0, 48);
+}
+
+export function getGrowthTimelineSubtitle(record: HaruRecord, timelineItems: GrowthTimelineRecordItem[]): string {
+  const periodStart = String((record as any).periodStart || timelineItems[0]?.takenDate || record.date || '');
+  const periodEnd = String((record as any).periodEnd || timelineItems[timelineItems.length - 1]?.takenDate || '');
+  return `${periodStart || '-'}${periodEnd && periodEnd !== periodStart ? ` ~ ${periodEnd}` : ''} · ${timelineItems.length || (record as any).itemCount || 0}장`;
+}
+
+export interface GrowthTimelineEntryContext {
+  FORMAT_COLORS: Record<string, string>;
+  getRecordSourceText: (r: any, prefix: string) => string;
+  getRecordPreviewKeywords: (r: any, prefix: string) => string[];
+  buildSearchText: (...values: unknown[]) => string;
+  openFormatSayu: (dateStr: string, formatKey: string, formatLabel: string, recordId?: string) => void;
+  renderGrowthTimelinePreview: (preview: { imageUrl: string; title: string; onOpen: () => void }) => ReactNode;
+}
+
+// 기록 탭 목록 항목 — 대표사진(첫 사진)이 있으면 미리보기 줄을 붙인다.
+export function buildGrowthTimelineRecordEntry(ctx: GrowthTimelineEntryContext, record: HaruRecord, label: string): FlatSayuEntry {
+  const { FORMAT_COLORS, getRecordSourceText, getRecordPreviewKeywords, buildSearchText, openFormatSayu, renderGrowthTimelinePreview } = ctx;
+  const prefix = GROWTH_TIMELINE_FORMAT_KEY;
+  const timelineItems = normalizeTimelineItems((record as any).timelineItems);
+  const keywords = getRecordPreviewKeywords(record, prefix);
+  const title = getGrowthTimelineDisplayTitle(record, label);
+  const subtitle = getGrowthTimelineSubtitle(record, timelineItems);
+  const openEntry = () => openFormatSayu(record.date, prefix, label, record.id);
+  return {
+    id: `${record.id}_${prefix}`,
+    recordId: record.id,
+    date: record.date,
+    label,
+    title,
+    subtitle,
+    color: FORMAT_COLORS[prefix] ?? '#1A3C6E',
+    keywords,
+    searchText: buildSearchText(label, title, subtitle, keywords, getRecordSourceText(record, prefix)),
+    onOpen: openEntry,
+    extra: timelineItems[0]?.url
+      ? renderGrowthTimelinePreview({ imageUrl: timelineItems[0].url, title, onOpen: openEntry })
+      : undefined,
+  };
+}
+
+// 상세 열기(SayuModal) 상태 — 사진은 앞 3장을 대표 이미지로, 전체 사진은 timelineItems 로 넘긴다.
+export function buildGrowthTimelineSayuModalState(record: HaruRecord, dateStr: string) {
+  const timelineItems = normalizeTimelineItems((record as any).timelineItems);
+  return {
+    isOpen: true,
+    content: String((record as any).content || ''),
+    originalData: {},
+    format: GROWTH_TIMELINE_SAYU_LABEL,
+    formatKey: GROWTH_TIMELINE_FORMAT_KEY,
+    firestoreId: record.id,
+    title: String((record as any).title || ''),
+    aiTitle: '',
+    isPublic: (record as any).isPublic === true,
+    sharedRecordId: typeof (record as any).sharedRecordId === 'string' ? (record as any).sharedRecordId : '',
+    dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
+      month: 'long',
+      day: 'numeric',
+    }),
+    currentRating: 0,
+    recordDate: dateStr,
+    weather: record.weather,
+    temperature: record.temperature,
+    mood: record.mood,
+    images: timelineItems.slice(0, 3).map((item) => item.url),
+    timelineItems,
+  };
 }

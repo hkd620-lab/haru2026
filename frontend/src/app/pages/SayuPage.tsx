@@ -9,11 +9,27 @@ import {
   PLANT_SAYU_SOURCE_LABEL,
   isCompletedSnsStoryRecord,
   getStructuredViewAccess,
+  structuredViewNeedsHealthConsent,
+  isStructuredMeasurementFieldOfFormat,
   buildSayuAssistantEntries,
   buildSayuPlantDetectiveEntry,
+  GROWTH_TIMELINE_FORMAT_KEY,
+  GROWTH_TIMELINE_FORMAT_LABEL,
+  GROWTH_TIMELINE_SAYU_LABEL,
+  isGrowthTimelineRecord,
+  growthTimelineFormatOption,
+  growthTimelineSelectedFormat,
+  growthTimelineSourceText,
+  hasGrowthTimelineResultChatSource,
+  isCompletedGrowthTimelineRecord,
+  getGrowthTimelineDisplayTitle,
+  buildGrowthTimelineRecordEntry,
+  buildGrowthTimelineSayuModalState,
 } from '../assistants/sayuAdapters';
 import type {
   FlatSayuEntry,
+  GrowthTimelineEntryContext,
+  GrowthTimelineRecordItem,
   PlantReadOnlyDetail,
   PlantReadOnlyField,
   PlantSayuEntryType,
@@ -29,7 +45,7 @@ import { SayuModal } from '../components/SayuModal';
 import { StructuredAssistantRecordModal } from '../components/StructuredAssistantRecordModal';
 import { OriginalAssistantRecords } from '../components/OriginalAssistantRecords';
 import { useRecordReadConsent } from '../hooks/useRecordReadConsent';
-import { buildStructuredAssistantView, hasStructuredAssistantRecord, isGrowthMeasurementField, isStructuredAssistantPrefix, structuredAssistantSourceText, type StructuredAssistantPrefix } from '../utils/structuredAssistantRecords';
+import { buildStructuredAssistantView, hasStructuredAssistantRecord, isStructuredAssistantPrefix, structuredAssistantSourceText, type StructuredAssistantPrefix } from '../utils/structuredAssistantRecords';
 import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
 import { ResultChatButton } from '../components/ResultChatButton';
 import { ResultChatModal } from '../components/ResultChatModal';
@@ -48,7 +64,6 @@ import { db } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSubscription } from '../hooks/useSubscription';
 import { compressImage } from '../services/imageService';
-import type { ReverseGeocodeCandidate } from '../services/reverseGeocodeService';
 import { fingerprintPlantEntry, readPlantDetectiveSelection, PLANT_EDIT_CONFLICT, type PlantDetectiveSelection } from '../utils/plantDetectiveEdit';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
@@ -78,8 +93,6 @@ const PUBLIC_SAYU_REQUIRED_MESSAGE = '먼저 SAYU 다듬기를 완료한 뒤 공
 const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(['diary', 'essay', 'travel', 'garden', 'pet', 'memo', 'reading', 'child', 'work', 'household', 'growthTimeline']);
 // 공개 시 별도 확인창을 띄우는 민감 형식 — 가감은 이 배열만 수정
 const SENSITIVE_PUBLIC_FORMATS: RecordFormat[] = ['HARU가계부', '업무일지'];
-const GROWTH_TIMELINE_FORMAT_LABEL = '성장타임라인';
-const GROWTH_TIMELINE_SAYU_LABEL = 'HARU타임라인';
 type PlantSayuFilter = 'all' | PlantSayuEntryType;
 type ResultChatModalState = {
   isOpen: boolean;
@@ -163,42 +176,6 @@ function parseHaruLawArticles(text: string): HaruLawArticleView[] {
         content: contentLines.join('\n').trim(),
       };
     });
-}
-
-type GrowthTimelineRecordItem = {
-  url: string;
-  takenDate: string;
-  memo: string;
-  order: number;
-  locationLabel?: string;
-  locationCandidate?: ReverseGeocodeCandidate;
-  locationStatus?: 'none' | 'loading' | 'found' | 'not_found' | 'error';
-  latitude?: number;
-  longitude?: number;
-};
-
-function isGrowthTimelineRecord(record: any) {
-  return record?.recordType === 'growthTimeline'
-    || record?.format === '성장타임라인'
-    || (Array.isArray(record?.formats) && record.formats.includes('성장타임라인'));
-}
-
-function normalizeTimelineItems(value: unknown): GrowthTimelineRecordItem[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((item: any) => typeof item?.url === 'string' && item.url.startsWith('http'))
-    .map((item: any, index: number) => ({
-      url: item.url,
-      takenDate: typeof item.takenDate === 'string' ? item.takenDate : '',
-      memo: typeof item.memo === 'string' ? item.memo : '',
-      order: typeof item.order === 'number' ? item.order : index,
-      locationLabel: typeof item.locationLabel === 'string' ? item.locationLabel : '',
-      locationCandidate: item.locationCandidate,
-      locationStatus: item.locationStatus,
-      latitude: typeof item.latitude === 'number' ? item.latitude : undefined,
-      longitude: typeof item.longitude === 'number' ? item.longitude : undefined,
-    }))
-    .sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
 }
 
 interface AiLog { id: string; title?: string; source?: string; createdAt?: string; [key: string]: any; }
@@ -411,20 +388,13 @@ function extractPreviewKeywords(text: string): string[] {
 function getRecordSourceText(r: any, prefix: string): string {
   if (!r) return '';
   if (isStructuredAssistantPrefix(prefix)) return structuredAssistantSourceText(r, prefix);
-  if (prefix === 'growthTimeline') {
-    const items = normalizeTimelineItems(r.timelineItems);
-    return [
-      typeof r.title === 'string' ? r.title : '',
-      typeof r.content === 'string' ? r.content : '',
-      ...items.map((item) => item.memo),
-    ].filter((value) => value.trim()).join(' ');
-  }
+  if (prefix === GROWTH_TIMELINE_FORMAT_KEY) return growthTimelineSourceText(r);
   const parts: string[] = [];
   const sayu = r[`${prefix}_sayu`];
   if (typeof sayu === 'string') parts.push(sayu);
   Object.keys(r).forEach((k) => {
     if (!k.startsWith(`${prefix}_`)) return;
-    if (prefix === 'child' && hasStructuredAssistantRecord(r, 'child_measure') && isGrowthMeasurementField(k)) return;
+    if (isStructuredMeasurementFieldOfFormat(r, prefix, k)) return;
     if (k.endsWith('_sayu') || k.endsWith('_keywords') || k.endsWith('_ai_title') || k.endsWith('_title') || k.endsWith('_polished') || k.endsWith('_polishedAt') || k.endsWith('_mode') || k.endsWith('_stats') || k.endsWith('_images') || k.endsWith('_imageMeta') || k.endsWith('_rating') || k.endsWith('_tags') || k.endsWith('_space') || k.endsWith('_style')) return;
     const v = r[k];
     if (typeof v === 'string' && v.trim()) parts.push(v);
@@ -433,7 +403,7 @@ function getRecordSourceText(r: any, prefix: string): string {
 }
 
 function getResultChatSourceKey(formatKey: string, record?: Record<string, any>): string {
-  if (formatKey === 'growthTimeline') return 'growthTimeline';
+  if (formatKey === GROWTH_TIMELINE_FORMAT_KEY) return GROWTH_TIMELINE_FORMAT_KEY;
   if (formatKey === 'reading' && typeof record?.reading_final_sayu === 'string' && record.reading_final_sayu.trim()) {
     return 'reading_final_sayu';
   }
@@ -444,9 +414,7 @@ function hasResultChatSource(record: Record<string, any> | undefined, formatKey:
   if (!record || !formatKey) return false;
   const config = getResultChatConfigForFormatKey(formatKey, record);
   if (!config) return false;
-  if (formatKey === 'growthTimeline') {
-    return String(record.content || '').trim().length > 0 || normalizeTimelineItems(record.timelineItems).length > 0;
-  }
+  if (formatKey === GROWTH_TIMELINE_FORMAT_KEY) return hasGrowthTimelineResultChatSource(record);
   const sourceKey = getResultChatSourceKey(formatKey, record);
   const candidate = String(record[sourceKey] || displayedContent || '').trim();
   return candidate.length > 0 && candidate !== '내용 없음';
@@ -2289,9 +2257,9 @@ export function SayuPage() {
     const seen = new Set<string>();
     const dots: { prefix: string; color: string }[] = [];
     dayRecords.forEach((record) => {
-      if (isGrowthTimelineRecord(record) && !seen.has('growthTimeline')) {
-        seen.add('growthTimeline');
-        dots.push({ prefix: 'growthTimeline', color: FORMAT_COLORS['growthTimeline'] });
+      if (isGrowthTimelineRecord(record) && !seen.has(GROWTH_TIMELINE_FORMAT_KEY)) {
+        seen.add(GROWTH_TIMELINE_FORMAT_KEY);
+        dots.push({ prefix: GROWTH_TIMELINE_FORMAT_KEY, color: FORMAT_COLORS[GROWTH_TIMELINE_FORMAT_KEY] });
       }
       if (record.formats?.includes('HARUraw' as any) && !seen.has('haruraw')) {
         seen.add('haruraw');
@@ -2331,7 +2299,7 @@ export function SayuPage() {
     dayRecords.forEach((record) => {
       const formatsForRecord =
         isGrowthTimelineRecord(record)
-          ? [{ label: GROWTH_TIMELINE_SAYU_LABEL, prefix: 'growthTimeline' }]
+          ? [growthTimelineFormatOption()]
         : Array.isArray(record.formats) && record.formats.length > 0
           ? record.formats
               .map((format) => ({ label: String(format), prefix: ALL_FORMAT_PREFIXES[String(format)] }))
@@ -2402,33 +2370,10 @@ export function SayuPage() {
       return;
     }
 
-    if (formatKey === 'growthTimeline' || isGrowthTimelineRecord(record)) {
-      const timelineItems = normalizeTimelineItems((record as any).timelineItems);
+    if (formatKey === GROWTH_TIMELINE_FORMAT_KEY || isGrowthTimelineRecord(record)) {
       setSelectedDate(dateStr);
-      setSelectedDateFormats([{ key: 'growthTimeline', label: GROWTH_TIMELINE_SAYU_LABEL, recordId: record.id }]);
-      setSayuModalState({
-        isOpen: true,
-        content: String((record as any).content || ''),
-        originalData: {},
-        format: GROWTH_TIMELINE_SAYU_LABEL,
-        formatKey: 'growthTimeline',
-        firestoreId: record.id,
-        title: String((record as any).title || ''),
-        aiTitle: '',
-        isPublic: (record as any).isPublic === true,
-        sharedRecordId: typeof (record as any).sharedRecordId === 'string' ? (record as any).sharedRecordId : '',
-        dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
-          month: 'long',
-          day: 'numeric',
-        }),
-        currentRating: 0,
-        recordDate: dateStr,
-        weather: record.weather,
-        temperature: record.temperature,
-        mood: record.mood,
-        images: timelineItems.slice(0, 3).map((item) => item.url),
-        timelineItems,
-      });
+      setSelectedDateFormats([growthTimelineSelectedFormat(record.id)]);
+      setSayuModalState(buildGrowthTimelineSayuModalState(record, dateStr));
       return;
     }
 
@@ -2582,7 +2527,7 @@ export function SayuPage() {
     const filterFormat = typeof routeState?.filterFormat === 'string' ? routeState.filterFormat.trim() : '';
     const openRecordId = typeof routeState?.openRecordId === 'string' ? routeState.openRecordId.trim() : '';
     if (!filterFormat && !openRecordId) return;
-    if (['성장기록', '배뇨일지'].includes(filterFormat) && healthReadConsent === null) return;
+    if (structuredViewNeedsHealthConsent(ALL_FORMAT_PREFIXES[filterFormat] || '') && healthReadConsent === null) return;
     if (isStructuredAssistantPrefix(ALL_FORMAT_PREFIXES[filterFormat] || '') && recordsOwnerUid !== user?.uid) return;
 
     const routeKey = `${filterFormat}|${openRecordId}`;
@@ -2679,10 +2624,10 @@ export function SayuPage() {
           const availableFormats: { key: string; label: string; recordId?: string }[] = [];
           dayRecords.forEach((record) => {
             if (isGrowthTimelineRecord(record)) {
-              const entryKey = `growthTimeline_${record.id}`;
+              const entryKey = `${GROWTH_TIMELINE_FORMAT_KEY}_${record.id}`;
               if (!seenFormatKeys.has(entryKey)) {
                 seenFormatKeys.add(entryKey);
-                availableFormats.push({ key: 'growthTimeline', label: GROWTH_TIMELINE_SAYU_LABEL, recordId: record.id });
+                availableFormats.push(growthTimelineSelectedFormat(record.id));
               }
               return;
             }
@@ -3922,7 +3867,7 @@ export function SayuPage() {
 
   const getRecordFormatsForList = (record: HaruRecord) => {
     const formatsFromSpecial = isGrowthTimelineRecord(record)
-      ? [{ label: GROWTH_TIMELINE_SAYU_LABEL, prefix: 'growthTimeline' }]
+      ? [growthTimelineFormatOption()]
       : [];
     const formatsFromRecord = Array.isArray(record.formats)
       ? record.formats
@@ -3987,8 +3932,8 @@ export function SayuPage() {
       if (getStructuredViewAccess(prefix, recordsOwnerUid === user?.uid, healthReadConsent) !== 'allowed') return false;
       return hasStructuredAssistantRecord(record, prefix);
     }
-    if (prefix === 'growthTimeline') {
-      return isGrowthTimelineRecord(record) && normalizeTimelineItems((record as any).timelineItems).length > 0;
+    if (prefix === GROWTH_TIMELINE_FORMAT_KEY) {
+      return isCompletedGrowthTimelineRecord(record);
     }
     if (prefix === 'reading') {
       return isCompletedReadingRecord(record);
@@ -4000,7 +3945,7 @@ export function SayuPage() {
     // 예: 텃밭일지를 기록만 하고 SAYU 저장을 안 한 경우에도 사유 목록에서 보이도록.
     const hasWrittenContent = Object.keys(record).some((key) =>
       key.startsWith(`${prefix}_`) &&
-      !(prefix === 'child' && hasStructuredAssistantRecord(record, 'child_measure') && isGrowthMeasurementField(key)) &&
+      !isStructuredMeasurementFieldOfFormat(record, prefix, key) &&
       !META_SUFFIXES.some((suffix) => key.endsWith(suffix)) &&
       typeof record[key] === 'string' &&
       (record[key] as string).trim().length > 0,
@@ -4016,8 +3961,8 @@ export function SayuPage() {
 
   const getRecordDisplayTitle = (record: HaruRecord, prefix: string, label: string) => {
     if (isStructuredAssistantPrefix(prefix)) return buildStructuredAssistantView(record, prefix).title.slice(0, 48);
-    if (prefix === 'growthTimeline') {
-      return (String((record as any).title || '').trim() || label).slice(0, 48);
+    if (prefix === GROWTH_TIMELINE_FORMAT_KEY) {
+      return getGrowthTimelineDisplayTitle(record, label);
     }
     if (prefix === 'ledger') {
       return buildLedgerDisplay(record).title;
@@ -4061,12 +4006,49 @@ export function SayuPage() {
     .join(' ')
     .toLowerCase();
 
+  const renderGrowthTimelinePreview = (preview: { imageUrl: string; title: string; onOpen: () => void }) => {
+    return (
+      <button
+        type="button"
+        onClick={preview.onOpen}
+        aria-label={`${preview.title || GROWTH_TIMELINE_SAYU_LABEL} 열기`}
+        className="hover:bg-yellow-50 transition-colors"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44,
+          padding: '0 18px 12px 66px', border: 'none', background: 'transparent',
+          textAlign: 'left', cursor: 'pointer',
+        }}
+      >
+        <img
+          src={preview.imageUrl}
+          alt={`${GROWTH_TIMELINE_FORMAT_LABEL} 대표사진`}
+          style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e7eb', flexShrink: 0 }}
+        />
+        <span style={{ borderRadius: 999, backgroundColor: '#edf7f1', color: '#37644a', padding: '4px 9px', fontSize: 11, fontWeight: 800 }}>
+          {GROWTH_TIMELINE_SAYU_LABEL}
+        </span>
+      </button>
+    );
+  };
+
+  const growthTimelineEntryContext: GrowthTimelineEntryContext = {
+    FORMAT_COLORS,
+    getRecordSourceText,
+    getRecordPreviewKeywords,
+    buildSearchText,
+    openFormatSayu,
+    renderGrowthTimelinePreview,
+  };
+
   const allRecordEntries: FlatSayuEntry[] = records
     .filter((record) => isSayuScopeDate(record.date))
     .flatMap((record) =>
       getRecordFormatsForList(record)
         .filter(({ prefix }) => hasCompletedFormatForRecord(record, prefix))
         .flatMap(({ label, prefix }) => {
+          if (prefix === GROWTH_TIMELINE_FORMAT_KEY) {
+            return [buildGrowthTimelineRecordEntry(growthTimelineEntryContext, record, label)];
+          }
           // HARU보조장부: 같은 날짜에 여러 거래가 한 문서(ledger_entries 배열)에 병합 저장되어 있어도,
           // 목록에서는 거래 하나하나를 별도 항목으로 보여주고 삭제도 거래 단위로 할 수 있게 한다.
           if (prefix === 'ledger') {
@@ -4112,16 +4094,9 @@ export function SayuPage() {
             });
           }
 
-          const timelineItems = prefix === 'growthTimeline'
-            ? normalizeTimelineItems((record as any).timelineItems)
-            : [];
-          const periodStart = String((record as any).periodStart || timelineItems[0]?.takenDate || record.date || '');
-          const periodEnd = String((record as any).periodEnd || timelineItems[timelineItems.length - 1]?.takenDate || '');
           const keywords = getRecordPreviewKeywords(record, prefix);
           const title = getRecordDisplayTitle(record, prefix, label);
-          const subtitle = prefix === 'growthTimeline'
-            ? `${periodStart || '-'}${periodEnd && periodEnd !== periodStart ? ` ~ ${periodEnd}` : ''} · ${timelineItems.length || (record as any).itemCount || 0}장`
-            : keywords.slice(0, 4).join(' · ');
+          const subtitle = keywords.slice(0, 4).join(' · ');
           const openEntry = () => openFormatSayu(record.date, prefix, label, record.id);
           return [{
             id: `${record.id}_${prefix}`,
@@ -4134,28 +4109,6 @@ export function SayuPage() {
             keywords,
             searchText: buildSearchText(label, title, subtitle, keywords, getRecordSourceText(record, prefix)),
             onOpen: openEntry,
-            extra: prefix === 'growthTimeline' && timelineItems[0]?.url ? (
-              <button
-                type="button"
-                onClick={openEntry}
-                aria-label={`${title || GROWTH_TIMELINE_SAYU_LABEL} 열기`}
-                className="hover:bg-yellow-50 transition-colors"
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44,
-                  padding: '0 18px 12px 66px', border: 'none', background: 'transparent',
-                  textAlign: 'left', cursor: 'pointer',
-                }}
-              >
-                <img
-                  src={timelineItems[0].url}
-                  alt={`${GROWTH_TIMELINE_FORMAT_LABEL} 대표사진`}
-                  style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e7eb', flexShrink: 0 }}
-                />
-                <span style={{ borderRadius: 999, backgroundColor: '#edf7f1', color: '#37644a', padding: '4px 9px', fontSize: 11, fontWeight: 800 }}>
-                  {GROWTH_TIMELINE_SAYU_LABEL}
-                </span>
-              </button>
-            ) : undefined,
           }];
         }),
     )
