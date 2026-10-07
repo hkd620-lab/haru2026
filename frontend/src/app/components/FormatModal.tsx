@@ -176,6 +176,15 @@ function parseHouseholdAmount(value: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+// 날짜를 비워 둔 거래는 기록 저장일로 채운다. 가계부 화면은 거래 날짜로 월을 나누므로 빈 날짜는 합계·목록에서 빠진다.
+// baseDate가 YYYY-MM-DD(기록 문서 날짜)면 그 날짜를, 아니면 오늘(기기 시각)을 입력칸 표기(2026.06.25)처럼 점으로 적는다.
+function fillEmptyHouseholdDates(entries: HouseholdEntry[], baseDate?: string): HouseholdEntry[] {
+  const now = new Date();
+  const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const fillDate = (baseDate && /^\d{4}-\d{2}-\d{2}/.test(baseDate) ? baseDate.slice(0, 10) : localToday).replace(/-/g, '.');
+  return entries.map((e) => ((e.date || '').trim() ? e : { ...e, date: fillDate }));
+}
+
 type GrowthSubjectType = 'child' | 'garden';
 
 type GrowthSubject = {
@@ -2473,7 +2482,9 @@ ${contentValues}`,
   // ===== 📒 HARU가계부 저장 핸들러 =====
   // household_* 필드 매핑 + onSave 호출 — 수동 저장·카카오뱅크 일괄 저장이 공유하는 핵심 로직.
   // recordDate를 넘기면 그 날짜로 레코드가 저장되고(_recordDate), 생략하면 기존 동작(세션 날짜)과 동일하다.
-  const saveHouseholdEntriesBatch = async (entries: HouseholdEntry[], recordDate?: string) => {
+  const saveHouseholdEntriesBatch = async (inputEntries: HouseholdEntry[], recordDate?: string) => {
+    // 날짜를 비운 거래는 기록 저장일(recordDate, 없으면 이 기록의 날짜 recordId)로 채워 저장한다
+    const entries = fillEmptyHouseholdDates(inputEntries, recordDate || recordId);
     const first = entries[0];
     const autoTitle = [first.date, first.transactionType, first.vendor || 'HARU가계부'].filter(Boolean).join(' · ') || 'HARU가계부';
     const originalContent = entries.map((e) => {

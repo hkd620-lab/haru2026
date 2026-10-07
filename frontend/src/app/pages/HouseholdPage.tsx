@@ -44,6 +44,12 @@ interface ExpandedEntry {
   balanceAfter?: string;
 }
 
+// 거래 날짜가 비었거나 YYYY.MM / YYYY-MM 형식으로 읽을 수 없으면 기록 문서의 날짜(저장일)로 보여 준다.
+// 그대로 두면 월 필터(toMonthKey)에서 빠져 합계·목록에서 사라진다. 저장된 값은 바꾸지 않는다.
+function entryDateOrRecordDate(entryDate: string, recordDate: string): string {
+  return /^\d{4}-\d{2}$/.test(toMonthKey(entryDate)) ? entryDate : recordDate;
+}
+
 function expandRecord(r: HaruRecord): ExpandedEntry[] {
   const stored = (r as any).household_entries;
   if (stored && typeof stored === 'string') {
@@ -51,7 +57,7 @@ function expandRecord(r: HaruRecord): ExpandedEntry[] {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.map((e: any) => ({
-          date: String(e.date || ''),
+          date: entryDateOrRecordDate(String(e.date || ''), String(r.date || '')),
           transactionType: String(e.transactionType || ''),
           category: String(e.category || ''),
           vendor: String(e.vendor || ''),
@@ -64,7 +70,7 @@ function expandRecord(r: HaruRecord): ExpandedEntry[] {
     } catch { /* ignore */ }
   }
   return [{
-    date: String((r as any).household_date || r.date || ''),
+    date: entryDateOrRecordDate(String((r as any).household_date || r.date || ''), String(r.date || '')),
     transactionType: String((r as any).household_type || ''),
     category: String((r as any).household_category || '기타'),
     vendor: String((r as any).household_vendor || ''),
