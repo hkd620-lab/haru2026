@@ -15,6 +15,8 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
+import { callAi } from './ai/aiGateway';
+import { getAiRoute } from './ai/aiModels';
 export { chatWithReadingContext } from './readingAi';
 import {
   cancelSubscriptionForUid,
@@ -2465,22 +2467,16 @@ export const polishContent = onCall(
 본문만 자연스럽게 이어지는 문단으로 작성하세요.`;
       }
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());  // 🔐 Secret 값 사용
-      const modelName = 'gemini-3.1-flash-lite';
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        systemInstruction: systemPrompt
-      });
-
-      const result = await model.generateContent(text);
-      const mainUsage = getGeminiUsage(result);
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };  // 🔐 Secret 값 사용
+      const modelName = getAiRoute('sayuPolish').model;
+      const result = await callAi({ purpose: 'sayuPolish', keys: aiKeys, input: text, systemInstruction: systemPrompt });
       await logAiUsage({
         uid: request.auth.uid,
         featureName: 'sayu_polish',
         plan: AI_USAGE_PLAN,
         model: modelName,
-        inputTokens: mainUsage.inputTokens,
-        outputTokens: mainUsage.outputTokens,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
         imageCount: 0,
         externalApiProvider: null,
         externalApiCalled: false,
@@ -2490,7 +2486,7 @@ export const polishContent = onCall(
         errorCode: null,
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
-      const polishedText = result.response.text();
+      const polishedText = result.text();
 
       // ===== 통계 분석 (모든 형식) =====
       let stats = null;
@@ -2505,18 +2501,16 @@ export const polishContent = onCall(
       // ===== 💬 AI 한마디 생성 (SAYU와 동시, 별도 호출 없음) =====
       let aiComment = '';
       try {
-        const commentModelName = 'gemini-3.1-flash-lite';
-        const commentModel = genAI.getGenerativeModel({ model: commentModelName });
+        const commentModelName = getAiRoute('sayuPolishComment').model;
         const commentPrompt = buildAiCommentPrompt(polishedText, formatGroup);
-        const commentResult = await commentModel.generateContent(commentPrompt);
-        const commentUsage = getGeminiUsage(commentResult);
+        const commentResult = await callAi({ purpose: 'sayuPolishComment', keys: aiKeys, input: commentPrompt });
         await logAiUsage({
           uid: request.auth.uid,
           featureName: 'sayu_polish',
           plan: AI_USAGE_PLAN,
           model: commentModelName,
-          inputTokens: commentUsage.inputTokens,
-          outputTokens: commentUsage.outputTokens,
+          inputTokens: commentResult.inputTokens,
+          outputTokens: commentResult.outputTokens,
           imageCount: 0,
           externalApiProvider: null,
           externalApiCalled: false,
@@ -2526,7 +2520,7 @@ export const polishContent = onCall(
           errorCode: null,
           isDev: DEVELOPER_UIDS.has(request.auth.uid),
         });
-        const rawComment = (commentResult.response.text() || '').trim();
+        const rawComment = (commentResult.text() || '').trim();
         aiComment = rawComment
           .replace(/^["'`*#\-•·]+|["'`*#\-•·]+$/g, '')
           .replace(/\*\*|__/g, '')
@@ -5450,22 +5444,16 @@ async function analyzeStats(
 기록 내용:
 ${text}`;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const modelName = 'gemini-3.1-flash-lite';
-    const model = genAI.getGenerativeModel({ 
-      model: modelName
-    });
-
-    const result = await model.generateContent(analysisPrompt);
+    const modelName = getAiRoute('recordStats').model;
+    const result = await callAi({ purpose: 'recordStats', keys: { gemini: apiKey }, input: analysisPrompt });
     if (usageContext) {
-      const usage = getGeminiUsage(result);
       await logAiUsage({
         uid: usageContext.uid,
         featureName: usageContext.featureName,
         plan: AI_USAGE_PLAN,
         model: modelName,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
         imageCount: 0,
         externalApiProvider: null,
         externalApiCalled: false,
@@ -5476,7 +5464,7 @@ ${text}`;
         isDev: usageContext.isDev,
       });
     }
-    const responseText = result.response.text();
+    const responseText = result.text();
     
     // JSON 파싱
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
