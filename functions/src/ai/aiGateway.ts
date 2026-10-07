@@ -1,14 +1,14 @@
 // AI 호출 창구 — 기능 코드는 회사별 SDK 를 직접 만들지 않고 callAi 하나만 부른다.
 // 어느 회사·모델로 보낼지는 aiModels.ts 설정 표가 정한다. 회사별 차이(요청 형식·사용량 필드)는 여기서 맞춘다.
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import type { GenerationConfig, ModelParams, Part, RequestOptions } from '@google/generative-ai';
+import type { GenerateContentRequest, GenerationConfig, ModelParams, Part, RequestOptions } from '@google/generative-ai';
 import OpenAI from 'openai';
 import { getAiRoute } from './aiModels';
 import type { AiProvider, AiPurpose } from './aiModels';
 
 export type AiKeys = { gemini?: string; openai?: string };
-// Gemini generateContent 가 받는 입력과 같은 모양(문자열 또는 문자열·이미지 조각 배열)
-export type AiInput = string | Array<string | Part>;
+// Gemini generateContent 가 받는 입력과 같은 모양(문자열, 문자열·이미지 조각 배열, 또는 { contents } 요청 객체)
+export type AiInput = string | Array<string | Part> | GenerateContentRequest;
 
 export interface CallAiRequest {
   purpose: AiPurpose;
@@ -55,13 +55,19 @@ async function callGemini(model: string, request: CallAiRequest): Promise<CallAi
   const generativeModel = request.requestOptions
     ? aiClientFactories.gemini(request.keys.gemini).getGenerativeModel(params, request.requestOptions)
     : aiClientFactories.gemini(request.keys.gemini).getGenerativeModel(params);
-  const result = await generativeModel.generateContent(request.input as any);
+  const result = await generativeModel.generateContent(request.input);
   const usage = getGeminiUsage(result);
   return { provider: 'gemini', model, ...usage, text: () => result.response.text(), raw: result };
 }
 
 function toOpenAiContent(input: AiInput): string | Array<Record<string, unknown>> {
   if (typeof input === 'string') return input;
+  if (!Array.isArray(input)) {
+    // { contents: [{ role: 'user', parts }] } 요청 객체는 사용자 한 턴일 때만 옮긴다.
+    const contents = input.contents || [];
+    if (contents.length !== 1 || contents[0].role !== 'user') throw new Error('OpenAI 로 보낼 수 없는 요청 형식입니다.');
+    return toOpenAiContent(contents[0].parts as Part[]);
+  }
   return input.map((part) => {
     if (typeof part === 'string') return { type: 'text', text: part };
     if ('text' in part && typeof part.text === 'string') return { type: 'text', text: part.text };

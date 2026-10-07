@@ -27,6 +27,28 @@ export const AI_ROUTES = {
   stockPhotoOcr: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '주식 거래 사진 인식' },
   subledgerPhotoOcr: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '보조장부 사진 인식' },
   householdPhotoOcr: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '가계부 사진 인식' },
+  // 영어·영어성경
+  bibleWordMeaning: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '영어성경 단어 뜻(getWordMeaning)' },
+  bibleVerseQuiz: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '영어성경 구절 퀴즈' },
+  bibleVerseTranslation: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '영어성경 구절 번역' },
+  bibleVerseWordMapping: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '영어성경 구절 단어 대응' },
+  englishTranslate: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '영어일기 번역(translateToEnglish)' },
+  // 뉴스
+  newsDigest: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '오늘의 뉴스 정리(예약 실행)' },
+  newsDigestRefresh: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '오늘의 뉴스 새로 고침' },
+  newsMetadata: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '뉴스 기사 정보 추출' },
+  // HARU미래전망
+  prophecyAnalysis: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '미래전망 기록 분석' },
+  prophecyStory: { provider: 'gemini', model: 'gemini-2.5-flash', label: '미래전망 이야기(긴 글)' },
+  prophecySynopsis: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '미래전망 시놉시스' },
+  // 건강
+  drugPhoto: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '약 사진 판독' },
+  symptomSpecialty: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '증상별 진료과 안내' },
+  petFoodCheck: { provider: 'gemini', model: 'gemini-2.5-flash', label: '반려동물 음식 확인' },
+  // 하루식물탐정
+  plantAdvice: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '식물 관리 조언' },
+  plantKoreanName: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '식물 한국어 이름 확인' },
+  plantCrossVerification: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '식물 판독 교차 확인' },
 } as const satisfies Record<string, AiRoute>;
 
 export type AiPurpose = keyof typeof AI_ROUTES;

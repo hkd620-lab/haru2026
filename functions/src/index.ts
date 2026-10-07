@@ -11353,15 +11353,14 @@ export const getWordMeaning = onCall(
 
       const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+      const aiKeys = { gemini: GEMINI_KEY };
 
       let lastErrors: string[] = [];
       for (let attempt = 1; attempt <= 2; attempt += 1) {
         try {
           const prompt = buildBibleWordMeaningPrompt(context, lastErrors);
-          const result = await model.generateContent(prompt);
-          const parsed = parseJsonObject(result.response.text());
+          const result = await callAi({ purpose: 'bibleWordMeaning', keys: aiKeys, input: prompt });
+          const parsed = parseJsonObject(result.text());
           const validation = validateBibleWordMeaningPayload(parsed, context);
 
           if (validation.ok && validation.payload) {
@@ -11407,15 +11406,14 @@ export const getWordMeaning = onCall(
     // 2. Gemini API 호출
     const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    const aiKeys = { gemini: GEMINI_KEY };
 
     const prompt = `영어 단어 "${requestedWord}"의 정보를 알려주세요.
 JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
 {"meaning": "한국어 뜻 (짧게 1~3개)", "partOfSpeech": "품사 (명사/동사/형용사/부사/전치사/접속사/관사 중)", "phonetic": "미국식 발음기호 (예: /ɪn/)", "koreanPronunciation": "한국어 발음 (예: 인)", "example": "중학생도 이해할 수 있는 쉬운 일상 생활 예문 (성경 문장 사용 금지)", "exampleKo": "위 예문 한국어 번역", "phrasalVerb": "이 단어가 포함된 대표 구동사 (예: bring forth, give up) — 없으면 빈 문자열", "phrasalVerbMeaning": "구동사 한국어 뜻 — 없으면 빈 문자열", "phrasalVerbExample": "구동사 생활 예문 영어 — 없으면 빈 문자열", "phrasalVerbExampleKo": "구동사 예문 한국어 번역 — 없으면 빈 문자열"}`;
 
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim();
+    const result = await callAi({ purpose: 'bibleWordMeaning', keys: aiKeys, input: prompt });
+    const raw = result.text().trim();
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
@@ -11881,8 +11879,7 @@ export const getVerseQuiz = onCall(
     // 2. Gemini API 호출
     const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    const aiKeys = { gemini: GEMINI_KEY };
 
     const levelRules = level === 'advanced'
       ? `- 한국어 번역을 보여주고 영어 단어를 모두 빈칸으로 만들기
@@ -11917,8 +11914,8 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
   "koreanText": "한국어 번역 (고급 모드에서만 사용, 나머지는 빈 문자열)"
 }`;
 
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim();
+    const result = await callAi({ purpose: 'bibleVerseQuiz', keys: aiKeys, input: prompt });
+    const raw = result.text().trim();
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
@@ -11948,8 +11945,7 @@ export const translateToEnglish = onCall(
 
     const GEMINI_KEY = GEMINI_API_KEY_SECRET.value();
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    const aiKeys = { gemini: GEMINI_KEY };
 
     const prompt = `다음 한국어 일기를 자연스러운 영어로 번역해주세요.
 문장 단위로 나눠서 배열로 반환하세요.
@@ -11963,8 +11959,8 @@ JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만:
   "sentences": ["영어 문장1", "영어 문장2", "영어 문장3"]
 }`;
 
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim();
+    const result = await callAi({ purpose: 'englishTranslate', keys: aiKeys, input: prompt });
+    const raw = result.text().trim();
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
     return parsed;
@@ -12007,8 +12003,7 @@ export const fetchTopNews = onSchedule(
         } catch (e) { logger.warn('RSS 수집 실패:', url); }
       }
       if (allItems.length === 0) { logger.warn('수집된 뉴스 없음'); return; }
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
       const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
 미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
 
@@ -12042,8 +12037,8 @@ ${allItems.join('\n\n---\n\n')}
     "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
   }
 ]`;
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().replace(/```json|```/g, '').trim();
+      const result = await callAi({ purpose: 'newsDigest', keys: aiKeys, input: prompt });
+      const text = result.text().replace(/```json|```/g, '').trim();
       const newsArray = JSON.parse(text);
       const batch = db.batch();
       for (const item of newsArray) {
@@ -12095,8 +12090,7 @@ export const refreshNews = onCall(
         } catch (e) { logger.warn('RSS 수집 실패:', url); }
       }
       if (allItems.length === 0) return { success: false, message: '뉴스 없음' };
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
       const prompt = `다음은 오늘의 해외 주요 뉴스 목록입니다.
 미국과 이란 관계, 중동 정세, 국제 분쟁, 외교 관련 뉴스 중 가장 중요한 순서대로 3개를 선택해서 한국어로 번역 요약해주세요.
 
@@ -12130,8 +12124,8 @@ ${allItems.join('\n\n---\n\n')}
     "category": "미국-이란 or 중동 or 국제분쟁 or 외교"
   }
 ]`;
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().replace(/```json|```/g, '').trim();
+      const result = await callAi({ purpose: 'newsDigestRefresh', keys: aiKeys, input: prompt });
+      const text = result.text().replace(/```json|```/g, '').trim();
       const newsArray = JSON.parse(text);
       const batch = db.batch();
       for (const item of newsArray) {
@@ -12255,13 +12249,9 @@ ${content.slice(0, 4000)}
     }
 
     try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite',
-        systemInstruction: systemPrompt,
-      });
-      const result = await model.generateContent(userPrompt);
-      let text = result.response.text().trim();
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
+      const result = await callAi({ purpose: 'prophecyAnalysis', keys: aiKeys, input: userPrompt, systemInstruction: systemPrompt });
+      let text = result.text().trim();
       text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
       let parsed: any = {
@@ -12558,14 +12548,14 @@ ${type === 'story'
 `;
       }
 
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({
-        model: type === 'story' ? 'gemini-2.5-flash' : 'gemini-3.1-flash-lite',
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
+      const result = await callAi({
+        purpose: type === 'story' ? 'prophecyStory' : 'prophecySynopsis',
+        keys: aiKeys,
+        input: userPrompt,
         systemInstruction: systemPrompt,
       });
-
-      const result = await model.generateContent(userPrompt);
-      const text = result.response.text();
+      const text = result.text();
 
       // ── 사용량 업데이트 ──
       await usageRef.set({
@@ -12603,11 +12593,10 @@ export const getVerseTranslation = onCall(
   }
 
   // Gemini로 번역
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+  const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
   const prompt = `다음 KJV 성경 구절을 자연스러운 한국어로 번역해주세요. 번역문만 출력하세요.\n\n${text}`;
-  const result = await model.generateContent(prompt);
-  const translation = result.response.text().trim();
+  const result = await callAi({ purpose: 'bibleVerseTranslation', keys: aiKeys, input: prompt });
+  const translation = result.text().trim();
 
   // Firestore 캐시 저장
   await cacheRef.set({ translation, verseKey, createdAt: new Date() });
@@ -12632,8 +12621,7 @@ export const getVerseWordMapping = onCall(
     const cached = await cacheRef.get();
     if (cached.exists) return cached.data();
 
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
     const prompt = `다음 영어 성경 구절과 한국어 번역이 있습니다.
 한국어 번역을 단어/어절 단위로 분리하고, 각 한국어 단어/어절이 영어 원문의 어떤 단어(들)에 해당하는지 매핑해주세요.
 
@@ -12647,8 +12635,8 @@ JSON 형식으로만 출력하세요 (다른 설명 없이):
     ...
   ]
 }`;
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim().replace(/```json|```/g, '').trim();
+    const result = await callAi({ purpose: 'bibleVerseWordMapping', keys: aiKeys, input: prompt });
+    const raw = result.text().trim().replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(raw);
 
     await cacheRef.set({ ...parsed, verseKey, createdAt: new Date() });
@@ -13634,9 +13622,8 @@ export const analyzeDrugPhoto = onCall(
 - 추측·환각 금지. 확실하지 않은 이름은 포함하지 마세요.
 - 최대 10개까지만 추출`;
 
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-    const modelName = 'gemini-3.1-flash-lite';
-    const visionModel = genAI.getGenerativeModel({ model: modelName });
+    const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
+    const modelName = getAiRoute('drugPhoto').model;
 
     type ParsedDrug = { name: string; dosage?: string; confidence?: number };
 
@@ -13652,10 +13639,10 @@ export const analyzeDrugPhoto = onCall(
           },
         });
       }
-      const result = await visionModel.generateContent({
+      const result = await callAi({ purpose: 'drugPhoto', keys: aiKeys, input: {
         contents: [{ role: 'user', parts }],
-      });
-      const usage = getGeminiUsage(result);
+      } });
+      const usage = { inputTokens: result.inputTokens, outputTokens: result.outputTokens };
       await logAiUsage({
         uid: request.auth.uid,
         featureName: 'drug_photo',
@@ -13672,7 +13659,7 @@ export const analyzeDrugPhoto = onCall(
         errorCode: null,
         isDev: DEVELOPER_UIDS.has(request.auth.uid),
       });
-      let raw = result.response.text().trim();
+      let raw = result.text().trim();
       // 마크다운 코드펜스 제거
       raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
       const parsed = JSON.parse(raw);
@@ -13814,13 +13801,9 @@ export const analyzeSymptomsForSpecialty = onCall(
 위 증상에 어울리는 진료과를 분석해 JSON으로만 응답하세요.`;
 
     try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-3.1-flash-lite',
-        systemInstruction: systemPrompt,
-      });
-      const result = await model.generateContent(userPrompt);
-      const raw = result.response.text().trim();
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
+      const result = await callAi({ purpose: 'symptomSpecialty', keys: aiKeys, input: userPrompt, systemInstruction: systemPrompt });
+      const raw = result.text().trim();
       // Gemini가 가끔 ```json ... ``` 으로 감쌀 수 있어 정리
       const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```\s*$/, '').trim();
       let parsed: any;
@@ -13895,10 +13878,9 @@ export const extractKNewsMetadata = onCall(
 반드시 위 JSON 키 구조 그대로. category는 반드시 6개 중 정확히 하나.`;
 
     try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_SECRET.value());
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+      const aiKeys = { gemini: GEMINI_API_KEY_SECRET.value() };
 
-      const result = await model.generateContent([
+      const result = await callAi({ purpose: 'newsMetadata', keys: aiKeys, input: [
         prompt,
         {
           inlineData: {
@@ -13906,9 +13888,9 @@ export const extractKNewsMetadata = onCall(
             mimeType: mimeType || 'image/png',
           },
         },
-      ]);
+      ] });
 
-      const text = result.response.text();
+      const text = result.text();
       const cleaned = text.replace(/```json|```/g, '').trim();
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -14089,16 +14071,15 @@ ${nameHint}
   "note": "사진 분석은 참고용이라는 짧은 안내"
 }`;
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const modelName = 'gemini-3.1-flash-lite';
-  const model = genAI.getGenerativeModel({ model: modelName });
-  const result = await model.generateContent([
+  const aiKeys = { gemini: apiKey };
+  const modelName = getAiRoute('plantAdvice').model;
+  const result = await callAi({ purpose: 'plantAdvice', keys: aiKeys, input: [
     prompt,
     { inlineData: { data: base64, mimeType: mimeType || 'image/jpeg' } },
-  ]);
-  const usage = getGeminiUsage(result);
+  ] });
+  const usage = { inputTokens: result.inputTokens, outputTokens: result.outputTokens };
 
-  const text = result.response.text();
+  const text = result.text();
   const cleaned = text.replace(/```json|```/g, '').trim();
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Gemini 응답에서 JSON을 찾을 수 없습니다.');
@@ -14178,7 +14159,7 @@ export const analyzePlantPhoto = onCall(
         uid: request.auth.uid,
         featureName: 'plant_photo',
         plan: AI_USAGE_PLAN,
-        model: 'gemini-3.1-flash-lite',
+        model: getAiRoute('plantAdvice').model,
         inputTokens: null,
         outputTokens: null,
         imageCount: 1,
@@ -14212,7 +14193,7 @@ export const analyzePlantPhoto = onCall(
       uid: request.auth.uid,
       featureName: 'plant_photo',
       plan: AI_USAGE_PLAN,
-      model: 'gemini-3.1-flash-lite',
+      model: getAiRoute('plantAdvice').model,
       inputTokens: advice.usage?.inputTokens ?? null,
       outputTokens: advice.usage?.outputTokens ?? null,
       imageCount: 1,
@@ -14456,10 +14437,9 @@ No explanation.
 - note: 짧은 한국어 설명 (없으면 빈 문자열)
 - JSON 하나만 출력, 마크다운/코드펜스 금지`;
 
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const aiKeys = { gemini: geminiApiKey };
+    const result = await callAi({ purpose: 'plantKoreanName', keys: aiKeys, input: prompt });
+    const text = result.text();
     const cleaned = text.replace(/```json|```/g, '').trim();
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -14606,8 +14586,7 @@ ${plantNetSummary ? JSON.stringify(plantNetSummary, null, 2) : '(호출 실패 �
   "careSummary": "오늘 사용자가 바로 할 일 1~2문장"
 }`;
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+  const aiKeys = { gemini: apiKey };
 
   // 사진들을 모두 첨부 (Gemini는 multi-image 지원)
   const parts: any[] = [prompt];
@@ -14615,8 +14594,8 @@ ${plantNetSummary ? JSON.stringify(plantNetSummary, null, 2) : '(호출 실패 �
     parts.push({ inlineData: { data: img.base64, mimeType: img.mimeType || 'image/jpeg' } });
   }
 
-  const result = await model.generateContent(parts);
-  const text = result.response.text();
+  const result = await callAi({ purpose: 'plantCrossVerification', keys: aiKeys, input: parts });
+  const text = result.text();
   const cleaned = text.replace(/```json|```/g, '').trim();
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Gemini 응답에서 JSON을 찾을 수 없습니다.');
@@ -15988,8 +15967,7 @@ export const petFoodCheck = onCall(
     }
 
     const apiKey = GEMINI_API_KEY_SECRET.value();
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const aiKeys = { gemini: apiKey };
 
     const prompt = `아래 반려동물 식품 안전 정보를 바탕으로 보호자에게 전달할 안내문을 작성해.
 판정 결과를 바꾸거나 추가 판단하지 마.
@@ -16000,8 +15978,8 @@ export const petFoodCheck = onCall(
 2~4문장으로 간결하게 정리해.
 마지막에는 반드시 "이 안내는 진료를 대신하지 않습니다."를 붙여.`;
 
-    const result = await model.generateContent(prompt);
-    const geminiText = result.response.text();
+    const result = await callAi({ purpose: 'petFoodCheck', keys: aiKeys, input: prompt });
+    const geminiText = result.text();
 
     return {
       riskLevel: matched.riskLevel,

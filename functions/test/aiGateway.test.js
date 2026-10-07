@@ -82,7 +82,14 @@ test('OpenAI 어댑터: 회사를 바꾸면 같은 요청을 OpenAI 형식으로
 
 test('설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(모델 변경 없음)', () => {
   const migrated = ['sayuPolish', 'sayuPolishComment', 'recordStats', 'recordTitle', 'recordTitleBackfill', 'recordKeywords', 'haruMemo',
-    'bookPhotoOcr', 'stockPhotoOcr', 'subledgerPhotoOcr', 'householdPhotoOcr'];
+    'bookPhotoOcr', 'stockPhotoOcr', 'subledgerPhotoOcr', 'householdPhotoOcr',
+    'bibleWordMeaning', 'bibleVerseQuiz', 'bibleVerseTranslation', 'bibleVerseWordMapping', 'englishTranslate',
+    'newsDigest', 'newsDigestRefresh', 'newsMetadata', 'prophecyAnalysis', 'prophecySynopsis',
+    'drugPhoto', 'symptomSpecialty', 'plantAdvice', 'plantKoreanName', 'plantCrossVerification'];
+  // 기존 코드에서 gemini-2.5-flash 를 쓰던 용도
+  for (const purpose of ['prophecyStory', 'petFoodCheck']) {
+    assert.deepEqual([models.AI_ROUTES[purpose].provider, models.AI_ROUTES[purpose].model], ['gemini', 'gemini-2.5-flash'], purpose);
+  }
   for (const purpose of migrated) {
     assert.deepEqual([models.AI_ROUTES[purpose].provider, models.AI_ROUTES[purpose].model], ['gemini', 'gemini-3.1-flash-lite'], purpose);
   }
@@ -103,7 +110,7 @@ test('옮긴 호출부는 SDK 를 직접 만들지 않고 창구를 쓴다', () 
   assert.doesNotMatch(polishBlock, /new GoogleGenerativeAI|getGenerativeModel|gemini-3\.1/);
 });
 
-test('옮긴 함수 8곳도 창구만 쓰고, 모델 이름을 코드에 직접 적지 않는다', () => {
+test('옮긴 onCall·예약 함수는 창구만 쓰고, 모델 이름을 코드에 직접 적지 않는다', () => {
   const src = fs.readFileSync(path.join(__dirname, '../src/index.ts'), 'utf8');
   const fnBody = (name) => {
     const start = src.indexOf(`export const ${name} =`);
@@ -112,6 +119,11 @@ test('옮긴 함수 8곳도 창구만 쓰고, 모델 이름을 코드에 직접 
     return src.slice(start, next < 0 ? undefined : start + 1 + next);
   };
   const expected = {
+    getWordMeaning: 'bibleWordMeaning', getVerseQuiz: 'bibleVerseQuiz', translateToEnglish: 'englishTranslate',
+    getVerseTranslation: 'bibleVerseTranslation', getVerseWordMapping: 'bibleVerseWordMapping',
+    fetchTopNews: 'newsDigest', refreshNews: 'newsDigestRefresh', extractKNewsMetadata: 'newsMetadata',
+    analyzeRecordForProphecy: 'prophecyAnalysis', analyzeDrugPhoto: 'drugPhoto', analyzeSymptomsForSpecialty: 'symptomSpecialty',
+    petFoodCheck: 'petFoodCheck',
     extractTitle: 'recordTitle', generateHaruMemo: 'haruMemo', extractKeywords: 'recordKeywords',
     generateTitlesForAll: 'recordTitleBackfill', extractReadingBookTextFromPhoto: 'bookPhotoOcr',
     extractStockTradeTextFromPhoto: 'stockPhotoOcr', extractLedgerTextFromImage: 'subledgerPhotoOcr',
@@ -122,4 +134,19 @@ test('옮긴 함수 8곳도 창구만 쓰고, 모델 이름을 코드에 직접 
     assert.match(body, new RegExp(`callAi\\(\\{ purpose: '${purpose}'`), name);
     assert.doesNotMatch(body, /new GoogleGenerativeAI|getGenerativeModel|'gemini-[\w.-]+'|\.response\.text\(\)/, name);
   }
+});
+
+test('미래전망은 유형별 용도로, 식물 보조 함수 3개도 창구로 부른다', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../src/index.ts'), 'utf8');
+  const prophecy = src.slice(src.indexOf('export const generateHaruProphecy ='), src.indexOf('export const getVerseTranslation ='));
+  assert.match(prophecy, /purpose: type === 'story' \? 'prophecyStory' : 'prophecySynopsis'/);
+  assert.doesNotMatch(prophecy, /new GoogleGenerativeAI|getGenerativeModel|'gemini-[\w.-]+'/);
+  for (const [fn, purpose] of [['callGeminiAdvice', 'plantAdvice'], ['resolveKoreanPlantName', 'plantKoreanName'], ['callGeminiCrossVerification', 'plantCrossVerification']]) {
+    const start = src.search(new RegExp(`^(?:export )?(?:async )?function ${fn}\\b`, 'm'));
+    assert.ok(start > 0, fn);
+    const body = src.slice(start, start + 6000);
+    assert.match(body, new RegExp(`callAi\\(\\{ purpose: '${purpose}'`), fn);
+  }
+  // 식물 사진 사용량 기록도 설정 표의 모델을 쓴다
+  assert.equal((src.match(/featureName: 'plant_photo',\s*plan: AI_USAGE_PLAN,\s*model: getAiRoute\('plantAdvice'\)\.model,/g) || []).length, 2);
 });
