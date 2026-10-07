@@ -115,7 +115,11 @@ assert.equal(getHaruLawPdfReadErrorName({
 }), 'SecurityError');
 
 const resultChatSource = await readFile(new URL('../src/app/components/ResultChatModal.tsx', import.meta.url), 'utf8');
-const recordPageSource = await readFile(new URL('../src/app/pages/RecordPage.tsx', import.meta.url), 'utf8');
+// 하루LAW 코드는 assistants/haruLaw/HaruLawPanel.tsx 로 옮겼다(P4a). RecordPage 와 합친 원문에서 확인한다.
+const recordPageSource = [
+  await readFile(new URL('../src/app/pages/RecordPage.tsx', import.meta.url), 'utf8'),
+  await readFile(new URL('../src/app/assistants/haruLaw/HaruLawPanel.tsx', import.meta.url), 'utf8'),
+].join('\n');
 assert.match(
   resultChatSource,
   /attachments: pendingAttachmentsRef\.current\.length > 0\s+\? pendingAttachmentsRef\.current\s+: undefined/,

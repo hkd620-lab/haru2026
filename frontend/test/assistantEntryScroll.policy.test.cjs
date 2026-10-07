@@ -4,7 +4,11 @@ const path = require('node:path');
 
 const app = fs.readFileSync(path.resolve(__dirname, '../src/app/App.tsx'), 'utf8');
 const home = fs.readFileSync(path.resolve(__dirname, '../src/app/pages/HomePageV2.tsx'), 'utf8');
-const record = fs.readFileSync(path.resolve(__dirname, '../src/app/pages/RecordPage.tsx'), 'utf8');
+// 하루LAW 코드는 assistants/haruLaw/HaruLawPanel.tsx 로 옮겼다(P4a). RecordPage 와 합친 원문에서 확인한다.
+const record = [
+  fs.readFileSync(path.resolve(__dirname, '../src/app/pages/RecordPage.tsx'), 'utf8'),
+  fs.readFileSync(path.resolve(__dirname, '../src/app/assistants/haruLaw/HaruLawPanel.tsx'), 'utf8'),
+].join('\n');
 const healthHub = fs.readFileSync(path.resolve(__dirname, '../src/app/pages/SayuHealthHubPage.tsx'), 'utf8');
 const legalHome = fs.readFileSync(path.resolve(__dirname, '../src/app/pages/LegalAssistantHomePage.tsx'), 'utf8');
 const legalGuide = fs.readFileSync(path.resolve(__dirname, '../src/app/pages/ELitigationBeginnerGuidePage.tsx'), 'utf8');
