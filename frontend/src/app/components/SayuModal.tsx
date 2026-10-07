@@ -43,6 +43,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { parseHouseholdAmountText } from '../utils/householdAmount';
 
 const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
 const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
@@ -64,8 +65,7 @@ type HouseholdSayuEntry = {
 };
 
 function parseHouseholdAmount(value: string): number {
-  const n = parseFloat(String(value || '').replace(/[^0-9.-]/g, ''));
-  return Number.isFinite(n) ? n : 0;
+  return parseHouseholdAmountText(value) ?? 0;
 }
 
 function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdSayuEntry[] {

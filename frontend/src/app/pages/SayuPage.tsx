@@ -66,6 +66,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSubscription } from '../hooks/useSubscription';
 import { compressImage } from '../services/imageService';
 import { fingerprintPlantEntry, readPlantDetectiveSelection, PLANT_EDIT_CONFLICT, type PlantDetectiveSelection } from '../utils/plantDetectiveEdit';
+import { parseHouseholdAmountText } from '../utils/householdAmount';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
 const FORMAT_FIRST_FIELD: Record<string, string> = {
@@ -557,8 +558,7 @@ function buildLedgerEntryDisplay(entry: any, record: any) {
 }
 
 function parseHouseholdDisplayAmount(value: unknown): number {
-  const n = parseFloat(String(value || '').replace(/[^0-9.-]/g, ''));
-  return Number.isFinite(n) ? Math.abs(n) : 0;
+  return Math.abs(parseHouseholdAmountText(value) ?? 0);
 }
 
 function formatHouseholdDisplayMoney(value: number, signed = false): string {
