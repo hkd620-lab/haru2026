@@ -19,7 +19,8 @@ import {
   type AssistantRecommendation,
 } from '../utils/assistantRecommendations';
 import { db } from '../../firebase';
-import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, getDocs, query, where, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
+import { findSameNameGrowthSubject } from '../utils/growthSubject';
 import { useSubscription } from '../hooks/useSubscription';
 import {
   DndContext,
@@ -43,6 +44,42 @@ type Weather = '쾌청' | '흐림' | '비' | '눈';
 type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 type GrowthSubjectType = 'child' | 'garden';
 type EnvTagType = 'weather' | 'temperature' | 'mood';
+
+// 같은 이름의 아이가 이미 등록돼 있는지 찾는다. 이름이 같은 아이가 여럿이면 생년월일이 있는 쪽을 우선한다.
+// 조회에 성공해 없다고 확인한 경우('none')와 조회에 실패한 경우('error')를 구분한다 — 실패를 "없음"으로 보면 안 된다.
+type SameNameChildLookup =
+  | { status: 'found'; subject: { id: string; name: string; birthdate: string; gender?: 'M' | 'F' } }
+  | { status: 'none' }
+  | { status: 'error' };
+
+async function findSameNameChildSubject(uid: string, name: string): Promise<SameNameChildLookup> {
+  try {
+    const snap = await getDocs(query(collection(db, 'users', uid, 'growthSubjects'), where('subjectType', '==', 'child')));
+    // 서버에 닿지 못하면 getDocs는 실패하지 않고 빈(또는 오래된) 캐시 결과를 돌려준다 — 이것도 "없음"이 아니라 "확인 못 함"으로 본다.
+    if (snap.metadata.fromCache) {
+      console.warn('같은 이름의 아이 확인 실패: 서버에 닿지 못해 캐시로만 응답');
+      return { status: 'error' };
+    }
+    const subjects = snap.docs
+      .map((docSnap) => {
+        const data = docSnap.data() as any;
+        return {
+          id: docSnap.id,
+          name: String(data.name || '').trim(),
+          birthdate: String(data.birthdate || data.growthSubjectBirthdate || ''),
+          gender: data.gender === 'M' || data.gender === 'F' ? (data.gender as 'M' | 'F') : undefined,
+          latestRecordDate: String(data.latestRecordDate || ''),
+        };
+      })
+      .filter((subject) => subject.name)
+      .sort((a, b) => b.latestRecordDate.localeCompare(a.latestRecordDate)); // 최근 기록순 — 대상 목록과 같은 순서
+    const found = findSameNameGrowthSubject(subjects, name);
+    return found ? { status: 'found', subject: found } : { status: 'none' };
+  } catch (error) {
+    console.warn('같은 이름의 아이 확인 실패:', error);
+    return { status: 'error' };
+  }
+}
 
 const DEFAULT_WEATHER = ['쾌청', '흐림', '비', '눈'];
 const DEFAULT_TEMPERATURE = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
@@ -587,7 +624,7 @@ export function RecordPage() {
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
     if (!user) return;
-    const growthSubjectName =
+    const typedGrowthSubjectName =
       typeof (formatData as any)._growthSubjectName === 'string'
         ? ((formatData as any)._growthSubjectName as string).trim()
         : '';
@@ -595,18 +632,45 @@ export function RecordPage() {
       (formatData as any)._growthSubjectType === 'child' || (formatData as any)._growthSubjectType === 'garden'
         ? ((formatData as any)._growthSubjectType as GrowthSubjectType)
         : undefined;
-    const existingGrowthSubjectId =
+    const formGrowthSubjectId =
       typeof (formatData as any)._growthSubjectId === 'string' && (formatData as any)._growthSubjectId
         ? ((formatData as any)._growthSubjectId as string)
         : undefined;
-    const growthSubjectBirthdate =
+    const typedGrowthSubjectBirthdate =
       typeof (formatData as any)._growthSubjectBirthdate === 'string' && (formatData as any)._growthSubjectBirthdate
         ? ((formatData as any)._growthSubjectBirthdate as string)
         : undefined;
-    const growthSubjectGender =
+    const typedGrowthSubjectGender =
       (formatData as any)._growthSubjectGender === 'M' || (formatData as any)._growthSubjectGender === 'F'
         ? ((formatData as any)._growthSubjectGender as 'M' | 'F')
         : undefined;
+    // 아이를 이름만 써서 새로 추가하는 경우, 저장 직전에 같은 이름의 아이가 이미 있는지 다시 확인한다 —
+    // 대상 목록을 불러오기 전에 저장했거나 다른 기기에서 막 등록한 경우에도 같은 아이가 둘로 갈라지지 않게 한다
+    const sameNameChildLookup =
+      typedGrowthSubjectName && growthSubjectType === 'child' && !formGrowthSubjectId
+        ? await findSameNameChildSubject(user.uid, typedGrowthSubjectName)
+        : undefined;
+    // 확인하지 못했다면(네트워크 오류 등) "같은 이름이 없다"고 보지 않고 저장을 멈춘다 — 그대로 저장하면 같은 아이가 둘로 갈라질 수 있다
+    if (sameNameChildLookup?.status === 'error') {
+      toast.error('같은 이름의 아이가 이미 있는지 확인하지 못했어요. 네트워크를 확인하고 다시 저장해 주세요.');
+      throw new Error('growth subject lookup failed');
+    }
+    const sameNameChild = sameNameChildLookup?.status === 'found' ? sameNameChildLookup.subject : undefined;
+    // 화면에 입력한 생년월일·성별이 이미 등록된 아이의 값과 다르면(대상 목록을 불러오기 전에 저장한 경우 등) 화면의 성장 분석과
+    // 저장 값이 어긋나므로 조용히 바꿔 저장하지 않고 저장을 멈춰 확인을 요청한다
+    if (
+      sameNameChild &&
+      ((typedGrowthSubjectBirthdate && sameNameChild.birthdate && typedGrowthSubjectBirthdate !== sameNameChild.birthdate) ||
+        (typedGrowthSubjectGender && sameNameChild.gender && typedGrowthSubjectGender !== sameNameChild.gender))
+    ) {
+      toast.error(`이미 등록된 "${sameNameChild.name}"의 생년월일·성별과 입력한 값이 달라요. 대상 목록에서 "${sameNameChild.name}"를 선택하거나 입력값을 확인해 주세요.`);
+      throw new Error('growth subject demographics conflict');
+    }
+    const growthSubjectName = sameNameChild?.name || typedGrowthSubjectName;
+    const existingGrowthSubjectId = formGrowthSubjectId || sameNameChild?.id;
+    // 이미 있는 아이에 이어서 기록할 때는 그 아이의 생년월일·성별을 우선한다(위에서 서로 다른 값은 걸러냈으므로 비어 있던 쪽만 채워진다)
+    const growthSubjectBirthdate = sameNameChild?.birthdate || typedGrowthSubjectBirthdate;
+    const growthSubjectGender = sameNameChild?.gender || typedGrowthSubjectGender;
     const shouldSaveGrowthEntry = Boolean(growthSubjectName && growthSubjectType);
     const growthSubjectId = shouldSaveGrowthEntry
       ? existingGrowthSubjectId || doc(collection(db, 'users', user.uid, 'growthSubjects')).id

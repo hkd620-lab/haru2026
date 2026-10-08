@@ -72,6 +72,7 @@ import {
   type KakaoXlsxPreviewRow,
 } from '../services/householdKakaoImport';
 import { parseHouseholdAmountText } from '../utils/householdAmount';
+import { findSameNameGrowthSubject, growthSubjectOptionLabel } from '../utils/growthSubject';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부' | '배뇨일지';
 type SayuMode = 'BASIC' | 'PREMIUM';
@@ -974,8 +975,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const isHouseholdFormat = format === 'HARU가계부';
   const isVoidingFormat = format === '배뇨일지';
   const selectedGrowthSubject = growthSubjects.find((subject) => subject.id === selectedGrowthSubjectId);
-  const effectiveGrowthSubjectBirthdate = selectedGrowthSubject?.birthdate || growthSubjectBirthdate;
-  const effectiveGrowthSubjectGender = selectedGrowthSubject?.gender || growthSubjectGender;
+  // 아이는 "새 대상 추가"에 이미 있는 이름을 다시 쓰면 새로 만들지 않고 그 아이에 이어서 기록한다 (같은 아이가 둘로 갈라지는 것을 막는다)
+  const sameNameGrowthSubject = format !== '텃밭일지' ? findSameNameGrowthSubject(growthSubjects, newGrowthSubjectName) : undefined;
+  // 이름을 직접 써서 이미 있는 아이를 가리키면 목록에서 그 아이를 고른 것과 같게 다룬다 (생년월일·성별도 그 아이의 값 — 화면 분석과 저장이 같은 값을 쓴다)
+  const matchedGrowthSubject = selectedGrowthSubject || sameNameGrowthSubject;
+  const effectiveGrowthSubjectBirthdate = matchedGrowthSubject?.birthdate || growthSubjectBirthdate;
+  const effectiveGrowthSubjectGender = matchedGrowthSubject?.gender || growthSubjectGender;
   const childMeasuredate = formData.child_measuredate || getTodayInputValue();
   const childAgeMonths = effectiveGrowthSubjectBirthdate ? calcAgeInMonths(effectiveGrowthSubjectBirthdate, childMeasuredate) : null;
   const childHeightValue = toPositiveNumber(formData.child_height);
@@ -1023,12 +1028,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     const subjectType: GrowthSubjectType = format === '텃밭일지' ? 'garden' : 'child';
     const selectedSubject = selectedGrowthSubject;
     const newName = newGrowthSubjectName.trim();
-    const subjectName = newName || selectedSubject?.name || '';
+    const subjectName = sameNameGrowthSubject?.name || newName || selectedSubject?.name || '';
 
     if (!subjectName) return {};
 
     return {
-      _growthSubjectId: newName ? '' : selectedGrowthSubjectId,
+      _growthSubjectId: sameNameGrowthSubject ? sameNameGrowthSubject.id : newName ? '' : selectedGrowthSubjectId,
       _growthSubjectType: subjectType,
       _growthSubjectName: subjectName,
       _sourceFormat: format,
@@ -4081,7 +4086,7 @@ ${contentValues.slice(0, 4100)}`,
                     <option value="">기존 대상 선택</option>
                     {growthSubjects.map((subject) => (
                       <option key={subject.id} value={subject.id}>
-                        {subject.name}
+                        {growthSubjectOptionLabel(subject, growthSubjects, format !== '텃밭일지')}
                       </option>
                     ))}
                   </select>
@@ -4111,6 +4116,11 @@ ${contentValues.slice(0, 4100)}`,
                       outline: 'none',
                     }}
                   />
+                  {sameNameGrowthSubject && (
+                    <p style={{ margin: '6px 0 0', fontSize: 12, color: '#047857', lineHeight: 1.5, wordBreak: 'keep-all' }}>
+                      이미 등록된 이름이에요. 저장하면 기존 "{sameNameGrowthSubject.name}"에 이어서 기록됩니다.
+                    </p>
+                  )}
                   {format !== '텃밭일지' && (
                     <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
                       <label style={{ display: 'block', fontSize: 13, color: '#1A3C6E', fontWeight: 700 }}>
@@ -4120,7 +4130,7 @@ ${contentValues.slice(0, 4100)}`,
                         type="date"
                         value={effectiveGrowthSubjectBirthdate}
                         onChange={(e) => setGrowthSubjectBirthdate(e.target.value)}
-                        disabled={Boolean(selectedGrowthSubject?.birthdate)}
+                        disabled={Boolean(matchedGrowthSubject?.birthdate)}
                         style={{
                           width: '100%',
                           boxSizing: 'border-box',
@@ -4128,7 +4138,7 @@ ${contentValues.slice(0, 4100)}`,
                           fontSize: 14,
                           border: '1px solid #d0dff0',
                           borderRadius: 8,
-                          backgroundColor: selectedGrowthSubject?.birthdate ? '#f3f4f6' : '#fff',
+                          backgroundColor: matchedGrowthSubject?.birthdate ? '#f3f4f6' : '#fff',
                           color: '#333',
                           outline: 'none',
                         }}
@@ -4143,7 +4153,7 @@ ${contentValues.slice(0, 4100)}`,
                               key={gender}
                               type="button"
                               onClick={() => setGrowthSubjectGender(gender)}
-                              disabled={Boolean(selectedGrowthSubject?.gender)}
+                              disabled={Boolean(matchedGrowthSubject?.gender)}
                               style={{
                                 flex: 1,
                                 padding: '10px 12px',
@@ -4152,7 +4162,7 @@ ${contentValues.slice(0, 4100)}`,
                                 backgroundColor: effectiveGrowthSubjectGender === gender ? '#ecfdf5' : '#fff',
                                 color: effectiveGrowthSubjectGender === gender ? '#047857' : '#374151',
                                 fontWeight: 700,
-                                cursor: selectedGrowthSubject?.gender ? 'default' : 'pointer',
+                                cursor: matchedGrowthSubject?.gender ? 'default' : 'pointer',
                               }}
                             >
                               {gender === 'M' ? '남아' : '여아'}
