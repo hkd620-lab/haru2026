@@ -6,6 +6,7 @@ import { transformSync } from 'esbuild';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import * as views from '../src/app/utils/structuredAssistantRecords.ts';
+import * as growthSubjectUtils from '../src/app/utils/growthSubject.ts';
 import { getStructuredViewAccess } from '../src/app/assistants/sayuAdapters.ts';
 
 const require = createRequire(import.meta.url);
@@ -208,11 +209,65 @@ test('growth save: a typed birthdate or gender that disagrees with the registere
   await f.handlers().handleSave();
   assert.equal(f.state.creates.length, 0); assert.equal(f.state.links.length, 0); assert.match(f.state.errors[0], /생년월일·성별과 입력한 값이 달라요/);
 });
+test('growth save: a disagreeing birthdate alone, or a disagreeing gender alone, also stops saving', async () => {
+  for (const typed of [{ birthdate: '2023-01-01', gender: '' }, { birthdate: '', gender: 'F' }]) {
+    const f = growthFixture(); f.state.lookup = { status: 'found', subject: { id: 'subF', name: '지안', birthdate: '2024-06-06', gender: 'M' } };
+    f.state.envOverrides = { selectedId: '', newName: '지안', selectedSubject: undefined, matchedSubject: undefined, ...typed };
+    await f.handlers().handleSave();
+    assert.equal(f.state.creates.length, 0); assert.equal(f.state.links.length, 0); assert.match(f.state.errors[0], /달라요/);
+  }
+});
+test('growth save: a found child keeps its registered name, birthdate and gender, and only blanks are filled from the typed values', async () => {
+  const same = growthFixture(); same.state.lookup = { status: 'found', subject: { id: 'subJ', name: 'Jun', birthdate: '2025-02-02', gender: 'M' } };
+  same.state.envOverrides = { selectedId: '', newName: 'jUN', selectedSubject: undefined, matchedSubject: undefined, birthdate: '2025-02-02', gender: 'M' };
+  await same.handlers().handleSave();
+  assert.equal(same.state.creates[0].growthSubjectName, 'Jun'); assert.equal(same.state.links[0].data.name, 'Jun');
+  const blankTyped = growthFixture(); blankTyped.state.lookup = { status: 'found', subject: { id: 'subJ', name: 'Jun', birthdate: '2025-02-02', gender: 'M' } };
+  blankTyped.state.envOverrides = { selectedId: '', newName: 'Jun', selectedSubject: undefined, matchedSubject: undefined, birthdate: '', gender: '' };
+  await blankTyped.handlers().handleSave();
+  assert.equal(blankTyped.state.creates[0].growthSubjectBirthdate, '2025-02-02'); assert.equal(blankTyped.state.creates[0].growthSubjectGender, 'M');
+  const blankRegistered = growthFixture(); blankRegistered.state.lookup = { status: 'found', subject: { id: 'subK', name: '다온', birthdate: '', gender: undefined } };
+  blankRegistered.state.envOverrides = { selectedId: '', newName: '다온', selectedSubject: undefined, matchedSubject: undefined, birthdate: '2025-04-04', gender: 'F' };
+  await blankRegistered.handlers().handleSave();
+  assert.equal(blankRegistered.state.creates[0].growthSubjectId, 'subK'); assert.equal(blankRegistered.state.creates[0].growthSubjectBirthdate, '2025-04-04');
+  assert.equal(blankRegistered.state.links[0].data.birthdate, '2025-04-04'); assert.equal(blankRegistered.state.links[0].data.gender, 'F'); assert.ok(!('createdAt' in blankRegistered.state.links[0].data));
+});
 test('growth save: a lookup that finishes after the account left writes nothing', async () => {
   const f = growthFixture(); f.state.lookup = { status: 'found', subject: { id: 'subG', name: '도윤', birthdate: '2025-07-07', gender: 'M' } };
   f.state.envOverrides = { selectedId: '', newName: '도윤', selectedSubject: undefined, matchedSubject: undefined, isCurrentSession: () => f.state.lookups === undefined };
   await f.handlers().handleSave();
   assert.equal(f.state.lookups, 1); assert.equal(f.state.creates.length, 0); assert.equal(f.state.links.length, 0);
+});
+
+// 저장 직전 "같은 이름의 아이" Firestore 조회 어댑터 — 조회 대상 경로·조건과 실패 처리를 지킨다(판정은 utils/growthSubject.ts 의 resolveSameNameChild).
+function lookupAdapter(getDocsImpl) {
+  const queries = [];
+  const mod = moduleFrom(read('services/growthSubjectLookup.ts'), {
+    'firebase/firestore': {
+      collection: (db, ...path) => ({ path: path.join('/') }),
+      where: (...args) => ({ where: args }),
+      query: (source, ...constraints) => ({ source, constraints }),
+      getDocs: async query => { queries.push(query); return getDocsImpl(query); },
+    },
+    '../../firebase': { db: {} },
+    '../utils/growthSubject': growthSubjectUtils,
+  });
+  return { find: mod.findSameNameChildSubject, queries };
+}
+test('same-name child lookup adapter: queries only this user\'s child subjects and hands the snapshot to the decision', async () => {
+  const snap = { metadata: { fromCache: false }, docs: [{ id: 'subC', data: () => ({ name: '서윤', birthdate: '2024-01-02', gender: 'F' }) }] };
+  const f = lookupAdapter(() => snap), result = await f.find('fixture-user', '서윤');
+  assert.equal(result.status, 'found'); assert.equal(result.subject.id, 'subC');
+  assert.equal(f.queries.length, 1); assert.equal(f.queries[0].source.path, 'users/fixture-user/growthSubjects');
+  assert.deepEqual(f.queries[0].constraints, [{ where: ['subjectType', '==', 'child'] }]);
+});
+test('same-name child lookup adapter: a thrown query and a cache-only snapshot are both "could not confirm", never "none"', async () => {
+  const warn = console.warn; console.warn = () => {};
+  try {
+    assert.deepEqual(await lookupAdapter(() => { throw new Error('unavailable'); }).find('fixture-user', '해든'), { status: 'error' });
+    assert.deepEqual(await lookupAdapter(() => ({ metadata: { fromCache: true }, docs: [] })).find('fixture-user', '해든'), { status: 'error' });
+  } finally { console.warn = warn; }
+  assert.deepEqual(await lookupAdapter(() => ({ metadata: { fromCache: false }, docs: [] })).find('fixture-user', '해든'), { status: 'none' });
 });
 
 function englishFixture() {

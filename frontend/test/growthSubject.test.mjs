@@ -79,6 +79,13 @@ test('조회 판정 — 서버에 닿지 못해 캐시로만 답한 결과(fromC
   assert.deepEqual(resolveSameNameChild(snapOf([['a', { name: '하준', birthdate: '2025-08-05' }]], true), '하준'), { status: 'error' });
 });
 
+test('조회 판정 — 서버와 맞춰졌다고(fromCache === false) 확인되지 않은 결과는 모두 "확인 못 함"이다', () => {
+  const docs = [{ id: 'a', data: () => ({ name: '하준' }) }];
+  assert.deepEqual(resolveSameNameChild({ docs }, '하준'), { status: 'error' }); // metadata 없음
+  assert.deepEqual(resolveSameNameChild({ metadata: {}, docs }, '하준'), { status: 'error' }); // fromCache 값 없음
+  assert.equal(resolveSameNameChild({ metadata: { fromCache: false }, docs }, '하준').status, 'found');
+});
+
 test('조회 판정 — 서버가 확인한 빈 결과(새 사용자)와 이름이 다른 결과는 "없음"이다', () => {
   assert.deepEqual(resolveSameNameChild(snapOf([]), '하준'), { status: 'none' });
   assert.deepEqual(resolveSameNameChild(snapOf([['c', { name: '서윤', birthdate: '2024-01-02' }]]), '하준'), { status: 'none' });

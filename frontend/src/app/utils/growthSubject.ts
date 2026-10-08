@@ -32,7 +32,8 @@ export type ChildSnapshotLike = {
 
 export function resolveSameNameChild(snap: ChildSnapshotLike, name: unknown): SameNameChildLookup {
   // 서버에 닿지 못하면 getDocs는 실패하지 않고 빈(또는 오래된) 캐시 결과를 돌려준다 — 이것도 "없음"이 아니라 "확인 못 함"으로 본다.
-  if (snap.metadata?.fromCache) return { status: 'error' };
+  // 서버와 맞춰졌다고(fromCache === false) 확인되지 않은 결과는 모두 "확인 못 함"이다(metadata가 없는 모양도 마찬가지).
+  if (snap.metadata?.fromCache !== false) return { status: 'error' };
   const subjects = snap.docs
     .map((docSnap) => {
       const data = (docSnap.data() ?? {}) as any;
