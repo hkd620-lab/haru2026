@@ -179,6 +179,14 @@ test('growth save: a typed name already on the list continues that child without
   assert.equal(f.state.creates[0].growthSubjectBirthdate, '2024-01-02'); assert.equal(f.state.creates[0].growthSubjectGender, 'F');
   assert.equal(f.state.links[0].path, 'users/fixture-user/growthSubjects/subC'); assert.ok(!('createdAt' in f.state.links[0].data));
 });
+test('growth save: when the list arrives after a birthdate and gender were typed, the registered values win over the stale typed ones', async () => {
+  const f = growthFixture(); // 이름·생년월일을 먼저 입력한 뒤 같은 이름이 목록에 나타나면 키 입력 없이 matchedSubject 가 생겨 입력값이 지워지지 않은 채 남는다
+  f.state.envOverrides = { selectedId: '', newName: '서윤', selectedSubject: undefined, matchedSubject: { id: 'subC', name: '서윤', birthdate: '2024-01-02', gender: 'F' }, birthdate: '2023-12-12', gender: 'M' };
+  await f.handlers().handleSave();
+  assert.equal(f.state.lookups ?? 0, 0); assert.equal(f.state.creates[0].growthSubjectId, 'subC');
+  assert.equal(f.state.creates[0].growthSubjectBirthdate, '2024-01-02'); assert.equal(f.state.creates[0].growthSubjectGender, 'F');
+  assert.equal(f.state.links[0].data.birthdate, '2024-01-02'); assert.equal(f.state.links[0].data.gender, 'F'); assert.ok(!('createdAt' in f.state.links[0].data));
+});
 test('growth save: a new name the server confirms is unregistered creates a new child with createdAt', async () => {
   const f = growthFixture(); f.state.lookup = { status: 'none' };
   f.state.envOverrides = { selectedId: '', newName: '새아이', selectedSubject: undefined, matchedSubject: undefined, birthdate: '2025-01-01', gender: 'M', doc: newChildDoc };
