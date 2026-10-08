@@ -72,6 +72,7 @@ import {
   type KakaoXlsxPreviewRow,
 } from '../services/householdKakaoImport';
 import { parseHouseholdAmountText } from '../utils/householdAmount';
+import { findSameNameGrowthSubject, growthSubjectOptionLabel } from '../utils/growthSubject';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부' | '배뇨일지';
 type SayuMode = 'BASIC' | 'PREMIUM';
@@ -974,6 +975,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const isHouseholdFormat = format === 'HARU가계부';
   const isVoidingFormat = format === '배뇨일지';
   const selectedGrowthSubject = growthSubjects.find((subject) => subject.id === selectedGrowthSubjectId);
+  // 아이는 "새 대상 추가"에 이미 있는 이름을 다시 쓰면 새로 만들지 않고 그 아이에 이어서 기록한다 (같은 아이가 둘로 갈라지는 것을 막는다)
+  const sameNameGrowthSubject = format !== '텃밭일지' ? findSameNameGrowthSubject(growthSubjects, newGrowthSubjectName) : undefined;
   const effectiveGrowthSubjectBirthdate = selectedGrowthSubject?.birthdate || growthSubjectBirthdate;
   const effectiveGrowthSubjectGender = selectedGrowthSubject?.gender || growthSubjectGender;
   const childMeasuredate = formData.child_measuredate || getTodayInputValue();
@@ -1023,17 +1026,21 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     const subjectType: GrowthSubjectType = format === '텃밭일지' ? 'garden' : 'child';
     const selectedSubject = selectedGrowthSubject;
     const newName = newGrowthSubjectName.trim();
-    const subjectName = newName || selectedSubject?.name || '';
+    const subjectName = sameNameGrowthSubject?.name || newName || selectedSubject?.name || '';
 
     if (!subjectName) return {};
 
+    // 이미 있는 아이에 이어서 기록할 때는 그 아이의 생년월일·성별을 우선한다(새로 입력한 값으로 덮어쓰지 않는다)
+    const birthdate = sameNameGrowthSubject?.birthdate || effectiveGrowthSubjectBirthdate;
+    const gender = sameNameGrowthSubject?.gender || effectiveGrowthSubjectGender;
+
     return {
-      _growthSubjectId: newName ? '' : selectedGrowthSubjectId,
+      _growthSubjectId: sameNameGrowthSubject ? sameNameGrowthSubject.id : newName ? '' : selectedGrowthSubjectId,
       _growthSubjectType: subjectType,
       _growthSubjectName: subjectName,
       _sourceFormat: format,
-      ...(format !== '텃밭일지' && effectiveGrowthSubjectBirthdate ? { _growthSubjectBirthdate: effectiveGrowthSubjectBirthdate } : {}),
-      ...(format !== '텃밭일지' && effectiveGrowthSubjectGender ? { _growthSubjectGender: effectiveGrowthSubjectGender } : {}),
+      ...(format !== '텃밭일지' && birthdate ? { _growthSubjectBirthdate: birthdate } : {}),
+      ...(format !== '텃밭일지' && gender ? { _growthSubjectGender: gender } : {}),
     };
   };
 
@@ -4081,7 +4088,7 @@ ${contentValues.slice(0, 4100)}`,
                     <option value="">기존 대상 선택</option>
                     {growthSubjects.map((subject) => (
                       <option key={subject.id} value={subject.id}>
-                        {subject.name}
+                        {growthSubjectOptionLabel(subject, growthSubjects, format !== '텃밭일지')}
                       </option>
                     ))}
                   </select>
@@ -4111,6 +4118,11 @@ ${contentValues.slice(0, 4100)}`,
                       outline: 'none',
                     }}
                   />
+                  {sameNameGrowthSubject && (
+                    <p style={{ margin: '6px 0 0', fontSize: 12, color: '#047857', lineHeight: 1.5, wordBreak: 'keep-all' }}>
+                      이미 등록된 이름이에요. 저장하면 기존 "{sameNameGrowthSubject.name}"에 이어서 기록됩니다.
+                    </p>
+                  )}
                   {format !== '텃밭일지' && (
                     <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
                       <label style={{ display: 'block', fontSize: 13, color: '#1A3C6E', fontWeight: 700 }}>
