@@ -1,5 +1,5 @@
 // 실행 결과(out/runs/<실행ID>)를 읽어 사람이 보는 보고서(Markdown)를 만든다.
-// 사용: node runner/report.mjs [실행ID] [--name 폴더이름] [--cost "비용 메모"]
+// 사용: node runner/report.mjs [실행ID] [--name 폴더이름] [--cost "비용 메모"] [--id-start 13]
 //       결과: reports/<폴더이름>/report.md, report.json, img/*.png(발견 증거 캡처만)
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,6 +13,7 @@ const name = argVal('--name') || `${runId.slice(0, 10)}-pilot`;
 const costFile = argVal('--cost-file');
 const costNote = costFile ? fs.readFileSync(costFile, 'utf8') : (argVal('--cost') || '');
 const introFile = argVal('--intro-file');
+const idStart = Number(argVal('--id-start') || 1); // 이전 보고서와 발견 번호가 겹치지 않게 시작 번호를 지정한다
 const introNote = introFile ? fs.readFileSync(introFile, 'utf8') : '';
 const title = argVal('--title') || `가상사용자 시뮬레이션 결과 보고 — ${name}`;
 const runDir = path.join(outRoot, 'runs', runId);
@@ -67,7 +68,7 @@ for (const f of perPersona) {
 const all = [...byTitle.values()];
 all.forEach((f) => { f.personaName = f.who.map((w) => w.name).join('·'); f.format = [...new Set(f.who.map((w) => w.format))].join('·'); });
 all.sort((a, b) => sevRank(a.severity) - sevRank(b.severity) || a.personaId.localeCompare(b.personaId));
-all.forEach((f, i) => { f.id = `F-${String(i + 1).padStart(2, '0')}`; });
+all.forEach((f, i) => { f.id = `F-${String(i + idStart).padStart(2, '0')}`; });
 
 const copied = new Set();
 const evidence = (f) => {
