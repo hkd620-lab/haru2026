@@ -2131,11 +2131,15 @@ ${contentValues}`,
     }
     const emptyAmounts = ledgerEntries.filter(e => !e.amount.trim()).length;
     const emptyVendors = ledgerEntries.filter(e => !e.vendor.trim()).length;
-    if (emptyAmounts > 0 || emptyVendors > 0) {
+    // 숫자로 읽을 수 없는 금액("오천원", "무료" 등)은 합계·내보내기에서 0원으로 계산되므로 저장 전에 확인한다
+    const unreadableAmounts = ledgerEntries.filter(e => e.amount.trim() && parseHouseholdAmountText(e.amount) === null).length;
+    if (emptyAmounts > 0 || emptyVendors > 0 || unreadableAmounts > 0) {
       const parts: string[] = [];
       if (emptyAmounts > 0) parts.push(`금액 미입력 ${emptyAmounts}건`);
       if (emptyVendors > 0) parts.push(`거래처 미입력 ${emptyVendors}건`);
-      const ok = window.confirm(`${parts.join(', ')}이 있습니다. 그래도 저장하시겠습니까?`);
+      if (unreadableAmounts > 0) parts.push(`금액을 숫자로 읽을 수 없는 거래 ${unreadableAmounts}건`);
+      const amountHint = unreadableAmounts > 0 ? ' (금액은 5000, 5천원, 1만5천원처럼 입력해 주세요.)' : '';
+      const ok = window.confirm(`${parts.join(', ')}이 있습니다.${amountHint} 그래도 저장하시겠습니까?`);
       if (!ok) return;
     }
     const first = ledgerEntries[0];
