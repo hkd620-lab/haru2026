@@ -8,6 +8,7 @@
  */
 
 import type { HaruRecord } from './firestoreService';
+import { parseKoreanUnitAmount } from '../utils/householdAmount';
 import {
   LEDGER_ASSET_TREATMENT_LABELS,
   LEDGER_EXPENSE_DEDUCTION_LABELS,
@@ -115,6 +116,9 @@ function inferVatDeductible(vendor: string, accountCode: string): string {
 // ===== 금액 문자열 → 숫자 파싱 =====
 function parseAmount(amountStr: string): number {
   if (!amountStr) return 0;
+  // "5천원", "1만5천원" 같은 한글 단위 금액은 단위를 계산하고, 그 밖의 입력은 예전 방식 그대로 해석한다
+  const withUnits = parseKoreanUnitAmount(amountStr);
+  if (withUnits !== null) return withUnits;
   const cleaned = amountStr.replace(/[^0-9.-]/g, '');
   const n = parseFloat(cleaned);
   return isNaN(n) ? 0 : n;

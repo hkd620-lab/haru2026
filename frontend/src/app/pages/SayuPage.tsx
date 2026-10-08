@@ -66,7 +66,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSubscription } from '../hooks/useSubscription';
 import { compressImage } from '../services/imageService';
 import { fingerprintPlantEntry, readPlantDetectiveSelection, PLANT_EDIT_CONFLICT, type PlantDetectiveSelection } from '../utils/plantDetectiveEdit';
-import { parseHouseholdAmountText } from '../utils/householdAmount';
+import { parseHouseholdAmountText, parseKoreanUnitAmount } from '../utils/householdAmount';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
 const FORMAT_FIRST_FIELD: Record<string, string> = {
@@ -3261,6 +3261,9 @@ export function SayuPage() {
     if (ledgerRecords.length === 0) return null;
 
     const parseAmount = (value: unknown): number => {
+      // "5천원", "1만5천원" 같은 한글 단위 금액은 단위를 계산하고, 그 밖의 입력은 예전 방식 그대로 해석한다
+      const unitAmount = parseKoreanUnitAmount(value);
+      if (unitAmount !== null) return Math.abs(unitAmount);
       const text = String(value || '').replace(/,/g, '').replace(/원/g, '').trim();
       const match = text.match(/-?\d+(?:\.\d+)?/);
       if (!match) return 0;

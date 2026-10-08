@@ -1,3 +1,5 @@
+import { parseKoreanUnitAmount } from '../utils/householdAmount';
+
 // 'saved' = 이번 편집 세션에서 이미 저장 완료된 거래(재선택 방지용 표시).
 // 같은 날짜·거래처·금액의 거래도 항상 별개 거래로 저장하므로, Firestore 이력과 대조해
 // 자동으로 제외하는 중복 판정 로직은 두지 않는다.
@@ -254,7 +256,8 @@ export function adjustLedgerTaxFieldsForUsage(entry: LedgerEntry): LedgerEntry {
 }
 
 export function calculateVatIncludedAmounts(amountText: string): { supplyAmount: string; vatAmount: string } | null {
-  const amount = Number(String(amountText || '').replace(/[^0-9.-]/g, ''));
+  // 한글 단위 금액("5천원", "1만5천원")은 단위를 계산하고, 그 밖의 입력은 예전 방식 그대로 해석한다
+  const amount = parseKoreanUnitAmount(amountText) ?? Number(String(amountText || '').replace(/[^0-9.-]/g, ''));
   if (!Number.isFinite(amount) || amount <= 0) return null;
   const supplyAmount = Math.round(amount / 1.1);
   const vatAmount = amount - supplyAmount;
@@ -384,6 +387,9 @@ export function normalizeLedgerAmount(value: unknown): { value: string; valid: b
   const raw = String(value ?? '').trim();
   if (!raw) return { value: '', valid: false };
   const isParenthesized = /^\(.*\)$/.test(raw);
+  // 한글 단위 금액("5천원", "1만5천원")은 단위를 계산한다 — 5원으로 저장되지 않게
+  const unitAmount = parseKoreanUnitAmount(raw);
+  if (unitAmount !== null) return { value: `${unitAmount.toLocaleString('ko-KR')}원`, valid: true };
   const numberText = raw.replace(/[^0-9.-]/g, '');
   const parsed = Number(numberText);
   if (!numberText || !Number.isFinite(parsed)) return { value: raw, valid: false };

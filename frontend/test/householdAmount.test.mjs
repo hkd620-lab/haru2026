@@ -70,3 +70,23 @@ test('숫자 타입 입력과 0은 그대로 읽는다', () => {
   assert.equal(parse(0), 0);
   assert.equal(parse('0'), 0);
 });
+
+// ── parseKoreanUnitAmount — 보조장부처럼 자기 방식으로 숫자를 읽는 곳이 "단위가 있을 때만" 먼저 쓰는 함수 ──
+const { parseKoreanUnitAmount: parseUnits } = await import('../src/app/utils/householdAmount.ts');
+
+test('parseKoreanUnitAmount — 한글 단위 금액만 계산하고 나머지는 null', () => {
+  assert.equal(parseUnits('5천원'), 5000);
+  assert.equal(parseUnits('1만5천원'), 15000);
+  assert.equal(parseUnits('만원'), 10000);
+  assert.equal(parseUnits('-5천원'), -5000);
+  // 단위가 없거나, 단위 글자가 다른 글자와 섞였거나, 한글 숫자인 입력은 null → 호출하는 쪽이 예전 방식을 그대로 쓴다
+  for (const input of ['5000', '5,000원', '₩5,000', '약 5000원', '5000원 만족', '만족', '오천원', '(15,000)', '', ' ', 'abc', undefined, null, 5000]) {
+    assert.equal(parseUnits(input), null, `${JSON.stringify(input)} → null`);
+  }
+});
+
+test('parseKoreanUnitAmount 와 parseHouseholdAmountText 는 단위 금액에서 같은 값을 낸다', () => {
+  for (const input of ['3만 5천원', '5 천 원', '1억2천만원', '2천5백원', '1.5만원', '12만5천']) {
+    assert.equal(parseUnits(input), parse(input), JSON.stringify(input));
+  }
+});

@@ -50,13 +50,17 @@ function parseUnitAmount(text: string): number | null {
   return Number.isFinite(result) ? (negative ? -result : result) : null;
 }
 
+// 한글 단위가 쓰인 깔끔한 금액("5천원", "1만5천원")만 계산해 돌려준다. 단위 금액이 아니면 null.
+// 보조장부처럼 자기 방식으로 숫자를 읽는 곳이 "단위가 있을 때만" 이 계산을 먼저 쓰고, 나머지는 예전 방식 그대로 두기 위한 함수다.
+export function parseKoreanUnitAmount(value: unknown): number | null {
+  const compact = String(value ?? '').replace(/[\s,₩\\원]/g, '');
+  if (HAS_UNIT.test(compact) && UNIT_AMOUNT_PATTERN.test(compact)) return parseUnitAmount(compact);
+  return null;
+}
+
 export function parseHouseholdAmountText(value: unknown): number | null {
-  const raw = String(value ?? '');
-  const compact = raw.replace(/[\s,₩\\원]/g, '');
-  if (HAS_UNIT.test(compact) && UNIT_AMOUNT_PATTERN.test(compact)) {
-    const withUnits = parseUnitAmount(compact);
-    if (withUnits !== null) return withUnits;
-  }
-  const n = parseFloat(raw.replace(/[^0-9.-]/g, ''));
+  const withUnits = parseKoreanUnitAmount(value);
+  if (withUnits !== null) return withUnits;
+  const n = parseFloat(String(value ?? '').replace(/[^0-9.-]/g, ''));
   return Number.isFinite(n) ? n : null;
 }
