@@ -5596,6 +5596,11 @@ ${contentValues.slice(0, 4100)}`,
                                     </button>
                                   ))}
                                 </div>
+                                {entry.transactionType === '이체' && (
+                                  <p style={{ margin: '6px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.6, wordBreak: 'keep-all' }}>
+                                    다른 통장에서 이 가계부로 들어온 돈(충전)을 기록합니다. 전체수입과 수지에 더해집니다.
+                                  </p>
+                                )}
                               </div>
                               {/* 카테고리 */}
                               {entry.transactionType !== '이체' && (

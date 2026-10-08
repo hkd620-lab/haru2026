@@ -208,9 +208,11 @@ export function exportHouseholdToXlsx(
       const amountNum = parseAmount(e.amount);
       detailRows.push([rowNo, e.date, e.transactionType, e.category, e.vendor, amountNum > 0 ? amountNum : e.amount, e.paymentMethod, e.memo]);
       if (amountNum > 0) {
-        const cat = e.category || '기타';
+        // 이체는 가계부 화면·SAYU와 같이 "충전"으로 보고 수입 쪽에 더한다 (전체수입 = 순수입 + 충전)
+        const isTransfer = e.transactionType === '이체';
+        const cat = isTransfer ? '이체(충전)' : (e.category || '기타');
         if (!categorySummary[cat]) categorySummary[cat] = { income: 0, expense: 0 };
-        if (e.transactionType === '수입') categorySummary[cat].income += amountNum;
+        if (e.transactionType === '수입' || isTransfer) categorySummary[cat].income += amountNum;
         else categorySummary[cat].expense += amountNum;
       }
     }
