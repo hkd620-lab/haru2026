@@ -151,6 +151,9 @@ function persist() {
 // 러너가 저장 결과를 검증할 수 있게 DB 전체를 내보낸다(하네스 전용).
 (qa as any).dumpDb = () => JSON.parse(JSON.stringify([...docs]));
 
+// 러너가 "화면이 목록을 불러온 뒤 다른 기기에서 문서가 새로 생긴" 상황을 만들 수 있게 문서를 직접 넣는다(하네스 전용).
+(qa as any).seedDoc = (path: string, data: any) => { docs.set(path, JSON.parse(JSON.stringify(data))); persist(); };
+
 const listeners = new Set<() => void>();
 function notify() {
   queueMicrotask(() => listeners.forEach((l) => { try { l(); } catch { /* 리스너 오류는 앱 흐름과 무관 */ } }));
