@@ -617,19 +617,22 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
               </div>
               {/* 검색창 */}
               <form onSubmit={handleLawSearch} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    type="text"
-                    value={lawQuery}
-                    onChange={(e) => setLawQuery(e.target.value)}
-                    disabled={lawLoading || uploadingLawFiles}
-                    placeholder="예: 내 딸아이가 친구로부터 사이버 괴롭힘을 당하고 있어요 어떻게 하면 좋을까요?"
-                    style={{
-                      flex: 1, padding: '10px 12px', fontSize: 16,
-                      border: '1.5px solid #1A3C6E', borderRadius: 8,
-                      outline: 'none', backgroundColor: '#FEFBE8',
-                    }}
-                  />
+                <textarea
+                  rows={8}
+                  aria-label="하루LAW 질문"
+                  value={lawQuery}
+                  onChange={(e) => setLawQuery(e.target.value)}
+                  disabled={lawLoading || uploadingLawFiles}
+                  placeholder="예: 내 딸아이가 친구로부터 사이버 괴롭힘을 당하고 있어요 어떻게 하면 좋을까요?"
+                  style={{
+                    width: '100%', height: 235, minHeight: 235,
+                    boxSizing: 'border-box', resize: 'vertical',
+                    padding: '10px 12px', fontSize: 16, lineHeight: '24px',
+                    border: '1.5px solid #1A3C6E', borderRadius: 8,
+                    outline: 'none', backgroundColor: '#FEFBE8',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                   <button
                     type="button"
                     onClick={() => lawFileInputRef.current?.click()}
