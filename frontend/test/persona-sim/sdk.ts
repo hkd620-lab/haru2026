@@ -285,7 +285,16 @@ export const initializeFirestore = (..._a: any[]) => db;
 export const memoryLocalCache = () => ({});
 
 export async function getDoc(ref: DocRef) { return snapDoc(ref); }
-export async function getDocs(q: CollRef | QueryRef) { return snapQuery(q); }
+export async function getDocs(q: CollRef | QueryRef) {
+  // 러너가 window.__qa.failQueries = ['growthSubjects'] 처럼 지정한 컬렉션은 네트워크 오류처럼 실패시킨다(하네스 전용).
+  const path = (q instanceof QueryRef ? q.coll : q).path;
+  if (((qa as any).failQueries || []).some((part: string) => path.includes(part))) {
+    const e: any = new Error('Failed to get documents from server: the client is offline.');
+    e.code = 'unavailable';
+    throw e;
+  }
+  return snapQuery(q);
+}
 export const getDocsFromServer = getDocs;
 
 function applySet(path: string, data: any, merge?: boolean) {
