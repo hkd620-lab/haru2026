@@ -55,6 +55,11 @@ type SameNameChildLookup =
 async function findSameNameChildSubject(uid: string, name: string): Promise<SameNameChildLookup> {
   try {
     const snap = await getDocs(query(collection(db, 'users', uid, 'growthSubjects'), where('subjectType', '==', 'child')));
+    // 서버에 닿지 못하면 getDocs는 실패하지 않고 빈(또는 오래된) 캐시 결과를 돌려준다 — 이것도 "없음"이 아니라 "확인 못 함"으로 본다.
+    if (snap.metadata.fromCache) {
+      console.warn('같은 이름의 아이 확인 실패: 서버에 닿지 못해 캐시로만 응답');
+      return { status: 'error' };
+    }
     const subjects = snap.docs
       .map((docSnap) => {
         const data = docSnap.data() as any;
