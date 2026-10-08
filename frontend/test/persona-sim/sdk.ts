@@ -249,7 +249,9 @@ class DocSnap {
   get(field: string) { return clone(getField(this._d, field)); }
 }
 class QuerySnap {
-  constructor(public docs: DocSnap[]) {}
+  // 실제 SDK 의 QuerySnapshot.metadata 와 같은 모양 — 서버와 맞춰졌으면 fromCache=false, 서버에 닿지 못해 캐시로 답했으면 true
+  metadata: { fromCache: boolean; hasPendingWrites: boolean };
+  constructor(public docs: DocSnap[], fromCache = false) { this.metadata = { fromCache, hasPendingWrites: false }; }
   get size() { return this.docs.length; }
   get empty() { return this.docs.length === 0; }
   forEach(cb: (d: DocSnap) => void) { this.docs.forEach(cb); }
@@ -292,6 +294,11 @@ export async function getDocs(q: CollRef | QueryRef) {
     const e: any = new Error('Failed to get documents from server: the client is offline.');
     e.code = 'unavailable';
     throw e;
+  }
+  // window.__qa.cacheOnlyQueries = ['growthSubjects'] 처럼 지정한 컬렉션은 서버에 닿지 못한 오프라인처럼, 실패하지 않고 빈 캐시 결과(fromCache=true)로 답한다.
+  // 실제 SDK 도 오프라인이면 getDocs 를 거부하지 않고 이렇게 답한다(firebase 12.13.0 으로 닫힌 포트를 조회해 확인: size=0, fromCache=true).
+  if (((qa as any).cacheOnlyQueries || []).some((part: string) => path.includes(part))) {
+    return new QuerySnap([], true);
   }
   return snapQuery(q);
 }
