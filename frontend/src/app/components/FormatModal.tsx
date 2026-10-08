@@ -3652,8 +3652,8 @@ ${contentValues.slice(0, 4100)}`,
                 </span>}
               </div>
 
-              {/* 제목 입력 필드 — 독서사유는 reading_book_title 이 제목 역할이므로 숨김 */}
-              {format !== 'HARU주식관리' && format !== '독서사유' && !(isLedgerFormat && ledgerInputMode === 'period') && (
+              {/* 제목 입력 필드 — 독서사유는 reading_book_title 이 제목 역할이므로 숨김. 가계부는 저장 시 제목이 자동 생성되어 입력값이 쓰이지 않으므로 숨김 */}
+              {format !== 'HARU주식관리' && format !== '독서사유' && !isHouseholdFormat && !(isLedgerFormat && ledgerInputMode === 'period') && (
                 <div>
                   <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6, fontWeight: 600 }}>
                     📌 제목 <span style={{ color: '#ef4444', fontSize: 11 }}>*필수</span>
