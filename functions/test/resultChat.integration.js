@@ -914,6 +914,57 @@ async function run() {
   assert.strictEqual(genaiCalls.length, exhaustedDirectCalls);
   await assertThreadSearchUsage(exhaustedUser, 'law', 'haruraw_sayu', 1, 0);
 
+  // 하루LAW 재시도는 검색을 우선하되 기록·대화·법률 안전 지침과 호출 상한을 유지한다.
+  await resetResultChatRateLimit(USERS.developer);
+  await db.doc(`users/${USERS.developer}/records/law-retry`).set({
+    formats: ['HARUraw'], date: '2026-08-06',
+    haruraw_sayu: '민법 제750조의 일반적인 내용을 확인한 기능 테스트 기록입니다.',
+  });
+  await callable(USERS.developer, {
+    recordId: 'law-retry', sourceKey: 'haruraw_sayu',
+    question: '기록에 있는 민법 조문을 설명해줘.', searchPreference: 'record_only',
+  });
+  const lawRetryCallsBefore = countWebSearchCalls();
+  const lawRetryMonthlyBefore = await getMonthlyUsed(USERS.developer);
+  webSearchNotGroundedResponsesRemaining = 1;
+  const lawRetry = await callable(USERS.developer, {
+    recordId: 'law-retry', sourceKey: 'haruraw_sayu',
+    question: '현재 민법 제750조를 공식자료로 확인하고 위법 여부 판단의 한계를 설명해줘.',
+    searchPreference: 'web_confirmed',
+  });
+  const lawRetryCall = genaiCalls[genaiCalls.length - 1];
+  assert.strictEqual(countWebSearchCalls(), lawRetryCallsBefore + 2);
+  assert.strictEqual(lawRetryCall.model, 'gemini-3.1-flash-lite');
+  assert.strictEqual(lawRetryCall.maxOutputTokens, 1200);
+  assert.ok(lawRetryCall.contents.startsWith('[외부자료 검색 재시도]'));
+  assert.ok(lawRetryCall.contents.includes('첫 행동으로 반드시 Google Search'));
+  assert.ok(!lawRetryCall.contents.includes('기록에 담긴 사실관계와 관련 법조문 범위 안에서만 답한다'));
+  assert.ok(lawRetryCall.contents.includes('민법 제750조의 일반적인 내용을 확인한 기능 테스트 기록'));
+  assert.ok(lawRetryCall.contents.includes('기록에 있는 민법 조문을 설명해줘.'));
+  assert.ok(lawRetryCall.contents.includes('소송 전략을 단정하지 마세요'));
+  assert.ok(lawRetryCall.contents.includes('다음 단계로 넘어가는 조건'));
+  assert.ok(lawRetryCall.contents.includes('[질문 안전 지침]'));
+  assert.strictEqual(lawRetry.webSearchUsed, true);
+  assert.ok(lawRetry.sources.length > 0);
+  assert.strictEqual(await getMonthlyUsed(USERS.developer), lawRetryMonthlyBefore + 1);
+  await assertThreadSearchUsage(USERS.developer, 'law-retry', 'haruraw_sayu', 1, 0);
+
+  webSearchNotGroundedResponsesRemaining = 2;
+  const lawFailedCallsBefore = countWebSearchCalls();
+  const lawFailedMonthlyBefore = await getMonthlyUsed(USERS.developer);
+  const lawFailed = await callable(USERS.developer, {
+    recordId: 'law-retry', sourceKey: 'haruraw_sayu',
+    question: '현재 민법 제750조 관련 최신 판례를 확인해줘.', searchPreference: 'web_confirmed',
+  });
+  assert.strictEqual(lawFailed.failureReason, 'web_search_failed');
+  assert.strictEqual(countWebSearchCalls(), lawFailedCallsBefore + 2);
+  assert.strictEqual(await getMonthlyUsed(USERS.developer), lawFailedMonthlyBefore);
+  await assertThreadSearchUsage(USERS.developer, 'law-retry', 'haruraw_sayu', 1, 0);
+  const lawRetryMessages = await getMessages(USERS.developer, 'law-retry', 'haruraw_sayu');
+  assert.strictEqual(lawRetryMessages.length, 4);
+  assert.ok(!lawRetryMessages.some((message) => message.content.includes('최신 판례')));
+  await resetResultChatRateLimit(USERS.developer);
+
   webSearchNotGroundedResponsesRemaining = 1;
   const notGroundedMonthlyBefore = await getMonthlyUsed(USERS.developer);
   const retrySucceededCallsBefore = countWebSearchCalls();
