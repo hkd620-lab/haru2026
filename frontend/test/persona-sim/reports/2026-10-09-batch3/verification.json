@@ -1,0 +1,1301 @@
+{
+  "runId": "2026-10-08T23-09-48",
+  "appHead": "eb1cc0862928722d4efaa249a1cb6d80d87fc747",
+  "harnessBase": "c7c6c8e3c8cb38c840e0315f7351fff8cb87c4a3",
+  "smokeRunId": "2026-10-08T22-57-59",
+  "smoke": [
+    {
+      "id": "p14-ledger",
+      "steps": 19,
+      "failedSteps": 0,
+      "checks": 32,
+      "failedChecks": 8,
+      "findings": 6,
+      "durationMs": 48325,
+      "crashed": false,
+      "network": {
+        "blockedExternalCount": 0,
+        "hosts": []
+      },
+      "unknownCallables": [],
+      "pageErrors": []
+    },
+    {
+      "id": "p15-garden",
+      "steps": 25,
+      "failedSteps": 0,
+      "checks": 58,
+      "failedChecks": 4,
+      "findings": 4,
+      "durationMs": 42438,
+      "crashed": false,
+      "network": {
+        "blockedExternalCount": 0,
+        "hosts": []
+      },
+      "unknownCallables": [],
+      "pageErrors": []
+    },
+    {
+      "id": "p16-travel",
+      "steps": 23,
+      "failedSteps": 0,
+      "checks": 43,
+      "failedChecks": 3,
+      "findings": 4,
+      "durationMs": 36043,
+      "crashed": false,
+      "network": {
+        "blockedExternalCount": 0,
+        "hosts": []
+      },
+      "unknownCallables": [],
+      "pageErrors": []
+    }
+  ],
+  "results": [
+    {
+      "id": "p17-essay",
+      "format": "에세이",
+      "steps": [
+        {
+          "n": 1,
+          "name": "홈 → 에세이 → 프리미엄 6칸 작성",
+          "ok": true,
+          "ms": 7455,
+          "url": "/record",
+          "toasts": [],
+          "shot": "01-홈-에세이-프리미엄-6칸-작성.png"
+        },
+        {
+          "n": 2,
+          "name": "프리미엄 긴 글 모의 AI 한도 오류·입력 유지",
+          "ok": true,
+          "ms": 2413,
+          "url": "/record",
+          "toasts": [
+            "AI 연결에 실패했습니다.",
+            "에세이 AI 다듬기를 시작합니다... (PREMIUM 모드)"
+          ],
+          "shot": "03-프리미엄-긴-글-모의-AI-한도-오류-입력-유지.png"
+        },
+        {
+          "n": 3,
+          "name": "긴 프리미엄 원본 저장",
+          "ok": true,
+          "ms": 1385,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!",
+            "AI 연결에 실패했습니다.",
+            "에세이 AI 다듬기를 시작합니다... (PREMIUM 모드)"
+          ],
+          "shot": "04-긴-프리미엄-원본-저장.png"
+        },
+        {
+          "n": 4,
+          "name": "프리미엄 6칸 원본 저장 검증",
+          "ok": true,
+          "ms": 3,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!",
+            "AI 연결에 실패했습니다.",
+            "에세이 AI 다듬기를 시작합니다... (PREMIUM 모드)"
+          ],
+          "shot": "05-프리미엄-6칸-원본-저장-검증.png"
+        },
+        {
+          "n": 5,
+          "name": "4,400자 간편 기록 모의 AI 저장",
+          "ok": true,
+          "ms": 4875,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!",
+            "AI 다듬기 완료!",
+            "에세이 AI 다듬기를 시작합니다... (PREMIUM 모드)"
+          ],
+          "shot": "07-4-400자-간편-기록-모의-AI-저장.png"
+        },
+        {
+          "n": 6,
+          "name": "모의 AI 저장 후 원본·저장 경로 검증",
+          "ok": true,
+          "ms": 49,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!",
+            "AI 다듬기 완료!",
+            "에세이 AI 다듬기를 시작합니다... (PREMIUM 모드)"
+          ],
+          "shot": "08-모의-AI-저장-후-원본-저장-경로-검증.png"
+        },
+        {
+          "n": 7,
+          "name": "같은 날 6,000자 원본 저장",
+          "ok": true,
+          "ms": 4697,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "09-같은-날-6-000자-원본-저장.png"
+        },
+        {
+          "n": 8,
+          "name": "긴 글 원본과 같은 날 두 기록 보존 검증",
+          "ok": true,
+          "ms": 34,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "10-긴-글-원본과-같은-날-두-기록-보존-검증.png"
+        },
+        {
+          "n": 9,
+          "name": "재접속 에세이 목록 확인",
+          "ok": true,
+          "ms": 4109,
+          "url": "/sayu",
+          "toasts": [],
+          "shot": "11-재접속-에세이-목록-확인.png"
+        },
+        {
+          "n": 10,
+          "name": "격리 확인",
+          "ok": true,
+          "ms": 14,
+          "url": "/sayu",
+          "toasts": [],
+          "shot": "12-격리-확인.png"
+        }
+      ],
+      "checks": [
+        {
+          "step": "홈 → 에세이 → 프리미엄 6칸 작성",
+          "name": "6칸 입력 합계가 4,800자다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "프리미엄 긴 글 모의 AI 한도 오류·입력 유지",
+          "name": "모의 서버에서 5,000자 한도 오류가 반환된다",
+          "ok": true,
+          "detail": "callable 오류 코드와 모의 오류 메시지를 함께 확인"
+        },
+        {
+          "step": "프리미엄 긴 글 모의 AI 한도 오류·입력 유지",
+          "name": "한도 오류 안내가 글자 수 초과를 설명한다",
+          "ok": false,
+          "detail": "[\"AI 연결에 실패했습니다.\",\"에세이 AI 다듬기를 시작합니다... (PREMIUM 모드)\"]"
+        },
+        {
+          "step": "프리미엄 긴 글 모의 AI 한도 오류·입력 유지",
+          "name": "오류 후 essay_observation 입력 유지",
+          "ok": true,
+          "detail": "입력 800자"
+        },
+        {
+          "step": "프리미엄 긴 글 모의 AI 한도 오류·입력 유지",
+          "name": "오류 후 essay_impression 입력 유지",
+          "ok": true,
+          "detail": "입력 800자"
+        },
+        {
+          "step": "프리미엄 긴 글 모의 AI 한도 오류·입력 유지",
+          "name": "오류 후 essay_comparison 입력 유지",
+          "ok": true,
+          "detail": "입력 800자"
+        },
+        {
+          "step": "프리미엄 긴 글 모의 AI 한도 오류·입력 유지",
+          "name": "오류 후 essay_essence 입력 유지",
+          "ok": true,
+          "detail": "입력 800자"
+        },
+        {
+          "step": "프리미엄 긴 글 모의 AI 한도 오류·입력 유지",
+          "name": "오류 후 essay_closing 입력 유지",
+          "ok": true,
+          "detail": "입력 800자"
+        },
+        {
+          "step": "프리미엄 긴 글 모의 AI 한도 오류·입력 유지",
+          "name": "오류 후 essay_space 입력 유지",
+          "ok": true,
+          "detail": "입력 800자"
+        },
+        {
+          "step": "프리미엄 긴 글 모의 AI 한도 오류·입력 유지",
+          "name": "실패한 AI 처리로 기록이 저장되지 않는다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "프리미엄 6칸 원본 저장 검증",
+          "name": "기록 건수가 기대값과 같다",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "step": "프리미엄 6칸 원본 저장 검증",
+          "name": "입력한 제목으로 저장된다",
+          "ok": true,
+          "detail": "[\"벤치에서 배운 쉼 ✍️\"]"
+        },
+        {
+          "step": "프리미엄 6칸 원본 저장 검증",
+          "name": "저장 경로가 users/{uid}/records 아래다",
+          "ok": true,
+          "detail": "users/qa-p17-park-jeonghun/records/2026-10-03_1791030610085"
+        },
+        {
+          "step": "프리미엄 6칸 원본 저장 검증",
+          "name": "date가 YYYY-MM-DD와 기록한 날을 유지한다",
+          "ok": true,
+          "detail": "date=2026-10-03"
+        },
+        {
+          "step": "프리미엄 6칸 원본 저장 검증",
+          "name": "형식이 해당 형식 한 개로 저장된다",
+          "ok": true,
+          "detail": "[\"에세이\"]"
+        },
+        {
+          "step": "프리미엄 6칸 원본 저장 검증",
+          "name": "essay_observation 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 800자 / 입력 800자"
+        },
+        {
+          "step": "프리미엄 6칸 원본 저장 검증",
+          "name": "essay_impression 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 800자 / 입력 800자"
+        },
+        {
+          "step": "프리미엄 6칸 원본 저장 검증",
+          "name": "essay_comparison 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 800자 / 입력 800자"
+        },
+        {
+          "step": "프리미엄 6칸 원본 저장 검증",
+          "name": "essay_essence 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 800자 / 입력 800자"
+        },
+        {
+          "step": "프리미엄 6칸 원본 저장 검증",
+          "name": "essay_closing 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 800자 / 입력 800자"
+        },
+        {
+          "step": "프리미엄 6칸 원본 저장 검증",
+          "name": "essay_space 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 800자 / 입력 800자"
+        },
+        {
+          "step": "프리미엄 6칸 원본 저장 검증",
+          "name": "원본 본문을 SAYU 필드에 그대로 저장한다",
+          "ok": true,
+          "detail": "저장 4810자 / 기대 4810자"
+        },
+        {
+          "step": "4,400자 간편 기록 모의 AI 저장",
+          "name": "모의 AI 미리보기에 정해진 모의 응답이 표시된다",
+          "ok": true,
+          "detail": "미리보기 textarea의 value를 확인. fakes.ts 고정 응답과 대조하며 AI 품질 미평가"
+        },
+        {
+          "step": "모의 AI 저장 후 원본·저장 경로 검증",
+          "name": "기록 건수가 기대값과 같다",
+          "ok": true,
+          "detail": "2/2"
+        },
+        {
+          "step": "모의 AI 저장 후 원본·저장 경로 검증",
+          "name": "입력한 제목으로 저장된다",
+          "ok": true,
+          "detail": "[\"벤치에서 배운 쉼 ✍️\",\"회의 전의 10분\"]"
+        },
+        {
+          "step": "모의 AI 저장 후 원본·저장 경로 검증",
+          "name": "저장 경로가 users/{uid}/records 아래다",
+          "ok": true,
+          "detail": "users/qa-p17-park-jeonghun/records/2026-10-04_1791072003476"
+        },
+        {
+          "step": "모의 AI 저장 후 원본·저장 경로 검증",
+          "name": "date가 YYYY-MM-DD와 기록한 날을 유지한다",
+          "ok": true,
+          "detail": "date=2026-10-04"
+        },
+        {
+          "step": "모의 AI 저장 후 원본·저장 경로 검증",
+          "name": "형식이 해당 형식 한 개로 저장된다",
+          "ok": true,
+          "detail": "[\"에세이\"]"
+        },
+        {
+          "step": "모의 AI 저장 후 원본·저장 경로 검증",
+          "name": "essay_simple 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 4400자 / 입력 4400자"
+        },
+        {
+          "step": "모의 AI 저장 후 원본·저장 경로 검증",
+          "name": "모의 다듬기 결과가 SAYU 필드에 저장된다",
+          "ok": true,
+          "detail": "고정 모의 응답과 대조. 실제 AI 품질은 평가하지 않음"
+        },
+        {
+          "step": "긴 글 원본과 같은 날 두 기록 보존 검증",
+          "name": "기록 건수가 기대값과 같다",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "step": "긴 글 원본과 같은 날 두 기록 보존 검증",
+          "name": "입력한 제목으로 저장된다",
+          "ok": true,
+          "detail": "[\"벤치에서 배운 쉼 ✍️\",\"회의 전의 10분\",\"긴 글을 원본으로 남기기\"]"
+        },
+        {
+          "step": "긴 글 원본과 같은 날 두 기록 보존 검증",
+          "name": "저장 경로가 users/{uid}/records 아래다",
+          "ok": true,
+          "detail": "users/qa-p17-park-jeonghun/records/2026-10-04_1791118803398"
+        },
+        {
+          "step": "긴 글 원본과 같은 날 두 기록 보존 검증",
+          "name": "date가 YYYY-MM-DD와 기록한 날을 유지한다",
+          "ok": true,
+          "detail": "date=2026-10-04"
+        },
+        {
+          "step": "긴 글 원본과 같은 날 두 기록 보존 검증",
+          "name": "형식이 해당 형식 한 개로 저장된다",
+          "ok": true,
+          "detail": "[\"에세이\"]"
+        },
+        {
+          "step": "긴 글 원본과 같은 날 두 기록 보존 검증",
+          "name": "essay_simple 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 6000자 / 입력 6000자"
+        },
+        {
+          "step": "긴 글 원본과 같은 날 두 기록 보존 검증",
+          "name": "원본 본문을 SAYU 필드에 그대로 저장한다",
+          "ok": true,
+          "detail": "저장 6000자 / 기대 6000자"
+        },
+        {
+          "step": "긴 글 원본과 같은 날 두 기록 보존 검증",
+          "name": "같은 날 두 기록이 각각 남는다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "재접속 에세이 목록 확인",
+          "name": "재접속 후 목록 건수가 저장 건수와 같다",
+          "ok": true,
+          "detail": "이달 결과 3건"
+        },
+        {
+          "step": "재접속 에세이 목록 확인",
+          "name": "재접속 후 목록에 벤치에서 배운 쉼 ✍️가 있다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "재접속 에세이 목록 확인",
+          "name": "재접속 후 목록에 회의 전의 10분가 있다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "재접속 에세이 목록 확인",
+          "name": "재접속 후 목록에 긴 글을 원본으로 남기기가 있다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "격리 확인",
+          "name": "외부 요청 차단 집계가 0이다",
+          "ok": true,
+          "detail": "차단 0건"
+        },
+        {
+          "step": "격리 확인",
+          "name": "모의되지 않은 callable이 없다",
+          "ok": true,
+          "detail": "[]"
+        },
+        {
+          "step": "격리 확인",
+          "name": "페이지 실행 오류가 없다",
+          "ok": true,
+          "detail": "[]"
+        }
+      ],
+      "findings": [
+        {
+          "step": "프리미엄 긴 글 모의 AI 한도 오류·입력 유지",
+          "shot": "02-증거-기존-F19-에세이.png",
+          "severity": "경미",
+          "existingId": "F-19",
+          "title": "긴 글에서 AI 다듬기가 안 될 때 \"AI 연결에 실패했습니다.\"라고만 나와 원인(글자 수 초과)을 알 수 없다",
+          "detail": "기존 F-19 재현. 에세이 6칸 본문 4,800자에 안내문이 붙어 모의 서버가 5,000자 한도 오류를 반환했지만 안내는 [\"AI 연결에 실패했습니다.\",\"에세이 AI 다듬기를 시작합니다... (PREMIUM 모드)\"]였다. 앱 소스는 수정하지 않았다."
+        }
+      ],
+      "durationMs": 26404,
+      "crashed": false,
+      "network": {
+        "blockedExternalCount": 0,
+        "hosts": []
+      },
+      "qa": {
+        "calls": [
+          {
+            "name": "getMonthlyAiQuotaStatus",
+            "ok": true
+          },
+          {
+            "name": "polishContent",
+            "ok": false,
+            "error": "functions/invalid-argument"
+          },
+          {
+            "name": "recordPaidServiceUsage",
+            "ok": true
+          },
+          {
+            "name": "getMonthlyAiQuotaStatus",
+            "ok": true
+          },
+          {
+            "name": "polishContent",
+            "ok": true
+          },
+          {
+            "name": "recordPaidServiceUsage",
+            "ok": true
+          },
+          {
+            "name": "recordPaidServiceUsage",
+            "ok": true
+          }
+        ],
+        "unknownCallables": [],
+        "uploads": [],
+        "writeCount": 4
+      },
+      "pageErrors": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "AI 처리 실패: Error: 텍스트는 5000자 이내여야 합니다.\n    at fnError (http://127.0.0.1:18762/fakes.ts:6:13)\n    at polishContent (http://127.0.0.1:18762/fakes.ts:49:32)\n    at fakeCallable (http://127.0.0.1:18762/fakes.ts:74:14)\n    at async http://127.0.0.1:18762/sdk.ts:534:17\n    at async handlePolishWithMode (http://127.0.0.1:18762/@fs/private/tmp/haru-persona-batch3/frontend/src/app/components/FormatModal.tsx:1093:22)"
+        }
+      ],
+      "recordCount": 3
+    },
+    {
+      "id": "p18-memo",
+      "format": "메모",
+      "steps": [
+        {
+          "n": 1,
+          "name": "홈 → 메모 → 제목만 입력 후 저장 시도",
+          "ok": true,
+          "ms": 4716,
+          "url": "/record",
+          "toasts": [
+            "저장할 내용이 없습니다. 먼저 작성해주세요.",
+            "저장할 내용이 없습니다. 먼저 작성해주세요."
+          ],
+          "shot": "01-홈-메모-제목만-입력-후-저장-시도.png"
+        },
+        {
+          "n": 2,
+          "name": "한 글자 메모 저장",
+          "ok": true,
+          "ms": 1334,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!",
+            "저장할 내용이 없습니다. 먼저 작성해주세요.",
+            "저장할 내용이 없습니다. 먼저 작성해주세요."
+          ],
+          "shot": "02-한-글자-메모-저장.png"
+        },
+        {
+          "n": 3,
+          "name": "한 글자 메모 저장 검증",
+          "ok": true,
+          "ms": 1,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!",
+            "저장할 내용이 없습니다. 먼저 작성해주세요.",
+            "저장할 내용이 없습니다. 먼저 작성해주세요."
+          ],
+          "shot": "03-한-글자-메모-저장-검증.png"
+        },
+        {
+          "n": 4,
+          "name": "같은 날 이모지 하나만 저장",
+          "ok": true,
+          "ms": 4046,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "04-같은-날-이모지-하나만-저장.png"
+        },
+        {
+          "n": 5,
+          "name": "이모지와 같은 날 메모 보존 검증",
+          "ok": true,
+          "ms": 1,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "05-이모지와-같은-날-메모-보존-검증.png"
+        },
+        {
+          "n": 6,
+          "name": "특수문자·줄바꿈 할 일 메모 저장",
+          "ok": true,
+          "ms": 3995,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "06-특수문자-줄바꿈-할-일-메모-저장.png"
+        },
+        {
+          "n": 7,
+          "name": "할 일 메모 저장 검증",
+          "ok": true,
+          "ms": 2,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "07-할-일-메모-저장-검증.png"
+        },
+        {
+          "n": 8,
+          "name": "프리미엄 메모와 다음 행동 저장",
+          "ok": true,
+          "ms": 4186,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "08-프리미엄-메모와-다음-행동-저장.png"
+        },
+        {
+          "n": 9,
+          "name": "프리미엄 메모 저장 검증",
+          "ok": true,
+          "ms": 2,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "09-프리미엄-메모-저장-검증.png"
+        },
+        {
+          "n": 10,
+          "name": "재접속 메모 목록 확인",
+          "ok": true,
+          "ms": 4053,
+          "url": "/sayu",
+          "toasts": [],
+          "shot": "10-재접속-메모-목록-확인.png"
+        },
+        {
+          "n": 11,
+          "name": "격리 확인",
+          "ok": true,
+          "ms": 2,
+          "url": "/sayu",
+          "toasts": [],
+          "shot": "11-격리-확인.png"
+        }
+      ],
+      "checks": [
+        {
+          "step": "홈 → 메모 → 제목만 입력 후 저장 시도",
+          "name": "내용이 빈 메모는 저장되지 않는다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "홈 → 메모 → 제목만 입력 후 저장 시도",
+          "name": "내용을 입력하라는 안내가 나온다",
+          "ok": true,
+          "detail": "[\"저장할 내용이 없습니다. 먼저 작성해주세요.\"]"
+        },
+        {
+          "step": "홈 → 메모 → 제목만 입력 후 저장 시도",
+          "name": "공백만 있는 메모는 저장되지 않는다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "한 글자 메모 저장 검증",
+          "name": "기록 건수가 기대값과 같다",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "step": "한 글자 메모 저장 검증",
+          "name": "입력한 제목으로 저장된다",
+          "ok": true,
+          "detail": "[\"한 글자 메모\"]"
+        },
+        {
+          "step": "한 글자 메모 저장 검증",
+          "name": "저장 경로가 users/{uid}/records 아래다",
+          "ok": true,
+          "detail": "users/qa-p18-im-subin/records/2026-10-03_1791014404874"
+        },
+        {
+          "step": "한 글자 메모 저장 검증",
+          "name": "date가 YYYY-MM-DD와 기록한 날을 유지한다",
+          "ok": true,
+          "detail": "date=2026-10-03"
+        },
+        {
+          "step": "한 글자 메모 저장 검증",
+          "name": "형식이 해당 형식 한 개로 저장된다",
+          "ok": true,
+          "detail": "[\"메모\"]"
+        },
+        {
+          "step": "한 글자 메모 저장 검증",
+          "name": "memo_simple 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 1자 / 입력 1자"
+        },
+        {
+          "step": "한 글자 메모 저장 검증",
+          "name": "원본 본문을 SAYU 필드에 그대로 저장한다",
+          "ok": true,
+          "detail": "저장 1자 / 기대 1자"
+        },
+        {
+          "step": "이모지와 같은 날 메모 보존 검증",
+          "name": "기록 건수가 기대값과 같다",
+          "ok": true,
+          "detail": "2/2"
+        },
+        {
+          "step": "이모지와 같은 날 메모 보존 검증",
+          "name": "입력한 제목으로 저장된다",
+          "ok": true,
+          "detail": "[\"한 글자 메모\",\"기분 🙂\"]"
+        },
+        {
+          "step": "이모지와 같은 날 메모 보존 검증",
+          "name": "저장 경로가 users/{uid}/records 아래다",
+          "ok": true,
+          "detail": "users/qa-p18-im-subin/records/2026-10-03_1791021602750"
+        },
+        {
+          "step": "이모지와 같은 날 메모 보존 검증",
+          "name": "date가 YYYY-MM-DD와 기록한 날을 유지한다",
+          "ok": true,
+          "detail": "date=2026-10-03"
+        },
+        {
+          "step": "이모지와 같은 날 메모 보존 검증",
+          "name": "형식이 해당 형식 한 개로 저장된다",
+          "ok": true,
+          "detail": "[\"메모\"]"
+        },
+        {
+          "step": "이모지와 같은 날 메모 보존 검증",
+          "name": "memo_simple 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 2자 / 입력 2자"
+        },
+        {
+          "step": "이모지와 같은 날 메모 보존 검증",
+          "name": "원본 본문을 SAYU 필드에 그대로 저장한다",
+          "ok": true,
+          "detail": "저장 2자 / 기대 2자"
+        },
+        {
+          "step": "할 일 메모 저장 검증",
+          "name": "기록 건수가 기대값과 같다",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "step": "할 일 메모 저장 검증",
+          "name": "입력한 제목으로 저장된다",
+          "ok": true,
+          "detail": "[\"한 글자 메모\",\"기분 🙂\",\"수행평가 할 일 ✅\"]"
+        },
+        {
+          "step": "할 일 메모 저장 검증",
+          "name": "저장 경로가 users/{uid}/records 아래다",
+          "ok": true,
+          "detail": "users/qa-p18-im-subin/records/2026-10-04_1791117002734"
+        },
+        {
+          "step": "할 일 메모 저장 검증",
+          "name": "date가 YYYY-MM-DD와 기록한 날을 유지한다",
+          "ok": true,
+          "detail": "date=2026-10-04"
+        },
+        {
+          "step": "할 일 메모 저장 검증",
+          "name": "형식이 해당 형식 한 개로 저장된다",
+          "ok": true,
+          "detail": "[\"메모\"]"
+        },
+        {
+          "step": "할 일 메모 저장 검증",
+          "name": "memo_simple 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 54자 / 입력 54자"
+        },
+        {
+          "step": "할 일 메모 저장 검증",
+          "name": "원본 본문을 SAYU 필드에 그대로 저장한다",
+          "ok": true,
+          "detail": "저장 54자 / 기대 54자"
+        },
+        {
+          "step": "프리미엄 메모 저장 검증",
+          "name": "기록 건수가 기대값과 같다",
+          "ok": true,
+          "detail": "4/4"
+        },
+        {
+          "step": "프리미엄 메모 저장 검증",
+          "name": "입력한 제목으로 저장된다",
+          "ok": true,
+          "detail": "[\"한 글자 메모\",\"기분 🙂\",\"수행평가 할 일 ✅\",\"다음 행동 메모\"]"
+        },
+        {
+          "step": "프리미엄 메모 저장 검증",
+          "name": "저장 경로가 users/{uid}/records 아래다",
+          "ok": true,
+          "detail": "users/qa-p18-im-subin/records/2026-10-05_1791203402879"
+        },
+        {
+          "step": "프리미엄 메모 저장 검증",
+          "name": "date가 YYYY-MM-DD와 기록한 날을 유지한다",
+          "ok": true,
+          "detail": "date=2026-10-05"
+        },
+        {
+          "step": "프리미엄 메모 저장 검증",
+          "name": "형식이 해당 형식 한 개로 저장된다",
+          "ok": true,
+          "detail": "[\"메모\"]"
+        },
+        {
+          "step": "프리미엄 메모 저장 검증",
+          "name": "memo_title 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 8자 / 입력 8자"
+        },
+        {
+          "step": "프리미엄 메모 저장 검증",
+          "name": "memo_content 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 27자 / 입력 27자"
+        },
+        {
+          "step": "프리미엄 메모 저장 검증",
+          "name": "memo_action 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 36자 / 입력 36자"
+        },
+        {
+          "step": "프리미엄 메모 저장 검증",
+          "name": "memo_space 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 10자 / 입력 10자"
+        },
+        {
+          "step": "프리미엄 메모 저장 검증",
+          "name": "원본 본문을 SAYU 필드에 그대로 저장한다",
+          "ok": true,
+          "detail": "저장 87자 / 기대 87자"
+        },
+        {
+          "step": "재접속 메모 목록 확인",
+          "name": "재접속 후 목록 건수가 저장 건수와 같다",
+          "ok": true,
+          "detail": "이달 결과 4건"
+        },
+        {
+          "step": "재접속 메모 목록 확인",
+          "name": "재접속 후 목록에 한 글자 메모가 있다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "재접속 메모 목록 확인",
+          "name": "재접속 후 목록에 기분 🙂가 있다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "재접속 메모 목록 확인",
+          "name": "재접속 후 목록에 수행평가 할 일 ✅가 있다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "재접속 메모 목록 확인",
+          "name": "재접속 후 목록에 다음 행동 메모가 있다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "격리 확인",
+          "name": "외부 요청 차단 집계가 0이다",
+          "ok": true,
+          "detail": "차단 0건"
+        },
+        {
+          "step": "격리 확인",
+          "name": "모의되지 않은 callable이 없다",
+          "ok": true,
+          "detail": "[]"
+        },
+        {
+          "step": "격리 확인",
+          "name": "페이지 실행 오류가 없다",
+          "ok": true,
+          "detail": "[]"
+        }
+      ],
+      "findings": [],
+      "durationMs": 23226,
+      "crashed": false,
+      "network": {
+        "blockedExternalCount": 0,
+        "hosts": []
+      },
+      "qa": {
+        "calls": [
+          {
+            "name": "recordPaidServiceUsage",
+            "ok": true
+          },
+          {
+            "name": "recordPaidServiceUsage",
+            "ok": true
+          },
+          {
+            "name": "recordPaidServiceUsage",
+            "ok": true
+          },
+          {
+            "name": "recordPaidServiceUsage",
+            "ok": true
+          }
+        ],
+        "unknownCallables": [],
+        "uploads": [],
+        "writeCount": 5
+      },
+      "pageErrors": [],
+      "console": [],
+      "recordCount": 4
+    },
+    {
+      "id": "p19-work",
+      "format": "업무일지",
+      "steps": [
+        {
+          "n": 1,
+          "name": "홈 → 업무일지 → 프리미엄 6칸 작성",
+          "ok": true,
+          "ms": 3838,
+          "url": "/record",
+          "toasts": [],
+          "shot": "01-홈-업무일지-프리미엄-6칸-작성.png"
+        },
+        {
+          "n": 2,
+          "name": "업무일지 프리미엄 원본 저장",
+          "ok": true,
+          "ms": 1340,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "02-업무일지-프리미엄-원본-저장.png"
+        },
+        {
+          "n": 3,
+          "name": "시간표·줄바꿈·6칸 저장 검증",
+          "ok": true,
+          "ms": 1,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "03-시간표-줄바꿈-6칸-저장-검증.png"
+        },
+        {
+          "n": 4,
+          "name": "2026-10-03 23:59 간편 업무일지 저장",
+          "ok": true,
+          "ms": 4486,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "04-2026-10-03-23-59-간편-업무일지-저장.png"
+        },
+        {
+          "n": 5,
+          "name": "23:59 시간·본문·날짜 검증",
+          "ok": true,
+          "ms": 1,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "05-23-59-시간-본문-날짜-검증.png"
+        },
+        {
+          "n": 6,
+          "name": "2026-10-04 00:05 간편 업무일지 저장",
+          "ok": true,
+          "ms": 4010,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "06-2026-10-04-00-05-간편-업무일지-저장.png"
+        },
+        {
+          "n": 7,
+          "name": "00:05 시간·본문·날짜 검증",
+          "ok": true,
+          "ms": 1,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "07-00-05-시간-본문-날짜-검증.png"
+        },
+        {
+          "n": 8,
+          "name": "같은 날 두 업무일지가 덮어쓰이지 않는다",
+          "ok": true,
+          "ms": 1,
+          "url": "/sayu",
+          "toasts": [
+            "SAYU-나의 기록에 저장했습니다.",
+            "내용이 저장되었습니다!"
+          ],
+          "shot": "08-같은-날-두-업무일지가-덮어쓰이지-않는다.png"
+        },
+        {
+          "n": 9,
+          "name": "재접속 업무일지 목록 확인",
+          "ok": true,
+          "ms": 4277,
+          "url": "/sayu",
+          "toasts": [],
+          "shot": "09-재접속-업무일지-목록-확인.png"
+        },
+        {
+          "n": 10,
+          "name": "격리 확인",
+          "ok": true,
+          "ms": 2,
+          "url": "/sayu",
+          "toasts": [],
+          "shot": "10-격리-확인.png"
+        }
+      ],
+      "checks": [
+        {
+          "step": "시간표·줄바꿈·6칸 저장 검증",
+          "name": "기록 건수가 기대값과 같다",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "step": "시간표·줄바꿈·6칸 저장 검증",
+          "name": "입력한 제목으로 저장된다",
+          "ok": true,
+          "detail": "[\"배포 점검 (09:00~18:30)\"]"
+        },
+        {
+          "step": "시간표·줄바꿈·6칸 저장 검증",
+          "name": "저장 경로가 users/{uid}/records 아래다",
+          "ok": true,
+          "detail": "users/qa-p19-kang-dohyeon/records/2026-10-03_1791020403964"
+        },
+        {
+          "step": "시간표·줄바꿈·6칸 저장 검증",
+          "name": "date가 YYYY-MM-DD와 기록한 날을 유지한다",
+          "ok": true,
+          "detail": "date=2026-10-03"
+        },
+        {
+          "step": "시간표·줄바꿈·6칸 저장 검증",
+          "name": "형식이 해당 형식 한 개로 저장된다",
+          "ok": true,
+          "detail": "[\"업무일지\"]"
+        },
+        {
+          "step": "시간표·줄바꿈·6칸 저장 검증",
+          "name": "work_schedule 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 32자 / 입력 32자"
+        },
+        {
+          "step": "시간표·줄바꿈·6칸 저장 검증",
+          "name": "work_result 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 39자 / 입력 39자"
+        },
+        {
+          "step": "시간표·줄바꿈·6칸 저장 검증",
+          "name": "work_pending 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 28자 / 입력 28자"
+        },
+        {
+          "step": "시간표·줄바꿈·6칸 저장 검증",
+          "name": "work_metric 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 28자 / 입력 28자"
+        },
+        {
+          "step": "시간표·줄바꿈·6칸 저장 검증",
+          "name": "work_rating 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 15자 / 입력 15자"
+        },
+        {
+          "step": "시간표·줄바꿈·6칸 저장 검증",
+          "name": "work_space 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 25자 / 입력 25자"
+        },
+        {
+          "step": "시간표·줄바꿈·6칸 저장 검증",
+          "name": "원본 본문을 SAYU 필드에 그대로 저장한다",
+          "ok": true,
+          "detail": "저장 177자 / 기대 177자"
+        },
+        {
+          "step": "23:59 시간·본문·날짜 검증",
+          "name": "기록 건수가 기대값과 같다",
+          "ok": true,
+          "detail": "2/2"
+        },
+        {
+          "step": "23:59 시간·본문·날짜 검증",
+          "name": "입력한 제목으로 저장된다",
+          "ok": true,
+          "detail": "[\"배포 점검 (09:00~18:30)\",\"23:59 업무 마무리\"]"
+        },
+        {
+          "step": "23:59 시간·본문·날짜 검증",
+          "name": "저장 경로가 users/{uid}/records 아래다",
+          "ok": true,
+          "detail": "users/qa-p19-kang-dohyeon/records/2026-10-03_1791039543053"
+        },
+        {
+          "step": "23:59 시간·본문·날짜 검증",
+          "name": "date가 YYYY-MM-DD와 기록한 날을 유지한다",
+          "ok": true,
+          "detail": "date=2026-10-03"
+        },
+        {
+          "step": "23:59 시간·본문·날짜 검증",
+          "name": "형식이 해당 형식 한 개로 저장된다",
+          "ok": true,
+          "detail": "[\"업무일지\"]"
+        },
+        {
+          "step": "23:59 시간·본문·날짜 검증",
+          "name": "work_simple 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 48자 / 입력 48자"
+        },
+        {
+          "step": "23:59 시간·본문·날짜 검증",
+          "name": "원본 본문을 SAYU 필드에 그대로 저장한다",
+          "ok": true,
+          "detail": "저장 48자 / 기대 48자"
+        },
+        {
+          "step": "00:05 시간·본문·날짜 검증",
+          "name": "기록 건수가 기대값과 같다",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "step": "00:05 시간·본문·날짜 검증",
+          "name": "입력한 제목으로 저장된다",
+          "ok": true,
+          "detail": "[\"배포 점검 (09:00~18:30)\",\"23:59 업무 마무리\",\"00:05 야간 점검\"]"
+        },
+        {
+          "step": "00:05 시간·본문·날짜 검증",
+          "name": "저장 경로가 users/{uid}/records 아래다",
+          "ok": true,
+          "detail": "users/qa-p19-kang-dohyeon/records/2026-10-04_1791039902713"
+        },
+        {
+          "step": "00:05 시간·본문·날짜 검증",
+          "name": "date가 YYYY-MM-DD와 기록한 날을 유지한다",
+          "ok": true,
+          "detail": "date=2026-10-04"
+        },
+        {
+          "step": "00:05 시간·본문·날짜 검증",
+          "name": "형식이 해당 형식 한 개로 저장된다",
+          "ok": true,
+          "detail": "[\"업무일지\"]"
+        },
+        {
+          "step": "00:05 시간·본문·날짜 검증",
+          "name": "work_simple 입력값이 그대로 저장된다",
+          "ok": true,
+          "detail": "저장 51자 / 입력 51자"
+        },
+        {
+          "step": "00:05 시간·본문·날짜 검증",
+          "name": "원본 본문을 SAYU 필드에 그대로 저장한다",
+          "ok": true,
+          "detail": "저장 51자 / 기대 51자"
+        },
+        {
+          "step": "같은 날 두 업무일지가 덮어쓰이지 않는다",
+          "name": "10월 3일 기록 2건이 각각 남는다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "재접속 업무일지 목록 확인",
+          "name": "재접속 후 목록 건수가 저장 건수와 같다",
+          "ok": true,
+          "detail": "이달 결과 3건"
+        },
+        {
+          "step": "재접속 업무일지 목록 확인",
+          "name": "재접속 후 목록에 배포 점검 (09:00~18:30)가 있다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "재접속 업무일지 목록 확인",
+          "name": "재접속 후 목록에 23:59 업무 마무리가 있다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "재접속 업무일지 목록 확인",
+          "name": "재접속 후 목록에 00:05 야간 점검가 있다",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "step": "격리 확인",
+          "name": "외부 요청 차단 집계가 0이다",
+          "ok": true,
+          "detail": "차단 0건"
+        },
+        {
+          "step": "격리 확인",
+          "name": "모의되지 않은 callable이 없다",
+          "ok": true,
+          "detail": "[]"
+        },
+        {
+          "step": "격리 확인",
+          "name": "페이지 실행 오류가 없다",
+          "ok": true,
+          "detail": "[]"
+        }
+      ],
+      "findings": [],
+      "durationMs": 18682,
+      "crashed": false,
+      "network": {
+        "blockedExternalCount": 0,
+        "hosts": []
+      },
+      "qa": {
+        "calls": [
+          {
+            "name": "recordPaidServiceUsage",
+            "ok": true
+          },
+          {
+            "name": "recordPaidServiceUsage",
+            "ok": true
+          },
+          {
+            "name": "recordPaidServiceUsage",
+            "ok": true
+          }
+        ],
+        "unknownCallables": [],
+        "uploads": [],
+        "writeCount": 4
+      },
+      "pageErrors": [],
+      "console": [],
+      "recordCount": 3
+    }
+  ],
+  "discardedScriptRuns": [
+    "2026-10-08T23-01-35",
+    "2026-10-08T23-02-38",
+    "2026-10-08T23-04-18"
+  ],
+  "checkedFiles": [
+    "batch3-helpers.mjs",
+    "p17-essay.mjs",
+    "p18-memo.mjs",
+    "p19-work.mjs"
+  ]
+}

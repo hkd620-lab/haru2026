@@ -1,0 +1,26 @@
+{
+  "runId": "2026-10-08T23-09-48",
+  "findings": [
+    {
+      "id": "F-19",
+      "severity": "경미",
+      "title": "긴 글에서 AI 다듬기가 안 될 때 \"AI 연결에 실패했습니다.\"라고만 나와 원인(글자 수 초과)을 알 수 없다",
+      "detail": "기존 F-19 재현. 에세이 6칸 본문 4,800자에 안내문이 붙어 모의 서버가 5,000자 한도 오류를 반환했지만 안내는 [\"AI 연결에 실패했습니다.\",\"에세이 AI 다듬기를 시작합니다... (PREMIUM 모드)\"]였다. 앱 소스는 수정하지 않았다.",
+      "personaId": "p17-essay",
+      "format": "에세이",
+      "step": "프리미엄 긴 글 모의 AI 한도 오류·입력 유지",
+      "img": "img/F-19.png",
+      "existing": true
+    }
+  ],
+  "appHead": "eb1cc0862928722d4efaa249a1cb6d80d87fc747",
+  "harnessBase": "c7c6c8e3c8cb38c840e0315f7351fff8cb87c4a3",
+  "nextFindingId": "F-26",
+  "coveredCells": [
+    "에세이",
+    "메모",
+    "업무일지"
+  ],
+  "remainingCells": 13,
+  "validation": "새 MJS 4개 node --check 통과; 실제 격리 3칸 실행; git diff --check; 앱 소스·설정·Functions 변경 없음"
+}
