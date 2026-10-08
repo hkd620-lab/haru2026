@@ -13,6 +13,8 @@ import { getOrigin } from '../services/v2Origin';
 import { toast } from 'sonner';
 import { useSensitiveConsent } from '../hooks/useSensitiveConsent';
 import { SensitiveConsentGate } from '../components/SensitiveConsentGate';
+import { findSameNameGrowthSubject, growthSubjectOptionLabel } from '../utils/growthSubject';
+import { findSameNameChildSubject } from '../services/growthSubjectLookup';
 
 type GrowthSubject = {
   id: string;
@@ -107,8 +109,11 @@ function ChildHealthGrowthSession() {
   }, [user?.uid, hasConsent]);
 
   const selectedSubject = subjects.find((s) => s.id === selectedId);
-  const effectiveBirthdate = selectedSubject?.birthdate || birthdate;
-  const effectiveGender = selectedSubject?.gender || gender || undefined;
+  // "새 아이 이름 입력"에 이미 등록된 아이의 이름을 쓰면 새로 만들지 않고 그 아이에 이어서 기록한다(목록에서 고른 것과 같게 다룬다)
+  const sameNameSubject = selectedSubject ? undefined : findSameNameGrowthSubject(subjects, newName);
+  const matchedSubject = selectedSubject || sameNameSubject;
+  const effectiveBirthdate = matchedSubject?.birthdate || birthdate;
+  const effectiveGender = matchedSubject?.gender || gender || undefined;
 
   // 백분위 계산
   const ageMonths = effectiveBirthdate ? calcAgeInMonths(effectiveBirthdate, measuredate) : null;
@@ -189,10 +194,39 @@ function ChildHealthGrowthSession() {
         toast.success('저장한 성장기록의 대상 연결을 완료했습니다.');
         return;
       }
+      // 아이를 이름만 써서 새로 추가하는 경우, 저장 직전에 같은 이름의 아이가 이미 있는지 다시 확인한다 —
+      // 대상 목록을 불러오기 전에 저장했거나 다른 기기에서 막 등록한 경우에도 같은 아이가 둘로 갈라지지 않게 한다
+      let existingSubject: { id: string; name: string; birthdate?: string; gender?: GrowthGender } | undefined = matchedSubject;
+      if (!existingSubject) {
+        const lookup = await findSameNameChildSubject(user.uid, subjectName);
+        if (!isCurrentSession()) return;
+        // 확인하지 못했다면(네트워크 오류·오프라인 등) "같은 이름이 없다"고 보지 않고 저장을 멈춘다 — 그대로 저장하면 같은 아이가 둘로 갈라질 수 있다
+        if (lookup.status === 'error') {
+          toast.error('같은 이름의 아이가 이미 있는지 확인하지 못했어요. 네트워크를 확인하고 다시 저장해 주세요.');
+          return;
+        }
+        if (lookup.status === 'found') {
+          // 입력한 생년월일·성별이 이미 등록된 아이의 값과 다르면(대상 목록을 불러오기 전에 저장한 경우 등) 화면의 성장 분석과
+          // 저장 값이 어긋나므로 조용히 바꿔 저장하지 않고 저장을 멈춰 확인을 요청한다
+          if (
+            (birthdate && lookup.subject.birthdate && birthdate !== lookup.subject.birthdate) ||
+            (gender && lookup.subject.gender && gender !== lookup.subject.gender)
+          ) {
+            toast.error(`이미 등록된 "${lookup.subject.name}"의 생년월일·성별과 입력한 값이 달라요. 아이 선택에서 "${lookup.subject.name}"를 고르거나 입력값을 확인해 주세요.`);
+            return;
+          }
+          existingSubject = lookup.subject;
+        }
+      }
+      const isExistingSubject = Boolean(selectedId || existingSubject);
       setGrowthSaveStatus('idle');
       setSavedGrowthRecordId(null);
       const today = getTodayStr();
-      const subjectId = selectedId || doc(collection(db, 'users', user.uid, 'growthSubjects')).id;
+      const saveName = existingSubject?.name || subjectName;
+      const subjectId = selectedId || existingSubject?.id || doc(collection(db, 'users', user.uid, 'growthSubjects')).id;
+      // 이미 있는 아이에 이어서 기록할 때는 그 아이의 생년월일·성별을 우선한다(위에서 서로 다른 값은 걸러냈으므로 비어 있던 쪽만 채워진다)
+      const saveBirthdate = existingSubject?.birthdate || birthdate;
+      const saveGender = existingSubject?.gender || gender || undefined;
       const recordFields: Record<string, string> = {
         child_measuredate: measuredate,
         ...(height ? { child_height: height } : {}),
@@ -208,9 +242,9 @@ function ChildHealthGrowthSession() {
         sourceAgent: 'HARU우리아이건강돌봄',
         growthSubjectId: subjectId,
         growthSubjectType: 'child',
-        growthSubjectName: subjectName,
-        ...(effectiveBirthdate ? { growthSubjectBirthdate: effectiveBirthdate } : {}),
-        ...(effectiveGender ? { growthSubjectGender: effectiveGender } : {}),
+        growthSubjectName: saveName,
+        ...(saveBirthdate ? { growthSubjectBirthdate: saveBirthdate } : {}),
+        ...(saveGender ? { growthSubjectGender: saveGender } : {}),
         ...recordFields,
       });
       if (!isCurrentSession()) return;
@@ -224,10 +258,10 @@ function ChildHealthGrowthSession() {
           doc(db, 'users', user.uid, 'growthSubjects', subjectId),
           {
             subjectType: 'child',
-            name: subjectName,
-            ...(effectiveBirthdate ? { birthdate: effectiveBirthdate } : {}),
-            ...(effectiveGender ? { gender: effectiveGender } : {}),
-            ...(selectedId ? {} : { createdAt: serverTimestamp() }),
+            name: saveName,
+            ...(saveBirthdate ? { birthdate: saveBirthdate } : {}),
+            ...(saveGender ? { gender: saveGender } : {}),
+            ...(isExistingSubject ? {} : { createdAt: serverTimestamp() }),
             updatedAt: serverTimestamp(),
             latestRecordDate: today,
             linkedRecordDates: arrayUnion(today),
@@ -249,9 +283,9 @@ function ChildHealthGrowthSession() {
             recordDate: today,
             recordId,
             subjectType: 'child',
-            subjectName: subjectName,
-            ...(effectiveBirthdate ? { subjectBirthdate: effectiveBirthdate } : {}),
-            ...(effectiveGender ? { subjectGender: effectiveGender } : {}),
+            subjectName: saveName,
+            ...(saveBirthdate ? { subjectBirthdate: saveBirthdate } : {}),
+            ...(saveGender ? { subjectGender: saveGender } : {}),
             memo: memoLines.join(' / '),
             createdAt: serverTimestamp(),
             sourceFormat: '성장기록',
@@ -343,7 +377,7 @@ function ChildHealthGrowthSession() {
           >
             <option value="">기존 아이 선택</option>
             {subjects.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+              <option key={s.id} value={s.id}>{growthSubjectOptionLabel(s, subjects, true)}</option>
             ))}
           </select>
           <input
@@ -353,6 +387,11 @@ function ChildHealthGrowthSession() {
             placeholder="또는 새 아이 이름 입력"
             style={inputStyle}
           />
+          {sameNameSubject && (
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: '#0F766E', lineHeight: 1.5, wordBreak: 'keep-all' }}>
+              이미 등록된 이름이에요. 저장하면 기존 "{sameNameSubject.name}"에 이어서 기록됩니다.
+            </p>
+          )}
 
           {/* 생년월일 / 성별 */}
           <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
@@ -362,11 +401,11 @@ function ChildHealthGrowthSession() {
                 type="date"
                 value={effectiveBirthdate}
                 onChange={(e) => setBirthdate(e.target.value)}
-                disabled={Boolean(selectedSubject?.birthdate)}
+                disabled={Boolean(matchedSubject?.birthdate)}
                 style={{
                   ...inputStyle,
-                  backgroundColor: selectedSubject?.birthdate ? '#F3F4F6' : '#fff',
-                  color: selectedSubject?.birthdate ? '#9CA3AF' : '#111827',
+                  backgroundColor: matchedSubject?.birthdate ? '#F3F4F6' : '#fff',
+                  color: matchedSubject?.birthdate ? '#9CA3AF' : '#111827',
                 }}
               />
             </div>
@@ -377,8 +416,8 @@ function ChildHealthGrowthSession() {
                   <button
                     key={g}
                     type="button"
-                    onClick={() => !selectedSubject?.gender && setGender(g)}
-                    disabled={Boolean(selectedSubject?.gender)}
+                    onClick={() => !matchedSubject?.gender && setGender(g)}
+                    disabled={Boolean(matchedSubject?.gender)}
                     style={{
                       flex: 1,
                       padding: '10px 12px',
@@ -387,7 +426,7 @@ function ChildHealthGrowthSession() {
                       backgroundColor: effectiveGender === g ? '#CCFBF1' : '#fff',
                       color: effectiveGender === g ? '#0F766E' : '#374151',
                       fontWeight: 700,
-                      cursor: selectedSubject?.gender ? 'default' : 'pointer',
+                      cursor: matchedSubject?.gender ? 'default' : 'pointer',
                       fontSize: 14,
                     }}
                   >

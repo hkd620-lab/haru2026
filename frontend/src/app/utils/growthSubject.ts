@@ -17,6 +17,39 @@ export function findSameNameGrowthSubject<T extends GrowthSubjectLike>(subjects:
   return matches.find((subject) => subject.birthdate) ?? matches[0];
 }
 
+// 저장 직전 "같은 이름의 아이가 이미 있는지" Firestore 조회 결과를 판정한다.
+// found: 같은 이름의 아이를 찾음 / none: 서버가 확인했고 같은 이름이 없음 / error: 확인하지 못함 — 실패를 "없음"으로 보면 안 된다.
+export type SameNameChildLookup =
+  | { status: 'found'; subject: { id: string; name: string; birthdate: string; gender?: 'M' | 'F' } }
+  | { status: 'none' }
+  | { status: 'error' };
+
+// QuerySnapshot 모양(metadata.fromCache, docs[].id/data())만 읽는다. 이름이 같은 아이가 여럿이면 findSameNameGrowthSubject 규칙을 따른다.
+export type ChildSnapshotLike = {
+  metadata?: { fromCache?: boolean };
+  docs: Array<{ id: string; data: () => any }>;
+};
+
+export function resolveSameNameChild(snap: ChildSnapshotLike, name: unknown): SameNameChildLookup {
+  // 서버에 닿지 못하면 getDocs는 실패하지 않고 빈(또는 오래된) 캐시 결과를 돌려준다 — 이것도 "없음"이 아니라 "확인 못 함"으로 본다.
+  if (snap.metadata?.fromCache) return { status: 'error' };
+  const subjects = snap.docs
+    .map((docSnap) => {
+      const data = (docSnap.data() ?? {}) as any;
+      return {
+        id: docSnap.id,
+        name: String(data.name || '').trim(),
+        birthdate: String(data.birthdate || data.growthSubjectBirthdate || ''),
+        gender: data.gender === 'M' || data.gender === 'F' ? (data.gender as 'M' | 'F') : undefined,
+        latestRecordDate: String(data.latestRecordDate || ''),
+      };
+    })
+    .filter((subject) => subject.name)
+    .sort((a, b) => b.latestRecordDate.localeCompare(a.latestRecordDate)); // 최근 기록순 — 대상 목록과 같은 순서
+  const found = findSameNameGrowthSubject(subjects, name);
+  return found ? { status: 'found', subject: found } : { status: 'none' };
+}
+
 // "기존 대상 선택" 목록에 보일 글자 — 이름이 하나뿐이면 이름 그대로.
 // 이름이 같은 대상이 둘 이상이면 아이는 생년월일(없으면 "생년월일 없음")과 최근 기록일, 작물은 최근 기록일을 덧붙여 구분하고,
 // 그래도 글자가 같으면 순서 번호를 붙여 목록에서 항상 서로 다르게 보이게 한다.
