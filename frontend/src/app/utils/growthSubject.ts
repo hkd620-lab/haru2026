@@ -9,20 +9,29 @@ export function normalizeGrowthSubjectName(name: unknown): string {
 }
 
 // 같은 이름의 대상을 찾는다. 이름이 비어 있으면 undefined.
+// 이름이 같은 대상이 이미 여럿(예전에 생긴 중복)이면 생년월일이 있는 쪽을 우선하고, 그 안에서는 목록 앞쪽(최근 기록순)을 고른다.
 export function findSameNameGrowthSubject<T extends GrowthSubjectLike>(subjects: T[], name: unknown): T | undefined {
   const key = normalizeGrowthSubjectName(name);
   if (!key) return undefined;
-  return subjects.find((subject) => normalizeGrowthSubjectName(subject.name) === key);
+  const matches = subjects.filter((subject) => normalizeGrowthSubjectName(subject.name) === key);
+  return matches.find((subject) => subject.birthdate) ?? matches[0];
 }
 
-// "기존 대상 선택" 목록에 보일 글자 — 이름이 같은 대상이 둘 이상이면 아이는 생년월일(없으면 "생년월일 없음"),
-// 작물은 최근 기록일을 덧붙여 구분한다. 이름이 하나뿐이면 이름 그대로.
+// "기존 대상 선택" 목록에 보일 글자 — 이름이 하나뿐이면 이름 그대로.
+// 이름이 같은 대상이 둘 이상이면 아이는 생년월일(없으면 "생년월일 없음")과 최근 기록일, 작물은 최근 기록일을 덧붙여 구분하고,
+// 그래도 글자가 같으면 순서 번호를 붙여 목록에서 항상 서로 다르게 보이게 한다.
 export function growthSubjectOptionLabel<T extends GrowthSubjectLike>(subject: T, subjects: T[], isChild: boolean): string {
   const key = normalizeGrowthSubjectName(subject.name);
-  const sameNameCount = subjects.filter((other) => normalizeGrowthSubjectName(other.name) === key).length;
-  if (sameNameCount < 2) return subject.name;
-  const detail = isChild
-    ? (subject.birthdate ? `생년월일 ${subject.birthdate}` : '생년월일 없음')
-    : (subject.latestRecordDate ? `최근 기록 ${subject.latestRecordDate}` : '기록 없음');
-  return `${subject.name} (${detail})`;
+  const sameName = subjects.filter((other) => normalizeGrowthSubjectName(other.name) === key);
+  if (sameName.length < 2) return subject.name;
+  const labelOf = (item: T) => {
+    const details = [
+      ...(isChild ? [item.birthdate ? `생년월일 ${item.birthdate}` : '생년월일 없음'] : []),
+      item.latestRecordDate ? `최근 기록 ${item.latestRecordDate}` : '기록 없음',
+    ];
+    return `${item.name} (${details.join(' · ')})`;
+  };
+  const label = labelOf(subject);
+  const sameLabel = sameName.filter((other) => labelOf(other) === label);
+  return sameLabel.length < 2 ? label : `${label} · ${sameLabel.indexOf(subject) + 1}번째`;
 }

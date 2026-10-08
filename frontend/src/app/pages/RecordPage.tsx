@@ -19,7 +19,8 @@ import {
   type AssistantRecommendation,
 } from '../utils/assistantRecommendations';
 import { db } from '../../firebase';
-import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, getDocs, query, where, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
+import { findSameNameGrowthSubject } from '../utils/growthSubject';
 import { useSubscription } from '../hooks/useSubscription';
 import {
   DndContext,
@@ -43,6 +44,30 @@ type Weather = '쾌청' | '흐림' | '비' | '눈';
 type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 type GrowthSubjectType = 'child' | 'garden';
 type EnvTagType = 'weather' | 'temperature' | 'mood';
+
+// 같은 이름의 아이가 이미 등록돼 있는지 찾는다(없거나 확인에 실패하면 undefined). 이름이 같은 아이가 여럿이면 생년월일이 있는 쪽을 우선한다.
+async function findSameNameChildSubject(uid: string, name: string) {
+  try {
+    const snap = await getDocs(query(collection(db, 'users', uid, 'growthSubjects'), where('subjectType', '==', 'child')));
+    const subjects = snap.docs
+      .map((docSnap) => {
+        const data = docSnap.data() as any;
+        return {
+          id: docSnap.id,
+          name: String(data.name || '').trim(),
+          birthdate: String(data.birthdate || data.growthSubjectBirthdate || ''),
+          gender: data.gender === 'M' || data.gender === 'F' ? (data.gender as 'M' | 'F') : undefined,
+          latestRecordDate: String(data.latestRecordDate || ''),
+        };
+      })
+      .filter((subject) => subject.name)
+      .sort((a, b) => b.latestRecordDate.localeCompare(a.latestRecordDate)); // 최근 기록순 — 대상 목록과 같은 순서
+    return findSameNameGrowthSubject(subjects, name);
+  } catch (error) {
+    console.warn('같은 이름의 아이 확인 실패(새 대상으로 저장):', error);
+    return undefined;
+  }
+}
 
 const DEFAULT_WEATHER = ['쾌청', '흐림', '비', '눈'];
 const DEFAULT_TEMPERATURE = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
@@ -587,7 +612,7 @@ export function RecordPage() {
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
     if (!user) return;
-    const growthSubjectName =
+    const typedGrowthSubjectName =
       typeof (formatData as any)._growthSubjectName === 'string'
         ? ((formatData as any)._growthSubjectName as string).trim()
         : '';
@@ -595,18 +620,29 @@ export function RecordPage() {
       (formatData as any)._growthSubjectType === 'child' || (formatData as any)._growthSubjectType === 'garden'
         ? ((formatData as any)._growthSubjectType as GrowthSubjectType)
         : undefined;
-    const existingGrowthSubjectId =
+    const formGrowthSubjectId =
       typeof (formatData as any)._growthSubjectId === 'string' && (formatData as any)._growthSubjectId
         ? ((formatData as any)._growthSubjectId as string)
         : undefined;
+    // 아이를 이름만 써서 새로 추가하는 경우, 저장 직전에 같은 이름의 아이가 이미 있는지 다시 확인한다 —
+    // 대상 목록을 불러오기 전에 저장했거나 다른 기기에서 막 등록한 경우에도 같은 아이가 둘로 갈라지지 않게 한다
+    const sameNameChild =
+      typedGrowthSubjectName && growthSubjectType === 'child' && !formGrowthSubjectId
+        ? await findSameNameChildSubject(user.uid, typedGrowthSubjectName)
+        : undefined;
+    const growthSubjectName = sameNameChild?.name || typedGrowthSubjectName;
+    const existingGrowthSubjectId = formGrowthSubjectId || sameNameChild?.id;
+    // 이미 있는 아이에 이어서 기록할 때는 그 아이의 생년월일·성별을 우선한다(새로 입력한 값으로 덮어쓰지 않는다)
     const growthSubjectBirthdate =
-      typeof (formatData as any)._growthSubjectBirthdate === 'string' && (formatData as any)._growthSubjectBirthdate
+      sameNameChild?.birthdate ||
+      (typeof (formatData as any)._growthSubjectBirthdate === 'string' && (formatData as any)._growthSubjectBirthdate
         ? ((formatData as any)._growthSubjectBirthdate as string)
-        : undefined;
+        : undefined);
     const growthSubjectGender =
-      (formatData as any)._growthSubjectGender === 'M' || (formatData as any)._growthSubjectGender === 'F'
+      sameNameChild?.gender ||
+      ((formatData as any)._growthSubjectGender === 'M' || (formatData as any)._growthSubjectGender === 'F'
         ? ((formatData as any)._growthSubjectGender as 'M' | 'F')
-        : undefined;
+        : undefined);
     const shouldSaveGrowthEntry = Boolean(growthSubjectName && growthSubjectType);
     const growthSubjectId = shouldSaveGrowthEntry
       ? existingGrowthSubjectId || doc(collection(db, 'users', user.uid, 'growthSubjects')).id

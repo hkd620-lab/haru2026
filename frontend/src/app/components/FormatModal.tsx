@@ -977,8 +977,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const selectedGrowthSubject = growthSubjects.find((subject) => subject.id === selectedGrowthSubjectId);
   // 아이는 "새 대상 추가"에 이미 있는 이름을 다시 쓰면 새로 만들지 않고 그 아이에 이어서 기록한다 (같은 아이가 둘로 갈라지는 것을 막는다)
   const sameNameGrowthSubject = format !== '텃밭일지' ? findSameNameGrowthSubject(growthSubjects, newGrowthSubjectName) : undefined;
-  const effectiveGrowthSubjectBirthdate = selectedGrowthSubject?.birthdate || growthSubjectBirthdate;
-  const effectiveGrowthSubjectGender = selectedGrowthSubject?.gender || growthSubjectGender;
+  // 이름을 직접 써서 이미 있는 아이를 가리키면 목록에서 그 아이를 고른 것과 같게 다룬다 (생년월일·성별도 그 아이의 값 — 화면 분석과 저장이 같은 값을 쓴다)
+  const matchedGrowthSubject = selectedGrowthSubject || sameNameGrowthSubject;
+  const effectiveGrowthSubjectBirthdate = matchedGrowthSubject?.birthdate || growthSubjectBirthdate;
+  const effectiveGrowthSubjectGender = matchedGrowthSubject?.gender || growthSubjectGender;
   const childMeasuredate = formData.child_measuredate || getTodayInputValue();
   const childAgeMonths = effectiveGrowthSubjectBirthdate ? calcAgeInMonths(effectiveGrowthSubjectBirthdate, childMeasuredate) : null;
   const childHeightValue = toPositiveNumber(formData.child_height);
@@ -1030,17 +1032,13 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
     if (!subjectName) return {};
 
-    // 이미 있는 아이에 이어서 기록할 때는 그 아이의 생년월일·성별을 우선한다(새로 입력한 값으로 덮어쓰지 않는다)
-    const birthdate = sameNameGrowthSubject?.birthdate || effectiveGrowthSubjectBirthdate;
-    const gender = sameNameGrowthSubject?.gender || effectiveGrowthSubjectGender;
-
     return {
       _growthSubjectId: sameNameGrowthSubject ? sameNameGrowthSubject.id : newName ? '' : selectedGrowthSubjectId,
       _growthSubjectType: subjectType,
       _growthSubjectName: subjectName,
       _sourceFormat: format,
-      ...(format !== '텃밭일지' && birthdate ? { _growthSubjectBirthdate: birthdate } : {}),
-      ...(format !== '텃밭일지' && gender ? { _growthSubjectGender: gender } : {}),
+      ...(format !== '텃밭일지' && effectiveGrowthSubjectBirthdate ? { _growthSubjectBirthdate: effectiveGrowthSubjectBirthdate } : {}),
+      ...(format !== '텃밭일지' && effectiveGrowthSubjectGender ? { _growthSubjectGender: effectiveGrowthSubjectGender } : {}),
     };
   };
 
@@ -4132,7 +4130,7 @@ ${contentValues.slice(0, 4100)}`,
                         type="date"
                         value={effectiveGrowthSubjectBirthdate}
                         onChange={(e) => setGrowthSubjectBirthdate(e.target.value)}
-                        disabled={Boolean(selectedGrowthSubject?.birthdate)}
+                        disabled={Boolean(matchedGrowthSubject?.birthdate)}
                         style={{
                           width: '100%',
                           boxSizing: 'border-box',
@@ -4140,7 +4138,7 @@ ${contentValues.slice(0, 4100)}`,
                           fontSize: 14,
                           border: '1px solid #d0dff0',
                           borderRadius: 8,
-                          backgroundColor: selectedGrowthSubject?.birthdate ? '#f3f4f6' : '#fff',
+                          backgroundColor: matchedGrowthSubject?.birthdate ? '#f3f4f6' : '#fff',
                           color: '#333',
                           outline: 'none',
                         }}
@@ -4155,7 +4153,7 @@ ${contentValues.slice(0, 4100)}`,
                               key={gender}
                               type="button"
                               onClick={() => setGrowthSubjectGender(gender)}
-                              disabled={Boolean(selectedGrowthSubject?.gender)}
+                              disabled={Boolean(matchedGrowthSubject?.gender)}
                               style={{
                                 flex: 1,
                                 padding: '10px 12px',
@@ -4164,7 +4162,7 @@ ${contentValues.slice(0, 4100)}`,
                                 backgroundColor: effectiveGrowthSubjectGender === gender ? '#ecfdf5' : '#fff',
                                 color: effectiveGrowthSubjectGender === gender ? '#047857' : '#374151',
                                 fontWeight: 700,
-                                cursor: selectedGrowthSubject?.gender ? 'default' : 'pointer',
+                                cursor: matchedGrowthSubject?.gender ? 'default' : 'pointer',
                               }}
                             >
                               {gender === 'M' ? '남아' : '여아'}
