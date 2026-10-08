@@ -6,6 +6,7 @@ import { transformSync } from 'esbuild';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import * as views from '../src/app/utils/structuredAssistantRecords.ts';
+import * as growthSubjectUtils from '../src/app/utils/growthSubject.ts';
 import { getStructuredViewAccess } from '../src/app/assistants/sayuAdapters.ts';
 
 const require = createRequire(import.meta.url);
@@ -126,15 +127,17 @@ function growthFixture() {
   const fixtureHandlers = () => {
     const env = { user: { uid: 'fixture-user' }, hasConsent: 'hasConsent' in state ? state.hasConsent : true, isCurrentSession: () => state.sessionActive !== false, savingRef, pendingLinkRef, currentDraftKeyRef,
       selectedId: 'child-existing', newName: '', birthdate: '', gender: '', measuredate: state.date, height: state.height, weight: state.weight, headcircum: state.head,
-      selectedSubject: { name: '합성 대상' }, effectiveBirthdate: '2026-01-01', effectiveGender: 'F', savedGrowthRecordId: state.id,
+      selectedSubject: { name: '합성 대상' }, matchedSubject: { name: '합성 대상' }, findSameNameChildSubject: async () => { state.lookups = (state.lookups ?? 0) + 1; return state.lookup ?? { status: 'none' }; },
+      effectiveBirthdate: '2026-01-01', effectiveGender: 'F', savedGrowthRecordId: state.id,
       db: {}, getTodayStr: () => '2026-10-06', doc: (...parts) => parts.slice(1).join('/'),
       firestoreService: { saveRecord: async (uid, data) => { state.creates.push(data); if (state.recordPending) await state.recordPending; if (state.recordFail) throw new Error('fixture'); return 'exact-growth'; } },
       setDoc: async (path, data) => { state.links.push({ path, data }); if (state.linkPending && state.links.length === state.pendingAt) await state.linkPending; if (state.links.length === state.failAt) throw new Error('fixture'); },
       serverTimestamp: () => 'fixture-time', arrayUnion: value => [value], collection() {},
       setIsSaving() {}, setSavedGrowthRecordId: value => { state.id = value; }, setGrowthSaveStatus: value => { state.status = value; },
       setHeight: value => { state.height = value; }, setWeight: value => { state.weight = value; }, setHeadcircum: value => { state.head = value; }, setMeasuredate: value => { state.date = value; },
-      navigate: (path, options) => state.routes.push({ path, ...options }), toast: { warning() {}, success() {}, error() {} }, console: { error() {} },
+      navigate: (path, options) => state.routes.push({ path, ...options }), toast: { warning() {}, success() {}, error: message => { (state.errors ??= []).push(message); } }, console: { error() {} },
     };
+    Object.assign(env, state.envOverrides); // 테스트가 화면의 선택·입력 상태(selectedId, newName, matchedSubject 등)를 바꿔 볼 수 있게 한다
     currentDraftKeyRef.current = JSON.stringify([env.selectedId, env.newName, env.birthdate, env.gender, env.measuredate, env.height, env.weight, env.headcircum]);
     return handlers(read('pages/ChildHealthGrowthPage.tsx'), ['handleSave', 'handleViewGrowthRecord'], env);
   };
@@ -158,6 +161,121 @@ test('growth linkage retry preserves newer unsaved measurements', async () => {
 test('growth initial record failure has no view target or linkage writes', async () => {
   const f = growthFixture(); f.state.recordFail = true; await f.handlers().handleSave(); f.handlers().handleViewGrowthRecord();
   assert.equal(f.state.id, null); assert.equal(f.state.links.length, 0); assert.equal(f.state.routes.length, 0);
+});
+
+// 건강성장 페이지의 같은 이름 아이 중복 등록 방지 — 화면의 선택·입력 상태는 state.envOverrides 로, 저장 직전 서버 조회 결과는 state.lookup 으로 바꿔 본다.
+const newChildDoc = (...parts) => (parts.length === 1 ? { id: 'new-subject-id' } : parts.slice(1).join('/'));
+test('growth save: a child picked from the list is saved as before, without any lookup and without a new createdAt', async () => {
+  const f = growthFixture(); await f.handlers().handleSave();
+  assert.equal(f.state.lookups ?? 0, 0); assert.equal(f.state.creates[0].growthSubjectId, 'child-existing');
+  assert.equal(f.state.links[0].path, 'users/fixture-user/growthSubjects/child-existing'); assert.ok(!('createdAt' in f.state.links[0].data));
+});
+test('growth save: a typed name already on the list continues that child without creating one or looking up again', async () => {
+  const f = growthFixture();
+  f.state.envOverrides = { selectedId: '', newName: ' 서윤 ', selectedSubject: undefined, matchedSubject: { id: 'subC', name: '서윤', birthdate: '2024-01-02', gender: 'F' }, birthdate: '', gender: '' };
+  await f.handlers().handleSave();
+  assert.equal(f.state.lookups ?? 0, 0); assert.equal(f.state.status, 'complete');
+  assert.equal(f.state.creates[0].growthSubjectId, 'subC'); assert.equal(f.state.creates[0].growthSubjectName, '서윤');
+  assert.equal(f.state.creates[0].growthSubjectBirthdate, '2024-01-02'); assert.equal(f.state.creates[0].growthSubjectGender, 'F');
+  assert.equal(f.state.links[0].path, 'users/fixture-user/growthSubjects/subC'); assert.ok(!('createdAt' in f.state.links[0].data));
+});
+test('growth save: when the list arrives after a birthdate and gender were typed, the registered values win over the stale typed ones', async () => {
+  const f = growthFixture(); // 이름·생년월일을 먼저 입력한 뒤 같은 이름이 목록에 나타나면 키 입력 없이 matchedSubject 가 생겨 입력값이 지워지지 않은 채 남는다
+  f.state.envOverrides = { selectedId: '', newName: '서윤', selectedSubject: undefined, matchedSubject: { id: 'subC', name: '서윤', birthdate: '2024-01-02', gender: 'F' }, birthdate: '2023-12-12', gender: 'M' };
+  await f.handlers().handleSave();
+  assert.equal(f.state.lookups ?? 0, 0); assert.equal(f.state.creates[0].growthSubjectId, 'subC');
+  assert.equal(f.state.creates[0].growthSubjectBirthdate, '2024-01-02'); assert.equal(f.state.creates[0].growthSubjectGender, 'F');
+  assert.equal(f.state.links[0].data.birthdate, '2024-01-02'); assert.equal(f.state.links[0].data.gender, 'F'); assert.ok(!('createdAt' in f.state.links[0].data));
+});
+test('growth save: a new name the server confirms is unregistered creates a new child with createdAt', async () => {
+  const f = growthFixture(); f.state.lookup = { status: 'none' };
+  f.state.envOverrides = { selectedId: '', newName: '새아이', selectedSubject: undefined, matchedSubject: undefined, birthdate: '2025-01-01', gender: 'M', doc: newChildDoc };
+  await f.handlers().handleSave();
+  assert.equal(f.state.lookups, 1); assert.equal(f.state.creates[0].growthSubjectId, 'new-subject-id'); assert.equal(f.state.creates[0].growthSubjectBirthdate, '2025-01-01');
+  assert.equal(f.state.links[0].path, 'users/fixture-user/growthSubjects/new-subject-id'); assert.equal(f.state.links[0].data.createdAt, 'fixture-time');
+});
+test('growth save: a typed name missing from a stale list is found by the pre-save lookup and continues that child', async () => {
+  const f = growthFixture(); f.state.lookup = { status: 'found', subject: { id: 'subD', name: '민아', birthdate: '2025-03-03', gender: 'F' } };
+  f.state.envOverrides = { selectedId: '', newName: '민아', selectedSubject: undefined, matchedSubject: undefined, birthdate: '', gender: '', doc: newChildDoc };
+  await f.handlers().handleSave();
+  assert.equal(f.state.lookups, 1); assert.equal(f.state.creates[0].growthSubjectId, 'subD'); assert.equal(f.state.creates[0].growthSubjectBirthdate, '2025-03-03');
+  assert.equal(f.state.links[0].path, 'users/fixture-user/growthSubjects/subD'); assert.ok(!('createdAt' in f.state.links[0].data));
+});
+test('growth save: a failed pre-save lookup stops saving so no duplicate child is created, and a retry continues the existing child', async () => {
+  const f = growthFixture(); f.state.lookup = { status: 'error' };
+  f.state.envOverrides = { selectedId: '', newName: '해든', selectedSubject: undefined, matchedSubject: undefined, doc: newChildDoc };
+  await f.handlers().handleSave();
+  assert.equal(f.state.creates.length, 0); assert.equal(f.state.links.length, 0); assert.equal(f.state.status, 'idle');
+  assert.equal(f.state.errors.length, 1); assert.match(f.state.errors[0], /확인하지 못했어요/);
+  f.state.lookup = { status: 'found', subject: { id: 'subE', name: '해든', birthdate: '2025-05-05', gender: 'M' } };
+  await f.handlers().handleSave();
+  assert.equal(f.state.creates.length, 1); assert.equal(f.state.creates[0].growthSubjectId, 'subE'); assert.equal(f.state.status, 'complete');
+});
+test('growth save: a typed birthdate or gender that disagrees with the registered child stops saving without overwriting it', async () => {
+  const f = growthFixture(); f.state.lookup = { status: 'found', subject: { id: 'subF', name: '지안', birthdate: '2024-06-06', gender: 'M' } };
+  f.state.envOverrides = { selectedId: '', newName: '지안', selectedSubject: undefined, matchedSubject: undefined, birthdate: '2023-01-01', gender: 'F' };
+  await f.handlers().handleSave();
+  assert.equal(f.state.creates.length, 0); assert.equal(f.state.links.length, 0); assert.match(f.state.errors[0], /생년월일·성별과 입력한 값이 달라요/);
+});
+test('growth save: a disagreeing birthdate alone, or a disagreeing gender alone, also stops saving', async () => {
+  for (const typed of [{ birthdate: '2023-01-01', gender: '' }, { birthdate: '', gender: 'F' }]) {
+    const f = growthFixture(); f.state.lookup = { status: 'found', subject: { id: 'subF', name: '지안', birthdate: '2024-06-06', gender: 'M' } };
+    f.state.envOverrides = { selectedId: '', newName: '지안', selectedSubject: undefined, matchedSubject: undefined, ...typed };
+    await f.handlers().handleSave();
+    assert.equal(f.state.creates.length, 0); assert.equal(f.state.links.length, 0); assert.match(f.state.errors[0], /달라요/);
+  }
+});
+test('growth save: a found child keeps its registered name, birthdate and gender, and only blanks are filled from the typed values', async () => {
+  const same = growthFixture(); same.state.lookup = { status: 'found', subject: { id: 'subJ', name: 'Jun', birthdate: '2025-02-02', gender: 'M' } };
+  same.state.envOverrides = { selectedId: '', newName: 'jUN', selectedSubject: undefined, matchedSubject: undefined, birthdate: '2025-02-02', gender: 'M' };
+  await same.handlers().handleSave();
+  assert.equal(same.state.creates[0].growthSubjectName, 'Jun'); assert.equal(same.state.links[0].data.name, 'Jun');
+  const blankTyped = growthFixture(); blankTyped.state.lookup = { status: 'found', subject: { id: 'subJ', name: 'Jun', birthdate: '2025-02-02', gender: 'M' } };
+  blankTyped.state.envOverrides = { selectedId: '', newName: 'Jun', selectedSubject: undefined, matchedSubject: undefined, birthdate: '', gender: '' };
+  await blankTyped.handlers().handleSave();
+  assert.equal(blankTyped.state.creates[0].growthSubjectBirthdate, '2025-02-02'); assert.equal(blankTyped.state.creates[0].growthSubjectGender, 'M');
+  const blankRegistered = growthFixture(); blankRegistered.state.lookup = { status: 'found', subject: { id: 'subK', name: '다온', birthdate: '', gender: undefined } };
+  blankRegistered.state.envOverrides = { selectedId: '', newName: '다온', selectedSubject: undefined, matchedSubject: undefined, birthdate: '2025-04-04', gender: 'F' };
+  await blankRegistered.handlers().handleSave();
+  assert.equal(blankRegistered.state.creates[0].growthSubjectId, 'subK'); assert.equal(blankRegistered.state.creates[0].growthSubjectBirthdate, '2025-04-04');
+  assert.equal(blankRegistered.state.links[0].data.birthdate, '2025-04-04'); assert.equal(blankRegistered.state.links[0].data.gender, 'F'); assert.ok(!('createdAt' in blankRegistered.state.links[0].data));
+});
+test('growth save: a lookup that finishes after the account left writes nothing', async () => {
+  const f = growthFixture(); f.state.lookup = { status: 'found', subject: { id: 'subG', name: '도윤', birthdate: '2025-07-07', gender: 'M' } };
+  f.state.envOverrides = { selectedId: '', newName: '도윤', selectedSubject: undefined, matchedSubject: undefined, isCurrentSession: () => f.state.lookups === undefined };
+  await f.handlers().handleSave();
+  assert.equal(f.state.lookups, 1); assert.equal(f.state.creates.length, 0); assert.equal(f.state.links.length, 0);
+});
+
+// 저장 직전 "같은 이름의 아이" Firestore 조회 어댑터 — 조회 대상 경로·조건과 실패 처리를 지킨다(판정은 utils/growthSubject.ts 의 resolveSameNameChild).
+function lookupAdapter(getDocsImpl) {
+  const queries = [];
+  const mod = moduleFrom(read('services/growthSubjectLookup.ts'), {
+    'firebase/firestore': {
+      collection: (db, ...path) => ({ path: path.join('/') }),
+      where: (...args) => ({ where: args }),
+      query: (source, ...constraints) => ({ source, constraints }),
+      getDocs: async query => { queries.push(query); return getDocsImpl(query); },
+    },
+    '../../firebase': { db: {} },
+    '../utils/growthSubject': growthSubjectUtils,
+  });
+  return { find: mod.findSameNameChildSubject, queries };
+}
+test('same-name child lookup adapter: queries only this user\'s child subjects and hands the snapshot to the decision', async () => {
+  const snap = { metadata: { fromCache: false }, docs: [{ id: 'subC', data: () => ({ name: '서윤', birthdate: '2024-01-02', gender: 'F' }) }] };
+  const f = lookupAdapter(() => snap), result = await f.find('fixture-user', '서윤');
+  assert.equal(result.status, 'found'); assert.equal(result.subject.id, 'subC');
+  assert.equal(f.queries.length, 1); assert.equal(f.queries[0].source.path, 'users/fixture-user/growthSubjects');
+  assert.deepEqual(f.queries[0].constraints, [{ where: ['subjectType', '==', 'child'] }]);
+});
+test('same-name child lookup adapter: a thrown query and a cache-only snapshot are both "could not confirm", never "none"', async () => {
+  const warn = console.warn; console.warn = () => {};
+  try {
+    assert.deepEqual(await lookupAdapter(() => { throw new Error('unavailable'); }).find('fixture-user', '해든'), { status: 'error' });
+    assert.deepEqual(await lookupAdapter(() => ({ metadata: { fromCache: true }, docs: [] })).find('fixture-user', '해든'), { status: 'error' });
+  } finally { console.warn = warn; }
+  assert.deepEqual(await lookupAdapter(() => ({ metadata: { fromCache: false }, docs: [] })).find('fixture-user', '해든'), { status: 'none' });
 });
 
 function englishFixture() {

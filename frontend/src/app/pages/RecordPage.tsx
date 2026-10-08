@@ -19,8 +19,8 @@ import {
   type AssistantRecommendation,
 } from '../utils/assistantRecommendations';
 import { db } from '../../firebase';
-import { doc, getDoc, getDocs, query, where, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
-import { findSameNameGrowthSubject } from '../utils/growthSubject';
+import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
+import { findSameNameChildSubject } from '../services/growthSubjectLookup';
 import { useSubscription } from '../hooks/useSubscription';
 import {
   DndContext,
@@ -44,42 +44,6 @@ type Weather = '쾌청' | '흐림' | '비' | '눈';
 type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 type GrowthSubjectType = 'child' | 'garden';
 type EnvTagType = 'weather' | 'temperature' | 'mood';
-
-// 같은 이름의 아이가 이미 등록돼 있는지 찾는다. 이름이 같은 아이가 여럿이면 생년월일이 있는 쪽을 우선한다.
-// 조회에 성공해 없다고 확인한 경우('none')와 조회에 실패한 경우('error')를 구분한다 — 실패를 "없음"으로 보면 안 된다.
-type SameNameChildLookup =
-  | { status: 'found'; subject: { id: string; name: string; birthdate: string; gender?: 'M' | 'F' } }
-  | { status: 'none' }
-  | { status: 'error' };
-
-async function findSameNameChildSubject(uid: string, name: string): Promise<SameNameChildLookup> {
-  try {
-    const snap = await getDocs(query(collection(db, 'users', uid, 'growthSubjects'), where('subjectType', '==', 'child')));
-    // 서버에 닿지 못하면 getDocs는 실패하지 않고 빈(또는 오래된) 캐시 결과를 돌려준다 — 이것도 "없음"이 아니라 "확인 못 함"으로 본다.
-    if (snap.metadata.fromCache) {
-      console.warn('같은 이름의 아이 확인 실패: 서버에 닿지 못해 캐시로만 응답');
-      return { status: 'error' };
-    }
-    const subjects = snap.docs
-      .map((docSnap) => {
-        const data = docSnap.data() as any;
-        return {
-          id: docSnap.id,
-          name: String(data.name || '').trim(),
-          birthdate: String(data.birthdate || data.growthSubjectBirthdate || ''),
-          gender: data.gender === 'M' || data.gender === 'F' ? (data.gender as 'M' | 'F') : undefined,
-          latestRecordDate: String(data.latestRecordDate || ''),
-        };
-      })
-      .filter((subject) => subject.name)
-      .sort((a, b) => b.latestRecordDate.localeCompare(a.latestRecordDate)); // 최근 기록순 — 대상 목록과 같은 순서
-    const found = findSameNameGrowthSubject(subjects, name);
-    return found ? { status: 'found', subject: found } : { status: 'none' };
-  } catch (error) {
-    console.warn('같은 이름의 아이 확인 실패:', error);
-    return { status: 'error' };
-  }
-}
 
 const DEFAULT_WEATHER = ['쾌청', '흐림', '비', '눈'];
 const DEFAULT_TEMPERATURE = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
