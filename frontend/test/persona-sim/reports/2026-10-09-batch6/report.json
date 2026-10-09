@@ -1,0 +1,35 @@
+{
+ "runId": "2026-10-09T03-35-01",
+ "findings": [
+  {
+   "id": "F-29",
+   "severity": "중대",
+   "title": "기록합본으로 만든 미래전망이 날짜 범위 문자열을 기록일로 저장한다",
+   "detail": "2편 합본 생성 뒤 저장한 date=2026-10-01 ~ 2026-10-02, path=users/qa-p26-kim-jungho/records/2026-10-01 ~ 2026-10-02_1791030620851. ProphecyFromRecord의 합본 selectedRecord.date 범위 문자열을 NovelStoryPage buildStoryRecord가 publishDate=recordDate||today로 그대로 저장한다.",
+   "personaId": "p26-prophecy",
+   "format": "HARU미래전망",
+   "step": "일기 합본 2편 선택·모의 생성·저장",
+   "img": "img/F-29.png"
+  },
+  {
+   "id": "F-30",
+   "severity": "중대",
+   "title": "영어일기는 본문을 같은 글자 수로 바꾸면 이전 번역 캐시를 계속 사용한다",
+   "detail": "기존 '오늘 산책을 했다.'를 번역한 상태에서 기존 사용자의 수정 후 상태를 fixture로 '오늘 독서를 했다.'로 구성했다. 상세 원문은 변경됐지만 번역 호출은 3→3, 학습 화면은 이전 Mock walk sentence.를 표시했다. DiaryLearnPage handleTranslate 캐시 조건은 문장 존재·본문 길이만 비교한다. 실제 SAYU 편집 화면의 수정 동작은 이번 fixture 검증에 포함하지 않았다.",
+   "personaId": "p28-english",
+   "format": "영어일기",
+   "step": "같은 글자 수 본문 변경 fixture·캐시 무효화",
+   "img": "img/F-30.png"
+  },
+  {
+   "id": "F-31",
+   "severity": "경미",
+   "title": "영어일기 번역 실패가 콘솔에만 기록되고 화면에는 오류 안내가 없다",
+   "detail": "translateToEnglish가 functions/unavailable을 반환하자 입력은 유지되고 번역 버튼만 복원됐다. 토스트·화면 오류 안내는 없었다. DiaryLearnPage handleDirectTranslate의 catch는 console.error만 실행한다.",
+   "personaId": "p28-english",
+   "format": "영어일기",
+   "step": "모의 번역 실패·입력 보존·오류 안내",
+   "img": "img/F-31.png"
+  }
+ ]
+}

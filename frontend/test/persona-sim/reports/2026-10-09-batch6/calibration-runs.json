@@ -1,0 +1,209 @@
+{
+ "corrections": [
+  "하네스 폰트 의존성 symlink가 Vite 허용 경로 밖: 하네스 내부로 복사",
+  "미래전망 나이 placeholder exact 선택·프로필 settings/profile 경로 확인·기록 합치기 공백 반영",
+  "초보 안내 시작 버튼→현재 포털 인증 연습→작성 화면 법률정보 동의 순서 반영",
+  "보정 실패는 제품 발견에 포함하지 않음"
+ ],
+ "runs": [
+  {
+   "runId": "2026-10-09T03-25-52",
+   "results": [
+    {
+     "id": "p26-prophecy",
+     "failedSteps": [
+      {
+       "n": 3,
+       "name": "단일 기록·모의 생성·저장",
+       "ok": false,
+       "ms": 1686,
+       "error": "locator.fill: Error: strict mode violation: getByPlaceholder('예) 65') resolved to 2 elements:\n    1) <input min=\"1\" value=\"\" max=\"120\" type=\"number\" inputmode=\"numeric\" placeholder=\"예) 65\"/> aka getByRole('spinbutton', { name: '예)' })\n    2) <textarea rows=\"2\" placeholder=\"예) 65세 생일날, 수십 년 전 포기했던 꿈이 다시 눈앞에 나타났다↵예) 건강검진에서 예상치 못한 결과를 받은 날, 모든 것이 달라 보였다\">모의 동기</textarea> aka getByRole('textbox', { name: '예) 65' })\n\nCall log:\n\u001b[2m  - waiting for getByPlaceholder('예) 65')\u001b[22m\n",
+       "url": "/record-prophecy",
+       "toasts": [],
+       "shot": "03-단일-기록-모의-생성-저장.png"
+      }
+     ],
+     "failedChecks": []
+    },
+    {
+     "id": "p27-lawsuit",
+     "failedSteps": [
+      {
+       "n": 1,
+       "name": "홈 → 초보 안내 → 연습 진입",
+       "ok": false,
+       "ms": 12662,
+       "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '다음', exact: true })\u001b[22m\n",
+       "url": "/legal-assistant/beginner-guide",
+       "toasts": [],
+       "shot": "01-홈-초보-안내-연습-진입.png"
+      }
+     ],
+     "failedChecks": []
+    },
+    {
+     "id": "p28-english",
+     "failedSteps": [],
+     "failedChecks": [
+      {
+       "step": "모의 번역 실패·입력 보존·오류 안내",
+       "name": "번역 실패 시 사용자에게 오류 안내를 표시한다",
+       "ok": false,
+       "detail": "[]"
+      },
+      {
+       "step": "같은 글자 수 본문 변경 fixture·캐시 무효화",
+       "name": "내용이 바뀌면 같은 길이라도 번역 캐시를 갱신한다",
+       "ok": false,
+       "detail": "길이 10 동일, 호출 3 → 3, 이전 번역 표시=true"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "runId": "2026-10-09T03-29-13",
+   "results": [
+    {
+     "id": "p26-prophecy",
+     "failedSteps": [
+      {
+       "n": 4,
+       "name": "일기 합본 2편 선택·모의 생성·저장",
+       "ok": false,
+       "ms": 12354,
+       "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('기록합치기', { exact: true })\u001b[22m\n",
+       "url": "/record-prophecy",
+       "toasts": [],
+       "shot": "04-일기-합본-2편-선택-모의-생성-저장.png"
+      }
+     ],
+     "failedChecks": [
+      {
+       "step": "단일 기록·모의 생성·저장",
+       "name": "나이62를 프로필에 저장한다",
+       "ok": false,
+       "detail": ""
+      }
+     ]
+    },
+    {
+     "id": "p27-lawsuit",
+     "failedSteps": [
+      {
+       "n": 2,
+       "name": "인증 연습·서류·유형·동의 방지",
+       "ok": false,
+       "ms": 10003,
+       "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '공동인증서 로그인(연습)', exact: true })\u001b[22m\n",
+       "url": "/lawsuit-practice",
+       "toasts": [],
+       "shot": "02-인증-연습-서류-유형-동의-방지.png"
+      }
+     ],
+     "failedChecks": []
+    },
+    {
+     "id": "p28-english",
+     "failedSteps": [],
+     "failedChecks": [
+      {
+       "step": "모의 번역 실패·입력 보존·오류 안내",
+       "name": "번역 실패 시 사용자에게 오류 안내를 표시한다",
+       "ok": false,
+       "detail": "[]"
+      },
+      {
+       "step": "같은 글자 수 본문 변경 fixture·캐시 무효화",
+       "name": "내용이 바뀌면 같은 길이라도 번역 캐시를 갱신한다",
+       "ok": false,
+       "detail": "길이 10 동일, 호출 3 → 3, 이전 번역 표시=true"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "runId": "2026-10-09T03-30-36",
+   "results": [
+    {
+     "id": "p27-lawsuit",
+     "failedSteps": [
+      {
+       "n": 2,
+       "name": "인증 연습·서류·유형·동의 방지",
+       "ok": false,
+       "ms": 10003,
+       "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '공동인증서 로그인(연습)', exact: true })\u001b[22m\n",
+       "url": "/lawsuit-practice",
+       "toasts": [],
+       "shot": "02-인증-연습-서류-유형-동의-방지.png"
+      }
+     ],
+     "failedChecks": []
+    }
+   ]
+  },
+  {
+   "runId": "2026-10-09T03-32-41",
+   "results": [
+    {
+     "id": "p26-prophecy",
+     "failedSteps": [],
+     "failedChecks": [
+      {
+       "step": "일기 합본 2편 선택·모의 생성·저장",
+       "name": "합본에서 생성한 전망의 저장 date는 YYYY-MM-DD이다",
+       "ok": false,
+       "detail": "저장 date=2026-10-01 ~ 2026-10-02"
+      }
+     ]
+    },
+    {
+     "id": "p27-lawsuit",
+     "failedSteps": [
+      {
+       "n": 2,
+       "name": "인증 연습·서류·유형·동의 방지",
+       "ok": false,
+       "ms": 11096,
+       "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '다음', exact: true })\u001b[22m\n",
+       "url": "/lawsuit-practice/practice",
+       "toasts": [],
+       "shot": "02-인증-연습-서류-유형-동의-방지.png"
+      }
+     ],
+     "failedChecks": []
+    },
+    {
+     "id": "p28-english",
+     "failedSteps": [],
+     "failedChecks": [
+      {
+       "step": "모의 번역 실패·입력 보존·오류 안내",
+       "name": "번역 실패 시 사용자에게 오류 안내를 표시한다",
+       "ok": false,
+       "detail": "[]"
+      },
+      {
+       "step": "같은 글자 수 본문 변경 fixture·캐시 무효화",
+       "name": "내용이 바뀌면 같은 길이라도 번역 캐시를 갱신한다",
+       "ok": false,
+       "detail": "길이 10 동일, 호출 3 → 3, 이전 번역 표시=true"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "runId": "2026-10-09T03-34-25",
+   "results": [
+    {
+     "id": "p27-lawsuit",
+     "failedSteps": [],
+     "failedChecks": []
+    }
+   ]
+  }
+ ]
+}

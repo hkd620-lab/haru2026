@@ -1,0 +1,15 @@
+{
+ "fakes.ts": "9aa591642a417c91445764dcda279a3c1905755536d4b2301ff3e30715c49d2a",
+ "handoff/2026-10-09-batch6.md": "d96b55cec245de3b7312ceac7c9154dcd8e9d8f224725e0a6ecade9b41e226a9",
+ "personas/batch6-helpers.mjs": "6e5ae7f11858accddd808d4f4d5e8dd99b8b826169bcd5f67bd4197494fd6a5a",
+ "personas/p26-prophecy.mjs": "029ca632ede6de6a4f949af371d8a7e72931011aa52f8a079e8691f868b23c5e",
+ "personas/p27-lawsuit.mjs": "aa06065630893744c388fdd2e7551e1b737bc3418c29713c7a60a382761f2bbd",
+ "personas/p28-english.mjs": "696e8ea4242773d827c1e83986c2997d0f43f6c3e51933cda4f41bc7f9d4d74a",
+ "reports/2026-10-09-batch6/calibration-runs.json": "349448f5cef6072e51fa47b2e4e29c9a3de96784a9107f0f4118f0a32c4c8e03",
+ "reports/2026-10-09-batch6/img/F-29.png": "a422badb4f8372d4e81964e048b735ac18e38c208c4dd5886709acfe3834013b",
+ "reports/2026-10-09-batch6/img/F-30.png": "e2dbb4a68603fd9fd824a61ac550437f597113a16b0bc5f8791583ad4fb821d1",
+ "reports/2026-10-09-batch6/img/F-31.png": "0cfd4542faf5a7edebbd5295ba2cc4cee9565cc9b60cdfeb16dd6007b2b8b136",
+ "reports/2026-10-09-batch6/report.json": "8a9700aa5d600e22265fdde751fff9f9a7af9d1788ab5d0b20a0a07243a6e8e0",
+ "reports/2026-10-09-batch6/report.md": "524b70b6d16ef4affc56ba9e6978ad14167d0cd2756b4ef9699b48dac29295fa",
+ "reports/2026-10-09-batch6/verification.json": "4a837bb5ade3992d54a12f03e0b45b3e414d5591b52f8470c902b7398e0fdcb4"
+}

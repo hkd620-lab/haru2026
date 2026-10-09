@@ -82,6 +82,18 @@ export async function fakeCallable(name: string, data: any): Promise<any> {
       if (String(data?.title).includes('fallback') || (window as any).__qaForcePdfFailure) throw fnError('unavailable', '격리 PDF 실패 응답');
       return { downloadUrl: 'http://127.0.0.1:18762/mock-timeline.pdf', cached: false };
     }
+    // batch6: 고정 응답. 실제 전망·법률·번역 품질 평가에서 제외한다.
+    case 'analyzeRecordForProphecy':
+      return { chars: '모의 인물', desire: '모의 목표', shackle: '모의 제약', events: '모의 사건', relationship: '모의 관계', personality: '모의 성격', motive: '모의 동기', theme: '모의 주제', threeLiner: '모의 줄거리' };
+    case 'generateHaruProphecy':
+      return { text: data?.mode === 'story' ? '[모의 미래 이야기 — 실제 예측 아님]' : '[모의 미래전망 결과 — 실제 예측 아님]' };
+    case 'generateLawsuitClaimReason':
+      return { claimReasonText: '[모의 청구원인 — 실제 법률 문서 아님] 입력 자료를 직접 확인하세요.', quotaRemaining: 2 };
+    case 'translateToEnglish':
+      if (String(data?.text).includes('[모의 오류]')) throw fnError('unavailable', '격리 번역 실패 응답');
+      return { sentences: [String(data?.text).includes('산책') ? 'Mock walk sentence.' : String(data?.text).includes('독서') ? 'Mock reading sentence.' : 'Mock translation for isolated UI testing.'] };
+    case 'getWordMeaning':
+      return { meaning: '모의 단어 뜻', partOfSpeech: '모의 품사', phonetic: 'mock', koreanPronunciation: '모크' };
     case 'getMonthlyAiQuotaStatus':
       return quotaStatus();
     case 'polishContent':

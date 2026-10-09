@@ -1,0 +1,963 @@
+{
+ "appSha": "4db3ce792da0a40678bd35afce8be74b696f1e9f",
+ "harnessBaseSha": "91e03b9031026240ab23d47401c06c40efa62192",
+ "runId": "2026-10-09T03-35-01",
+ "totals": {
+  "steps": 17,
+  "checks": 56,
+  "passed": 53,
+  "console": 1,
+  "blockedExternal": 0,
+  "pageErrors": 0
+ },
+ "results": [
+  {
+   "runId": "2026-10-09T03-35-01",
+   "meta": {
+    "id": "p26-prophecy",
+    "format": "HARU미래전망",
+    "persona": {
+     "name": "김정호",
+     "age": 62,
+     "gender": "남",
+     "job": "은퇴를 앞둔 공무원",
+     "device": "Chromium 모바일 390×844",
+     "plan": "무료",
+     "goal": "내 기록 한 편과 기간 합본으로 전망 흐름·이름·나이·저장 내용을 확인한다."
+    },
+    "identity": {
+     "uid": "qa-p26-kim-jungho",
+     "displayName": "김정호",
+     "email": "p26@example.invalid",
+     "plan": "free"
+    },
+    "scenario": [
+     "홈·미래전망 두 진입점·빈 기록",
+     "기존 단일 기록·모의 분석·설정·이야기 저장",
+     "기간 합본·모의 생성·저장 날짜",
+     "재접속·격리"
+    ]
+   },
+   "startedAt": "2026-10-09T03:35:02.764Z",
+   "durationMs": 21536,
+   "steps": [
+    {
+     "n": 1,
+     "name": "홈 미래전망·빈 기록",
+     "ok": true,
+     "ms": 8489,
+     "url": "/record-prophecy",
+     "toasts": [],
+     "shot": "01-홈-미래전망-빈-기록.png"
+    },
+    {
+     "n": 2,
+     "name": "합성 기존 일기 2편 준비·단일 선택",
+     "ok": true,
+     "ms": 2592,
+     "url": "/record-prophecy",
+     "toasts": [],
+     "shot": "02-합성-기존-일기-2편-준비-단일-선택.png"
+    },
+    {
+     "n": 3,
+     "name": "단일 기록·모의 생성·저장",
+     "ok": true,
+     "ms": 3309,
+     "url": "/novel-story",
+     "toasts": [
+      "나의 기록에 저장했습니다. 기록 페이지에서 확인할 수 있어요.",
+      "시놉시스가 생성되었습니다!"
+     ],
+     "shot": "03-단일-기록-모의-생성-저장.png"
+    },
+    {
+     "n": 4,
+     "name": "일기 합본 2편 선택·모의 생성·저장",
+     "ok": true,
+     "ms": 6749,
+     "url": "/novel-story",
+     "toasts": [
+      "나의 기록에 저장했습니다. 기록 페이지에서 확인할 수 있어요.",
+      "시놉시스가 생성되었습니다!"
+     ],
+     "shot": "04-일기-합본-2편-선택-모의-생성-저장.png"
+    },
+    {
+     "n": 5,
+     "name": "격리 확인",
+     "ok": true,
+     "ms": 3,
+     "url": "/novel-story",
+     "toasts": [
+      "나의 기록에 저장했습니다. 기록 페이지에서 확인할 수 있어요.",
+      "시놉시스가 생성되었습니다!"
+     ],
+     "shot": "05-격리-확인.png"
+    }
+   ],
+   "checks": [
+    {
+     "step": "홈 미래전망·빈 기록",
+     "name": "빈 상태에는 선택할 기록이 없다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "홈 미래전망·빈 기록",
+     "name": "빈 기록 화면은 호출하지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "합성 기존 일기 2편 준비·단일 선택",
+     "name": "선택한 원문을 미리보기에서 보존한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "단일 기록·모의 생성·저장",
+     "name": "고정 모의 분석 항목을 표시한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "단일 기록·모의 생성·저장",
+     "name": "주인공 이름을 선택하기 전 생성은 비활성이다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "단일 기록·모의 생성·저장",
+     "name": "설정을 시놉시스 화면으로 넘긴다",
+     "ok": true,
+     "detail": "http://127.0.0.1:18762/novel-synopsis"
+    },
+    {
+     "step": "단일 기록·모의 생성·저장",
+     "name": "모의 이야기 화면에 도달한다",
+     "ok": true,
+     "detail": "http://127.0.0.1:18762/novel-story"
+    },
+    {
+     "step": "단일 기록·모의 생성·저장",
+     "name": "전망을 에세이로 저장한다",
+     "ok": true,
+     "detail": "{\"path\":\"users/qa-p26-kim-jungho/records/2026-10-01_1791030614003\",\"date\":\"2026-10-01\",\"formats\":[\"에세이\"],\"content\":\"[모의 미래전망 결과 — 실제 예측 아님]\",\"essay_title\":\"정호의 3년 후 이야기\",\"essay_ai_title\":\"정호의 3년 후 이야기\",\"essay_sayu\":\"[모의 미래전망 결과 — 실제 예측 아님]\",\"future_story_source\":{\"type\":\"HARU미래전망\",\"protagonistName\":\"정호\",\"timeOption\":\"3년 후\",\"fromRecord\":true,\"recordTitle\":\"은퇴 준비\",\"recordDate\":\"2026-10-01\",\"recordFormat\":\"일기\"},\"createdAt\":\"2026-10-03T12:30:14.003Z\",\"updatedAt\":\"2026-10-03T12:30:14.003Z\"}"
+    },
+    {
+     "step": "단일 기록·모의 생성·저장",
+     "name": "단일 원기록 날짜·제목·선택 이름을 유지한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "단일 기록·모의 생성·저장",
+     "name": "나이62를 프로필에 저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "일기 합본 2편 선택·모의 생성·저장",
+     "name": "기간 안 일기 두 편을 모은다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "일기 합본 2편 선택·모의 생성·저장",
+     "name": "고정 모의 분석 항목을 표시한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "일기 합본 2편 선택·모의 생성·저장",
+     "name": "주인공 이름을 선택하기 전 생성은 비활성이다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "일기 합본 2편 선택·모의 생성·저장",
+     "name": "설정을 시놉시스 화면으로 넘긴다",
+     "ok": true,
+     "detail": "http://127.0.0.1:18762/novel-synopsis"
+    },
+    {
+     "step": "일기 합본 2편 선택·모의 생성·저장",
+     "name": "모의 이야기 화면에 도달한다",
+     "ok": true,
+     "detail": "http://127.0.0.1:18762/novel-story"
+    },
+    {
+     "step": "일기 합본 2편 선택·모의 생성·저장",
+     "name": "합본에서 생성한 전망의 저장 date는 YYYY-MM-DD이다",
+     "ok": false,
+     "detail": "저장 date=2026-10-01 ~ 2026-10-02"
+    },
+    {
+     "step": "일기 합본 2편 선택·모의 생성·저장",
+     "name": "원래 일기 두 편은 변경되지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "격리 확인",
+     "name": "외부 요청 차단 집계가 0이다",
+     "ok": true,
+     "detail": "차단 0건"
+    },
+    {
+     "step": "격리 확인",
+     "name": "모의되지 않은 callable이 없다",
+     "ok": true,
+     "detail": "[]"
+    },
+    {
+     "step": "격리 확인",
+     "name": "페이지 실행 오류가 없다",
+     "ok": true,
+     "detail": "[]"
+    }
+   ],
+   "findings": [
+    {
+     "step": "일기 합본 2편 선택·모의 생성·저장",
+     "shot": "04-일기-합본-2편-선택-모의-생성-저장.png",
+     "severity": "중대",
+     "title": "기록합본으로 만든 미래전망이 날짜 범위 문자열을 기록일로 저장한다",
+     "detail": "2편 합본 생성 뒤 저장한 date=2026-10-01 ~ 2026-10-02, path=users/qa-p26-kim-jungho/records/2026-10-01 ~ 2026-10-02_1791030620851. ProphecyFromRecord의 합본 selectedRecord.date 범위 문자열을 NovelStoryPage buildStoryRecord가 publishDate=recordDate||today로 그대로 저장한다."
+    }
+   ],
+   "network": {
+    "blockedExternalCount": 0,
+    "hosts": []
+   },
+   "console": [],
+   "pageErrors": [],
+   "dialogs": [],
+   "qa": {
+    "calls": [
+     {
+      "name": "analyzeRecordForProphecy",
+      "ok": true
+     },
+     {
+      "name": "generateHaruProphecy",
+      "ok": true
+     },
+     {
+      "name": "generateHaruProphecy",
+      "ok": true
+     },
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     },
+     {
+      "name": "analyzeRecordForProphecy",
+      "ok": true
+     },
+     {
+      "name": "generateHaruProphecy",
+      "ok": true
+     },
+     {
+      "name": "generateHaruProphecy",
+      "ok": true
+     },
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     }
+    ],
+    "unknownCallables": [],
+    "uploads": [],
+    "writeCount": 7
+   },
+   "db": [
+    [
+     "users/qa-p26-kim-jungho",
+     {
+      "assistantOnboardingV1SeenAt": "2026-10-03T12:30:05.886Z",
+      "utmSource": null,
+      "utmMedium": null,
+      "utmCampaign": null,
+      "signupReferrerOrigin": null,
+      "signupAt": {
+       "__ts": 1791030605887
+      }
+     }
+    ],
+    [
+     "users/qa-p26-kim-jungho/records/2026-10-01",
+     {
+      "date": "2026-10-01",
+      "formats": [
+       "일기"
+      ],
+      "diary_title": "은퇴 준비",
+      "diary_ai_title": "은퇴 준비",
+      "diary_content": "퇴직 뒤 동네 도서관에서 봉사하고 싶다.",
+      "diary_sayu": "퇴직 뒤 동네 도서관에서 봉사하고 싶다."
+     }
+    ],
+    [
+     "users/qa-p26-kim-jungho/records/2026-10-02",
+     {
+      "date": "2026-10-02",
+      "formats": [
+       "일기"
+      ],
+      "diary_title": "산책 계획",
+      "diary_ai_title": "산책 계획",
+      "diary_content": "아침 산책을 계속하고 싶다.",
+      "diary_sayu": "아침 산책을 계속하고 싶다."
+     }
+    ],
+    [
+     "users/qa-p26-kim-jungho/settings/profile",
+     {
+      "currentAge": 62,
+      "ageUpdatedAt": "2026-10-03T12:30:19.781Z"
+     }
+    ],
+    [
+     "users/qa-p26-kim-jungho/records/2026-10-01_1791030614003",
+     {
+      "date": "2026-10-01",
+      "formats": [
+       "에세이"
+      ],
+      "content": "[모의 미래전망 결과 — 실제 예측 아님]",
+      "essay_title": "정호의 3년 후 이야기",
+      "essay_ai_title": "정호의 3년 후 이야기",
+      "essay_sayu": "[모의 미래전망 결과 — 실제 예측 아님]",
+      "future_story_source": {
+       "type": "HARU미래전망",
+       "protagonistName": "정호",
+       "timeOption": "3년 후",
+       "fromRecord": true,
+       "recordTitle": "은퇴 준비",
+       "recordDate": "2026-10-01",
+       "recordFormat": "일기"
+      },
+      "createdAt": "2026-10-03T12:30:14.003Z",
+      "updatedAt": "2026-10-03T12:30:14.003Z"
+     }
+    ],
+    [
+     "users/qa-p26-kim-jungho/records/2026-10-01 ~ 2026-10-02_1791030620851",
+     {
+      "date": "2026-10-01 ~ 2026-10-02",
+      "formats": [
+       "에세이"
+      ],
+      "content": "[모의 미래전망 결과 — 실제 예측 아님]",
+      "essay_title": "정호의 3년 후 이야기",
+      "essay_ai_title": "정호의 3년 후 이야기",
+      "essay_sayu": "[모의 미래전망 결과 — 실제 예측 아님]",
+      "future_story_source": {
+       "type": "HARU미래전망",
+       "protagonistName": "정호",
+       "timeOption": "3년 후",
+       "fromRecord": true,
+       "recordTitle": "일기 합본 (2026-10-01 ~ 2026-10-02)",
+       "recordDate": "2026-10-01 ~ 2026-10-02",
+       "recordFormat": "일기 합본 2편"
+      },
+      "createdAt": "2026-10-03T12:30:20.851Z",
+      "updatedAt": "2026-10-03T12:30:20.851Z"
+     }
+    ]
+   ]
+  },
+  {
+   "runId": "2026-10-09T03-35-01",
+   "meta": {
+    "id": "p27-lawsuit",
+    "format": "전자소송연습",
+    "persona": {
+     "name": "박성민",
+     "age": 38,
+     "gender": "남",
+     "job": "직장인",
+     "device": "Chromium 모바일 390×844",
+     "plan": "무료",
+     "goal": "현재 지원되는 대여금 반환 사례로 절차 연습·모의 AI 초안·사건 저장을 확인한다."
+    },
+    "identity": {
+     "uid": "qa-p27-park-sungmin",
+     "displayName": "박성민",
+     "email": "p27@example.invalid",
+     "plan": "free"
+    },
+    "scenario": [
+     "홈·초보 안내·법률정보 동의·인증 연습",
+     "동의 방지·사건·금액·당사자·청구 입력",
+     "모의 AI 초안·수동 입력·증거·검토·모의 제출",
+     "제출준비 사건 저장·재접속·격리"
+    ]
+   },
+   "startedAt": "2026-10-09T03:35:24.506Z",
+   "durationMs": 16263,
+   "steps": [
+    {
+     "n": 1,
+     "name": "홈 → 초보 안내 → 연습 진입",
+     "ok": true,
+     "ms": 6568,
+     "url": "/lawsuit-practice",
+     "toasts": [],
+     "shot": "01-홈-초보-안내-연습-진입.png"
+    },
+    {
+     "n": 2,
+     "name": "인증 연습·서류·유형·동의 방지",
+     "ok": true,
+     "ms": 3348,
+     "url": "/lawsuit-practice/practice",
+     "toasts": [],
+     "shot": "02-인증-연습-서류-유형-동의-방지.png"
+    },
+    {
+     "n": 3,
+     "name": "기본 정보·당사자·청구 입력",
+     "ok": true,
+     "ms": 1671,
+     "url": "/lawsuit-practice/practice",
+     "toasts": [],
+     "shot": "03-기본-정보-당사자-청구-입력.png"
+    },
+    {
+     "n": 4,
+     "name": "모의 AI 초안·직접 사실 입력·증거",
+     "ok": true,
+     "ms": 2729,
+     "url": "/lawsuit-practice/practice",
+     "toasts": [],
+     "shot": "04-모의-AI-초안-직접-사실-입력-증거.png"
+    },
+    {
+     "n": 5,
+     "name": "사건으로 저장·재접속",
+     "ok": true,
+     "ms": 1470,
+     "url": "/legal-cases/bfQFck0CSIRX8k4IwQUD",
+     "toasts": [],
+     "shot": "05-사건으로-저장-재접속.png"
+    },
+    {
+     "n": 6,
+     "name": "격리 확인",
+     "ok": true,
+     "ms": 2,
+     "url": "/legal-cases/bfQFck0CSIRX8k4IwQUD",
+     "toasts": [],
+     "shot": "06-격리-확인.png"
+    }
+   ],
+   "checks": [
+    {
+     "step": "홈 → 초보 안내 → 연습 진입",
+     "name": "연습이 실제 법원 제출이 아님을 표시한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "인증 연습·서류·유형·동의 방지",
+     "name": "인증서 없이 진행 버튼은 비활성이다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "인증 연습·서류·유형·동의 방지",
+     "name": "대여금 반환 유형이 보인다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "인증 연습·서류·유형·동의 방지",
+     "name": "연습 동의 전 다음은 비활성이다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 AI 초안·직접 사실 입력·증거",
+     "name": "모의 초안과 검토 안내를 표시한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 AI 초안·직접 사실 입력·증거",
+     "name": "검토표에 금액·당사자·직접 입력 사실이 보인다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 AI 초안·직접 사실 입력·증거",
+     "name": "모의 사건번호를 표시한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 AI 초안·직접 사실 입력·증거",
+     "name": "실제 기록은 아직 저장되지 않았다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "사건으로 저장·재접속",
+     "name": "본인 legalCases에 사건 한 건 저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "사건으로 저장·재접속",
+     "name": "제출준비 상태와 연습 기록으로 저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "사건으로 저장·재접속",
+     "name": "금액·당사자·사실·청구취지를 보존한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "사건으로 저장·재접속",
+     "name": "실제 제출 체크리스트는 미확인 상태다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "사건으로 저장·재접속",
+     "name": "재접속 사건 제목이 표시된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "사건으로 저장·재접속",
+     "name": "일상 records 문서를 만들지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "격리 확인",
+     "name": "외부 요청 차단 집계가 0이다",
+     "ok": true,
+     "detail": "차단 0건"
+    },
+    {
+     "step": "격리 확인",
+     "name": "모의되지 않은 callable이 없다",
+     "ok": true,
+     "detail": "[]"
+    },
+    {
+     "step": "격리 확인",
+     "name": "페이지 실행 오류가 없다",
+     "ok": true,
+     "detail": "[]"
+    }
+   ],
+   "findings": [],
+   "network": {
+    "blockedExternalCount": 0,
+    "hosts": []
+   },
+   "console": [],
+   "pageErrors": [],
+   "dialogs": [
+    {
+     "type": "alert",
+     "message": "연습 내용을 사건으로 저장했습니다. 상태는 제출준비로 기록됩니다."
+    }
+   ],
+   "qa": {
+    "calls": [
+     {
+      "name": "generateLawsuitClaimReason",
+      "ok": true
+     }
+    ],
+    "unknownCallables": [],
+    "uploads": [],
+    "writeCount": 3
+   },
+   "db": [
+    [
+     "users/qa-p27-park-sungmin",
+     {
+      "assistantOnboardingV1SeenAt": "2026-10-03T12:30:01.356Z",
+      "utmSource": null,
+      "utmMedium": null,
+      "utmCampaign": null,
+      "signupReferrerOrigin": null,
+      "signupAt": {
+       "__ts": 1791030601358
+      },
+      "consents": {
+       "sensitiveLegal": true,
+       "sensitiveLegalAgreedAt": {
+        "__ts": 1791030607770
+       }
+      }
+     }
+    ],
+    [
+     "users/qa-p27-park-sungmin/legalCases/bfQFck0CSIRX8k4IwQUD",
+     {
+      "title": "빌려준 돈 연습",
+      "caseType": "기타",
+      "claimAmount": 480000,
+      "status": "제출준비",
+      "courtName": "연습 기록",
+      "caseNumber": "연습 기록",
+      "partyRole": "신청인/원고",
+      "submittedAt": "",
+      "memo": "전자소송연습비서에서 저장한 연습 기록입니다. 실제 법원 제출 사건이 아닙니다.",
+      "checklistSubmit": {
+       "confirmedSubmitScreen": false,
+       "savedReceipt": false,
+       "checkedCaseNumber": false,
+       "confirmedFeePayment": false,
+       "savedFinalPdf": false,
+       "checkedAttachments": false,
+       "confirmedMyCaseList": false
+      },
+      "practiceDraft": {
+       "source": "lawsuit-practice",
+       "savedAt": "2026-10-03T12:30:14.668Z",
+       "caseName": "빌려준 돈 연습",
+       "suitAmount": "480000원",
+       "plaintiffName": "박성민",
+       "defendantName": "이민호",
+       "claimPurpose": "480000원의 반환을 구하는 연습 문장",
+       "claimReason": "2026년 9월 1일 480000원을 빌려주었다.\n9월 30일 반환 약속이 지났지만 받지 못했다.",
+       "evidenceList": [
+        "판매글 또는 상품 설명"
+       ]
+      },
+      "createdAt": {
+       "__ts": 1791030614668
+      },
+      "updatedAt": {
+       "__ts": 1791030614668
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "runId": "2026-10-09T03-35-01",
+   "meta": {
+    "id": "p28-english",
+    "format": "영어일기",
+    "persona": {
+     "name": "정은희",
+     "age": 45,
+     "gender": "여",
+     "job": "주부",
+     "device": "Chromium 모바일 390×844",
+     "plan": "무료",
+     "goal": "한글 직접 작성과 기존 일기 학습에서 입력 한도·오류·저장·번역 캐시 흐름을 확인한다."
+    },
+    "identity": {
+     "uid": "qa-p28-jung-eunhee",
+     "displayName": "정은희",
+     "email": "p28@example.invalid",
+     "plan": "free"
+    },
+    "scenario": [
+     "홈 영어일기·빈 입력·1000자 제한",
+     "번역 모의 오류·입력 유지·오류 안내",
+     "정상 직접작성 저장·날짜·SAYU·재접속",
+     "기존 일기 번역·캐시·같은 길이 수정 fixture·격리"
+    ]
+   },
+   "startedAt": "2026-10-09T03:35:40.960Z",
+   "durationMs": 16610,
+   "steps": [
+    {
+     "n": 1,
+     "name": "홈 → 영어일기·직접 작성·한도",
+     "ok": true,
+     "ms": 3206,
+     "url": "/diary-learn",
+     "toasts": [],
+     "shot": "01-홈-영어일기-직접-작성-한도.png"
+    },
+    {
+     "n": 2,
+     "name": "모의 번역 실패·입력 보존·오류 안내",
+     "ok": true,
+     "ms": 547,
+     "url": "/diary-learn",
+     "toasts": [],
+     "shot": "02-모의-번역-실패-입력-보존-오류-안내.png"
+    },
+    {
+     "n": 3,
+     "name": "직접작성 모의 번역·새벽 날짜·원문 저장",
+     "ok": true,
+     "ms": 2079,
+     "url": "/sayu",
+     "toasts": [],
+     "shot": "03-직접작성-모의-번역-새벽-날짜-원문-저장.png"
+    },
+    {
+     "n": 4,
+     "name": "기존 일기 번역·동일 본문 캐시 재사용",
+     "ok": true,
+     "ms": 6996,
+     "url": "/diary-learn",
+     "toasts": [],
+     "shot": "04-기존-일기-번역-동일-본문-캐시-재사용.png"
+    },
+    {
+     "n": 5,
+     "name": "같은 글자 수 본문 변경 fixture·캐시 무효화",
+     "ok": true,
+     "ms": 3376,
+     "url": "/diary-learn",
+     "toasts": [],
+     "shot": "05-같은-글자-수-본문-변경-fixture-캐시-무효화.png"
+    },
+    {
+     "n": 6,
+     "name": "격리 확인",
+     "ok": true,
+     "ms": 2,
+     "url": "/diary-learn",
+     "toasts": [],
+     "shot": "06-격리-확인.png"
+    }
+   ],
+   "checks": [
+    {
+     "step": "홈 → 영어일기·직접 작성·한도",
+     "name": "빈 본문에서는 번역 버튼이 비활성이다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "홈 → 영어일기·직접 작성·한도",
+     "name": "1000자 본문이 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "홈 → 영어일기·직접 작성·한도",
+     "name": "1001자 입력 시 이전 1000자 본문을 보존한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 번역 실패·입력 보존·오류 안내",
+     "name": "실패 후 입력은 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 번역 실패·입력 보존·오류 안내",
+     "name": "실패 후 기록을 저장하지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 번역 실패·입력 보존·오류 안내",
+     "name": "번역 실패 시 사용자에게 오류 안내를 표시한다",
+     "ok": false,
+     "detail": "[]"
+    },
+    {
+     "step": "직접작성 모의 번역·새벽 날짜·원문 저장",
+     "name": "직접작성영어일기 형식으로 한 건 저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "직접작성 모의 번역·새벽 날짜·원문 저장",
+     "name": "원문 이모지·줄바꿈과 모의 번역을 저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "직접작성 모의 번역·새벽 날짜·원문 저장",
+     "name": "한국시간 새벽에도 날짜를 10월4일로 저장한다",
+     "ok": true,
+     "detail": "users/qa-p28-jung-eunhee/records/2026-10-04_english_diary_1791046803956"
+    },
+    {
+     "step": "직접작성 모의 번역·새벽 날짜·원문 저장",
+     "name": "저장 뒤 SAYU로 이동한다",
+     "ok": true,
+     "detail": "http://127.0.0.1:18762/sayu"
+    },
+    {
+     "step": "직접작성 모의 번역·새벽 날짜·원문 저장",
+     "name": "재접속 뒤 직접 작성 원문이 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "기존 일기 번역·동일 본문 캐시 재사용",
+     "name": "기존 일기 번역을 캐시로 저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "기존 일기 번역·동일 본문 캐시 재사용",
+     "name": "본문이 같으면 추가 번역 호출 없이 캐시를 재사용한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "같은 글자 수 본문 변경 fixture·캐시 무효화",
+     "name": "변경 fixture 두 본문은 길이가 같다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "같은 글자 수 본문 변경 fixture·캐시 무효화",
+     "name": "상세 원문은 수정된 본문이다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "같은 글자 수 본문 변경 fixture·캐시 무효화",
+     "name": "내용이 바뀌면 같은 길이라도 번역 캐시를 갱신한다",
+     "ok": false,
+     "detail": "길이 10 동일, 호출 3 → 3, 이전 번역 표시=true"
+    },
+    {
+     "step": "격리 확인",
+     "name": "외부 요청 차단 집계가 0이다",
+     "ok": true,
+     "detail": "차단 0건"
+    },
+    {
+     "step": "격리 확인",
+     "name": "모의되지 않은 callable이 없다",
+     "ok": true,
+     "detail": "[]"
+    },
+    {
+     "step": "격리 확인",
+     "name": "페이지 실행 오류가 없다",
+     "ok": true,
+     "detail": "[]"
+    }
+   ],
+   "findings": [
+    {
+     "step": "모의 번역 실패·입력 보존·오류 안내",
+     "shot": "02-모의-번역-실패-입력-보존-오류-안내.png",
+     "severity": "경미",
+     "title": "영어일기 번역 실패가 콘솔에만 기록되고 화면에는 오류 안내가 없다",
+     "detail": "translateToEnglish가 functions/unavailable을 반환하자 입력은 유지되고 번역 버튼만 복원됐다. 토스트·화면 오류 안내는 없었다. DiaryLearnPage handleDirectTranslate의 catch는 console.error만 실행한다."
+    },
+    {
+     "step": "같은 글자 수 본문 변경 fixture·캐시 무효화",
+     "shot": "05-같은-글자-수-본문-변경-fixture-캐시-무효화.png",
+     "severity": "중대",
+     "title": "영어일기는 본문을 같은 글자 수로 바꾸면 이전 번역 캐시를 계속 사용한다",
+     "detail": "기존 '오늘 산책을 했다.'를 번역한 상태에서 기존 사용자의 수정 후 상태를 fixture로 '오늘 독서를 했다.'로 구성했다. 상세 원문은 변경됐지만 번역 호출은 3→3, 학습 화면은 이전 Mock walk sentence.를 표시했다. DiaryLearnPage handleTranslate 캐시 조건은 문장 존재·본문 길이만 비교한다. 실제 SAYU 편집 화면의 수정 동작은 이번 fixture 검증에 포함하지 않았다."
+    }
+   ],
+   "network": {
+    "blockedExternalCount": 0,
+    "hosts": []
+   },
+   "console": [
+    {
+     "type": "error",
+     "text": "직접 작성 번역 실패: Error: 격리 번역 실패 응답\n    at fnError (http://127.0.0.1:18762/fakes.ts:6:13)\n    at fakeCallable (http://127.0.0.1:18762/fakes.ts:89:57)\n    at async http://127.0.0.1:18762/sdk.ts:534:17\n    at async handleDirectTranslate (http://127.0.0.1:18762/@fs/private/tmp/haru-persona-batch6/frontend/src/app/pages/DiaryLearnPage.tsx:214:19)"
+    }
+   ],
+   "pageErrors": [],
+   "dialogs": [],
+   "qa": {
+    "calls": [
+     {
+      "name": "translateToEnglish",
+      "ok": false,
+      "error": "functions/unavailable"
+     },
+     {
+      "name": "translateToEnglish",
+      "ok": true
+     },
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     },
+     {
+      "name": "translateToEnglish",
+      "ok": true
+     },
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     }
+    ],
+    "unknownCallables": [],
+    "uploads": [],
+    "writeCount": 5
+   },
+   "db": [
+    [
+     "users/qa-p28-jung-eunhee",
+     {
+      "assistantOnboardingV1SeenAt": "2026-10-03T17:00:01.388Z",
+      "utmSource": null,
+      "utmMedium": null,
+      "utmCampaign": null,
+      "signupReferrerOrigin": null,
+      "signupAt": {
+       "__ts": 1791046801389
+      }
+     }
+    ],
+    [
+     "users/qa-p28-jung-eunhee/records/2026-10-04_english_diary_1791046803956",
+     {
+      "id": "2026-10-04_english_diary_1791046803956",
+      "date": "2026-10-04",
+      "formats": [
+       "직접작성영어일기"
+      ],
+      "sourceAgent": "영어일기",
+      "english_diary_korean": "오늘 가족과 공원에 갔다. 😊\n즐거웠다.",
+      "english_diary_english": "Mock translation for isolated UI testing.",
+      "english_diary_date": "2026-10-04",
+      "english_diary_title": "오늘 가족과 공원에 갔다. 😊\n즐거...",
+      "_english_sentences": [
+       "Mock translation for isolated UI testing."
+      ],
+      "_english_translated_at": "2026-10-03T17:00:03.956Z",
+      "_english_source_length": 23,
+      "createdAt": "2026-10-03T17:00:03.956Z",
+      "updatedAt": "2026-10-03T17:00:03.956Z"
+     }
+    ],
+    [
+     "users/qa-p28-jung-eunhee/records/2026-10-02_fixture_diary",
+     {
+      "date": "2026-10-02",
+      "formats": [
+       "일기"
+      ],
+      "diary_title": "학습할 일기",
+      "diary_content": "오늘 독서를 했다.",
+      "updatedAt": "2026-10-03T17:00:08.996Z",
+      "_english_sentences": [
+       "Mock walk sentence."
+      ],
+      "_english_translated_at": "2026-10-03T17:00:08.995Z",
+      "_english_source_length": 10
+     }
+    ]
+   ]
+  }
+ ]
+}
