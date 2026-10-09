@@ -663,6 +663,10 @@ export function exportLedgerToXlsx(
     }
   }
 
+  if (rowNo === 0) {
+    return { count: 0, fileName: '' };
+  }
+
   // ── 시트2: 계정과목별 집계 ──
   const summaryHeader: (string | number)[] = ['계정과목', '합계(원)', '비고'];
   const summaryRows: (string | number)[][] = [summaryHeader];
