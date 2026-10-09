@@ -19,6 +19,7 @@ import {
   defaultLedgerAssetTreatment,
   defaultLedgerExpenseDeduction,
   defaultLedgerVatDeduction,
+  normalizeLedgerDate,
   type LedgerAssetTreatment,
   type LedgerExpenseDeduction,
   type LedgerHometaxCheck,
@@ -99,20 +100,6 @@ function inferEvidenceType(vendor: string, paymentMethod: string, proof: string)
   return '기타';
 }
 
-// ===== 부가세 공제 여부 =====
-function inferVatDeductible(vendor: string, accountCode: string): string {
-  const upperVendor = vendor.toUpperCase();
-  if (
-    upperVendor.includes('OPENAI') || upperVendor.includes('ANTHROPIC') ||
-    upperVendor.includes('GOOGLE') || upperVendor.includes('AWS') ||
-    upperVendor.includes('AZURE')
-  ) {
-    return '불가(해외)';
-  }
-  if (accountCode === '접대비') return '한도내공제';
-  return '공제가능';
-}
-
 // ===== 금액 문자열 → 숫자 파싱 =====
 function parseAmount(amountStr: string): number {
   if (!amountStr) return 0;
@@ -151,12 +138,21 @@ function normalizeAssetTreatment(value: unknown, transactionType: string): Ledge
   return defaultLedgerAssetTreatment({ transactionType });
 }
 
-function dateOnly(value: string): string {
-  return String(value || '').trim().slice(0, 10);
+function normalizedDate(value: string, referenceYear = new Date().getFullYear()): string {
+  const normalized = normalizeLedgerDate(String(value || '').replace(/([년월])\s*/g, '$1'), referenceYear);
+  if (!normalized.valid) return '';
+  return normalized.value.replace(
+    /^(\d{4}-\d{2}-\d{2})\s+T?(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?(.*)$/,
+    (_, date, hour, minute, second, suffix) => `${date} ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}${second ? `:${second.padStart(2, '0')}` : ''}${suffix}`,
+  );
+}
+
+function dateOnly(value: string, referenceYear = new Date().getFullYear()): string {
+  return normalizedDate(value, referenceYear).slice(0, 10);
 }
 
 function isInRange(date: string, start?: string, end?: string): boolean {
-  const ymd = dateOnly(date);
+  const ymd = dateOnly(date, start ? Number(start.slice(0, 4)) : undefined);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
   if (start && ymd < start) return false;
   if (end && ymd > end) return false;
@@ -592,26 +588,33 @@ export interface LedgerExportResult {
   fileName: string;
 }
 
+function exportEntriesInRange(records: HaruRecord[], start?: string, end?: string): ExpandedEntry[] {
+  return records.filter(isLedgerRecord).flatMap((record) => {
+    const recordDate = dateOnly(record.date);
+    const referenceYear = recordDate ? Number(recordDate.slice(0, 4)) : new Date().getFullYear();
+    return expandRecord(record).map((entry) => {
+      const entryDate = dateOnly(entry.date, referenceYear);
+      // 거래일이 없거나 해석할 수 없으면 분류와 출력 모두 입력일을 사용한다.
+      // 출력용 복사본만 바꾸며 저장된 거래 원문은 유지한다.
+      return {
+        entry: entryDate || !recordDate ? entry : { ...entry, date: recordDate },
+        filterDate: entryDate || recordDate,
+      };
+    });
+  }).filter(({ filterDate }) => (!start && !end) || isInRange(filterDate, start, end))
+    .sort((a, b) => a.filterDate.localeCompare(b.filterDate))
+    .map(({ entry }) => entry);
+}
+
 export function exportLedgerToXlsx(
   records: HaruRecord[],
   period: LedgerPeriod,
 ): LedgerExportResult {
   const { start, end } = periodRange(period);
+  return exportLedgerEntriesToXlsx(exportEntriesInRange(records, start, end), buildFileName(period, start));
+}
 
-  const ledgerRecords = records.filter(isLedgerRecord);
-
-  const filtered = ledgerRecords.filter((r) => {
-    if (start && r.date < start) return false;
-    if (end && r.date > end) return false;
-    return true;
-  });
-
-  filtered.sort((a, b) => {
-    const ad = String((a as any).ledger_date || a.date || '');
-    const bd = String((b as any).ledger_date || b.date || '');
-    return ad.localeCompare(bd);
-  });
-
+function exportLedgerEntriesToXlsx(entries: ExpandedEntry[], fileName: string): LedgerExportResult {
   // ── 시트1: 거래 상세내역 ──
   const detailHeader: (string | number)[] = [
     'No', '날짜', '시간', '수입/지출', '사업구분', '사업용구분', '거래처', '계정과목',
@@ -623,43 +626,40 @@ export function exportLedgerToXlsx(
   const accountSummary: Record<string, number> = {};
   let rowNo = 0;
 
-  for (const r of filtered) {
-    const entries = expandRecord(r);
-    for (const e of entries) {
-      rowNo++;
-      // 날짜/시간 분리: "2026.05.18 14:30" → date="2026.05.18", time="14:30"
-      const dateTimeParts = e.date.trim().split(/\s+/);
-      const dateStr = dateTimeParts[0] || '';
-      const timeStr = dateTimeParts[1] || '';
+  for (const e of entries) {
+    rowNo++;
+    // 날짜/시간 분리: "2026.05.18 14:30" → date="2026.05.18", time="14:30"
+    const dateTimeParts = e.date.trim().replace(/([년월])\s*/g, '$1').split(/\s+/);
+    const dateStr = dateTimeParts[0] || '';
+    const timeStr = dateTimeParts[1] || '';
 
-      const accountCode = inferAccountCode(e.vendor, e.category);
-      const evidenceType = inferEvidenceType(e.vendor, e.paymentMethod, e.proof);
-      const vatDeductible = inferVatDeductible(e.vendor, accountCode);
-      const amountNum = parseAmount(e.amount);
+    const accountCode = e.transactionType === '수입' ? '매출' : inferAccountCode(e.vendor, e.category);
+    const evidenceType = inferEvidenceType(e.vendor, e.paymentMethod, e.proof);
+    const vatDeductible = LEDGER_VAT_DEDUCTION_LABELS[e.vatDeduction];
+    const amountNum = parseAmount(e.amount);
 
-      detailRows.push([
-        rowNo,
-        dateStr,
-        timeStr,
-        e.transactionType,
-        e.businessTrack,
-        e.usageType,
-        e.vendor,
-        accountCode,
-        e.foreignAmount || '',
-        e.foreignCurrency || '',
-        e.exchangeRate || '',
-        amountNum > 0 ? amountNum : e.amount,
-        e.paymentMethod,
-        evidenceType,
-        vatDeductible,
-        e.memo,
-        e.businessContextMemo,
-      ]);
+    detailRows.push([
+      rowNo,
+      dateStr,
+      timeStr,
+      e.transactionType,
+      e.businessTrack,
+      e.usageType,
+      e.vendor,
+      accountCode,
+      e.foreignAmount || '',
+      e.foreignCurrency || '',
+      e.exchangeRate || '',
+      amountNum > 0 ? amountNum : e.amount,
+      e.paymentMethod,
+      evidenceType,
+      vatDeductible,
+      e.memo,
+      e.businessContextMemo,
+    ]);
 
-      if (amountNum > 0) {
-        accountSummary[accountCode] = (accountSummary[accountCode] ?? 0) + amountNum;
-      }
+    if (e.transactionType === '지출' && amountNum > 0) {
+      accountSummary[accountCode] = (accountSummary[accountCode] ?? 0) + amountNum;
     }
   }
 
@@ -668,7 +668,7 @@ export function exportLedgerToXlsx(
   }
 
   // ── 시트2: 계정과목별 집계 ──
-  const summaryHeader: (string | number)[] = ['계정과목', '합계(원)', '비고'];
+  const summaryHeader: (string | number)[] = ['계정과목', '지출합계(원)', '비고'];
   const summaryRows: (string | number)[][] = [summaryHeader];
   const sortedAccounts = Object.entries(accountSummary).sort((a, b) => b[1] - a[1]);
   for (const [code, total] of sortedAccounts) {
@@ -681,8 +681,6 @@ export function exportLedgerToXlsx(
     { name: '거래상세내역', rows: detailRows },
     { name: '계정과목집계', rows: summaryRows },
   ]);
-
-  const fileName = buildFileName(period, start);
 
   const blob = new Blob([xlsx], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -736,7 +734,7 @@ export function buildLedgerVatReport(records: HaruRecord[], start: string, end: 
     .flatMap((record) => expandRecord(record))
     .filter((entry) => isInRange(entry.date, start, end))
     .map(toVatReportEntry)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.vendor.localeCompare(b.vendor));
+    .sort((a, b) => normalizedDate(a.date, Number(start.slice(0, 4))).localeCompare(normalizedDate(b.date, Number(start.slice(0, 4)))) || a.vendor.localeCompare(b.vendor));
 
   const report: LedgerVatReport = {
     start,
@@ -959,7 +957,7 @@ export function buildLedgerIncomeTaxReport(records: HaruRecord[], start: string,
     .flatMap((record) => expandRecord(record))
     .filter((entry) => isInRange(entry.date, start, end))
     .map(toIncomeTaxReportEntry)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.vendor.localeCompare(b.vendor));
+    .sort((a, b) => normalizedDate(a.date, Number(start.slice(0, 4))).localeCompare(normalizedDate(b.date, Number(start.slice(0, 4)))) || a.vendor.localeCompare(b.vendor));
 
   const report: LedgerIncomeTaxReport = {
     start,
@@ -1110,12 +1108,7 @@ export function exportLedgerForMonth(
   year: number,
   month: number, // 1-indexed
 ): LedgerExportResult {
-  const ym = `${year}-${String(month).padStart(2, '0')}`;
-
-  const monthRecords = records.filter((r) => {
-    if (!Object.keys(r).some((k) => k.startsWith('ledger_'))) return false;
-    return r.date.startsWith(ym);
-  });
-
-  return exportLedgerToXlsx(monthRecords, 'all');
+  const start = `${year}-${String(month).padStart(2, '0')}-01`;
+  const end = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
+  return exportLedgerEntriesToXlsx(exportEntriesInRange(records, start, end), buildFileName('all'));
 }
