@@ -1,0 +1,586 @@
+{
+ "runId": "2026-10-09T08-57-14",
+ "meta": {
+  "id": "p14-ledger",
+  "format": "HARU보조장부",
+  "persona": {
+   "name": "오민석",
+   "age": 48,
+   "gender": "남",
+   "job": "동네 카페 사장님(개인사업자)",
+   "device": "iPhone 모양(Chromium 모바일 에뮬레이션, 390×844)",
+   "itLevel": "중하",
+   "plan": "무료(월 AI 도움 10회)",
+   "goal": "가게 매출·재료비·접대비를 폰으로 그날그날 적어 두고, 부가세·종합소득세 신고 때 세무사에게 엑셀로 넘기고 싶다."
+  },
+  "identity": {
+   "uid": "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8",
+   "displayName": "오민석",
+   "email": "p14@example.invalid",
+   "plan": "free"
+  },
+  "scenario": [
+   "1일차(10/1 월초 정리): 지난달 말(9/28~9/30) 거래 3건을 입력 — 카드 매출, 원두 매입(세금계산서), 전기요금",
+   "2일차(10/6): 이번 달 거래 5건 입력 — 카드·현금 매출, 원두 매입, 거래처 접대(88만원, 매입세액 불공제), 개인 점심(개인용·증빙 없음). 사업구분을 빠뜨리는 실수 포함",
+   "3일차(10/7): 기록합본 화면에서 보조장부 엑셀 저장(이번달/전체), 부가세 신고 준비(2기 예정·10월), 종합소득세 준비를 확인"
+  ]
+ },
+ "startedAt": "2026-10-09T08:57:16.411Z",
+ "durationMs": 50847,
+ "steps": [
+  {
+   "n": 1,
+   "name": "1일차 홈에서 HARU보조장부 열기",
+   "ok": true,
+   "ms": 5974,
+   "url": "/record",
+   "toasts": [],
+   "shot": "02-1일차-홈에서-HARU보조장부-열기.png"
+  },
+  {
+   "n": 2,
+   "name": "1일차 지난달 말 거래 3건 입력",
+   "ok": true,
+   "ms": 1213,
+   "url": "/record",
+   "toasts": [],
+   "shot": "03-1일차-지난달-말-거래-3건-입력.png"
+  },
+  {
+   "n": 3,
+   "name": "1일차 저장",
+   "ok": true,
+   "ms": 2543,
+   "note": "저장 후 이동: /v2",
+   "url": "/v2",
+   "toasts": [
+    "보조장부 3건이 저장되었습니다!",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "04-1일차-저장.png"
+  },
+  {
+   "n": 4,
+   "name": "1일차 저장 결과 확인",
+   "ok": true,
+   "ms": 2,
+   "note": "{\"path\":\"users/naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8/records/2026-10-01_1790856007357\",\"entries\":[[\"2026.09.28\",\"수입\",\"카드 매출(주말 마감)\",\"2,310,000원\",\"taxable\",\"notApplicable\"],[\"2026.09.29\",\"지출\",\"(주)원두상회\",\"550,000원\",\"taxable\",\"deductible\"],[\"2026.09.30\",\"지출\",\"한국전력 전기요금\",\"165,000원\",\"taxable\",\"deductible\"]]}",
+   "url": "/v2",
+   "toasts": [
+    "보조장부 3건이 저장되었습니다!",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "05-1일차-저장-결과-확인.png"
+  },
+  {
+   "n": 5,
+   "name": "2일차 보조장부 열고 첫 거래 입력(사업구분을 빠뜨림)",
+   "ok": true,
+   "ms": 2909,
+   "url": "/record",
+   "toasts": [],
+   "shot": "06-2일차-보조장부-열고-첫-거래-입력-사업구분을-빠뜨림.png"
+  },
+  {
+   "n": 6,
+   "name": "2일차 사업구분 없이 저장 시도 → 안내 후 선택",
+   "ok": true,
+   "ms": 672,
+   "url": "/record",
+   "toasts": [
+    "사업구분을 선택해주세요. (HARU2026 / 외부용역)"
+   ],
+   "shot": "07-2일차-사업구분-없이-저장-시도-안내-후-선택.png"
+  },
+  {
+   "n": 7,
+   "name": "2일차 나머지 거래 4건 입력",
+   "ok": true,
+   "ms": 2075,
+   "url": "/record",
+   "toasts": [
+    "사업구분을 선택해주세요. (HARU2026 / 외부용역)"
+   ],
+   "shot": "09-2일차-나머지-거래-4건-입력.png"
+  },
+  {
+   "n": 8,
+   "name": "2일차 저장",
+   "ok": true,
+   "ms": 5354,
+   "note": "저장 후 이동: /v2",
+   "url": "/v2",
+   "toasts": [
+    "보조장부 5건이 저장되었습니다!",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "10-2일차-저장.png"
+  },
+  {
+   "n": 9,
+   "name": "2일차 저장 결과 확인",
+   "ok": true,
+   "ms": 8,
+   "note": "[[\"2026.10.05\",\"수입\",\"카드 매출(일 마감)\",\"1,100,000원\",\"사업용\",\"notApplicable\"],[\"2026.10.06\",\"수입\",\"현금 매출\",\"330,000원\",\"사업용\",\"notApplicable\"],[\"2026.10.05\",\"지출\",\"(주)원두상회\",\"330,000원\",\"사업용\",\"deductible\"],[\"2026.10.06\",\"지출\",\"한우마을(거래처 접대)\",\"88만원\",\"사업용\",\"nonDeductible\"],[\"2026.10.06\",\"지출\",\"개인 점심(칼국수)\",\"12,000원\",\"개인용\",\"notApplicable\"]]",
+   "url": "/v2",
+   "toasts": [
+    "보조장부 5건이 저장되었습니다!",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "11-2일차-저장-결과-확인.png"
+  },
+  {
+   "n": 10,
+   "name": "3일차 기록합본에서 보조장부 열기",
+   "ok": true,
+   "ms": 3195,
+   "url": "/merge",
+   "toasts": [],
+   "shot": "12-3일차-기록합본에서-보조장부-열기.png"
+  },
+  {
+   "n": 11,
+   "name": "3일차 \"이번달\" 엑셀 저장",
+   "ok": true,
+   "ms": 145,
+   "url": "/merge",
+   "toasts": [
+    "📒 5건이 HARU_보조장부_2026-10.xlsx 파일로 저장되었습니다."
+   ],
+   "shot": "13-3일차-이번달-엑셀-저장.png"
+  },
+  {
+   "n": 12,
+   "name": "3일차 \"전체\" 엑셀 저장 — 계정과목 집계 확인",
+   "ok": true,
+   "ms": 8667,
+   "note": "{\"header\":[\"No\",\"날짜\",\"시간\",\"수입/지출\",\"사업구분\",\"사업용구분\",\"거래처\",\"계정과목\",\"외화금액\",\"통화\",\"적용환율\",\"원화금액(원)\",\"결제수단\",\"증빙종류\",\"부가세공제\",\"메모/적요\",\"업무 관련성 메모\"],\"income\":3740000,\"expense\":1937000,\"grandTotal\":1937000}",
+   "url": "/merge",
+   "toasts": [
+    "📒 8건이 HARU_보조장부_전체.xlsx 파일로 저장되었습니다.",
+    "📒 5건이 HARU_보조장부_2026-10.xlsx 파일로 저장되었습니다."
+   ],
+   "shot": "15-3일차-전체-엑셀-저장-계정과목-집계-확인.png"
+  },
+  {
+   "n": 13,
+   "name": "3일차 부가세 신고 준비 — 2기 예정(7~9월) 집계",
+   "ok": true,
+   "ms": 1033,
+   "url": "/merge",
+   "toasts": [
+    "부가세 신고 준비 집계 3건을 계산했습니다."
+   ],
+   "shot": "17-3일차-부가세-신고-준비-2기-예정-7-9월-집계.png"
+  },
+  {
+   "n": 14,
+   "name": "3일차 부가세 신고 준비 — 10월 직접 지정 집계",
+   "ok": true,
+   "ms": 1065,
+   "url": "/merge",
+   "toasts": [
+    "부가세 신고 준비 집계 5건을 계산했습니다.",
+    "부가세 신고 준비 집계 3건을 계산했습니다."
+   ],
+   "shot": "19-3일차-부가세-신고-준비-10월-직접-지정-집계.png"
+  },
+  {
+   "n": 15,
+   "name": "3일차 종합소득세 준비 — 10월 집계",
+   "ok": true,
+   "ms": 1007,
+   "url": "/merge",
+   "toasts": [
+    "종합소득세 준비 집계 5건을 계산했습니다.",
+    "부가세 신고 준비 집계 5건을 계산했습니다.",
+    "부가세 신고 준비 집계 3건을 계산했습니다."
+   ],
+   "shot": "21-3일차-종합소득세-준비-10월-집계.png"
+  },
+  {
+   "n": 16,
+   "name": "3일차 부가세 준비자료 XLSX 저장(10월)",
+   "ok": true,
+   "ms": 48,
+   "note": "{\"file\":\"HARU_부가세_신고준비자료_2026-10-01_2026-10-31.xlsx\",\"rows\":{\"VAT_Summary\":12,\"Sales\":3,\"Purchases\":3,\"Review_Required\":5}}",
+   "url": "/merge",
+   "toasts": [
+    "종합소득세 준비 집계 5건을 계산했습니다.",
+    "부가세 신고 준비 집계 5건을 계산했습니다.",
+    "부가세 신고 준비 집계 3건을 계산했습니다."
+   ],
+   "shot": "22-3일차-부가세-준비자료-XLSX-저장-10월.png"
+  },
+  {
+   "n": 17,
+   "name": "[대조] 하이픈 날짜(2026-10-07)로 적은 거래 1건 입력·저장",
+   "ok": true,
+   "ms": 5507,
+   "url": "/v2",
+   "toasts": [
+    "보조장부 1건이 저장되었습니다!",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "23-대조-하이픈-날짜-2026-10-07-로-적은-거래-1건-입력-저장.png"
+  },
+  {
+   "n": 18,
+   "name": "[회귀 대조] 점·하이픈 날짜 거래가 함께 집계되는지",
+   "ok": true,
+   "ms": 4304,
+   "url": "/merge",
+   "toasts": [
+    "부가세 신고 준비 집계 6건을 계산했습니다."
+   ],
+   "shot": "25-회귀-대조-점-하이픈-날짜-거래가-함께-집계되는지.png"
+  },
+  {
+   "n": 19,
+   "name": "3일차 내 기록(SAYU)에서 보조장부 기록 확인",
+   "ok": true,
+   "ms": 4004,
+   "url": "/sayu",
+   "toasts": [],
+   "shot": "27-3일차-내-기록-SAYU-에서-보조장부-기록-확인.png"
+  }
+ ],
+ "checks": [
+  {
+   "step": "1일차 홈에서 HARU보조장부 열기",
+   "name": "보조장부 작성 화면(단건 작성)이 열린다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "1일차 홈에서 HARU보조장부 열기",
+   "name": "F-20 종결: 본인 전용 사업구분 두 가지를 유지한다",
+   "ok": true,
+   "detail": "선택지: [\"HARU2026\",\"외부용역\"]"
+  },
+  {
+   "step": "1일차 지난달 말 거래 3건 입력",
+   "name": "저장 버튼에 입력한 건수(3건)가 표시된다",
+   "ok": true,
+   "detail": "거래 저장하기 (3건)"
+  },
+  {
+   "step": "1일차 저장 결과 확인",
+   "name": "기록이 1건 생긴다",
+   "ok": true,
+   "detail": "records 1건"
+  },
+  {
+   "step": "1일차 저장 결과 확인",
+   "name": "거래 3건이 ledger_entries 에 저장된다",
+   "ok": true,
+   "detail": "entries 3건"
+  },
+  {
+   "step": "1일차 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8/records/2026-10-01_1790856007357"
+  },
+  {
+   "step": "1일차 저장 결과 확인",
+   "name": "입력한 날짜(2026.09.28 등)와 금액이 그대로 보존된다",
+   "ok": true,
+   "detail": "[\"2026.09.28\",\"2,310,000원\"]"
+  },
+  {
+   "step": "2일차 사업구분 없이 저장 시도 → 안내 후 선택",
+   "name": "사업구분을 빠뜨리면 안내 문구로 저장이 막힌다",
+   "ok": true,
+   "detail": "[\"사업구분을 선택해주세요. (HARU2026 / 외부용역)\"]"
+  },
+  {
+   "step": "2일차 사업구분 없이 저장 시도 → 안내 후 선택",
+   "name": "저장이 막혀도 화면에서 입력한 값이 남아 있다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "2일차 나머지 거래 4건 입력",
+   "name": "저장 버튼에 입력한 건수(5건)가 표시된다",
+   "ok": true,
+   "detail": "거래 저장하기 (5건)"
+  },
+  {
+   "step": "2일차 저장 결과 확인",
+   "name": "2일차 기록이 1건 더 생긴다(총 2건)",
+   "ok": true,
+   "detail": "records 2건"
+  },
+  {
+   "step": "2일차 저장 결과 확인",
+   "name": "거래 5건이 저장된다",
+   "ok": true,
+   "detail": "entries 5건"
+  },
+  {
+   "step": "2일차 저장 결과 확인",
+   "name": "\"88만원\"으로 쓴 금액이 입력한 그대로 저장된다",
+   "ok": true,
+   "detail": "amount=\"88만원\""
+  },
+  {
+   "step": "2일차 저장 결과 확인",
+   "name": "\"불공제\"로 고른 매입세액 공제 여부가 저장된다",
+   "ok": true,
+   "detail": "vatDeduction=\"nonDeductible\""
+  },
+  {
+   "step": "2일차 저장 결과 확인",
+   "name": "개인용 거래가 개인용으로 저장된다",
+   "ok": true,
+   "detail": "usageType=\"개인용\""
+  },
+  {
+   "step": "2일차 저장 결과 확인",
+   "name": "사업구분이 저장된다(external)",
+   "ok": true,
+   "detail": "[\"external\",\"external\",\"external\",\"external\",\"external\"]"
+  },
+  {
+   "step": "3일차 기록합본에서 보조장부 열기",
+   "name": "기록합본 화면에 \"보조장부 엑셀 저장\"이 보인다",
+   "ok": true,
+   "detail": "/merge"
+  },
+  {
+   "step": "3일차 \"이번달\" 엑셀 저장",
+   "name": "이번달 엑셀이 내려받아진다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "3일차 \"이번달\" 엑셀 저장",
+   "name": "이번달(10월) 엑셀에는 10월 거래 5건만 들어간다",
+   "ok": true,
+   "detail": "엑셀 5행 (10월 거래 5건, 9월 거래 0건) — 파일 HARU_보조장부_2026-10.xlsx"
+  },
+  {
+   "step": "3일차 \"전체\" 엑셀 저장 — 계정과목 집계 확인",
+   "name": "전체 엑셀이 내려받아진다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "3일차 \"전체\" 엑셀 저장 — 계정과목 집계 확인",
+   "name": "전체 엑셀에 거래 8건이 모두 들어간다",
+   "ok": true,
+   "detail": "엑셀 8행"
+  },
+  {
+   "step": "3일차 \"전체\" 엑셀 저장 — 계정과목 집계 확인",
+   "name": "상세 시트의 수입 합계가 입력한 매출 합계(3,740,000원)와 같다",
+   "ok": true,
+   "detail": "엑셀 수입 3740000원 / 기대 3740000원"
+  },
+  {
+   "step": "3일차 \"전체\" 엑셀 저장 — 계정과목 집계 확인",
+   "name": "상세 시트의 지출 합계가 입력한 지출 합계(1,937,000원)와 같다 — \"88만원\"이 880,000원으로 계산된다",
+   "ok": true,
+   "detail": "엑셀 지출 1937000원 / 기대 1937000원"
+  },
+  {
+   "step": "3일차 \"전체\" 엑셀 저장 — 계정과목 집계 확인",
+   "name": "계정과목 집계 시트의 합계가 수입과 지출을 한데 더하지 않는다",
+   "ok": true,
+   "detail": "집계 시트 합계 1937000원 (수입 3740000 + 지출 1937000 = 5677000) / 시트 내용: [[\"계정과목\",\"지출합계(원)\",\"비고\"],[\"잡비\",1045000,\"\"],[\"접대비\",880000,\"\"],[\"복리후생비\",12000,\"\"],[\"합  계\",1937000,\"\"]]"
+  },
+  {
+   "step": "3일차 \"전체\" 엑셀 저장 — 계정과목 집계 확인",
+   "name": "상세 시트의 부가세공제 열이 입력한 \"불공제\"를 따른다",
+   "ok": true,
+   "detail": "접대 거래(불공제로 입력)의 엑셀 값: \"불공제\" / 매출 거래의 엑셀 값: \"해당없음\""
+  },
+  {
+   "step": "3일차 부가세 신고 준비 — 2기 예정(7~9월) 집계",
+   "name": "2기 예정(7~9월) 부가세 집계가 입력한 9월 거래 3건과 맞는다",
+   "ok": true,
+   "detail": "화면 {\"sales\":2100000,\"outputVat\":210000,\"purchase\":650000,\"deductible\":65000,\"nonDeductible\":0,\"expected\":145000} / 기대 {\"sales\":2100000,\"outputVat\":210000,\"purchase\":650000,\"deductible\":65000,\"nonDeductible\":0,\"expected\":145000} / 안내 [\"부가세 신고 준비 집계 3건을 계산했습니다.\"]"
+  },
+  {
+   "step": "3일차 부가세 신고 준비 — 10월 직접 지정 집계",
+   "name": "10월 부가세 집계가 입력한 10월 거래와 맞는다",
+   "ok": true,
+   "detail": "화면 {\"sales\":1300000,\"outputVat\":130000,\"purchase\":1100000,\"deductible\":30000,\"nonDeductible\":80000,\"expected\":100000} / 기대 {\"sales\":1300000,\"outputVat\":130000,\"purchase\":1100000,\"deductible\":30000,\"nonDeductible\":80000,\"expected\":100000} / 안내 [\"부가세 신고 준비 집계 5건을 계산했습니다.\",\"부가세 신고 준비 집계 3건을 계산했습니다.\"]"
+  },
+  {
+   "step": "3일차 종합소득세 준비 — 10월 집계",
+   "name": "종합소득세 준비의 총 수입이 10월 사업 매출 합계(1,430,000원)와 같다",
+   "ok": true,
+   "detail": "화면 {\"income\":1430000,\"deductible\":0,\"review\":1210000} / 안내 [\"종합소득세 준비 집계 5건을 계산했습니다.\",\"부가세 신고 준비 집계 5건을 계산했습니다.\",\"부가세 신고 준비 집계 3건을 계산했습니다.\"]"
+  },
+  {
+   "step": "3일차 부가세 준비자료 XLSX 저장(10월)",
+   "name": "부가세 준비자료 엑셀이 내려받아진다",
+   "ok": true,
+   "detail": "[\"종합소득세 준비 집계 5건을 계산했습니다.\",\"부가세 신고 준비 집계 5건을 계산했습니다.\",\"부가세 신고 준비 집계 3건을 계산했습니다.\"]"
+  },
+  {
+   "step": "3일차 부가세 준비자료 XLSX 저장(10월)",
+   "name": "\"내보낼 거래가 없다\"고 안내하면 파일은 내려받아지지 않는다",
+   "ok": true,
+   "detail": "안내 [] / 내려받은 파일 HARU_부가세_신고준비자료_2026-10-01_2026-10-31.xlsx의 시트별 줄 수 {\"VAT_Summary\":12,\"Sales\":3,\"Purchases\":3,\"Review_Required\":5}"
+  },
+  {
+   "step": "[회귀 대조] 점·하이픈 날짜 거래가 함께 집계되는지",
+   "name": "[회귀 대조] 점 날짜 5건과 하이픈 날짜 1건을 함께 집계한다",
+   "ok": true,
+   "detail": "화면 {\"sales\":1300000,\"purchase\":1120000,\"deductible\":32000} / 안내 [\"부가세 신고 준비 집계 6건을 계산했습니다.\"] (점 날짜 5건 + 하이픈 날짜 1건의 합계)"
+  },
+  {
+   "step": "3일차 내 기록(SAYU)에서 보조장부 기록 확인",
+   "name": "내 기록 목록에 보조장부 기록 3건(9월 말 입력분·10월 입력분·대조 입력분)이 보인다",
+   "ok": true,
+   "detail": "S ⏎ A ⏎ Y ⏎ U ⏎ 다듬어진 기록을 확인하고 최종 편집하세요 ⏎ 원문 감정 그대로, 문장만 자연스럽게 다듬습니다 ⏎ 🧹 키워드 캐시 청소 ⏎ 사유기록 ⏎ 사유비서 ⏎ 월별보기 ⏎ 전체보기 ⏎ 2026년 10월 나의 기록 ⏎ 이달 결과 9건 ⏎ 전체 · 이달 9건 ⏎ HARU보조장부 · 이달 9건 ⏎ 목록 ⏎ 달력 ⏎ 📒 이번 달 기장 요약 ⏎ 수입 ⏎ 3,740,000원 ⏎ 지출 ⏎ 1,959,000원 ⏎ 예상 잔액 ⏎ 1,781,000원 ⏎ 이번 달 지출 중 기타 비중이 가장 높습니다. ⏎ 📥 2026년 10월 엑셀 내보내기 ⏎ HARU보조장부 ⏎ 이달 9건 ⏎ 이달 9건 ⏎ 최근 기록 10/7 · 기록과 사유를 모아두었습니다. ⏎ 10/7 ⏎ [사무용품] 문구점 22,000원 ⏎ 2026-10-07 · 지출 · 신용카드 · 카드매출전표 ⏎ 🗑 ⏎ 10/6 ⏎ [기타] (주)원두상회 330,000원 ⏎ 2026.10.05 · 지출 · 계좌이체 · 전자세금계산서 ⏎ 🗑 ⏎ 10/6 ⏎ [매출] 카드 매출(일 마감) 1,100,000원 ⏎ 2026.10.05 · 수입 · 신용카드 · 카드매출전표 ⏎ 🗑 ⏎ 10/6 ⏎ [매출] 현금 매출 330,000원 ⏎ 2026.10.06 · 수입 · 현금 · 현금영수증 ⏎ 🗑 ⏎ 10/6 ⏎ [식비] 개인 점심(칼국수) 12,000원 ⏎ 2026.10.06 ·"
+  }
+ ],
+ "findings": [],
+ "network": {
+  "blockedExternalCount": 0,
+  "hosts": []
+ },
+ "console": [],
+ "pageErrors": [],
+ "dialogs": [],
+ "qa": {
+  "calls": [
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   }
+  ],
+  "unknownCallables": [],
+  "uploads": [],
+  "writeCount": 4
+ },
+ "db": [
+  [
+   "users/naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8",
+   {
+    "assistantOnboardingV1SeenAt": "2026-10-01T12:00:03.364Z",
+    "utmSource": null,
+    "utmMedium": null,
+    "utmCampaign": null,
+    "signupReferrerOrigin": null,
+    "signupAt": {
+     "__ts": 1790856003364
+    }
+   }
+  ],
+  [
+   "users/naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8/records/2026-10-01_1790856007357",
+   {
+    "date": "2026-10-01",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "HARU보조장부"
+    ],
+    "content": "",
+    "ledger_sayu": "[거래 1] 2026.09.28 · 수입 · 사업용 · 매출 · 카드 매출(주말 마감) · 2,310,000원 · 신용카드\n\n[거래 2] 2026.09.29 · 지출 · 사업용 · 기타 · (주)원두상회 · 550,000원 · 계좌이체\n\n[거래 3] 2026.09.30 · 지출 · 사업용 · 기타 · 한국전력 전기요금 · 165,000원 · 자동이체",
+    "ledger_images": "[]",
+    "ledger_imageMeta": "[]",
+    "ledger_style": "premium",
+    "ledger_mode": "ORIGINAL",
+    "ledger_title": "2026.09.28 · 수입 · 카드 매출(주말 마감)",
+    "ledger_type": "수입",
+    "ledger_businessTrack": "external",
+    "ledger_usageType": "사업용",
+    "ledger_category": "매출",
+    "ledger_item": "매출",
+    "ledger_date": "2026.09.28",
+    "ledger_partner": "카드 매출(주말 마감)",
+    "ledger_amount": "2,310,000원",
+    "ledger_payment": "신용카드",
+    "ledger_paymentMethod": "신용카드",
+    "ledger_proof": "카드매출전표",
+    "ledger_proofType": "카드매출전표",
+    "ledger_entries": "[{\"id\":\"brctppz\",\"transactionType\":\"수입\",\"usageType\":\"사업용\",\"category\":\"매출\",\"date\":\"2026.09.28\",\"vendor\":\"카드 매출(주말 마감)\",\"amount\":\"2,310,000원\",\"paymentMethod\":\"신용카드\",\"memo\":\"\",\"businessContextMemo\":\"\",\"foreignAmount\":\"\",\"foreignCurrency\":\"\",\"exchangeRate\":\"\",\"customCategory\":\"\",\"businessTrack\":\"external\",\"approvalNumber\":\"\",\"proofType\":\"카드매출전표\",\"vatTaxType\":\"taxable\",\"supplyAmount\":\"2,100,000원\",\"vatAmount\":\"210,000원\",\"vatDeduction\":\"notApplicable\",\"vatDeductionReason\":\"\",\"hometaxCheck\":\"unchecked\",\"expenseDeduction\":\"notApplicable\",\"expenseDeductionReason\":\"\",\"assetTreatment\":\"notApplicable\"},{\"id\":\"zcev490\",\"transactionType\":\"지출\",\"usageType\":\"사업용\",\"category\":\"기타\",\"date\":\"2026.09.29\",\"vendor\":\"(주)원두상회\",\"amount\":\"550,000원\",\"paymentMethod\":\"계좌이체\",\"memo\":\"\",\"businessContextMemo\":\"\",\"foreignAmount\":\"\",\"foreignCurrency\":\"\",\"exchangeRate\":\"\",\"customCategory\":\"\",\"businessTrack\":\"external\",\"approvalNumber\":\"\",\"proofType\":\"전자세금계산서\",\"vatTaxType\":\"taxable\",\"supplyAmount\":\"500,000원\",\"vatAmount\":\"50,000원\",\"vatDeduction\":\"deductible\",\"vatDeductionReason\":\"\",\"hometaxCheck\":\"matched\",\"expenseDeduction\":\"review\",\"expenseDeductionReason\":\"\",\"assetTreatment\":\"review\"},{\"id\":\"l5t433a\",\"transactionType\":\"지출\",\"usageType\":\"사업용\",\"category\":\"기타\",\"date\":\"2026.09.30\",\"vendor\":\"한국전력 전기요금\",\"amount\":\"165,000원\",\"paymentMethod\":\"자동이체\",\"memo\":\"\",\"businessContextMemo\":\"\",\"foreignAmount\":\"\",\"foreignCurrency\":\"\",\"exchangeRate\":\"\",\"customCategory\":\"\",\"businessTrack\":\"external\",\"approvalNumber\":\"\",\"proofType\":\"세금계산서\",\"vatTaxType\":\"taxable\",\"supplyAmount\":\"150,000원\",\"vatAmount\":\"15,000원\",\"vatDeduction\":\"deductible\",\"vatDeductionReason\":\"\",\"hometaxCheck\":\"matched\",\"expenseDeduction\":\"review\",\"expenseDeductionReason\":\"\",\"assetTreatment\":\"review\"}]",
+    "createdAt": "2026-10-01T12:00:07.357Z",
+    "updatedAt": "2026-10-01T12:00:07.357Z"
+   }
+  ],
+  [
+   "users/naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8/records/2026-10-06_1791293408630",
+   {
+    "date": "2026-10-06",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "HARU보조장부"
+    ],
+    "content": "",
+    "ledger_sayu": "[거래 1] 2026.10.05 · 수입 · 사업용 · 매출 · 카드 매출(일 마감) · 1,100,000원 · 신용카드\n\n[거래 2] 2026.10.06 · 수입 · 사업용 · 매출 · 현금 매출 · 330,000원 · 현금\n\n[거래 3] 2026.10.05 · 지출 · 사업용 · 기타 · (주)원두상회 · 330,000원 · 계좌이체\n\n[거래 4] 2026.10.06 · 지출 · 사업용 · 접대비 · 한우마을(거래처 접대) · 88만원 · 신용카드\n\n[거래 5] 2026.10.06 · 지출 · 개인용 · 식비 · 개인 점심(칼국수) · 12,000원 · 현금",
+    "ledger_images": "[]",
+    "ledger_imageMeta": "[]",
+    "ledger_style": "premium",
+    "ledger_mode": "ORIGINAL",
+    "ledger_title": "2026.10.05 · 수입 · 카드 매출(일 마감)",
+    "ledger_type": "수입",
+    "ledger_businessTrack": "external",
+    "ledger_usageType": "사업용",
+    "ledger_category": "매출",
+    "ledger_item": "매출",
+    "ledger_date": "2026.10.05",
+    "ledger_partner": "카드 매출(일 마감)",
+    "ledger_amount": "1,100,000원",
+    "ledger_payment": "신용카드",
+    "ledger_paymentMethod": "신용카드",
+    "ledger_proof": "카드매출전표",
+    "ledger_proofType": "카드매출전표",
+    "ledger_entries": "[{\"id\":\"h33gk9n\",\"transactionType\":\"수입\",\"usageType\":\"사업용\",\"category\":\"매출\",\"date\":\"2026.10.05\",\"vendor\":\"카드 매출(일 마감)\",\"amount\":\"1,100,000원\",\"paymentMethod\":\"신용카드\",\"memo\":\"\",\"businessContextMemo\":\"\",\"foreignAmount\":\"\",\"foreignCurrency\":\"\",\"exchangeRate\":\"\",\"customCategory\":\"\",\"businessTrack\":\"external\",\"approvalNumber\":\"\",\"proofType\":\"카드매출전표\",\"vatTaxType\":\"taxable\",\"supplyAmount\":\"1,000,000원\",\"vatAmount\":\"100,000원\",\"vatDeduction\":\"notApplicable\",\"vatDeductionReason\":\"\",\"hometaxCheck\":\"unchecked\",\"expenseDeduction\":\"notApplicable\",\"expenseDeductionReason\":\"\",\"assetTreatment\":\"notApplicable\"},{\"id\":\"04orgbc\",\"transactionType\":\"수입\",\"usageType\":\"사업용\",\"category\":\"매출\",\"date\":\"2026.10.06\",\"vendor\":\"현금 매출\",\"amount\":\"330,000원\",\"paymentMethod\":\"현금\",\"memo\":\"\",\"businessContextMemo\":\"\",\"foreignAmount\":\"\",\"foreignCurrency\":\"\",\"exchangeRate\":\"\",\"customCategory\":\"\",\"businessTrack\":\"external\",\"approvalNumber\":\"\",\"proofType\":\"현금영수증\",\"vatTaxType\":\"taxable\",\"supplyAmount\":\"300,000원\",\"vatAmount\":\"30,000원\",\"vatDeduction\":\"notApplicable\",\"vatDeductionReason\":\"\",\"hometaxCheck\":\"unchecked\",\"expenseDeduction\":\"notApplicable\",\"expenseDeductionReason\":\"\",\"assetTreatment\":\"notApplicable\"},{\"id\":\"k7lohaa\",\"transactionType\":\"지출\",\"usageType\":\"사업용\",\"category\":\"기타\",\"date\":\"2026.10.05\",\"vendor\":\"(주)원두상회\",\"amount\":\"330,000원\",\"paymentMethod\":\"계좌이체\",\"memo\":\"\",\"businessContextMemo\":\"\",\"foreignAmount\":\"\",\"foreignCurrency\":\"\",\"exchangeRate\":\"\",\"customCategory\":\"\",\"businessTrack\":\"external\",\"approvalNumber\":\"\",\"proofType\":\"전자세금계산서\",\"vatTaxType\":\"taxable\",\"supplyAmount\":\"300,000원\",\"vatAmount\":\"30,000원\",\"vatDeduction\":\"deductible\",\"vatDeductionReason\":\"\",\"hometaxCheck\":\"matched\",\"expenseDeduction\":\"review\",\"expenseDeductionReason\":\"\",\"assetTreatment\":\"review\"},{\"id\":\"koqrhw2\",\"transactionType\":\"지출\",\"usageType\":\"사업용\",\"category\":\"접대비\",\"date\":\"2026.10.06\",\"vendor\":\"한우마을(거래처 접대)\",\"amount\":\"88만원\",\"paymentMethod\":\"신용카드\",\"memo\":\"\",\"businessContextMemo\":\"\",\"foreignAmount\":\"\",\"foreignCurrency\":\"\",\"exchangeRate\":\"\",\"customCategory\":\"\",\"businessTrack\":\"external\",\"approvalNumber\":\"\",\"proofType\":\"카드매출전표\",\"vatTaxType\":\"taxable\",\"supplyAmount\":\"800,000원\",\"vatAmount\":\"80,000원\",\"vatDeduction\":\"nonDeductible\",\"vatDeductionReason\":\"\",\"hometaxCheck\":\"unchecked\",\"expenseDeduction\":\"review\",\"expenseDeductionReason\":\"\",\"assetTreatment\":\"review\"},{\"id\":\"b0843v4\",\"transactionType\":\"지출\",\"usageType\":\"개인용\",\"category\":\"식비\",\"date\":\"2026.10.06\",\"vendor\":\"개인 점심(칼국수)\",\"amount\":\"12,000원\",\"paymentMethod\":\"현금\",\"memo\":\"\",\"businessContextMemo\":\"\",\"foreignAmount\":\"\",\"foreignCurrency\":\"\",\"exchangeRate\":\"\",\"customCategory\":\"\",\"businessTrack\":\"external\",\"approvalNumber\":\"\",\"proofType\":\"증빙없음\",\"vatTaxType\":\"review\",\"supplyAmount\":\"\",\"vatAmount\":\"\",\"vatDeduction\":\"notApplicable\",\"vatDeductionReason\":\"\",\"hometaxCheck\":\"unchecked\",\"expenseDeduction\":\"nonDeductible\",\"expenseDeductionReason\":\"\",\"assetTreatment\":\"review\"}]",
+    "createdAt": "2026-10-06T13:30:08.630Z",
+    "updatedAt": "2026-10-06T13:30:08.630Z"
+   }
+  ],
+  [
+   "users/naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8/records/2026-10-07_1791334802994",
+   {
+    "date": "2026-10-07",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "HARU보조장부"
+    ],
+    "content": "",
+    "ledger_sayu": "[거래 1] 2026-10-07 · 지출 · 사업용 · 사무용품 · 문구점 · 22,000원 · 신용카드",
+    "ledger_images": "[]",
+    "ledger_imageMeta": "[]",
+    "ledger_style": "premium",
+    "ledger_mode": "ORIGINAL",
+    "ledger_title": "2026-10-07 · 지출 · 문구점",
+    "ledger_type": "지출",
+    "ledger_businessTrack": "external",
+    "ledger_usageType": "사업용",
+    "ledger_category": "사무용품",
+    "ledger_item": "사무용품",
+    "ledger_date": "2026-10-07",
+    "ledger_partner": "문구점",
+    "ledger_amount": "22,000원",
+    "ledger_payment": "신용카드",
+    "ledger_paymentMethod": "신용카드",
+    "ledger_proof": "카드매출전표",
+    "ledger_proofType": "카드매출전표",
+    "ledger_entries": "[{\"id\":\"i7lk4bb\",\"transactionType\":\"지출\",\"usageType\":\"사업용\",\"category\":\"사무용품\",\"date\":\"2026-10-07\",\"vendor\":\"문구점\",\"amount\":\"22,000원\",\"paymentMethod\":\"신용카드\",\"memo\":\"\",\"businessContextMemo\":\"\",\"foreignAmount\":\"\",\"foreignCurrency\":\"\",\"exchangeRate\":\"\",\"customCategory\":\"\",\"businessTrack\":\"external\",\"approvalNumber\":\"\",\"proofType\":\"카드매출전표\",\"vatTaxType\":\"taxable\",\"supplyAmount\":\"20,000원\",\"vatAmount\":\"2,000원\",\"vatDeduction\":\"deductible\",\"vatDeductionReason\":\"\",\"hometaxCheck\":\"unchecked\",\"expenseDeduction\":\"review\",\"expenseDeductionReason\":\"\",\"assetTreatment\":\"review\"}]",
+    "createdAt": "2026-10-07T01:00:02.994Z",
+    "updatedAt": "2026-10-07T01:00:02.994Z"
+   }
+  ]
+ ]
+}
