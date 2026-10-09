@@ -1377,6 +1377,11 @@ ${contentValues}`,
       const details = error?.details || error?.customData?._tokenResponse?.error;
       if (details?.reason === 'MONTHLY_AI_QUOTA_EXCEEDED') {
         toast.error(`이번 달 AI 도움 ${details.used}/${details.limit}회를 모두 사용했습니다.`);
+      } else if (
+        (error?.code === 'functions/invalid-argument' || error?.code === 'invalid-argument')
+        && /5000자|5,000자/.test(String(error?.message || ''))
+      ) {
+        toast.error('글이 너무 길어 AI 다듬기에 실패했습니다. 안내문을 포함해 5,000자 이내여야 하므로 작성한 내용을 줄여 다시 시도해 주세요.');
       } else {
         toast.error('AI 연결에 실패했습니다.');
       }
@@ -1853,6 +1858,9 @@ ${contentValues}`,
       return;
     }
 
+    if (files.length > remainingSlots) {
+      toast.warning(`최대 ${maxPhotos}장까지 첨부할 수 있어 선택한 ${files.length}장 중 앞의 ${remainingSlots}장만 업로드합니다. 초과한 ${files.length - remainingSlots}장은 제외됩니다.`);
+    }
     const filesToUpload = Array.from(files).slice(0, remainingSlots);
 
     setIsUploading(true);

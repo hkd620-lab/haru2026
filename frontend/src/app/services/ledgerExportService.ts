@@ -882,6 +882,9 @@ export function exportLedgerVatPrepToXlsx(
   const report = buildLedgerVatReport(records, start, end);
   const salesRows = report.entries.filter((entry) => entry.usageType === '사업용' && entry.transactionType === '수입');
   const purchaseRows = report.entries.filter((entry) => entry.usageType === '사업용' && entry.transactionType === '지출');
+  if (salesRows.length + purchaseRows.length === 0) {
+    return { count: 0, fileName: '' };
+  }
   const reviewRows = report.entries.filter((entry) => entry.reviewReasons.length > 0);
   const totalReviewCount = Object.values(report.reviewCounts).reduce((sum, count) => sum + count, 0);
 
@@ -1049,6 +1052,9 @@ export function exportLedgerIncomeTaxPrepToXlsx(
 ): LedgerExportResult {
   const report = buildLedgerIncomeTaxReport(records, start, end);
   const expenseRows = report.entries.filter((entry) => entry.transactionType === '지출');
+  if (expenseRows.length === 0) {
+    return { count: 0, fileName: '' };
+  }
   const reviewRows = expenseRows.filter((entry) => entry.expenseDeduction === 'review' || entry.assetTreatment === 'depreciableAsset');
 
   const summaryRows: (string | number)[][] = [
