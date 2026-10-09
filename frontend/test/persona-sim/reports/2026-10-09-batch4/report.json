@@ -1,0 +1,15 @@
+{
+ "runId": "2026-10-09T01-24-52",
+ "findings": [
+  {
+   "id": "F-26",
+   "severity": "중대",
+   "title": "성장기록이 0·음수 측정값을 검증하지 않고 저장한다",
+   "detail": "키 -1를 입력하고 저장하기를 누르자 1건이 증가했다. 저장 child_height=-1. 브라우저 input의 min=0과 별개로 저장 버튼이 값 유효성을 검사하지 않는다. ChildHealthGrowthPage.tsx handleSave는 빈 문자열만 검사하며, toPositiveNumber는 백분위 표시에서만 사용된다. (같은 인물에서 2회 재현: 0·음수 키 입력 시 저장 방지 확인)",
+   "personaId": "p22-growth",
+   "format": "성장기록",
+   "step": "0·음수 키 입력 시 저장 방지 확인",
+   "img": "img/F-26.png"
+  }
+ ]
+}

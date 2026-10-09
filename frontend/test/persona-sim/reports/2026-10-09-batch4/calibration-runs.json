@@ -1,0 +1,117 @@
+{
+  "browserLaunchAttempt": "첫 sandbox 내 Chrome SIGABRT: 시나리오 실행 전 실패, 결과 데이터 없음. 실행 권한 승인 후 재실행.",
+  "notes": "첫 실행 홈 라벨·글꼴 경로, 2차 제목을 SAYU 본문에 포함한 기대값·토스트 렌더 대기 보완. 제품 결함은 최종 결과만 판정. 기존 F-26의 재현은 유지.",
+  "runs": [
+    {
+      "runId": "2026-10-09T01-14-19",
+      "type": "calibration",
+      "results": []
+    },
+    {
+      "runId": "2026-10-09T01-21-09",
+      "type": "calibration",
+      "results": [
+        {
+          "id": "p20-pet",
+          "crashed": "Error: 홈 → 간편 반려동물 기록 저장: locator.click: Timeout 10000ms exceeded. | Call log: | \u001b[2m  - waiting for locator('[data-v2=records-grid] button').filter({ hasText: /^\\s*애완동물관찰일지/ }).first()\u001b[22m",
+          "checks": 0,
+          "unmet": [],
+          "pageErrorCount": 0,
+          "consoleCount": 94
+        },
+        {
+          "id": "p21-reading",
+          "crashed": null,
+          "checks": 32,
+          "unmet": [
+            {
+              "step": "홈 → 독서 새작성·필수 입력 검증",
+              "name": "책 제목 입력 안내가 있다",
+              "ok": false,
+              "detail": ""
+            }
+          ],
+          "pageErrorCount": 0,
+          "consoleCount": 546
+        },
+        {
+          "id": "p22-growth",
+          "crashed": null,
+          "checks": 19,
+          "unmet": [
+            {
+              "step": "0·음수 키 입력 시 저장 방지 확인",
+              "name": "0·음수 성장 측정값은 저장되지 않는다",
+              "ok": false,
+              "detail": "입력 0, 이전 0건 → 1건"
+            },
+            {
+              "step": "0·음수 키 입력 시 저장 방지 확인",
+              "name": "0·음수 성장 측정값은 저장되지 않는다",
+              "ok": false,
+              "detail": "입력 -1, 이전 1건 → 2건"
+            }
+          ],
+          "pageErrorCount": 0,
+          "consoleCount": 198
+        }
+      ]
+    },
+    {
+      "runId": "2026-10-09T01-22-49",
+      "type": "calibration",
+      "results": [
+        {
+          "id": "p20-pet",
+          "crashed": null,
+          "checks": 41,
+          "unmet": [
+            {
+              "step": "2026-10-04 이름·6칸 보존 확인",
+              "name": "원본 본문을 SAYU 필드에 그대로 저장한다",
+              "ok": false,
+              "detail": "저장 98자 / 기대 107자"
+            },
+            {
+              "step": "2026-10-05 이름·6칸 보존 확인",
+              "name": "원본 본문을 SAYU 필드에 그대로 저장한다",
+              "ok": false,
+              "detail": "저장 90자 / 기대 102자"
+            }
+          ],
+          "pageErrorCount": 0,
+          "consoleCount": 0
+        },
+        {
+          "id": "p21-reading",
+          "crashed": null,
+          "checks": 32,
+          "unmet": [],
+          "pageErrorCount": 0,
+          "consoleCount": 0
+        },
+        {
+          "id": "p22-growth",
+          "crashed": null,
+          "checks": 19,
+          "unmet": [
+            {
+              "step": "0·음수 키 입력 시 저장 방지 확인",
+              "name": "0·음수 성장 측정값은 저장되지 않는다",
+              "ok": false,
+              "detail": "입력 0, 이전 0건 → 1건"
+            },
+            {
+              "step": "0·음수 키 입력 시 저장 방지 확인",
+              "name": "0·음수 성장 측정값은 저장되지 않는다",
+              "ok": false,
+              "detail": "입력 -1, 이전 1건 → 2건"
+            }
+          ],
+          "pageErrorCount": 0,
+          "consoleCount": 0
+        }
+      ]
+    }
+  ]
+}

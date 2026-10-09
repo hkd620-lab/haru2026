@@ -1,0 +1,13 @@
+{
+  "reports/2026-10-09-batch4/calibration-runs.json": "404dd87692bfd782b121050d5797d58b8ae03462c0ee04e0c681cae67d7ecafe",
+  "reports/2026-10-09-batch4/img/F-26.png": "f1a751377be1f30c69278e903cca503a02326c3469f22c4389cdf355920d7584",
+  "reports/2026-10-09-batch4/report.json": "ba8d9a04f767c5e7b550d3356e0545af6fd636ffa91348185deaa0d7ca02d516",
+  "reports/2026-10-09-batch4/report.md": "66e86006beac24178b98fd9fb0d4ee3674efd29cbe836c90195d268f53501841",
+  "reports/2026-10-09-batch4/verification.json": "6d308f11d8a3fba6b24fc388034ae12aa4cdeb6c9fe57938441eff862e99104f",
+  "personas/p20-pet.mjs": "73cf6f82d2ff674a68bcb8e442deefb45a22ab09e883c89b86bbceaa0c781984",
+  "personas/p21-reading.mjs": "56f7e12e4c281a06d5272a2713a4e84672d529eabadc07b98c412d4bf55f5c7a",
+  "personas/p22-growth.mjs": "a15d228af615dd4843e9873f2d84868a564bf842b6678241c64f25beb615872b",
+  "out/runs/2026-10-09T01-24-52/p20-pet/result.json": "c310f52109484bbc6b65ee1b3a1c160b288f52d891ca7bafb4188d63eb1675aa",
+  "out/runs/2026-10-09T01-24-52/p21-reading/result.json": "48b9ca06263b35f6563fa5e86993cb7c38bc42294cfd3c594ac2d59780cc5a0f",
+  "out/runs/2026-10-09T01-24-52/p22-growth/result.json": "5ea51ef1ad8d04580f9a5c60ad94bcd502336eb676bf94054209f59ea3c5591d"
+}
