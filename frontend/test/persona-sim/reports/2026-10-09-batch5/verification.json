@@ -1,0 +1,1273 @@
+{
+ "appHead": "4db3ce792da0a40678bd35afce8be74b696f1e9f",
+ "harnessHead": "a7037b9ed6ac331690415004ae02b28157e7af88",
+ "runId": "2026-10-09T03-11-04",
+ "exitCode": 1,
+ "reason": "F-27 제품 기대값 미충족 2회·F-28 1회, 실행 중단 없음",
+ "totals": {
+  "steps": 20,
+  "failedSteps": 0,
+  "checks": 62,
+  "passed": 59,
+  "failed": 3,
+  "external": 0,
+  "unknownCallables": 0,
+  "pageErrors": 0,
+  "consoleEntries": 3,
+  "unexpectedReactWarnings": 1,
+  "injectedPdfFailureLogs": 2
+ },
+ "pdfVerification": {
+  "method": "브라우저 fallback 인쇄 DOM → Playwright PDF → Poppler 전체 페이지 육안 확인",
+  "timeline7": {
+   "pages": 3,
+   "photoPages": [
+    4,
+    3
+   ]
+  },
+  "timeline13": {
+   "pages": 5,
+   "photoPages": [
+    4,
+    4,
+    4,
+    1
+   ]
+  },
+  "productionServerPdf": "미검증",
+  "visualLimit": "편집 입력란·미작성 placeholder·마지막 페이지 연보라 여백 관찰; 디자인 합격 판정 아님"
+ },
+ "results": [
+  {
+   "runId": "2026-10-09T03-11-04",
+   "meta": {
+    "id": "p23-voiding",
+    "format": "배뇨일지",
+    "persona": {
+     "name": "조영수",
+     "age": 66,
+     "gender": "남",
+     "job": "은퇴 교사",
+     "device": "Chromium 모바일 390×844",
+     "plan": "무료",
+     "goal": "하루 배뇨량·주야간 합계를 검산하고 입력 실수와 재접속을 확인한다."
+    },
+    "identity": {
+     "uid": "qa-p23-cho-youngsoo",
+     "displayName": "조영수",
+     "email": "p23@example.invalid",
+     "plan": "free"
+    },
+    "scenario": [
+     "홈·건강정보 동의·배뇨일지",
+     "250·150ml 주야간 기록·재접속",
+     "빈 값·소수·음수 입력 실수",
+     "양식·저장 경로·격리"
+    ]
+   },
+   "startedAt": "2026-10-09T03:11:05.275Z",
+   "durationMs": 17374,
+   "steps": [
+    {
+     "n": 1,
+     "name": "홈 → 건강관리 → 동의 → 배뇨일지",
+     "ok": true,
+     "ms": 6261,
+     "url": "/sayu-health/voiding",
+     "toasts": [],
+     "shot": "01-홈-건강관리-동의-배뇨일지.png"
+    },
+    {
+     "n": 2,
+     "name": "주간 250ml·야간 150ml 기록·검산",
+     "ok": true,
+     "ms": 3581,
+     "url": "/sayu-health/voiding",
+     "toasts": [
+      "23:30 기록됐습니다."
+     ],
+     "shot": "02-주간-250ml-야간-150ml-기록-검산.png"
+    },
+    {
+     "n": 3,
+     "name": "재접속·양식 표시·빈 수량 허용",
+     "ok": true,
+     "ms": 3117,
+     "url": "/sayu-health/voiding",
+     "toasts": [
+      "23:30 기록됐습니다."
+     ],
+     "shot": "03-재접속-양식-표시-빈-수량-허용.png"
+    },
+    {
+     "n": 4,
+     "name": "소수·음수 수량 실수 처리",
+     "ok": true,
+     "ms": 1098,
+     "url": "/sayu-health/voiding",
+     "toasts": [
+      "23:30 기록됐습니다.",
+      "23:30 기록됐습니다.",
+      "23:30 기록됐습니다."
+     ],
+     "shot": "04-소수-음수-수량-실수-처리.png"
+    },
+    {
+     "n": 5,
+     "name": "한국시간 자정 이후 기록일 확인",
+     "ok": true,
+     "ms": 2974,
+     "url": "/sayu-health/voiding",
+     "toasts": [
+      "02:00 기록됐습니다."
+     ],
+     "shot": "05-한국시간-자정-이후-기록일-확인.png"
+    },
+    {
+     "n": 6,
+     "name": "격리 확인",
+     "ok": true,
+     "ms": 1,
+     "url": "/sayu-health/voiding",
+     "toasts": [
+      "02:00 기록됐습니다."
+     ],
+     "shot": "06-격리-확인.png"
+    }
+   ],
+   "checks": [
+    {
+     "step": "홈 → 건강관리 → 동의 → 배뇨일지",
+     "name": "배뇨일지 화면에 진입한다",
+     "ok": true,
+     "detail": "http://127.0.0.1:18762/sayu-health/voiding"
+    },
+    {
+     "step": "홈 → 건강관리 → 동의 → 배뇨일지",
+     "name": "첫 화면은 기록이 없다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "주간 250ml·야간 150ml 기록·검산",
+     "name": "같은 날 기록 한 문서에 항목 2건이 누적된다",
+     "ok": true,
+     "detail": "[{\"id\":\"murxaz4h3yyr\",\"time\":\"14:00\",\"type\":\"void\",\"amountMl\":250},{\"id\":\"mushnx1a13uz\",\"time\":\"23:30\",\"type\":\"void\",\"amountMl\":150}]"
+    },
+    {
+     "step": "주간 250ml·야간 150ml 기록·검산",
+     "name": "시간·수량이 원값과 일치한다",
+     "ok": true,
+     "detail": "[{\"id\":\"murxaz4h3yyr\",\"time\":\"14:00\",\"type\":\"void\",\"amountMl\":250},{\"id\":\"mushnx1a13uz\",\"time\":\"23:30\",\"type\":\"void\",\"amountMl\":150}]"
+    },
+    {
+     "step": "주간 250ml·야간 150ml 기록·검산",
+     "name": "총 400ml·주간 250ml·야간 150ml·야간비율 37.5%를 표시한다",
+     "ok": true,
+     "detail": "배뇨일지\n\n입력은 3초, 출력은 공인 양식\n\n🚽 기록\n📋 양식 보기\n지금 시각: 오후 11:30(오늘 2건 · 400ml)\n기록\n양을 모르면 비워도 됩니다\n나의 기록에서 보기\n오늘 기록 · 취침 22:30 / 기상 06:30\n⚠️ 야간다뇨 의심\n야간뇨 비율이 37.5%로 30% 이상입니다.\n참고용 지표이며 진단이 아닙니다. 증상이 있으시면 의료진과 상의하세요.\n총 음료 섭취량\n0ml\n총 배뇨량\n400ml\n주간 배뇨\n250ml(1회)\n야간 배뇨\n150ml(1회)\n야간뇨 비율\n37.5%\n총 배뇨 횟수\n2회 (1주/1야)\n14:00\n🚽 배뇨\n250ml\n23:30\n🚽 배뇨\n150ml\n✨ AI 해석\n\n오늘의 배뇨 패턴을 AI가 간결하게 정리해드립니다.\n\nAI 해석 생성\n\nAI가 인용한 수치는 위 계산값과 동일합니다. 의학적 진단이 아닙니다.\n\n📈 최근 7일 추이\n▼ 펼치기\n이 화면의 지표는 자가 기록 기반의 참고용 정보이며 의학적 진단이 아닙니다.\n건강에 이상이 느껴지시면 반드시 의료진과 상의하세요.\n💬 동서양 명언\n✝️ 성경 말씀\n\n“모든 사람은 행복을 원한다. 하지만 행복해지려면 먼저 고통을 이해해야 한다.”\n\n원문:To love life through labor is to be intimate with life's inmost secret\n\n— 칼릴 지브란 (시인)\n\n상호명: 하루랩 (HaruLab)  |  대표자: 허경대  |  사업자등록번호: 354-23-02490  |  통신판매업신고번호: 제2026-서울구로-1247호  | 사업자정보확인\n\n사업장 주소: 서울특별시 구로구 중앙로5길 62, 3동 305호\n\n연락처: 050219336740  |  이메일: harul2026lab@gmail.com  |  사이트: https://haru2026.com\n\n하루랩에서 운영하는 사이트에서 판매되는 모든 상품은 하루랩에서 책임지고 있습니다.\n민원 담당자: 허경대 / 연락처: 010-6309-6107\n\n구독/요금 | 사업자 정보 | 이용약관 | 개인정보처리방침 | 환불정책 | 공정위 사업자정보 확인\n\nHARU\nSAYU·나의 기록\nSAYU·함께보기\n구독\n설정\n23:30 기록됐습니다."
+    },
+    {
+     "step": "주간 250ml·야간 150ml 기록·검산",
+     "name": "records 경로·YYYY-MM-DD·배뇨일지 형식이 유지된다",
+     "ok": true,
+     "detail": "users/qa-p23-cho-youngsoo/records/2026-10-03_1791003606353"
+    },
+    {
+     "step": "재접속·양식 표시·빈 수량 허용",
+     "name": "재접속 후 두 항목이 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "재접속·양식 표시·빈 수량 허용",
+     "name": "양식에 수량과 합계가 표시된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "재접속·양식 표시·빈 수량 허용",
+     "name": "안내대로 양을 모르는 빈 값은 0ml로 저장된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "소수·음수 수량 실수 처리",
+     "name": "잘못 입력한 수량을 다른 양수 정수로 바꾸어 저장하지 않는다",
+     "ok": false,
+     "detail": "입력 250.5 → 표시 2505 → 저장 [{\"id\":\"mushnzza6dzz\",\"time\":\"23:30\",\"type\":\"void\",\"amountMl\":2505}]"
+    },
+    {
+     "step": "소수·음수 수량 실수 처리",
+     "name": "잘못 입력한 수량을 다른 양수 정수로 바꾸어 저장하지 않는다",
+     "ok": false,
+     "detail": "입력 -100 → 표시 100 → 저장 [{\"id\":\"musho0eljrt1\",\"time\":\"23:30\",\"type\":\"void\",\"amountMl\":100}]"
+    },
+    {
+     "step": "한국시간 자정 이후 기록일 확인",
+     "name": "한국시간 10월4일 새벽 기록은 10월4일에 저장된다",
+     "ok": false,
+     "detail": "KST=2026-10-04 02:00, 저장일=2026-10-03"
+    },
+    {
+     "step": "격리 확인",
+     "name": "외부 요청 차단 집계가 0이다",
+     "ok": true,
+     "detail": "차단 0건"
+    },
+    {
+     "step": "격리 확인",
+     "name": "모의되지 않은 callable이 없다",
+     "ok": true,
+     "detail": "[]"
+    },
+    {
+     "step": "격리 확인",
+     "name": "페이지 실행 오류가 없다",
+     "ok": true,
+     "detail": "[]"
+    }
+   ],
+   "findings": [
+    {
+     "step": "소수·음수 수량 실수 처리",
+     "shot": "04-소수-음수-수량-실수-처리.png",
+     "severity": "중대",
+     "title": "배뇨일지 소수·음수 입력에서 기호를 제거해 다른 수량을 저장한다",
+     "detail": "입력 250.5가 화면에서 2505로 변하고 amountMl=2505로 저장됐다. SayuHealthVoidingPage.tsx onChange의 replace(/[^0-9]/g, '')와 handleQuickRecord의 parseInt가 원인이다. 빈 수량 0 허용과는 별개다."
+    },
+    {
+     "step": "소수·음수 수량 실수 처리",
+     "shot": "04-소수-음수-수량-실수-처리.png",
+     "severity": "중대",
+     "title": "배뇨일지 소수·음수 입력에서 기호를 제거해 다른 수량을 저장한다",
+     "detail": "입력 -100가 화면에서 100로 변하고 amountMl=100로 저장됐다. SayuHealthVoidingPage.tsx onChange의 replace(/[^0-9]/g, '')와 handleQuickRecord의 parseInt가 원인이다. 빈 수량 0 허용과는 별개다."
+    },
+    {
+     "step": "한국시간 자정 이후 기록일 확인",
+     "shot": "05-한국시간-자정-이후-기록일-확인.png",
+     "severity": "중대",
+     "title": "배뇨일지 새벽 기록이 한국 날짜보다 하루 전 날짜에 저장된다",
+     "detail": "한국시간 2026-10-04 02:00에 200ml를 기록하자 date=2026-10-03 문서에 추가됐다. SayuHealthVoidingPage.tsx getTodayStr()의 new Date().toISOString().slice(0,10)은 UTC 날짜를 사용하고 시간 문자열은 getHours/getMinutes로 현지 시간을 사용한다. 한국시간 자정~08:59의 날짜와 시간이 어긋난다."
+    }
+   ],
+   "network": {
+    "blockedExternalCount": 0,
+    "hosts": []
+   },
+   "console": [
+    {
+     "type": "error",
+     "text": "Warning: Each child in a list should have a unique \"key\" prop.%s%s See https://reactjs.org/link/warning-keys for more information.%s \n\nCheck the render method of `SayuHealthVoidingSession`.  \n    at SayuHealthVoidingSession (http://127.0.0.1:18762/@fs/private/tmp/haru-persona-batch5/frontend/src/app/pages/SayuHealthVoidingPage.tsx:105:20)\n    at SayuHealthVoidingPage\n    at RenderedRoute (http://127.0.0.1:18762/node_modules/.vite/deps/chunk-XZMYNXCQ.js?v=a3ae5431:6666:26)\n    at Routes (http://1…"
+    }
+   ],
+   "pageErrors": [],
+   "dialogs": [],
+   "qa": {
+    "calls": [
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     },
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     },
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     },
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     },
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     },
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     }
+    ],
+    "unknownCallables": [],
+    "uploads": [],
+    "writeCount": 8
+   },
+   "db": [
+    [
+     "users/qa-p23-cho-youngsoo",
+     {
+      "assistantOnboardingV1SeenAt": "2026-10-03T05:00:03.556Z",
+      "utmSource": null,
+      "utmMedium": null,
+      "utmCampaign": null,
+      "signupReferrerOrigin": null,
+      "signupAt": {
+       "__ts": 1791003603557
+      },
+      "consents": {
+       "sensitiveHealth": true,
+       "sensitiveHealthAgreedAt": {
+        "__ts": 1791003605753
+       }
+      }
+     }
+    ],
+    [
+     "users/qa-p23-cho-youngsoo/records/2026-10-03_1791003606353",
+     {
+      "formats": [
+       "배뇨일지"
+      ],
+      "date": "2026-10-03",
+      "title": "2026-10-03 배뇨일지",
+      "voiding_bedtime": "22:30",
+      "voiding_waketime": "06:30",
+      "voiding_entries": "[{\"id\":\"musn0tgemyw2\",\"time\":\"02:00\",\"type\":\"void\",\"amountMl\":200},{\"id\":\"murxaz4h3yyr\",\"time\":\"14:00\",\"type\":\"void\",\"amountMl\":250},{\"id\":\"mushnx1a13uz\",\"time\":\"23:30\",\"type\":\"void\",\"amountMl\":150},{\"id\":\"mushnzimvu8l\",\"time\":\"23:30\",\"type\":\"void\",\"amountMl\":0},{\"id\":\"mushnzza6dzz\",\"time\":\"23:30\",\"type\":\"void\",\"amountMl\":2505},{\"id\":\"musho0eljrt1\",\"time\":\"23:30\",\"type\":\"void\",\"amountMl\":100}]",
+      "createdAt": "2026-10-03T05:00:06.353Z",
+      "updatedAt": "2026-10-03T17:00:02.462Z"
+     }
+    ]
+   ]
+  },
+  {
+   "runId": "2026-10-09T03-11-04",
+   "meta": {
+    "id": "p24-law",
+    "format": "하루LAW",
+    "persona": {
+     "name": "노경수",
+     "age": 49,
+     "gender": "남",
+     "job": "식당 사장",
+     "device": "Chromium 모바일 390×844",
+     "plan": "무료",
+     "goal": "질문·분석·오류·저장 흐름을 모의 응답으로 확인한다."
+    },
+    "identity": {
+     "uid": "qa-p24-no-kyungsoo",
+     "displayName": "노경수",
+     "email": "p24@example.invalid",
+     "plan": "free"
+    },
+    "scenario": [
+     "홈 하루LAW·안내·빈 입력",
+     "결과 없음·통신 오류·질문 보존",
+     "질문 분석 표시·날짜 검증·저장",
+     "기존 같은 날짜 기록 보존·재접속"
+    ]
+   },
+   "startedAt": "2026-10-09T03:11:22.811Z",
+   "durationMs": 7545,
+   "steps": [
+    {
+     "n": 1,
+     "name": "홈 → 하루LAW 안내·질문 입력",
+     "ok": true,
+     "ms": 2341,
+     "url": "/record",
+     "toasts": [],
+     "shot": "01-홈-하루LAW-안내-질문-입력.png"
+    },
+    {
+     "n": 2,
+     "name": "[모의 결과 없음] 응답·입력 보존",
+     "ok": true,
+     "ms": 748,
+     "url": "/record",
+     "toasts": [],
+     "shot": "02-모의-결과-없음-응답-입력-보존.png"
+    },
+    {
+     "n": 3,
+     "name": "[모의 오류] 응답·입력 보존",
+     "ok": true,
+     "ms": 744,
+     "url": "/record",
+     "toasts": [],
+     "shot": "03-모의-오류-응답-입력-보존.png"
+    },
+    {
+     "n": 4,
+     "name": "모의 결과·원질문 표시·빈 저장 날짜 방지",
+     "ok": true,
+     "ms": 1013,
+     "url": "/record",
+     "toasts": [],
+     "shot": "04-모의-결과-원질문-표시-빈-저장-날짜-방지.png"
+    },
+    {
+     "n": 5,
+     "name": "기존 날짜 기록과 함께 분석 저장",
+     "ok": true,
+     "ms": 2378,
+     "url": "/sayu",
+     "toasts": [],
+     "shot": "05-기존-날짜-기록과-함께-분석-저장.png"
+    },
+    {
+     "n": 6,
+     "name": "격리 확인",
+     "ok": true,
+     "ms": 1,
+     "url": "/sayu",
+     "toasts": [],
+     "shot": "06-격리-확인.png"
+    }
+   ],
+   "checks": [
+    {
+     "step": "홈 → 하루LAW 안내·질문 입력",
+     "name": "질문 입력창 높이는 235px 이상이다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "홈 → 하루LAW 안내·질문 입력",
+     "name": "빈 질문은 서버 호출을 하지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "[모의 결과 없음] 응답·입력 보존",
+     "name": "실패 뒤 질문이 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "[모의 결과 없음] 응답·입력 보존",
+     "name": "실패 안내와 재입력 화면을 표시한다",
+     "ok": true,
+     "detail": "기\n록\n\n오늘의 기록을 작성하세요\n\n2026.10.03 토요일\n오늘의 환경\n\n💡 + 버튼으로 나만의 태그를 추가할 수 있어요\n\n날씨\n\n쾌청\n흐림\n비\n눈\n+\n\n체감기온\n\n폭염\n온난\n쾌적\n쌀쌀\n혹한\n+\n\n기분\n\n기쁨\n평온\n무미\n울적\n번잡\n+\n형식 선택\n\n형식을 선택하면 바로 글쓰기\n\n생활\n업무\n하루LAW\n저장 날짜\n법률자문\n\n파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.\n\n관련 법령을 찾지 못했습니다\n격리 환경: 검색 결과 없음\n\n본 서비스는 법령 정보 제공 목적이며, 법률 자문을 대체하지 않습니다.\n\n💬 동서양 명언\n✝️ 성경 말씀\n\n“우리의 삶은 우리의 생각이 만든다.”\n\n원문:The soul becomes dyed with the colour of its thoughts\n\n— 마르쿠스 아우렐리우스 (철학자)\n\n상호명: 하루랩 (HaruLab)  |  대표자: 허경대  |  사업자등록번호: 354-23-02490  |  통신판매업신고번호: 제2026-서울구로-1247호  | 사업자정보확인\n\n사업장 주소: 서울특별시 구로구 중앙로5길 62, 3동 305호\n\n연락처: 050219336740  |  이메일: harul2026lab@gmail.com  |  사이트: https://haru2026.com\n\n하루랩에서 운영하는 사이트에서 판매되는 모든 상품은 하루랩에서 책임지고 있습니다.\n민원 담당자: 허경대 / 연락처: 010-6309-6107\n\n구독/요금 | 사업자 정보 | 이용약관 | 개인정보처리방침 | 환불정책 | 공정위 사업자정보 확인\n\nHARU\nSAYU·나의 기록\nSAYU·함께보기\n구독\n설정"
+    },
+    {
+     "step": "[모의 결과 없음] 응답·입력 보존",
+     "name": "실패 응답은 기록을 만들지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "[모의 오류] 응답·입력 보존",
+     "name": "실패 뒤 질문이 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "[모의 오류] 응답·입력 보존",
+     "name": "실패 안내와 재입력 화면을 표시한다",
+     "ok": true,
+     "detail": " 있어요\n\n날씨\n\n쾌청\n흐림\n비\n눈\n+\n\n체감기온\n\n폭염\n온난\n쾌적\n쌀쌀\n혹한\n+\n\n기분\n\n기쁨\n평온\n무미\n울적\n번잡\n+\n형식 선택\n\n형식을 선택하면 바로 글쓰기\n\n생활\n업무\n하루LAW\n저장 날짜\n법률자문\n\n파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.\n\n하루LAW 처리를 완료하지 못했습니다\n질문과 첨부파일은 그대로 유지했습니다. 잠시 후 다시 시도해 주세요. 같은 문제가 계속되면 첨부파일을 제거한 뒤 다시 확인해 주세요.\n다시 시도\n\n본 서비스는 법령 정보 제공 목적이며, 법률 자문을 대체하지 않습니다.\n\n💬 동서양 명언\n✝️ 성경 말씀\n\n“우리의 삶은 우리의 생각이 만든다.”\n\n원문:The soul becomes dyed with the colour of its thoughts\n\n— 마르쿠스 아우렐리우스 (철학자)\n\n상호명: 하루랩 (HaruLab)  |  대표자: 허경대  |  사업자등록번호: 354-23-02490  |  통신판매업신고번호: 제2026-서울구로-1247호  | 사업자정보확인\n\n사업장 주소: 서울특별시 구로구 중앙로5길 62, 3동 305호\n\n연락처: 050219336740  |  이메일: harul2026lab@gmail.com  |  사이트: https://haru2026.com\n\n하루랩에서 운영하는 사이트에서 판매되는 모든 상품은 하루랩에서 책임지고 있습니다.\n민원 담당자: 허경대 / 연락처: 010-6309-6107\n\n구독/요금 | 사업자 정보 | 이용약관 | 개인정보처리방침 | 환불정책 | 공정위 사업자정보 확인\n\nHARU\nSAYU·나의 기록\nSAYU·함께보기\n구독\n설정"
+    },
+    {
+     "step": "[모의 오류] 응답·입력 보존",
+     "name": "실패 응답은 기록을 만들지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 결과·원질문 표시·빈 저장 날짜 방지",
+     "name": "모의 법령·모의 분석과 원질문을 표시한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 결과·원질문 표시·빈 저장 날짜 방지",
+     "name": "빈 저장 날짜는 안내하고 저장하지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "기존 날짜 기록과 함께 분석 저장",
+     "name": "선택 날짜의 records 문서에 저장한다",
+     "ok": true,
+     "detail": "users/qa-p24-no-kyungsoo/records/2026-10-02"
+    },
+    {
+     "step": "기존 날짜 기록과 함께 분석 저장",
+     "name": "하루LAW 원질문·모의 분석을 그대로 저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "기존 날짜 기록과 함께 분석 저장",
+     "name": "기존 형식·본문·메모 필드를 보존한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "기존 날짜 기록과 함께 분석 저장",
+     "name": "저장 후 SAYU로 이동한다",
+     "ok": true,
+     "detail": "http://127.0.0.1:18762/sayu"
+    },
+    {
+     "step": "기존 날짜 기록과 함께 분석 저장",
+     "name": "재접속 후 저장 원질문이 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "격리 확인",
+     "name": "외부 요청 차단 집계가 0이다",
+     "ok": true,
+     "detail": "차단 0건"
+    },
+    {
+     "step": "격리 확인",
+     "name": "모의되지 않은 callable이 없다",
+     "ok": true,
+     "detail": "[]"
+    },
+    {
+     "step": "격리 확인",
+     "name": "페이지 실행 오류가 없다",
+     "ok": true,
+     "detail": "[]"
+    }
+   ],
+   "findings": [],
+   "network": {
+    "blockedExternalCount": 0,
+    "hosts": []
+   },
+   "console": [],
+   "pageErrors": [],
+   "dialogs": [],
+   "qa": {
+    "calls": [
+     {
+      "name": "lawSearch",
+      "ok": true
+     },
+     {
+      "name": "lawSearch",
+      "ok": false,
+      "error": "functions/unavailable"
+     },
+     {
+      "name": "lawSearch",
+      "ok": true
+     },
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     }
+    ],
+    "unknownCallables": [],
+    "uploads": [],
+    "writeCount": 3
+   },
+   "db": [
+    [
+     "users/qa-p24-no-kyungsoo",
+     {
+      "assistantOnboardingV1SeenAt": "2026-10-03T12:30:01.178Z",
+      "utmSource": null,
+      "utmMedium": null,
+      "utmCampaign": null,
+      "signupReferrerOrigin": null,
+      "signupAt": {
+       "__ts": 1791030601179
+      }
+     }
+    ],
+    [
+     "users/qa-p24-no-kyungsoo/records/2026-10-02",
+     {
+      "date": "2026-10-02",
+      "formats": [
+       "메모",
+       "HARUraw"
+      ],
+      "content": "보존할 기존 기록",
+      "memo_title": "기존 메모",
+      "memo_content": "기존 본문",
+      "id": "2026-10-02",
+      "weather": "쾌청",
+      "temperature": "쾌적",
+      "mood": "평온",
+      "sourceAgent": "하루LAW",
+      "haruraw_query": "직원이 노동청에 신고했어요.\n급여 이체 내역과 근무표는 가지고 있습니다.",
+      "haruraw_sayu": "[모의 분석 — 실제 법률 자문 아님] 입력 자료를 확인하는 화면 점검입니다.",
+      "haruraw_summary": "[모의 분석 — 실제 법률 자문 아님] 입력 자료를 확인하는 화면 점검입니다.",
+      "haruraw_articles": "[모의 법령] 모의 조문(격리 화면 점검용)\n실제 법률 내용이 아닙니다. 화면·저장 흐름만 확인합니다.",
+      "haruraw_simple": "직원이 노동청에 신고했어요.\n급여 이체 내역과 근무표는 가지고 있습니다.\n\n[모의 분석 — 실제 법률 자문 아님] 입력 자료를 확인하는 화면 점검입니다.",
+      "createdAt": "2026-10-03T12:30:05.294Z",
+      "updatedAt": "2026-10-03T12:30:05.294Z"
+     }
+    ]
+   ]
+  },
+  {
+   "runId": "2026-10-09T03-11-04",
+   "meta": {
+    "id": "p25-timeline",
+    "format": "성장타임라인",
+    "persona": {
+     "name": "신아름",
+     "age": 33,
+     "gender": "여",
+     "job": "아이 사진을 많이 찍는 엄마",
+     "device": "Chromium 모바일 390×844",
+     "plan": "무료",
+     "goal": "7·13장 문서·메모·날짜·저장과 PDF 요청 및 브라우저 인쇄 분할을 확인한다."
+    },
+    "identity": {
+     "uid": "qa-p25-shin-areum",
+     "displayName": "신아름",
+     "email": "p25@example.invalid",
+     "plan": "free"
+    },
+    "scenario": [
+     "홈 타임라인·빈 사진 방지",
+     "7장 사진·날짜·메모·문서·모의 PDF 요청·저장",
+     "13장·모의 PDF 실패→인쇄 4장 분할·저장",
+     "재접속·격리"
+    ]
+   },
+   "startedAt": "2026-10-09T03:11:30.515Z",
+   "durationMs": 21870,
+   "steps": [
+    {
+     "n": 1,
+     "name": "홈 타임라인·빈 사진 생성 방지",
+     "ok": true,
+     "ms": 2934,
+     "url": "/v2",
+     "toasts": [],
+     "shot": "01-홈-타임라인-빈-사진-생성-방지.png"
+    },
+    {
+     "n": 2,
+     "name": "7장 사진·날짜·메모 입력",
+     "ok": true,
+     "ms": 1920,
+     "url": "/v2",
+     "toasts": [
+      "7장의 사진을 불러왔습니다."
+     ],
+     "shot": "02-7장-사진-날짜-메모-입력.png"
+    },
+    {
+     "n": 3,
+     "name": "7장 문서 미리보기·PDF 흐름",
+     "ok": true,
+     "ms": 4572,
+     "url": "/v2",
+     "toasts": [
+      "서버 PDF 생성에 실패해 브라우저 PDF 저장으로 전환합니다.",
+      "PDF를 생성해 서버에 저장했습니다."
+     ],
+     "shot": "03-7장-문서-미리보기-PDF-흐름.png"
+    },
+    {
+     "n": 4,
+     "name": "7장 최종 저장·저장 경로 확인",
+     "ok": true,
+     "ms": 1538,
+     "url": "/v2",
+     "toasts": [
+      "SAYU·나의 기록에서 확인하실 수 있습니다."
+     ],
+     "shot": "04-7장-최종-저장-저장-경로-확인.png"
+    },
+    {
+     "n": 5,
+     "name": "13장 사진·날짜·메모 입력",
+     "ok": true,
+     "ms": 1951,
+     "url": "/",
+     "toasts": [
+      "13장의 사진을 불러왔습니다."
+     ],
+     "shot": "05-13장-사진-날짜-메모-입력.png"
+    },
+    {
+     "n": 6,
+     "name": "13장 문서 미리보기·PDF 흐름",
+     "ok": true,
+     "ms": 2972,
+     "url": "/",
+     "toasts": [
+      "서버 PDF 생성에 실패해 브라우저 PDF 저장으로 전환합니다."
+     ],
+     "shot": "06-13장-문서-미리보기-PDF-흐름.png"
+    },
+    {
+     "n": 7,
+     "name": "13장 최종 저장·저장 경로 확인",
+     "ok": true,
+     "ms": 1578,
+     "url": "/",
+     "toasts": [
+      "SAYU·나의 기록에서 확인하실 수 있습니다.",
+      "서버 PDF 생성에 실패해 브라우저 PDF 저장으로 전환합니다."
+     ],
+     "shot": "07-13장-최종-저장-저장-경로-확인.png"
+    },
+    {
+     "n": 8,
+     "name": "재접속 두 문서·격리 확인",
+     "ok": true,
+     "ms": 1965,
+     "url": "/",
+     "toasts": [],
+     "shot": "08-재접속-두-문서-격리-확인.png"
+    }
+   ],
+   "checks": [
+    {
+     "step": "홈 타임라인·빈 사진 생성 방지",
+     "name": "빈 사진은 생성 버튼이 비활성이다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "7장 사진·날짜·메모 입력",
+     "name": "7장 사진이 모두 입력된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "7장 사진·날짜·메모 입력",
+     "name": "수동 촬영일 변경을 보존한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "7장 문서 미리보기·PDF 흐름",
+     "name": "문서 미리보기 이미지에 누락이 없다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "7장 문서 미리보기·PDF 흐름",
+     "name": "문서 메모에 이모지가 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "7장 문서 미리보기·PDF 흐름",
+     "name": "PDF 생성 요청에 전체 사진이 전달된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "7장 문서 미리보기·PDF 흐름",
+     "name": "성공 PDF 응답은 반환된 URL을 열려고 한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "7장 문서 미리보기·PDF 흐름",
+     "name": "7장 인쇄용 페이지는 4·3장으로 분할된다",
+     "ok": true,
+     "detail": "{\"pages\":[4,3],\"images\":7,\"fields\":[\"첫 사진 🌱 소중한 순간\",\"\",\"\",\"\",\"\",\"\",\"\"]}"
+    },
+    {
+     "step": "7장 최종 저장·저장 경로 확인",
+     "name": "7장 최종 저장 기록이 존재한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "7장 최종 저장·저장 경로 확인",
+     "name": "timelineItems에 전체 사진·수동 날짜·메모를 저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "7장 최종 저장·저장 경로 확인",
+     "name": "타임라인 records 경로·형식·날짜가 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "7장 최종 저장·저장 경로 확인",
+     "name": "사진 업로드 경로가 본인 format_photos 아래다",
+     "ok": true,
+     "detail": "[{\"path\":\"users/qa-p25-shin-areum/format_photos/growth_1791030609614_01_p25-7-0.jpg\",\"size\":5775,\"contentType\":\"image/jpeg\"},{\"path\":\"users/qa-p25-shin-areum/format_photos/growth_1791030609614_02_p25-7-1.jpg\",\"size\":5780,\"contentType\":\"image/jpeg\"},{\"path\":\"users/qa-p25-shin-areum/format_photos/growth_1791030609614_03_p25-7-2.jpg\",\"size\":5783,\"contentType\":\"image/jpeg\"},{\"path\":\"users/qa-p25-shin-"
+    },
+    {
+     "step": "13장 사진·날짜·메모 입력",
+     "name": "13장 사진이 모두 입력된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "13장 사진·날짜·메모 입력",
+     "name": "수동 촬영일 변경을 보존한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "13장 문서 미리보기·PDF 흐름",
+     "name": "문서 미리보기 이미지에 누락이 없다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "13장 문서 미리보기·PDF 흐름",
+     "name": "문서 메모에 이모지가 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "13장 문서 미리보기·PDF 흐름",
+     "name": "PDF 생성 요청에 전체 사진이 전달된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "13장 문서 미리보기·PDF 흐름",
+     "name": "PDF 실패 시 인쇄용 페이지는 4·4·4·1장으로 분할된다",
+     "ok": true,
+     "detail": "{\"pages\":[4,4,4,1],\"images\":13,\"fields\":[\"첫 사진 🌱 소중한 순간\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"]}"
+    },
+    {
+     "step": "13장 문서 미리보기·PDF 흐름",
+     "name": "인쇄 복제본에 13장 모두 존재한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "13장 문서 미리보기·PDF 흐름",
+     "name": "인쇄 복제본에 입력 메모가 유지된다",
+     "ok": true,
+     "detail": "[\"첫 사진 🌱 소중한 순간\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"]"
+    },
+    {
+     "step": "13장 문서 미리보기·PDF 흐름",
+     "name": "인쇄 후 임시 포털을 정리한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "13장 최종 저장·저장 경로 확인",
+     "name": "13장 최종 저장 기록이 존재한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "13장 최종 저장·저장 경로 확인",
+     "name": "timelineItems에 전체 사진·수동 날짜·메모를 저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "13장 최종 저장·저장 경로 확인",
+     "name": "타임라인 records 경로·형식·날짜가 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "13장 최종 저장·저장 경로 확인",
+     "name": "사진 업로드 경로가 본인 format_photos 아래다",
+     "ok": true,
+     "detail": "[{\"path\":\"users/qa-p25-shin-areum/format_photos/growth_1791030609614_01_p25-7-0.jpg\",\"size\":5775,\"contentType\":\"image/jpeg\"},{\"path\":\"users/qa-p25-shin-areum/format_photos/growth_1791030609614_02_p25-7-1.jpg\",\"size\":5780,\"contentType\":\"image/jpeg\"},{\"path\":\"users/qa-p25-shin-areum/format_photos/growth_1791030609614_03_p25-7-2.jpg\",\"size\":5783,\"contentType\":\"image/jpeg\"},{\"path\":\"users/qa-p25-shin-"
+    },
+    {
+     "step": "재접속 두 문서·격리 확인",
+     "name": "재접속 후 7장·13장 두 문서가 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "재접속 두 문서·격리 확인",
+     "name": "외부 요청 차단 집계가 0이다",
+     "ok": true,
+     "detail": "차단 0건"
+    },
+    {
+     "step": "재접속 두 문서·격리 확인",
+     "name": "모의되지 않은 callable이 없다",
+     "ok": true,
+     "detail": "[]"
+    },
+    {
+     "step": "재접속 두 문서·격리 확인",
+     "name": "페이지 실행 오류가 없다",
+     "ok": true,
+     "detail": "[]"
+    }
+   ],
+   "findings": [],
+   "network": {
+    "blockedExternalCount": 0,
+    "hosts": []
+   },
+   "console": [
+    {
+     "type": "error",
+     "text": "서버 PDF 생성 실패: Error: 격리 PDF 실패 응답\n    at fnError (http://127.0.0.1:18762/fakes.ts:6:13)\n    at fakeCallable (http://127.0.0.1:18762/fakes.ts:78:89)\n    at async http://127.0.0.1:18762/sdk.ts:534:17\n    at async handlePrint (http://127.0.0.1:18762/@fs/private/tmp/haru-persona-batch5/frontend/src/app/components/GrowthTimelineDocumentModal.tsx:163:22)"
+    },
+    {
+     "type": "error",
+     "text": "서버 PDF 생성 실패: Error: 격리 PDF 실패 응답\n    at fnError (http://127.0.0.1:18762/fakes.ts:6:13)\n    at fakeCallable (http://127.0.0.1:18762/fakes.ts:78:89)\n    at async http://127.0.0.1:18762/sdk.ts:534:17\n    at async handlePrint (http://127.0.0.1:18762/@fs/private/tmp/haru-persona-batch5/frontend/src/app/components/GrowthTimelineDocumentModal.tsx:163:22)"
+    }
+   ],
+   "pageErrors": [],
+   "dialogs": [],
+   "qa": {
+    "calls": [
+     {
+      "name": "generateGrowthTimelinePdf",
+      "ok": true
+     },
+     {
+      "name": "generateGrowthTimelinePdf",
+      "ok": false,
+      "error": "functions/unavailable"
+     },
+     {
+      "name": "extractTitle",
+      "ok": true
+     },
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     },
+     {
+      "name": "generateGrowthTimelinePdf",
+      "ok": false,
+      "error": "functions/unavailable"
+     },
+     {
+      "name": "extractTitle",
+      "ok": true
+     },
+     {
+      "name": "recordPaidServiceUsage",
+      "ok": true
+     }
+    ],
+    "unknownCallables": [],
+    "uploads": [
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791030609614_01_p25-7-0.jpg",
+      "size": 5775,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791030609614_02_p25-7-1.jpg",
+      "size": 5780,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791030609614_03_p25-7-2.jpg",
+      "size": 5783,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791030609614_04_p25-7-3.jpg",
+      "size": 5803,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791030609614_05_p25-7-4.jpg",
+      "size": 5796,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791030609614_06_p25-7-5.jpg",
+      "size": 5814,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791030609614_07_p25-7-6.jpg",
+      "size": 5806,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_01_p25-13-0.jpg",
+      "size": 5775,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_02_p25-13-1.jpg",
+      "size": 5780,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_03_p25-13-2.jpg",
+      "size": 5783,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_04_p25-13-3.jpg",
+      "size": 5803,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_05_p25-13-4.jpg",
+      "size": 5796,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_06_p25-13-5.jpg",
+      "size": 5814,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_07_p25-13-6.jpg",
+      "size": 5806,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_08_p25-13-7.jpg",
+      "size": 6773,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_09_p25-13-8.jpg",
+      "size": 5898,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_10_p25-13-9.jpg",
+      "size": 6738,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_11_p25-13-10.jpg",
+      "size": 6297,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_12_p25-13-11.jpg",
+      "size": 6732,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p25-shin-areum/format_photos/growth_1791117007062_13_p25-13-12.jpg",
+      "size": 5877,
+      "contentType": "image/jpeg"
+     }
+    ],
+    "writeCount": 3
+   },
+   "db": [
+    [
+     "users/qa-p25-shin-areum",
+     {
+      "assistantOnboardingV1SeenAt": "2026-10-03T12:30:01.185Z",
+      "utmSource": null,
+      "utmMedium": null,
+      "utmCampaign": null,
+      "signupReferrerOrigin": null,
+      "signupAt": {
+       "__ts": 1791030601186
+      }
+     }
+    ],
+    [
+     "users/qa-p25-shin-areum/records/2026-10-03_1791030609768",
+     {
+      "date": "2026-10-03",
+      "formats": [
+       "성장타임라인"
+      ],
+      "format": "성장타임라인",
+      "recordType": "growthTimeline",
+      "type": "growthTimeline",
+      "source": "growthTimeline",
+      "sourceAgent": "HARU타임라인",
+      "title": "사진7장",
+      "content": "기간: 2026.09.01 ~ 2026.10.03\n사진: 7장\n\n1. 2026.09.01\n첫 사진 🌱 소중한 순간\n\n2. 2026.10.03\n설명 없음\n\n3. 2026.10.03\n설명 없음\n\n4. 2026.10.03\n설명 없음\n\n5. 2026.10.03\n설명 없음\n\n6. 2026.10.03\n설명 없음\n\n7. 2026.10.03\n설명 없음",
+      "timelineItems": [
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791030609614_01_p25-7-0.jpg?alt=media&token=qa",
+        "takenDate": "2026-09-01",
+        "memo": "첫 사진 🌱 소중한 순간",
+        "order": 0,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791030609614_02_p25-7-1.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-03",
+        "memo": "",
+        "order": 1,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791030609614_03_p25-7-2.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-03",
+        "memo": "",
+        "order": 2,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791030609614_04_p25-7-3.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-03",
+        "memo": "",
+        "order": 3,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791030609614_05_p25-7-4.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-03",
+        "memo": "",
+        "order": 4,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791030609614_06_p25-7-5.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-03",
+        "memo": "",
+        "order": 5,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791030609614_07_p25-7-6.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-03",
+        "memo": "",
+        "order": 6,
+        "locationLabel": "",
+        "locationStatus": "none"
+       }
+      ],
+      "periodStart": "2026-09-01",
+      "periodEnd": "2026-10-03",
+      "itemCount": 7,
+      "createdAt": "2026-10-03T12:30:09.768Z",
+      "updatedAt": "2026-10-03T12:30:09.768Z"
+     }
+    ],
+    [
+     "users/qa-p25-shin-areum/records/2026-10-04_1791117007366",
+     {
+      "date": "2026-10-04",
+      "formats": [
+       "성장타임라인"
+      ],
+      "format": "성장타임라인",
+      "recordType": "growthTimeline",
+      "type": "growthTimeline",
+      "source": "growthTimeline",
+      "sourceAgent": "HARU타임라인",
+      "title": "fallback13",
+      "content": "기간: 2026.09.01 ~ 2026.10.04\n사진: 13장\n\n1. 2026.09.01\n첫 사진 🌱 소중한 순간\n\n2. 2026.10.04\n설명 없음\n\n3. 2026.10.04\n설명 없음\n\n4. 2026.10.04\n설명 없음\n\n5. 2026.10.04\n설명 없음\n\n6. 2026.10.04\n설명 없음\n\n7. 2026.10.04\n설명 없음\n\n8. 2026.10.04\n설명 없음\n\n9. 2026.10.04\n설명 없음\n\n10. 2026.10.04\n설명 없음\n\n11. 2026.10.04\n설명 없음\n\n12. 2026.10.04\n설명 없음\n\n13. 2026.10.04\n설명 없음",
+      "timelineItems": [
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_01_p25-13-0.jpg?alt=media&token=qa",
+        "takenDate": "2026-09-01",
+        "memo": "첫 사진 🌱 소중한 순간",
+        "order": 0,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_02_p25-13-1.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-04",
+        "memo": "",
+        "order": 1,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_03_p25-13-2.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-04",
+        "memo": "",
+        "order": 2,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_04_p25-13-3.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-04",
+        "memo": "",
+        "order": 3,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_05_p25-13-4.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-04",
+        "memo": "",
+        "order": 4,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_06_p25-13-5.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-04",
+        "memo": "",
+        "order": 5,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_07_p25-13-6.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-04",
+        "memo": "",
+        "order": 6,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_08_p25-13-7.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-04",
+        "memo": "",
+        "order": 7,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_09_p25-13-8.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-04",
+        "memo": "",
+        "order": 8,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_10_p25-13-9.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-04",
+        "memo": "",
+        "order": 9,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_11_p25-13-10.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-04",
+        "memo": "",
+        "order": 10,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_12_p25-13-11.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-04",
+        "memo": "",
+        "order": 11,
+        "locationLabel": "",
+        "locationStatus": "none"
+       },
+       {
+        "url": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p25-shin-areum%2Fformat_photos%2Fgrowth_1791117007062_13_p25-13-12.jpg?alt=media&token=qa",
+        "takenDate": "2026-10-04",
+        "memo": "",
+        "order": 12,
+        "locationLabel": "",
+        "locationStatus": "none"
+       }
+      ],
+      "periodStart": "2026-09-01",
+      "periodEnd": "2026-10-04",
+      "itemCount": 13,
+      "createdAt": "2026-10-04T12:30:07.366Z",
+      "updatedAt": "2026-10-04T12:30:07.366Z"
+     }
+    ]
+   ]
+  }
+ ]
+}

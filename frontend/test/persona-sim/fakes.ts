@@ -72,6 +72,16 @@ async function polishContent(data: any) {
 export async function fakeCallable(name: string, data: any): Promise<any> {
   await delay(20);
   switch (name) {
+    // batch5: 고정 모의 결과/오류. 법률·PDF 서버 품질을 판정하지 않는다.
+    case 'lawSearch': {
+      if (String(data?.query).includes('[모의 오류]')) throw fnError('unavailable', '격리 오류 응답');
+      if (String(data?.query).includes('[모의 결과 없음]')) return { success: false, message: '격리 환경: 검색 결과 없음' };
+      return { success: true, data: [{ lawName: '모의 법령', articleStr: '모의 조문', title: '격리 화면 점검용', content: '실제 법률 내용이 아닙니다. 화면·저장 흐름만 확인합니다.' }], aiSummary: '[모의 분석 — 실제 법률 자문 아님] 입력 자료를 확인하는 화면 점검입니다.' };
+    }
+    case 'generateGrowthTimelinePdf': {
+      if (String(data?.title).includes('fallback') || (window as any).__qaForcePdfFailure) throw fnError('unavailable', '격리 PDF 실패 응답');
+      return { downloadUrl: 'http://127.0.0.1:18762/mock-timeline.pdf', cached: false };
+    }
     case 'getMonthlyAiQuotaStatus':
       return quotaStatus();
     case 'polishContent':

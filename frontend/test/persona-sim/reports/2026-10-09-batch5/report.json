@@ -1,0 +1,25 @@
+{
+ "runId": "2026-10-09T03-11-04",
+ "findings": [
+  {
+   "id": "F-27",
+   "severity": "중대",
+   "title": "배뇨일지 소수·음수 입력에서 기호를 제거해 다른 수량을 저장한다",
+   "detail": "입력 250.5가 화면에서 2505로 변하고 amountMl=2505로 저장됐다. SayuHealthVoidingPage.tsx onChange의 replace(/[^0-9]/g, '')와 handleQuickRecord의 parseInt가 원인이다. 빈 수량 0 허용과는 별개다. (같은 인물에서 2회 재현: 소수·음수 수량 실수 처리)",
+   "personaId": "p23-voiding",
+   "format": "배뇨일지",
+   "step": "소수·음수 수량 실수 처리",
+   "img": "img/F-27.png"
+  },
+  {
+   "id": "F-28",
+   "severity": "중대",
+   "title": "배뇨일지 새벽 기록이 한국 날짜보다 하루 전 날짜에 저장된다",
+   "detail": "한국시간 2026-10-04 02:00에 200ml를 기록하자 date=2026-10-03 문서에 추가됐다. SayuHealthVoidingPage.tsx getTodayStr()의 new Date().toISOString().slice(0,10)은 UTC 날짜를 사용하고 시간 문자열은 getHours/getMinutes로 현지 시간을 사용한다. 한국시간 자정~08:59의 날짜와 시간이 어긋난다.",
+   "personaId": "p23-voiding",
+   "format": "배뇨일지",
+   "step": "한국시간 자정 이후 기록일 확인",
+   "img": "img/F-28.png"
+  }
+ ]
+}
