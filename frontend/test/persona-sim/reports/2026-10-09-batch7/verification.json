@@ -1,0 +1,1332 @@
+{
+ "appSha": "4db3ce792da0a40678bd35afce8be74b696f1e9f",
+ "harnessBaseSha": "95f7c9897b3aa76cf3a6afd82462aadec0e0d7b1",
+ "runId": "2026-10-09T06-16-31",
+ "exitCode": 1,
+ "totals": {
+  "steps": 18,
+  "failedSteps": 0,
+  "crashes": 0,
+  "checks": 64,
+  "passed": 60,
+  "console": 4,
+  "blockedExternal": 0,
+  "pageErrors": 0,
+  "unknownCallables": 0
+ },
+ "expectationFailures": {
+  "newF32": 1,
+  "existingF28": 3
+ },
+ "results": [
+  {
+   "runId": "2026-10-09T06-16-31",
+   "meta": {
+    "id": "p29-sns",
+    "format": "SNS 갈무리",
+    "persona": {
+     "name": "오유진",
+     "age": 41,
+     "gender": "여",
+     "job": "쇼핑몰 자영업자",
+     "device": "Chromium 모바일 390×844",
+     "plan": "무료",
+     "goal": "ZIP 선택·모의 수집·검색 저장·SNS 휴지통·복원·재접속을 확인한다."
+    },
+    "identity": {
+     "uid": "qa-p29-oh-yujin",
+     "displayName": "오유진",
+     "email": "p29@example.invalid",
+     "plan": "free"
+    },
+    "scenario": [
+     "홈·비ZIP 거부",
+     "ZIP 모의 오류·재시도·타임라인",
+     "검색·검색결과 저장",
+     "휴지통·복원·재접속·격리"
+    ]
+   },
+   "startedAt": "2026-10-09T06:16:33.023Z",
+   "durationMs": 14114,
+   "steps": [
+    {
+     "n": 1,
+     "name": "홈 → SNS·비ZIP 입력 거부",
+     "ok": true,
+     "ms": 7826,
+     "url": "/sns-records",
+     "toasts": [
+      "ZIP 파일만 업로드할 수 있습니다."
+     ],
+     "shot": "01-홈-SNS-비ZIP-입력-거부.png"
+    },
+    {
+     "n": 2,
+     "name": "ZIP 모의 실패·재시도·수집 완료",
+     "ok": true,
+     "ms": 1045,
+     "url": "/sns-records",
+     "toasts": [
+      "분석 완료: 3개 게시물이 정리되었어요.",
+      "격리 ZIP 분석 실패",
+      "ZIP 파일만 업로드할 수 있습니다."
+     ],
+     "shot": "02-ZIP-모의-실패-재시도-수집-완료.png"
+    },
+    {
+     "n": 3,
+     "name": "검색 적용·검색결과 저장·빈 상태",
+     "ok": true,
+     "ms": 2171,
+     "url": "/sns-records",
+     "toasts": [
+      "검색결과가 저장되었습니다",
+      "분석 완료: 3개 게시물이 정리되었어요.",
+      "격리 ZIP 분석 실패",
+      "ZIP 파일만 업로드할 수 있습니다."
+     ],
+     "shot": "03-검색-적용-검색결과-저장-빈-상태.png"
+    },
+    {
+     "n": 4,
+     "name": "SNS 휴지통 이동·복원·재접속",
+     "ok": true,
+     "ms": 2641,
+     "url": "/sns-records",
+     "toasts": [],
+     "shot": "04-SNS-휴지통-이동-복원-재접속.png"
+    },
+    {
+     "n": 5,
+     "name": "격리 확인",
+     "ok": true,
+     "ms": 2,
+     "url": "/sns-records",
+     "toasts": [],
+     "shot": "05-격리-확인.png"
+    }
+   ],
+   "checks": [
+    {
+     "step": "홈 → SNS·비ZIP 입력 거부",
+     "name": "비ZIP 파일은 업로드 없이 안내한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "홈 → SNS·비ZIP 입력 거부",
+     "name": "초기 타임라인 저장 기록이 없다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "ZIP 모의 실패·재시도·수집 완료",
+     "name": "ZIP 분석 오류를 화면에 안내한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "ZIP 모의 실패·재시도·수집 완료",
+     "name": "오류 응답에서는 SNS 기록이 생기지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "ZIP 모의 실패·재시도·수집 완료",
+     "name": "모의 SNS 세 건이 본인 snsRecords에 수집된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "ZIP 모의 실패·재시도·수집 완료",
+     "name": "한글·이모지·줄바꿈 게시물이 표시된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "ZIP 모의 실패·재시도·수집 완료",
+     "name": "ZIP 업로드는 본인 snsUploads 경로다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "검색 적용·검색결과 저장·빈 상태",
+     "name": "가족 검색은 무관한 쇼핑몰 게시물을 제외한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "검색 적용·검색결과 저장·빈 상태",
+     "name": "검색결과 두 건과 검색어를 저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "검색 적용·검색결과 저장·빈 상태",
+     "name": "검색결과 저장 date는 한국시간 오늘이다",
+     "ok": true,
+     "detail": "2026-10-04"
+    },
+    {
+     "step": "검색 적용·검색결과 저장·빈 상태",
+     "name": "빈 검색에는 저장 버튼이 없다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "SNS 휴지통 이동·복원·재접속",
+     "name": "삭제는 한 건만 휴지통 표시하고 원문을 보존한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "SNS 휴지통 이동·복원·재접속",
+     "name": "휴지통에서는 검색결과 저장 버튼이 없다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "SNS 휴지통 이동·복원·재접속",
+     "name": "복원 뒤 삭제 표시와 deletedAt을 제거한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "SNS 휴지통 이동·복원·재접속",
+     "name": "재접속 후 세 게시물과 복원이 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "격리 확인",
+     "name": "외부 요청 차단 집계가 0이다",
+     "ok": true,
+     "detail": "차단 0건"
+    },
+    {
+     "step": "격리 확인",
+     "name": "모의되지 않은 callable이 없다",
+     "ok": true,
+     "detail": "[]"
+    },
+    {
+     "step": "격리 확인",
+     "name": "페이지 실행 오류가 없다",
+     "ok": true,
+     "detail": "[]"
+    }
+   ],
+   "findings": [],
+   "network": {
+    "blockedExternalCount": 0,
+    "hosts": []
+   },
+   "console": [
+    {
+     "type": "error",
+     "text": "ZIP 업로드/분석 실패: Error: 격리 ZIP 분석 실패\n    at fnError (http://127.0.0.1:18762/fakes.ts:6:13)\n    at fakeCallable (http://127.0.0.1:18762/fakes.ts:73:52)\n    at async http://127.0.0.1:18762/sdk.ts:534:17\n    at async handleFileChange (http://127.0.0.1:18762/@fs/private/tmp/haru-persona-batch7/frontend/src/app/pages/SnsRecordsPage.tsx:133:22)"
+    }
+   ],
+   "pageErrors": [],
+   "dialogs": [
+    {
+     "type": "confirm",
+     "message": "2026. 10. 03.의 이 SNS 기록 하나를 삭제할까요?\n삭제한 기록은 HARU 일반 휴지통이 아니라 타임라인 상단의 'SNS 휴지통'으로 이동하며 언제든 복원할 수 있습니다.\nFacebook·Instagram 원본과 사진 파일은 삭제되지 않습니다."
+    }
+   ],
+   "qa": {
+    "calls": [
+     {
+      "name": "analyzeFacebookZip",
+      "ok": false,
+      "error": "functions/unavailable"
+     },
+     {
+      "name": "analyzeFacebookZip",
+      "ok": true
+     }
+    ],
+    "unknownCallables": [],
+    "uploads": [
+     {
+      "path": "users/qa-p29-oh-yujin/snsUploads/1791046807958_mock-failed.zip",
+      "size": 24,
+      "contentType": "application/zip"
+     },
+     {
+      "path": "users/qa-p29-oh-yujin/snsUploads/1791046808484_mock-posts.zip",
+      "size": 24,
+      "contentType": "application/zip"
+     }
+    ],
+    "writeCount": 7
+   },
+   "db": [
+    [
+     "users/qa-p29-oh-yujin",
+     {
+      "assistantOnboardingV1SeenAt": "2026-10-03T17:00:05.778Z",
+      "utmSource": null,
+      "utmMedium": null,
+      "utmCampaign": null,
+      "signupReferrerOrigin": null,
+      "signupAt": {
+       "__ts": 1791046805779
+      }
+     }
+    ],
+    [
+     "users/qa-p29-oh-yujin/snsRecords/mock-post-0",
+     {
+      "timestamp": 1790816400,
+      "text": "가족과 생일을 보냈다. 🎂\n소중한 추억",
+      "thumbnails": [],
+      "source": "facebook",
+      "createdAt": {
+       "__ts": 1791046808512
+      }
+     }
+    ],
+    [
+     "users/qa-p29-oh-yujin/snsRecords/mock-post-1",
+     {
+      "timestamp": 1790902800,
+      "text": "쇼핑몰 신상품 준비를 마쳤다.",
+      "thumbnails": [],
+      "source": "facebook",
+      "createdAt": {
+       "__ts": 1791046808512
+      }
+     }
+    ],
+    [
+     "users/qa-p29-oh-yujin/snsRecords/mock-post-2",
+     {
+      "timestamp": 1790989200,
+      "text": "가족과 공원에 갔다.",
+      "thumbnails": [],
+      "source": "facebook",
+      "createdAt": {
+       "__ts": 1791046808512
+      },
+      "isDeleted": false,
+      "updatedAt": {
+       "__ts": 1791046812545
+      },
+      "restoredAt": {
+       "__ts": 1791046812545
+      }
+     }
+    ],
+    [
+     "users/qa-p29-oh-yujin/snsSearchHistory/wWsAJhkxdkcTGcmv33tg",
+     {
+      "date": "2026-10-04",
+      "keyword": "가족",
+      "source": "all",
+      "type": "all",
+      "results": [
+       {
+        "id": "mock-post-2",
+        "source": "facebook",
+        "timestamp": 1790989200,
+        "text": "가족과 공원에 갔다.",
+        "thumbnails": []
+       },
+       {
+        "id": "mock-post-0",
+        "source": "facebook",
+        "timestamp": 1790816400,
+        "text": "가족과 생일을 보냈다. 🎂\n소중한 추억",
+        "thumbnails": []
+       }
+      ],
+      "savedAt": {
+       "__ts": 1791046809628
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "runId": "2026-10-09T06-16-31",
+   "meta": {
+    "id": "p30-plant",
+    "format": "하루식물탐정",
+    "persona": {
+     "name": "박미란",
+     "age": 57,
+     "gender": "여",
+     "job": "베란다 식물 30종 보호자",
+     "device": "Chromium 모바일 390×844",
+     "plan": "무료",
+     "goal": "합성 사진·분석 오류·모의 판독·관찰 저장·재접속을 확인한다."
+    },
+    "identity": {
+     "uid": "qa-p30-park-miran",
+     "displayName": "박미란",
+     "email": "p30@example.invalid",
+     "plan": "free"
+    },
+    "scenario": [
+     "홈·빈 사진·사진 추가",
+     "모의 분석 오류·재시도",
+     "관찰과 판독 저장·재접속·격리"
+    ]
+   },
+   "startedAt": "2026-10-09T06:16:47.340Z",
+   "durationMs": 7635,
+   "steps": [
+    {
+     "n": 1,
+     "name": "홈 → 식물탐정·빈 사진·추가",
+     "ok": true,
+     "ms": 4728,
+     "url": "/plant-detective",
+     "toasts": [],
+     "shot": "01-홈-식물탐정-빈-사진-추가.png"
+    },
+    {
+     "n": 2,
+     "name": "모의 식물 분석 실패·입력 유지·재시도",
+     "ok": true,
+     "ms": 1078,
+     "url": "/plant-detective",
+     "toasts": [
+      "격리 식물 분석 실패"
+     ],
+     "shot": "02-모의-식물-분석-실패-입력-유지-재시도.png"
+    },
+    {
+     "n": 3,
+     "name": "관찰·메모·촬영장소·오늘 기록 저장",
+     "ok": true,
+     "ms": 1472,
+     "url": "/plant-detective",
+     "toasts": [],
+     "shot": "03-관찰-메모-촬영장소-오늘-기록-저장.png"
+    },
+    {
+     "n": 4,
+     "name": "격리 확인",
+     "ok": true,
+     "ms": 3,
+     "url": "/plant-detective",
+     "toasts": [],
+     "shot": "04-격리-확인.png"
+    }
+   ],
+   "checks": [
+    {
+     "step": "홈 → 식물탐정·빈 사진·추가",
+     "name": "사진이 없으면 분석 버튼이 비활성이다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "홈 → 식물탐정·빈 사진·추가",
+     "name": "사진 두 장이 추가되고 분석할 수 있다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 식물 분석 실패·입력 유지·재시도",
+     "name": "모의 실패 후 오류 안내와 사진을 보존한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 식물 분석 실패·입력 유지·재시도",
+     "name": "분석 실패는 기록을 저장하지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 식물 분석 실패·입력 유지·재시도",
+     "name": "재시도 성공 시 모의 판독 결과를 표시한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "모의 식물 분석 실패·입력 유지·재시도",
+     "name": "분석 요청에 사진 두 장을 전달한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "관찰·메모·촬영장소·오늘 기록 저장",
+     "name": "판독·관찰이 오늘 records 문서에 함께 저장된다",
+     "ok": true,
+     "detail": "{\"path\":\"users/qa-p30-park-miran/records/2026-10-04\",\"date\":\"2026-10-04\",\"plantDetective\":[{\"createdAt\":1791046806060,\"updatedAt\":1791046806066,\"plantId\":\"plant_2026-10-04_1791046806060_y59xa9\",\"imageUrl\":\"https://qa-storage.invalid/v0/b/qa-bucket/o/"
+    },
+    {
+     "step": "관찰·메모·촬영장소·오늘 기록 저장",
+     "name": "관찰 원문·이모지·줄바꿈·메모를 보존한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "관찰·메모·촬영장소·오늘 기록 저장",
+     "name": "사진 두 장은 본인 format_photos에 저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "관찰·메모·촬영장소·오늘 기록 저장",
+     "name": "저장 후 중복 저장 버튼을 비활성화한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "관찰·메모·촬영장소·오늘 기록 저장",
+     "name": "재접속 후 판독·관찰 기록이 보존된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "격리 확인",
+     "name": "외부 요청 차단 집계가 0이다",
+     "ok": true,
+     "detail": "차단 0건"
+    },
+    {
+     "step": "격리 확인",
+     "name": "모의되지 않은 callable이 없다",
+     "ok": true,
+     "detail": "[]"
+    },
+    {
+     "step": "격리 확인",
+     "name": "페이지 실행 오류가 없다",
+     "ok": true,
+     "detail": "[]"
+    }
+   ],
+   "findings": [],
+   "network": {
+    "blockedExternalCount": 0,
+    "hosts": []
+   },
+   "console": [
+    {
+     "type": "error",
+     "text": "식물 분석 실패: Error: 격리 식물 분석 실패\n    at fnError (http://127.0.0.1:18762/fakes.ts:6:13)\n    at fakeCallable (http://127.0.0.1:18762/fakes.ts:84:52)\n    at async http://127.0.0.1:18762/sdk.ts:534:17\n    at async analyzePlant (http://127.0.0.1:18762/@fs/private/tmp/haru-persona-batch7/frontend/src/app/pages/PlantDetectivePage.tsx:780:24)"
+    }
+   ],
+   "pageErrors": [],
+   "dialogs": [],
+   "qa": {
+    "calls": [
+     {
+      "name": "detectPlantAdvanced",
+      "ok": false,
+      "error": "functions/unavailable"
+     },
+     {
+      "name": "detectPlantAdvanced",
+      "ok": true
+     }
+    ],
+    "unknownCallables": [],
+    "uploads": [
+     {
+      "path": "users/qa-p30-park-miran/format_photos/plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+      "size": 5898,
+      "contentType": "image/jpeg"
+     },
+     {
+      "path": "users/qa-p30-park-miran/format_photos/plant_2026-10-04_1791046806060_y59xa9_2.jpg",
+      "size": 5898,
+      "contentType": "image/jpeg"
+     }
+    ],
+    "writeCount": 2
+   },
+   "db": [
+    [
+     "users/qa-p30-park-miran",
+     {
+      "assistantOnboardingV1SeenAt": "2026-10-03T17:00:01.329Z",
+      "utmSource": null,
+      "utmMedium": null,
+      "utmCampaign": null,
+      "signupReferrerOrigin": null,
+      "signupAt": {
+       "__ts": 1791046801331
+      }
+     }
+    ],
+    [
+     "users/qa-p30-park-miran/records/2026-10-04",
+     {
+      "date": "2026-10-04",
+      "plantDetective": [
+       {
+        "createdAt": 1791046806060,
+        "updatedAt": 1791046806066,
+        "plantId": "plant_2026-10-04_1791046806060_y59xa9",
+        "imageUrl": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p30-park-miran%2Fformat_photos%2Fplant_2026-10-04_1791046806060_y59xa9_1.jpg?alt=media&token=qa",
+        "imageUrls": [
+         "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p30-park-miran%2Fformat_photos%2Fplant_2026-10-04_1791046806060_y59xa9_1.jpg?alt=media&token=qa",
+         "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p30-park-miran%2Fformat_photos%2Fplant_2026-10-04_1791046806060_y59xa9_2.jpg?alt=media&token=qa"
+        ],
+        "photoUrl": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p30-park-miran%2Fformat_photos%2Fplant_2026-10-04_1791046806060_y59xa9_1.jpg?alt=media&token=qa",
+        "thumbnailUrl": "",
+        "storagePath": "users/qa-p30-park-miran/format_photos/plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+        "thumbnailStoragePath": "",
+        "fileName": "plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+        "thumbnailFileName": "",
+        "uploadedAt": 1791046806060,
+        "regionLabel": "",
+        "locationLabel": "우리집 베란다",
+        "publicLocation": "우리집 베란다",
+        "imageMetas": [
+         {
+          "imageUrl": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p30-park-miran%2Fformat_photos%2Fplant_2026-10-04_1791046806060_y59xa9_1.jpg?alt=media&token=qa",
+          "storagePath": "users/qa-p30-park-miran/format_photos/plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+          "fileName": "plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+          "uploadedAt": 1791046806060
+         },
+         {
+          "imageUrl": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p30-park-miran%2Fformat_photos%2Fplant_2026-10-04_1791046806060_y59xa9_2.jpg?alt=media&token=qa",
+          "storagePath": "users/qa-p30-park-miran/format_photos/plant_2026-10-04_1791046806060_y59xa9_2.jpg",
+          "fileName": "plant_2026-10-04_1791046806060_y59xa9_2.jpg",
+          "uploadedAt": 1791046806060
+         }
+        ],
+        "storagePaths": [
+         "users/qa-p30-park-miran/format_photos/plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+         "users/qa-p30-park-miran/format_photos/plant_2026-10-04_1791046806060_y59xa9_2.jpg"
+        ],
+        "thumbnailStoragePaths": [],
+        "fileNames": [
+         "plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+         "plant_2026-10-04_1791046806060_y59xa9_2.jpg"
+        ],
+        "thumbnailFileNames": [],
+        "uploadedAts": [
+         1791046806060,
+         1791046806060
+        ],
+        "thumbnailUrls": [],
+        "aiScientificName": "Mock species",
+        "plantAssistant": {
+         "growthStage": "",
+         "growthStagePercent": null,
+         "healthScore": null,
+         "pestDiseaseWatch": "",
+         "wateringAdvice": "",
+         "fertilizerAdvice": "",
+         "expectedHarvest": "",
+         "autoDiary": "[모의 관찰일지]",
+         "previousPhotoComparison": "",
+         "yearOverYearComparison": "",
+         "careSummary": "[모의 관리 설명]"
+        },
+        "growthStage": "",
+        "growthStagePercent": null,
+        "healthScore": null,
+        "careAdvice": "[모의 관리 설명]",
+        "wateringAdvice": "",
+        "fertilizerAdvice": "",
+        "pestDiseaseWarning": "",
+        "expectedHarvest": "",
+        "autoGrowthDiary": "[모의 관찰일지]",
+        "previousPhotoComparison": "",
+        "yearOverYearComparison": "",
+        "plantNetResult": {
+         "name": "Mock orchid",
+         "koName": "모의 호접란",
+         "scientificName": "Mock species",
+         "confidence": 0.8,
+         "alternatives": []
+        },
+        "plantIdResult": null,
+        "plantIdError": "Plant.id 결과를 가져오지 못했습니다.",
+        "providerResults": {
+         "plantId": null,
+         "plantNet": {
+          "name": "Mock orchid",
+          "koName": "모의 호접란",
+          "scientificName": "Mock species",
+          "confidence": 0.8,
+          "alternatives": []
+         },
+         "gemini": {
+          "finalGuess": "모의 호접란",
+          "finalLatinName": "Mock species",
+          "analysis": "[모의 판독 — 실제 식물 식별 아님]",
+          "warning": "실제 식물 판단에 사용하지 마세요.",
+          "edible": "unknown",
+          "poisonousRisk": false,
+          "similarSpecies": [],
+          "needMorePhotos": [],
+          "confidence": "medium",
+          "careSummary": "[모의 관리 설명]",
+          "autoDiary": "[모의 관찰일지]"
+         }
+        },
+        "title": "모의 호접란",
+        "plantName": "모의 호접란",
+        "latinName": "Mock species",
+        "englishName": "Mock orchid",
+        "scientificName": "Mock species",
+        "userConfirmedName": "",
+        "aiKoName": "모의 호접란",
+        "aiPrediction": "Mock orchid",
+        "identificationConfidence": null,
+        "isPlantProbability": null,
+        "alternativeCandidates": [],
+        "taxonomy": null,
+        "identifiedBy": "plantnet",
+        "condition": "[모의 판독 — 실제 식물 식별 아님]",
+        "confidence": "medium",
+        "findings": [],
+        "actions": [],
+        "warningSigns": [
+         "실제 식물 판단에 사용하지 마세요."
+        ],
+        "note": "실제 식물 판단에 사용하지 마세요."
+       }
+      ],
+      "plantObservation": [
+       {
+        "format": "plantObservation",
+        "plantId": "plant_2026-10-04_1791046806060_y59xa9",
+        "linkedPlantId": "plant_2026-10-04_1791046806060_y59xa9",
+        "updatedAt": 1791046806066,
+        "plantName": "모의 호접란",
+        "latinName": "Mock species",
+        "imageUrl": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p30-park-miran%2Fformat_photos%2Fplant_2026-10-04_1791046806060_y59xa9_1.jpg?alt=media&token=qa",
+        "imageUrls": [
+         "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p30-park-miran%2Fformat_photos%2Fplant_2026-10-04_1791046806060_y59xa9_1.jpg?alt=media&token=qa",
+         "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p30-park-miran%2Fformat_photos%2Fplant_2026-10-04_1791046806060_y59xa9_2.jpg?alt=media&token=qa"
+        ],
+        "photoUrl": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p30-park-miran%2Fformat_photos%2Fplant_2026-10-04_1791046806060_y59xa9_1.jpg?alt=media&token=qa",
+        "thumbnailUrl": "",
+        "storagePath": "users/qa-p30-park-miran/format_photos/plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+        "thumbnailStoragePath": "",
+        "fileName": "plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+        "thumbnailFileName": "",
+        "uploadedAt": 1791046806060,
+        "regionLabel": "",
+        "locationLabel": "우리집 베란다",
+        "publicLocation": "우리집 베란다",
+        "imageMetas": [
+         {
+          "imageUrl": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p30-park-miran%2Fformat_photos%2Fplant_2026-10-04_1791046806060_y59xa9_1.jpg?alt=media&token=qa",
+          "storagePath": "users/qa-p30-park-miran/format_photos/plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+          "fileName": "plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+          "uploadedAt": 1791046806060
+         },
+         {
+          "imageUrl": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p30-park-miran%2Fformat_photos%2Fplant_2026-10-04_1791046806060_y59xa9_2.jpg?alt=media&token=qa",
+          "storagePath": "users/qa-p30-park-miran/format_photos/plant_2026-10-04_1791046806060_y59xa9_2.jpg",
+          "fileName": "plant_2026-10-04_1791046806060_y59xa9_2.jpg",
+          "uploadedAt": 1791046806060
+         }
+        ],
+        "storagePaths": [
+         "users/qa-p30-park-miran/format_photos/plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+         "users/qa-p30-park-miran/format_photos/plant_2026-10-04_1791046806060_y59xa9_2.jpg"
+        ],
+        "thumbnailStoragePaths": [],
+        "fileNames": [
+         "plant_2026-10-04_1791046806060_y59xa9_1.jpg",
+         "plant_2026-10-04_1791046806060_y59xa9_2.jpg"
+        ],
+        "thumbnailFileNames": [],
+        "uploadedAts": [
+         1791046806060,
+         1791046806060
+        ],
+        "thumbnailUrls": [],
+        "aiScientificName": "Mock species",
+        "plantAssistant": {
+         "growthStage": "",
+         "growthStagePercent": null,
+         "healthScore": null,
+         "pestDiseaseWatch": "",
+         "wateringAdvice": "",
+         "fertilizerAdvice": "",
+         "expectedHarvest": "",
+         "autoDiary": "[모의 관찰일지]",
+         "previousPhotoComparison": "",
+         "yearOverYearComparison": "",
+         "careSummary": "[모의 관리 설명]"
+        },
+        "growthStage": "",
+        "growthStagePercent": null,
+        "healthScore": null,
+        "careAdvice": "[모의 관리 설명]",
+        "wateringAdvice": "",
+        "fertilizerAdvice": "",
+        "pestDiseaseWarning": "",
+        "expectedHarvest": "",
+        "autoGrowthDiary": "[모의 관찰일지]",
+        "previousPhotoComparison": "",
+        "yearOverYearComparison": "",
+        "plantNetResult": {
+         "name": "Mock orchid",
+         "koName": "모의 호접란",
+         "scientificName": "Mock species",
+         "confidence": 0.8,
+         "alternatives": []
+        },
+        "plantIdResult": null,
+        "plantIdError": "Plant.id 결과를 가져오지 못했습니다.",
+        "providerResults": {
+         "plantId": null,
+         "plantNet": {
+          "name": "Mock orchid",
+          "koName": "모의 호접란",
+          "scientificName": "Mock species",
+          "confidence": 0.8,
+          "alternatives": []
+         },
+         "gemini": {
+          "finalGuess": "모의 호접란",
+          "finalLatinName": "Mock species",
+          "analysis": "[모의 판독 — 실제 식물 식별 아님]",
+          "warning": "실제 식물 판단에 사용하지 마세요.",
+          "edible": "unknown",
+          "poisonousRisk": false,
+          "similarSpecies": [],
+          "needMorePhotos": [],
+          "confidence": "medium",
+          "careSummary": "[모의 관리 설명]",
+          "autoDiary": "[모의 관찰일지]"
+         }
+        },
+        "title": "모의 호접란",
+        "englishName": "Mock orchid",
+        "scientificName": "Mock species",
+        "userConfirmedName": "",
+        "aiKoName": "모의 호접란",
+        "aiPrediction": "Mock orchid",
+        "observation": "잎 두 장이 새로 나왔다. 🌱\n물을 주었다.",
+        "aiDifference": "",
+        "memo": "베란다 창가 관찰 메모",
+        "createdAt": 1791046806060
+       }
+      ]
+     }
+    ]
+   ]
+  },
+  {
+   "runId": "2026-10-09T06-16-31",
+   "meta": {
+    "id": "p31-onbid",
+    "format": "온비드 부동산",
+    "persona": {
+     "name": "김성훈",
+     "age": 50,
+     "gender": "남",
+     "job": "직장인",
+     "device": "Chromium 모바일 390×844",
+     "plan": "무료",
+     "goal": "조회 조건·페이지 이동·결과 없음·실패 안내·외부 링크 의도를 확인한다."
+    },
+    "identity": {
+     "uid": "qa-p31-kim-sunghoon",
+     "displayName": "김성훈",
+     "email": "p31@example.invalid",
+     "plan": "free"
+    },
+    "scenario": [
+     "홈·조회 조건·모의 결과",
+     "다음 페이지·온비드 링크 의도",
+     "빈 결과·오류·재시도·격리"
+    ]
+   },
+   "startedAt": "2026-10-09T06:16:55.160Z",
+   "durationMs": 6594,
+   "steps": [
+    {
+     "n": 1,
+     "name": "홈 → 온비드·조건 조회",
+     "ok": true,
+     "ms": 3448,
+     "url": "/onbid-realestate",
+     "toasts": [],
+     "shot": "01-홈-온비드-조건-조회.png"
+    },
+    {
+     "n": 2,
+     "name": "페이지 이동·외부 링크 의도",
+     "ok": true,
+     "ms": 1161,
+     "url": "/onbid-realestate",
+     "toasts": [
+      "물건관리번호 MOCK-2 복사됨. 온비드에서 검색하세요."
+     ],
+     "shot": "02-페이지-이동-외부-링크-의도.png"
+    },
+    {
+     "n": 3,
+     "name": "빈 결과·조회 오류·재시도",
+     "ok": true,
+     "ms": 1622,
+     "url": "/onbid-realestate",
+     "toasts": [
+      "격리 온비드 조회 실패",
+      "검색 결과가 없습니다. 조건을 조정해 보세요.",
+      "물건관리번호 MOCK-2 복사됨. 온비드에서 검색하세요."
+     ],
+     "shot": "03-빈-결과-조회-오류-재시도.png"
+    },
+    {
+     "n": 4,
+     "name": "격리 확인",
+     "ok": true,
+     "ms": 1,
+     "url": "/onbid-realestate",
+     "toasts": [
+      "격리 온비드 조회 실패",
+      "검색 결과가 없습니다. 조건을 조정해 보세요.",
+      "물건관리번호 MOCK-2 복사됨. 온비드에서 검색하세요."
+     ],
+     "shot": "04-격리-확인.png"
+    }
+   ],
+   "checks": [
+    {
+     "step": "홈 → 온비드·조건 조회",
+     "name": "본인 조건을 첫 페이지 조회 payload로 보낸다",
+     "ok": true,
+     "detail": "{\"pageNo\":1,\"numOfRows\":10,\"prptDivCd\":\"0007\",\"lctnSdnm\":\"서울특별시\",\"lctnSggnm\":\"송파구\",\"onbidCltrNm\":\"아파트\",\"bidPrdYmdStart\":\"20261004\",\"lowstBidPrcStart\":\"100000000\",\"lowstBidPrcEnd\":\"500000000\"}"
+    },
+    {
+     "step": "홈 → 온비드·조건 조회",
+     "name": "모의 가격·물건·입찰일을 표시한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "페이지 이동·외부 링크 의도",
+     "name": "첫 페이지 이전 버튼이 비활성이다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "페이지 이동·외부 링크 의도",
+     "name": "다음 조회는 같은 조건과 pageNo 2를 보낸다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "페이지 이동·외부 링크 의도",
+     "name": "두 번째 결과와 마지막 페이지 버튼을 표시한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "페이지 이동·외부 링크 의도",
+     "name": "외부 이동 의도는 온비드 공식 홈페이지다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "빈 결과·조회 오류·재시도",
+     "name": "0건 조회 후 이전 물건을 제거하고 빈 상태를 안내한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "빈 결과·조회 오류·재시도",
+     "name": "조회 실패는 오류 안내와 재시도 가능한 버튼을 제공한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "빈 결과·조회 오류·재시도",
+     "name": "재시도는 첫 페이지부터 결과를 복원한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "빈 결과·조회 오류·재시도",
+     "name": "조회 비서는 records 문서를 쓰지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "격리 확인",
+     "name": "외부 요청 차단 집계가 0이다",
+     "ok": true,
+     "detail": "차단 0건"
+    },
+    {
+     "step": "격리 확인",
+     "name": "모의되지 않은 callable이 없다",
+     "ok": true,
+     "detail": "[]"
+    },
+    {
+     "step": "격리 확인",
+     "name": "페이지 실행 오류가 없다",
+     "ok": true,
+     "detail": "[]"
+    }
+   ],
+   "findings": [],
+   "network": {
+    "blockedExternalCount": 0,
+    "hosts": []
+   },
+   "console": [
+    {
+     "type": "error",
+     "text": "[Onbid] search failed Error: 격리 온비드 조회 실패\n    at fnError (http://127.0.0.1:18762/fakes.ts:6:13)\n    at fakeCallable (http://127.0.0.1:18762/fakes.ts:92:52)\n    at async http://127.0.0.1:18762/sdk.ts:534:17\n    at async runSearch (http://127.0.0.1:18762/@fs/private/tmp/haru-persona-batch7/frontend/src/app/pages/OnbidRealEstatePage.tsx:146:19)"
+    }
+   ],
+   "pageErrors": [],
+   "dialogs": [],
+   "qa": {
+    "calls": [
+     {
+      "name": "getOnbidRealEstateList",
+      "ok": true
+     },
+     {
+      "name": "getOnbidRealEstateList",
+      "ok": true
+     },
+     {
+      "name": "getOnbidRealEstateList",
+      "ok": true
+     },
+     {
+      "name": "getOnbidRealEstateList",
+      "ok": false,
+      "error": "functions/unavailable"
+     },
+     {
+      "name": "getOnbidRealEstateList",
+      "ok": true
+     }
+    ],
+    "unknownCallables": [],
+    "uploads": [],
+    "writeCount": 1
+   },
+   "db": [
+    [
+     "users/qa-p31-kim-sunghoon",
+     {
+      "assistantOnboardingV1SeenAt": "2026-10-04T12:30:01.346Z",
+      "utmSource": null,
+      "utmMedium": null,
+      "utmCampaign": null,
+      "signupReferrerOrigin": null,
+      "signupAt": {
+       "__ts": 1791117001347
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "runId": "2026-10-09T06-16-31",
+   "meta": {
+    "id": "p32-pethealth",
+    "format": "반려동물건강돌봄",
+    "persona": {
+     "name": "최지은",
+     "age": 36,
+     "gender": "여",
+     "job": "노령견 보호자",
+     "device": "Chromium 모바일 390×844",
+     "plan": "무료",
+     "goal": "증상·먹거리 모의 실패·접종 필수입력·저장·한국시간 새벽 날짜를 확인한다."
+    },
+    "identity": {
+     "uid": "qa-p32-choi-jieun",
+     "displayName": "최지은",
+     "email": "p32@example.invalid",
+     "plan": "free"
+    },
+    "scenario": [
+     "홈·증상 빈 입력·미등록·복합 위험 표시",
+     "먹거리 모의 실패·정상 응답·기록",
+     "접종 필수값·날짜·메모 저장·재접속·격리"
+    ]
+   },
+   "startedAt": "2026-10-09T06:17:01.973Z",
+   "durationMs": 15530,
+   "steps": [
+    {
+     "n": 1,
+     "name": "홈 → 증상·빈 입력·미등록",
+     "ok": true,
+     "ms": 4160,
+     "url": "/pet-health/symptom",
+     "toasts": [],
+     "shot": "01-홈-증상-빈-입력-미등록.png"
+    },
+    {
+     "n": 2,
+     "name": "단일·복합 증상 표시·저장 날짜",
+     "ok": true,
+     "ms": 1244,
+     "url": "/pet-health/symptom",
+     "toasts": [],
+     "shot": "04-단일-복합-증상-표시-저장-날짜.png"
+    },
+    {
+     "n": 3,
+     "name": "먹거리 빈 입력·모의 실패·정상 기록",
+     "ok": true,
+     "ms": 4113,
+     "url": "/pet-health/food",
+     "toasts": [],
+     "shot": "05-먹거리-빈-입력-모의-실패-정상-기록.png"
+    },
+    {
+     "n": 4,
+     "name": "접종 필수값·원문·일정 저장",
+     "ok": true,
+     "ms": 5666,
+     "url": "/pet-health/vaccine",
+     "toasts": [],
+     "shot": "07-접종-필수값-원문-일정-저장.png"
+    },
+    {
+     "n": 5,
+     "name": "격리 확인",
+     "ok": true,
+     "ms": 1,
+     "url": "/pet-health/vaccine",
+     "toasts": [],
+     "shot": "08-격리-확인.png"
+    }
+   ],
+   "checks": [
+    {
+     "step": "홈 → 증상·빈 입력·미등록",
+     "name": "빈 증상 확인 버튼은 비활성이다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "홈 → 증상·빈 입력·미등록",
+     "name": "진단 대체가 아님을 화면에 표시한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "홈 → 증상·빈 입력·미등록",
+     "name": "미등록 증상은 정보 없음으로 안내하고 기록하지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "단일·복합 증상 표시·저장 날짜",
+     "name": "단일 응급 키워드에는 응급 표시를 한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "단일·복합 증상 표시·저장 날짜",
+     "name": "증상 원문·이름을 본인 로그에 저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "단일·복합 증상 표시·저장 날짜",
+     "name": "증상 checkedAt은 한국시간 오늘이다",
+     "ok": false,
+     "detail": "기존 F-28 UTC 날짜 방식 재현: 2026-10-03"
+    },
+    {
+     "step": "단일·복합 증상 표시·저장 날짜",
+     "name": "복합 증상 입력 원문과 urgent 단계가 로그에 저장된다",
+     "ok": true,
+     "detail": "{\"type\":\"symptom\",\"petName\":\"복실이\",\"query\":\"혈변과 호흡 곤란이 있어요.\",\"riskLevel\":\"urgent\",\"answer\":\"장 감염, 장 출혈 가능성\",\"checkedAt\":\"2026-10-03\",\"createdAt\":{\"__ts\":1791046804890}}"
+    },
+    {
+     "step": "단일·복합 증상 표시·저장 날짜",
+     "name": "복합 입력에서도 단일 응급 표시를 유지한다",
+     "ok": false,
+     "detail": "위험도: 빠른 병원"
+    },
+    {
+     "step": "먹거리 빈 입력·모의 실패·정상 기록",
+     "name": "빈 식품명 안내·호출 방지",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "먹거리 빈 입력·모의 실패·정상 기록",
+     "name": "모의 실패 안내·입력 유지·로그 미저장",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "먹거리 빈 입력·모의 실패·정상 기록",
+     "name": "고정 미등록 안내와 먹거리 로그를 표시·저장한다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "먹거리 빈 입력·모의 실패·정상 기록",
+     "name": "먹거리 checkedAt은 한국시간 오늘이다",
+     "ok": false,
+     "detail": "기존 F-28 UTC 날짜 방식 재현: 2026-10-03"
+    },
+    {
+     "step": "접종 필수값·원문·일정 저장",
+     "name": "접종일 기본값은 한국시간 오늘이다",
+     "ok": false,
+     "detail": "기존 F-28 UTC 날짜 방식 재현: 2026-10-03"
+    },
+    {
+     "step": "접종 필수값·원문·일정 저장",
+     "name": "필수값 누락은 안내하고 저장하지 않는다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "접종 필수값·원문·일정 저장",
+     "name": "입력 날짜·다음 일정·병원·메모 보존",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "접종 필수값·원문·일정 저장",
+     "name": "재접속 접종 목록에 원문이 유지된다",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "step": "격리 확인",
+     "name": "외부 요청 차단 집계가 0이다",
+     "ok": true,
+     "detail": "차단 0건"
+    },
+    {
+     "step": "격리 확인",
+     "name": "모의되지 않은 callable이 없다",
+     "ok": true,
+     "detail": "[]"
+    },
+    {
+     "step": "격리 확인",
+     "name": "페이지 실행 오류가 없다",
+     "ok": true,
+     "detail": "[]"
+    }
+   ],
+   "findings": [
+    {
+     "step": "단일·복합 증상 표시·저장 날짜",
+     "shot": "03-증거-복합-빠른병원-표시.png",
+     "severity": "중대",
+     "title": "반려동물 복합 증상은 첫 일치 규칙만 적용해 응급 표시가 낮아진다",
+     "detail": "호흡 곤란 단독은 화면 응급·저장 emergency. 혈변과 호흡 곤란 복합은 화면 빠른 병원·저장 urgent. PetHealthSymptomPage findSymptomRule은 배열 find로 첫 혈변 규칙만 선택한다. 기존 위험 단계 표시의 정합을 비교했으며 실제 의료 판단 검증은 아니다."
+    }
+   ],
+   "network": {
+    "blockedExternalCount": 0,
+    "hosts": []
+   },
+   "console": [
+    {
+     "type": "error",
+     "text": "petFoodCheck failed: Error: 격리 먹거리 확인 실패\n    at fnError (http://127.0.0.1:18762/fakes.ts:6:13)\n    at fakeCallable (http://127.0.0.1:18762/fakes.ts:97:52)\n    at async http://127.0.0.1:18762/sdk.ts:534:17\n    at async handleCheck (http://127.0.0.1:18762/@fs/private/tmp/haru-persona-batch7/frontend/src/app/pages/PetHealthFoodPage.tsx:62:24)"
+    }
+   ],
+   "pageErrors": [],
+   "dialogs": [],
+   "qa": {
+    "calls": [
+     {
+      "name": "petFoodCheck",
+      "ok": false,
+      "error": "functions/unavailable"
+     },
+     {
+      "name": "petFoodCheck",
+      "ok": true
+     }
+    ],
+    "unknownCallables": [],
+    "uploads": [],
+    "writeCount": 5
+   },
+   "db": [
+    [
+     "users/qa-p32-choi-jieun",
+     {
+      "assistantOnboardingV1SeenAt": "2026-10-03T17:00:01.626Z",
+      "utmSource": null,
+      "utmMedium": null,
+      "utmCampaign": null,
+      "signupReferrerOrigin": null,
+      "signupAt": {
+       "__ts": 1791046801627
+      }
+     }
+    ],
+    [
+     "users/qa-p32-choi-jieun/petHealthLogs/maRaj1i8kXgiTCdgO3t1",
+     {
+      "type": "symptom",
+      "petName": "복실이",
+      "query": "호흡 곤란이 있어요.",
+      "riskLevel": "emergency",
+      "answer": "심폐 문제, 기도 폐색 가능성",
+      "checkedAt": "2026-10-03",
+      "createdAt": {
+       "__ts": 1791046804273
+      }
+     }
+    ],
+    [
+     "users/qa-p32-choi-jieun/petHealthLogs/aqAh2L1VZ3kdBet3aXS3",
+     {
+      "type": "symptom",
+      "petName": "복실이",
+      "query": "혈변과 호흡 곤란이 있어요.",
+      "riskLevel": "urgent",
+      "answer": "장 감염, 장 출혈 가능성",
+      "checkedAt": "2026-10-03",
+      "createdAt": {
+       "__ts": 1791046804890
+      }
+     }
+    ],
+    [
+     "users/qa-p32-choi-jieun/petHealthLogs/wvLgwSGJIiM1TDbm3Wwh",
+     {
+      "type": "food",
+      "petName": "복실이",
+      "query": "모의식품",
+      "riskLevel": "unknown",
+      "answer": "[모의 안내 — 실제 먹거리 판단 아님]",
+      "checkedAt": "2026-10-03",
+      "createdAt": {
+       "__ts": 1791046809178
+      }
+     }
+    ],
+    [
+     "users/qa-p32-choi-jieun/petVaccineRecords/wGL4KvY1NcDd4SbAECHO",
+     {
+      "petName": "복실이",
+      "petType": "dog",
+      "vaccineName": "모의 접종",
+      "vaccineDate": "2026-10-04",
+      "nextVaccineDate": "2027-10-04",
+      "hospital": "가상 동물병원",
+      "memo": "접종 기록 🐾\n메모 보존",
+      "createdAt": {
+       "__ts": 1791046813405
+      }
+     }
+    ]
+   ]
+  }
+ ]
+}

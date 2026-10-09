@@ -1,0 +1,139 @@
+{
+ "setupFailures": [
+  "처음 파일 작성 명령의 잘못된 cwd로 파일 미생성; 올바른 cwd에서 생성.",
+  "sandbox Chrome SIGABRT; require_escalated 승인 후 실행."
+ ],
+ "runs": [
+  {
+   "runId": "2026-10-09T06-11-56",
+   "summary": [
+    {
+     "id": "p29-sns",
+     "durationMs": 13611,
+     "steps": 5,
+     "checks": 18,
+     "failedChecks": 0,
+     "failedSteps": 0,
+     "crashed": false,
+     "findings": 0
+    },
+    {
+     "id": "p30-plant",
+     "durationMs": 8707,
+     "steps": 4,
+     "checks": 14,
+     "failedChecks": 0,
+     "failedSteps": 0,
+     "crashed": false,
+     "findings": 0
+    },
+    {
+     "id": "p31-onbid",
+     "durationMs": 6909,
+     "steps": 4,
+     "checks": 13,
+     "failedChecks": 1,
+     "failedSteps": 0,
+     "crashed": false,
+     "findings": 1
+    }
+   ],
+   "acceptedFinal": false,
+   "notes": "초기 3인 실행. 링크된 한글 폰트 403. 온비드 점검은 홈 온보딩 user 문서 쓰기까지 포함한 잘못된 기대. 제품 결함으로 채택하지 않음."
+  },
+  {
+   "runId": "2026-10-09T06-14-00",
+   "summary": [
+    {
+     "id": "p29-sns",
+     "durationMs": 13916,
+     "steps": 5,
+     "checks": 18,
+     "failedChecks": 0,
+     "failedSteps": 0,
+     "crashed": false,
+     "findings": 0
+    },
+    {
+     "id": "p30-plant",
+     "durationMs": 7750,
+     "steps": 4,
+     "checks": 14,
+     "failedChecks": 0,
+     "failedSteps": 0,
+     "crashed": false,
+     "findings": 0
+    },
+    {
+     "id": "p31-onbid",
+     "durationMs": 6607,
+     "steps": 4,
+     "checks": 13,
+     "failedChecks": 0,
+     "failedSteps": 0,
+     "crashed": false,
+     "findings": 0
+    },
+    {
+     "id": "p32-pethealth",
+     "durationMs": 15096,
+     "steps": 5,
+     "checks": 18,
+     "failedChecks": 4,
+     "failedSteps": 0,
+     "crashed": false,
+     "findings": 1
+    }
+   ],
+   "acceptedFinal": false,
+   "notes": "4인 보정 실행. 폰트 해결·records 범위 보정. 63점검 59충족, F32 화면 표기는 빠른 병원. 최종 실행 전 ZIP을 유효한 빈 합성 ZIP으로 변경하고 원본 증거·복합 로그 점검을 보강."
+  },
+  {
+   "runId": "2026-10-09T06-16-31",
+   "summary": [
+    {
+     "id": "p29-sns",
+     "durationMs": 14114,
+     "steps": 5,
+     "checks": 18,
+     "failedChecks": 0,
+     "failedSteps": 0,
+     "crashed": false,
+     "findings": 0
+    },
+    {
+     "id": "p30-plant",
+     "durationMs": 7635,
+     "steps": 4,
+     "checks": 14,
+     "failedChecks": 0,
+     "failedSteps": 0,
+     "crashed": false,
+     "findings": 0
+    },
+    {
+     "id": "p31-onbid",
+     "durationMs": 6594,
+     "steps": 4,
+     "checks": 13,
+     "failedChecks": 0,
+     "failedSteps": 0,
+     "crashed": false,
+     "findings": 0
+    },
+    {
+     "id": "p32-pethealth",
+     "durationMs": 15530,
+     "steps": 5,
+     "checks": 19,
+     "failedChecks": 4,
+     "failedSteps": 0,
+     "crashed": false,
+     "findings": 1
+    }
+   ],
+   "acceptedFinal": true,
+   "notes": "최종 64점검 60충족. 의도한 오류 콘솔 4건."
+  }
+ ]
+}

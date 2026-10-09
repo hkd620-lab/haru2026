@@ -72,6 +72,34 @@ async function polishContent(data: any) {
 export async function fakeCallable(name: string, data: any): Promise<any> {
   await delay(20);
   switch (name) {
+    // batch7: UI 계약만 흉내 낸다. ZIP 파싱·식물 식별·공매 조회·의학 품질은 검증하지 않는다.
+    case 'analyzeFacebookZip': {
+      if ((window as any).__qaBatch7Failure === name) throw fnError('unavailable', '격리 ZIP 분석 실패');
+      const sdk = await import('./sdk');
+      const posts = [
+        { timestamp: 1790816400, text: '가족과 생일을 보냈다. 🎂\n소중한 추억', thumbnails: [] },
+        { timestamp: 1790902800, text: '쇼핑몰 신상품 준비를 마쳤다.', thumbnails: [] },
+        { timestamp: 1790989200, text: '가족과 공원에 갔다.', thumbnails: [] },
+      ];
+      for (let i = 0; i < posts.length; i++) await sdk.setDoc(sdk.doc(sdk.db, 'users', persona.uid, 'snsRecords', `mock-post-${i}`), { ...posts[i], source: 'facebook', createdAt: sdk.serverTimestamp() });
+      return { success: true, count: posts.length };
+    }
+    case 'detectPlantAdvanced':
+      if ((window as any).__qaBatch7Failure === name) throw fnError('unavailable', '격리 식물 분석 실패');
+      return {
+        plantId: null,
+        plantNet: { name: 'Mock orchid', koName: '모의 호접란', scientificName: 'Mock species', confidence: 0.8, alternatives: [] },
+        gemini: { finalGuess: '모의 호접란', finalLatinName: 'Mock species', analysis: '[모의 판독 — 실제 식물 식별 아님]', warning: '실제 식물 판단에 사용하지 마세요.', edible: 'unknown', poisonousRisk: false, similarSpecies: [], needMorePhotos: [], confidence: 'medium', careSummary: '[모의 관리 설명]', autoDiary: '[모의 관찰일지]' },
+        meta: { imageCount: data.images.length, plantNetAvailable: true, geminiError: null, plantIdStatus: 'disabled', plantIdDisabledReason: '격리 모의 환경' },
+      };
+    case 'getOnbidRealEstateList': {
+      if ((window as any).__qaBatch7Failure === name) throw fnError('unavailable', '격리 온비드 조회 실패');
+      const empty = String(data?.onbidCltrNm).includes('결과없음');
+      return { success: true, items: empty ? [] : [{ cltrMngNo: `MOCK-${data.pageNo}`, onbidCltrNm: `격리 공매 물건 ${data.pageNo}`, lctnSdnm: '서울특별시', lctnSggnm: '송파구', apslEvlAmt: 200000000, lowstBidPrcIndctCont: '100000000', cltrBidBgngDt: '202610011000', cltrBidEndDt: '202610091700' }], totalCount: empty ? 0 : 11, pageNo: data.pageNo, numOfRows: data.numOfRows, disclaimer: '격리 모의 응답' };
+    }
+    case 'petFoodCheck':
+      if ((window as any).__qaBatch7Failure === name) throw fnError('unavailable', '격리 먹거리 확인 실패');
+      return { riskLevel: 'unknown', answer: '[모의 안내 — 실제 먹거리 판단 아님]', reason: '화면 흐름 검증', emergency: false, geminiText: null, source: '격리 모의 데이터' };
     // batch5: 고정 모의 결과/오류. 법률·PDF 서버 품질을 판정하지 않는다.
     case 'lawSearch': {
       if (String(data?.query).includes('[모의 오류]')) throw fnError('unavailable', '격리 오류 응답');

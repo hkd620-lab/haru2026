@@ -1,0 +1,14 @@
+{
+ "calibration-runs.json": "8408c4359e95d0ca547aff28e74034afec491d8abea22e7224094a42b42b99a3",
+ "evidence/p29-sns-04-SNS-휴지통-이동-복원-재접속.png": "409634324f9fb60034c24be8d15e3b6428bd019bf9c96b410016a4cd39d22707",
+ "evidence/p30-plant-03-관찰-메모-촬영장소-오늘-기록-저장.png": "aae2617e23e9a10a267721d8c59214a4a69a941744ac8176a4deb7b4a11dbceb",
+ "evidence/p31-onbid-03-빈-결과-조회-오류-재시도.png": "abcb385f0e4d984b1ee3ec13418770c256d4c95c41ae4c472c82d2ddfcda0157",
+ "evidence/p32-pethealth-02-증거-단일-응급-표시.png": "ce6418cac0ecfa3d5d59d5f11c7a4482d853935e2cd84cfb687572ed8e5864b2",
+ "evidence/p32-pethealth-03-증거-복합-빠른병원-표시.png": "2aaa9e2042673b91e9db9b60c18544f3a1328ee4efbcd55f41092d0dbdcc6716",
+ "evidence/p32-pethealth-06-증거-접종일-UTC-기본값.png": "8d15d8c9caa87bcf9941b37b0d6bfc1e856b12633e27e94d98896252aeb2f78b",
+ "evidence/p32-pethealth-07-접종-필수값-원문-일정-저장.png": "4b1ab8c5703911f11d47afff059d8d9606e5275a1319ab38bc1d3da3e25390be",
+ "img/F-32.png": "2aaa9e2042673b91e9db9b60c18544f3a1328ee4efbcd55f41092d0dbdcc6716",
+ "report.json": "9e6898a4fb44f2cdeab689d7e84e3410c2e863d4016469f96688b77ac22c7857",
+ "report.md": "453c5c46e0334684daaac04d8327ffb9529e9a70d41f993aa3477dab4e5a4157",
+ "verification.json": "f4de43f48eb3749b80bb62b28a898c7ea22839829601c697d2828b165040d5c2"
+}

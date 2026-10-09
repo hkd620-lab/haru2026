@@ -1,0 +1,15 @@
+{
+ "runId": "2026-10-09T06-16-31",
+ "findings": [
+  {
+   "id": "F-32",
+   "severity": "중대",
+   "title": "반려동물 복합 증상은 첫 일치 규칙만 적용해 응급 표시가 낮아진다",
+   "detail": "호흡 곤란 단독은 화면 응급·저장 emergency. 혈변과 호흡 곤란 복합은 화면 빠른 병원·저장 urgent. PetHealthSymptomPage findSymptomRule은 배열 find로 첫 혈변 규칙만 선택한다. 기존 위험 단계 표시의 정합을 비교했으며 실제 의료 판단 검증은 아니다.",
+   "personaId": "p32-pethealth",
+   "format": "반려동물건강돌봄",
+   "step": "단일·복합 증상 표시·저장 날짜",
+   "img": "img/F-32.png"
+  }
+ ]
+}
