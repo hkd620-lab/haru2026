@@ -48,6 +48,7 @@ test('F-13: 문서 안의 월별 거래를 나누고 빈 날짜·잘못된 날�
   assert.deepEqual(sep.detail.slice(1).map((r) => r[6]), ['문구점']);
   assert.deepEqual(oct.detail.slice(1).map((r) => r[6]), ['이번달', '9월에 입력한 10월', '빈 날짜', '잘못된 날짜']);
   assert.deepEqual(oct.detail[2].slice(1, 3), ['2026년10월2일', '']);
+  assert.deepEqual(oct.detail.slice(3).map((r) => r[1]), ['2026-10-03', '2026-10-03']);
   assert.equal(JSON.stringify(records), original);
 });
 

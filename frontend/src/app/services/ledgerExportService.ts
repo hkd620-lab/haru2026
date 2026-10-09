@@ -584,11 +584,15 @@ function exportEntriesInRange(records: HaruRecord[], start?: string, end?: strin
   return records.filter(isLedgerRecord).flatMap((record) => {
     const recordDate = dateOnly(record.date);
     const referenceYear = recordDate ? Number(recordDate.slice(0, 4)) : new Date().getFullYear();
-    return expandRecord(record).map((entry) => ({
-      entry,
-      // 거래일을 우선하며 비어 있거나 해석할 수 없을 때만 입력일로 대체한다.
-      filterDate: dateOnly(entry.date, referenceYear) || recordDate,
-    }));
+    return expandRecord(record).map((entry) => {
+      const entryDate = dateOnly(entry.date, referenceYear);
+      // 거래일이 없거나 해석할 수 없으면 분류와 출력 모두 입력일을 사용한다.
+      // 출력용 복사본만 바꾸며 저장된 거래 원문은 유지한다.
+      return {
+        entry: entryDate || !recordDate ? entry : { ...entry, date: recordDate },
+        filterDate: entryDate || recordDate,
+      };
+    });
   }).filter(({ filterDate }) => (!start && !end) || isInRange(filterDate, start, end))
     .sort((a, b) => a.filterDate.localeCompare(b.filterDate))
     .map(({ entry }) => entry);
