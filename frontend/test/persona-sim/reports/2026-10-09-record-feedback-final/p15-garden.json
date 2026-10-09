@@ -1,0 +1,1144 @@
+{
+ "runId": "2026-10-09T08-24-28",
+ "meta": {
+  "id": "p15-garden",
+  "format": "텃밭일지",
+  "persona": {
+   "name": "윤정숙",
+   "age": 63,
+   "gender": "여",
+   "job": "퇴직 후 주말농장 12평 경작",
+   "device": "iPhone 모양(Chromium 모바일 에뮬레이션, 390×844)",
+   "itLevel": "하",
+   "plan": "무료(월 AI 도움 10회)",
+   "goal": "주말마다 배추·무·갓 키우는 과정을 사진과 함께 적어 두고, 작물별로 어떻게 자랐는지 나중에 보고 싶다."
+  },
+  "identity": {
+   "uid": "qa-p15-yoon-jeongsuk",
+   "displayName": "윤정숙",
+   "email": "p15@example.invalid",
+   "plan": "free"
+  },
+  "scenario": [
+   "1일차(토): 처음 사용 — 간편 기록, 성장대상 \"배추\" 새로 추가, 사진 1장",
+   "2일차(일): 작물 목록에 배추·무·갓을 넣고 프리미엄 6칸 기록, 성장대상은 \"기존 대상 선택\"에서 배추",
+   "3일차(월): 목록에서 고르는 걸 잊고 \"새 대상 추가\"에 \"배추\"를 다시 입력하는 흔한 실수",
+   "4일차(화): 사진 5장을 한꺼번에 고르기(최대 3장), 성장대상 목록에서 배추 고르기",
+   "5일차(수): AI 다듬기 1회",
+   "마무리: 내 기록(SAYU) 목록에서 5건 확인, 1일차 기록을 다시 열어 작물 정보 확인"
+  ]
+ },
+ "startedAt": "2026-10-09T08:24:29.345Z",
+ "durationMs": 42604,
+ "steps": [
+  {
+   "n": 1,
+   "name": "1일차(2026-10-03) 진입",
+   "ok": true,
+   "ms": 6026,
+   "url": "/record",
+   "toasts": [],
+   "shot": "01-1일차-2026-10-03-진입.png"
+  },
+  {
+   "n": 2,
+   "name": "1일차(2026-10-03) 작성",
+   "ok": true,
+   "ms": 1892,
+   "url": "/record",
+   "toasts": [
+    "1장의 사진이 업로드되었습니다!"
+   ],
+   "shot": "03-1일차-2026-10-03-작성.png"
+  },
+  {
+   "n": 3,
+   "name": "1일차(2026-10-03) 원본 저장",
+   "ok": true,
+   "ms": 1303,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "1장의 사진이 업로드되었습니다!"
+   ],
+   "shot": "04-1일차-2026-10-03-원본-저장.png"
+  },
+  {
+   "n": 4,
+   "name": "1일차(2026-10-03) 저장 결과 확인",
+   "ok": true,
+   "ms": 11,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "1장의 사진이 업로드되었습니다!"
+   ],
+   "shot": "05-1일차-2026-10-03-저장-결과-확인.png"
+  },
+  {
+   "n": 5,
+   "name": "2일차(2026-10-04) 진입",
+   "ok": true,
+   "ms": 2602,
+   "url": "/record",
+   "toasts": [],
+   "shot": "06-2일차-2026-10-04-진입.png"
+  },
+  {
+   "n": 6,
+   "name": "2일차(2026-10-04) 작물 목록에 작물 3개 추가",
+   "ok": true,
+   "ms": 1617,
+   "url": "/record",
+   "toasts": [
+    "갓 추가!",
+    "무 추가!",
+    "배추 추가!"
+   ],
+   "shot": "07-2일차-2026-10-04-작물-목록에-작물-3개-추가.png"
+  },
+  {
+   "n": 7,
+   "name": "2일차(2026-10-04) 작성",
+   "ok": true,
+   "ms": 46,
+   "url": "/record",
+   "toasts": [
+    "갓 추가!",
+    "무 추가!",
+    "배추 추가!"
+   ],
+   "shot": "08-2일차-2026-10-04-작성.png"
+  },
+  {
+   "n": 8,
+   "name": "2일차(2026-10-04) 원본 저장",
+   "ok": true,
+   "ms": 1324,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "갓 추가!",
+    "무 추가!",
+    "배추 추가!"
+   ],
+   "shot": "09-2일차-2026-10-04-원본-저장.png"
+  },
+  {
+   "n": 9,
+   "name": "2일차(2026-10-04) 저장 결과 확인",
+   "ok": true,
+   "ms": 7,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "갓 추가!",
+    "무 추가!",
+    "배추 추가!"
+   ],
+   "shot": "10-2일차-2026-10-04-저장-결과-확인.png"
+  },
+  {
+   "n": 10,
+   "name": "3일차(2026-10-05) 진입",
+   "ok": true,
+   "ms": 2519,
+   "url": "/record",
+   "toasts": [],
+   "shot": "11-3일차-2026-10-05-진입.png"
+  },
+  {
+   "n": 11,
+   "name": "3일차(2026-10-05) 작성",
+   "ok": true,
+   "ms": 10,
+   "url": "/record",
+   "toasts": [],
+   "shot": "12-3일차-2026-10-05-작성.png"
+  },
+  {
+   "n": 12,
+   "name": "3일차(2026-10-05) 원본 저장",
+   "ok": true,
+   "ms": 1285,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "13-3일차-2026-10-05-원본-저장.png"
+  },
+  {
+   "n": 13,
+   "name": "3일차(2026-10-05) 저장 결과 확인",
+   "ok": true,
+   "ms": 11,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!"
+   ],
+   "shot": "14-3일차-2026-10-05-저장-결과-확인.png"
+  },
+  {
+   "n": 14,
+   "name": "4일차(2026-10-06) 진입",
+   "ok": true,
+   "ms": 2592,
+   "url": "/record",
+   "toasts": [],
+   "shot": "15-4일차-2026-10-06-진입.png"
+  },
+  {
+   "n": 15,
+   "name": "4일차(2026-10-06) 작성",
+   "ok": true,
+   "ms": 1936,
+   "url": "/record",
+   "toasts": [
+    "3장의 사진이 업로드되었습니다. 최대 3장 제한으로 초과한 2장은 제외되었습니다."
+   ],
+   "shot": "17-4일차-2026-10-06-작성.png"
+  },
+  {
+   "n": 16,
+   "name": "4일차(2026-10-06) 원본 저장",
+   "ok": true,
+   "ms": 1286,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "3장의 사진이 업로드되었습니다. 최대 3장 제한으로 초과한 2장은 제외되었습니다."
+   ],
+   "shot": "18-4일차-2026-10-06-원본-저장.png"
+  },
+  {
+   "n": 17,
+   "name": "4일차(2026-10-06) 저장 결과 확인",
+   "ok": true,
+   "ms": 3,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "3장의 사진이 업로드되었습니다. 최대 3장 제한으로 초과한 2장은 제외되었습니다."
+   ],
+   "shot": "19-4일차-2026-10-06-저장-결과-확인.png"
+  },
+  {
+   "n": 18,
+   "name": "5일차(2026-10-07) 진입",
+   "ok": true,
+   "ms": 2520,
+   "url": "/record",
+   "toasts": [],
+   "shot": "20-5일차-2026-10-07-진입.png"
+  },
+  {
+   "n": 19,
+   "name": "5일차(2026-10-07) 작성",
+   "ok": true,
+   "ms": 18,
+   "url": "/record",
+   "toasts": [],
+   "shot": "21-5일차-2026-10-07-작성.png"
+  },
+  {
+   "n": 20,
+   "name": "5일차(2026-10-07) AI 다듬어 저장",
+   "ok": true,
+   "ms": 1781,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "AI 다듬기 완료!",
+    "텃밭일지 AI 다듬기를 시작합니다... (PREMIUM 모드)"
+   ],
+   "shot": "22-5일차-2026-10-07-AI-다듬어-저장.png"
+  },
+  {
+   "n": 21,
+   "name": "5일차(2026-10-07) 저장 결과 확인",
+   "ok": true,
+   "ms": 3,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "AI 다듬기 완료!",
+    "텃밭일지 AI 다듬기를 시작합니다... (PREMIUM 모드)"
+   ],
+   "shot": "23-5일차-2026-10-07-저장-결과-확인.png"
+  },
+  {
+   "n": 22,
+   "name": "성장 대상(작물) 데이터 점검",
+   "ok": true,
+   "ms": 3,
+   "url": "/sayu",
+   "toasts": [
+    "SAYU-나의 기록에 저장했습니다.",
+    "내용이 저장되었습니다!",
+    "AI 다듬기 완료!",
+    "텃밭일지 AI 다듬기를 시작합니다... (PREMIUM 모드)"
+   ],
+   "shot": "24-성장-대상-작물-데이터-점검.png"
+  },
+  {
+   "n": 23,
+   "name": "내 기록(SAYU) 텃밭일지 묶음 점검",
+   "ok": true,
+   "ms": 3947,
+   "note": "S\nA\nY\nU\n다듬어진 기록을 확인하고 최종 편집하세요\n원문 감정 그대로, 문장만 자연스럽게 다듬습니다\n사유기록\n사유비서\n월별보기\n전체보기\n2026년 10월 나의 기록\n이달 결과 5건\n전체 · 이달 5건\n텃밭일지 · 이달 5건\n목록\n달력\n텃밭일지\n이달 5건\n이달 5건\n최근 기록 10/7 · 기록과 사유를 모아두었습니다.\n10/7\n갓 파종 마무리\n씨앗 · 뿌리고 · 얇게 · 흙을\n10/6\n비 온 뒤 텃밭 풍경\n배추 · 밤새 · 비가 · 와서\n10/5\n무 솎아주기\n싹이 · 촘촘해서 · 튼튼한 · 것만\n10/4\n배추 물주기와 벌레 잡기\n배추 · 벌레 · 배추에 · 물을\n10/3\n김장배추 모종 심기\n모종 · 20포기 · 줄로 · 심었다\n💬 동서양 명언\n✝️ 성경 말씀\n“인내는 모든 것을 정복한다.”\n원문:Omnia vincit amor, et nos cedamus amori\n— 오비디우스 (시인)\n상호명: 하루랩 (HaruLab)  |  대표자: 허경대  |  사업자등록번호: 354-23",
+   "url": "/sayu",
+   "toasts": [],
+   "shot": "25-내-기록-SAYU-텃밭일지-묶음-점검.png"
+  },
+  {
+   "n": 24,
+   "name": "1일차 기록을 다시 열어 작물 정보 확인",
+   "ok": true,
+   "ms": 2281,
+   "url": "/sayu",
+   "toasts": [],
+   "shot": "27-1일차-기록을-다시-열어-작물-정보-확인.png"
+  },
+  {
+   "n": 25,
+   "name": "2일차 기록의 수정 화면에서 작물 칸 확인",
+   "ok": true,
+   "ms": 6166,
+   "url": "/sayu",
+   "toasts": [],
+   "shot": "29-2일차-기록의-수정-화면에서-작물-칸-확인.png"
+  }
+ ],
+ "checks": [
+  {
+   "step": "1일차(2026-10-03) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 0건 → 현재 1건"
+  },
+  {
+   "step": "1일차(2026-10-03) 저장 결과 확인",
+   "name": "입력한 제목으로 저장된 기록이 있다",
+   "ok": true,
+   "detail": "저장된 제목: [\"김장배추 모종 심기\"]"
+  },
+  {
+   "step": "1일차(2026-10-03) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p15-yoon-jeongsuk/records/2026-10-03_1791016208085"
+  },
+  {
+   "step": "1일차(2026-10-03) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-03"
+  },
+  {
+   "step": "1일차(2026-10-03) 저장 결과 확인",
+   "name": "형식이 [\"텃밭일지\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"텃밭일지\"]"
+  },
+  {
+   "step": "1일차(2026-10-03) 저장 결과 확인",
+   "name": "기록에 성장 대상(작물) 정보가 연결된다",
+   "ok": true,
+   "detail": "growthSubjectId=je662c28Hk8tEPQ35C1s, name=배추"
+  },
+  {
+   "step": "1일차(2026-10-03) 저장 결과 확인",
+   "name": "간편 기록 본문이 그대로 저장된다",
+   "ok": true,
+   "detail": "\"모종 20포기를 두 줄로 심었다.\\n물을 흠뻑 주고 부직포를 덮어 주었다.\""
+  },
+  {
+   "step": "1일차(2026-10-03) 저장 결과 확인",
+   "name": "저장 성공 안내가 한 번만 뜬다",
+   "ok": false,
+   "detail": "저장 직후 화면의 안내: [\"SAYU-나의 기록에 저장했습니다.\",\"내용이 저장되었습니다!\"]"
+  },
+  {
+   "step": "1일차(2026-10-03) 저장 결과 확인",
+   "name": "사진 1장이 기록에 저장된다",
+   "ok": true,
+   "detail": "garden_images=[\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-03_garden_1791016206140_rqsr4on.jpg?alt=media&token=qa\"]"
+  },
+  {
+   "step": "2일차(2026-10-04) 작물 목록에 작물 3개 추가",
+   "name": "추가한 작물이 목록 칩으로 모두 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "2일차(2026-10-04) 작물 목록에 작물 3개 추가",
+   "name": "작물 목록이 users/{uid}/settings/garden 에 저장된다",
+   "ok": true,
+   "detail": "[\"users/qa-p15-yoon-jeongsuk/settings/garden\",{\"crops\":[\"배추\",\"무\",\"갓\"]}]"
+  },
+  {
+   "step": "2일차(2026-10-04) 작성",
+   "name": "\"기존 대상 선택\" 목록에 \"배추\"가 나온다",
+   "ok": true,
+   "detail": "선택지: [\"기존 대상 선택\",\"배추\"]"
+  },
+  {
+   "step": "2일차(2026-10-04) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 1건 → 현재 2건"
+  },
+  {
+   "step": "2일차(2026-10-04) 저장 결과 확인",
+   "name": "입력한 제목으로 저장된 기록이 있다",
+   "ok": true,
+   "detail": "저장된 제목: [\"김장배추 모종 심기\",\"배추 물주기와 벌레 잡기\"]"
+  },
+  {
+   "step": "2일차(2026-10-04) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p15-yoon-jeongsuk/records/2026-10-04_1791075604462"
+  },
+  {
+   "step": "2일차(2026-10-04) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-04"
+  },
+  {
+   "step": "2일차(2026-10-04) 저장 결과 확인",
+   "name": "형식이 [\"텃밭일지\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"텃밭일지\"]"
+  },
+  {
+   "step": "2일차(2026-10-04) 저장 결과 확인",
+   "name": "기록에 성장 대상(작물) 정보가 연결된다",
+   "ok": true,
+   "detail": "growthSubjectId=je662c28Hk8tEPQ35C1s, name=배추"
+  },
+  {
+   "step": "2일차(2026-10-04) 저장 결과 확인",
+   "name": "\"작물\" 칸에 직접 쓴 내용이 그대로 저장된다",
+   "ok": false,
+   "detail": "garden_crop=\"배추, 무, 갓\" (직접 쓴 값 \"배추 20포기, 무 한 이랑\", 작물 목록 \"배추, 무, 갓\")"
+  },
+  {
+   "step": "3일차(2026-10-05) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 2건 → 현재 3건"
+  },
+  {
+   "step": "3일차(2026-10-05) 저장 결과 확인",
+   "name": "입력한 제목으로 저장된 기록이 있다",
+   "ok": true,
+   "detail": "저장된 제목: [\"김장배추 모종 심기\",\"배추 물주기와 벌레 잡기\",\"무 솎아주기\"]"
+  },
+  {
+   "step": "3일차(2026-10-05) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p15-yoon-jeongsuk/records/2026-10-05_1791198002662"
+  },
+  {
+   "step": "3일차(2026-10-05) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-05"
+  },
+  {
+   "step": "3일차(2026-10-05) 저장 결과 확인",
+   "name": "형식이 [\"텃밭일지\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"텃밭일지\"]"
+  },
+  {
+   "step": "3일차(2026-10-05) 저장 결과 확인",
+   "name": "기록에 성장 대상(작물) 정보가 연결된다",
+   "ok": true,
+   "detail": "growthSubjectId=cKVjIP8Aopom89XPpUUS, name=배추"
+  },
+  {
+   "step": "3일차(2026-10-05) 저장 결과 확인",
+   "name": "간편 기록 본문이 그대로 저장된다",
+   "ok": true,
+   "detail": "\"무 싹이 촘촘해서 튼튼한 것만 남기고 솎아 주었다.\""
+  },
+  {
+   "step": "3일차(2026-10-05) 저장 결과 확인",
+   "name": "간편 기록은 본문에 \"작물: …\" 줄이 붙지 않고, 저장 필드 garden_crop 에만 작물 목록이 들어간다(작물 목록 사용 중)",
+   "ok": true,
+   "detail": "garden_crop=\"배추, 무, 갓\" / garden_sayu 앞부분=\"무 싹이 촘촘해서 튼튼한 것만 남기고\""
+  },
+  {
+   "step": "4일차(2026-10-06) 작성",
+   "name": "\"기존 대상 선택\" 목록에 \"배추\"가 나온다",
+   "ok": true,
+   "detail": "선택지: [\"기존 대상 선택\",\"배추 (최근 기록 2026-10-05)\",\"배추 (최근 기록 2026-10-04)\"]"
+  },
+  {
+   "step": "4일차(2026-10-06) 작성",
+   "name": "이름이 같은 작물이 여럿이어도 목록에서 서로 다른 글자로 구분된다",
+   "ok": true,
+   "detail": "선택지: [\"배추 (최근 기록 2026-10-05)\",\"배추 (최근 기록 2026-10-04)\"]"
+  },
+  {
+   "step": "4일차(2026-10-06) 작성",
+   "name": "사진을 3장 넘게 고르면 넘친 사진이 빠진다는 안내가 나온다",
+   "ok": true,
+   "detail": "안내: [\"3장의 사진이 업로드되었습니다. 최대 3장 제한으로 초과한 2장은 제외되었습니다.\"] / 칸 표시: 사진 추가 (3/3) / 고른 사진 5장"
+  },
+  {
+   "step": "4일차(2026-10-06) 작성",
+   "name": "3장까지만 첨부된다",
+   "ok": true,
+   "detail": "칸 표시: 사진 추가 (3/3)"
+  },
+  {
+   "step": "4일차(2026-10-06) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 3건 → 현재 4건"
+  },
+  {
+   "step": "4일차(2026-10-06) 저장 결과 확인",
+   "name": "입력한 제목으로 저장된 기록이 있다",
+   "ok": true,
+   "detail": "저장된 제목: [\"김장배추 모종 심기\",\"배추 물주기와 벌레 잡기\",\"무 솎아주기\",\"비 온 뒤 텃밭 풍경\"]"
+  },
+  {
+   "step": "4일차(2026-10-06) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p15-yoon-jeongsuk/records/2026-10-06_1791277204652"
+  },
+  {
+   "step": "4일차(2026-10-06) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-06"
+  },
+  {
+   "step": "4일차(2026-10-06) 저장 결과 확인",
+   "name": "형식이 [\"텃밭일지\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"텃밭일지\"]"
+  },
+  {
+   "step": "4일차(2026-10-06) 저장 결과 확인",
+   "name": "기록에 성장 대상(작물) 정보가 연결된다",
+   "ok": true,
+   "detail": "growthSubjectId=cKVjIP8Aopom89XPpUUS, name=배추"
+  },
+  {
+   "step": "4일차(2026-10-06) 저장 결과 확인",
+   "name": "간편 기록 본문이 그대로 저장된다",
+   "ok": true,
+   "detail": "\"밤새 비가 와서 흙이 촉촉하다. 배추 잎이 한층 푸르게 올라왔다.\""
+  },
+  {
+   "step": "4일차(2026-10-06) 저장 결과 확인",
+   "name": "간편 기록은 본문에 \"작물: …\" 줄이 붙지 않고, 저장 필드 garden_crop 에만 작물 목록이 들어간다(작물 목록 사용 중)",
+   "ok": true,
+   "detail": "garden_crop=\"배추, 무, 갓\" / garden_sayu 앞부분=\"밤새 비가 와서 흙이 촉촉하다. 배추\""
+  },
+  {
+   "step": "4일차(2026-10-06) 저장 결과 확인",
+   "name": "사진 3장이 기록에 저장된다",
+   "ok": true,
+   "detail": "garden_images=[\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202711_i4d01qw.jpg?alt=media&token=qa\",\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202735_p9bwigc.jpg?alt=media&token=qa\",\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202752_gu7wf6l.jpg?alt=media&token=qa\"]"
+  },
+  {
+   "step": "5일차(2026-10-07) 작성",
+   "name": "\"기존 대상 선택\" 목록에 \"배추\"가 나온다",
+   "ok": true,
+   "detail": "선택지: [\"기존 대상 선택\",\"배추 (최근 기록 2026-10-06)\",\"배추 (최근 기록 2026-10-04)\"]"
+  },
+  {
+   "step": "5일차(2026-10-07) 작성",
+   "name": "이름이 같은 작물이 여럿이어도 목록에서 서로 다른 글자로 구분된다",
+   "ok": true,
+   "detail": "선택지: [\"배추 (최근 기록 2026-10-06)\",\"배추 (최근 기록 2026-10-04)\"]"
+  },
+  {
+   "step": "5일차(2026-10-07) 저장 결과 확인",
+   "name": "기록이 정확히 1건 늘었다",
+   "ok": true,
+   "detail": "이전 4건 → 현재 5건"
+  },
+  {
+   "step": "5일차(2026-10-07) 저장 결과 확인",
+   "name": "입력한 제목으로 저장된 기록이 있다",
+   "ok": true,
+   "detail": "저장된 제목: [\"김장배추 모종 심기\",\"배추 물주기와 벌레 잡기\",\"무 솎아주기\",\"비 온 뒤 텃밭 풍경\",\"갓 파종 마무리\"]"
+  },
+  {
+   "step": "5일차(2026-10-07) 저장 결과 확인",
+   "name": "저장 경로가 users/{uid}/records/{날짜}_{시각} 형태다",
+   "ok": true,
+   "detail": "users/qa-p15-yoon-jeongsuk/records/2026-10-07_1791374403167"
+  },
+  {
+   "step": "5일차(2026-10-07) 저장 결과 확인",
+   "name": "date 필드가 YYYY-MM-DD 이고 기록한 날과 같다",
+   "ok": true,
+   "detail": "date=2026-10-07"
+  },
+  {
+   "step": "5일차(2026-10-07) 저장 결과 확인",
+   "name": "형식이 [\"텃밭일지\"] 로 저장된다",
+   "ok": true,
+   "detail": "[\"텃밭일지\"]"
+  },
+  {
+   "step": "5일차(2026-10-07) 저장 결과 확인",
+   "name": "기록에 성장 대상(작물) 정보가 연결된다",
+   "ok": true,
+   "detail": "growthSubjectId=cKVjIP8Aopom89XPpUUS, name=배추"
+  },
+  {
+   "step": "성장 대상(작물) 데이터 점검",
+   "name": "작물 대상이 subjectType=garden 으로 등록된다",
+   "ok": true,
+   "detail": "[{\"id\":\"je662c28Hk8tEPQ35C1s\",\"type\":\"garden\",\"name\":\"배추\"},{\"id\":\"cKVjIP8Aopom89XPpUUS\",\"type\":\"garden\",\"name\":\"배추\"}]"
+  },
+  {
+   "step": "성장 대상(작물) 데이터 점검",
+   "name": "같은 이름(\"배추\")의 작물이 중복 등록되지 않는다",
+   "ok": false,
+   "detail": "\"배추\" 대상 2개: [{\"id\":\"je662c28Hk8tEPQ35C1s\",\"linked\":[\"2026-10-03\",\"2026-10-04\"]},{\"id\":\"cKVjIP8Aopom89XPpUUS\",\"linked\":[\"2026-10-05\",\"2026-10-06\",\"2026-10-07\"]}]"
+  },
+  {
+   "step": "성장 대상(작물) 데이터 점검",
+   "name": "기록 5건마다 성장 대상 하위 entries 문서가 생긴다",
+   "ok": true,
+   "detail": "entries 5개"
+  },
+  {
+   "step": "내 기록(SAYU) 텃밭일지 묶음 점검",
+   "name": "내 기록 목록에 \"김장배추 모종 심기\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "내 기록(SAYU) 텃밭일지 묶음 점검",
+   "name": "내 기록 목록에 \"배추 물주기와 벌레 잡기\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "내 기록(SAYU) 텃밭일지 묶음 점검",
+   "name": "내 기록 목록에 \"무 솎아주기\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "내 기록(SAYU) 텃밭일지 묶음 점검",
+   "name": "내 기록 목록에 \"비 온 뒤 텃밭 풍경\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "내 기록(SAYU) 텃밭일지 묶음 점검",
+   "name": "내 기록 목록에 \"갓 파종 마무리\" 제목이 보인다",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "step": "1일차 기록을 다시 열어 작물 정보 확인",
+   "name": "1일차(작물 목록이 비어 있던 때) 기록의 수정 화면에 나중에 만든 작물 목록이 끼어들지 않는다",
+   "ok": true,
+   "detail": "수정 화면 입력값 중 작물 목록과 같은 값: 없음"
+  },
+  {
+   "step": "2일차 기록의 수정 화면에서 작물 칸 확인",
+   "name": "2일차 기록의 수정 화면에 작물 칸에 직접 쓴 글이 그대로 보인다",
+   "ok": true,
+   "detail": "수정 화면 입력값: [\"배추 물주기와 벌레 잡기\",\"작물: 배추, 무, 갓\\n\\n배추 20포기, 무 한 이랑\\n\\n배추에 물을 주고\"] / 직접 쓴 글 있음=true, 작물 목록만 있는 칸 있음=false"
+  }
+ ],
+ "findings": [
+  {
+   "step": "1일차(2026-10-03) 저장 결과 확인",
+   "shot": "05-1일차-2026-10-03-저장-결과-확인.png",
+   "severity": "참고",
+   "title": "저장할 때 성공 안내가 두 번 뜬다",
+   "detail": "저장 직후 \"SAYU-나의 기록에 저장했습니다.\" · \"내용이 저장되었습니다!\"가 함께 보인다(FormatModal 의 저장 안내와 RecordPage 의 저장 안내가 둘 다 뜸). 보조장부(\"보조장부 N건이 저장되었습니다!\" + \"내용이 저장되었습니다!\")와 여행기록에서도 같았다. 기능 문제는 아니고 문구 정리 수준이다."
+  },
+  {
+   "step": "2일차(2026-10-04) 저장 결과 확인",
+   "shot": "10-2일차-2026-10-04-저장-결과-확인.png",
+   "severity": "참고",
+   "title": "작물 목록을 써 두면 본문 앞에 \"작물: …\" 줄이 따로 붙고, 저장 필드(garden_crop)는 직접 쓴 글 대신 목록으로 바뀐다",
+   "detail": "작물 목록에 [\"배추\",\"무\",\"갓\"]를 넣고 프리미엄 \"작물\" 칸에 \"배추 20포기, 무 한 이랑\"라고 썼는데 저장된 garden_crop 은 \"배추, 무, 갓\"이다(직접 쓴 글은 garden_sayu 본문에만 남음). 본문(garden_sayu)에는 \"작물: 배추, 무, 갓\" 줄이 맨 앞에 붙고 바로 이어 직접 쓴 작물 글이 다시 나와 작물 정보가 두 번 적힌다(FormatModal.tsx 2755·2784줄)."
+  },
+  {
+   "step": "성장 대상(작물) 데이터 점검",
+   "shot": "24-성장-대상-작물-데이터-점검.png",
+   "severity": "참고",
+   "title": "텃밭일지도 같은 이름을 \"새 대상 추가\"에 다시 쓰면 같은 작물이 따로 등록된다(육아일기는 최근 수정으로 막힘)",
+   "detail": "3일차에 목록에서 고르지 않고 \"배추\"를 새 대상 칸에 다시 입력하자 이름이 같은 작물 대상이 2개가 됐다. 대상 A 연결일: [\"2026-10-03\",\"2026-10-04\"] / 대상 B 연결일: [\"2026-10-05\",\"2026-10-06\",\"2026-10-07\"]. 육아일기·건강성장 페이지의 같은 이름 아이 중복은 PR #266·#267 로 막았지만 텃밭일지는 범위에 넣지 않았다(작물은 이름이 겹쳐도 다른 밭·다른 시기일 수 있어 \"같은 이름 = 같은 작물\"로 볼지는 제품 결정 사항). 이 화면에서 만든 작물의 성장과정을 보여 주는 화면은 따로 없다(저장만 됨)."
+  }
+ ],
+ "network": {
+  "blockedExternalCount": 0,
+  "hosts": []
+ },
+ "console": [],
+ "pageErrors": [],
+ "dialogs": [],
+ "qa": {
+  "calls": [
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   },
+   {
+    "name": "getMonthlyAiQuotaStatus",
+    "ok": true
+   },
+   {
+    "name": "polishContent",
+    "ok": true
+   },
+   {
+    "name": "recordPaidServiceUsage",
+    "ok": true
+   }
+  ],
+  "unknownCallables": [],
+  "uploads": [
+   {
+    "path": "users/qa-p15-yoon-jeongsuk/format_photos/2026-10-03_garden_1791016206140_rqsr4on.jpg",
+    "size": 6364,
+    "contentType": "image/jpeg"
+   },
+   {
+    "path": "users/qa-p15-yoon-jeongsuk/format_photos/2026-10-06_garden_1791277202711_i4d01qw.jpg",
+    "size": 6364,
+    "contentType": "image/jpeg"
+   },
+   {
+    "path": "users/qa-p15-yoon-jeongsuk/format_photos/2026-10-06_garden_1791277202735_p9bwigc.jpg",
+    "size": 6470,
+    "contentType": "image/jpeg"
+   },
+   {
+    "path": "users/qa-p15-yoon-jeongsuk/format_photos/2026-10-06_garden_1791277202752_gu7wf6l.jpg",
+    "size": 6893,
+    "contentType": "image/jpeg"
+   }
+  ],
+  "writeCount": 24
+ },
+ "db": [
+  [
+   "users/qa-p15-yoon-jeongsuk",
+   {
+    "assistantOnboardingV1SeenAt": "2026-10-03T08:30:03.768Z",
+    "utmSource": null,
+    "utmMedium": null,
+    "utmCampaign": null,
+    "signupReferrerOrigin": null,
+    "signupAt": {
+     "__ts": 1791016203769
+    }
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/records/2026-10-03_1791016208085",
+   {
+    "date": "2026-10-03",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "텃밭일지"
+    ],
+    "content": "",
+    "growthSubjectId": "je662c28Hk8tEPQ35C1s",
+    "growthSubjectType": "garden",
+    "growthSubjectName": "배추",
+    "garden_title": "김장배추 모종 심기",
+    "garden_simple": "모종 20포기를 두 줄로 심었다.\n물을 흠뻑 주고 부직포를 덮어 주었다.",
+    "_sourceFormat": "텃밭일지",
+    "garden_sayu": "모종 20포기를 두 줄로 심었다.\n물을 흠뻑 주고 부직포를 덮어 주었다.",
+    "garden_images": "[\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-03_garden_1791016206140_rqsr4on.jpg?alt=media&token=qa\"]",
+    "garden_imageMeta": "[{\"originalName\":\"p15-garden-0-0.png\",\"metadataSource\":\"none\",\"url\":\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-03_garden_1791016206140_rqsr4on.jpg?alt=media&token=qa\",\"uploadedAt\":\"2026-10-03T08:30:06.168Z\"}]",
+    "garden_style": "simple",
+    "garden_mode": "ORIGINAL",
+    "createdAt": "2026-10-03T08:30:08.085Z",
+    "updatedAt": "2026-10-03T08:30:08.085Z"
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/growthSubjects/je662c28Hk8tEPQ35C1s",
+   {
+    "subjectType": "garden",
+    "name": "배추",
+    "createdAt": {
+     "__ts": 1791016208086
+    },
+    "updatedAt": {
+     "__ts": 1791075604463
+    },
+    "latestRecordDate": "2026-10-04",
+    "latestPhotoUrl": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-03_garden_1791016206140_rqsr4on.jpg?alt=media&token=qa",
+    "linkedRecordDates": [
+     "2026-10-03",
+     "2026-10-04"
+    ]
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/library/library_liuhvl",
+   {
+    "category": "비서",
+    "type": "timeline",
+    "title": "배추",
+    "date": "2026-10-03",
+    "summary": "텃밭 성장타임라인",
+    "refPath": "users/qa-p15-yoon-jeongsuk/growthSubjects/je662c28Hk8tEPQ35C1s",
+    "createdAt": {
+     "__ts": 1791016208087
+    },
+    "meta": {
+     "subjectType": "garden",
+     "firstRecordDate": "2026-10-03",
+     "latestRecordDate": "2026-10-03",
+     "linkedRecordCount": 1,
+     "durationDays": 0
+    }
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/growthSubjects/je662c28Hk8tEPQ35C1s/entries/2026-10-03_1791016208085",
+   {
+    "recordDate": "2026-10-03",
+    "recordId": "2026-10-03_1791016208085",
+    "subjectType": "garden",
+    "subjectName": "배추",
+    "memo": "모종 20포기를 두 줄로 심었다.\n물을 흠뻑 주고 부직포를 덮어 주었다.",
+    "photoUrls": [
+     "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-03_garden_1791016206140_rqsr4on.jpg?alt=media&token=qa"
+    ],
+    "createdAt": {
+     "__ts": 1791016208087
+    },
+    "sourceFormat": "텃밭일지"
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/settings/garden",
+   {
+    "crops": [
+     "배추",
+     "무",
+     "갓"
+    ]
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/records/2026-10-04_1791075604462",
+   {
+    "date": "2026-10-04",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "텃밭일지"
+    ],
+    "content": "",
+    "growthSubjectId": "je662c28Hk8tEPQ35C1s",
+    "growthSubjectType": "garden",
+    "growthSubjectName": "배추",
+    "garden_title": "배추 물주기와 벌레 잡기",
+    "garden_crop": "배추, 무, 갓",
+    "garden_work": "배추에 물을 주고 잎에 붙은 벌레를 손으로 잡았다.",
+    "garden_observation": "배추 속잎이 조금씩 오므라들기 시작했다.",
+    "garden_issue": "벌레 구멍이 여러 개 보인다. 약은 치지 않았다.",
+    "garden_plan": "다음 주말에는 무 솎아주기를 해야겠다.",
+    "garden_space": "비 소식이 있어 부직포는 그대로 두었다.",
+    "_sourceFormat": "텃밭일지",
+    "garden_sayu": "작물: 배추, 무, 갓\n\n배추 20포기, 무 한 이랑\n\n배추에 물을 주고 잎에 붙은 벌레를 손으로 잡았다.\n\n배추 속잎이 조금씩 오므라들기 시작했다.\n\n벌레 구멍이 여러 개 보인다. 약은 치지 않았다.\n\n다음 주말에는 무 솎아주기를 해야겠다.\n\n비 소식이 있어 부직포는 그대로 두었다.",
+    "garden_images": "[]",
+    "garden_imageMeta": "[]",
+    "garden_style": "premium",
+    "garden_mode": "ORIGINAL",
+    "createdAt": "2026-10-04T01:00:04.462Z",
+    "updatedAt": "2026-10-04T01:00:04.462Z"
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/library/library_13e71yu",
+   {
+    "category": "비서",
+    "type": "timeline",
+    "title": "배추",
+    "date": "2026-10-04",
+    "summary": "텃밭 성장타임라인",
+    "refPath": "users/qa-p15-yoon-jeongsuk/growthSubjects/je662c28Hk8tEPQ35C1s",
+    "createdAt": {
+     "__ts": 1791075604464
+    },
+    "meta": {
+     "subjectType": "garden",
+     "firstRecordDate": "2026-10-03",
+     "latestRecordDate": "2026-10-04",
+     "linkedRecordCount": 2,
+     "durationDays": 1
+    }
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/growthSubjects/je662c28Hk8tEPQ35C1s/entries/2026-10-04_1791075604462",
+   {
+    "recordDate": "2026-10-04",
+    "recordId": "2026-10-04_1791075604462",
+    "subjectType": "garden",
+    "subjectName": "배추",
+    "memo": "배추 물주기와 벌레 잡기\n\n배추, 무, 갓\n\n배추에 물을 주고 잎에 붙은 벌레를 손으로 잡았다.\n\n배추 속잎이 조금씩 오므라들기 시작했다.\n\n벌레 구멍이 여러 개 보인다. 약은 치지 않았다.\n\n다음 주말에는 무 솎아주기를 해야겠다.\n\n비 소식이 있어 부직포는 그대로 두었다.\n\n작물: 배추, 무, 갓\n\n배추 20포기, 무 한 이랑\n\n배추에 물을 주고 잎에 붙은 벌레를 손으로 잡았다.\n\n배추 속잎이 조금씩 오므라들기 시작했다.\n\n벌레 구멍이 여러 개 보인다. 약은 치지 않았다.\n\n다음 주말에는 무 솎아주기를 해야겠다.\n\n비 소식이 있어 부직포는 그대로 두었다.\n\n[]",
+    "createdAt": {
+     "__ts": 1791075604464
+    },
+    "sourceFormat": "텃밭일지"
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/records/2026-10-05_1791198002662",
+   {
+    "date": "2026-10-05",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "텃밭일지"
+    ],
+    "content": "",
+    "growthSubjectId": "cKVjIP8Aopom89XPpUUS",
+    "growthSubjectType": "garden",
+    "growthSubjectName": "배추",
+    "garden_title": "무 솎아주기",
+    "garden_simple": "무 싹이 촘촘해서 튼튼한 것만 남기고 솎아 주었다.",
+    "_sourceFormat": "텃밭일지",
+    "garden_sayu": "무 싹이 촘촘해서 튼튼한 것만 남기고 솎아 주었다.",
+    "garden_images": "[]",
+    "garden_imageMeta": "[]",
+    "garden_style": "simple",
+    "garden_mode": "ORIGINAL",
+    "garden_crop": "배추, 무, 갓",
+    "createdAt": "2026-10-05T11:00:02.662Z",
+    "updatedAt": "2026-10-05T11:00:02.662Z"
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/growthSubjects/cKVjIP8Aopom89XPpUUS",
+   {
+    "subjectType": "garden",
+    "name": "배추",
+    "createdAt": {
+     "__ts": 1791198002663
+    },
+    "updatedAt": {
+     "__ts": 1791374403170
+    },
+    "latestRecordDate": "2026-10-07",
+    "linkedRecordDates": [
+     "2026-10-05",
+     "2026-10-06",
+     "2026-10-07"
+    ],
+    "latestPhotoUrl": "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202711_i4d01qw.jpg?alt=media&token=qa"
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/library/library_jpcogg",
+   {
+    "category": "비서",
+    "type": "timeline",
+    "title": "배추",
+    "date": "2026-10-05",
+    "summary": "텃밭 성장타임라인",
+    "refPath": "users/qa-p15-yoon-jeongsuk/growthSubjects/cKVjIP8Aopom89XPpUUS",
+    "createdAt": {
+     "__ts": 1791198002663
+    },
+    "meta": {
+     "subjectType": "garden",
+     "firstRecordDate": "2026-10-05",
+     "latestRecordDate": "2026-10-05",
+     "linkedRecordCount": 1,
+     "durationDays": 0
+    }
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/growthSubjects/cKVjIP8Aopom89XPpUUS/entries/2026-10-05_1791198002662",
+   {
+    "recordDate": "2026-10-05",
+    "recordId": "2026-10-05_1791198002662",
+    "subjectType": "garden",
+    "subjectName": "배추",
+    "memo": "무 싹이 촘촘해서 튼튼한 것만 남기고 솎아 주었다.",
+    "createdAt": {
+     "__ts": 1791198002663
+    },
+    "sourceFormat": "텃밭일지"
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/records/2026-10-06_1791277204652",
+   {
+    "date": "2026-10-06",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "텃밭일지"
+    ],
+    "content": "",
+    "growthSubjectId": "cKVjIP8Aopom89XPpUUS",
+    "growthSubjectType": "garden",
+    "growthSubjectName": "배추",
+    "garden_title": "비 온 뒤 텃밭 풍경",
+    "garden_simple": "밤새 비가 와서 흙이 촉촉하다. 배추 잎이 한층 푸르게 올라왔다.",
+    "_sourceFormat": "텃밭일지",
+    "garden_sayu": "밤새 비가 와서 흙이 촉촉하다. 배추 잎이 한층 푸르게 올라왔다.",
+    "garden_images": "[\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202711_i4d01qw.jpg?alt=media&token=qa\",\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202735_p9bwigc.jpg?alt=media&token=qa\",\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202752_gu7wf6l.jpg?alt=media&token=qa\"]",
+    "garden_imageMeta": "[{\"originalName\":\"p15-garden-3-0.png\",\"metadataSource\":\"none\",\"url\":\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202711_i4d01qw.jpg?alt=media&token=qa\",\"uploadedAt\":\"2026-10-06T09:00:02.735Z\"},{\"originalName\":\"p15-garden-3-1.png\",\"metadataSource\":\"none\",\"url\":\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202735_p9bwigc.jpg?alt=media&token=qa\",\"uploadedAt\":\"2026-10-06T09:00:02.752Z\"},{\"originalName\":\"p15-garden-3-2.png\",\"metadataSource\":\"none\",\"url\":\"https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202752_gu7wf6l.jpg?alt=media&token=qa\",\"uploadedAt\":\"2026-10-06T09:00:02.768Z\"}]",
+    "garden_style": "simple",
+    "garden_mode": "ORIGINAL",
+    "garden_crop": "배추, 무, 갓",
+    "createdAt": "2026-10-06T09:00:04.652Z",
+    "updatedAt": "2026-10-06T09:00:04.652Z"
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/library/library_nj1x5r",
+   {
+    "category": "비서",
+    "type": "timeline",
+    "title": "배추",
+    "date": "2026-10-06",
+    "summary": "텃밭 성장타임라인",
+    "refPath": "users/qa-p15-yoon-jeongsuk/growthSubjects/cKVjIP8Aopom89XPpUUS",
+    "createdAt": {
+     "__ts": 1791277204653
+    },
+    "meta": {
+     "subjectType": "garden",
+     "firstRecordDate": "2026-10-05",
+     "latestRecordDate": "2026-10-06",
+     "linkedRecordCount": 2,
+     "durationDays": 1
+    }
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/growthSubjects/cKVjIP8Aopom89XPpUUS/entries/2026-10-06_1791277204652",
+   {
+    "recordDate": "2026-10-06",
+    "recordId": "2026-10-06_1791277204652",
+    "subjectType": "garden",
+    "subjectName": "배추",
+    "memo": "밤새 비가 와서 흙이 촉촉하다. 배추 잎이 한층 푸르게 올라왔다.",
+    "photoUrls": [
+     "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202711_i4d01qw.jpg?alt=media&token=qa",
+     "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202735_p9bwigc.jpg?alt=media&token=qa",
+     "https://qa-storage.invalid/v0/b/qa-bucket/o/users%2Fqa-p15-yoon-jeongsuk%2Fformat_photos%2F2026-10-06_garden_1791277202752_gu7wf6l.jpg?alt=media&token=qa"
+    ],
+    "createdAt": {
+     "__ts": 1791277204653
+    },
+    "sourceFormat": "텃밭일지"
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/records/2026-10-07_1791374403167",
+   {
+    "date": "2026-10-07",
+    "weather": "쾌청",
+    "temperature": "쾌적",
+    "mood": "평온",
+    "formats": [
+     "텃밭일지"
+    ],
+    "content": "",
+    "growthSubjectId": "cKVjIP8Aopom89XPpUUS",
+    "growthSubjectType": "garden",
+    "growthSubjectName": "배추",
+    "garden_title": "갓 파종 마무리",
+    "garden_simple": "갓 씨앗을 뿌리고 얇게 흙을 덮었다. 모종 사이사이 빈틈에 심었다.",
+    "_sourceFormat": "텃밭일지",
+    "garden_sayu": "[모의 다듬기 결과 — 실제 AI 아님]\n\n갓 씨앗을 뿌리고 얇게 흙을 덮었다. 모종 사이사이 빈틈에 심었다.",
+    "garden_images": "[]",
+    "garden_imageMeta": "[]",
+    "garden_polishedAt": "2026-10-07T12:00:03.167Z",
+    "garden_mode": "PREMIUM",
+    "garden_crop": "배추, 무, 갓",
+    "garden_style": "simple",
+    "createdAt": "2026-10-07T12:00:03.167Z",
+    "updatedAt": "2026-10-07T12:00:03.167Z"
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/library/library_8lrs5i",
+   {
+    "category": "비서",
+    "type": "timeline",
+    "title": "배추",
+    "date": "2026-10-07",
+    "summary": "텃밭 성장타임라인",
+    "refPath": "users/qa-p15-yoon-jeongsuk/growthSubjects/cKVjIP8Aopom89XPpUUS",
+    "createdAt": {
+     "__ts": 1791374403170
+    },
+    "meta": {
+     "subjectType": "garden",
+     "firstRecordDate": "2026-10-05",
+     "latestRecordDate": "2026-10-07",
+     "linkedRecordCount": 3,
+     "durationDays": 2
+    }
+   }
+  ],
+  [
+   "users/qa-p15-yoon-jeongsuk/growthSubjects/cKVjIP8Aopom89XPpUUS/entries/2026-10-07_1791374403167",
+   {
+    "recordDate": "2026-10-07",
+    "recordId": "2026-10-07_1791374403167",
+    "subjectType": "garden",
+    "subjectName": "배추",
+    "memo": "갓 씨앗을 뿌리고 얇게 흙을 덮었다. 모종 사이사이 빈틈에 심었다.",
+    "createdAt": {
+     "__ts": 1791374403170
+    },
+    "sourceFormat": "텃밭일지"
+   }
+  ]
+ ]
+}

@@ -1,0 +1,32 @@
+[
+ {
+  "id": "p15-garden",
+  "durationMs": 42604,
+  "steps": 25,
+  "checks": 58,
+  "failedChecks": 3,
+  "failedSteps": 0,
+  "crashed": false,
+  "findings": 3
+ },
+ {
+  "id": "p16-travel",
+  "durationMs": 34411,
+  "steps": 23,
+  "checks": 43,
+  "failedChecks": 1,
+  "failedSteps": 0,
+  "crashed": false,
+  "findings": 2
+ },
+ {
+  "id": "p17-empty-ledger-export",
+  "durationMs": 4909,
+  "steps": 3,
+  "checks": 4,
+  "failedChecks": 0,
+  "failedSteps": 0,
+  "crashed": false,
+  "findings": 0
+ }
+]
