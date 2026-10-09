@@ -1,0 +1,10 @@
+(node:3013) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+▶ p17-empty-ledger-export — 빈 기간 회귀(40·가상·QA) / HARU보조장부
+  단계 3개(실패 0) · 점검 4개(미충족 0) · 발견 0건 · 6.8초
+
+▶ p17-essay — 박정훈(52·남·중소기업 임원) / 에세이
+  단계 10개(실패 0) · 점검 45개(미충족 0) · 발견 0건 · 20.1초
+
+결과 폴더: /private/tmp/haru-record-feedback-guards/frontend/test/persona-sim/out/runs/2026-10-09T08-01-35

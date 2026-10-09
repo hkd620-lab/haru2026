@@ -1,0 +1,10 @@
+(node:2886) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+▶ p15-garden — 윤정숙(63·여·퇴직 후 주말농장 12평 경작) / 텃밭일지
+  단계 25개(실패 0) · 점검 58개(미충족 3) · 발견 3건 · 41.9초
+
+▶ p16-travel — 장하늘(29·남·회사원(마케팅)) / 여행기록
+  단계 23개(실패 0) · 점검 43개(미충족 1) · 발견 2건 · 34.2초
+
+결과 폴더: /private/tmp/haru-record-feedback-guards/frontend/test/persona-sim/out/runs/2026-10-09T07-59-56

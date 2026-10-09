@@ -1,0 +1,21 @@
+✔ normalizeLedgerAmount — 한글 단위 금액은 계산하고, 그 밖의 입력은 예전과 같다 (27.205042ms)
+✔ calculateVatIncludedAmounts — 한글 단위 금액도 공급가액·부가세를 맞게 계산한다 (0.175ms)
+✔ 엑셀 내보내기 — 한글 단위 금액이 원화금액·합계에 맞게 들어간다 (1.695167ms)
+✔ 엑셀 내보내기 — 단위가 없는 금액은 예전과 같고, 읽을 수 없는 금액은 원문 그대로 남고 합계에 안 들어간다 (0.412625ms)
+✔ exportLedgerVatPrepToXlsx: 기록 없음이면 다운로드와 객체 URL을 만들지 않는다 (0.932667ms)
+✔ exportLedgerVatPrepToXlsx: 기간 밖 거래이면 다운로드와 객체 URL을 만들지 않는다 (0.234542ms)
+✔ exportLedgerVatPrepToXlsx: 기간 안의 지출은 정상 다운로드한다 (0.985042ms)
+✔ exportLedgerIncomeTaxPrepToXlsx: 기록 없음이면 다운로드와 객체 URL을 만들지 않는다 (0.154083ms)
+✔ exportLedgerIncomeTaxPrepToXlsx: 기간 밖 거래이면 다운로드와 객체 URL을 만들지 않는다 (0.071125ms)
+✔ exportLedgerIncomeTaxPrepToXlsx: 기간 안의 지출은 정상 다운로드한다 (0.45725ms)
+✔ 부가세: 개인용 거래만 있으면 다운로드하지 않는다 (0.090167ms)
+✔ 소득세: 수입만 있으면 지출 0건 안내에 맞게 다운로드하지 않는다 (0.063958ms)
+✔ 부가세: 사업용 수입만 있어도 다운로드한다 (0.248916ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1107.937041

@@ -1,0 +1,107 @@
+{
+ "runId": "2026-10-09T08-01-35",
+ "meta": {
+  "id": "p17-empty-ledger-export",
+  "format": "HARU보조장부",
+  "persona": {
+   "name": "빈 기간 회귀",
+   "age": 40,
+   "gender": "가상",
+   "job": "QA"
+  },
+  "identity": {
+   "uid": "qa-empty-ledger",
+   "displayName": "빈 기간 회귀",
+   "email": "empty@example.invalid",
+   "plan": "free"
+  }
+ },
+ "startedAt": "2026-10-09T08:01:36.065Z",
+ "durationMs": 6799,
+ "steps": [
+  {
+   "n": 1,
+   "name": "기록합본에서 거래 없는 기간 지정",
+   "ok": true,
+   "ms": 4437,
+   "url": "/merge",
+   "toasts": [],
+   "shot": "01-기록합본에서-거래-없는-기간-지정.png"
+  },
+  {
+   "n": 2,
+   "name": "부가세 신고 준비 0건 다운로드 차단",
+   "ok": true,
+   "ms": 1110,
+   "url": "/merge",
+   "toasts": [
+    "내보낼 사업용 매출·매입 거래가 없습니다."
+   ],
+   "shot": "03-부가세-신고-준비-0건-다운로드-차단.png"
+  },
+  {
+   "n": 3,
+   "name": "종합소득세 준비 0건 다운로드 차단",
+   "ok": true,
+   "ms": 1089,
+   "url": "/merge",
+   "toasts": [
+    "내보낼 지출 거래가 없습니다.",
+    "내보낼 사업용 매출·매입 거래가 없습니다."
+   ],
+   "shot": "05-종합소득세-준비-0건-다운로드-차단.png"
+  }
+ ],
+ "checks": [
+  {
+   "step": "부가세 신고 준비 0건 다운로드 차단",
+   "name": "부가세 신고 준비: 0건 안내",
+   "ok": true,
+   "detail": "[\"내보낼 사업용 매출·매입 거래가 없습니다.\"]"
+  },
+  {
+   "step": "부가세 신고 준비 0건 다운로드 차단",
+   "name": "부가세 신고 준비: 파일 다운로드 없음",
+   "ok": true,
+   "detail": "downloads=0"
+  },
+  {
+   "step": "종합소득세 준비 0건 다운로드 차단",
+   "name": "종합소득세 준비: 0건 안내",
+   "ok": true,
+   "detail": "[\"내보낼 지출 거래가 없습니다.\",\"내보낼 사업용 매출·매입 거래가 없습니다.\"]"
+  },
+  {
+   "step": "종합소득세 준비 0건 다운로드 차단",
+   "name": "종합소득세 준비: 파일 다운로드 없음",
+   "ok": true,
+   "detail": "downloads=0"
+  }
+ ],
+ "findings": [],
+ "network": {
+  "blockedExternalCount": 0,
+  "hosts": []
+ },
+ "console": [],
+ "pageErrors": [],
+ "dialogs": [],
+ "qa": {
+  "calls": [],
+  "unknownCallables": [],
+  "uploads": [],
+  "writeCount": 0
+ },
+ "db": [
+  [
+   "users/qa-empty-ledger/records/2026-09-28",
+   {
+    "date": "2026-09-28",
+    "formats": [
+     "HARU보조장부"
+    ],
+    "ledger_entries": "[{\"date\":\"2026-09-28\",\"transactionType\":\"지출\",\"usageType\":\"사업용\",\"amount\":\"11000\",\"vendor\":\"가상문구점\"}]"
+   }
+  ]
+ ]
+}
