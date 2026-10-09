@@ -1858,9 +1858,10 @@ ${contentValues}`,
       return;
     }
 
-    if (files.length > remainingSlots) {
-      toast.warning(`최대 ${maxPhotos}장까지 첨부할 수 있어 선택한 ${files.length}장 중 앞의 ${remainingSlots}장만 업로드합니다. 초과한 ${files.length - remainingSlots}장은 제외됩니다.`);
-    }
+    const excludedCount = Math.max(0, files.length - remainingSlots);
+    const uploadNoticeId = excludedCount > 0
+      ? toast.warning(`최대 ${maxPhotos}장까지 첨부할 수 있어 선택한 ${files.length}장 중 앞의 ${remainingSlots}장만 업로드합니다. 초과한 ${excludedCount}장은 제외됩니다.`)
+      : undefined;
     const filesToUpload = Array.from(files).slice(0, remainingSlots);
 
     setIsUploading(true);
@@ -1979,7 +1980,12 @@ ${contentValues}`,
         setUploadedImages(prev => [...prev, ...newImageUrls]);
         setUploadedImageMeta(prev => [...prev, ...newImageMeta]);
       }
-      toast.success(`${newImageUrls.length}장의 사진이 업로드되었습니다!`);
+      toast.success(
+        excludedCount > 0
+          ? `${newImageUrls.length}장의 사진이 업로드되었습니다. 최대 ${maxPhotos}장 제한으로 초과한 ${excludedCount}장은 제외되었습니다.`
+          : `${newImageUrls.length}장의 사진이 업로드되었습니다!`,
+        { id: uploadNoticeId },
+      );
     } catch (error) {
       console.error('이미지 업로드 실패:', error);
       toast.error('이미지 업로드에 실패했습니다.');
