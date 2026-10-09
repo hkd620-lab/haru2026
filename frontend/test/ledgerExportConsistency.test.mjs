@@ -107,10 +107,10 @@ test('F-16: 기간 밖·존재하지 않는 날짜는 신고 준비 집계에서
 });
 
 test('F-16: 혼합 날짜 표기의 신고 준비 거래는 날짜 순서로 정렬하고 원문은 유지한다', () => {
-  const dates = ['2026-10-01', '2026년 9월 1일', '2026.09.28 14:30', '2026/9/9', '2026/09/28 09:00'];
+  const dates = ['2026-10-01', '2026년 9월 1일', '2026.09.28 14:30', '2026/9/9', '2026/09/28 9:00', '2026-09-28 08:30'];
   const records = [record('2026-10-03', dates.map((date) => entry({ date })))];
   const original = JSON.stringify(records);
-  const expected = [dates[1], dates[3], dates[4], dates[2], dates[0]];
+  const expected = [dates[1], dates[3], dates[5], dates[4], dates[2], dates[0]];
   for (const build of [buildLedgerVatReport, buildLedgerIncomeTaxReport]) {
     assert.deepEqual(build(records, '2026-09-01', '2026-10-31').entries.map((e) => e.date), expected);
   }

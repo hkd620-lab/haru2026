@@ -140,7 +140,11 @@ function normalizeAssetTreatment(value: unknown, transactionType: string): Ledge
 
 function normalizedDate(value: string, referenceYear = new Date().getFullYear()): string {
   const normalized = normalizeLedgerDate(String(value || '').replace(/([년월])\s*/g, '$1'), referenceYear);
-  return normalized.valid ? normalized.value : '';
+  if (!normalized.valid) return '';
+  return normalized.value.replace(
+    /^(\d{4}-\d{2}-\d{2})\s+T?(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?(.*)$/,
+    (_, date, hour, minute, second, suffix) => `${date} ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}${second ? `:${second.padStart(2, '0')}` : ''}${suffix}`,
+  );
 }
 
 function dateOnly(value: string, referenceYear = new Date().getFullYear()): string {
