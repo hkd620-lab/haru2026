@@ -1,0 +1,7 @@
+(node:3738) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+▶ p14-ledger — 오민석(48·남·동네 카페 사장님(개인사업자)) / HARU보조장부
+  단계 19개(실패 0) · 점검 32개(미충족 0) · 발견 0건 · 42.1초
+
+결과 폴더: /private/tmp/haru-ledger-export-consistency/frontend/test/persona-sim/out/runs/2026-10-09T08-29-44
