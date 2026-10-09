@@ -116,15 +116,8 @@ export async function run(ctx) {
     ctx.check('보조장부 작성 화면(단건 작성)이 열린다', /HARU보조장부 작성/.test(t) && /거래 1/.test(t), '');
     const trackOptions = ((t.match(/사업구분\s*\*?\s*([\s\S]*?)사용구분/) || [])[1] || '').split('\n').map((x) => x.trim()).filter(Boolean);
     const shot0 = await ctx.snap('증거-사업구분 선택지');
-    ctx.check('사업구분 선택지가 두 가지(HARU2026·외부용역)뿐이 아니다', !(trackOptions.length === 2 && trackOptions.includes('HARU2026') && trackOptions.includes('외부용역')), `선택지: ${JSON.stringify(trackOptions)}`);
-    if (trackOptions.length === 2 && trackOptions.includes('HARU2026') && trackOptions.includes('외부용역')) {
-      ctx.finding({
-        severity: '제안',
-        shot: shot0,
-        title: '보조장부 "사업구분"이 HARU2026·외부용역 두 가지로 고정되어, 일반 개인사업자는 자기 사업을 나타낼 수 없다',
-        detail: `화면 안내는 "개인 및 사업자의 수입·지출 기록을 돕기 위한 보조장부"인데, 필수 항목인 사업구분(*)의 선택지는 ${JSON.stringify(trackOptions)} 두 가지뿐이다(저장 시 "사업구분을 선택해주세요. (HARU2026 / 외부용역)", FormatModal.tsx 2134·4483·5188줄). 카페 사장님은 어느 쪽도 자기 사업이 아니라 임의로 하나를 골라야 하고, 엑셀·집계에도 그 값이 그대로 쓰인다. 입력 예시 문구("앱 운영 구독료", "HARU2026 베타테스트 …")도 앱 운영자 기준이다. 일반 사용자에게 열어 둘 기능이라면 사업구분을 직접 입력/추가하게 하거나 비필수로 두는 방안을 검토할 수 있다(제품 방향은 대표님 결정).`,
-      });
-    }
+    ctx.check('F-20 종결: 본인 전용 사업구분 두 가지를 유지한다', (trackOptions.length === 2 && trackOptions.includes('HARU2026') && trackOptions.includes('외부용역')), `선택지: ${JSON.stringify(trackOptions)}`);
+
   });
 
   await ctx.step('1일차 지난달 말 거래 3건 입력', async () => {
@@ -257,7 +250,7 @@ export async function run(ctx) {
     const grandTotal = grand ? num(grand[1]) : null;
     const mixed = grandTotal === ALL_INCOME + ALL_EXPENSE;
     const sumShot = await ctx.snap('증거-계정과목집계 계산');
-    ctx.check('계정과목 집계 시트의 합계가 수입과 지출을 한데 더하지 않는다', !mixed, `집계 시트 합계 ${grandTotal}원 (수입 ${income} + 지출 ${expense} = ${income + expense}) / 시트 내용: ${JSON.stringify(summary)}`);
+    ctx.check('계정과목 집계 시트의 합계가 수입과 지출을 한데 더하지 않는다', grandTotal === ALL_EXPENSE, `집계 시트 합계 ${grandTotal}원 (수입 ${income} + 지출 ${expense} = ${income + expense}) / 시트 내용: ${JSON.stringify(summary)}`);
     if (mixed) {
       ctx.finding({
         severity: '중대',
@@ -361,7 +354,7 @@ export async function run(ctx) {
     await page.waitForTimeout(2500);
   });
 
-  await ctx.step('[대조] 10월 부가세 집계에 하이픈 날짜 거래만 잡히는지', async () => {
+  await ctx.step('[회귀 대조] 점·하이픈 날짜 거래가 함께 집계되는지', async () => {
     await gotoMergeLedger(page);
     const vat = page.locator('div.mx-3.my-2', { hasText: '부가세 신고 준비' }).first();
     await vat.getByRole('button', { name: '사용자 지정 기간' }).click();
@@ -373,7 +366,7 @@ export async function run(ctx) {
     const t = noXlsxToast(await ctx.toasts());
     const got = readCards(await pageText(page), { sales: '과세매출 공급가액', purchase: '과세매입 공급가액', deductible: '공제가능 매입세액' });
     await ctx.snap('증거-대조 하이픈 날짜 집계');
-    ctx.check('[대조] 하이픈 날짜("2026-10-07")로 입력한 거래는 집계에 잡힌다 — 날짜 글자 형식이 원인임을 확인', got.purchase === 20000 && got.deductible === 2000, `화면 ${JSON.stringify(got)} / 안내 ${JSON.stringify(t)} (점 날짜 10월 거래 5건은 여전히 빠짐)`);
+    ctx.check('[회귀 대조] 점 날짜 5건과 하이픈 날짜 1건을 함께 집계한다', got.sales === OCT_VAT.sales && got.purchase === OCT_VAT.purchase + 20000 && got.deductible === OCT_VAT.deductible + 2000, `화면 ${JSON.stringify(got)} / 안내 ${JSON.stringify(t)} (점 날짜 5건 + 하이픈 날짜 1건의 합계)`);
   });
 
   await ctx.step('3일차 내 기록(SAYU)에서 보조장부 기록 확인', async () => {
