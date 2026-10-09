@@ -138,9 +138,13 @@ function normalizeAssetTreatment(value: unknown, transactionType: string): Ledge
   return defaultLedgerAssetTreatment({ transactionType });
 }
 
-function dateOnly(value: string, referenceYear = new Date().getFullYear()): string {
+function normalizedDate(value: string, referenceYear = new Date().getFullYear()): string {
   const normalized = normalizeLedgerDate(String(value || '').replace(/([년월])\s*/g, '$1'), referenceYear);
-  return normalized.valid ? normalized.value.slice(0, 10) : '';
+  return normalized.valid ? normalized.value : '';
+}
+
+function dateOnly(value: string, referenceYear = new Date().getFullYear()): string {
+  return normalizedDate(value, referenceYear).slice(0, 10);
 }
 
 function isInRange(date: string, start?: string, end?: string): boolean {
@@ -722,7 +726,7 @@ export function buildLedgerVatReport(records: HaruRecord[], start: string, end: 
     .flatMap((record) => expandRecord(record))
     .filter((entry) => isInRange(entry.date, start, end))
     .map(toVatReportEntry)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.vendor.localeCompare(b.vendor));
+    .sort((a, b) => normalizedDate(a.date, Number(start.slice(0, 4))).localeCompare(normalizedDate(b.date, Number(start.slice(0, 4)))) || a.vendor.localeCompare(b.vendor));
 
   const report: LedgerVatReport = {
     start,
@@ -942,7 +946,7 @@ export function buildLedgerIncomeTaxReport(records: HaruRecord[], start: string,
     .flatMap((record) => expandRecord(record))
     .filter((entry) => isInRange(entry.date, start, end))
     .map(toIncomeTaxReportEntry)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.vendor.localeCompare(b.vendor));
+    .sort((a, b) => normalizedDate(a.date, Number(start.slice(0, 4))).localeCompare(normalizedDate(b.date, Number(start.slice(0, 4)))) || a.vendor.localeCompare(b.vendor));
 
   const report: LedgerIncomeTaxReport = {
     start,
