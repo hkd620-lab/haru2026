@@ -14,6 +14,7 @@ const readingAiChat = read('components/ReadingAiChat.tsx');
 const haruLawPanel = read('assistants/haruLaw/HaruLawPanel.tsx');
 const diaryLearn = read('pages/DiaryLearnPage.tsx');
 const novelStudio = read('pages/NovelStudio.tsx');
+const plantDetective = read('pages/PlantDetectivePage.tsx');
 
 // <textarea ...> 한 요소의 원문을 잘라 낸다. 조건에 맞는 첫 요소를 쓴다.
 function textareaWhere(source, predicate, label) {
@@ -71,6 +72,8 @@ const writingInputs = [
   ['독서장', textareaWhere(formatModal, (e) => e.includes("'내 독서장'"), '독서장')],
   ['기록 형식 공통 상세 입력', textareaWhere(formatModal, (e) => e.includes('handleChange(field.key, e.target.value)') && !e.includes("'내 독서장'"), '기록 형식 공통 상세 입력')],
   ['외국어일기 작성', textareaWhere(diaryLearn, (e) => e.includes('setKoreanInput'), '외국어일기 작성')],
+  // 식물탐정 "오늘의 관찰": 같은 폼의 두 입력칸이 이미 3줄이라 자유 메모만 2줄이던 것을 맞췄다.
+  ['식물탐정 자유 메모', textareaWhere(plantDetective, (e) => e.includes('setObsMemo'), '식물탐정 자유 메모')],
 ];
 for (const [label, element] of writingInputs) {
   assertRows3(element, label);
