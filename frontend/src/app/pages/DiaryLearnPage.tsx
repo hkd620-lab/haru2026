@@ -690,6 +690,7 @@ function DiaryLearnSession() {
               한글로 자유롭게 작성하세요. 영어로 번역한 뒤 학습을 시작합니다.
             </p>
             <textarea
+              rows={3}
               value={koreanInput}
               onChange={(e) => {
                 const val = e.target.value;
@@ -698,7 +699,6 @@ function DiaryLearnSession() {
               placeholder="오늘 있었던 일이나 생각을 한글로 써보세요. (최대 1000자)"
               style={{
                 width: '100%',
-                minHeight: 220,
                 padding: 14,
                 fontSize: 15,
                 lineHeight: 1.7,
@@ -706,7 +706,7 @@ function DiaryLearnSession() {
                 backgroundColor: '#f8faff',
                 border: '1.5px solid #d0dff0',
                 borderRadius: 12,
-                resize: 'vertical',
+                resize: 'none',
                 fontFamily: 'inherit',
                 boxSizing: 'border-box',
               }}
