@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   ENTER_AFTER_COMPOSITION_GUARD_MS,
   EnterSubmitGuard,
+  handleQuestionEnterKeyDown,
 } from '../src/app/utils/questionEnterSubmit.ts';
 
 const enter = (overrides = {}) => ({
@@ -104,4 +105,84 @@ test('보호 시간은 생성자로 바꿀 수 있다', () => {
   guard.compositionEnd(1000);
   assert.equal(guard.decide(enter({ timeStamp: 1029 })), 'ignore');
   assert.equal(guard.decide(enter({ timeStamp: 1030 })), 'send');
+});
+
+// ── 핸들러 배선: 판단 결과가 기본 동작 차단·전송에 올바르게 연결되는지 ──
+function keyEvent(overrides = {}) {
+  const calls = { prevented: 0, sent: 0 };
+  const event = {
+    key: 'Enter',
+    shiftKey: false,
+    timeStamp: 10_000,
+    nativeEvent: { isComposing: false, keyCode: 13 },
+    preventDefault() { calls.prevented += 1; },
+    ...overrides,
+  };
+  return { event, calls, send: () => { calls.sent += 1; } };
+}
+
+test('핸들러: 일반 Enter는 기본 동작(줄바꿈)을 막고 한 번 전송한다', () => {
+  const { event, calls, send } = keyEvent();
+  assert.equal(handleQuestionEnterKeyDown(new EnterSubmitGuard(), event, send), 'send');
+  assert.deepEqual(calls, { prevented: 1, sent: 1 });
+});
+
+test('핸들러: Shift+Enter와 다른 키는 막지도 전송하지도 않는다', () => {
+  for (const overrides of [{ shiftKey: true }, { key: 'a' }, { key: 'Tab' }]) {
+    const { event, calls, send } = keyEvent(overrides);
+    assert.equal(handleQuestionEnterKeyDown(new EnterSubmitGuard(), event, send), 'pass');
+    assert.deepEqual(calls, { prevented: 0, sent: 0 });
+  }
+});
+
+test('핸들러: 조합 중 Enter(isComposing 또는 keyCode 229)는 막지도 전송하지도 않는다', () => {
+  for (const nativeEvent of [{ isComposing: true, keyCode: 13 }, { isComposing: false, keyCode: 229 }, { isComposing: true, keyCode: 229 }]) {
+    const { event, calls, send } = keyEvent({ nativeEvent });
+    assert.equal(handleQuestionEnterKeyDown(new EnterSubmitGuard(), event, send), 'pass');
+    assert.deepEqual(calls, { prevented: 0, sent: 0 });
+  }
+});
+
+test('핸들러: compositionstart~end 사이의 Enter는 막지도 전송하지도 않는다', () => {
+  const guard = new EnterSubmitGuard();
+  guard.compositionStart();
+  const { event, calls, send } = keyEvent();
+  assert.equal(handleQuestionEnterKeyDown(guard, event, send), 'pass');
+  assert.deepEqual(calls, { prevented: 0, sent: 0 });
+});
+
+test('핸들러: compositionend 직후 Enter는 기본 동작만 막고 전송하지 않는다', () => {
+  const guard = new EnterSubmitGuard();
+  guard.compositionEnd(10_000 - 3);
+  const { event, calls, send } = keyEvent({ timeStamp: 10_000 });
+  assert.equal(handleQuestionEnterKeyDown(guard, event, send), 'ignore');
+  assert.deepEqual(calls, { prevented: 1, sent: 0 });
+});
+
+test('핸들러: 이벤트의 timeStamp로 보호 시간 안팎을 가른다', () => {
+  const guard = new EnterSubmitGuard();
+  guard.compositionEnd(1000);
+  const inside = keyEvent({ timeStamp: 1000 + ENTER_AFTER_COMPOSITION_GUARD_MS - 1 });
+  assert.equal(handleQuestionEnterKeyDown(guard, inside.event, inside.send), 'ignore');
+  const outside = keyEvent({ timeStamp: 1000 + ENTER_AFTER_COMPOSITION_GUARD_MS });
+  assert.equal(handleQuestionEnterKeyDown(guard, outside.event, outside.send), 'send');
+  assert.deepEqual([inside.calls, outside.calls], [{ prevented: 1, sent: 0 }, { prevented: 1, sent: 1 }]);
+});
+
+test('핸들러: blur로 가드를 초기화하면 직전 compositionend와 무관하게 전송한다', () => {
+  const guard = new EnterSubmitGuard();
+  guard.compositionStart();
+  guard.reset();
+  const { event, calls, send } = keyEvent();
+  assert.equal(handleQuestionEnterKeyDown(guard, event, send), 'send');
+  assert.deepEqual(calls, { prevented: 1, sent: 1 });
+});
+
+test('핸들러: 전송해도 가드 상태는 바뀌지 않아 이어지는 Enter도 각각 전송한다', () => {
+  const guard = new EnterSubmitGuard();
+  const first = keyEvent({ timeStamp: 10_000 });
+  const second = keyEvent({ timeStamp: 10_300 });
+  handleQuestionEnterKeyDown(guard, first.event, first.send);
+  handleQuestionEnterKeyDown(guard, second.event, second.send);
+  assert.deepEqual([first.calls.sent, second.calls.sent], [1, 1]);
 });

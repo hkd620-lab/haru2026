@@ -56,3 +56,34 @@ export class EnterSubmitGuard {
     return 'send';
   }
 }
+
+/** React keydown 이벤트에서 판단에 쓰는 부분만 뽑은 형태. 시험에서는 같은 모양의 객체를 쓴다. */
+export type QuestionKeyDownEvent = {
+  key: string;
+  shiftKey: boolean;
+  timeStamp: number;
+  nativeEvent: { isComposing: boolean; keyCode: number };
+  preventDefault: () => void;
+};
+
+/**
+ * 질문 입력칸의 keydown 처리. 판단은 guard가 하고, 여기서는 그 결과를 기본 동작 차단과 전송에 연결한다.
+ * pass: 아무것도 하지 않음 / ignore: 기본 동작만 차단 / send: 기본 동작을 차단하고 전송
+ */
+export function handleQuestionEnterKeyDown(
+  guard: EnterSubmitGuard,
+  event: QuestionKeyDownEvent,
+  send: () => void,
+): EnterKeyDecision {
+  const decision = guard.decide({
+    key: event.key,
+    shiftKey: event.shiftKey,
+    isComposing: event.nativeEvent.isComposing,
+    keyCode: event.nativeEvent.keyCode,
+    timeStamp: event.timeStamp,
+  });
+  if (decision === 'pass') return decision;
+  event.preventDefault();
+  if (decision === 'send') send();
+  return decision;
+}

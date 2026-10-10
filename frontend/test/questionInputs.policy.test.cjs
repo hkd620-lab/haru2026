@@ -15,6 +15,7 @@ const haruLawPanel = read('assistants/haruLaw/HaruLawPanel.tsx');
 const diaryLearn = read('pages/DiaryLearnPage.tsx');
 const novelStudio = read('pages/NovelStudio.tsx');
 const plantDetective = read('pages/PlantDetectivePage.tsx');
+const enterSubmit = read('utils/questionEnterSubmit.ts');
 
 // <textarea ...> 한 요소의 원문을 잘라 낸다. 조건에 맞는 첫 요소를 쓴다.
 function textareaWhere(source, predicate, label) {
@@ -37,7 +38,15 @@ function assertRows3(element, label) {
 
 // ── 질문 Enter 전송: requestSubmit 비의존, 한글 조합 보호 ──
 assert(!resultChat.includes('requestSubmit'), '질문 Enter 전송은 requestSubmit에 의존하지 않아야 합니다(Safari 16 미만)');
-assert(resultChat.includes('void sendQuestion(question);'), 'Enter 전송은 기존 sendQuestion 가드를 그대로 써야 합니다');
+assert(
+  resultChat.includes('handleQuestionEnterKeyDown(questionEnterGuard, event, () => { void sendQuestion(question); })'),
+  'Enter 전송은 기존 sendQuestion 가드를 그대로 써서 한 곳(handleQuestionEnterKeyDown)에서 처리해야 합니다',
+);
+assert(!resultChat.includes('questionEnterGuard.decide('), '키 판단은 컴포넌트가 아니라 유틸(handleQuestionEnterKeyDown)에 있어야 합니다');
+assert(
+  resultChat.includes('const [questionEnterGuard] = useState(() => new EnterSubmitGuard());'),
+  '가드는 렌더마다 새로 만들지 않고 한 번만 만들어야 합니다',
+);
 assert(
   resultChat.includes('onCompositionStart={() => questionEnterGuard.compositionStart()}')
     && resultChat.includes('onCompositionEnd={(event) => questionEnterGuard.compositionEnd(event.timeStamp)}')
@@ -45,10 +54,11 @@ assert(
   '조합 시작·종료(timeStamp)·blur 해제가 연결돼야 합니다',
 );
 assert(
-  resultChat.includes('isComposing: event.nativeEvent.isComposing')
-    && resultChat.includes('keyCode: event.nativeEvent.keyCode')
-    && resultChat.includes('timeStamp: event.timeStamp'),
-  'Enter 판단에 isComposing·keyCode(229)·timeStamp가 전달돼야 합니다',
+  enterSubmit.includes('isComposing: event.nativeEvent.isComposing')
+    && enterSubmit.includes('keyCode: event.nativeEvent.keyCode')
+    && enterSubmit.includes('timeStamp: event.timeStamp')
+    && enterSubmit.includes('Math.abs(sinceCompositionEnd) < this.guardMs'),
+  'Enter 판단에 isComposing·keyCode(229)·timeStamp가 전달되고 보호 시간은 시각 차이의 절댓값으로 비교해야 합니다',
 );
 
 // ── 질문칸: rows=3, resize 없음 ──
@@ -89,5 +99,25 @@ assert(
   textareaWhere(formatModal, (e) => e.includes('value={readingAnalysis}'), '독서사유 SAYU 분석 편집기').includes('minHeight: 240'),
   '독서사유 SAYU 분석 편집기는 240px 높이를 유지해야 합니다',
 );
+
+// ── 보존: 질문칸의 값·잠금·글자 수 제한, 작은 편집기·일기 상세는 그대로 ──
+const commonQuestion = questionInputs[0][1];
+assert(
+  commonQuestion.includes('value={question}')
+    && commonQuestion.includes('disabled={loading || uploadingFiles || closingAttachments || isChoicePending}'),
+  '공통 AI 질문칸은 값 연결과 대기·첨부·확인 대기 잠금을 유지해야 합니다',
+);
+const readingQuestion = questionInputs[1][1];
+assert(
+  readingQuestion.includes('maxLength={1000}') && readingQuestion.includes('disabled={locked}'),
+  '독서 AI 질문칸은 1000자 제한과 잠금을 유지해야 합니다',
+);
+assert(
+  /rows=\{4\}/.test(textareaWhere(readingAiChat, (e) => e.includes('aria-label="AI 참고 메모 제안"'), 'AI 참고 메모 제안')),
+  'AI 참고 메모 제안 편집기는 4줄을 유지해야 합니다(결과 편집기는 줄이지 않음)',
+);
+const diaryDetail = textareaWhere(formatModal, (e) => e.includes("FORMAT_FIELDS['일기'].find"), '일기 상세');
+assertRows3(diaryDetail.replace(/minHeight:\s*'56px',?/, ''), '일기 상세');
+assert(/resize:\s*'none'/.test(diaryDetail), '일기 상세는 변경 전부터 resize 없음이라 그대로여야 합니다');
 
 console.log('question input policy checks passed');
