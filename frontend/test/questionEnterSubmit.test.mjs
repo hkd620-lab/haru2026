@@ -84,10 +84,19 @@ test('새 조합이 시작되면 다시 조합 중으로 본다', () => {
   assert.equal(guard.decide(enter({ timeStamp: 1800 })), 'send');
 });
 
-test('compositionend보다 앞선 시각의 keydown(시각 역전)은 보호 대상으로 보지 않는다', () => {
+test('keydown 시각이 compositionend보다 앞서도(플랫폼 입력 시각) 보호 시간 안이면 전송하지 않는다', () => {
   const guard = new EnterSubmitGuard();
   guard.compositionEnd(1000);
-  assert.equal(guard.decide(enter({ timeStamp: 990 })), 'send');
+  assert.equal(guard.decide(enter({ timeStamp: 997.4 })), 'ignore');
+  assert.equal(guard.decide(enter({ timeStamp: 990 })), 'ignore');
+  assert.equal(guard.decide(enter({ timeStamp: 1000 - ENTER_AFTER_COMPOSITION_GUARD_MS + 0.1 })), 'ignore');
+});
+
+test('keydown이 compositionend보다 보호 시간 이상 앞서면 별개의 Enter로 보고 전송한다', () => {
+  const guard = new EnterSubmitGuard();
+  guard.compositionEnd(1000);
+  assert.equal(guard.decide(enter({ timeStamp: 1000 - ENTER_AFTER_COMPOSITION_GUARD_MS })), 'send');
+  assert.equal(guard.decide(enter({ timeStamp: 900 })), 'send');
 });
 
 test('보호 시간은 생성자로 바꿀 수 있다', () => {
