@@ -33,7 +33,7 @@ Firestore 경로·Functions 리전·환경변수·AI 호출/모델·결제·인�
 
 ### 기존 테스트 실패 분리
 
-추가 확인한 `node --test test/haruLawSave.test.cjs`는 2 통과 / 8 실패 / 1 제외. `lawSaveRef is not defined`, `activeLawQuery` 등 현재 구현과 오래된 테스트 harness의 불일치가 보인다. 변경 전 main의 동일 테스트·대상 파일을 별도 디렉터리에 추출하여 실행해 동일한 2/8/1 결과를 확인했다. 이번 변경은 저장 핸들러를 바꾸지 않으며 이 실패를 통과로 보고하지 않는다. 저장 테스트 harness 보완은 별도 작업으로 남긴다.
+추가 확인한 `node --test test/haruLawSave.test.cjs`는 2 통과 / 8 실패 / 1 제외. 확인된 오류는 `lawSaveRef is not defined`이며 현재 구현과 오래된 테스트 harness의 불일치가 보인다. 변경 전 main의 동일 테스트·대상 파일을 별도 디렉터리에 추출하여 실행해 동일한 2/8/1 결과를 확인했다. 이번 변경은 저장 핸들러를 바꾸지 않으며 이 실패를 통과로 보고하지 않는다. 저장 테스트 harness 보완은 별도 작업으로 남긴다.
 
 ## 다음 첫 행동과 복구
 
