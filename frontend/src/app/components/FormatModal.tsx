@@ -4015,8 +4015,9 @@ ${contentValues.slice(0, 4100)}`,
                       placeholder={readingBookTextMode === 'photo'
                         ? '사진에서 추출된 본문 텍스트가 여기에 들어옵니다.'
                         : '읽은 본문 내용을 직접 입력하세요.'}
-                      rows={5}
+                      rows={3}
                       style={{
+                        lineHeight: 1.5,
                         width: '100%',
                         boxSizing: 'border-box',
                         marginTop: 10,
@@ -4377,11 +4378,13 @@ ${contentValues.slice(0, 4100)}`,
               {/* 간편 스타일: 자유 텍스트 1개 */}
               {recordStyle === 'simple' && !isStockFormat && (
                 <textarea
-                  rows={8}
+                  rows={3}
                   placeholder="자유롭게 기록해 주세요..."
                   value={formData[`${prefix}_simple`] || ''}
                   onChange={(e) => handleChange(`${prefix}_simple`, e.target.value)}
                   style={{
+                    boxSizing: 'border-box',
+                    lineHeight: 1.5,
                     width: '100%', padding: '12px 16px', fontSize: 16,
                     border: '1px solid #e5e5e5', borderRadius: 8,
                     backgroundColor: '#fff', color: '#333',
@@ -5098,6 +5101,7 @@ ${contentValues.slice(0, 4100)}`,
                             </label>
                             <div style={{ position: 'relative' }}>
                               <textarea
+                                rows={3}
                                 placeholder={FORMAT_FIELDS['일기'].find(ff => ff.key === f.key)?.placeholder || `${f.label}을(를) 입력하세요`}
                                 value={formData[f.key] || ''}
                                 onChange={(e) => handleChange(f.key, e.target.value)}
@@ -5456,7 +5460,7 @@ ${contentValues.slice(0, 4100)}`,
                                     placeholder="예: HARU2026 베타테스트 참가자 5명과 UX·기능 피드백 회의 후 식사 제공"
                                     rows={3}
                                     onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, businessContextMemo: e.target.value } : en))}
-                                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                                    style={{ lineHeight: 1.5, width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                                   />
                                   <p style={{ margin: '5px 0 0', fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>
                                     사업 관련 지출인 이유를 간단히 기록하세요. 참석자, 회의 목적, 테스트 내용 등을 적어두면 추후 증빙 확인에 도움이 됩니다.
@@ -5554,9 +5558,9 @@ ${contentValues.slice(0, 4100)}`,
                                 <textarea
                                   value={entry.memo}
                                   placeholder="관련 메모 (선택사항)"
-                                  rows={2}
+                                  rows={3}
                                   onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, memo: e.target.value } : en))}
-                                  style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                                  style={{ lineHeight: 1.5, width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                                 />
                               </div>
                             </div>
@@ -5844,11 +5848,12 @@ ${contentValues.slice(0, 4100)}`,
                                 }
                               }}
                               placeholder={field.placeholder}
-                              rows={field.rows || 4}
+                              rows={3}
                               readOnly={isLocked}
                               style={{
+                                lineHeight: 1.5,
                                 width: '100%', padding: '12px 16px', fontSize: 14,
-                                boxSizing: format === '독서사유' ? 'border-box' : undefined,
+                                boxSizing: 'border-box',
                                 border: '1px solid #e5e5e5', borderRadius: 8,
                                 backgroundColor: isLocked ? '#f3f4f6' : '#fff',
                                 color: isLocked ? '#6b7280' : '#333',
@@ -5873,8 +5878,10 @@ ${contentValues.slice(0, 4100)}`,
                         value={formData[field.key] || ''}
                         onChange={(e) => handleChange(field.key, e.target.value)}
                         placeholder={field.placeholder}
-                        rows={field.rows || 4}
+                        rows={3}
                         style={{
+                          boxSizing: 'border-box',
+                          lineHeight: 1.5,
                           width: '100%', padding: '12px 16px', fontSize: 14,
                           border: '1px solid #e5e5e5', borderRadius: 8,
                           backgroundColor: '#fff', color: '#333',

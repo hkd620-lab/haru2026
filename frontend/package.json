@@ -10,6 +10,8 @@
     "dev": "vite",
     "dev:reading-ai-qa": "vite --config test/reading-ai-browser/vite.config.mjs",
     "test:reading-ai": "node --import tsx --test test/readingAi.test.mjs",
+    "test:question-enter": "node --import tsx --test test/questionEnterSubmit.test.mjs",
+    "test:question-inputs": "node test/questionInputs.policy.test.cjs",
     "test:subscription-display": "node test/subscriptionDisplay.policy.test.cjs",
     "test:law-easy-explain": "node test/lawEasyExplain.policy.test.cjs",
     "test:harulaw-attachment-cleanup": "node --import tsx test/haruLawAttachmentCleanup.test.mjs",

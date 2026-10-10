@@ -477,13 +477,14 @@ function MotiveTab({ s, upd, onNext }: { s: NovelSettings; upd: (k: keyof NovelS
           ))}
           {s.motive === 'custom' && (
             <textarea
+              rows={3}
               placeholder="전망받고 싶은 상황을 자유롭게 입력하세요..."
               value={s.motiveCustom || ''}
               onChange={e => upd('motiveCustom', e.target.value)}
               style={{
-                width: '100%', minHeight: 80, padding: '10px 12px',
+                width: '100%', padding: '10px 12px',
                 borderRadius: 8, border: '1.5px solid #d1d5db',
-                fontSize: 13, resize: 'none', boxSizing: 'border-box',
+                fontSize: 13, lineHeight: 1.5, resize: 'none', boxSizing: 'border-box',
               }}
             />
           )}

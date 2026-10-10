@@ -618,15 +618,15 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
               {/* 검색창 */}
               <form onSubmit={handleLawSearch} style={{ marginBottom: 12 }}>
                 <textarea
-                  rows={8}
+                  rows={3}
                   aria-label="하루LAW 질문"
                   value={lawQuery}
                   onChange={(e) => setLawQuery(e.target.value)}
                   disabled={lawLoading || uploadingLawFiles}
                   placeholder="예: 내 딸아이가 친구로부터 사이버 괴롭힘을 당하고 있어요 어떻게 하면 좋을까요?"
                   style={{
-                    width: '100%', height: 235, minHeight: 235,
-                    boxSizing: 'border-box', resize: 'vertical',
+                    width: '100%',
+                    boxSizing: 'border-box', resize: 'none',
                     padding: '10px 12px', fontSize: 16, lineHeight: '24px',
                     border: '1.5px solid #1A3C6E', borderRadius: 8,
                     outline: 'none', backgroundColor: '#FEFBE8',

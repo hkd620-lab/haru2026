@@ -3669,7 +3669,7 @@ export function PlantDetectivePage() {
                 value={obsMemo}
                 onChange={(e) => setObsMemo(e.target.value)}
                 maxLength={2000}
-                rows={2}
+                rows={3}
                 placeholder={'자유 메모\n예: 비 온 뒤 성장 속도가 빨라졌어요'}
                 style={{
                   borderRadius: 8,
