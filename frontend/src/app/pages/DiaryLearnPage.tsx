@@ -706,7 +706,7 @@ function DiaryLearnSession() {
                 backgroundColor: '#f8faff',
                 border: '1.5px solid #d0dff0',
                 borderRadius: 12,
-                resize: 'none',
+                resize: 'vertical',
                 fontFamily: 'inherit',
                 boxSizing: 'border-box',
               }}

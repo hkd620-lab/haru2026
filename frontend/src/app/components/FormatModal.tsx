@@ -4027,7 +4027,7 @@ ${contentValues.slice(0, 4100)}`,
                         borderRadius: 8,
                         backgroundColor: '#fff',
                         color: '#333',
-                        resize: 'none',
+                        resize: 'vertical',
                         fontFamily: 'inherit',
                         outline: 'none',
                       }}
@@ -4388,7 +4388,7 @@ ${contentValues.slice(0, 4100)}`,
                     width: '100%', padding: '12px 16px', fontSize: 16,
                     border: '1px solid #e5e5e5', borderRadius: 8,
                     backgroundColor: '#fff', color: '#333',
-                    resize: 'none', fontFamily: 'inherit', outline: 'none',
+                    resize: 'vertical', fontFamily: 'inherit', outline: 'none',
                   }}
                 />
               )}
@@ -5460,7 +5460,7 @@ ${contentValues.slice(0, 4100)}`,
                                     placeholder="예: HARU2026 베타테스트 참가자 5명과 UX·기능 피드백 회의 후 식사 제공"
                                     rows={3}
                                     onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, businessContextMemo: e.target.value } : en))}
-                                    style={{ lineHeight: 1.5, width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, resize: 'none', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                                    style={{ lineHeight: 1.5, width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                                   />
                                   <p style={{ margin: '5px 0 0', fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>
                                     사업 관련 지출인 이유를 간단히 기록하세요. 참석자, 회의 목적, 테스트 내용 등을 적어두면 추후 증빙 확인에 도움이 됩니다.
@@ -5560,7 +5560,7 @@ ${contentValues.slice(0, 4100)}`,
                                   placeholder="관련 메모 (선택사항)"
                                   rows={3}
                                   onChange={e => setVisibleLedgerEntries(prev => prev.map(en => en.id === entry.id ? { ...en, memo: e.target.value } : en))}
-                                  style={{ lineHeight: 1.5, width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, resize: 'none', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                                  style={{ lineHeight: 1.5, width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 7, resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                                 />
                               </div>
                             </div>
@@ -5857,7 +5857,7 @@ ${contentValues.slice(0, 4100)}`,
                                 border: '1px solid #e5e5e5', borderRadius: 8,
                                 backgroundColor: isLocked ? '#f3f4f6' : '#fff',
                                 color: isLocked ? '#6b7280' : '#333',
-                                resize: 'none', fontFamily: 'inherit', outline: 'none',
+                                resize: 'vertical', fontFamily: 'inherit', outline: 'none',
                               }}
                             />
                           </div>
@@ -5885,7 +5885,7 @@ ${contentValues.slice(0, 4100)}`,
                           width: '100%', padding: '12px 16px', fontSize: 14,
                           border: '1px solid #e5e5e5', borderRadius: 8,
                           backgroundColor: '#fff', color: '#333',
-                          resize: 'none', fontFamily: 'inherit', outline: 'none',
+                          resize: 'vertical', fontFamily: 'inherit', outline: 'none',
                         }}
                       />
                     </div>
