@@ -35,6 +35,7 @@ import {
   hasReadableHaruLawPdfHeader,
   type HaruLawUserError,
 } from '../utils/haruLawError';
+import { EnterSubmitGuard } from '../utils/questionEnterSubmit';
 
 // functions/src/index.ts 의 WEB_SEARCH_LIMITS 와 동일하게 유지할 것
 const WEB_SEARCH_LIMITS_UI: Record<string, number> = { free: 1, basic: 2, premium: 4, developer: 4 };
@@ -228,7 +229,7 @@ export function ResultChatModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [messages, setMessages] = useState<ResultChatMessage[]>([]);
   const [question, setQuestion] = useState('');
-  const questionComposingRef = useRef(false);
+  const [questionEnterGuard] = useState(() => new EnterSubmitGuard());
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [savedMemoIds, setSavedMemoIds] = useState<Record<number, string>>({});
@@ -1108,17 +1109,20 @@ export function ResultChatModal({
               onChange={(event) => setQuestion(event.target.value)}
               disabled={loading || uploadingFiles || closingAttachments || isChoicePending}
               placeholder="나의 기록을 바탕으로 자유롭게 질문해 보세요."
-              onCompositionStart={() => { questionComposingRef.current = true; }}
-              onCompositionEnd={() => { questionComposingRef.current = false; }}
+              onCompositionStart={() => questionEnterGuard.compositionStart()}
+              onCompositionEnd={(event) => questionEnterGuard.compositionEnd(event.timeStamp)}
+              onBlur={() => questionEnterGuard.reset()}
               onKeyDown={(event) => {
-                if (
-                  event.key === 'Enter' && !event.shiftKey &&
-                  !questionComposingRef.current && !event.nativeEvent.isComposing &&
-                  event.nativeEvent.keyCode !== 229
-                ) {
-                  event.preventDefault();
-                  void sendQuestion(question);
-                }
+                const decision = questionEnterGuard.decide({
+                  key: event.key,
+                  shiftKey: event.shiftKey,
+                  isComposing: event.nativeEvent.isComposing,
+                  keyCode: event.nativeEvent.keyCode,
+                  timeStamp: event.timeStamp,
+                });
+                if (decision === 'pass') return;
+                event.preventDefault();
+                if (decision === 'send') void sendQuestion(question);
               }}
               style={{
                 flex: 1,
