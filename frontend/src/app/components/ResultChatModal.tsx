@@ -1100,18 +1100,29 @@ export function ResultChatModal({
             </>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <input
+            <textarea
+              rows={3}
+              aria-label="기록·비서 AI 질문"
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
               disabled={loading || uploadingFiles || closingAttachments || isChoicePending}
               placeholder="나의 기록을 바탕으로 자유롭게 질문해 보세요."
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
               style={{
                 flex: 1,
                 minWidth: 0,
-                height: 42,
                 borderRadius: 10,
                 border: '1px solid #CBD5E1',
-                padding: '0 12px',
+                padding: '12px',
+                boxSizing: 'border-box',
+                resize: 'none',
+                lineHeight: '21px',
+                fontFamily: 'inherit',
                 fontSize: 14,
                 outline: 'none',
                 backgroundColor: '#FFFFFF',
