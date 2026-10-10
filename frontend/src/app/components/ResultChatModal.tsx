@@ -1117,7 +1117,7 @@ export function ResultChatModal({
                   event.nativeEvent.keyCode !== 229
                 ) {
                   event.preventDefault();
-                  event.currentTarget.form?.requestSubmit();
+                  void sendQuestion(question);
                 }
               }}
               style={{
