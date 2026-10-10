@@ -1,0 +1,77 @@
+app/assistants/haruLaw/HaruLawPanel.tsx:620 | textarea | rows={8} | height=235 minHeight=235 resize='vertical' lineHeight='24px' | ph="예: 내 딸아이가 친구로부터 사이버 괴롭힘을 당하고 있어요 어떻게 하면 좋을까요?" | aria="하루LAW 질문"
+app/components/BookPublishReviewModal.tsx:571 | textarea | rows={2} | cls="w-full rounded border px-2 py-1.5 text-xs outline-none" | ph={key === 'sensitive_content' ? '확인 사유를 반드시 입력하세요 (
+app/components/ExportModal.tsx:497 | textarea | rows={field.rows || 4} | resize='vertical' | ph={field.placeholder}
+app/components/ExportModal.tsx:1065 | textarea | rows={field.rows || 4} | resize='vertical' | ph={field.placeholder}
+app/components/FormatModal.tsx:4010 | textarea | rows={5} | resize='vertical' | ph={readingBookTextMode === 'photo' ? '사진에서 추출된 본문 텍스 | aria="현재 읽는 본문"
+app/components/FormatModal.tsx:4379 | textarea | rows={8} | resize='vertical' | ph="자유롭게 기록해 주세요..."
+app/components/FormatModal.tsx:5100 | textarea | rows=- | minHeight='56px' resize='none' lineHeight='1.5' | ph={FORMAT_FIELDS['일기'].find(ff => ff.key === f.key)?
+app/components/FormatModal.tsx:5454 | textarea | rows={3} | resize='vertical' | ph="예: HARU2026 베타테스트 참가자 5명과 UX·기능 피드백 회의 후 식사 제공"
+app/components/FormatModal.tsx:5554 | textarea | rows={2} | resize='vertical' | ph="관련 메모 (선택사항)"
+app/components/FormatModal.tsx:5832 | textarea | rows={field.rows || 4} | resize='vertical' | ph={field.placeholder} | aria={field.key === 'reading_journal' ? '내 독서장' : undefined}
+app/components/FormatModal.tsx:5872 | textarea | rows={field.rows || 4} | resize='vertical' | ph={field.placeholder}
+app/components/FormatModal.tsx:6563 | textarea | rows=- | minHeight='400px' resize='vertical' lineHeight=1.8 | ph="AI가 다듬은 내용을 자유롭게 수정할 수 있습니다..."
+app/components/FormatModal.tsx:6807 | textarea | rows=- | minHeight=240 resize='vertical' lineHeight=1.7 | ph=
+app/components/FormatModal.tsx:6832 | textarea | rows={3} | resize='vertical' lineHeight=1.6 | ph="짧게 적어도 충분합니다."
+app/components/FormatModal_DEBUG.tsx:515 | textarea | rows={field.rows || 4} | resize='vertical' | ph={field.placeholder}
+app/components/GrowthTimelineDocumentModal.tsx:476 | textarea | rows=- | minHeight=64 resize='vertical' lineHeight=1.5 | ph="이 순간의 설명을 적어주세요."
+app/components/ReadingAiChat.tsx:48 | textarea | rows={2} | ph="이 부분에서 궁금한 점을 적어 주세요." | aria="독서 AI 질문"
+app/components/ReadingAiChat.tsx:65 | textarea | rows={4} | ph= | aria="AI 참고 메모 제안"
+app/components/RecordModal.tsx:108 | textarea | rows=- | cls="w-full h-full min-h-[400px] p-0 border-0 resize-none focus:outline-none leading | ph={config.placeholder}
+app/components/SayuModal.tsx:125 | textarea | rows=- | minHeight='400px' resize='vertical' lineHeight=1.8 | ph=
+app/components/SayuModal.tsx:1847 | textarea | rows={3} | minHeight='72px' resize='none' lineHeight='1.6' overflow='hidden' | ph=
+app/components/SayuModal.tsx:2709 | textarea | rows={2} | resize='vertical' lineHeight=1.5 | ph="사진 설명"
+app/components/SayuModal.tsx:3048 | textarea | rows=- | minHeight='400px' resize='none' lineHeight=1.8 overflowY='hidden' | ph="SAYU 내용을 자유롭게 수정하세요..."
+app/components/SnsStoryCreator.tsx:579 | textarea | rows={12} | resize='vertical' lineHeight=1.6 | ph=
+app/components/TodayChargeSection.tsx:290 | textarea | rows={3} | cls="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" | ph=
+app/components/ui/textarea.tsx:7 | textarea | rows=- | cls={cn( "resize-none border-input placeholder:text-muted-foreground focus-visible:b | ph=
+app/pages/AssistantOnboardingDetailPage.tsx:167 | textarea | rows={4} | ph=
+app/pages/BiblePage.tsx:3344 | textarea | rows={2} | resize='none' | ph="예문을 입력하세요..."
+app/pages/BiblePage.tsx:3365 | textarea | rows={2} | resize='none' | ph="이 단어에 대한 메모를 입력하세요..."
+app/pages/BookCreate.tsx:394 | textarea | rows={8} | cls="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 resize-non | ph="노트북LM 분석 결과를 여기에 붙여넣으세요."
+app/pages/CourtDocumentHelperPage.tsx:361 | textarea | rows=- | cls="min-h-20 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ou | ph="예: 이 명령을 송달받은 날부터 7일 이내"
+app/pages/CourtDocumentHelperPage.tsx:419 | textarea | rows=- | cls="min-h-24 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ou | ph="확인한 내용이나 다음에 할 일을 적어두세요."
+app/pages/DiaryLearnPage.tsx:692 | textarea | rows=- | minHeight=220 resize='vertical' lineHeight=1.7 | ph="오늘 있었던 일이나 생각을 한글로 써보세요. (최대 1000자)"
+app/pages/ElderBookPage.tsx:306 | textarea | rows={12} | resize='vertical' lineHeight=1.8 | ph=
+app/pages/GyeongdaePreviewPage.tsx:699 | textarea | rows={4} | cls="g-textarea" | ph="오늘은 별일 없었지만 저녁에 아내와 산책했다."
+app/pages/KNewsPublisherPage.tsx:266 | textarea | rows={2} | cls="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" | ph=
+app/pages/LawsuitPracticePage.tsx:1162 | textarea | rows=- | cls="lawsuit-field min-h-[150px] resize-none leading-7" | ph={claimExample}
+app/pages/LawsuitPracticePage.tsx:1320 | textarea | rows=- | cls="lawsuit-field min-h-[190px] resize-none leading-7" | ph={`예: ${selectedCaseConfig.factPrompt}`}
+app/pages/LegalCaseDetailPage.tsx:594 | textarea | rows=- | cls="min-h-28 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ou | ph="사건 관련 메모를 입력하세요."
+app/pages/LegalCaseDetailPage.tsx:955 | textarea | rows=- | cls="min-h-24 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ou | ph=
+app/pages/LegalCasesPage.tsx:416 | textarea | rows=- | cls="min-h-24 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ou | ph="중요 확인사항을 기록하세요."
+app/pages/NovelStudio.tsx:407 | textarea | rows={2} | resize='none' lineHeight=1.6 | ph={placeholder}
+app/pages/NovelStudio.tsx:479 | textarea | rows=- | minHeight=80 resize='none' | ph="전망받고 싶은 상황을 자유롭게 입력하세요..."
+app/pages/NovelStudio.tsx:746 | textarea | rows={3} | resize='none' lineHeight=1.6 | ph="예: 이후 바다를 두려워하게 됨. 형에 대한 죄책감의 시작."
+app/pages/NovelStudio.tsx:875 | textarea | rows={2} | resize='none' lineHeight=1.6 | ph="추가 성격 설명..."
+app/pages/NovelStudio.tsx:890 | textarea | rows={2} | resize='none' lineHeight=1.6 | ph="이 인물만의 욕망 설명..."
+app/pages/NovelStudio.tsx:905 | textarea | rows={2} | resize='none' lineHeight=1.6 | ph="이 인물만의 족쇄 설명..."
+app/pages/NovelStudio.tsx:913 | textarea | rows={3} | resize='none' lineHeight=1.6 | ph="이 인물이 이야기에서 하는 역할..."
+app/pages/NovelStudio.tsx:1197 | textarea | rows=- | minHeight=72 resize='none' | ph="위에 없는 불운을 직접 입력하세요..."
+app/pages/OnyuPreviewPage.tsx:645 | textarea | rows={3} | resize='vertical' lineHeight=1.6 | ph="오늘 있었던 일을 한 줄로 적어보세요. 예) 저녁에 아내와 강변을 걸었다."
+app/pages/PetHealthSymptomPage.tsx:157 | textarea | rows={3} | resize='vertical' lineHeight=1.6 | ph="예) 밥을 안 먹고 하루 종일 누워 있어요. / 토를 두 번 했어요."
+app/pages/PetHealthVaccinePage.tsx:208 | textarea | rows={2} | resize='vertical' | ph="수의사 안내사항, 접종 후 반응 등"
+app/pages/PlantDetectivePage.tsx:2354 | textarea | rows={3} | resize='vertical' | ph="이 식물에 대한 메모를 남기세요."
+app/pages/PlantDetectivePage.tsx:2442 | textarea | rows={2} | resize='vertical' | ph="https://example.com/photo1.jpg"
+app/pages/PlantDetectivePage.tsx:3086 | textarea | rows={5} | resize='vertical' | ph="여기에 NIBR XML/JSON 응답 원문을 붙여넣으세요"
+app/pages/PlantDetectivePage.tsx:3628 | textarea | rows={3} | resize='vertical' lineHeight=1.55 | ph={ '오늘 무엇을 관찰했나요?\n예: 꽃이 처음 피었어요 / 줄기가 갑자기 많이 자랐어요'
+app/pages/PlantDetectivePage.tsx:3648 | textarea | rows={3} | resize='vertical' lineHeight=1.55 | ph={ 'AI 결과와 다른 점이 있었나요?\n예: AI는 오이라고 했지만 줄기 모양은 수세미 
+app/pages/PlantDetectivePage.tsx:3668 | textarea | rows={2} | resize='vertical' lineHeight=1.55 | ph={'자유 메모\n예: 비 온 뒤 성장 속도가 빨라졌어요'}
+app/pages/ProphecyFromRecord.tsx:719 | textarea | rows={3} | resize='none' | ph="예: 앱 개발 시작, 사업자 등록, 첫 유료 구독자"
+app/pages/ProphecyFromRecord.tsx:785 | textarea | rows={3} | resize='none' | ph={'예: 한 가장이 앱 개발을 시작했다.\n가족의 응원으로 두려움을 이겨냈다.\n작은 한 
+app/pages/ProphecyFromRecord.tsx:931 | textarea | rows={2} | resize='none' lineHeight=1.6 | ph={'예) 내가 만든 앱이 세상에 남아 누군가에게 도움이 되는 것\n또는: 아내와 함께 건강
+app/pages/ProphecyFromRecord.tsx:970 | textarea | rows={2} | resize='none' lineHeight=1.6 | ph={'예) 나이가 들수록 새로운 것에 도전하는 것이 두렵다\n또는: 시작은 잘 하는데 끝을 
+app/pages/ProphecyFromRecord.tsx:1031 | textarea | rows={2} | resize='none' lineHeight=1.6 | ph={'예) 든든한 지지자, 힘들 때 할 말은 꼭 하는 사람\n예) 포기할 수 없는 이유, 볼
+app/pages/ProphecyFromRecord.tsx:1087 | textarea | rows={2} | resize='none' lineHeight=1.6 | ph={'예) 따뜻하지만 할 말은 꼭 하는 사람\n예) 감성적이고 눈치가 빠름, 가끔 예민함'}
+app/pages/ProphecyFromRecord.tsx:1132 | textarea | rows={2} | resize='none' lineHeight=1.6 | ph={'예) 65세 생일날, 수십 년 전 포기했던 꿈이 다시 눈앞에 나타났다\n예) 건강검진에
+app/pages/ProphecyFromRecord.tsx:1172 | textarea | rows={2} | resize='none' lineHeight=1.6 | ph={'예) 앱의 첫 유료 구독자가 생겼다, 아내와 제주도 여행을 다녀왔다\n예) 오랜 친구와
+app/pages/ProphecyFromRecord.tsx:1211 | textarea | rows={2} | resize='none' lineHeight=1.6 | ph={'예) 매일 아침 30분씩 산책을 시작했다\n예) 오래 미뤄온 서재 정리를 드디어 끝냈다
+app/pages/ProphecyFromRecord.tsx:1255 | textarea | rows={2} | resize='none' lineHeight=1.6 | ph={'예) 포기를 모르는 사람의 늦은 꽃피움\n예) 평범한 일상 속에서 찾아낸 삶의 진짜 의
+app/pages/ProphecyFromRecord.tsx:1277 | textarea | rows={3} | resize='none' lineHeight=1.6 | ph={'1줄: 65세의 나는 여전히 세상을 바꾸고 싶다\n2줄: 건강과 나이라는 현실에 부딪히
+app/pages/RecordBookPage.tsx:585 | textarea | rows={12} | resize='vertical' lineHeight=1.65 | ph=
+app/pages/SayuHealthHospitalPage.tsx:201 | textarea | rows={3} | ph="예) 요즘 가슴이 답답하고 숨이 차요"
+app/pages/SayuTogetherPage.tsx:534 | textarea | rows={3} | resize='vertical' | cls="w-full" | ph="댓글을 입력하세요"
+app/pages/SettingsPage.tsx:973 | textarea | rows={3} | resize='vertical' | cls="w-full px-3 py-2 rounded-lg text-sm" | ph=
+app/pages/SettingsPage.tsx:1389 | textarea | rows={4} | resize='vertical' | cls="w-full px-4 py-3 rounded-lg text-sm" | ph="전체 사용자에게 보낼 메시지를 입력하세요..."
+app/pages/SettingsPage.tsx:1492 | textarea | rows={2} | resize='vertical' | cls="w-full px-3 py-2 rounded-lg text-sm" | ph="예) 새로운 기능이 추가되었습니다!"
+app/pages/TodayChargePublisherPage.tsx:161 | textarea | rows={4} | cls="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" | ph={contentType === 'ramen' ? '감칠맛 폭발! 김치 풍미 가득한 라면' 
+app/pages/VaultPage.tsx:633 | textarea | rows=- | cls="vault-textarea vault-textarea-lg" | ph={'은행: 카카오뱅크\n계좌번호: 3333-00-0000000\n예금주: 하루랩\n용도: 
