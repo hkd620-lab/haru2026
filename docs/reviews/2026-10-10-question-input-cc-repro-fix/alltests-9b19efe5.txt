@@ -1,0 +1,49 @@
+test/aiImportReturn.test.mjs rc=0 pass=2 fail=0
+test/aiLibraryDeletion.test.mjs rc=0 pass=2 fail=0
+test/aiLibraryPagination.test.mjs rc=0 pass=5 fail=0
+test/assistantSavedResultOpen.test.mjs rc=0 pass=19 fail=0
+test/authCallbackDiagnostics.test.mjs rc=0 pass=1 fail=0
+test/childVaccineSchedule.test.mjs rc=0 pass=4 fail=0
+test/formatRegistry.test.mjs rc=0 pass=7 fail=0
+test/growthSubject.test.mjs rc=0 pass=12 fail=0
+test/haruLawAttachmentCleanup.test.mjs rc=0 pass=1 fail=0
+test/haruLawError.test.mjs rc=0 pass=1 fail=0
+test/householdAmount.test.mjs rc=0 pass=7 fail=0
+test/householdExport.test.mjs rc=0 pass=5 fail=0
+test/ledgerAmount.test.mjs rc=0 pass=4 fail=0
+test/ledgerEmptyExport.test.mjs rc=0 pass=17 fail=0
+test/ledgerExportConsistency.test.mjs rc=0 pass=8 fail=0
+test/loginPerformanceTrace.test.mjs rc=0 pass=1 fail=0
+test/originalAssistantRecords.test.mjs rc=0 pass=11 fail=0
+test/plantDetectiveEdit.test.mjs rc=0 pass=8 fail=0
+test/plantDetectivePhotoEdit.test.mjs rc=0 pass=8 fail=0
+test/questionEnterSubmit.test.mjs rc=0 pass=11 fail=0
+test/readingAi.test.mjs rc=0 pass=11 fail=0
+test/recordPhotoPolicy.test.mjs rc=0 pass=1 fail=0
+test/recordPhotoUploadCore.test.mjs rc=0 pass=1 fail=0
+test/sayuAssistantAdapters.test.mjs rc=0 pass=6 fail=0
+test/sayuGrowthTimeline.test.mjs rc=0 pass=11 fail=0
+test/snsStoryRequestState.test.mjs rc=0 pass=1 fail=0
+test/snsThumbnailAuthCache.test.mjs rc=0 pass=1 fail=0
+test/snsThumbnailPersistentCache.test.mjs rc=0 pass=1 fail=0
+test/snsThumbnailRequestQueue.test.mjs rc=0 pass=1 fail=0
+test/snsThumbnailTieredLoad.test.mjs rc=0 pass=1 fail=0
+test/structuredAssistantRecords.test.mjs rc=0 pass=37 fail=0
+test/validateBuildEnv.test.mjs rc=0 pass=1 fail=0
+test/voidingRecordTarget.test.mjs rc=0 pass=12 fail=0
+test/aiImport.policy.test.cjs rc=0
+test/assistantEntryScroll.policy.test.cjs rc=0
+test/authCallbackAndHomePersonalization.policy.test.cjs rc=0
+test/haruLawSave.test.cjs rc=1
+test/lawEasyExplain.policy.test.cjs rc=0
+test/loginPerformanceCallsites.policy.test.cjs rc=0
+test/loginProviderStorage.policy.test.cjs rc=1
+test/notificationTimeZone.policy.test.cjs rc=0
+test/questionInputs.policy.test.cjs rc=0
+test/sayuMobileReadingUx.policy.test.cjs rc=0
+test/snsPrivateThumbnails.policy.test.cjs rc=0
+test/snsRecordsMerge.policy.test.cjs rc=0
+test/snsStoryCreator.policy.test.cjs rc=0
+test/socialLoginReturnOrigin.policy.test.cjs rc=0
+test/subscriptionDisplay.policy.test.cjs rc=0
+done

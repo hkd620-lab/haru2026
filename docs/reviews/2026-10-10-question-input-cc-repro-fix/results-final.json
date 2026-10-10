@@ -1,0 +1,1337 @@
+[
+ {
+  "ok": true,
+  "label": "[390px haruLaw] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=24 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px haruLaw] resize:none",
+  "extra": "none"
+ },
+ {
+  "ok": true,
+  "label": "[390px haruLaw] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=92 clientH=92"
+ },
+ {
+  "ok": true,
+  "label": "[390px haruLaw] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=380 clientH=92 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px haruLaw] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=692 clientH=92"
+ },
+ {
+  "ok": true,
+  "label": "[390px haruLaw] 입력량과 무관하게 높이 고정",
+  "extra": "94/94/94"
+ },
+ {
+  "ok": true,
+  "label": "[390px haruLaw] 가로 넘침 없음",
+  "extra": "scrollW=356 clientW=356"
+ },
+ {
+  "ok": true,
+  "label": "[390px haruLaw] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px haruLaw] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px readingAi] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=21 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px readingAi] resize:none",
+  "extra": "none"
+ },
+ {
+  "ok": true,
+  "label": "[390px readingAi] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=87 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[390px readingAi] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=339 clientH=87 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px readingAi] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=549 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[390px readingAi] 입력량과 무관하게 높이 고정",
+  "extra": "89/89/89"
+ },
+ {
+  "ok": true,
+  "label": "[390px readingAi] 가로 넘침 없음",
+  "extra": "scrollW=356 clientW=356"
+ },
+ {
+  "ok": true,
+  "label": "[390px readingAi] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px readingAi] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px resultChat] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=21 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px resultChat] resize:none",
+  "extra": "none"
+ },
+ {
+  "ok": true,
+  "label": "[390px resultChat] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=87 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[390px resultChat] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=339 clientH=87 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px resultChat] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=759 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[390px resultChat] 입력량과 무관하게 높이 고정",
+  "extra": "89/89/89"
+ },
+ {
+  "ok": true,
+  "label": "[390px resultChat] 가로 넘침 없음",
+  "extra": "scrollW=250 clientW=250"
+ },
+ {
+  "ok": true,
+  "label": "[390px resultChat] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px resultChat] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px novelMotive] 초기 높이 = 3줄",
+  "extra": "lines=3.026 lh=19.5 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px novelMotive] resize:none",
+  "extra": "none"
+ },
+ {
+  "ok": true,
+  "label": "[390px novelMotive] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=79 clientH=79"
+ },
+ {
+  "ok": true,
+  "label": "[390px novelMotive] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=313 clientH=79 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px novelMotive] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=469 clientH=79"
+ },
+ {
+  "ok": true,
+  "label": "[390px novelMotive] 입력량과 무관하게 높이 고정",
+  "extra": "80.5/80.5/80.5"
+ },
+ {
+  "ok": true,
+  "label": "[390px novelMotive] 가로 넘침 없음",
+  "extra": "scrollW=356 clientW=356"
+ },
+ {
+  "ok": true,
+  "label": "[390px novelMotive] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px novelMotive] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmReadingBook] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=21 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmReadingBook] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmReadingBook] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=87 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmReadingBook] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=339 clientH=87 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmReadingBook] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=549 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmReadingBook] 입력량과 무관하게 높이 고정",
+  "extra": "89/89/89"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmReadingBook] 가로 넘침 없음",
+  "extra": "scrollW=356 clientW=356"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmReadingBook] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmReadingBook] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[89,209]"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmReadingBook] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmSimple] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=24 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmSimple] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmSimple] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=96 clientH=96"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmSimple] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=384 clientH=96 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmSimple] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=696 clientH=96"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmSimple] 입력량과 무관하게 높이 고정",
+  "extra": "98/98/98"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmSimple] 가로 넘침 없음",
+  "extra": "scrollW=356 clientW=356"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmSimple] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmSimple] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[98,218]"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmSimple] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerBiz] 초기 높이 = 3줄",
+  "extra": "lines=3.026 lh=19.5 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerBiz] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerBiz] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=75 clientH=75"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerBiz] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=309 clientH=75 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerBiz] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=465 clientH=75"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerBiz] 입력량과 무관하게 높이 고정",
+  "extra": "76.5/76.5/76.5"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerBiz] 가로 넘침 없음",
+  "extra": "scrollW=356 clientW=356"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerBiz] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerBiz] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[76.5,196.5]"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerBiz] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerMemo] 초기 높이 = 3줄",
+  "extra": "lines=3.026 lh=19.5 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerMemo] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerMemo] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=75 clientH=75"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerMemo] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=309 clientH=75 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerMemo] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=465 clientH=75"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerMemo] 입력량과 무관하게 높이 고정",
+  "extra": "76.5/76.5/76.5"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerMemo] 가로 넘침 없음",
+  "extra": "scrollW=356 clientW=356"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerMemo] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerMemo] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[76.5,196.5]"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmLedgerMemo] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldJournal] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=21 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldJournal] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldJournal] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=87 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldJournal] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=339 clientH=87 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldJournal] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=549 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldJournal] 입력량과 무관하게 높이 고정",
+  "extra": "89/89/89"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldJournal] 가로 넘침 없음",
+  "extra": "scrollW=356 clientW=356"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldJournal] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldJournal] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[89,209]"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldJournal] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldGeneric] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=21 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldGeneric] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldGeneric] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=87 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldGeneric] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=339 clientH=87 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldGeneric] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=549 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldGeneric] 입력량과 무관하게 높이 고정",
+  "extra": "89/89/89"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldGeneric] 가로 넘침 없음",
+  "extra": "scrollW=356 clientW=356"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldGeneric] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldGeneric] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[89,209]"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmFieldGeneric] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px diaryLearn] 초기 높이 = 3줄",
+  "extra": "lines=3.02 lh=25.5 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px diaryLearn] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[390px diaryLearn] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=105 clientH=105"
+ },
+ {
+  "ok": true,
+  "label": "[390px diaryLearn] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=411 clientH=105 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px diaryLearn] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=717 clientH=105"
+ },
+ {
+  "ok": true,
+  "label": "[390px diaryLearn] 입력량과 무관하게 높이 고정",
+  "extra": "106.5/106.5/106.5"
+ },
+ {
+  "ok": true,
+  "label": "[390px diaryLearn] 가로 넘침 없음",
+  "extra": "scrollW=356 clientW=356"
+ },
+ {
+  "ok": true,
+  "label": "[390px diaryLearn] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px diaryLearn] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[106.5,226.5]"
+ },
+ {
+  "ok": true,
+  "label": "[390px diaryLearn] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px plantMemo] 초기 높이 = 3줄",
+  "extra": "lines=2.995 lh=21.7 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px plantMemo] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[390px plantMemo] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=85 clientH=85"
+ },
+ {
+  "ok": true,
+  "label": "[390px plantMemo] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=345 clientH=85 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px plantMemo] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=562 clientH=85"
+ },
+ {
+  "ok": true,
+  "label": "[390px plantMemo] 입력량과 무관하게 높이 고정",
+  "extra": "87.06/87.06/87.06"
+ },
+ {
+  "ok": true,
+  "label": "[390px plantMemo] 가로 넘침 없음",
+  "extra": "scrollW=356 clientW=356"
+ },
+ {
+  "ok": true,
+  "label": "[390px plantMemo] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px plantMemo] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[87.0625,207.0625]"
+ },
+ {
+  "ok": true,
+  "label": "[390px plantMemo] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmDiary] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=24 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmDiary] resize:none",
+  "extra": "none"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmDiary] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=106 clientH=106"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmDiary] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=394 clientH=106 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmDiary] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=802 clientH=106"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmDiary] 입력량과 무관하게 높이 고정",
+  "extra": "108/108/108"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmDiary] 가로 넘침 없음",
+  "extra": "scrollW=356 clientW=356"
+ },
+ {
+  "ok": true,
+  "label": "[390px fmDiary] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[390px fmDiary] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px haruLaw] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=24 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px haruLaw] resize:none",
+  "extra": "none"
+ },
+ {
+  "ok": true,
+  "label": "[1280px haruLaw] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=92 clientH=92"
+ },
+ {
+  "ok": true,
+  "label": "[1280px haruLaw] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=380 clientH=92 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px haruLaw] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=476 clientH=92"
+ },
+ {
+  "ok": true,
+  "label": "[1280px haruLaw] 입력량과 무관하게 높이 고정",
+  "extra": "94/94/94"
+ },
+ {
+  "ok": true,
+  "label": "[1280px haruLaw] 가로 넘침 없음",
+  "extra": "scrollW=526 clientW=526"
+ },
+ {
+  "ok": true,
+  "label": "[1280px haruLaw] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px haruLaw] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px readingAi] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=21 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px readingAi] resize:none",
+  "extra": "none"
+ },
+ {
+  "ok": true,
+  "label": "[1280px readingAi] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=87 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[1280px readingAi] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=339 clientH=87 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px readingAi] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=360 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[1280px readingAi] 입력량과 무관하게 높이 고정",
+  "extra": "89/89/89"
+ },
+ {
+  "ok": true,
+  "label": "[1280px readingAi] 가로 넘침 없음",
+  "extra": "scrollW=526 clientW=526"
+ },
+ {
+  "ok": true,
+  "label": "[1280px readingAi] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px readingAi] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px resultChat] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=21 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px resultChat] resize:none",
+  "extra": "none"
+ },
+ {
+  "ok": true,
+  "label": "[1280px resultChat] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=87 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[1280px resultChat] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=339 clientH=87 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px resultChat] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=444 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[1280px resultChat] 입력량과 무관하게 높이 고정",
+  "extra": "89/89/89"
+ },
+ {
+  "ok": true,
+  "label": "[1280px resultChat] 가로 넘침 없음",
+  "extra": "scrollW=420 clientW=420"
+ },
+ {
+  "ok": true,
+  "label": "[1280px resultChat] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px resultChat] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px novelMotive] 초기 높이 = 3줄",
+  "extra": "lines=3.026 lh=19.5 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px novelMotive] resize:none",
+  "extra": "none"
+ },
+ {
+  "ok": true,
+  "label": "[1280px novelMotive] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=79 clientH=79"
+ },
+ {
+  "ok": true,
+  "label": "[1280px novelMotive] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=313 clientH=79 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px novelMotive] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=313 clientH=79"
+ },
+ {
+  "ok": true,
+  "label": "[1280px novelMotive] 입력량과 무관하게 높이 고정",
+  "extra": "80.5/80.5/80.5"
+ },
+ {
+  "ok": true,
+  "label": "[1280px novelMotive] 가로 넘침 없음",
+  "extra": "scrollW=526 clientW=526"
+ },
+ {
+  "ok": true,
+  "label": "[1280px novelMotive] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px novelMotive] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmReadingBook] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=21 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmReadingBook] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmReadingBook] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=87 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmReadingBook] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=339 clientH=87 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmReadingBook] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=360 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmReadingBook] 입력량과 무관하게 높이 고정",
+  "extra": "89/89/89"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmReadingBook] 가로 넘침 없음",
+  "extra": "scrollW=526 clientW=526"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmReadingBook] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmReadingBook] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[89,209]"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmReadingBook] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmSimple] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=24 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmSimple] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmSimple] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=96 clientH=96"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmSimple] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=384 clientH=96 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmSimple] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=480 clientH=96"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmSimple] 입력량과 무관하게 높이 고정",
+  "extra": "98/98/98"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmSimple] 가로 넘침 없음",
+  "extra": "scrollW=526 clientW=526"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmSimple] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmSimple] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[98,218]"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmSimple] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerBiz] 초기 높이 = 3줄",
+  "extra": "lines=3.026 lh=19.5 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerBiz] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerBiz] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=75 clientH=75"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerBiz] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=309 clientH=75 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerBiz] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=309 clientH=75"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerBiz] 입력량과 무관하게 높이 고정",
+  "extra": "76.5/76.5/76.5"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerBiz] 가로 넘침 없음",
+  "extra": "scrollW=526 clientW=526"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerBiz] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerBiz] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[76.5,196.5]"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerBiz] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerMemo] 초기 높이 = 3줄",
+  "extra": "lines=3.026 lh=19.5 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerMemo] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerMemo] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=75 clientH=75"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerMemo] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=309 clientH=75 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerMemo] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=309 clientH=75"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerMemo] 입력량과 무관하게 높이 고정",
+  "extra": "76.5/76.5/76.5"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerMemo] 가로 넘침 없음",
+  "extra": "scrollW=526 clientW=526"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerMemo] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerMemo] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[76.5,196.5]"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmLedgerMemo] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldJournal] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=21 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldJournal] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldJournal] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=87 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldJournal] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=339 clientH=87 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldJournal] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=360 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldJournal] 입력량과 무관하게 높이 고정",
+  "extra": "89/89/89"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldJournal] 가로 넘침 없음",
+  "extra": "scrollW=526 clientW=526"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldJournal] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldJournal] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[89,209]"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldJournal] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldGeneric] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=21 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldGeneric] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldGeneric] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=87 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldGeneric] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=339 clientH=87 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldGeneric] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=360 clientH=87"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldGeneric] 입력량과 무관하게 높이 고정",
+  "extra": "89/89/89"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldGeneric] 가로 넘침 없음",
+  "extra": "scrollW=526 clientW=526"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldGeneric] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldGeneric] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[89,209]"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmFieldGeneric] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px diaryLearn] 초기 높이 = 3줄",
+  "extra": "lines=3.02 lh=25.5 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px diaryLearn] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[1280px diaryLearn] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=105 clientH=105"
+ },
+ {
+  "ok": true,
+  "label": "[1280px diaryLearn] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=411 clientH=105 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px diaryLearn] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=462 clientH=105"
+ },
+ {
+  "ok": true,
+  "label": "[1280px diaryLearn] 입력량과 무관하게 높이 고정",
+  "extra": "106.5/106.5/106.5"
+ },
+ {
+  "ok": true,
+  "label": "[1280px diaryLearn] 가로 넘침 없음",
+  "extra": "scrollW=526 clientW=526"
+ },
+ {
+  "ok": true,
+  "label": "[1280px diaryLearn] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px diaryLearn] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[106.5,226.5]"
+ },
+ {
+  "ok": true,
+  "label": "[1280px diaryLearn] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px plantMemo] 초기 높이 = 3줄",
+  "extra": "lines=2.995 lh=21.7 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px plantMemo] resize:vertical",
+  "extra": "vertical"
+ },
+ {
+  "ok": true,
+  "label": "[1280px plantMemo] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=85 clientH=85"
+ },
+ {
+  "ok": true,
+  "label": "[1280px plantMemo] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=345 clientH=85 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px plantMemo] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=367 clientH=85"
+ },
+ {
+  "ok": true,
+  "label": "[1280px plantMemo] 입력량과 무관하게 높이 고정",
+  "extra": "87.06/87.06/87.06"
+ },
+ {
+  "ok": true,
+  "label": "[1280px plantMemo] 가로 넘침 없음",
+  "extra": "scrollW=526 clientW=526"
+ },
+ {
+  "ok": true,
+  "label": "[1280px plantMemo] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px plantMemo] 세로 확장 가능(resize:vertical 상태에서 height 조정 반영)",
+  "extra": "[87.0625,207.0625]"
+ },
+ {
+  "ok": true,
+  "label": "[1280px plantMemo] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmDiary] 초기 높이 = 3줄",
+  "extra": "lines=3 lh=24 rows=3"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmDiary] resize:none",
+  "extra": "none"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmDiary] 3줄 입력 시 클리핑 없음",
+  "extra": "scrollH=106 clientH=106"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmDiary] 15줄 입력 시 내부 스크롤",
+  "extra": "scrollH=394 clientH=106 overflowY=auto"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmDiary] 긴 한 문단도 내부 스크롤",
+  "extra": "scrollH=514 clientH=106"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmDiary] 입력량과 무관하게 높이 고정",
+  "extra": "108/108/108"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmDiary] 가로 넘침 없음",
+  "extra": "scrollW=526 clientW=526"
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmDiary] 타이핑 값 보존",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "[1280px fmDiary] 페이지 오류 없음",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "Enter = 전송 1회·입력칸 비움",
+  "extra": "[\"send:\\\"안녕하세요\\\"\"]"
+ },
+ {
+  "ok": true,
+  "label": "Shift+Enter = 줄바꿈(전송 없음)",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "여러 줄 질문이 줄바꿈 포함 그대로 전송",
+  "extra": "[\"send:\\\"첫줄\\\\n둘째줄\\\"\"]"
+ },
+ {
+  "ok": true,
+  "label": "빈 입력 Enter: sendQuestion 가드가 막음(전송 0)",
+  "extra": "[\"guard-blocked:\\\"\\\"\"]"
+ },
+ {
+  "ok": true,
+  "label": "공백만 입력 Enter: 전송 0(가드)",
+  "extra": "[\"guard-blocked:\\\"   \\\"\"]"
+ },
+ {
+  "ok": true,
+  "label": "내용이 있으면 전송 버튼 활성",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "전송 버튼 클릭 전송 보존",
+  "extra": "[\"send:\\\"버튼 전송\\\"\"]"
+ },
+ {
+  "ok": true,
+  "label": "입력 비면 전송 버튼 비활성",
+  "extra": ""
+ },
+ {
+  "ok": true,
+  "label": "F1 requestSubmit 없는 브라우저에서도 Enter 전송·오류 없음",
+  "extra": "{\"log\":[\"send:\\\"구형 브라우저\\\"\"],\"errs\":[],\"typeofRS\":\"undefined\"}"
+ },
+ {
+  "ok": true,
+  "label": "F2 Chrome 순서(조합 중 keydown 229·isComposing): 전송 없음·기본 동작 유지",
+  "extra": "{\"log\":[],\"r\":{\"notPrevented\":true,\"value\":\"한\"}}"
+ },
+ {
+  "ok": true,
+  "label": "F2 Safari 순서 + keyCode 229: 전송 없음·기본 동작 유지",
+  "extra": "{\"log\":[],\"r\":{\"notPrevented\":true,\"value\":\"한\"}}"
+ },
+ {
+  "ok": true,
+  "label": "F2 compositionend 직후 keyCode 13 Enter: 전송 없음·줄바꿈 없음(기본 동작 차단)",
+  "extra": "{\"log\":[],\"r\":{\"notPrevented\":false,\"value\":\"한\"}}"
+ },
+ {
+  "ok": true,
+  "label": "F2 보호 시간(50ms) 이후 Enter는 전송",
+  "extra": "{\"log\":[\"send:\\\"한\\\"\"],\"r2\":{\"notPrevented\":false,\"value\":\"한\"}}"
+ },
+ {
+  "ok": true,
+  "label": "F2 compositionend가 오지 않은 고착 상태: Enter가 전송되지 않음(재현)",
+  "extra": "{\"log\":[],\"r\":{\"notPrevented\":true,\"value\":\"질문\"}}"
+ },
+ {
+  "ok": true,
+  "label": "F2 blur 후 고착 해제: Enter 전송",
+  "extra": "{\"log\":[\"send:\\\"질문\\\"\"],\"r3\":{\"notPrevented\":false,\"value\":\"질문\"}}"
+ },
+ {
+  "ok": true,
+  "label": "F2 CDP 실제 조합 중 Enter: 전송 없음",
+  "extra": "{\"log\":[],\"keys\":[\"keydown:Enter:13:true\"]}"
+ },
+ {
+  "ok": true,
+  "label": "F2 CDP 정상 확정 후 보호 시간이 지난 Enter: 전송",
+  "extra": "{\"log\":[\"send:\\\"하\\\\n하\\\"\"],\"keys\":[\"keydown:Enter:13:true\",\"compositionend\",\"compositionend\",\"keydown:Enter:13:false\"]}"
+ }
+]
