@@ -228,6 +228,7 @@ export function ResultChatModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [messages, setMessages] = useState<ResultChatMessage[]>([]);
   const [question, setQuestion] = useState('');
+  const questionComposingRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [savedMemoIds, setSavedMemoIds] = useState<Record<number, string>>({});
@@ -1107,8 +1108,14 @@ export function ResultChatModal({
               onChange={(event) => setQuestion(event.target.value)}
               disabled={loading || uploadingFiles || closingAttachments || isChoicePending}
               placeholder="나의 기록을 바탕으로 자유롭게 질문해 보세요."
+              onCompositionStart={() => { questionComposingRef.current = true; }}
+              onCompositionEnd={() => { questionComposingRef.current = false; }}
               onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                if (
+                  event.key === 'Enter' && !event.shiftKey &&
+                  !questionComposingRef.current && !event.nativeEvent.isComposing &&
+                  event.nativeEvent.keyCode !== 229
+                ) {
                   event.preventDefault();
                   event.currentTarget.form?.requestSubmit();
                 }
