@@ -1,0 +1,12 @@
+M01: 원본과 결과가 달라지는 입력 57건. 짧은 순 5건(입력 | 원본 | 변이):
+   지출 여행 교통 주차 맛집 | travel,finance | travel
+   구토 강아지 짖음 걱정 배변 | pet,life | pet
+   구토 강아지 짖음 걱정 배변 | pet,life | pet
+   구토 강아지 짖음 걱정 배변 | pet,life | pet
+   구토 강아지 짖음 걱정 배변 | pet,life | pet
+M03: 원본과 결과가 달라지는 입력 730건. 짧은 순 5건(입력 | 원본 | 변이):
+   수확 일본 벌레 고추 | plant,travel | plant
+   교통 일정 고추 일본 | travel,plant | travel
+   교통 일정 고추 일본 | travel,plant | travel
+   교통 일정 고추 일본 | travel,plant | travel
+   교통 일정 고추 일본 | travel,plant | travel

@@ -1,0 +1,20 @@
+OK   null           → 없음
+OK   undefined      → 없음
+OK   빈 문자열          → 없음
+OK   공백·개행          → 없음
+OK   숫자             → 없음
+OK   객체             → 없음
+OK   배열             → law
+OK   짝 없는 서로게이트     → childcare
+OK   이모지 경계         → pet
+OK   NFD 한글         → pet
+OK   제어문자·ZWSP      → 없음
+OK   전각 공백 경계       → law
+OK   긴 개행 혼합        → law
+OK   영문 대문자 혼합      → pet,childcare
+OK   formats undefined → law,life
+OK   formats [] → law,life
+OK   formats [""] → law,life
+OK   formats ["unknown"] → law,life
+OK   formats ["diary","메모"] → life,law
+OK   formats [" 하루LAW "] → law,life

@@ -1,0 +1,2028 @@
+{
+ "stress": [
+  {
+   "text": "아침 혈당이 130이 나왔다.",
+   "primary": "health",
+   "note": "조사 이",
+   "old": "health(혈당)",
+   "new": "health(혈당)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "health"
+   ],
+   "newIds": [
+    "health"
+   ]
+  },
+  {
+   "text": "혈당수치가 높아서 걱정이다.",
+   "primary": "health",
+   "note": "합성어 혈당+수치",
+   "old": "health(혈당) life(걱정)",
+   "new": "life(걱정)",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "health",
+    "life"
+   ],
+   "newIds": [
+    "life"
+   ]
+  },
+  {
+   "text": "혈압 측정을 했는데 140이었다.",
+   "primary": "health",
+   "note": "띄어쓰기",
+   "old": "health(혈압)",
+   "new": "health(혈압)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "health"
+   ],
+   "newIds": [
+    "health"
+   ]
+  },
+  {
+   "text": "혈압측정 결과가 좋지 않다.",
+   "primary": "health",
+   "note": "합성어 혈압+측정",
+   "old": "health(혈압)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "health"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "건강검진 결과를 받았다.",
+   "primary": "health",
+   "note": "정상 일치",
+   "old": "health(건강검진)",
+   "new": "health(건강검진)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "health"
+   ],
+   "newIds": [
+    "health"
+   ]
+  },
+  {
+   "text": "건강검진결과가 나왔다.",
+   "primary": "health",
+   "note": "합성어 건강검진+결과",
+   "old": "health(건강검진)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "health"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "당뇨 때문에 식단을 조절하고 있다.",
+   "primary": "health",
+   "note": "정상 일치",
+   "old": "health(당뇨·식단)",
+   "new": "health(당뇨·식단)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "health"
+   ],
+   "newIds": [
+    "health"
+   ]
+  },
+  {
+   "text": "당뇨병 진단을 받았다.",
+   "primary": "health",
+   "note": "허용 합성어",
+   "old": "health(당뇨)",
+   "new": "health(당뇨)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "health"
+   ],
+   "newIds": [
+    "health"
+   ]
+  },
+  {
+   "text": "당뇨약을 먹기 시작했다.",
+   "primary": "medicine",
+   "note": "정상 일치(약 키워드)",
+   "old": "health(당뇨) medicine(당뇨약)",
+   "new": "medicine(당뇨약)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "health",
+    "medicine"
+   ],
+   "newIds": [
+    "medicine"
+   ]
+  },
+  {
+   "text": "소변검사에서 거품뇨가 나왔다.",
+   "primary": "health",
+   "note": "소변검사 합성어, 거품뇨가 일치",
+   "old": "health(소변·거품뇨) hospital(검사)",
+   "new": "health(거품뇨)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "health",
+    "hospital"
+   ],
+   "newIds": [
+    "health"
+   ]
+  },
+  {
+   "text": "소변검사 결과가 궁금하다.",
+   "primary": "health",
+   "note": "합성어 소변+검사",
+   "old": "health(소변) hospital(검사)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "health",
+    "hospital"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "허리 통증이 심해서 병원에 갔다.",
+   "primary": "health",
+   "note": "정상 일치",
+   "old": "health(통증·허리) hospital(병원·통증)",
+   "new": "hospital(병원·통증) health(통증·허리)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "health",
+    "hospital"
+   ],
+   "newIds": [
+    "hospital",
+    "health"
+   ]
+  },
+  {
+   "text": "무릎이 아파서 운동을 쉬었다.",
+   "primary": "health",
+   "note": "약한 단어만(무릎·운동)",
+   "old": "health(무릎·운동)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "health"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "잠을 못 자서 불면증이 심하다.",
+   "primary": "health",
+   "note": "허용 합성어",
+   "old": "health(불면)",
+   "new": "health(불면)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "health"
+   ],
+   "newIds": [
+    "health"
+   ]
+  },
+  {
+   "text": "수면 부족으로 피로가 쌓였다.",
+   "primary": "health",
+   "note": "약한 단어만(수면·피로)",
+   "old": "health(수면·피로)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "health"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "두통이 심해서 진통제를 먹었다.",
+   "primary": "hospital",
+   "note": "정상 일치",
+   "old": "hospital(두통) medicine(진통제)",
+   "new": "hospital(두통) medicine(진통제)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "hospital",
+    "medicine"
+   ],
+   "newIds": [
+    "hospital",
+    "medicine"
+   ]
+  },
+  {
+   "text": "처방받은 약을 복용했다.",
+   "primary": "medicine",
+   "note": "처방+받은 활용형",
+   "old": "medicine(처방)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "medicine"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "병원에서 진료를 받고 처방전을 받았다.",
+   "primary": "hospital",
+   "note": "병원·진료 일치, 처방전 합성어",
+   "old": "hospital(병원·진료) medicine(처방)",
+   "new": "hospital(병원·진료)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "hospital",
+    "medicine"
+   ],
+   "newIds": [
+    "hospital"
+   ]
+  },
+  {
+   "text": "어머니가 어지러움을 호소하셔서 병원에 모시고 갔다.",
+   "primary": "hospital",
+   "note": "정상 일치",
+   "old": "hospital(병원·어지러움)",
+   "new": "hospital(병원·어지러움)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "hospital"
+   ],
+   "newIds": [
+    "hospital"
+   ]
+  },
+  {
+   "text": "병원예약을 했다.",
+   "primary": "hospital",
+   "note": "합성어 병원+예약",
+   "old": "hospital(병원)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "hospital"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "임대인이 보증금을 돌려주지 않는다.",
+   "primary": "law",
+   "note": "정상 일치",
+   "old": "law(보증금)",
+   "new": "law(보증금)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": [
+    "law"
+   ]
+  },
+  {
+   "text": "전세계약이 곧 만료된다.",
+   "primary": "law",
+   "note": "합성어 전세+계약",
+   "old": "law(계약)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "계약서를 꼼꼼히 읽었다.",
+   "primary": "law",
+   "note": "허용 합성어",
+   "old": "law(계약)",
+   "new": "law(계약)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": [
+    "law"
+   ]
+  },
+  {
+   "text": "계약갱신을 요구했다.",
+   "primary": "law",
+   "note": "합성어 계약+갱신",
+   "old": "law(계약)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "변호사님과 상담 일정을 잡았다.",
+   "primary": "law",
+   "note": "변호사+님 호칭",
+   "old": "law(변호사) childcare(상담) travel(일정)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "law",
+    "childcare",
+    "travel"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "변호사에게 내용증명 작성을 부탁했다.",
+   "primary": "law",
+   "note": "정상 일치",
+   "old": "law(내용증명·변호사)",
+   "new": "law(내용증명·변호사)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": [
+    "law"
+   ]
+  },
+  {
+   "text": "내용증명우편을 보냈다.",
+   "primary": "law",
+   "note": "합성어 내용증명+우편",
+   "old": "law(내용증명)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "소송중이라 신경이 곤두선다.",
+   "primary": "law",
+   "note": "소송+중",
+   "old": "law(소송)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "고소장을 제출했다.",
+   "primary": "law",
+   "note": "합성어 고소+장",
+   "old": "law(고소)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "합의금을 받기로 했다.",
+   "primary": "law",
+   "note": "합성어 합의+금",
+   "old": "law(합의)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "손해배상청구를 검토 중이다.",
+   "primary": "law",
+   "note": "합성어 손해배상+청구",
+   "old": "law(손해배상)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "차용증을 받아 두었다.",
+   "primary": "law",
+   "note": "정상 일치",
+   "old": "law(차용증)",
+   "new": "law(차용증)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": [
+    "law"
+   ]
+  },
+  {
+   "text": "빌려준 돈을 아직 못 받았다.",
+   "primary": "law",
+   "note": "정상 일치",
+   "old": "law(빌려준 돈)",
+   "new": "law(빌려준 돈)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": [
+    "law"
+   ]
+  },
+  {
+   "text": "법률사무소에 전화했다.",
+   "primary": "law",
+   "note": "합성어 법률+사무소",
+   "old": "law(법률)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "회의에서 합의가 이루어졌다.",
+   "primary": null,
+   "note": "법률과 무관한 합의(오탐 후보)",
+   "old": "law(합의)",
+   "new": "law(합의)",
+   "oldHit": null,
+   "newHit": null,
+   "oldIds": [
+    "law"
+   ],
+   "newIds": [
+    "law"
+   ]
+  },
+  {
+   "text": "이번 달 지출이 너무 많다.",
+   "primary": "finance",
+   "note": "정상 일치",
+   "old": "finance(지출)",
+   "new": "finance(지출)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "text": "카드값이 많이 나왔다.",
+   "primary": "finance",
+   "note": "약한 단어(카드)+합성어",
+   "old": "finance(카드)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "부가세 신고를 했다.",
+   "primary": "finance",
+   "note": "정상 일치",
+   "old": "finance(부가세)",
+   "new": "finance(부가세)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "text": "세금계산서를 발행했다.",
+   "primary": "finance",
+   "note": "합성어 세금+계산서",
+   "old": "finance(세금)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "통장에 입금이 되었다.",
+   "primary": "finance",
+   "note": "정상 일치",
+   "old": "finance(통장·입금)",
+   "new": "finance(통장·입금)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "text": "영수증을 모아 두었다.",
+   "primary": "finance",
+   "note": "정상 일치",
+   "old": "finance(영수증)",
+   "new": "finance(영수증)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "text": "국민연금과 건강보험료를 냈다.",
+   "primary": "finance",
+   "note": "국민연금과 일치",
+   "old": "finance(국민연금·건강보험)",
+   "new": "finance(국민연금)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "text": "텃밭에 고추를 심었다.",
+   "primary": "plant",
+   "note": "정상 일치",
+   "old": "plant(텃밭·심었다·고추)",
+   "new": "plant(텃밭·고추·심었다)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": [
+    "plant"
+   ]
+  },
+  {
+   "text": "상추가 잘 자란다.",
+   "primary": "plant",
+   "note": "정상 일치",
+   "old": "plant(상추)",
+   "new": "plant(상추)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": [
+    "plant"
+   ]
+  },
+  {
+   "text": "토마토 모종을 샀다.",
+   "primary": "plant",
+   "note": "정상 일치",
+   "old": "plant(모종)",
+   "new": "plant(모종)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": [
+    "plant"
+   ]
+  },
+  {
+   "text": "수국이 활짝 폈다.",
+   "primary": "plant",
+   "note": "정상 일치",
+   "old": "plant(수국)",
+   "new": "plant(수국)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": [
+    "plant"
+   ]
+  },
+  {
+   "text": "잎에 벌레가 생겼다.",
+   "primary": "plant",
+   "note": "약한 단어만(잎·벌레)",
+   "old": "plant(잎·벌레)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "병충해 때문에 농약을 뿌렸다.",
+   "primary": "plant",
+   "note": "정상 일치",
+   "old": "plant(병충해·농약)",
+   "new": "plant(병충해·농약)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": [
+    "plant"
+   ]
+  },
+  {
+   "text": "강아지랑 산책했다.",
+   "primary": "pet",
+   "note": "조사 랑 + 활용형",
+   "old": "pet(강아지·산책)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "강아지와 산책을 했다.",
+   "primary": "pet",
+   "note": "정상 일치",
+   "old": "pet(강아지·산책)",
+   "new": "pet(강아지·산책)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": [
+    "pet"
+   ]
+  },
+  {
+   "text": "고양이가 구토를 했다.",
+   "primary": "pet",
+   "note": "정상 일치",
+   "old": "pet(고양이·구토)",
+   "new": "pet(고양이·구토)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": [
+    "pet"
+   ]
+  },
+  {
+   "text": "고양이한테 사료를 주었다.",
+   "primary": "pet",
+   "note": "정상 일치",
+   "old": "pet(고양이·사료)",
+   "new": "pet(고양이·사료)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": [
+    "pet"
+   ]
+  },
+  {
+   "text": "반려견과의 산책이 즐겁다.",
+   "primary": "pet",
+   "note": "조사 과+의",
+   "old": "pet(반려견·산책)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "애완동물병원에 다녀왔다.",
+   "primary": "pet",
+   "note": "합성어 애완동물+병원",
+   "old": "hospital(병원) pet(애완동물·동물병원)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "hospital",
+    "pet"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "강아지가 짖어서 이웃에게 미안했다.",
+   "primary": "pet",
+   "note": "정상 일치(강아지가)",
+   "old": "pet(강아지)",
+   "new": "pet(강아지)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": [
+    "pet"
+   ]
+  },
+  {
+   "text": "아이랑 놀이터에 갔다.",
+   "primary": "childcare",
+   "note": "조사 랑",
+   "old": "childcare(아이)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "아이와 함께 책을 읽었다.",
+   "primary": "childcare",
+   "note": "정상 일치",
+   "old": "childcare(아이)",
+   "new": "childcare(아이)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": [
+    "childcare"
+   ]
+  },
+  {
+   "text": "아이가 열이 나서 걱정이다.",
+   "primary": "childcare",
+   "note": "정상 일치",
+   "old": "life(걱정) childcare(아이)",
+   "new": "life(걱정) childcare(아이)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "life",
+    "childcare"
+   ],
+   "newIds": [
+    "life",
+    "childcare"
+   ]
+  },
+  {
+   "text": "학교 선생님과 상담했다.",
+   "primary": "childcare",
+   "note": "정상 일치",
+   "old": "childcare(학교·상담·선생님)",
+   "new": "childcare(학교·선생님)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": [
+    "childcare"
+   ]
+  },
+  {
+   "text": "아이들이 학교에서 돌아왔다.",
+   "primary": "childcare",
+   "note": "정상 일치(복수형)",
+   "old": "childcare(아이·학교)",
+   "new": "childcare(아이·학교)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": [
+    "childcare"
+   ]
+  },
+  {
+   "text": "아이디어 회의를 했다.",
+   "primary": null,
+   "note": "낱말 일부(오탐 차단 대상)",
+   "old": "childcare(아이)",
+   "new": "없음",
+   "oldHit": null,
+   "newHit": null,
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "육아 때문에 피곤하다.",
+   "primary": "childcare",
+   "note": "정상 일치",
+   "old": "childcare(육아)",
+   "new": "childcare(육아)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": [
+    "childcare"
+   ]
+  },
+  {
+   "text": "자녀 교육 문제로 고민이다.",
+   "primary": "childcare",
+   "note": "정상 일치",
+   "old": "life(고민·문제) childcare(자녀·교육)",
+   "new": "childcare(자녀·교육) life(고민·문제)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "life",
+    "childcare"
+   ],
+   "newIds": [
+    "childcare",
+    "life"
+   ]
+  },
+  {
+   "text": "제주도 여행을 계획했다.",
+   "primary": "travel",
+   "note": "허용 합성어",
+   "old": "life(계획) travel(여행·제주)",
+   "new": "travel(여행·제주)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "life",
+    "travel"
+   ],
+   "newIds": [
+    "travel"
+   ]
+  },
+  {
+   "text": "오사카 여행 숙소를 예약했다.",
+   "primary": "travel",
+   "note": "정상 일치",
+   "old": "travel(여행·숙소·오사카)",
+   "new": "travel(여행·숙소·오사카)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "travel"
+   ],
+   "newIds": [
+    "travel"
+   ]
+  },
+  {
+   "text": "비행기표를 샀다.",
+   "primary": "travel",
+   "note": "합성어 비행기+표",
+   "old": "travel(비행기)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "travel"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "여행계획을 세웠다.",
+   "primary": "travel",
+   "note": "합성어 여행+계획",
+   "old": "life(계획) travel(여행)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "life",
+    "travel"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "설악산 단풍 구경을 갔다.",
+   "primary": "travel",
+   "note": "정상 일치",
+   "old": "travel(설악산)",
+   "new": "travel(설악산)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "travel"
+   ],
+   "newIds": [
+    "travel"
+   ]
+  },
+  {
+   "text": "렌터카를 빌렸다.",
+   "primary": "travel",
+   "note": "정상 일치",
+   "old": "travel(렌터카)",
+   "new": "travel(렌터카)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "travel"
+   ],
+   "newIds": [
+    "travel"
+   ]
+  },
+  {
+   "text": "일본여행을 다녀왔다.",
+   "primary": "travel",
+   "note": "합성어 일본+여행",
+   "old": "travel(여행·일본)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "travel"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "요즘 불안해서 잠이 안 온다.",
+   "primary": "life",
+   "note": "허용 활용형",
+   "old": "life(불안)",
+   "new": "life(불안)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "life"
+   ],
+   "newIds": [
+    "life"
+   ]
+  },
+  {
+   "text": "고민이 많아졌다.",
+   "primary": "life",
+   "note": "정상 일치",
+   "old": "life(고민)",
+   "new": "life(고민)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "life"
+   ],
+   "newIds": [
+    "life"
+   ]
+  },
+  {
+   "text": "이직을 고민 중이다.",
+   "primary": "life",
+   "note": "정상 일치",
+   "old": "life(고민)",
+   "new": "life(고민)",
+   "oldHit": true,
+   "newHit": true,
+   "oldIds": [
+    "life"
+   ],
+   "newIds": [
+    "life"
+   ]
+  },
+  {
+   "text": "걱정스럽다.",
+   "primary": "life",
+   "note": "활용형 걱정스럽다",
+   "old": "life(걱정)",
+   "new": "없음",
+   "oldHit": true,
+   "newHit": false,
+   "oldIds": [
+    "life"
+   ],
+   "newIds": []
+  },
+  {
+   "text": "내일 할 일을 정리했다.",
+   "primary": null,
+   "note": "약한 단어만",
+   "old": "life(정리)",
+   "new": "없음",
+   "oldHit": null,
+   "newHit": null,
+   "oldIds": [
+    "life"
+   ],
+   "newIds": []
+  }
+ ],
+ "persona": [
+  {
+   "file": "p01-diary.mjs",
+   "text": "오늘 학교에서 아이들이랑 가을 소풍 준비를 했다. 반 아이들이 도시락 메뉴 얘기를 하느라 정신이 없었다. 퇴근하고 나니 목이 좀 아프다.",
+   "old": "life(준비) childcare(아이·학교)",
+   "new": "childcare(아이·학교)",
+   "oldIds": [
+    "life",
+    "childcare"
+   ],
+   "newIds": [
+    "childcare"
+   ]
+  },
+  {
+   "file": "p01-diary.mjs",
+   "text": "오늘 학교 화단에서 코스모스가 피었다. 아이들이 신기해서 한참을 들여다봤다. 사진을 찍어 두었다.",
+   "old": "childcare(아이·학교) travel(코스)",
+   "new": "childcare(아이·학교)",
+   "oldIds": [
+    "childcare",
+    "travel"
+   ],
+   "newIds": [
+    "childcare"
+   ]
+  },
+  {
+   "file": "p01-diary.mjs",
+   "text": "홈 상단의 \"연속 기록 12일째\"·\"어젯밤 적어두신 ‘텃밭일지’\" 등이 실제 기록과 무관한 고정 문구다",
+   "old": "plant(텃밭)",
+   "new": "없음",
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p01-diary.mjs",
+   "text": "AI 다듬기 1회에 서버가 Gemini를 3번 부르는데, 저장 경로에서 통계·한마디 결과가 쓰이지 않는다 (비용 확인 권장)",
+   "old": "finance(비용)",
+   "new": "없음",
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p01-diary.mjs",
+   "text": "교사의 학급 일기에 육아일기 변환을 추천한다(맥락 검토 제안)",
+   "old": "childcare(육아)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p06-child.mjs",
+   "text": "놀이터에서 친구에게 장난감을 건넸다.",
+   "old": "childcare(친구)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p08-child.mjs",
+   "text": "14개월 아들 \"하준\"의 하루를 항목별로 꼼꼼히 남기고, 사진과 함께 성장 기록으로 모아 두고 싶다.",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p08-child.mjs",
+   "text": "1일차: 처음 사용 — 프리미엄 5칸 작성, 성장 대상 \"하준\"(생년월일·성별) 새로 등록, 사진 2장",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p08-child.mjs",
+   "text": "집 앞 공원을 짧게 산책했다",
+   "old": "pet(산책)",
+   "new": "없음",
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p08-child.mjs",
+   "text": "형식이 [\"육아일기\"] 로 저장된다",
+   "old": "childcare(육아)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p08-child.mjs",
+   "text": "기록에 성장 대상 정보(growthSubjectId·이름)가 연결된다",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p08-child.mjs",
+   "text": "기록 4건마다 성장 대상 하위 entries 문서가 생긴다",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p08-child.mjs",
+   "text": "성장타임라인용 library 색인이 만들어진다",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p08-child.mjs",
+   "text": "내 기록(SAYU) 육아일기 묶음 점검",
+   "old": "childcare(육아)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p08-child.mjs",
+   "text": "HARU타임라인은 갤러리에서 사진을 새로 고르는 화면이라, 육아일기로 쌓은 아이 기록과 이어지지 않는다",
+   "old": "childcare(아이·육아)",
+   "new": "childcare(아이)",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": [
+    "childcare"
+   ]
+  },
+  {
+   "file": "p08-child.mjs",
+   "text": "육아일기에서 아이 \"하준\"을 등록하고 4일간 사진·기록을 남겼지만, 홈의 HARU타임라인을 열면 \"새 성장타임라인 만들기(사진 선택)\"만 나오고 하준의 기록·사진을 불러오는 선택지가 보이지 않는다.",
+   "old": "childcare(아이·육아·성장)",
+   "new": "childcare(아이)",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": [
+    "childcare"
+   ]
+  },
+  {
+   "file": "p11-household.mjs",
+   "text": "어디서 → 어디로 (예: 급여통장 → 생활비통장)",
+   "old": "finance(통장)",
+   "new": "없음",
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p13-household.mjs",
+   "text": "월급·카드값·구독료를 한 곳에 적어 두고 이번 달에 얼마 썼는지 한눈에 보고 싶다.",
+   "old": "finance(카드)",
+   "new": "없음",
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p13-household.mjs",
+   "text": "1일차: 홈의 HARU가계부 카드 → 가계부 화면 → \"첫 기록 추가\"로 월급·지출 3건·계좌이체 1건을 한 번에 입력해 저장하고, 위쪽 합계가 맞는지 확인",
+   "old": "finance(지출·카드·계좌)",
+   "new": "finance(지출·카드)",
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "file": "p13-household.mjs",
+   "text": "HARU가계부 카드를 누르면 가계부 화면(/household)이 열린다",
+   "old": "finance(카드)",
+   "new": "없음",
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p13-household.mjs",
+   "text": "수지(수입−지출)가 2,771,950원이다 — 내 통장끼리 이체는 수지를 바꾸지 않아야 한다",
+   "old": "finance(지출·수입·통장)",
+   "new": "finance(지출·수입)",
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "file": "p13-household.mjs",
+   "text": "이체가 \"충전\"으로 전체수입·수지에 더해져, 안내 예시대로 내 통장끼리 옮기면 합계가 부풀려 보인다",
+   "old": "finance(수입·통장)",
+   "new": "없음",
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p14-ledger.mjs",
+   "text": "동네 카페 사장님(개인사업자)",
+   "old": "finance(사업자)",
+   "new": "없음",
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p14-ledger.mjs",
+   "text": "1일차(10/1 월초 정리): 지난달 말(9/28~9/30) 거래 3건을 입력 — 카드 매출, 원두 매입(세금계산서), 전기요금",
+   "old": "life(정리) finance(매출·세금·카드)",
+   "new": "finance(매출·카드)",
+   "oldIds": [
+    "life",
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "file": "p14-ledger.mjs",
+   "text": "3일차(10/7): 기록합본 화면에서 보조장부 엑셀 저장(이번달/전체), 부가세 신고 준비(2기 예정·10월), 종합소득세 준비를 확인",
+   "old": "life(준비) finance(부가세)",
+   "new": "finance(부가세)",
+   "oldIds": [
+    "life",
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "file": "p14-ledger.mjs",
+   "text": "상세 시트의 부가세공제 열이 입력한 \"불공제\"를 따른다",
+   "old": "finance(부가세)",
+   "new": "없음",
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p14-ledger.mjs",
+   "text": "엑셀의 \"부가세공제\" 열이 입력한 공제 여부를 무시하고 거래처·분류로 짐작한 값을 쓴다",
+   "old": "finance(부가세)",
+   "new": "없음",
+   "oldIds": [
+    "finance"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p14-ledger.mjs",
+   "text": "3일차 부가세 신고 준비 — 2기 예정(7~9월) 집계",
+   "old": "life(준비) finance(부가세)",
+   "new": "finance(부가세)",
+   "oldIds": [
+    "life",
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "file": "p14-ledger.mjs",
+   "text": "부가세 신고 준비 집계가 \"2026.09.28\" 형식으로 입력한 거래를 한 건도 세지 못한다",
+   "old": "life(준비) finance(부가세)",
+   "new": "finance(부가세)",
+   "oldIds": [
+    "life",
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "file": "p14-ledger.mjs",
+   "text": "3일차 부가세 신고 준비 — 10월 직접 지정 집계",
+   "old": "life(준비) finance(부가세)",
+   "new": "finance(부가세)",
+   "oldIds": [
+    "life",
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "file": "p14-ledger.mjs",
+   "text": "3일차 종합소득세 준비 — 10월 집계",
+   "old": "life(준비)",
+   "new": "없음",
+   "oldIds": [
+    "life"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p14-ledger.mjs",
+   "text": "종합소득세 준비의 총 수입이 10월 사업 매출 합계(1,430,000원)와 같다",
+   "old": "life(준비) finance(수입·매출)",
+   "new": "finance(수입·매출)",
+   "oldIds": [
+    "life",
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "file": "p14-ledger.mjs",
+   "text": "3일차 부가세 준비자료 XLSX 저장(10월)",
+   "old": "life(준비) finance(부가세)",
+   "new": "finance(부가세)",
+   "oldIds": [
+    "life",
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "file": "p14-ledger.mjs",
+   "text": "부가세 준비자료 엑셀이 내려받아진다",
+   "old": "life(준비) finance(부가세)",
+   "new": "finance(부가세)",
+   "oldIds": [
+    "life",
+    "finance"
+   ],
+   "newIds": [
+    "finance"
+   ]
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "주말마다 배추·무·갓 키우는 과정을 사진과 함께 적어 두고, 작물별로 어떻게 자랐는지 나중에 보고 싶다.",
+   "old": "plant(작물)",
+   "new": "없음",
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "1일차(토): 처음 사용 — 간편 기록, 성장대상 \"배추\" 새로 추가, 사진 1장",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "2일차(일): 작물 목록에 배추·무·갓을 넣고 프리미엄 6칸 기록, 성장대상은 \"기존 대상 선택\"에서 배추",
+   "old": "plant(작물) childcare(성장)",
+   "new": "plant(작물)",
+   "oldIds": [
+    "plant",
+    "childcare"
+   ],
+   "newIds": [
+    "plant"
+   ]
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "4일차(화): 사진 5장을 한꺼번에 고르기(최대 3장), 성장대상 목록에서 배추 고르기",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "모종 20포기를 두 줄로 심었다.\n물을 흠뻑 주고 부직포를 덮어 주었다.",
+   "old": "plant(심었다·모종)",
+   "new": "plant(모종·심었다)",
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": [
+    "plant"
+   ]
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "배추에 물을 주고 잎에 붙은 벌레를 손으로 잡았다.",
+   "old": "plant(잎·벌레)",
+   "new": "없음",
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "벌레 구멍이 여러 개 보인다. 약은 치지 않았다.",
+   "old": "plant(벌레)",
+   "new": "없음",
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "밤새 비가 와서 흙이 촉촉하다. 배추 잎이 한층 푸르게 올라왔다.",
+   "old": "plant(잎)",
+   "new": "없음",
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "갓 씨앗을 뿌리고 얇게 흙을 덮었다. 모종 사이사이 빈틈에 심었다.",
+   "old": "plant(심었다·모종)",
+   "new": "plant(모종·심었다)",
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": [
+    "plant"
+   ]
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "형식이 [\"텃밭일지\"] 로 저장된다",
+   "old": "plant(텃밭)",
+   "new": "없음",
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "기록에 성장 대상(작물) 정보가 연결된다",
+   "old": "plant(작물) childcare(성장)",
+   "new": "plant(작물)",
+   "oldIds": [
+    "plant",
+    "childcare"
+   ],
+   "newIds": [
+    "plant"
+   ]
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "성장 대상(작물) 데이터 점검",
+   "old": "plant(작물) childcare(성장)",
+   "new": "plant(작물)",
+   "oldIds": [
+    "plant",
+    "childcare"
+   ],
+   "newIds": [
+    "plant"
+   ]
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "텃밭일지도 같은 이름을 \"새 대상 추가\"에 다시 쓰면 같은 작물이 따로 등록된다(육아일기는 최근 수정으로 막힘)",
+   "old": "plant(텃밭·작물) childcare(육아)",
+   "new": "plant(작물)",
+   "oldIds": [
+    "plant",
+    "childcare"
+   ],
+   "newIds": [
+    "plant"
+   ]
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "기록 5건마다 성장 대상 하위 entries 문서가 생긴다",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "내 기록(SAYU) 텃밭일지 묶음 점검",
+   "old": "plant(텃밭)",
+   "new": "없음",
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p15-garden.mjs",
+   "text": "작물 정보 없이 저장한 옛 텃밭일지를 열면 \"지금의\" 작물 목록이 그 기록의 작물로 채워진다",
+   "old": "plant(텃밭·작물)",
+   "new": "plant(작물)",
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": [
+    "plant"
+   ]
+  },
+  {
+   "file": "p16-travel.mjs",
+   "text": "4일차(10/4, 귀국 후): 어제(3일차) 못 쓴 저녁 일정을 \"어제 날짜\"로 남기려 해 본다",
+   "old": "travel(일정)",
+   "new": "없음",
+   "oldIds": [
+    "travel"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p16-travel.mjs",
+   "text": "마무리: 내 기록(SAYU) 목록·달력에서 여행기록 모음 확인",
+   "old": "travel(여행)",
+   "new": "없음",
+   "oldIds": [
+    "travel"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p16-travel.mjs",
+   "text": "오전 11시 제주공항 도착, 렌터카 수령\n오후 2시 협재해변 산책",
+   "old": "travel(렌터카·제주) pet(산책)",
+   "new": "travel(렌터카)",
+   "oldIds": [
+    "travel",
+    "pet"
+   ],
+   "newIds": [
+    "travel"
+   ]
+  },
+  {
+   "file": "p16-travel.mjs",
+   "text": "형식이 [\"여행기록\"] 로 저장된다",
+   "old": "travel(여행)",
+   "new": "없음",
+   "oldIds": [
+    "travel"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p16-travel.mjs",
+   "text": "내 기록(SAYU) 여행기록 묶음 점검",
+   "old": "travel(여행)",
+   "new": "없음",
+   "oldIds": [
+    "travel"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p17-essay.mjs",
+   "text": "회의 전에 창밖의 나무를 보며 오늘의 일정을 천천히 정리했다.",
+   "old": "life(정리) travel(일정)",
+   "new": "없음",
+   "oldIds": [
+    "life",
+    "travel"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p18-memo.mjs",
+   "text": "내일 08:30 친구에게 초안 보내기\n[ ] 참고 자료 링크 정리",
+   "old": "life(정리) childcare(친구)",
+   "new": "없음",
+   "oldIds": [
+    "life",
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p19-work.mjs",
+   "text": "동료의 설명 덕분에 막힌 문제를 풀었다. 💼",
+   "old": "life(문제)",
+   "new": "없음",
+   "oldIds": [
+    "life"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p20-pet.mjs",
+   "text": "뭉치의 접종과 산책을 이름·사진과 함께 보존한다.",
+   "old": "pet(산책)",
+   "new": "없음",
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p20-pet.mjs",
+   "text": "뭉치와 30분 산책했다.\n물 200ml를 마셨다. 🐾",
+   "old": "pet(산책)",
+   "new": "없음",
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p20-pet.mjs",
+   "text": "식욕 회복, 체중 5.2kg",
+   "old": "health(체중)",
+   "new": "없음",
+   "oldIds": [
+    "health"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p20-pet.mjs",
+   "text": "접종 후 잠이 많았다. 체중 5.2kg",
+   "old": "health(체중)",
+   "new": "없음",
+   "oldIds": [
+    "health"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p20-pet.mjs",
+   "text": "앉아 신호에 반응했다.\n짖음 2회",
+   "old": "pet(짖음)",
+   "new": "없음",
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p20-pet.mjs",
+   "text": "산책 20분, 물 250ml",
+   "old": "pet(산책)",
+   "new": "없음",
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p20-pet.mjs",
+   "text": "예방접종 1회, 산책은 쉬었다.",
+   "old": "pet(산책·예방접종)",
+   "new": "없음",
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p21-reading.mjs",
+   "text": "질문을 먼저 적고 이유를 찾았다.\n첫 장의 개념을 내 말로 정리했다.",
+   "old": "life(정리)",
+   "new": "없음",
+   "oldIds": [
+    "life"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p22-growth.mjs",
+   "text": "홈 비서 → 건강정보 동의 → 성장기록",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p22-growth.mjs",
+   "text": "홈 → 우리아이건강돌봄 → 성장기록·동의",
+   "old": "childcare(아이·성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p22-growth.mjs",
+   "text": "성장기록 화면으로 이동한다",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p22-growth.mjs",
+   "text": "0·음수 성장 측정값은 저장되지 않는다",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p22-growth.mjs",
+   "text": "성장기록이 0·음수 측정값을 검증하지 않고 저장한다",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p22-growth.mjs",
+   "text": "성장기록 형식과 records 저장 경로가 유지된다",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p25-timeline.mjs",
+   "text": "인쇄 후 임시 포털을 정리한다",
+   "old": "life(정리)",
+   "new": "없음",
+   "oldIds": [
+    "life"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p26-prophecy.mjs",
+   "text": "합성 기존 일기 2편 준비·단일 선택",
+   "old": "life(준비)",
+   "new": "없음",
+   "oldIds": [
+    "life"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p26-prophecy.mjs",
+   "text": "아침 산책을 계속하고 싶다.",
+   "old": "pet(산책)",
+   "new": "없음",
+   "oldIds": [
+    "pet"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p27-lawsuit.mjs",
+   "text": "홈·초보 안내·법률정보 동의·인증 연습",
+   "old": "law(법률)",
+   "new": "없음",
+   "oldIds": [
+    "law"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p27-lawsuit.mjs",
+   "text": "제출준비 사건 저장·재접속·격리",
+   "old": "life(준비)",
+   "new": "없음",
+   "oldIds": [
+    "life"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p27-lawsuit.mjs",
+   "text": "전자소송 작성 연습 계속하기",
+   "old": "law(소송)",
+   "new": "없음",
+   "oldIds": [
+    "law"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p27-lawsuit.mjs",
+   "text": "제출준비 상태와 연습 기록으로 저장한다",
+   "old": "life(준비)",
+   "new": "없음",
+   "oldIds": [
+    "life"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p28-english.mjs",
+   "text": "한글 직접 작성과 기존 일기 학습에서 입력 한도·오류·저장·번역 캐시 흐름을 확인한다.",
+   "old": "childcare(학습)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p28-english.mjs",
+   "text": "🌐 영어로 번역하여 학습하기",
+   "old": "childcare(학습)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p30-plant.mjs",
+   "text": "홈 → 식물탐정·빈 사진·추가",
+   "old": "plant(식물)",
+   "new": "없음",
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p30-plant.mjs",
+   "text": "잎 두 장이 새로 나왔다. 🌱\n물을 주었다.",
+   "old": "plant(잎)",
+   "new": "없음",
+   "oldIds": [
+    "plant"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p30-plant.mjs",
+   "text": "자유 메모\n예: 비 온 뒤 성장 속도가 빨라졌어요",
+   "old": "childcare(성장)",
+   "new": "없음",
+   "oldIds": [
+    "childcare"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p32-pethealth.mjs",
+   "text": "증상·먹거리 모의 실패·접종 필수입력·저장·한국시간 새벽 날짜를 확인한다.",
+   "old": "hospital(증상) finance(수입)",
+   "new": "hospital(증상)",
+   "oldIds": [
+    "hospital",
+    "finance"
+   ],
+   "newIds": [
+    "hospital"
+   ]
+  },
+  {
+   "file": "p32-pethealth.mjs",
+   "text": "접종 필수값·원문·일정 저장",
+   "old": "travel(일정)",
+   "new": "없음",
+   "oldIds": [
+    "travel"
+   ],
+   "newIds": []
+  },
+  {
+   "file": "p32-pethealth.mjs",
+   "text": "입력 날짜·다음 일정·병원·메모 보존",
+   "old": "hospital(병원) travel(일정)",
+   "new": "hospital(병원)",
+   "oldIds": [
+    "hospital",
+    "travel"
+   ],
+   "newIds": [
+    "hospital"
+   ]
+  }
+ ]
+}
