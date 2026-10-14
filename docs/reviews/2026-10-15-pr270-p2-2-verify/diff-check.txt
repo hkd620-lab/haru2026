@@ -1,0 +1,8 @@
+# git diff --check HEAD~1..HEAD (P2-2 커밋 84363132c2a01dd9790ca410f6f63e90deafe57d) — 깨끗, 종료 코드 0
+
+ frontend/src/app/utils/assistantRecommendations.ts | 16 ++++++++++---
+ frontend/test/assistantRecommendations.test.mjs    | 28 ++++++++++++++++++++++
+ 2 files changed, 41 insertions(+), 3 deletions(-)
+
+M	frontend/src/app/utils/assistantRecommendations.ts
+M	frontend/test/assistantRecommendations.test.mjs

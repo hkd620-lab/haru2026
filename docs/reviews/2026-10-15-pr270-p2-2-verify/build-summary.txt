@@ -1,0 +1,6 @@
+# frontend 빌드 (더미 VITE_FIREBASE_*·VITE_AI_LIBRARY_FIREBASE_* 12개, 운영 환경 변수 빌드 아님)
+# 명령: npm run build -- --outDir <임시 폴더> --emptyOutDir  (대상: P2-2 커밋 84363132 소스, 빌드는 커밋 직전 같은 작업 트리에서 실행)
+build exit=0 elapsed=90s
+✓ built in 1m 18s
+precache  781 entries (19827.08 KiB)
+files generated
