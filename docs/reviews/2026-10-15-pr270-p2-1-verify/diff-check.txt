@@ -1,0 +1,1 @@
+git diff --check 1dacf47c HEAD: clean (exit 0)
