@@ -130,6 +130,58 @@ test('분야가 분명한 일상 합성어도 추천을 유지한다', () => {
   assert.deepEqual(ids('당뇨병과 불면증으로 힘들었다.'), ['health']);
 });
 
+// 독립 1회차 P2-3이 권고한 상위 빈도 합성어·한자어 활용형 22개만 닫힌 목록으로 허용한다. 기존 키워드의 비서에 그대로 연결한다.
+const COMPOUND_FORMS = [
+  ['전세보증금', 'law'], ['월세보증금', 'law'],
+  ['민사소송', 'law'], ['행정소송', 'law'], ['형사소송', 'law'],
+  ['합의서', 'law'], ['고소장', 'law'], ['내용증명우편', 'law'], ['손해배상청구', 'law'],
+  ['고소했다', 'law'], ['고발했다', 'law'], ['합의했다', 'law'],
+  ['고혈압', 'health'], ['저혈압', 'health'], ['고혈당', 'health'], ['저혈당', 'health'], ['공복혈당', 'health'], ['식후혈당', 'health'],
+  ['건강보험료', 'finance'], ['현금영수증', 'finance'], ['입금했다', 'finance'], ['입금되었다', 'finance'],
+];
+
+test('상위 빈도 합성어·한자어 활용형 22개는 해당 비서에 연결된다', () => {
+  assert.equal(COMPOUND_FORMS.length, 22);
+  for (const [form, id] of COMPOUND_FORMS) assert.deepEqual(ids(`요즘 ${form}.`), [id], form);
+});
+
+test('합성어·한자어 활용형에 조사가 붙은 대표 문장을 인식한다', () => {
+  for (const [text, expected] of [
+    ['상대방을 고소했다', ['law']],
+    ['상대방을 고발했다', ['law']],
+    ['상대방과 합의했다', ['law']],
+    ['합의서를 작성했다', ['law']],
+    ['고소장을 접수했다', ['law']],
+    ['전세보증금을 돌려받지 못했다', ['law']],
+    ['월세보증금 문제로 다퉜다', ['law']],
+    ['민사소송을 준비 중이다', ['law']],
+    ['행정소송을 검토한다', ['law']],
+    ['형사소송은 오래 걸린다', ['law']],
+    ['내용증명우편을 보냈다', ['law']],
+    ['손해배상청구를 검토 중이다', ['law']],
+    ['공복혈당이 140이 나왔다', ['health']],
+    ['식후혈당이 높다', ['health']],
+    ['저혈당이 왔다', ['health']],
+    ['고혈당이 계속된다', ['health']],
+    ['고혈압 진단을 받았다', ['health']],
+    ['고혈압 약을 먹고 있다', ['health']],
+    ['저혈압이 있다', ['health']],
+    ['월급이 입금되었다', ['finance']],
+    ['거래처에 입금했다', ['finance']],
+    ['계약금을 입금했다', ['finance']],
+    ['건강보험료가 올랐다', ['finance']],
+    ['현금영수증을 발급받았다', ['finance']],
+  ]) assert.deepEqual(ids(text), expected, text);
+});
+
+test('합성어 허용 목록은 닫혀 있어 접두·접미 임의 확대와 한자어+하다/되다 일반화를 막는다', () => {
+  for (const [form] of COMPOUND_FORMS) {
+    assert.deepEqual(ids(`요즘 쿠${form}.`), [], `쿠${form}`);
+    assert.deepEqual(ids(`요즘 ${form}쿠.`), [], `${form}쿠`);
+  }
+  for (const word of ['입금하다', '입금됐다', '고발되었다', '합의되었다']) assert.deepEqual(ids(`요즘 ${word}.`), [], word);
+});
+
 test('점수가 형식 우선순위보다 먼저 적용된다', () => {
   assert.deepEqual(ids('소송 임대차 보증금 고민', ['메모']), ['law']);
   assert.deepEqual(ids('소송 임대차 고민 걱정', ['메모']), ['life', 'law']);
