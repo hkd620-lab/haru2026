@@ -1,0 +1,8 @@
+keys total old/new: 11 22
+new keys: 소송 합의 고소 고발 내용증명 손해배상 혈압 혈당 건강보험 영수증 입금
+changed existing keys: 보증금
+added count: 22 (expected 22) | removed: 0
+added == requested 22 (set equality): true
+duplicates inside any array: none
+added by key: 보증금:전세보증금 보증금:월세보증금 소송:민사소송 소송:행정소송 소송:형사소송 합의:합의서 합의:합의했다 고소:고소장 고소:고소했다 고발:고발했다 내용증명:내용증명우편 손해배상:손해배상청구 혈압:고혈압 혈압:저혈압 혈당:고혈당 혈당:저혈당 혈당:공복혈당 혈당:식후혈당 건강보험:건강보험료 영수증:현금영수증 입금:입금했다 입금:입금되었다
+keys not found as rule keyword strings: none

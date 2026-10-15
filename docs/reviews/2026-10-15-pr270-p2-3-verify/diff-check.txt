@@ -1,0 +1,8 @@
+# git diff --check (작업 트리 대 84363132) — 깨끗, 종료 코드 0
+
+ frontend/src/app/utils/assistantRecommendations.ts | 14 +++++-
+ frontend/test/assistantRecommendations.test.mjs    | 52 ++++++++++++++++++++++
+ 2 files changed, 65 insertions(+), 1 deletion(-)
+
+M	frontend/src/app/utils/assistantRecommendations.ts
+M	frontend/test/assistantRecommendations.test.mjs
