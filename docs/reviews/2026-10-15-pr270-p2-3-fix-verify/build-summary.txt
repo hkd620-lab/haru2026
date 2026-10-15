@@ -1,0 +1,11 @@
+# 프론트 빌드 요약(더미 환경 변수, 운영 환경 변수 빌드 아님)
+# 시작(UTC): 2026-10-15T12:41:26Z
+# 대상: 커밋 전 작업 트리(부모 bdefa3f8 + 변경 2파일)
+# 명령: cd frontend && env VITE_FIREBASE_*(6)·VITE_AI_LIBRARY_FIREBASE_*(6) 더미값 12개 npm run build -- --outDir <임시 폴더> --emptyOutDir
+# 결과: build exit=0 elapsed=74s
+# --- 로그 발췌(오류·실패 줄 검색 포함) ---
+14:vite v6.4.3 building for production...
+16:✓ 3525 modules transformed.
+822:✓ built in 1m 11s
+826:precache  781 entries (19827.93 KiB)
+# --- 로그 전체 줄 수: 829 ---

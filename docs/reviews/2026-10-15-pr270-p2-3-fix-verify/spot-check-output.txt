@@ -1,0 +1,112 @@
+# 수정 전(bdefa3f8) vs 수정 후(7f659dee 소스) 소스 직접 실행 비교(소수 사례, 새 코퍼스 아님)
+# 실행 시각(UTC): 2026-10-15T12:46:00Z
+# 수정 전 소스: pristine worktree bdefa3f8 / 수정 후 소스: 커밋 7f659dee(작업 트리와 동일)
+# 명령: UTIL_NEW=file://…/wt/frontend/src/app/utils/assistantRecommendations.ts UTIL_OLD=file://…/wt-old/frontend/src/app/utils/assistantRecommendations.ts node --import tsx spot.mjs
+# ------------------------------------------------------------
+## A 남은 20형 연결 유지(요즘 ○○.)
+  = 요즘 전세보증금. :: new=["law(보증금)"] old=["law(보증금)"]
+  = 요즘 월세보증금. :: new=["law(보증금)"] old=["law(보증금)"]
+  = 요즘 민사소송. :: new=["law(소송)"] old=["law(소송)"]
+  = 요즘 행정소송. :: new=["law(소송)"] old=["law(소송)"]
+  = 요즘 형사소송. :: new=["law(소송)"] old=["law(소송)"]
+  = 요즘 합의서. :: new=["law(합의)"] old=["law(합의)"]
+  = 요즘 고소장. :: new=["law(고소)"] old=["law(고소)"]
+  = 요즘 내용증명우편. :: new=["law(내용증명)"] old=["law(내용증명)"]
+  = 요즘 손해배상청구. :: new=["law(손해배상)"] old=["law(손해배상)"]
+  = 요즘 고발했다. :: new=["law(고발)"] old=["law(고발)"]
+  = 요즘 고혈압. :: new=["health(혈압)"] old=["health(혈압)"]
+  = 요즘 저혈압. :: new=["health(혈압)"] old=["health(혈압)"]
+  = 요즘 고혈당. :: new=["health(혈당)"] old=["health(혈당)"]
+  = 요즘 저혈당. :: new=["health(혈당)"] old=["health(혈당)"]
+  = 요즘 공복혈당. :: new=["health(혈당)"] old=["health(혈당)"]
+  = 요즘 식후혈당. :: new=["health(혈당)"] old=["health(혈당)"]
+  = 요즘 건강보험료. :: new=["finance(건강보험)"] old=["finance(건강보험)"]
+  = 요즘 현금영수증. :: new=["finance(영수증)"] old=["finance(영수증)"]
+  = 요즘 입금했다. :: new=["finance(입금)"] old=["finance(입금)"]
+  = 요즘 입금되었다. :: new=["finance(입금)"] old=["finance(입금)"]
+## B 합성어+조사 대표 문장 22개(수정 후 시험에 남은 문장)
+  = 상대방을 고발했다 :: new=["law(고발)"] old=["law(고발)"]
+  = 합의서를 작성했다 :: new=["law(합의)"] old=["law(합의)"]
+  = 고소장을 접수했다 :: new=["law(고소)"] old=["law(고소)"]
+  = 전세보증금을 돌려받지 못했다 :: new=["law(보증금)"] old=["law(보증금)"]
+  = 월세보증금 문제로 다퉜다 :: new=["law(보증금)"] old=["law(보증금)"]
+  = 민사소송을 준비 중이다 :: new=["law(소송)"] old=["law(소송)"]
+  = 행정소송을 검토한다 :: new=["law(소송)"] old=["law(소송)"]
+  = 형사소송은 오래 걸린다 :: new=["law(소송)"] old=["law(소송)"]
+  = 내용증명우편을 보냈다 :: new=["law(내용증명)"] old=["law(내용증명)"]
+  = 손해배상청구를 검토 중이다 :: new=["law(손해배상)"] old=["law(손해배상)"]
+  = 공복혈당이 140이 나왔다 :: new=["health(혈당)"] old=["health(혈당)"]
+  = 식후혈당이 높다 :: new=["health(혈당)"] old=["health(혈당)"]
+  = 저혈당이 왔다 :: new=["health(혈당)"] old=["health(혈당)"]
+  = 고혈당이 계속된다 :: new=["health(혈당)"] old=["health(혈당)"]
+  = 고혈압 진단을 받았다 :: new=["health(혈압)"] old=["health(혈압)"]
+  = 고혈압 약을 먹고 있다 :: new=["health(혈압)"] old=["health(혈압)"]
+  = 저혈압이 있다 :: new=["health(혈압)"] old=["health(혈압)"]
+  = 월급이 입금되었다 :: new=["finance(입금)"] old=["finance(입금)"]
+  = 거래처에 입금했다 :: new=["finance(입금)"] old=["finance(입금)"]
+  = 계약금을 입금했다 :: new=["finance(입금)"] old=["finance(입금)"]
+  = 건강보험료가 올랐다 :: new=["finance(건강보험)"] old=["finance(건강보험)"]
+  = 현금영수증을 발급받았다 :: new=["finance(영수증)"] old=["finance(영수증)"]
+## C 제외 대상(기대: 수정 전 law → 수정 후 [])
+  ≠ 요즘 고소했다. :: new=[] old=["law(고소)"]
+  ≠ 요즘 합의했다. :: new=[] old=["law(합의)"]
+  ≠ 참기름 냄새가 고소했다 :: new=[] old=["law(고소)"]
+  ≠ 회의에서 일정에 합의했다 :: new=[] old=["law(합의)"]
+  ≠ 상대방을 고소했다 :: new=[] old=["law(고소)"]
+  ≠ 상대방과 합의했다 :: new=[] old=["law(합의)"]
+  ≠ 팀원들과 합의했다 :: new=[] old=["law(합의)"]
+## D 기본 키워드·허용 합성어 유지(고소장·합의서·고소를·합의를 등, 불변 기대)
+  = 고소장을 접수했다 :: new=["law(고소)"] old=["law(고소)"]
+  = 합의서를 작성했다 :: new=["law(합의)"] old=["law(합의)"]
+  = 합의를 했다 :: new=["law(합의)"] old=["law(합의)"]
+  = 합의가 어렵다 :: new=["law(합의)"] old=["law(합의)"]
+  = 고소를 당했다 :: new=["law(고소)"] old=["law(고소)"]
+  = 고소는 취하했다 :: new=["law(고소)"] old=["law(고소)"]
+  = 합의서와 고소장을 준비한다 :: new=["law(고소,합의)"] old=["law(고소,합의)"]
+## E 기존 차단·비관련어·목록 밖(불변 기대)
+  = 새 아이디어를 정리했다. :: new=[] old=[]
+  = 새 아이템 회의를 했다. :: new=[] old=[]
+  = 코스피가 올라서 기분이 좋다. :: new=[] old=[]
+  = 요즘 컨디션이 일정하다. :: new=[] old=[]
+  = 학교생활이 즐겁다 :: new=[] old=[]
+  = 반려견용 :: new=[] old=[]
+  = 홍콩에 다녀왔다 :: new=[] old=[]
+  = 카드뉴스를 만들었다 :: new=[] old=[]
+  = 건강검진표를 받았다 :: new=[] old=[]
+  = AI아이가 말했다 :: new=[] old=[]
+  = 아이2를 샀다 :: new=[] old=[]
+  = 불안정 :: new=[] old=[]
+  = 고민정 :: new=[] old=[]
+  = 입금하다 :: new=[] old=[]
+  = 입금됐다 :: new=[] old=[]
+  = 고발되었다 :: new=[] old=[]
+  = 합의되었다 :: new=[] old=[]
+  = 고소하다 :: new=[] old=[]
+  = 합의금을 받았다 :: new=[] old=[]
+## F P2-1·P2-2·기존 사례(불변 기대)
+  = 강아지랑 산책했다 :: new=["pet(강아지)"] old=["pet(강아지)"]
+  = 아이랑 놀이터에 갔다 :: new=["childcare(아이)"] old=["childcare(아이)"]
+  = 요즘 고민이에요 :: new=["life(고민)"] old=["life(고민)"]
+  = 걱정돼요 :: new=["life(걱정)"] old=["life(걱정)"]
+  = 불안감이 크다 :: new=["life(불안)"] old=["life(불안)"]
+  = 고민했는데 결정했다 :: new=["life(고민)"] old=["life(고민)"]
+  = 임대차계약서를 확인했다. :: new=["law(임대차)"] old=["law(임대차)"]
+  = 당뇨병과 불면증으로 힘들었다. :: new=["health(당뇨,불면)"] old=["health(당뇨,불면)"]
+  = 소송 임대차 보증금 내용증명 합의 준비 해결 방법 상담 :: new=["law(소송,임대차,보증금,내용증명,합의)"] old=["law(소송,임대차,보증금,내용증명,합의)"]
+## G 이번에 손대지 않은 기존 P3(고소하고 동형이의, 신·구 동일 기대)
+  = 고소하고 맛있다 :: new=["law(고소)"] old=["law(고소)"]
+## H 다른 법률 키워드가 함께 있는 문장(기대: 카드는 그대로, 감지 단어에서 제외 형태의 키워드만 빠질 수 있음)
+  ≈ 내용증명을 보내고 상대방과 합의했다 :: new=["law(내용증명)"] old=["law(내용증명,합의)"]
+  = 상대방을 고소했고 고소장을 접수했다 :: new=["law(고소)"] old=["law(고소)"]
+표기: = 완전 동일, ≈ 카드는 같고 감지 단어만 다름, ≠ 카드가 달라짐
+differences(new≠old) total: 8
+  A: 0/20
+  B: 0/22
+  C: 7/7
+  D: 0/7
+  E: 0/19
+  F: 0/9
+  G: 0/1
+  H: 1/2
+카드가 달라진 문장이 제외 대상 7개와 정확히 같고, 그 밖의 차이는 H 그룹의 감지 단어 표시뿐인가: 예 {"unexpected":[],"missing":[],"matchedOnly":["내용증명을 보내고 상대방과 합의했다"]}
+# exit code: 0

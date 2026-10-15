@@ -1,0 +1,281 @@
+# 구현 후(green): 소스에서 합의했다·고소했다 제거 + 같은 시험 파일
+# 실행 시각(UTC): 2026-10-15T12:41:07Z
+# worktree HEAD(커밋 전 부모): bdefa3f8c681d887606342ab54bbb581be908a32
+# 변경 파일(커밋 전 작업 트리):
+ M frontend/src/app/utils/assistantRecommendations.ts
+ M frontend/test/assistantRecommendations.test.mjs
+# diff --stat:
+ frontend/src/app/utils/assistantRecommendations.ts |  6 +++---
+ frontend/test/assistantRecommendations.test.mjs    | 19 ++++++++++++-------
+ 2 files changed, 15 insertions(+), 10 deletions(-)
+# 명령: cd frontend && node --import tsx --test test/assistantRecommendations.test.mjs test/formatRegistry.test.mjs
+# ------------------------------------------------------------
+TAP version 13
+# Subtest: 법률 기록은 하루LAW만 추천한다 (메모)
+ok 1 - 법률 기록은 하루LAW만 추천한다 (메모)
+  ---
+  duration_ms: 343.843986
+  type: 'test'
+  ...
+# Subtest: 법률 기록은 하루LAW만 추천한다 (일기)
+ok 2 - 법률 기록은 하루LAW만 추천한다 (일기)
+  ---
+  duration_ms: 117.595572
+  type: 'test'
+  ...
+# Subtest: 법률 기록은 하루LAW만 추천한다 (memo)
+ok 3 - 법률 기록은 하루LAW만 추천한다 (memo)
+  ---
+  duration_ms: 1.098849
+  type: 'test'
+  ...
+# Subtest: 법률 기록은 하루LAW만 추천한다 (diary)
+ok 4 - 법률 기록은 하루LAW만 추천한다 (diary)
+  ---
+  duration_ms: 0.981742
+  type: 'test'
+  ...
+# Subtest: 인수인계 사례: 내일 회의 준비. 자료 정리하고 방법을 찾아 해결한다.
+ok 5 - 인수인계 사례: 내일 회의 준비. 자료 정리하고 방법을 찾아 해결한다.
+  ---
+  duration_ms: 0.902009
+  type: 'test'
+  ...
+# Subtest: 인수인계 사례: 법률 상담을 받고 왔다.
+ok 6 - 인수인계 사례: 법률 상담을 받고 왔다.
+  ---
+  duration_ms: 0.667593
+  type: 'test'
+  ...
+# Subtest: 인수인계 사례: 제주에서 아침 산책을 했다.
+ok 7 - 인수인계 사례: 제주에서 아침 산책을 했다.
+  ---
+  duration_ms: 0.738149
+  type: 'test'
+  ...
+# Subtest: 인수인계 사례: 새 아이디어를 정리했다.
+ok 8 - 인수인계 사례: 새 아이디어를 정리했다.
+  ---
+  duration_ms: 0.588616
+  type: 'test'
+  ...
+# Subtest: 인수인계 사례: 새 아이템 회의를 했다.
+ok 9 - 인수인계 사례: 새 아이템 회의를 했다.
+  ---
+  duration_ms: 1.136442
+  type: 'test'
+  ...
+# Subtest: 인수인계 사례: 코스피가 올라서 기분이 좋다.
+ok 10 - 인수인계 사례: 코스피가 올라서 기분이 좋다.
+  ---
+  duration_ms: 1.052098
+  type: 'test'
+  ...
+# Subtest: 인수인계 사례: 요즘 컨디션이 일정하다.
+ok 11 - 인수인계 사례: 요즘 컨디션이 일정하다.
+  ---
+  duration_ms: 0.620284
+  type: 'test'
+  ...
+# Subtest: 인수인계 사례: 강아지와 아침 산책을 했다.
+ok 12 - 인수인계 사례: 강아지와 아침 산책을 했다.
+  ---
+  duration_ms: 1.064882
+  type: 'test'
+  ...
+# Subtest: 인수인계 사례: 요즘 고민이 많고 불안하다. 어떻게 준비해야 할지 걱정이다.
+ok 13 - 인수인계 사례: 요즘 고민이 많고 불안하다. 어떻게 준비해야 할지 걱정이다.
+  ---
+  duration_ms: 0.889017
+  type: 'test'
+  ...
+# Subtest: 인수인계 사례: 아이 학교 상담이 있었다.
+ok 14 - 인수인계 사례: 아이 학교 상담이 있었다.
+  ---
+  duration_ms: 0.92915
+  type: 'test'
+  ...
+# Subtest: 인수인계 사례: 오늘 학교에서 아이들과 상담 시간을 가졌다.
+ok 15 - 인수인계 사례: 오늘 학교에서 아이들과 상담 시간을 가졌다.
+  ---
+  duration_ms: 1.288787
+  type: 'test'
+  ...
+# Subtest: 인수인계 사례: 임차인이 보증금을 돌려주지 않아 소송을 검토한다. 내용증명을 보냈다.
+ok 16 - 인수인계 사례: 임차인이 보증금을 돌려주지 않아 소송을 검토한다. 내용증명을 보냈다.
+  ---
+  duration_ms: 0.84695
+  type: 'test'
+  ...
+# Subtest: 혈당·병원 기록에서 건강관리 또는 병원찾기를 추천한다
+ok 17 - 혈당·병원 기록에서 건강관리 또는 병원찾기를 추천한다
+  ---
+  duration_ms: 0.825359
+  type: 'test'
+  ...
+# Subtest: 약한 단어가 여러 개 일치해도 강한 단어가 없으면 추천하지 않는다
+ok 18 - 약한 단어가 여러 개 일치해도 강한 단어가 없으면 추천하지 않는다
+  ---
+  duration_ms: 7.825386
+  type: 'test'
+  ...
+# Subtest: 한글·영문·숫자 낱말의 일부를 일치시키지 않는다
+ok 19 - 한글·영문·숫자 낱말의 일부를 일치시키지 않는다
+  ---
+  duration_ms: 4.955195
+  type: 'test'
+  ...
+# Subtest: 조사·복수형·감정 활용형·유니코드 정규화는 인식한다
+ok 20 - 조사·복수형·감정 활용형·유니코드 정규화는 인식한다
+  ---
+  duration_ms: 7.372277
+  type: 'test'
+  ...
+# Subtest: 구어 조사·서술 어미·이중 조사를 인식한다
+ok 21 - 구어 조사·서술 어미·이중 조사를 인식한다
+  ---
+  duration_ms: 15.790526
+  type: 'test'
+  ...
+# Subtest: 허용 목록의 조사·존칭·서술 어미를 모두 인식한다
+ok 22 - 허용 목록의 조사·존칭·서술 어미를 모두 인식한다
+  ---
+  duration_ms: 78.407228
+  type: 'test'
+  ...
+# Subtest: 조사 허용을 넓혀도 낱말의 일부·조사 연쇄 오용·임의의 접미사는 막는다
+ok 23 - 조사 허용을 넓혀도 낱말의 일부·조사 연쇄 오용·임의의 접미사는 막는다
+  ---
+  duration_ms: 4.465014
+  type: 'test'
+  ...
+# Subtest: 감정 3단어의 정중체·명사형 표현을 인식한다
+ok 24 - 감정 3단어의 정중체·명사형 표현을 인식한다
+  ---
+  duration_ms: 7.039271
+  type: 'test'
+  ...
+# Subtest: 감정 3단어의 허용 활용형을 모두 인식한다
+ok 25 - 감정 3단어의 허용 활용형을 모두 인식한다
+  ---
+  duration_ms: 22.97505
+  type: 'test'
+  ...
+# Subtest: 감정 어근의 일부 일치와 임의의 접미사는 막는다
+ok 26 - 감정 어근의 일부 일치와 임의의 접미사는 막는다
+  ---
+  duration_ms: 2.89822
+  type: 'test'
+  ...
+# Subtest: 분야가 분명한 일상 합성어도 추천을 유지한다
+ok 27 - 분야가 분명한 일상 합성어도 추천을 유지한다
+  ---
+  duration_ms: 2.613449
+  type: 'test'
+  ...
+# Subtest: 상위 빈도 합성어·한자어 활용형 20개는 해당 비서에 연결된다
+ok 28 - 상위 빈도 합성어·한자어 활용형 20개는 해당 비서에 연결된다
+  ---
+  duration_ms: 11.201344
+  type: 'test'
+  ...
+# Subtest: 합성어·한자어 활용형에 조사가 붙은 대표 문장을 인식한다
+ok 29 - 합성어·한자어 활용형에 조사가 붙은 대표 문장을 인식한다
+  ---
+  duration_ms: 12.481506
+  type: 'test'
+  ...
+# Subtest: 합성어 허용 목록은 닫혀 있어 접두·접미 임의 확대와 한자어+하다/되다 일반화를 막고, 제외한 고소했다·합의했다는 추천하지 않는다
+ok 30 - 합성어 허용 목록은 닫혀 있어 접두·접미 임의 확대와 한자어+하다/되다 일반화를 막고, 제외한 고소했다·합의했다는 추천하지 않는다
+  ---
+  duration_ms: 27.605117
+  type: 'test'
+  ...
+# Subtest: 점수가 형식 우선순위보다 먼저 적용된다
+ok 31 - 점수가 형식 우선순위보다 먼저 적용된다
+  ---
+  duration_ms: 2.392373
+  type: 'test'
+  ...
+# Subtest: 최대 두 장이고 1위 점수의 절반 미만을 제외한다 (절반은 포함)
+ok 32 - 최대 두 장이고 1위 점수의 절반 미만을 제외한다 (절반은 포함)
+  ---
+  duration_ms: 1.501666
+  type: 'test'
+  ...
+# Subtest: 같은 분야의 약한 단어는 강한 단어가 있을 때 점수에 더한다
+ok 33 - 같은 분야의 약한 단어는 강한 단어가 있을 때 점수에 더한다
+  ---
+  duration_ms: 1.330974
+  type: 'test'
+  ...
+# Subtest: 강한 단어를 먼저 표시하고 최대 5개로 제한하되 점수는 전체 일치를 사용한다
+ok 34 - 강한 단어를 먼저 표시하고 최대 5개로 제한하되 점수는 전체 일치를 사용한다
+  ---
+  duration_ms: 1.577712
+  type: 'test'
+  ...
+# Subtest: 반복 단어는 중복 가산하지 않고 결과는 결정적이다
+ok 35 - 반복 단어는 중복 가산하지 않고 결과는 결정적이다
+  ---
+  duration_ms: 6.74193
+  type: 'test'
+  ...
+# Subtest: 빈 입력·필드 합치기·연결 경로와 안내문 계약을 유지한다
+ok 36 - 빈 입력·필드 합치기·연결 경로와 안내문 계약을 유지한다
+  ---
+  duration_ms: 1.012584
+  type: 'test'
+  ...
+# Subtest: 등록부: 역할별 값이 소비처의 기존 값과 같다(육아일기 child/parenting)
+ok 37 - 등록부: 역할별 값이 소비처의 기존 값과 같다(육아일기 child/parenting)
+  ---
+  duration_ms: 2.039973
+  type: 'test'
+  ...
+# Subtest: haruTypes: FORMAT_PREFIX·PREFIX_TO_FORMAT 이 기존과 같다(순서 포함)
+ok 38 - haruTypes: FORMAT_PREFIX·PREFIX_TO_FORMAT 이 기존과 같다(순서 포함)
+  ---
+  duration_ms: 0.36658
+  type: 'test'
+  ...
+# Subtest: firestoreService: 공개·형식 통계·전체 통계·내보내기 정의가 기존과 같다(순서 포함)
+ok 39 - firestoreService: 공개·형식 통계·전체 통계·내보내기 정의가 기존과 같다(순서 포함)
+  ---
+  duration_ms: 1.016655
+  type: 'test'
+  ...
+# Subtest: SAYU 계열(P3.5b): 공개 허용 키·SAYU 형식 키·삭제 라벨·콜라주 접두어가 기존과 같다(순서 포함)
+ok 40 - SAYU 계열(P3.5b): 공개 허용 키·SAYU 형식 키·삭제 라벨·콜라주 접두어가 기존과 같다(순서 포함)
+  ---
+  duration_ms: 3.276536
+  type: 'test'
+  ...
+# Subtest: 기록 입력(P3.5c1): FormatModal 의 FORMAT_PREFIX 가 기존과 같다(순서 포함)
+ok 41 - 기록 입력(P3.5c1): FormatModal 의 FORMAT_PREFIX 가 기존과 같다(순서 포함)
+  ---
+  duration_ms: 2.411848
+  type: 'test'
+  ...
+# Subtest: 합본·미래전망·추천(P3.5c3·c4·c5): 기존 값과 같다
+ok 42 - 합본·미래전망·추천(P3.5c3·c4·c5): 기존 값과 같다
+  ---
+  duration_ms: 8.446362
+  type: 'test'
+  ...
+# Subtest: 바꾼 곳에 형식·접두어 표가 다시 생기지 않는다
+ok 43 - 바꾼 곳에 형식·접두어 표가 다시 생기지 않는다
+  ---
+  duration_ms: 8.510447
+  type: 'test'
+  ...
+1..43
+# tests 43
+# suites 0
+# pass 43
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1041.421759
+# exit code: 0

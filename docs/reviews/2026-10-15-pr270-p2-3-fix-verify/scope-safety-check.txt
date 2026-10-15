@@ -1,0 +1,24 @@
+# 변경 범위·안전 항목 확인(커밋 7f659dee, 부모 bdefa3f8)
+# 실행 시각(UTC): 2026-10-15T12:44:42Z
+
+## 1) 변경 파일 목록(git diff --name-status bdefa3f8 7f659dee)
+M	frontend/src/app/utils/assistantRecommendations.ts
+M	frontend/test/assistantRecommendations.test.mjs
+
+## 2) git diff --shortstat
+ 2 files changed, 15 insertions(+), 10 deletions(-)
+
+## 3) 추가·삭제된 줄(+/-)에서 민감 영역 식별자 검색(0건이어야 함)
+패턴: users/|/records|firestore|collection|doc\(|region|asia-northeast|onCall|onRequest|functions|claude-|gemini|openai|anthropic|model|apiKey|api_key|secret|token|password|auth|payment|portone|inicis|import |require\(
+일치 줄 수: 0
+
+## 4) 변경하지 않은 영역이 diff에 나타나는지(0이어야 함): KOREAN_PARTICLES / matchesKeyword / SCORE / RECOMMENDATION_RULES / 정규식
+0
+
+## 5) 소스에서 바뀐 줄 전체(+/-)
+-  // 상위 빈도 합성어·한자어 활용형 22개만 기존 키워드에 연결해 허용한다(전세·월세보증금은 위 보증금 항목). 접두·접미 임의 확대와 한자어+하다/되다 일반화는 불허.
++  // 상위 빈도 합성어·한자어 활용형 20개만 기존 키워드에 연결해 허용한다(전세·월세보증금은 위 보증금 항목). 접두·접미 임의 확대와 한자어+하다/되다 일반화는 불허. 고소했다(맛 표현)·합의했다(일상 용법)는 오탐 위험으로 제외.
+-  합의: ['합의서', '합의했다'],
+-  고소: ['고소장', '고소했다'],
++  합의: ['합의서'],
++  고소: ['고소장'],

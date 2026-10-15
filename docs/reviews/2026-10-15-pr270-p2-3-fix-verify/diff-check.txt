@@ -1,0 +1,12 @@
+# git diff --check (작업 트리, 커밋 전)
+# 실행 시각(UTC): 2026-10-15T12:41:16Z
+# exit code: 0
+
+# git diff --check HEAD~1 HEAD (커밋 후, 7f659dee)
+# 실행 시각(UTC): 2026-10-15T12:43:19Z
+# exit code: 0
+
+# NFC·CRLF 확인(커밋 7f659dee의 두 파일 blob 기준)
+# 실행 시각(UTC): 2026-10-15T12:48:51Z
+frontend/src/app/utils/assistantRecommendations.ts NFC=true CRLF=false endsWithNewline=true
+frontend/test/assistantRecommendations.test.mjs NFC=true CRLF=false endsWithNewline=true
