@@ -11,6 +11,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, type Storag
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { compressImage } from '../services/imageService';
 import { startSelectedRecordPhotoReads } from '../services/selectedRecordPhoto';
+import { compressRecordPhoto } from '../services/recordPhotoCompression';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 import heic2any from 'heic2any';
@@ -1907,39 +1908,31 @@ ${contentValues}`,
 
         const originalMeta = await readOriginalImageMeta(file);
 
-        // HEIC → JPG 변환 (서버가 Cloudinary 임시 객체를 회수·삭제한 뒤 JPEG 데이터만 반환)
-        let fileToProcess: File | Blob = file;
-        if (isHeic) {
-          try {
-            toast.info('HEIC 파일을 변환 중...');
+        if (isHeic) toast.info('HEIC 파일을 변환 중...');
 
-            const bytes = new Uint8Array(await file.arrayBuffer());
-            let binary = '';
-            const chunkSize = 8192;
-            for (let i = 0; i < bytes.length; i += chunkSize) {
-              binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-            }
-            const imageBase64 = btoa(binary);
-
-            const convertHeicFunc = httpsCallable(functionsInstance, 'convertHeic');
-            const result = await convertHeicFunc({ imageBase64 });
-            fileToProcess = await decodeConvertedJpeg(result.data);
-          } catch (err) {
-            console.error('HEIC 변환 실패:', err);
-            failures.push(err instanceof Error && err.name === 'NotReadableError'
-              ? '사진 원본을 읽지 못했습니다. 사진을 기기에 다운로드한 뒤 다시 선택해주세요.'
-              : 'HEIC 변환에 실패했습니다.');
-            continue;
-          }
-        }
-
-        // 이미지 압축 및 Firebase Storage 업로드 (메인 저장소)
         try {
-          const imageFile =
-            fileToProcess instanceof File
-              ? fileToProcess
-              : new File([fileToProcess], fileName, { type: 'image/jpeg' });
-          const compressed = await compressImage(imageFile, 800, 0.85);
+          const compressed = await compressRecordPhoto(file, {
+            isHeic,
+            compress: (imageFile) => compressImage(imageFile, 800, 0.85),
+            convertHeic: async (originalFile) => {
+              try {
+                const bytes = new Uint8Array(await originalFile.arrayBuffer());
+                let binary = '';
+                const chunkSize = 8192;
+                for (let i = 0; i < bytes.length; i += chunkSize) {
+                  binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+                }
+                const imageBase64 = btoa(binary);
+                const convertHeicFunc = httpsCallable(functionsInstance, 'convertHeic');
+                const result = await convertHeicFunc({ imageBase64 });
+                const jpeg = await decodeConvertedJpeg(result.data);
+                return new File([jpeg], fileName, { type: 'image/jpeg' });
+              } catch (error: any) {
+                console.error('HEIC 변환 실패:', error?.code || error?.name || 'unknown');
+                throw new Error('HEIC_CONVERSION_FAILED');
+              }
+            },
+          });
 
           const imagePath = `users/${user.uid}/format_photos/${recordId}_${prefix}_${fileName}`;
           const storageRef = ref(storage, imagePath);
@@ -1969,6 +1962,10 @@ ${contentValues}`,
             } catch {
               enqueuePendingRecordPhotoCleanup(pendingStorageRef.fullPath);
             }
+          }
+          if (fileError?.message === 'HEIC_CONVERSION_FAILED') {
+            failures.push('HEIC 변환에 실패했습니다.');
+            continue;
           }
           if (fileError?.message === 'FILE_READER_ERROR') {
             failures.push('사진 원본을 읽지 못했습니다. 사진을 기기에 다운로드한 뒤 다시 선택해주세요.');

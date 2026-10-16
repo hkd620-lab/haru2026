@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import { transform } from 'esbuild';
 import { test } from 'node:test';
 import { startSelectedRecordPhotoReads } from '../src/app/services/selectedRecordPhoto.ts';
+import { compressRecordPhoto } from '../src/app/services/recordPhotoCompression.ts';
 
 const source = readFileSync(new URL('../src/app/components/FormatModal.tsx', import.meta.url), 'utf8');
 const handler = source.slice(source.indexOf('  const handleImageUpload = async'), source.indexOf('  // Firebase Storage URL →'));
@@ -13,7 +14,7 @@ function fixture(outcomes) {
   let attempt = 0;
   const toast = Object.fromEntries(['warning', 'error', 'success', 'info'].map(level => [level, (...args) => notices.push({ level, message: args[0] })]));
   const context = {
-    toast, console: { error() {} }, File, Date, Math, Error, Uint8Array, btoa, startSelectedRecordPhotoReads,
+    toast, console: { error() {} }, File, Date, Math, Error, Uint8Array, btoa, startSelectedRecordPhotoReads, compressRecordPhoto,
     isCleaningSessionUploadsRef: { current: false }, ledgerInputMode: 'single',
     uploadedImages: [], format: '일기', user: { uid: 'fixture' }, recordId: 'record', prefix: 'diary',
     setIsUploading: value => busy.push(value), getStorage: () => ({}), getFunctions: () => ({}),
@@ -100,7 +101,7 @@ test('the handler snapshots the picker before size/EXIF access and reads the ori
   };
   await f.run([source]);
   assert.equal(reads, 1);
-  assert.equal(conversionCalls, 1);
+  assert.equal(conversionCalls, 0, 'local HEIC success must not call the server');
   assert.equal(f.notices.at(-1).level, 'success');
   assert.equal(f.images.length, 1);
 });
@@ -131,4 +132,23 @@ test('period ledger photos update the selected entry and preserve its existing p
   assert.equal(update.entry.imageMeta.length, 2);
   assert.equal(update.entry.imageMeta[0].url, 'existing');
   assert.equal(f.images.length, 0);
+});
+
+test('unsupported local HEIC falls back to server conversion before uploading and keeps original metadata', async () => {
+  const f = fixture([new Error('unsupported HEIC'), 'ok']);
+  let serverCalls = 0;
+  f.context.httpsCallable = () => async () => { serverCalls++; return { data: 'jpeg' }; };
+  f.context.decodeConvertedJpeg = async () => new Blob(['jpeg'], { type: 'image/jpeg' });
+  let metadata;
+  f.context.readOriginalImageMeta = async file => {
+    assert.equal(file.type, 'image/heic');
+    assert.equal(await file.text(), 'original');
+    return { metadataSource: 'exif', takenDate: '2020-01-02' };
+  };
+  f.context.setUploadedImageMeta = update => { metadata = update([]); };
+  await f.run([new File(['original'], 'fixture.heic', { type: 'image/heic' })]);
+  assert.equal(serverCalls, 1);
+  assert.equal(f.images.length, 1);
+  assert.equal(metadata[0].takenDate, '2020-01-02');
+  assert.equal(f.notices.at(-1).level, 'success');
 });
