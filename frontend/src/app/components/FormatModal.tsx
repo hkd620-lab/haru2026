@@ -1874,13 +1874,13 @@ ${contentValues}`,
       const failures: string[] = [];
       const functionsInstance = getFunctions(undefined, 'asia-northeast3');
 
-      for (const photoRead of selectedPhotoReads) {
-        const selectedPhoto = await photoRead;
+      while (selectedPhotoReads.length > 0) {
+        const selectedPhoto = await selectedPhotoReads.shift()!;
         if (!selectedPhoto.ok) {
           failures.push(selectedPhoto.message);
           continue;
         }
-        const { file, buffer } = selectedPhoto;
+        const { file } = selectedPhoto;
         let pendingStorageRef: StorageReference | null = null;
         let uploadTracked = false;
         if (file.size > 20 * 1024 * 1024) {
@@ -1913,7 +1913,7 @@ ${contentValues}`,
           try {
             toast.info('HEIC 파일을 변환 중...');
 
-            const bytes = new Uint8Array(buffer);
+            const bytes = new Uint8Array(await file.arrayBuffer());
             let binary = '';
             const chunkSize = 8192;
             for (let i = 0; i < bytes.length; i += chunkSize) {

@@ -63,7 +63,7 @@ test('Android HEIC NotReadableError identifies the source-file read failure befo
   const error = new Error('device provider unavailable'); error.name = 'NotReadableError';
   let serverCalls = 0;
   f.context.httpsCallable = () => { serverCalls++; throw new Error('must not call server'); };
-  await f.run([{ name: 'fixture.heic', type: 'image/heic', size: 100, arrayBuffer: async () => { throw error; } }]);
+  await f.run([{ name: 'fixture.heic', type: 'image/heic', size: 100, stream: () => { throw error; } }]);
   assert.equal(serverCalls, 0);
   assert.equal(f.notices.at(-1).level, 'error');
   assert.match(f.notices.at(-1).message, /원본을 읽지 못했습니다/);
@@ -71,13 +71,13 @@ test('Android HEIC NotReadableError identifies the source-file read failure befo
 });
 test('oversized or invalid selections are counted as failures rather than zero-photo success', async () => {
   const f = fixture([]);
-  await f.run([{ name: 'large.jpg', type: 'image/jpeg', arrayBuffer: async () => new ArrayBuffer(21 * 1024 * 1024) }, { name: 'document.txt', type: 'text/plain', size: 10 }]);
+  await f.run([new File([new Uint8Array(21 * 1024 * 1024)], 'large.jpg', { type: 'image/jpeg' }), { name: 'document.txt', type: 'text/plain', size: 10 }]);
   assert.equal(f.notices.at(-1).level, 'error');
   assert.match(f.notices.at(-1).message, /20MB/);
   assert.match(f.notices.at(-1).message, /이미지 형식/);
 });
 
-test('the handler snapshots the picker before size/EXIF access and reuses the HEIC bytes', async () => {
+test('the handler snapshots the picker before size/EXIF access and reads the original only once', async () => {
   const f = fixture(['ok']);
   let reads = 0, conversionCalls = 0;
   f.context.httpsCallable = () => async ({ imageBase64 }) => {
@@ -96,11 +96,39 @@ test('the handler snapshots the picker before size/EXIF access and reuses the HE
     name: 'fixture.heic', type: 'image/heic',
     get size() { throw new Error('original metadata must never be read'); },
     get lastModified() { throw new Error('original metadata must never be read'); },
-    arrayBuffer() { reads++; return Promise.resolve(new TextEncoder().encode('fixture').buffer); },
+    stream() { reads++; return new Blob(['fixture']).stream(); },
   };
   await f.run([source]);
   assert.equal(reads, 1);
   assert.equal(conversionCalls, 1);
   assert.equal(f.notices.at(-1).level, 'success');
   assert.equal(f.images.length, 1);
+});
+
+test('processed photo promises are removed from the queue', async () => {
+  const f = fixture(['ok', 'ok', 'ok']);
+  let queue;
+  f.context.startSelectedRecordPhotoReads = files => {
+    queue = startSelectedRecordPhotoReads(files);
+    return queue;
+  };
+  await f.run(3);
+  assert.equal(queue.length, 0);
+  assert.equal(f.images.length, 3);
+});
+
+test('period ledger photos update the selected entry and preserve its existing photo metadata', async () => {
+  const f = fixture(['ok']);
+  let update;
+  Object.assign(f.context, {
+    ledgerInputMode: 'period', format: 'HARU보조장부', expandedLedgerXlsxRowId: 'row',
+    ledgerXlsxPreviewRows: [{ id: 'row', entry: { imageUrls: ['existing'], imageMeta: [{ url: 'existing' }] } }],
+    updateLedgerPeriodEntry: (id, entry) => { update = { id, entry }; },
+  });
+  await f.run(1);
+  assert.equal(update.id, 'row');
+  assert.deepEqual(Array.from(update.entry.imageUrls), ['existing', 'fixture:1']);
+  assert.equal(update.entry.imageMeta.length, 2);
+  assert.equal(update.entry.imageMeta[0].url, 'existing');
+  assert.equal(f.images.length, 0);
 });
