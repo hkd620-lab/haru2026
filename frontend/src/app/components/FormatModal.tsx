@@ -10,6 +10,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, type StorageReference } from 'firebase/storage';
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { compressImage } from '../services/imageService';
+import { startSelectedRecordPhotoReads } from '../services/selectedRecordPhoto';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 import heic2any from 'heic2any';
@@ -1863,6 +1864,7 @@ ${contentValues}`,
       ? toast.warning(`최대 ${maxPhotos}장까지 첨부할 수 있어 선택한 ${files.length}장 중 앞의 ${remainingSlots}장만 업로드합니다. 초과한 ${excludedCount}장은 제외됩니다.`)
       : undefined;
     const filesToUpload = Array.from(files).slice(0, remainingSlots);
+    const selectedPhotoReads = startSelectedRecordPhotoReads(filesToUpload);
 
     setIsUploading(true);
     try {
@@ -1872,7 +1874,13 @@ ${contentValues}`,
       const failures: string[] = [];
       const functionsInstance = getFunctions(undefined, 'asia-northeast3');
 
-      for (const file of filesToUpload) {
+      for (const photoRead of selectedPhotoReads) {
+        const selectedPhoto = await photoRead;
+        if (!selectedPhoto.ok) {
+          failures.push(selectedPhoto.message);
+          continue;
+        }
+        const { file, buffer } = selectedPhoto;
         let pendingStorageRef: StorageReference | null = null;
         let uploadTracked = false;
         if (file.size > 20 * 1024 * 1024) {
@@ -1905,8 +1913,7 @@ ${contentValues}`,
           try {
             toast.info('HEIC 파일을 변환 중...');
 
-            const arrayBuffer = await file.arrayBuffer();
-            const bytes = new Uint8Array(arrayBuffer);
+            const bytes = new Uint8Array(buffer);
             let binary = '';
             const chunkSize = 8192;
             for (let i = 0; i < bytes.length; i += chunkSize) {
