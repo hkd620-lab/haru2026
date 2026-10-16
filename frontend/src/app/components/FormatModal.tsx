@@ -1869,13 +1869,14 @@ ${contentValues}`,
       const storage = getStorage();
       const newImageUrls: string[] = [];
       const newImageMeta: UploadedImageMeta[] = [];
+      const failures: string[] = [];
       const functionsInstance = getFunctions(undefined, 'asia-northeast3');
 
       for (const file of filesToUpload) {
         let pendingStorageRef: StorageReference | null = null;
         let uploadTracked = false;
         if (file.size > 20 * 1024 * 1024) {
-          toast.warning(`${file.name}은 20MB를 초과하여 건너뜁니다.`);
+          failures.push('20MB를 초과한 사진이 있습니다.');
           continue;
         }
 
@@ -1883,7 +1884,7 @@ ${contentValues}`,
           file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
 
         if (!file.type.startsWith('image/') && !isHeic) {
-          toast.warning(`${file.name}은 이미지 파일이 아닙니다.`);
+          failures.push('이미지 형식으로 인식하지 못한 파일이 있습니다.');
           continue;
         }
 
@@ -1892,7 +1893,7 @@ ${contentValues}`,
         const fileName = `${timestamp}_${randomId}.jpg`;
 
         if (!user?.uid) {
-          toast.error('로그인이 필요합니다.');
+          failures.push('로그인이 필요합니다.');
           continue;
         }
 
@@ -1918,7 +1919,9 @@ ${contentValues}`,
             fileToProcess = await decodeConvertedJpeg(result.data);
           } catch (err) {
             console.error('HEIC 변환 실패:', err);
-            toast.error('HEIC 변환에 실패했습니다.');
+            failures.push(err instanceof Error && err.name === 'NotReadableError'
+              ? '사진 원본을 읽지 못했습니다. 사진을 기기에 다운로드한 뒤 다시 선택해주세요.'
+              : 'HEIC 변환에 실패했습니다.');
             continue;
           }
         }
@@ -1961,13 +1964,18 @@ ${contentValues}`,
             }
           }
           if (fileError?.message === 'FILE_READER_ERROR') {
-            toast.error(
-              '각종 클라우드에 있는 사진은 직접 업로드가 안 됩니다. 스마트폰에서 직접 업로드하거나 클라우드의 사진을 다운받은 후 추가해주세요.'
-            );
+            failures.push('사진 원본을 읽지 못했습니다. 사진을 기기에 다운로드한 뒤 다시 선택해주세요.');
             continue;
           }
-          throw fileError;
+          console.error('사진 처리 실패:', fileError?.code || fileError?.name || 'unknown');
+          failures.push('사진 처리 또는 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.');
         }
+      }
+
+      const failureDetails = [...new Set(failures)].join(' ');
+      if (newImageUrls.length === 0) {
+        toast.error(`사진을 업로드하지 못했습니다. ${failureDetails}`, { id: uploadNoticeId });
+        return;
       }
 
       if (periodRow) {
@@ -1980,12 +1988,14 @@ ${contentValues}`,
         setUploadedImages(prev => [...prev, ...newImageUrls]);
         setUploadedImageMeta(prev => [...prev, ...newImageMeta]);
       }
-      toast.success(
-        excludedCount > 0
-          ? `${newImageUrls.length}장의 사진이 업로드되었습니다. 최대 ${maxPhotos}장 제한으로 초과한 ${excludedCount}장은 제외되었습니다.`
-          : `${newImageUrls.length}장의 사진이 업로드되었습니다!`,
-        { id: uploadNoticeId },
-      );
+      const uploadedMessage = excludedCount > 0
+        ? `${newImageUrls.length}장의 사진이 업로드되었습니다. 최대 ${maxPhotos}장 제한으로 초과한 ${excludedCount}장은 제외되었습니다.`
+        : `${newImageUrls.length}장의 사진이 업로드되었습니다!`;
+      if (failures.length > 0) {
+        toast.warning(`${uploadedMessage} ${failures.length}장은 실패했습니다. ${failureDetails}`, { id: uploadNoticeId });
+      } else {
+        toast.success(uploadedMessage, { id: uploadNoticeId });
+      }
     } catch (error) {
       console.error('이미지 업로드 실패:', error);
       toast.error('이미지 업로드에 실패했습니다.');
