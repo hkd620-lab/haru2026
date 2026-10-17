@@ -476,6 +476,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [readingOcrUsedCount, setReadingOcrUsedCount] = useState<number | null>(null);
   const [readingBookTextMode, setReadingBookTextMode] = useState<'photo' | 'manual'>('photo');
   const [selectedBookOcrFiles, setSelectedBookOcrFiles] = useState<File[]>([]);
+  const ocrPhotoSelectionVersionRef = useRef(0);
   const bookOcrInputRef = useRef<HTMLInputElement>(null);
   const readingJournalRef = useRef<HTMLTextAreaElement>(null);
   const [selectedStockOcrFiles, setSelectedStockOcrFiles] = useState<File[]>([]);
@@ -602,6 +603,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       await deleteObject(ref(storage, path));
     });
   }, [user?.uid]);
+
+  useEffect(() => {
+    // Invalidate reads from a closed modal, another record, or another book.
+    ocrPhotoSelectionVersionRef.current += 1;
+    return () => { ocrPhotoSelectionVersionRef.current += 1; };
+  }, [isOpen, format, recordId, selectedExistingBookId, editingReadingEntryId]);
 
   const readingReflectionQuestions = [
     '이 책은 나를 어떻게 변화시켰는가?',
@@ -1430,9 +1437,12 @@ ${contentValues}`,
       clearBookOcrInput();
       return;
     }
+    const selectionVersion = ++ocrPhotoSelectionVersionRef.current;
+    setSelectedBookOcrFiles([]);
     const pending = readSelectedRecordPhotos(Array.from(files), message => toast.error(message));
     clearBookOcrInput();
     const selected = await pending;
+    if (selectionVersion !== ocrPhotoSelectionVersionRef.current) return;
     setSelectedBookOcrFiles(selected);
     if (selected.length) toast.success(`${selected.length}장의 책 본문 사진을 추가했습니다. 텍스트추출 버튼을 눌러주세요.`);
   };
@@ -1587,9 +1597,12 @@ ${contentValues}`,
       return;
     }
 
+    const selectionVersion = ++ocrPhotoSelectionVersionRef.current;
+    setSelectedStockOcrFiles([]);
     const pending = readSelectedRecordPhotos(Array.from(files).slice(0, 3), message => toast.error(message));
     clearStockOcrInput();
     const selected = await pending;
+    if (selectionVersion !== ocrPhotoSelectionVersionRef.current) return;
     setSelectedStockOcrFiles(selected);
     if (selected.length) toast.success(`${selected.length}장의 거래 캡처 사진을 추가했습니다. 텍스트추출 버튼을 눌러주세요.`);
   };
@@ -1657,10 +1670,14 @@ ${contentValues}`,
     if (allFiles.length > 10) {
       toast.warning('HARU보조장부는 한 번에 최대 10장까지 첨부할 수 있습니다. 카드 사용내역이 많으면 여러 번 나누어 기록해 주세요.');
     }
+    const selectionVersion = ++ocrPhotoSelectionVersionRef.current;
+    setSelectedLedgerOcrFiles([]);
     const pending = readSelectedRecordPhotos(allFiles.slice(0, 10), message => toast.error(message));
     clearLedgerOcrInput();
+    const filesRead = await pending;
+    if (selectionVersion !== ocrPhotoSelectionVersionRef.current) return;
     const selected: File[] = [];
-    for (const file of await pending) {
+    for (const file of filesRead) {
       const lowerName = file.name.toLowerCase();
       const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
         lowerName.endsWith('.heic') || lowerName.endsWith('.heif');
@@ -2052,6 +2069,7 @@ ${contentValues}`,
   };
 
   const closeAfterCommit = () => {
+    ocrPhotoSelectionVersionRef.current += 1;
     if (format === '독서사유') readingDraft.clear(selectedExistingBookId || makeReadingBookId(formData.reading_book_title || '', formData.reading_author || ''));
     committedCloseRef.current = true;
     onClose();
@@ -2066,6 +2084,7 @@ ${contentValues}`,
       toast.warning('사진 업로드 또는 저장이 끝난 뒤 닫아주세요.');
       return;
     }
+    ocrPhotoSelectionVersionRef.current += 1;
     isCleaningSessionUploadsRef.current = true;
     setIsCleaningSessionUploads(true);
     try {
@@ -2443,9 +2462,11 @@ ${contentValues}`,
   const handleHouseholdOcrPhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
     if (selected.length === 0) return;
+    const selectionVersion = ocrPhotoSelectionVersionRef.current;
     const pending = readSelectedRecordPhotos(selected.slice(0, Math.max(0, 5 - selectedHouseholdOcrFiles.length)), message => toast.error(message));
     if (householdOcrInputRef.current) householdOcrInputRef.current.value = '';
     const files = await pending;
+    if (selectionVersion !== ocrPhotoSelectionVersionRef.current) return;
     setSelectedHouseholdOcrFiles((prev) => [...prev, ...files].slice(0, 5));
   };
 
@@ -2926,6 +2947,7 @@ ${contentValues}`,
   // 📚 기존 책 선택 핸들러 — 책 제목/저자 자동 채움 + readonly + 마무리 책 차단
   const onSelectExistingBook = (bookId: string) => {
     if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
+    ocrPhotoSelectionVersionRef.current += 1;
     if (!bookId) {
       setSelectedExistingBookId('');
       setIsReadingBookLocked(false);
@@ -2954,6 +2976,7 @@ ${contentValues}`,
   // 📚 "새 책 시작" — 잠금 해제 + 책 제목/저자 비우기
   const onStartNewBook = () => {
     if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
+    ocrPhotoSelectionVersionRef.current += 1;
     setSelectedExistingBookId('');
     setEditingReadingEntryId('');
     setEditingReadingEntryDate('');
@@ -2986,6 +3009,7 @@ ${contentValues}`,
 
   const prepareReadingEdit = (bookId: string, entry: KnownReadingEntry, entryIndex: number) => {
     if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
+    ocrPhotoSelectionVersionRef.current += 1;
     const book = knownReadingBooks.find((b) => b.readingBookId === bookId);
     if (!book || book.hasFinalReflection) return;
 

@@ -12,10 +12,10 @@ const code=transformSync(`${handler}\nglobalThis.run=handleImageUpload;`,{loader
 function fixture(){
  const state={reads:0,uploads:0,conversions:0,deletes:0,stored:null,committed:null,busy:[],notices:[]};
  const ctx={File,Date,Math,Error,readSelectedRecordPhoto,compressRecordPhoto,persistRecordPhoto,
- currentUser:{uid:'fixture'},firestoreId:'record',formatKey:'diary',recordDate:'2026-10-17',isUploadingImage:false,localImages:['old-photo'],RECORD_IMAGE_MAX_BYTES:20*1024*1024,
+ currentUser:{uid:'fixture'},firestoreId:'record',formatKey:'diary',recordDate:'2026-10-17',isUploadingImage:false,TIMELINE_IMAGE_MAX_WIDTH:1600,TIMELINE_IMAGE_QUALITY:0.82,localImages:['old-photo'],RECORD_IMAGE_MAX_BYTES:20*1024*1024,
  setIsUploadingImage:v=>state.busy.push(v),storage:{},db:{},isHeicLikeFile:f=>/heic|heif/.test(f.type),isSupportedRecordImage:f=>f.type.startsWith('image/'),
  readOriginalImageMeta:async f=>{assert.equal(await f.text(),'photo');return{takenDate:'2020-01-02'};},
- compressImage:async f=>{if(state.failLocal&&f.type==='image/heic')throw new Error('unsupported');return new Blob(['jpeg']);},
+ compressImage:async (f,width,quality)=>{assert.equal(width,1600);assert.equal(quality,0.82);if(state.failLocal&&f.type==='image/heic')throw new Error('unsupported');return new Blob(['jpeg']);},
  convertHeicRecordImage:async f=>{state.conversions++;assert.equal(await f.text(),'photo');return new Blob(['jpeg']);},
  ref:(_,path)=>({fullPath:path}),doc:(...a)=>a,uploadBytes:async()=>{state.uploads++;},getDownloadURL:async()=> 'new-photo',deleteObject:async()=>{state.deletes++;},
  getDoc:async()=>({exists:()=>true,data:()=>({})}),parseUploadedImageMeta:()=>[],updateDoc:async(_,payload)=>{if(state.failSave)throw new Error('save-failed');state.stored=payload;},

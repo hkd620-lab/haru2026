@@ -1520,7 +1520,7 @@ export function SayuModal({
 
       const compressed = await compressRecordPhoto(file, {
         isHeic: isHeicLikeFile(file),
-        compress: image => compressImage(image, 800, 0.85),
+        compress: image => compressImage(image, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY),
         convertHeic: async original => new File([await convertHeicRecordImage(original)], uploadedFileName, { type: 'image/jpeg' }),
       });
       const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`);

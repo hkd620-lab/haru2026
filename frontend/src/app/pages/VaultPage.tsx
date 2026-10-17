@@ -1,5 +1,5 @@
 import { readSelectedRecordPhotos } from '../services/selectedRecordPhoto';
-import { compressUploadPhoto } from '../services/photoUploadService';
+import { compressImage as compressLocalPhoto } from '../services/imageService';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import {
@@ -168,8 +168,16 @@ function isAllowedImage(file: File) {
 }
 
 async function compressImage(file: File): Promise<{ blob: Blob; width: number; height: number }> {
-  const source = /image\/hei[cf]/i.test(file.type)
-    ? await compressUploadPhoto(file, MAX_IMAGE_SIDE, 0.95) : file;
+  let source: Blob = file;
+  if (/image\/hei[cf]/i.test(file.type)) {
+    try {
+      source = await compressLocalPhoto(file, MAX_IMAGE_SIDE, 0.95);
+    } catch {
+      const error = new Error('기기에서 HEIC 사진을 변환하지 못했습니다. JPG로 저장한 뒤 다시 선택해주세요.');
+      error.name = 'PhotoConversionError';
+      throw error;
+    }
+  }
   const imageUrl = URL.createObjectURL(source);
 
   try {
@@ -444,7 +452,7 @@ export function VaultPage() {
       setEditorOpen(false);
     } catch (error) {
       console.error('정보금고 저장 실패:', error);
-      toast.error('정보금고 항목 저장에 실패했습니다.');
+      toast.error(error instanceof Error && error.name === 'PhotoConversionError' ? error.message : '정보금고 항목 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }

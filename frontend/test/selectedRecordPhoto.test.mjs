@@ -114,3 +114,48 @@ test('limits a selection to 60MiB and cancels excess streams', async () => {
   const results=await Promise.all(startSelectedRecordPhotoReads(sources));
   assert.equal(results.filter(r=>r.ok).length,3);assert.equal(cancelled,1);assert.match(results[3].message,/60MB/);
 });
+
+const MiB = 1024 * 1024;
+function chunkedPhoto(count, options = {}) {
+  let index = 0;
+  return {name: 'chunked.jpg', type: 'image/jpeg', stream: () => ({getReader: () => ({
+    async read() {
+      if (index === count) { if (options.fail) throw new Error('provider read failed'); return {done: true}; }
+      index++;
+      return {done: false, value: new Uint8Array(MiB)};
+    },
+    cancel: options.cancel || (async () => {}), releaseLock() {},
+  })})};
+}
+test('interleaved 16MiB files retain three successes after refunding the fourth', async () => {
+  const results = await Promise.all(startSelectedRecordPhotoReads(Array.from({length: 4}, () => chunkedPhoto(16))));
+  assert.equal(results.filter(r => r.ok).length, 3);
+  assert.equal(results.filter(r => !r.ok).length, 1);
+  for (const result of results.filter(r => r.ok)) assert.equal(result.file.size, 16 * MiB);
+});
+test('read failures refund consumed bytes before slow cancellation finishes', async () => {
+  let finishCancel;
+  const reads = startSelectedRecordPhotoReads([
+    chunkedPhoto(10, {fail: true, cancel: () => new Promise(resolve => { finishCancel = resolve; })}),
+    ...Array.from({length: 3}, () => chunkedPhoto(20)),
+  ]);
+  const valid = await Promise.all(reads.slice(1));
+  assert.equal(valid.every(r => r.ok), true);
+  assert.equal(typeof finishCancel, 'function');
+  finishCancel();
+  assert.equal((await reads[0]).ok, false);
+});
+test('oversized files refund previously accepted chunks for later valid files', async () => {
+  let unblock, finishCancel;
+  const gate = new Promise(resolve => {unblock = resolve;});
+  const later = Array.from({length: 3}, () => {
+    const photo = chunkedPhoto(20), reader = photo.stream().getReader();
+    return {...photo, stream: () => ({getReader: () => ({...reader, async read() {await gate; return reader.read();}})})};
+  });
+  const reads = startSelectedRecordPhotoReads([
+    chunkedPhoto(21, {cancel: () => {unblock(); return new Promise(resolve => {finishCancel = resolve;});}}), ...later,
+  ]);
+  assert.equal((await Promise.all(reads.slice(1))).every(r => r.ok), true);
+  finishCancel();
+  assert.match((await reads[0]).message, /20MB/);
+});
