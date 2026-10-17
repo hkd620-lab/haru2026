@@ -22,6 +22,7 @@ export type AssistantRecommendation = {
 
 type RecommendationRule = Omit<AssistantRecommendation, 'matchedKeywords'> & {
   keywords: string[];
+  weakKeywords?: string[];
 };
 
 const RECOMMENDATION_RULES: RecommendationRule[] = [
@@ -33,6 +34,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     actionLabel: '건강관리 비서와 연결',
     targetPath: '/sayu-health',
     keywords: ['혈당', '당뇨', '혈압', '통증', '허리', '무릎', '수면', '불면', '피로', '운동', '식단', '체중', '건강검진', '소변', '거품뇨'],
+    weakKeywords: ['허리', '무릎', '수면', '피로', '운동', '식단', '체중'],
   },
   {
     id: 'hospital',
@@ -42,6 +44,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     actionLabel: '병원찾기 비서와 연결',
     targetPath: '/sayu-health/hospital',
     keywords: ['증상', '병원', '진료', '검사', '통증', '어지러움', '두통'],
+    weakKeywords: ['검사'],
   },
   {
     id: 'medicine',
@@ -51,6 +54,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     actionLabel: '약 정보 비서와 연결',
     targetPath: '/sayu-health/drug',
     keywords: ['혈압약', '당뇨약', '약봉지', '약 복용', '처방', '진통제', '알약', '정제', '캡슐', '연고', '부작용'],
+    weakKeywords: ['정제', '캡슐'],
   },
   {
     id: 'law',
@@ -69,6 +73,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     actionLabel: '보조장부로 정리',
     targetPath: '/record',
     keywords: ['지출', '수입', '매출', '세금', '카드', '계좌', '국민연금', '건강보험', '사업자', '부가세', '비용', '영수증', '통장', '입금', '출금', '재무', '회계'],
+    weakKeywords: ['카드', '계좌', '비용'],
   },
   {
     id: 'plant',
@@ -112,6 +117,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
       '감나무',
       '비파',
     ],
+    weakKeywords: ['심다', '심었다', '수확', '잎', '줄기', '벌레'],
   },
   {
     id: 'pet',
@@ -121,6 +127,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     actionLabel: '반려동물 건강돌봄비서와 연결',
     targetPath: '/pet-health',
     keywords: ['강아지', '고양이', '반려견', '반려묘', '애완동물', '반려동물', '사료', '배변', '산책', '짖음', '구토', '피부', '동물병원', '예방접종'],
+    weakKeywords: ['배변', '산책', '짖음', '구토', '피부', '예방접종'],
   },
   {
     id: 'childcare',
@@ -130,6 +137,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     actionLabel: '육아일기로 정리',
     targetPath: '/record',
     keywords: ['아이', '자녀', '육아', '학교', '학생', '상담', '학습', '공부', '성장', '진로', '선생님', '친구', '교육'],
+    weakKeywords: ['상담', '학습', '공부', '성장', '진로', '친구'],
   },
   {
     id: 'travel',
@@ -139,6 +147,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     actionLabel: '여행기록으로 정리',
     targetPath: '/record',
     keywords: ['여행', '숙소', '일정', '교통', '맛집', '관광', '주차', '기차', '비행기', '렌터카', '코스', '제주', '일본', '오사카', '설악산'],
+    weakKeywords: ['일정', '교통', '맛집', '주차', '기차', '코스'],
   },
   {
     id: 'life',
@@ -148,13 +157,56 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     actionLabel: '생활 고민 기록하기',
     targetPath: '/record',
     keywords: ['걱정', '고민', '불안', '준비', '정리', '계획', '해야 할 일', '문제', '해결', '방법'],
+    weakKeywords: ['준비', '정리', '계획', '해야 할 일', '문제', '해결', '방법'],
   },
 ];
 
 export const ASSISTANT_RECOMMENDATION_SAFETY_NOTE =
   'AI 비서는 생활 기록을 바탕으로 정리와 확인을 돕는 기능이며, 의료·법률·재무 전문가의 판단을 대체하지 않습니다.';
 
-const KOREAN_PARTICLES = '(?:은|는|이|가|을|를|에|에서|으로|로|도|만|과|와|의)?';
+// 낱말 뒤의 존칭·조사·복수형·서술격만 허용한다. 임의의 한글 접미사는 허용하지 않는다.
+// 순서: 존칭(님) → 복수형(들) → 조사·서술 어미 하나 → 보조사·관형격 하나(예: 변호사님과, 아이들이랑, 병원에서의, 강아지랑은).
+const KOREAN_PARTICLES = '(?:님)?(?:들)?(?:에게서|한테서|으로부터|로부터|으로서|로서|으로써|로써|에서|에게|한테|께서|으로|부터|까지|처럼|보다|마저|조차|밖에|마다|이라서|이라고|이라는|이었고|이었다|이에요|이지만|입니다|이다|이며|이고|이야|인데|였고|였다|예요|에요|라서|라고|라는|이랑|하고|이나|랑|나|께|뿐|은|는|이|가|을|를|에|로|도|만|과|와|의)?(?:도|만|는|은|의)?';
+
+// 흔한 활용형·분야가 분명한 합성어만 명시적으로 허용한다.
+const KEYWORD_VARIANTS: Record<string, string[]> = {
+  당뇨: ['당뇨병'],
+  불면: ['불면증'],
+  계약: ['계약서'],
+  임대차: ['임대차계약', '임대차계약서'],
+  보증금: ['보증금반환', '전세보증금', '월세보증금'],
+  법률: ['법률상담'],
+  여행: ['국내여행', '해외여행', '가족여행'],
+  제주: ['제주도', '제주시', '제주특별자치도'],
+  // 상위 빈도 합성어·한자어 활용형 20개만 기존 키워드에 연결해 허용한다(전세·월세보증금은 위 보증금 항목). 접두·접미 임의 확대와 한자어+하다/되다 일반화는 불허. 고소했다(맛 표현)·합의했다(일상 용법)는 오탐 위험으로 제외.
+  소송: ['민사소송', '행정소송', '형사소송'],
+  합의: ['합의서'],
+  고소: ['고소장'],
+  고발: ['고발했다'],
+  내용증명: ['내용증명우편'],
+  손해배상: ['손해배상청구'],
+  혈압: ['고혈압', '저혈압'],
+  혈당: ['고혈당', '저혈당', '공복혈당', '식후혈당'],
+  건강보험: ['건강보험료'],
+  영수증: ['현금영수증'],
+  입금: ['입금했다', '입금되었다'],
+  // 감정 3단어는 평서체에 더해 해요체·합니다체(현재·과거)·-했는데·불안감·걱정스럽다만 허용한다(어근 일부 일치·임의의 접미사는 불허).
+  불안: [
+    '불안하다', '불안했다', '불안하고', '불안해서', '불안한', '불안해',
+    '불안해요', '불안합니다', '불안했어요', '불안했습니다', '불안했는데', '불안감',
+  ],
+  걱정: [
+    '걱정하다', '걱정했다', '걱정하고', '걱정하는', '걱정된다', '걱정돼',
+    '걱정해요', '걱정돼요', '걱정합니다', '걱정됩니다', '걱정했어요', '걱정됐어요', '걱정했습니다', '걱정됐습니다', '걱정했는데', '걱정스럽다',
+  ],
+  고민: [
+    '고민하다', '고민했다', '고민하고', '고민하는', '고민된다', '고민돼',
+    '고민해요', '고민돼요', '고민합니다', '고민됩니다', '고민했어요', '고민됐어요', '고민했습니다', '고민됐습니다', '고민했는데',
+  ],
+};
+
+const STRONG_KEYWORD_SCORE = 3;
+const WEAK_KEYWORD_SCORE = 1;
 
 // 형식별 추천 범주 우선순위는 형식 등록부(recommendationPriority)에 있다. 하루LAW 는 형식이 아닌 비서 라벨이라 여기 둔다.
 const FORMAT_PRIORITY: Record<string, AssistantRecommendation['category'][]> = {
@@ -174,19 +226,14 @@ function escapeRegExp(value: string): string {
 
 function matchesKeyword(source: string, keyword: string): boolean {
   const normalizedKeyword = keyword.toLowerCase();
-  if (normalizedKeyword.length === 1) {
-    const boundaryPattern = new RegExp(
-      `(^|[^가-힣a-z0-9])${escapeRegExp(normalizedKeyword)}${KOREAN_PARTICLES}(?=$|[^가-힣a-z0-9])`,
-      'i',
-    );
-    return boundaryPattern.test(source);
-  }
-
-  return source.includes(normalizedKeyword);
-}
-
-function getMatchedKeywordWeight(recommendation: AssistantRecommendation): number {
-  return recommendation.matchedKeywords.reduce((total, keyword) => total + keyword.length, 0);
+  const alternatives = [normalizedKeyword, ...(KEYWORD_VARIANTS[normalizedKeyword] || [])]
+    .map(escapeRegExp)
+    .join('|');
+  const boundaryPattern = new RegExp(
+    `(^|[^\\p{L}\\p{N}_])(?:${alternatives})${KOREAN_PARTICLES}(?=$|[^\\p{L}\\p{N}_])`,
+    'u',
+  );
+  return boundaryPattern.test(source);
 }
 
 function normalizeFormat(format: string): string {
@@ -218,34 +265,43 @@ export function getAssistantRecommendations(
   text: string,
   formats: string[] = [],
 ): AssistantRecommendation[] {
-  const source = `${text || ''}`.toLowerCase();
+  const source = `${text || ''}`.normalize('NFC').toLowerCase();
   if (!source.trim()) return [];
 
-  return RECOMMENDATION_RULES.map((rule) => {
-    const matchedKeywords = rule.keywords.filter((keyword) => matchesKeyword(source, keyword));
-    if (matchedKeywords.length === 0) return null;
+  const candidates = RECOMMENDATION_RULES.flatMap((rule) => {
+    const weakKeywords = new Set(rule.weakKeywords || []);
+    const matches = Array.from(new Set(rule.keywords))
+      .filter((keyword) => matchesKeyword(source, keyword));
+    const strongMatches = matches.filter((keyword) => !weakKeywords.has(keyword));
+    if (strongMatches.length === 0) return [];
 
-    return {
+    const weakMatches = matches.filter((keyword) => weakKeywords.has(keyword));
+    const recommendation: AssistantRecommendation = {
       id: rule.id,
       title: rule.title,
       category: rule.category,
       description: rule.description,
       actionLabel: rule.actionLabel,
       targetPath: rule.targetPath,
-      matchedKeywords: Array.from(new Set(matchedKeywords)).slice(0, 5),
+      matchedKeywords: [...strongMatches, ...weakMatches].slice(0, 5),
     };
+
+    // 화면 표시 5개 제한과 별개로 모든 고유 일치 단어를 점수에 반영한다.
+    return [{
+      recommendation,
+      score: strongMatches.length * STRONG_KEYWORD_SCORE + weakMatches.length * WEAK_KEYWORD_SCORE,
+    }];
   })
-    .filter((item): item is AssistantRecommendation => Boolean(item))
     .sort((first, second) => {
-      const priorityGap = getPriorityRank(first, formats) - getPriorityRank(second, formats);
-      if (priorityGap !== 0) return priorityGap;
-      const matchedCountGap = second.matchedKeywords.length - first.matchedKeywords.length;
-      if (matchedCountGap !== 0) return matchedCountGap;
-      const keywordWeightGap = getMatchedKeywordWeight(second) - getMatchedKeywordWeight(first);
-      if (keywordWeightGap !== 0) return keywordWeightGap;
-      return 0;
-    })
-    .slice(0, 3);
+      if (first.score !== second.score) return second.score - first.score;
+      return getPriorityRank(first.recommendation, formats) - getPriorityRank(second.recommendation, formats);
+    });
+
+  const topScore = candidates[0]?.score || 0;
+  return candidates
+    .filter(({ score }) => score >= topScore / 2)
+    .slice(0, 2)
+    .map(({ recommendation }) => recommendation);
 }
 
 export function buildRecommendationTextFromFields(fields: Record<string, unknown>): string {
