@@ -1,3 +1,4 @@
+import { readSelectedRecordPhoto } from '../services/selectedRecordPhoto';
 import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -64,7 +65,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'fire
 import { db } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSubscription } from '../hooks/useSubscription';
-import { compressImage } from '../services/imageService';
+import { compressUploadPhoto as compressImage } from '../services/photoUploadService';
 import { fingerprintPlantEntry, readPlantDetectiveSelection, PLANT_EDIT_CONFLICT, type PlantDetectiveSelection } from '../utils/plantDetectiveEdit';
 import { parseHouseholdAmountText, parseKoreanUnitAmount } from '../utils/householdAmount';
 
@@ -1209,7 +1210,8 @@ export function SayuPage() {
   };
 
   // 판독기록(plantDetective[idx]) 항목에 사진 1장을 추가 업로드한다. 기존 format_photos 경로 패턴 재사용.
-  const uploadSayuPlantDetectivePhoto = async (recordId: string, idx: number, file: File) => {
+  const uploadSayuPlantDetectivePhoto = async (recordId: string, idx: number, source: File) => {
+    const file = await readSelectedRecordPhoto(source);
     if (!file.type.startsWith('image/')) {
       throw new Error('사진 파일만 추가할 수 있어요.');
     }
@@ -5710,7 +5712,7 @@ export function SayuPage() {
                 <input
                   ref={plantDetectivePhotoInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif"
                   disabled={plantDetectivePhotoBusy}
                   style={{ display: 'none' }}
                   onChange={(e) => {

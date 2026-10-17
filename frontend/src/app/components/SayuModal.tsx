@@ -1,3 +1,6 @@
+import { readSelectedRecordPhoto } from '../services/selectedRecordPhoto';
+import { compressUploadPhoto } from '../services/photoUploadService';
+import { compressRecordPhoto } from '../services/recordPhotoCompression';
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { Check, Pencil, X, Printer, Copy, Download, FileText } from 'lucide-react';
@@ -1488,49 +1491,40 @@ export function SayuModal({
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentUser || !firestoreId || !formatKey) return;
+    const source = e.target.files?.[0];
+    if (!source || !currentUser || !firestoreId || !formatKey || isUploadingImage) return;
     if (localImages.length >= 3) {
       toast.error('사진은 최대 3장까지 추가할 수 있습니다.');
       e.target.value = '';
       return;
     }
-    if (file.size > RECORD_IMAGE_MAX_BYTES) {
-      toast.error('사진은 20MB 이하만 추가할 수 있습니다.');
-      e.target.value = '';
-      return;
-    }
-    if (!isSupportedRecordImage(file)) {
-      toast.error('PNG, JPG, JPEG, WEBP, HEIC 사진만 추가할 수 있습니다.');
-      e.target.value = '';
-      return;
-    }
-
+    const selectedPhoto = readSelectedRecordPhoto(source);
     setIsUploadingImage(true);
     try {
+      const file = await selectedPhoto;
+      if (file.size > RECORD_IMAGE_MAX_BYTES) {
+        toast.error('사진은 20MB 이하만 추가할 수 있습니다.');
+        e.target.value = '';
+        return;
+      }
+      if (!isSupportedRecordImage(file)) {
+        toast.error('PNG, JPG, JPEG, WEBP, HEIC 사진만 추가할 수 있습니다.');
+        e.target.value = '';
+        return;
+      }
+
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 8);
       const uploadedFileName = `${recordDate}_${formatKey}_${timestamp}_${randomId}.jpg`;
       const originalMeta = await readOriginalImageMeta(file);
 
-      let fileToProcess: File | Blob = file;
-      if (isHeicLikeFile(file)) {
-        try {
-          toast.info('HEIC 파일을 JPG로 변환 중...');
-          fileToProcess = await convertHeicRecordImage(file);
-        } catch (heicError) {
-          console.error('HEIC 변환 실패:', heicError);
-          toast.error('HEIC 변환에 실패했습니다. JPG로 저장한 뒤 다시 시도해주세요.');
-          return;
-        }
-      }
-
-      const imageFile = fileToProcess instanceof File
-        ? fileToProcess
-        : new File([fileToProcess], uploadedFileName, { type: 'image/jpeg' });
+      const compressed = await compressRecordPhoto(file, {
+        isHeic: isHeicLikeFile(file),
+        compress: image => compressImage(image, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY),
+        convertHeic: async original => new File([await convertHeicRecordImage(original)], uploadedFileName, { type: 'image/jpeg' }),
+      });
       const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`);
       const imagePath = `users/${currentUser.uid}/format_photos/${uploadedFileName}`;
-      const compressed = await compressImage(imageFile, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
       const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
       const imageMetaKey = `${formatKey}_imageMeta`;
       let committedImages = localImages;
@@ -1575,7 +1569,7 @@ export function SayuModal({
       toast.success('사진이 추가되었습니다!');
     } catch (err) {
       console.error('사진 업로드 실패:', err);
-      toast.error('사진 업로드에 실패했습니다.');
+      toast.error(err instanceof Error && err.name === 'PhotoReadError' ? err.message : '사진 업로드에 실패했습니다.');
     } finally {
       setIsUploadingImage(false);
       e.target.value = '';
@@ -1599,24 +1593,21 @@ export function SayuModal({
   };
 
   const handleTimelineImageAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentUser || !firestoreId) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('이미지 파일만 추가할 수 있습니다.');
-      e.target.value = '';
-      return;
-    }
+    const source = e.target.files?.[0];
+    if (!source || !currentUser || !firestoreId || isUploadingImage) return;
+    const selectedPhoto = readSelectedRecordPhoto(source);
 
     let uploadedFileName = '';
     let shouldCleanupUploadedFile = false;
     setIsUploadingImage(true);
     try {
+      const file = await selectedPhoto;
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 8);
       uploadedFileName = `${firestoreId}_growthTimeline_${timestamp}_${randomId}.jpg`;
       const originalMeta = await readOriginalImageMeta(file);
       const imageRef = ref(storage, `users/${currentUser.uid}/format_photos/${uploadedFileName}`);
-      const compressed = await compressImage(file, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
+      const compressed = await compressUploadPhoto(file, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
       await uploadBytes(imageRef, compressed, { contentType: 'image/jpeg' });
       shouldCleanupUploadedFile = true;
       const url = await getDownloadURL(imageRef);
