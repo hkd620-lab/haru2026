@@ -1,3 +1,4 @@
+import { readSelectedRecordPhoto, readSelectedRecordPhotos } from '../services/selectedRecordPhoto';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { ArrowLeft, Camera, Leaf, Loader2, Search, X, Save, AlertTriangle, ChevronDown, ChevronUp, BookOpen, CheckCircle2 } from 'lucide-react';
@@ -8,7 +9,7 @@ import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, getDocs, query,
 import { toast } from 'sonner';
 import { db, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { compressImage } from '../services/imageService';
+import { compressUploadPhoto as compressImage } from '../services/photoUploadService';
 import type { PlantAsset, PlantAssetSourceType } from '../types/haruTypes';
 import { lookupPlantAlias } from '../data/plantNameAliases';
 import { firestoreService } from '../services/firestoreService';
@@ -289,10 +290,8 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
 }
 
 async function createPlantImageVariants(file: File): Promise<{ original: Blob; thumbnail: Blob }> {
-  const [original, thumbnail] = await Promise.all([
-    compressImage(file, 1024, 0.82),
-    compressImage(file, 300, 0.75),
-  ]);
+  const original = await compressImage(file, 1024, 0.82);
+  const thumbnail = await compressImage(new File([original], 'thumbnail.jpg', { type: 'image/jpeg' }), 300, 0.75);
   return { original, thumbnail };
 }
 
@@ -864,51 +863,56 @@ export function PlantDetectivePage() {
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
-    const incoming = Array.from(fileList).slice(0, slotsLeft);
+    const selectedPhotos = readSelectedRecordPhotos(Array.from(fileList).slice(0, slotsLeft), message => toast.error(message));
 
     setIsPreparing(true);
     const next: PhotoItem[] = [];
     try {
+      const incoming = await selectedPhotos;
       for (const file of incoming) {
-        // 갤럭시 등 일부 안드로이드는 HEIC를 빈 MIME으로 전달 → 확장자도 함께 허용
-        const isImageLike = file.type.startsWith('image/') || /\.(heic|heif)$/i.test(file.name);
-        if (!isImageLike) {
-          toast.error(`'${file.name}' 은 사진 파일이 아니에요.`);
-          continue;
-        }
-        if (file.size > 20 * 1024 * 1024) {
-          toast.error(`'${file.name}' 은 20MB를 초과해요.`);
-          continue;
-        }
-        // 📍 압축 전 원본 file에서 EXIF GPS를 읽어 역지오코딩 (압축하면 GPS가 사라지므로 반드시 압축 앞단에서)
-        let regionLabel: string | undefined;
-        let placeName: string | undefined;
         try {
-          const meta = await readOriginalImageMeta(file);
-          const latitude = typeof meta.latitude === 'number' ? meta.latitude : undefined;
-          const longitude = typeof meta.longitude === 'number' ? meta.longitude : undefined;
-          if (typeof latitude === 'number' && typeof longitude === 'number') {
-            const candidate = await getLocationCandidateFromGps(latitude, longitude);
-            if (candidate?.regionLabel) regionLabel = candidate.regionLabel;
-            // 장소명(POI)도 함께 사용 — 공개 도감에 노출(예: 지리산 노고단). 사용자가 확인·수정 가능.
-            if (candidate?.placeName) placeName = candidate.placeName;
+          // 갤럭시 등 일부 안드로이드는 HEIC를 빈 MIME으로 전달 → 확장자도 함께 허용
+          const isImageLike = file.type.startsWith('image/') || /\.(heic|heif)$/i.test(file.name);
+          if (!isImageLike) {
+            toast.error(`'${file.name}' 은 사진 파일이 아니에요.`);
+            continue;
           }
-        } catch (e) {
-          console.warn('식물탐정 촬영장소 확인 실패'); // GPS 없거나 실패해도 업로드는 계속 진행
+          if (file.size > 20 * 1024 * 1024) {
+            toast.error(`'${file.name}' 은 20MB를 초과해요.`);
+            continue;
+          }
+          // 📍 압축 전 원본 file에서 EXIF GPS를 읽어 역지오코딩 (압축하면 GPS가 사라지므로 반드시 압축 앞단에서)
+          let regionLabel: string | undefined;
+          let placeName: string | undefined;
+          try {
+            const meta = await readOriginalImageMeta(file);
+            const latitude = typeof meta.latitude === 'number' ? meta.latitude : undefined;
+            const longitude = typeof meta.longitude === 'number' ? meta.longitude : undefined;
+            if (typeof latitude === 'number' && typeof longitude === 'number') {
+              const candidate = await getLocationCandidateFromGps(latitude, longitude);
+              if (candidate?.regionLabel) regionLabel = candidate.regionLabel;
+              // 장소명(POI)도 함께 사용 — 공개 도감에 노출(예: 지리산 노고단). 사용자가 확인·수정 가능.
+              if (candidate?.placeName) placeName = candidate.placeName;
+            }
+          } catch (e) {
+            console.warn('식물탐정 촬영장소 확인 실패'); // GPS 없거나 실패해도 업로드는 계속 진행
+          }
+          const { original, thumbnail } = await createPlantImageVariants(file);
+          const base64 = await blobToBase64(original);
+          const thumbnailBase64 = await blobToBase64(thumbnail);
+          next.push({
+            id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            previewUrl: URL.createObjectURL(thumbnail),
+            base64,
+            thumbnailBase64,
+            mimeType: original.type || file.type || 'image/jpeg',
+            thumbnailMimeType: thumbnail.type || 'image/jpeg',
+            regionLabel,
+            placeName,
+          });
+        } catch {
+          toast.error('변환하지 못한 사진은 제외했습니다. 다른 사진은 유지됩니다.');
         }
-        const { original, thumbnail } = await createPlantImageVariants(file);
-        const base64 = await blobToBase64(original);
-        const thumbnailBase64 = await blobToBase64(thumbnail);
-        next.push({
-          id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          previewUrl: URL.createObjectURL(thumbnail),
-          base64,
-          thumbnailBase64,
-          mimeType: original.type || file.type || 'image/jpeg',
-          thumbnailMimeType: thumbnail.type || 'image/jpeg',
-          regionLabel,
-          placeName,
-        });
       }
       if (next.length > 0) {
         setPhotos((prev) => [...prev, ...next]);
@@ -1769,18 +1773,15 @@ export function PlantDetectivePage() {
     }
   };
 
-  const addGrowthPhotoToPlant = async (plant: PlantLibraryItem, file: File) => {
+  const addGrowthPhotoToPlant = async (plant: PlantLibraryItem, source: File) => {
     if (!user) {
       toast.error('로그인이 필요합니다.');
       return;
     }
-    // 갤럭시 등 일부 안드로이드는 HEIC를 빈 MIME으로 전달 → 확장자도 함께 허용
-    if (!file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) {
-      toast.error('사진 파일만 추가할 수 있어요.');
-      return;
-    }
+    const selectedPhoto = readSelectedRecordPhoto(source);
     setLibraryPhotoUploadingId(plant.id);
     try {
+      const file = await selectedPhoto;
       const compressed = await compressImage(file, 1024, 0.82);
       const storage = getStorage();
       const ts = Date.now();
@@ -4320,8 +4321,8 @@ function PlantLibraryPanel({
                   disabled={uploadingId === p.id}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => {
                     const file = e.target.files?.[0];
-                    e.target.value = '';
                     if (file) onAddGrowthPhoto(p, file);
+                    e.target.value = '';
                   }}
                   style={{ display: 'none' }}
                 />

@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { readSelectedRecordPhotos } from '../services/selectedRecordPhoto';
+import { compressUploadPhoto } from '../services/photoUploadService';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import {
   addDoc,
@@ -162,11 +164,13 @@ function formatSize(size: number) {
 }
 
 function isAllowedImage(file: File) {
-  return ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type);
+  return ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(file.type);
 }
 
 async function compressImage(file: File): Promise<{ blob: Blob; width: number; height: number }> {
-  const imageUrl = URL.createObjectURL(file);
+  const source = /image\/hei[cf]/i.test(file.type)
+    ? await compressUploadPhoto(file, MAX_IMAGE_SIDE, 0.95) : file;
+  const imageUrl = URL.createObjectURL(source);
 
   try {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -225,6 +229,8 @@ export function VaultPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<VaultCategory | 'all'>('all');
   const [editorOpen, setEditorOpen] = useState(false);
+  const [isReadingPhotos, setIsReadingPhotos] = useState(false);
+  const photoReadInProgress = useRef(false);
   const [editingItem, setEditingItem] = useState<VaultItem | null>(null);
   const [viewingItem, setViewingItem] = useState<VaultItem | null>(null);
   const [form, setForm] = useState<VaultForm>(() => itemToForm());
@@ -296,7 +302,7 @@ export function VaultPage() {
   };
 
   const closeEditor = () => {
-    if (isSaving) return;
+    if (isSaving || photoReadInProgress.current) return;
     setEditingItem(null);
     setForm(itemToForm());
     setPendingFiles([]);
@@ -306,29 +312,31 @@ export function VaultPage() {
 
   const isEditorOpen = editorOpen;
 
-  const handleFilesChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(event.target.files || []);
-    event.target.value = '';
-
-    if (!selected.length) return;
-
-    const invalid = selected.filter((file) => !isAllowedImage(file));
-    if (invalid.length) {
-      toast.error('jpg, jpeg, png, webp 이미지만 업로드할 수 있습니다.');
-      return;
-    }
-
+  const handleFilesChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (isSaving || photoReadInProgress.current) return;
+    const sources = Array.from(event.target.files || []);
     const available = MAX_IMAGES_PER_ITEM - form.imageMetas.length - pendingFiles.length;
     if (available <= 0) {
+      event.target.value = '';
       toast.error('항목 1개당 이미지는 최대 3장까지 저장할 수 있습니다.');
       return;
     }
-
-    if (selected.length > available) {
-      toast.error(`이미지는 ${available}장만 더 추가할 수 있습니다.`);
+    const pending = readSelectedRecordPhotos(sources.slice(0, available), message => toast.error(message));
+    event.target.value = '';
+    if (sources.length > available) toast.error(`이미지는 ${available}장만 더 추가할 수 있습니다.`);
+    photoReadInProgress.current = true;
+    setIsReadingPhotos(true);
+    try {
+      const selected = (await pending).filter(file => {
+        if (isAllowedImage(file)) return true;
+        toast.error('jpg, jpeg, png, webp, HEIC 이미지만 업로드할 수 있습니다.');
+        return false;
+      });
+      setPendingFiles(prev => [...prev, ...selected].slice(0, MAX_IMAGES_PER_ITEM - form.imageMetas.length));
+    } finally {
+      photoReadInProgress.current = false;
+      setIsReadingPhotos(false);
     }
-
-    setPendingFiles((prev) => [...prev, ...selected.slice(0, available)]);
   };
 
   const removePendingFile = (index: number) => {
@@ -374,6 +382,7 @@ export function VaultPage() {
   };
 
   const handleSave = async () => {
+    if (photoReadInProgress.current) { toast.info('사진을 읽는 중입니다. 잠시 기다려 주세요.'); return; }
     if (!user?.uid) {
       toast.error('로그인이 필요합니다.');
       return;
@@ -654,9 +663,9 @@ export function VaultPage() {
                 <label className="vault-secondary-button" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, width: 'fit-content' }}>
                   <ImagePlus size={16} />
                   이미지 선택
-                  <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple onChange={handleFilesChange} hidden />
+                  <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif,.heic,.heif" multiple onChange={handleFilesChange} disabled={isSaving || isReadingPhotos} hidden />
                 </label>
-                <p className="vault-help">jpg, jpeg, png, webp만 가능하며 업로드 전 긴 변 1600px, JPEG 품질 0.75 수준으로 자동 압축됩니다. 항목당 최대 3장입니다.</p>
+                <p className="vault-help">jpg, jpeg, png, webp, HEIC 사진을 지원하며 업로드 전 긴 변 1600px, JPEG 품질 0.75 수준으로 자동 압축됩니다. 항목당 최대 3장입니다.</p>
 
                 {(form.imageMetas.length > 0 || pendingFiles.length > 0) && (
                   <div className="vault-images" style={{ marginTop: 12 }}>
@@ -690,10 +699,10 @@ export function VaultPage() {
             </div>
 
             <div className="vault-modal-actions">
-              <button type="button" className="vault-ghost-button" onClick={closeEditor} disabled={isSaving}>
+              <button type="button" className="vault-ghost-button" onClick={closeEditor} disabled={isSaving || isReadingPhotos}>
                 취소
               </button>
-              <button type="button" className="vault-primary-button" onClick={handleSave} disabled={isSaving}>
+              <button type="button" className="vault-primary-button" onClick={handleSave} disabled={isSaving || isReadingPhotos}>
                 {isSaving ? '저장 중...' : '저장'}
               </button>
             </div>

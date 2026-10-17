@@ -101,3 +101,16 @@ test('cancels an oversized stream at the limit instead of reading the complete s
   assert.equal(cancelled, true);
   assert.equal(released, true);
 });
+
+test('normalizes extension-only iPhone/Android photo MIME without provider metadata', async () => {
+  for (const [name, type] of [['IMG.JPG','image/jpeg'],['capture.PNG','image/png'],['camera.HEIC','image/heic']]) {
+    const [result] = await Promise.all(startSelectedRecordPhotoReads([{ name, type: '', stream: () => new Blob(['photo']).stream(), get size() { throw new Error('must not query metadata'); } }]));
+    assert.equal(result.ok,true); assert.equal(result.file.type,type);
+  }
+});
+test('limits a selection to 60MiB and cancels excess streams', async () => {
+  let cancelled = 0;
+  const sources = Array.from({length:4},()=>({name:'photo.jpg',type:'image/jpeg',stream(){let read=false;return{getReader:()=>({async read(){if(read)return{done:true};read=true;return{done:false,value:new Uint8Array(20*1024*1024)};},async cancel(){cancelled++;},releaseLock(){}})};}}));
+  const results=await Promise.all(startSelectedRecordPhotoReads(sources));
+  assert.equal(results.filter(r=>r.ok).length,3);assert.equal(cancelled,1);assert.match(results[3].message,/60MB/);
+});
