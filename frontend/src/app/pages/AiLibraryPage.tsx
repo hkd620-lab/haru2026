@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
+import { getAiLibrarySource } from '../utils/aiLibrarySource';
 import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
 import { addAiLibrarySelection, AI_LIBRARY_DELETE_LIMIT } from '../utils/aiLibraryDeletion';
 import {
@@ -38,10 +39,11 @@ const SOURCE_LABELS: Record<string, string> = {
   'claude.ai': 'Claude',
   'gemini.google.com': 'Gemini',
   'chatgpt.com': 'ChatGPT',
+  'chatgpt.com/dots': '김비서',
   'slack': 'Slack',
 };
 
-const PRIMARY_SOURCES = ['chatgpt.com', 'claude.ai', 'gemini.google.com', 'slack'] as const;
+const PRIMARY_SOURCES = ['chatgpt.com', 'chatgpt.com/dots', 'claude.ai', 'gemini.google.com', 'slack'] as const;
 
 const MATERIAL_KEYS: (keyof BookMaterial)[] = [
   'bookMaterialTitle',
@@ -388,11 +390,7 @@ export function AiLibraryPage() {
     return () => requestGuard.endSession(generation);
   }, [user?.uid, user?.email, user?.emailVerified]);
 
-  const getSource = (r: HaruRecord): string => {
-    if (r.source) return r.source;
-    const match = r.title?.match(/^\[([^\]]+)\]/);
-    return match ? match[1] : '';
-  };
+  const getSource = getAiLibrarySource;
 
   // 주요 수집 출처는 기록 유무와 관계없이 항상 노출하고, 그 외 출처만 동적으로 추가한다.
   const filterButtons = useMemo(() => {
@@ -755,7 +753,7 @@ export function AiLibraryPage() {
                     fontWeight: 600,
                   }}
                 >
-                  {SOURCE_LABELS[log.source] ?? getSource(log)}
+                  {SOURCE_LABELS[getSource(log)] ?? getSource(log)}
                 </span>
                 <span style={{ fontSize: '11px', color: '#aaa' }}>
                   {formatDate(log.createdAt)}
