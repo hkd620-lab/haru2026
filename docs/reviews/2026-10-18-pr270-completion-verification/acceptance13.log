@@ -1,0 +1,29 @@
+PASS 1a 법률 메모 하루LAW 1장만(메모)
+     후 law(소송·임대차·보증금·내용증명·합의) | 전 life(준비·해결·방법) law(소송·임대차·보증금·내용증명·합의) childcare(상담)
+PASS 1b 법률 메모 하루LAW 1장만(일기)
+     후 law(소송·임대차·보증금·내용증명·합의) | 전 life(준비·해결·방법) law(소송·임대차·보증금·내용증명·합의) childcare(상담)
+PASS 2 회의 메모 추천 없음
+     후 없음 | 전 life(준비·정리·해결·방법)
+PASS 3 법률 상담: 하루LAW 있음·육아교육 없음
+     후 law(법률) | 전 law(법률) childcare(상담)
+PASS 4 제주 산책: 여행만(F-21)
+     후 travel(제주) | 전 travel(제주) pet(산책)
+PASS 5 새 아이디어: 육아교육 없음
+     후 없음 | 전 life(정리) childcare(아이)
+PASS 6 새 아이템 회의: 육아교육 없음
+     후 없음 | 전 childcare(아이)
+PASS 7 코스피: 여행 없음
+     후 없음 | 전 travel(코스)
+PASS 8 일정하다: 여행 없음
+     후 없음 | 전 travel(일정)
+PASS 9 강아지와 산책: 반려동물 있음
+     후 pet(강아지·산책) | 전 pet(강아지·산책)
+PASS 10 고민·불안·걱정: 생활 있음
+     후 life(걱정·고민·불안) | 전 life(걱정·고민·불안·준비)
+PASS 11 아이 학교 상담: 육아교육 있음
+     후 childcare(아이·학교·상담) | 전 childcare(아이·학교·상담)
+PASS 12 혈당·병원 검사: 건강관리 또는 병원찾기
+     후 hospital(병원·검사) health(혈당) | 전 hospital(병원·검사) health(혈당)
+PASS 13 F-10 교사 맥락(결과만 기록, 해소 불요)
+     후 childcare(아이·학교·상담) | 전 childcare(아이·학교·상담)
+합격 기준 14/14

@@ -1,0 +1,4 @@
+A	docs/reviews/2026-10-09-pr270-codex-run1-request.md
+A	docs/reviews/2026-10-09-pr270-codex-run1-result.md
+M	frontend/src/app/utils/assistantRecommendations.ts
+A	frontend/test/assistantRecommendations.test.mjs

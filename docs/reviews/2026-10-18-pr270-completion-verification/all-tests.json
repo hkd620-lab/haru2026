@@ -1,0 +1,214 @@
+[
+  {
+    "file": "aiImport.policy.test.cjs",
+    "exit": 0
+  },
+  {
+    "file": "aiImportReturn.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "aiLibraryDeletion.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "aiLibraryPagination.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "aiLibrarySource.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "assistantEntryScroll.policy.test.cjs",
+    "exit": 0
+  },
+  {
+    "file": "assistantRecommendations.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "assistantSavedResultOpen.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "authCallbackAndHomePersonalization.policy.test.cjs",
+    "exit": 0
+  },
+  {
+    "file": "authCallbackDiagnostics.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "childVaccineSchedule.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "formatPhotoUploadResult.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "formatRegistry.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "growthSubject.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "haruLawAttachmentCleanup.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "haruLawError.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "haruLawSave.test.cjs",
+    "exit": 1
+  },
+  {
+    "file": "householdAmount.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "householdExport.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "lawEasyExplain.policy.test.cjs",
+    "exit": 0
+  },
+  {
+    "file": "ledgerAmount.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "ledgerEmptyExport.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "ledgerExportConsistency.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "loginPerformanceCallsites.policy.test.cjs",
+    "exit": 0
+  },
+  {
+    "file": "loginPerformanceTrace.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "loginProviderStorage.policy.test.cjs",
+    "exit": 1
+  },
+  {
+    "file": "notificationTimeZone.policy.test.cjs",
+    "exit": 0
+  },
+  {
+    "file": "originalAssistantRecords.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "photoSelectionRoutes.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "plantDetectiveEdit.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "plantDetectivePhotoEdit.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "readingAi.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "recordPhotoCompression.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "recordPhotoPolicy.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "recordPhotoUploadCore.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "sayuAssistantAdapters.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "sayuGrowthTimeline.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "sayuMobileReadingUx.policy.test.cjs",
+    "exit": 0
+  },
+  {
+    "file": "sayuPhotoUpload.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "selectedRecordPhoto.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "snsPrivateThumbnails.policy.test.cjs",
+    "exit": 0
+  },
+  {
+    "file": "snsRecordsMerge.policy.test.cjs",
+    "exit": 0
+  },
+  {
+    "file": "snsStoryCreator.policy.test.cjs",
+    "exit": 0
+  },
+  {
+    "file": "snsStoryRequestState.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "snsThumbnailAuthCache.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "snsThumbnailPersistentCache.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "snsThumbnailRequestQueue.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "snsThumbnailTieredLoad.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "socialLoginReturnOrigin.policy.test.cjs",
+    "exit": 0
+  },
+  {
+    "file": "structuredAssistantRecords.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "subscriptionDisplay.policy.test.cjs",
+    "exit": 0
+  },
+  {
+    "file": "validateBuildEnv.test.mjs",
+    "exit": 0
+  },
+  {
+    "file": "voidingRecordTarget.test.mjs",
+    "exit": 0
+  }
+]
