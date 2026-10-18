@@ -20,6 +20,8 @@ const dateChangeSource = source.slice(source.indexOf('  const handleLawSaveDateC
 const dateChangeJS = transformSync(dateChangeSource, { loader: 'ts' }).code;
 const dateStateSource = source.slice(source.indexOf('  const [lawSaveDate,'), source.indexOf('  const [lawGuideConfirmed,'));
 const dateStateJS = transformSync(dateStateSource, { loader: 'ts' }).code;
+const saveRefsSource = source.slice(source.indexOf('  const lawSaveRef = useRef(false);'), source.indexOf('  const [lawSaved,'));
+const saveRefsJS = transformSync(saveRefsSource, { loader: 'ts' }).code;
 const dateLabelOffset = source.indexOf('<label htmlFor="law-save-date"');
 const dateInputSource = source.slice(source.lastIndexOf('              <div', dateLabelOffset), source.indexOf('              {/* 검색창 */}', dateLabelOffset));
 const dateInputJS = transformSync(`return <>${dateInputSource.trim()}</>;`, { loader: 'tsx' }).code;
@@ -30,12 +32,19 @@ const noticeSource = source.slice(source.indexOf('              {lawSaveError &&
 const noticeJS = transformSync(`return <>${noticeSource}</>;`, { loader: 'tsx' }).code;
 
 function harness(overrides = {}) {
-  const state = { saving: false, saved: false, error: null, steps: [], logs: [], navigations: [], date: overrides.lawSaveDate ?? '2026-10-02' };
+  const state = { saving: overrides.isSavingLaw ?? false, saved: overrides.lawSaved ?? false, error: null, steps: [], logs: [], navigations: [], date: overrides.lawSaveDate ?? '2026-10-02' };
+  const cleanups = [];
+  // Run the real ref declarations and effect cleanup once per mounted harness.
+  const saveRefs = new Function('useRef', 'useEffect', `${saveRefsJS}; return { lawSaveRef, lawSaveMountedRef };`)(
+    (initial) => ({ current: initial }),
+    (setup) => { cleanups.push(setup()); },
+  );
   const context = {
     user: { uid: 'fixture-owner' }, lawQuery: 'fixture question', activeLawQuery: 'fixture question',
     lawResults: [{ lawName: 'fixture law', articleStr: '1', title: 'fixture title', content: 'fixture article' }],
     lawSummary: 'fixture summary', currentDate: new Date('2026-10-02T12:00:00Z'),
-    lawSaveDate: state.date, uploadingLawFiles: false, lawLoading: false, isSavingLaw: false,
+    lawSaveDate: state.date, uploadingLawFiles: false, lawLoading: false, isSavingLaw: state.saving,
+    lawSaved: state.saved, ...saveRefs,
     weather: '쾌청', temperature: '쾌적', mood: '평온', getLocalDateString: () => '2026-10-02',
     lawAttachments: [{ storagePath: 'fixture.pdf', mimeType: 'application/pdf', fileName: 'fixture.pdf' }],
     activeLawAttachments: [{ storagePath: 'fixture.pdf', mimeType: 'application/pdf', fileName: 'fixture.pdf' }],
@@ -54,11 +63,20 @@ function harness(overrides = {}) {
   // Expose destructive setters too: failures must never invoke them.
   for (const key of inputKeys) context[`set${key[0].toUpperCase()}${key.slice(1)}`] = () => assert.fail(`input cleared: ${key}`);
   const inputs = JSON.stringify(inputKeys.map((key) => context[key]));
-  const run = new Function(...Object.keys(context), `${handlerJS}; return handleSaveLawResult;`)(...Object.values(context));
-  const changeDate = new Function(...Object.keys(context), `${dateChangeJS}; return handleLawSaveDateChange;`)(...Object.values(context));
+  let handlers;
+  const rerender = () => {
+    // Setters record pending state; a render creates new closures but keeps refs.
+    Object.assign(context, { lawSaveDate: state.date, isSavingLaw: state.saving, lawSaved: state.saved });
+    const bind = (js, name) => new Function(...Object.keys(context), `${js}; return ${name};`)(...Object.values(context));
+    handlers = { run: bind(handlerJS, 'handleSaveLawResult'), changeDate: bind(dateChangeJS, 'handleLawSaveDateChange') };
+  };
+  rerender();
+  const run = () => handlers.run();
+  const changeDate = (event) => handlers.changeDate(event);
   const dateInput = () => new Function('React', 'lawSaveDate', 'uploadingLawFiles', 'lawLoading', 'isSavingLaw', 'handleLawSaveDateChange', dateInputJS)(React, state.date, context.uploadingLawFiles, context.lawLoading, context.isSavingLaw, changeDate);
   const notice = (extra = {}) => new Function('React', 'lawSaveError', 'isSavingLaw', 'lawSaved', 'handleSaveLawResult', noticeJS)(React, state.error, extra.saving ?? state.saving, extra.saved ?? state.saved, run);
-  return { context, state, run, notice, changeDate, dateInput, assertPreserved: () => assert.equal(JSON.stringify(inputKeys.map((key) => context[key])), inputs) };
+  const unmount = () => { for (const cleanup of cleanups) cleanup(); };
+  return { context, state, run, notice, changeDate, dateInput, rerender, unmount, assertPreserved: () => assert.equal(JSON.stringify(inputKeys.map((key) => context[key])), inputs) };
 }
 
 test('저장 날짜 기본값은 서울 자정 경계를 따르고 특정 시험 날짜에 고정되지 않는다', () => {
@@ -232,16 +250,88 @@ test('오류 코드 allowlist와 네트워크 안내: 오류 원문·임의 code
 
 test('저장 진행 중 중복 재시도를 막고 완료 전 성공 표시를 하지 않는다', async () => {
   let release;
+  let reads = 0, writes = 0;
   const pending = new Promise((resolve) => { release = resolve; });
-  const h = harness({ getDoc: () => pending });
+  const h = harness({
+    getDoc: () => { reads += 1; return pending; },
+    firestoreService: { saveRecord: async (_uid, data) => { writes += 1; return data.id; } },
+  });
   const run = h.run();
   assert.equal(h.state.saving, true);
   assert.equal(h.state.saved, false);
   assert.deepEqual(h.state.navigations, []);
+  const beforeRender = h.run(); // A second click before React renders cannot start IO.
+  h.rerender();
+  const afterRender = h.run(); // The lock must survive a new render/handler closure.
+  assert.equal(reads, 1);
+  assert.equal(writes, 0);
+  assert.equal(h.context.lawSaveRef.current, true);
   release({ exists: () => false });
-  await run;
+  await Promise.all([run, beforeRender, afterRender]);
+  assert.equal(reads, 1);
+  assert.equal(writes, 1);
   assert.equal(h.state.saving, false);
   assert.equal(h.state.saved, true);
+  assert.equal(h.context.lawSaveRef.current, false);
+  assert.deepEqual(h.state.navigations, [['/sayu', { state: { filterFormat: '하루LAW', tab: 'assistants', openRecordId: '2026-10-02' } }]]);
+  h.assertPreserved();
+});
+
+test('저장 완료 후 재렌더한 콜백은 재진입을 막고 날짜 변경 후에만 다시 저장한다', async () => {
+  const reads = [], writes = [];
+  const h = harness({
+    getDoc: async (ref) => { reads.push(ref); return { exists: () => false }; },
+    firestoreService: { saveRecord: async (_uid, data) => { writes.push(data); return data.id; } },
+  });
+  await h.run();
+  assert.equal(writes.length, 1);
+  assert.equal(h.state.saved, true);
+  h.rerender();
+  await h.run();
+  assert.equal(reads.length, 1);
+  assert.equal(writes.length, 1);
+  assert.equal(h.state.navigations.length, 1);
+
+  const row = React.Children.toArray(h.dateInput().props.children)[0];
+  const input = React.Children.toArray(row.props.children)[1];
+  input.props.onChange({ target: { value: '2026-10-04' } });
+  assert.equal(h.state.saved, false);
+  assert.equal(h.state.error, null);
+  h.rerender();
+  await h.run();
+  assert.equal(reads.length, 2);
+  assert.deepEqual(writes.map(({ id, date }) => ({ id, date })), [
+    { id: '2026-10-02', date: '2026-10-02' },
+    { id: '2026-10-04', date: '2026-10-04' },
+  ]);
+  assert.equal(h.state.navigations.length, 2);
+  h.assertPreserved();
+});
+
+test('저장 중 언마운트하면 실제 cleanup이 완료 후 이동을 막고 다른 인스턴스는 정상 이동한다', async () => {
+  let release, started;
+  let writes = 0;
+  const pending = new Promise((resolve) => { release = resolve; });
+  const writeStarted = new Promise((resolve) => { started = resolve; });
+  const h = harness({
+    firestoreService: { saveRecord: () => { writes += 1; started(); return pending; } },
+  });
+  const run = h.run();
+  await writeStarted;
+  assert.equal(h.state.saving, true);
+  h.unmount();
+  assert.equal(h.context.lawSaveMountedRef.current, false);
+  release('fixture-saved-record');
+  await run;
+  assert.equal(writes, 1);
+  assert.deepEqual(h.state.navigations, []);
+  assert.equal(h.context.lawSaveRef.current, false);
+  h.assertPreserved();
+
+  const other = harness();
+  await other.run();
+  assert.equal(other.state.navigations.length, 1);
+  assert.equal(other.context.lawSaveMountedRef.current, true);
 });
 
 const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST;
