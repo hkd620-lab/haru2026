@@ -1,0 +1,11 @@
+{
+  "channel": "projects/haru2026-8abb8/sites/haru2026-8abb8/channels/live",
+  "url": "https://haru2026-8abb8.web.app",
+  "releaseName": "projects/haru2026-8abb8/sites/haru2026-8abb8/channels/live/releases/1792335080310000",
+  "releaseTime": "2026-10-18T14:51:20.310Z",
+  "version": "projects/haru2026-8abb8/sites/haru2026-8abb8/versions/5714b3a92faff384",
+  "status": "FINALIZED",
+  "createTime": "2026-10-18T14:51:17.485541Z",
+  "finalizeTime": "2026-10-18T14:51:20.552187Z",
+  "deploymentTool": "cli-firebase--action-hosting-deploy"
+}

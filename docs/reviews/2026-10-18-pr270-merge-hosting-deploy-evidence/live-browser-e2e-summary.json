@@ -1,0 +1,19 @@
+{
+  "observedUTC": "2026-10-18T14:53:58.777223+00:00",
+  "browser": "Chrome",
+  "environment": "https://haru2026.com",
+  "method": "existing authenticated session; read-only navigation",
+  "record": "existing October 9 legal memo; no content or personal identifiers retained",
+  "checks": {
+    "existing_memo_opened": true,
+    "exactly_one_law_recommendation": true,
+    "life_or_childcare_cards_present": false,
+    "law_connection_opened": true
+  },
+  "landingURL": "https://haru2026.com/legal-assistant/beginner-guide",
+  "landingHeading": "전자소송포털 처음 안내",
+  "loadedModernBundle": "/assets/index-8X0CNXeW.js",
+  "aiInvocation": false,
+  "recordWrite": false,
+  "limits": "Single existing memo on Chrome; no AI response quality or save-flow test"
+}

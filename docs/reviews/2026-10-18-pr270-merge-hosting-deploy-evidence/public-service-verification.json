@@ -1,0 +1,53 @@
+{
+  "observedUTC": "2026-10-18T14:53:34.292123+00:00",
+  "responses": [
+    {
+      "url": "https://haru2026.com/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "etag": "\"99f9514ae5c9dc5e08bf7726f207b53e44bcf8e3e8f6201ae4e1fbf38f79fdb1\"",
+      "lastModified": "Sun, 18 Oct 2026 14:51:20 GMT",
+      "sha256": "a534813d9f7670f5ece082fc63b68152a57d2ba9fbe8866244730370a7938483"
+    },
+    {
+      "url": "https://haru2026-8abb8.web.app/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "etag": "\"99f9514ae5c9dc5e08bf7726f207b53e44bcf8e3e8f6201ae4e1fbf38f79fdb1\"",
+      "lastModified": "Sun, 18 Oct 2026 14:51:20 GMT",
+      "sha256": "a534813d9f7670f5ece082fc63b68152a57d2ba9fbe8866244730370a7938483"
+    },
+    {
+      "url": "https://haru2026.com/sayu",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "etag": "\"99f9514ae5c9dc5e08bf7726f207b53e44bcf8e3e8f6201ae4e1fbf38f79fdb1\"",
+      "lastModified": "Sun, 18 Oct 2026 14:51:20 GMT",
+      "sha256": "a534813d9f7670f5ece082fc63b68152a57d2ba9fbe8866244730370a7938483"
+    },
+    {
+      "url": "https://haru2026.com/legal-assistant/beginner-guide",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "etag": "\"99f9514ae5c9dc5e08bf7726f207b53e44bcf8e3e8f6201ae4e1fbf38f79fdb1\"",
+      "lastModified": "Sun, 18 Oct 2026 14:51:20 GMT",
+      "sha256": "a534813d9f7670f5ece082fc63b68152a57d2ba9fbe8866244730370a7938483"
+    },
+    {
+      "url": "https://haru2026.com/assets/index-8X0CNXeW.js",
+      "status": 200,
+      "sha256": "f0b8d22cf8948f8746eea565e1423d09dbf67d2b39cfd33fa7db3daddf6a8fe9"
+    }
+  ],
+  "scripts": [
+    "https://developers.kakao.com/sdk/js/kakao.js",
+    "/assets/index-8X0CNXeW.js",
+    "/assets/polyfills-legacy-oY9mAs8o.js",
+    "/assets/index-legacy-CPbEshjQ.js"
+  ],
+  "checks": {
+    "live_modern_bundle_matches_browser": true,
+    "law_restricted_variants": true,
+    "same_html_hosting_and_domain": true
+  }
+}
