@@ -1,0 +1,8 @@
+{
+  "command": "node test/haruLawSave.test.cjs",
+  "commit": "a4d55436fee851f2b66f1ae86a62dcdeb21dcadf",
+  "node": "v26.8.2",
+  "exitCode": 1,
+  "emulatorEnv": "unset",
+  "network": "no emulator and all IO in non-emulator tests mocked"
+}

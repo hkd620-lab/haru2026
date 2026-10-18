@@ -1,0 +1,27 @@
+{
+  "commit": "a4d55436fee851f2b66f1ae86a62dcdeb21dcadf",
+  "files": [
+    {
+      "path": "frontend/test/haruLawSave.test.cjs",
+      "matchesGitHEAD": true,
+      "sha256": "e17d8f8c4cc8b8018c658a7d066e64c4583cafca0b69f0a34401555d88689b25"
+    },
+    {
+      "path": "frontend/src/app/assistants/haruLaw/HaruLawPanel.tsx",
+      "matchesGitHEAD": true,
+      "sha256": "84620a11b8a156a05b91b0bd571a46183cc8957689fc95c7cb574b7e1df4fef5"
+    },
+    {
+      "path": "frontend/src/app/pages/RecordPage.tsx",
+      "matchesGitHEAD": true,
+      "sha256": "e9977ca82ff55c602b5ae9fc29a2561bfdec4bda655899f5b46e1804c605cc65"
+    },
+    {
+      "path": "frontend/src/app/services/firestoreService.ts",
+      "matchesGitHEAD": true,
+      "sha256": "30a815d4765761845d15a85cce9250e082479046a201bb78e6a025fa5d68fb7b"
+    }
+  ],
+  "temporaryNodeModulesLinkRemoved": true,
+  "repositoryStatus": ""
+}

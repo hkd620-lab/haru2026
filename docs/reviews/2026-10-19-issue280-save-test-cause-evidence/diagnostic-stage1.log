@@ -1,0 +1,122 @@
+✔ 저장 날짜 기본값은 서울 자정 경계를 따르고 특정 시험 날짜에 고정되지 않는다 (20.793792ms)
+✔ 실제 날짜 입력 콜백은 입력·첨부·분석과 공용 날짜를 보존하고 서버 IO 없이 대상만 변경한다 (2.227417ms)
+✔ 업로드·분석·저장 중에는 날짜 입력과 콜백 모두 변경을 거부한다 (0.502625ms)
+✖ 빈 날짜·잘못된 날짜는 조회·저장 없이 안내하고 분석 입력을 보존한다 (0.454458ms)
+✖ 선택 날짜 조회·실제 saveRecord의 문서 경로·id·date 일치 및 기존 기록 병합 (0.2875ms)
+✖ 로그인 부재·빈 결과는 지속 안내를 렌더링하고 IO·입력 초기화 없이 반환한다 (0.164167ms)
+✖ getDoc 실패 안내·안전 로그·입력 보존·저장만 재시도 (0.16075ms)
+✖ saveRecord 실패 안내·안전 로그·입력 보존·저장만 재시도 (0.097166ms)
+✖ 오류 코드 allowlist와 네트워크 안내: 오류 원문·임의 code가 UI/로그에 유출되지 않는다 (0.157458ms)
+✖ 저장 진행 중 중복 재시도를 막고 완료 전 성공 표시를 하지 않는다 (0.810959ms)
+﹣ 로컬 Rules: 없는 날짜 → 실제 저장, 기존 기록 병합, 전체 권한 정책 전후 비교 (0.063916ms) # SKIP
+ℹ Error: Test "저장 진행 중 중복 재시도를 막고 완료 전 성공 표시를 하지 않는다" at test/haruLawSave.test.cjs:233:1 generated asynchronous activity after the test ended. This activity created the error "ReferenceError: lawSaved is not defined" and would have caused the test to fail, but instead triggered an unhandledRejection event.
+ℹ tests 11
+ℹ suites 0
+ℹ pass 3
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 32.069625
+
+✖ failing tests:
+
+test at test/haruLawSave.test.cjs:113:1
+✖ 빈 날짜·잘못된 날짜는 조회·저장 없이 안내하고 분석 입력을 보존한다 (0.454458ms)
+  ReferenceError: lawSaved is not defined
+      at Object.handleSaveLawResult [as run] (eval at harness (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:57:15), <anonymous>:4:29)
+      at TestContext.<anonymous> (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:116:13)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at test/haruLawSave.test.cjs:125:1
+✖ 선택 날짜 조회·실제 saveRecord의 문서 경로·id·date 일치 및 기존 기록 병합 (0.2875ms)
+  ReferenceError: lawSaved is not defined
+      at Object.handleSaveLawResult [as run] (eval at harness (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:57:15), <anonymous>:4:29)
+      at TestContext.<anonymous> (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:147:13)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at test/haruLawSave.test.cjs:173:1
+✖ 로그인 부재·빈 결과는 지속 안내를 렌더링하고 IO·입력 초기화 없이 반환한다 (0.164167ms)
+  ReferenceError: lawSaved is not defined
+      at Object.handleSaveLawResult [as run] (eval at harness (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:57:15), <anonymous>:4:29)
+      at TestContext.<anonymous> (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:176:13)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at test/haruLawSave.test.cjs:189:3
+✖ getDoc 실패 안내·안전 로그·입력 보존·저장만 재시도 (0.16075ms)
+  ReferenceError: lawSaved is not defined
+      at Object.handleSaveLawResult [as run] (eval at harness (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:57:15), <anonymous>:4:29)
+      at TestContext.<anonymous> (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:196:13)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at test/haruLawSave.test.cjs:189:3
+✖ saveRecord 실패 안내·안전 로그·입력 보존·저장만 재시도 (0.097166ms)
+  ReferenceError: lawSaved is not defined
+      at Object.handleSaveLawResult [as run] (eval at harness (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:57:15), <anonymous>:4:29)
+      at TestContext.<anonymous> (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:196:13)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at test/haruLawSave.test.cjs:222:1
+✖ 오류 코드 allowlist와 네트워크 안내: 오류 원문·임의 code가 UI/로그에 유출되지 않는다 (0.157458ms)
+  ReferenceError: lawSaved is not defined
+      at Object.handleSaveLawResult [as run] (eval at harness (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:57:15), <anonymous>:4:29)
+      at TestContext.<anonymous> (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:225:13)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at test/haruLawSave.test.cjs:233:1
+✖ 저장 진행 중 중복 재시도를 막고 완료 전 성공 표시를 하지 않는다 (0.810959ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  false !== true
+
+      at TestContext.<anonymous> (/private/tmp/haru-issue280-audit-20261019/frontend/test/haruLawSave.test.cjs:238:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

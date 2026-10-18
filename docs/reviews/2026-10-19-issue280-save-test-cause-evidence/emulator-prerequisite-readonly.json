@@ -1,0 +1,6 @@
+{
+  "missingDocumentClauseCount": 1,
+  "currentRulesComparedToOwnStrippedBaselineWouldPass": false,
+  "emulatorExecuted": false,
+  "requiredBaseline": "pre-missing-document-change Rules snapshot via HARULAW_BASELINE_RULES (or a reference containing that exact baseline)"
+}
