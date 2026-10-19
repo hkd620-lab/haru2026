@@ -5,7 +5,7 @@
 PR270·PR282·#280 완료 유지. #281 **시험만** 실제 캡처UID·제공자 우선순위·정규화·폴백 계약을 검증하도록 수정. 단순 문자열 치환으로 종료하지 않음. 앱 코드·Rules·인증 정책 수정과 PR생성·병합·배포 금지.
 
 - 최신 원격 main `75a6d8490262babe98e5d67fd2c7800b43548894`에서 별도 `/private/tmp/haru-issue281-test-fix-20261019`, 브랜치 `codex-issue281-provider-contract-20261019` 생성.
-- 원본 `/Users/heogyeongdae/Developer/HARU2026`, codex-question-input-three-lines/9fa88ead 깨끗하게 보존.
+- 원본 `$HOME/Developer/HARU2026`, codex-question-input-three-lines/9fa88ead 깨끗하게 보존.
 - [기존 원인 점검](https://github.com/hkd620-lab/haru2026/blob/a7457b67/docs/reviews/2026-10-19-issue281-login-provider-existing-failure-audit.md): 897313a2의 UID 캡처 도입 이후18행 구형 문자열 단언만 실패. 당시 원본 시험 exit1은 이번 수정 후 결과와 구분한다.
 
 ## 수정
