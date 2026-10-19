@@ -236,10 +236,10 @@ function SayuHealthVoidingSession() {
     try {
       const statsText = `총 음료 섭취량 ${stats.totalDrinkMl}ml, 총 배뇨량 ${stats.totalVoidMl}ml, 주간 배뇨 ${stats.dayVoidMl}ml(${stats.dayVoidCount}회), 야간 배뇨 ${stats.nightVoidMl}ml(${stats.nightVoidCount}회), 야간뇨 비율 ${stats.nightRatioPercent}%, 총 배뇨 횟수 ${stats.totalVoidCount}회, 취침 ${todayBedtime} 기상 ${todayWaketime}`;
       const fns = getFunctions(undefined, 'asia-northeast3');
-      const polish = httpsCallable<{ text: string; format: string; mode: string }, { result?: string }>(fns, 'polishContent');
+      const polish = httpsCallable<{ text: string; format: string; mode: string }, { text?: string }>(fns, 'polishContent');
       const res = await polish({ text: statsText, format: 'voiding', mode: 'PREMIUM' });
       if (!isCurrentSession()) return;
-      const generated = res.data.result ?? '';
+      const generated = typeof res.data?.text === 'string' ? res.data.text : '';
       if (!generated || !isSayuSafe(generated, stats)) {
         toast.error('AI 해석 검증 실패: 계산값과 불일치합니다.');
         return;
