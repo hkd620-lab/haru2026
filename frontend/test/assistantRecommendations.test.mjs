@@ -123,6 +123,14 @@ test('감정 어근의 일부 일치와 임의의 접미사는 막는다', () =>
   assert.deepEqual(getAssistantRecommendations('시장이 불안정해서 걱정이다')[0].matchedKeywords, ['걱정']);
 });
 
+for (const text of ['불안감소', '걱정스럽다고', '걱정돼요요']) {
+  test(`허용 감정 활용형 뒤의 임의 접미사를 차단한다: ${text}`, () => {
+    assert.deepEqual(getAssistantRecommendations(text), []);
+    // 다른 유효 후보가 있어도 잘못된 감정 일치가 후보에 섞이지 않아야 한다.
+    assert.deepEqual(ids(`소송 ${text}`), ['law']);
+  });
+}
+
 test('분야가 분명한 일상 합성어도 추천을 유지한다', () => {
   assert.deepEqual(ids('임대차계약서를 확인했다.'), ['law']);
   assert.deepEqual(ids('임대차계약서와 계약서를 확인하고 법률상담을 받았다.'), ['law']);
@@ -201,6 +209,16 @@ test('최대 두 장이고 1위 점수의 절반 미만을 제외한다 (절반�
 test('같은 분야의 약한 단어는 강한 단어가 있을 때 점수에 더한다', () => {
   assert.deepEqual(ids('소송 강아지 산책'), ['pet', 'law']);
   assert.deepEqual(ids('소송 산책'), ['law']);
+});
+
+test('강한 단어 3점·약한 단어 1점의 비율을 동점 전후 순위로 고정한다', () => {
+  // law는 강한 단어 2개로 6점, life는 강한 단어 1개(3점)에 약한 단어를 더한다.
+  // 형식 우선순위를 점수와 반대로 주어 5점·6점·7점의 차이를 출력으로 검증한다.
+  const base = '소송 임대차 고민';
+  assert.deepEqual(ids(`${base} 준비 정리`, ['메모']), ['law', 'life']); // 6 > 5
+  assert.deepEqual(ids(`${base} 준비 정리 계획`, ['메모']), ['life', 'law']); // 6 = 6
+  assert.deepEqual(ids(`${base} 준비 정리 계획`, ['하루LAW']), ['law', 'life']); // 6 = 6
+  assert.deepEqual(ids(`${base} 준비 정리 계획 문제`, ['하루LAW']), ['life', 'law']); // 7 > 6
 });
 
 test('강한 단어를 먼저 표시하고 최대 5개로 제한하되 점수는 전체 일치를 사용한다', () => {
