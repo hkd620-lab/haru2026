@@ -1,0 +1,130 @@
+{
+  "baseline": "4433a043265359f4446a5ffac9d93e942c50464c",
+  "runtime": "v26.8.2",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpu": "Apple M4",
+  "warmupsPerSize": 5,
+  "samplesPerSize": 30,
+  "scope": "single-process warm Node microbenchmark; not browser/mobile render E2E or a product budget",
+  "samples": [
+    {
+      "utf16Length": 1011,
+      "p50ms": 1.6789159999999583,
+      "p95ms": 2.2019169999999804,
+      "regexConstructionsPerCall": 151,
+      "result": [
+        "law"
+      ]
+    },
+    {
+      "utf16Length": 10011,
+      "p50ms": 14.539541999999983,
+      "p95ms": 14.877375000000029,
+      "regexConstructionsPerCall": 151,
+      "result": [
+        "law"
+      ]
+    },
+    {
+      "utf16Length": 100011,
+      "p50ms": 142.46887500000048,
+      "p95ms": 142.93420799999967,
+      "regexConstructionsPerCall": 151,
+      "result": [
+        "law"
+      ]
+    },
+    {
+      "utf16Length": 1000011,
+      "p50ms": 1423.9988340000018,
+      "p95ms": 1572.2285829999964,
+      "regexConstructionsPerCall": 151,
+      "result": [
+        "law"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "syntheticText": "참기름 냄새가 고소하고 좋다",
+      "result": [
+        "law"
+      ]
+    },
+    {
+      "syntheticText": "호박을 수확했다",
+      "result": [
+        "plant"
+      ]
+    },
+    {
+      "syntheticText": "호박 보석 목걸이",
+      "result": [
+        "plant"
+      ]
+    },
+    {
+      "syntheticText": "고추를 심었다",
+      "result": [
+        "plant"
+      ]
+    },
+    {
+      "syntheticText": "고추 참치 캔을 샀다",
+      "result": [
+        "plant"
+      ]
+    },
+    {
+      "syntheticText": "직원 교육을 받았다",
+      "result": [
+        "childcare"
+      ]
+    },
+    {
+      "syntheticText": "일본 여행을 준비한다",
+      "result": [
+        "travel"
+      ]
+    },
+    {
+      "syntheticText": "일본어를 공부한다",
+      "result": []
+    },
+    {
+      "syntheticText": "건강검진표를 받았다",
+      "result": []
+    },
+    {
+      "syntheticText": "건강검진을 받았다",
+      "result": [
+        "health"
+      ]
+    },
+    {
+      "syntheticText": "준비 정리 계획",
+      "result": []
+    },
+    {
+      "syntheticText": "소송ㅠ",
+      "result": []
+    },
+    {
+      "syntheticText": "소송 ㅠ",
+      "result": [
+        "law"
+      ]
+    },
+    {
+      "syntheticText": "소송ㅋ",
+      "result": []
+    },
+    {
+      "syntheticText": "소송 ㅋ",
+      "result": [
+        "law"
+      ]
+    }
+  ]
+}

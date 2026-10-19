@@ -1,0 +1,55 @@
+{
+  "scope": "process-memory diagnostics only; cached mode is not an implementation change; skip-scan intentionally does not preserve outputs",
+  "results": [
+    {
+      "length": 9131,
+      "mode": "original",
+      "p50ms": 13.152083000000061,
+      "p95ms": 13.418916999999965,
+      "result": [
+        "law"
+      ]
+    },
+    {
+      "length": 9131,
+      "mode": "cached-constructor",
+      "p50ms": 13.071542000000022,
+      "p95ms": 13.245791999999938,
+      "result": [
+        "law"
+      ]
+    },
+    {
+      "length": 9131,
+      "mode": "skip-scan-diagnostic",
+      "p50ms": 0.24537499999996726,
+      "p95ms": 0.28583400000002257,
+      "result": []
+    },
+    {
+      "length": 90941,
+      "mode": "original",
+      "p50ms": 129.5763750000001,
+      "p95ms": 129.9607500000002,
+      "result": [
+        "law"
+      ]
+    },
+    {
+      "length": 90941,
+      "mode": "cached-constructor",
+      "p50ms": 129.56029099999978,
+      "p95ms": 130.79233400000066,
+      "result": [
+        "law"
+      ]
+    },
+    {
+      "length": 90941,
+      "mode": "skip-scan-diagnostic",
+      "p50ms": 0.4715829999995549,
+      "p95ms": 0.5136660000007396,
+      "result": []
+    }
+  ]
+}
