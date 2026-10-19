@@ -1,0 +1,15 @@
+HTTP/2 200
+cache-control: no-cache, max-age=0, must-revalidate
+content-type: text/html; charset=utf-8
+etag: "99f9514ae5c9dc5e08bf7726f207b53e44bcf8e3e8f6201ae4e1fbf38f79fdb1"
+last-modified: Mon, 19 Oct 2026 06:04:10 GMT
+strict-transport-security: max-age=31556926; includeSubDomains; preload
+x-robots-tag: noindex
+accept-ranges: bytes
+date: Mon, 19 Oct 2026 06:04:38 GMT
+x-served-by: cache-icn1450037-ICN
+x-cache: MISS
+x-cache-hits: 0
+x-timer: S1792389878.094627,VS0,VE113
+vary: x-fh-requested-host, accept-encoding
+alt-svc: h3=":443";ma=86400,h3-29=":443";ma=86400,h3-27=":443";ma=86400
