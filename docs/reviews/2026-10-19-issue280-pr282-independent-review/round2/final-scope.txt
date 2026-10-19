@@ -1,0 +1,13 @@
+A	docs/reviews/2026-10-19-issue280-harness-contract-evidence/build-summary.json
+A	docs/reviews/2026-10-19-issue280-harness-contract-evidence/cleanup-mutant.log
+A	docs/reviews/2026-10-19-issue280-harness-contract-evidence/code-scope.txt
+A	docs/reviews/2026-10-19-issue280-harness-contract-evidence/contract-mutants.json
+A	docs/reviews/2026-10-19-issue280-harness-contract-evidence/law-easy-explain.log
+A	docs/reviews/2026-10-19-issue280-harness-contract-evidence/lock-mutant.log
+A	docs/reviews/2026-10-19-issue280-harness-contract-evidence/mounted-mutant.log
+A	docs/reviews/2026-10-19-issue280-harness-contract-evidence/related-execution.json
+A	docs/reviews/2026-10-19-issue280-harness-contract-evidence/related-tests.log
+A	docs/reviews/2026-10-19-issue280-harness-contract-evidence/saved-mutant.log
+A	docs/reviews/2026-10-19-issue280-harness-contract-evidence/target-tests.log
+A	docs/reviews/2026-10-19-issue280-harness-contract-fix-and-verification.md
+M	frontend/test/haruLawSave.test.cjs

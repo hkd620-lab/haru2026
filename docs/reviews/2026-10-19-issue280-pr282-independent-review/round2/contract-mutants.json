@@ -1,0 +1,52 @@
+[
+  {
+    "variant": "lock",
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 11",
+      "ℹ fail 1",
+      "ℹ cancelled 0",
+      "ℹ skipped 1"
+    ]
+  },
+  {
+    "variant": "saved",
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 11",
+      "ℹ fail 1",
+      "ℹ cancelled 0",
+      "ℹ skipped 1"
+    ]
+  },
+  {
+    "variant": "mounted",
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 11",
+      "ℹ fail 1",
+      "ℹ cancelled 0",
+      "ℹ skipped 1"
+    ]
+  },
+  {
+    "variant": "cleanup",
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 11",
+      "ℹ fail 1",
+      "ℹ cancelled 0",
+      "ℹ skipped 1"
+    ]
+  },
+  {
+    "variant": "setup",
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 7",
+      "ℹ fail 5",
+      "ℹ cancelled 0",
+      "ℹ skipped 1"
+    ]
+  }
+]

@@ -1,0 +1,21 @@
+diff --git a/frontend/test/haruLawSave.test.cjs b/frontend/test/haruLawSave.test.cjs
+index 263e3aa6..bf4ccd47 100644
+--- a/frontend/test/haruLawSave.test.cjs
++++ b/frontend/test/haruLawSave.test.cjs
+@@ -34,10 +34,14 @@ const noticeJS = transformSync(`return <>${noticeSource}</>;`, { loader: 'tsx' }
+ function harness(overrides = {}) {
+   const state = { saving: overrides.isSavingLaw ?? false, saved: overrides.lawSaved ?? false, error: null, steps: [], logs: [], navigations: [], date: overrides.lawSaveDate ?? '2026-10-02' };
+   const cleanups = [];
+-  // Run the real ref declarations and effect cleanup once per mounted harness.
++  // Replay the real effect's setup/cleanup/setup, as the app's StrictMode does.
+   const saveRefs = new Function('useRef', 'useEffect', `${saveRefsJS}; return { lawSaveRef, lawSaveMountedRef };`)(
+     (initial) => ({ current: initial }),
+-    (setup) => { cleanups.push(setup()); },
++    (setup) => {
++      const cleanup = setup();
++      cleanup();
++      cleanups.push(setup());
++    },
+   );
+   const context = {
+     user: { uid: 'fixture-owner' }, lawQuery: 'fixture question', activeLawQuery: 'fixture question',

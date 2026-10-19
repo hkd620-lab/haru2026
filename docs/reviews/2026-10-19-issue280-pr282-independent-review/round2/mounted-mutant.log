@@ -1,0 +1,54 @@
+✔ 저장 날짜 기본값은 서울 자정 경계를 따르고 특정 시험 날짜에 고정되지 않는다 (19.134042ms)
+✔ 실제 날짜 입력 콜백은 입력·첨부·분석과 공용 날짜를 보존하고 서버 IO 없이 대상만 변경한다 (1.956ms)
+✔ 업로드·분석·저장 중에는 날짜 입력과 콜백 모두 변경을 거부한다 (0.459458ms)
+✔ 빈 날짜·잘못된 날짜는 조회·저장 없이 안내하고 분석 입력을 보존한다 (0.697541ms)
+✔ 선택 날짜 조회·실제 saveRecord의 문서 경로·id·date 일치 및 기존 기록 병합 (0.672459ms)
+✔ 로그인 부재·빈 결과는 지속 안내를 렌더링하고 IO·입력 초기화 없이 반환한다 (3.0195ms)
+✔ getDoc 실패 안내·안전 로그·입력 보존·저장만 재시도 (0.625666ms)
+✔ saveRecord 실패 안내·안전 로그·입력 보존·저장만 재시도 (0.348375ms)
+✔ 오류 코드 allowlist와 네트워크 안내: 오류 원문·임의 code가 UI/로그에 유출되지 않는다 (1.176916ms)
+✔ 저장 진행 중 중복 재시도를 막고 완료 전 성공 표시를 하지 않는다 (0.289125ms)
+✔ 저장 완료 후 재렌더한 콜백은 재진입을 막고 날짜 변경 후에만 다시 저장한다 (0.29275ms)
+✖ 저장 중 언마운트하면 실제 cleanup이 완료 후 이동을 막고 다른 인스턴스는 정상 이동한다 (1.210667ms)
+﹣ 로컬 Rules: 없는 날짜 → 실제 저장, 기존 기록 병합, 전체 권한 정책 전후 비교 (0.051417ms) # SKIP
+ℹ tests 13
+ℹ suites 0
+ℹ pass 11
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 35.267583
+
+✖ failing tests:
+
+test at test/haruLawSave.test.cjs:315:1
+✖ 저장 중 언마운트하면 실제 cleanup이 완료 후 이동을 막고 다른 인스턴스는 정상 이동한다 (1.210667ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + [
+  +   [
+  +     '/sayu',
+  +     {
+  +       state: {
+  +         filterFormat: '하루LAW',
+  +         openRecordId: 'fixture-saved-record',
+  +         tab: 'assistants'
+  +       }
+  +     }
+  +   ]
+  + ]
+  - []
+
+      at TestContext.<anonymous> (/private/tmp/haru-issue280-test-fix-20261019/frontend/test/haruLawSave.test.cjs:331:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [Array],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
