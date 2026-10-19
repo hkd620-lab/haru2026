@@ -1,0 +1,27 @@
+{
+  "checked_at_utc": "2026-10-19T09:28:47.244202+00:00",
+  "scope": "read-only HTTP smoke; no login, record mutation or AI request",
+  "results": [
+    {
+      "url": "https://haru2026.com/",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "a534813d9f7670f5ece082fc63b68152a57d2ba9fbe8866244730370a7938483",
+      "bytes": 6701
+    },
+    {
+      "url": "https://haru2026-8abb8.web.app/",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "a534813d9f7670f5ece082fc63b68152a57d2ba9fbe8866244730370a7938483",
+      "bytes": 6701
+    },
+    {
+      "url": "https://haru2026.com/assets/index-8X0CNXeW.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8",
+      "sha256": "f0b8d22cf8948f8746eea565e1423d09dbf67d2b39cfd33fa7db3daddf6a8fe9",
+      "bytes": 5760436
+    }
+  ]
+}

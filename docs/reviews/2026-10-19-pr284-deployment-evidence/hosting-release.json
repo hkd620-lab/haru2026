@@ -1,0 +1,16 @@
+{
+  "project": "haru2026-8abb8",
+  "before": {
+    "version": "projects/haru2026-8abb8/sites/haru2026-8abb8/versions/0f6ee81269df92b9",
+    "status": "FINALIZED",
+    "releaseTime": "2026-10-19T07:46:44.355Z",
+    "release": "projects/haru2026-8abb8/sites/haru2026-8abb8/channels/live/releases/1792396004355000"
+  },
+  "after": {
+    "version": "projects/haru2026-8abb8/sites/haru2026-8abb8/versions/eaa5d5376a29cab2",
+    "status": "FINALIZED",
+    "releaseTime": "2026-10-19T09:26:00.708Z",
+    "release": "projects/haru2026-8abb8/sites/haru2026-8abb8/channels/live/releases/1792401960708000"
+  },
+  "github_action_version": "eaa5d5376a29cab2"
+}
