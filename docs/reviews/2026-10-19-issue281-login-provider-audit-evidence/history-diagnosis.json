@@ -1,0 +1,16 @@
+[
+  {
+    "ref": "897313a2^",
+    "pass": true
+  },
+  {
+    "ref": "897313a2",
+    "pass": false,
+    "message": "The expression evaluated to a falsy value:\n\n  assert(authContextSrc.includes('readRememberedLoginProvider(user.uid) ?? normalizeLoginProvider(data?.loginProvider)'))\n"
+  },
+  {
+    "ref": "75a6d849",
+    "pass": false,
+    "message": "The expression evaluated to a falsy value:\n\n  assert(authContextSrc.includes('readRememberedLoginProvider(user.uid) ?? normalizeLoginProvider(data?.loginProvider)'))\n"
+  }
+]

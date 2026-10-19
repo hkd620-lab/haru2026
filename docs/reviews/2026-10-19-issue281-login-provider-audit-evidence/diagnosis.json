@@ -1,0 +1,54 @@
+{
+  "scope": "read-only offline diagnosis; does not change or pass original policy test",
+  "staticAssertions": {
+    "total": 15,
+    "pass": 14,
+    "fail": 1,
+    "failingOrdinal1Based": [
+      7
+    ]
+  },
+  "selectionSource": "readRememberedLoginProvider(uid) ?? normalizeLoginProvider(data?.loginProvider)",
+  "checks": [
+    {
+      "name": "known aliases normalize",
+      "pass": true
+    },
+    {
+      "name": "unknown/non-string normalizes to null",
+      "pass": true
+    },
+    {
+      "name": "storage key is per uid",
+      "pass": true
+    },
+    {
+      "name": "snapshot local takes precedence over server",
+      "pass": true
+    },
+    {
+      "name": "snapshot absent local falls back to normalized server",
+      "pass": true
+    },
+    {
+      "name": "snapshot invalid local falls back to server",
+      "pass": true
+    },
+    {
+      "name": "snapshot absent/invalid both returns null",
+      "pass": true
+    },
+    {
+      "name": "storage denied read returns null and selection falls back",
+      "pass": true
+    },
+    {
+      "name": "initial mapUser primary Firebase provider precedes remembered",
+      "pass": true
+    },
+    {
+      "name": "initial custom mapUser falls back to remembered",
+      "pass": true
+    }
+  ]
+}
