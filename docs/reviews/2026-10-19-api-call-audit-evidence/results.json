@@ -1,0 +1,133 @@
+{
+  "base": "9141f7f37fa9ff7e41baae977f9a594de649d603",
+  "method": "AST-extracted current code, isolated vm, fake AI and in-memory records; no cloud/API calls",
+  "sources": {
+    "functions/src/index.ts": "73ccbef76b17acdf4ad75b697d9a779d41e52c17698d49d7e89e48a75245f006",
+    "frontend/src/app/components/FormatModal.tsx": "11e047eab0832272174ad05557aabd6dc799a96179d13a0ec75e894eb0938f98",
+    "frontend/src/app/pages/RecordPage.tsx": "e9977ca82ff55c602b5ae9fc29a2561bfdec4bda655899f5b46e1804c605cc65",
+    "frontend/src/app/pages/SayuPage.tsx": "41f3a54160a2d902c651233ff72d700b51cc1ec15c0d543c475eed07178e655a",
+    "frontend/src/app/components/SayuModal.tsx": "eb6a443ae75a79642de2ef1555a2a7c75eb804202ce84e1348c6c31a1d3f42ae",
+    "frontend/src/app/pages/SayuHealthVoidingPage.tsx": "c9cecce15915f566141041da51ec8e4009df642250bbd86fbb5a9df06ff04cc8"
+  },
+  "checks": {
+    "formatHandleSubmit": {
+      "identifierOccurrences": 1,
+      "lines": [
+        1228
+      ]
+    },
+    "sayuObserveKwTarget": {
+      "identifierOccurrences": 1,
+      "lines": [
+        1047
+      ]
+    },
+    "supportedStatsFormats": [
+      "diary",
+      "essay",
+      "mission",
+      "report",
+      "work",
+      "travel",
+      "garden",
+      "pet",
+      "child",
+      "memo"
+    ],
+    "newsExportNames": [
+      "refreshNews",
+      "extractKNewsMetadata"
+    ],
+    "statsPersistence": {
+      "sourceFilterLine": 656,
+      "inputFields": [
+        "memo_sayu",
+        "memo_stats(object)"
+      ],
+      "retainedFields": [
+        "memo_sayu"
+      ]
+    },
+    "voidingResponse": {
+      "consumerLine": 242,
+      "serverReturnsText": "모의 본문",
+      "consumerReadsResult": "",
+      "callsBeforeRejectedResponse": 2
+    },
+    "polish": {
+      "memo": {
+        "calls": [
+          "sayuPolish",
+          "recordStats",
+          "sayuPolishComment"
+        ],
+        "returnedFields": [
+          "text",
+          "stats",
+          "aiComment"
+        ],
+        "statsIsNull": false,
+        "statsType": "object",
+        "aiComment": "모의 한마디"
+      },
+      "reading": {
+        "calls": [
+          "sayuPolish",
+          "sayuPolishComment"
+        ],
+        "returnedFields": [
+          "text",
+          "stats",
+          "aiComment"
+        ],
+        "statsIsNull": true,
+        "statsType": "object",
+        "aiComment": "모의 한마디"
+      },
+      "voiding": {
+        "calls": [
+          "sayuPolish",
+          "sayuPolishComment"
+        ],
+        "returnedFields": [
+          "text",
+          "stats",
+          "aiComment"
+        ],
+        "statsIsNull": true,
+        "statsType": "object",
+        "aiComment": "모의 한마디"
+      }
+    },
+    "backfill": {
+      "noTitle": {
+        "firstCount": 1,
+        "secondCount": 1,
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "writes": 2,
+        "manualTitle": null,
+        "aiTitle": "모의 제목"
+      },
+      "manualTitle": {
+        "firstCount": 0,
+        "secondCount": 0,
+        "firstCalls": 0,
+        "secondCalls": 0,
+        "writes": 0,
+        "manualTitle": "사용자 제목",
+        "aiTitle": null
+      },
+      "existingAiTitle": {
+        "firstCount": 1,
+        "secondCount": 1,
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "writes": 2,
+        "manualTitle": null,
+        "aiTitle": "모의 제목"
+      }
+    }
+  },
+  "status": "all assertions passed"
+}
