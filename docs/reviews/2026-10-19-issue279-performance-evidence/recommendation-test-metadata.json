@@ -1,0 +1,9 @@
+{
+  "base_head": "9141f7f37fa9ff7e41baae977f9a594de649d603",
+  "command": "node --import /private/tmp/haru-issue281-test-fix-20261019/frontend/node_modules/tsx/dist/loader.mjs --test frontend/test/assistantRecommendations.test.mjs",
+  "cwd": "/private/tmp/haru-issue279-performance-20261019",
+  "log_written_utc": "2026-10-19T09:57:51.372134+00:00",
+  "log_sha256": "eb3d69f99f753156af7d3d85472e39fcbe7ae346432ea7e55f3997aaefde739e",
+  "result": "40 pass / 0 fail / 0 skip",
+  "note": "timestamp is observed log-write completion, not API or test-start time"
+}

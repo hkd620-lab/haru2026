@@ -1,0 +1,42 @@
+[
+  {
+    "execution": "independent-0-auth",
+    "base_head": "9141f7f37fa9ff7e41baae977f9a594de649d603",
+    "output_file_created_utc": "2026-10-19T10:00:48.303574+00:00",
+    "output_written_utc": "2026-10-19T10:00:53.113729+00:00",
+    "cli_exit": 1,
+    "environment": "workspace sandbox",
+    "is_error": true,
+    "permission_denials": [],
+    "models": [],
+    "tools": "Read/Glob/Grep only; no MCP tools; no shell/writes; model option unspecified"
+  },
+  {
+    "execution": "independent-1",
+    "base_head": "9141f7f37fa9ff7e41baae977f9a594de649d603",
+    "output_file_created_utc": "2026-10-19T10:36:51.555806+00:00",
+    "output_written_utc": "2026-10-19T10:38:12.378836+00:00",
+    "cli_exit": 0,
+    "environment": "approved outside sandbox",
+    "is_error": false,
+    "permission_denials": [],
+    "models": [
+      "claude-sonnet-5-5"
+    ],
+    "tools": "Read/Glob/Grep only; no MCP tools; no shell/writes; model option unspecified"
+  },
+  {
+    "execution": "independent-2",
+    "base_head": "9141f7f37fa9ff7e41baae977f9a594de649d603",
+    "output_file_created_utc": "2026-10-19T10:40:47.457257+00:00",
+    "output_written_utc": "2026-10-19T10:42:39.590328+00:00",
+    "cli_exit": 0,
+    "environment": "approved outside sandbox",
+    "is_error": false,
+    "permission_denials": [],
+    "models": [
+      "claude-sonnet-5-5"
+    ],
+    "tools": "Read/Glob/Grep only; no MCP tools; no shell/writes; model option unspecified"
+  }
+]

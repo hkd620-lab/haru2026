@@ -1,0 +1,36 @@
+
+import {getAssistantRecommendations as actual, buildRecommendationTextFromFields} from "/private/tmp/haru-issue279-performance-20261019/frontend/src/app/utils/assistantRecommendations.ts";
+import {isStructuredMeasurementFieldOfFormat, GROWTH_TIMELINE_FORMAT_KEY, growthTimelineSourceText} from "/private/tmp/haru-issue279-performance-20261019/frontend/src/app/assistants/sayuAdapters.ts";
+import {isStructuredAssistantPrefix, structuredAssistantSourceText} from "/private/tmp/haru-issue279-performance-20261019/frontend/src/app/utils/structuredAssistantRecords.ts";
+export let calls=0;
+export function resetCalls(){calls=0;}
+export let lastLength=0;
+function getAssistantRecommendations(text, formats){calls++;lastLength=text.length;return actual(text,formats);}
+function getRecordSourceText(r: any, prefix: string): string {
+  if (!r) return '';
+  if (isStructuredAssistantPrefix(prefix)) return structuredAssistantSourceText(r, prefix);
+  if (prefix === GROWTH_TIMELINE_FORMAT_KEY) return growthTimelineSourceText(r);
+  const parts: string[] = [];
+  const sayu = r[`${prefix}_sayu`];
+  if (typeof sayu === 'string') parts.push(sayu);
+  Object.keys(r).forEach((k) => {
+    if (!k.startsWith(`${prefix}_`)) return;
+    if (isStructuredMeasurementFieldOfFormat(r, prefix, k)) return;
+    if (k.endsWith('_sayu') || k.endsWith('_keywords') || k.endsWith('_ai_title') || k.endsWith('_title') || k.endsWith('_polished') || k.endsWith('_polishedAt') || k.endsWith('_mode') || k.endsWith('_stats') || k.endsWith('_images') || k.endsWith('_imageMeta') || k.endsWith('_rating') || k.endsWith('_tags') || k.endsWith('_space') || k.endsWith('_style')) return;
+    const v = r[k];
+    if (typeof v === 'string' && v.trim()) parts.push(v);
+  });
+  return parts.join(' ');
+}
+export function detail(record,sayuModalState){const formatKey=sayuModalState.formatKey||'';if(!record||!formatKey)return [];return getAssistantRecommendations(
+            [
+              getRecordSourceText(record, formatKey),
+              sayuModalState.content,
+              buildRecommendationTextFromFields(sayuModalState.originalData || {}),
+            ].filter(Boolean).join('\n\n'),
+            [
+              sayuModalState.format || '',
+              ...(Array.isArray(record.formats) ? record.formats.map((format) => String(format)) : []),
+            ],
+          );}
+export {actual as recommend, buildRecommendationTextFromFields};

@@ -1,0 +1,15 @@
+{
+  "base_sha": "9141f7f37fa9ff7e41baae977f9a594de649d603",
+  "method": "Chrome first, then Node sequentially. 3 warmups, 20 samples per function/composition/cache case. p95 = ceil(0.95*n)-1 sorted. Six flushSync production React renders per render case. No CPU throttling requested; no physical mobile measured.",
+  "source_sha256": {
+    "frontend/src/app/utils/assistantRecommendations.ts": "79e050dc68638d53f977f4e41957339496f3aca4df092f849a4ba309c572341a",
+    "frontend/src/app/pages/SayuPage.tsx": "41f3a54160a2d902c651233ff72d700b51cc1ec15c0d543c475eed07178e655a",
+    "frontend/src/app/pages/RecordPage.tsx": "e9977ca82ff55c602b5ae9fc29a2561bfdec4bda655899f5b46e1804c605cc65",
+    "frontend/src/app/records/formatRegistry.ts": "97d7390201368700d9349902b91ac8aa8d26884e64c3b86556af935fcc930917",
+    "frontend/package-lock.json": "e17167be576a06ebabd9f13a1a0a5b7609cff3ac600141ee317d44cfe630887e"
+  },
+  "result_written_utc": {
+    "chrome": "2026-10-19T09:56:05.391538+00:00",
+    "node": "2026-10-19T09:57:34.716261+00:00"
+  }
+}
