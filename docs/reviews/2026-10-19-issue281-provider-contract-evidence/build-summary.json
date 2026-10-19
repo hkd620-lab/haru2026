@@ -1,0 +1,7 @@
+{
+  "command": "cd frontend && npm run build",
+  "exitCode": 0,
+  "durationSeconds": 75.95,
+  "firebaseEnv": "12 dummy variables; no live credentials supplied",
+  "runtime": "v26.8.2"
+}

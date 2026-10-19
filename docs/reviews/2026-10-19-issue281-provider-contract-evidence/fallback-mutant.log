@@ -1,0 +1,61 @@
+✔ 로컬 저장·콜백·Rules의 기존 소스 정책 제약을 유지한다 (0.997167ms)
+✔ 허용 제공자와 별칭은 trim·소문자로 정규화하고 미지원 값은 null이다 (46.019375ms)
+✔ 실제 기억 함수는 UID별 키로 저장하고 읽을 때 정규화한다 (3.72325ms)
+✔ 초기 mapUser는 Firebase 기본 제공자 우선, custom 사용자는 로컬값으로 폴백한다 (3.80475ms)
+✖ 실제 스냅샷은 유효 로컬값 우선이며 없거나 무효면 정규화한 서버값을 사용한다 (9.910875ms)
+✔ effect 시작 후 user 객체가 바뀌어도 캡처한 UID의 저장값·문서만 사용한다 (2.98075ms)
+✔ 다른 인증 UID·세대·정리된 구독·캐시·대기 쓰기 스냅샷은 반영하지 않는다 (17.342667ms)
+✔ 스냅샷 이후 setter가 다른 UID를 받으면 해당 사용자를 덮어쓰지 않는다 (2.739125ms)
+✖ localStorage 접근 거부 시 저장 오류를 흡수하고 읽기는 서버값으로 폴백한다 (3.438875ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 7
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 97.734959
+
+✖ failing tests:
+
+test at test/loginProviderStorage.policy.test.cjs:134:1
+✖ 실제 스냅샷은 유효 로컬값 우선이며 없거나 무효면 정규화한 서버값을 사용한다 (9.910875ms)
+  AssertionError [ERR_ASSERTION]: {"local":null,"server":" NAVER "}
+
+  'custom' !== 'naver'
+
+      at TestContext.<anonymous> (/private/tmp/haru-issue281-test-fix-20261019/frontend/test/loginProviderStorage.policy.test.cjs:143:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'custom',
+    expected: 'naver',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/loginProviderStorage.policy.test.cjs:185:1
+✖ localStorage 접근 거부 시 저장 오류를 흡수하고 읽기는 서버값으로 폴백한다 (3.438875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  'custom' !== 'google'
+
+      at TestContext.<anonymous> (/private/tmp/haru-issue281-test-fix-20261019/frontend/test/loginProviderStorage.policy.test.cjs:191:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'custom',
+    expected: 'google',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
