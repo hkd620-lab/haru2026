@@ -1,0 +1,11 @@
+{
+  "rootStatus": "HTTP/2 200 ",
+  "routeStatus": "HTTP/2 200 ",
+  "entryAssets": [
+    "/assets/index-8X0CNXeW.js",
+    "/assets/index-dkcMtNTO.css",
+    "/assets/polyfills-legacy-oY9mAs8o.js",
+    "/assets/index-legacy-CPbEshjQ.js"
+  ],
+  "routeSameAppShell": true
+}
