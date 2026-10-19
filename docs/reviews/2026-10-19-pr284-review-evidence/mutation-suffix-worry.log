@@ -1,0 +1,44 @@
+✖ 허용 감정 활용형 뒤의 임의 접미사를 차단한다: 걱정스럽다고 (338.196667ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 502.010334
+
+✖ failing tests:
+
+test at test/assistantRecommendations.test.mjs:127:3
+✖ 허용 감정 활용형 뒤의 임의 접미사를 차단한다: 걱정스럽다고 (338.196667ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + [
+  +   {
+  +     actionLabel: '생활 고민 기록하기',
+  +     category: 'life',
+  +     description: '기록 속 생활 고민을 정리하고 다음 행동을 제안해드립니다.',
+  +     id: 'life',
+  +     matchedKeywords: [
+  +       '걱정'
+  +     ],
+  +     targetPath: '/record',
+  +     title: 'HARU 생활 비서'
+  +   }
+  + ]
+  - []
+
+      at TestContext.<anonymous> (file:///private/tmp/haru-issue279-test-contract-20261019/frontend/test/assistantRecommendations.test.mjs:128:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ { id: 'life', title: 'HARU 생활 비서', category: 'life', description: '기록 속 생활 고민을 정리하고 다음 행동을 제안해드립니다.', actionLabel: '생활 고민 기록하기', targetPath: '/record', matchedKeywords: [Array] } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

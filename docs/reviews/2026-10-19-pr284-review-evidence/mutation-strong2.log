@@ -1,0 +1,35 @@
+✖ 강한 단어 3점·약한 단어 1점의 비율을 동점 전후 순위로 고정한다 (336.610917ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 488.588625
+
+✖ failing tests:
+
+test at test/assistantRecommendations.test.mjs:214:1
+✖ 강한 단어 3점·약한 단어 1점의 비율을 동점 전후 순위로 고정한다 (336.610917ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    [
+  +   'life',
+      'law',
+  -   'life'
+    ]
+
+      at TestContext.<anonymous> (file:///private/tmp/haru-issue279-test-contract-20261019/frontend/test/assistantRecommendations.test.mjs:218:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'life', 'law' ],
+    expected: [ 'law', 'life' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
