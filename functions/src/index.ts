@@ -4734,13 +4734,17 @@ export const generateTitlesForAll = onCall(
       const record = docSnap.data();
       const formats: string[] = record.formats || [];
       const updates: Record<string, string> = {};
+      const processedPrefixes = new Set<string>();
 
       for (const format of formats) {
         const prefix = FORMAT_PREFIX_MAP[format];
-        if (!prefix) continue;
-        const existingTitle = record[`${prefix}_title`] as string | undefined;
-        // 유효한 제목이 이미 있으면 스킵, 숫자·기호만인 잘못된 제목은 덮어씀
-        if (existingTitle && isValidTitle(existingTitle)) continue;
+        if (!prefix || processedPrefixes.has(prefix)) continue;
+        processedPrefixes.add(prefix);
+        const existingTitle: unknown = record[`${prefix}_title`];
+        const existingAiTitle: unknown = record[`${prefix}_ai_title`];
+        // 유효한 사용자·AI 제목은 원값을 보존하고 생성·저장을 건너뛴다.
+        if ((typeof existingTitle === 'string' && isValidTitle(existingTitle)) ||
+            (typeof existingAiTitle === 'string' && isValidTitle(existingAiTitle))) continue;
 
         const simpleContent: string = record[`${prefix}_simple`] || '';
         const fieldContent = Object.entries(record)
