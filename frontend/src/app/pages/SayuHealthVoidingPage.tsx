@@ -234,7 +234,8 @@ function SayuHealthVoidingSession() {
     setIsGeneratingSayu(true);
     const recordId = todayRecord.id;
     try {
-      const statsText = `총 음료 섭취량 ${stats.totalDrinkMl}ml, 총 배뇨량 ${stats.totalVoidMl}ml, 주간 배뇨 ${stats.dayVoidMl}ml(${stats.dayVoidCount}회), 야간 배뇨 ${stats.nightVoidMl}ml(${stats.nightVoidCount}회), 야간뇨 비율 ${stats.nightRatioPercent}%, 총 배뇨 횟수 ${stats.totalVoidCount}회, 취침 ${todayBedtime} 기상 ${todayWaketime}`;
+      // 안전검사가 허용하는 계산값만 전송한다. 시각 숫자는 통계값과 혼동될 수 있다.
+      const statsText = `총 음료 섭취량 ${stats.totalDrinkMl}ml, 총 배뇨량 ${stats.totalVoidMl}ml, 주간 배뇨 ${stats.dayVoidMl}ml(${stats.dayVoidCount}회), 야간 배뇨 ${stats.nightVoidMl}ml(${stats.nightVoidCount}회), 야간뇨 비율 ${stats.nightRatioPercent}%, 총 배뇨 횟수 ${stats.totalVoidCount}회`;
       const fns = getFunctions(undefined, 'asia-northeast3');
       const polish = httpsCallable<{ text: string; format: string; mode: string }, { text?: string }>(fns, 'polishContent');
       const res = await polish({ text: statsText, format: 'voiding', mode: 'PREMIUM' });
