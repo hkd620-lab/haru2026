@@ -1,0 +1,311 @@
+{
+  "base": "be7f9afee0f686c80d63728263242824893d4c9b",
+  "method": "exact AST-extracted code; synthetic in-memory AI/storage; no Firebase/provider imports or network calls",
+  "main": {
+    "source": {
+      "sha256": "73ccbef76b17acdf4ad75b697d9a779d41e52c17698d49d7e89e48a75245f006",
+      "handlerLine": 4706
+    },
+    "cases": {
+      "noTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": null,
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "manualTitle": {
+        "firstCalls": 0,
+        "secondCalls": 0,
+        "firstCount": 0,
+        "secondCount": 0,
+        "writes": 0,
+        "manualTitle": "사용자가 작성한 제목",
+        "aiTitle": null
+      },
+      "existingAiTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": null,
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "invalidManualTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": "09:00",
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "invalidManualWithValidAiTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": "09:00",
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "invalidAiTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": null,
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "noContent": {
+        "firstCalls": 0,
+        "secondCalls": 0,
+        "firstCount": 0,
+        "secondCount": 0,
+        "writes": 0,
+        "manualTitle": null,
+        "aiTitle": "기존 AI 제목"
+      },
+      "nonStringManualTitle": {
+        "error": "TypeError",
+        "calls": 0,
+        "writes": 0
+      },
+      "duplicateFormat": {
+        "calls": 2,
+        "reportedCount": 2,
+        "documentWrites": 1,
+        "savedTitleFields": 1
+      },
+      "parallelRequests": {
+        "calls": 2,
+        "writes": 2
+      },
+      "restartAfterWriteFailure": {
+        "firstCalls": 2,
+        "firstWrites": 1,
+        "retryCalls": 2,
+        "retryWrites": 2
+      },
+      "unauthenticated": {
+        "error": "unauthenticated",
+        "calls": 0,
+        "queryCount": 0
+      },
+      "notDeveloper": {
+        "error": "permission-denied",
+        "calls": 0,
+        "queryCount": 0
+      }
+    }
+  },
+  "deployedTypeScript": {
+    "source": {
+      "sha256": "8d099c37026759f3cc4d24a468265320bb78faca6dcfdb73f2ce0b7237dfd778",
+      "handlerLine": 4268
+    },
+    "cases": {
+      "noTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": null,
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "manualTitle": {
+        "firstCalls": 0,
+        "secondCalls": 0,
+        "firstCount": 0,
+        "secondCount": 0,
+        "writes": 0,
+        "manualTitle": "사용자가 작성한 제목",
+        "aiTitle": null
+      },
+      "existingAiTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": null,
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "invalidManualTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": "09:00",
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "invalidManualWithValidAiTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": "09:00",
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "invalidAiTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": null,
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "noContent": {
+        "firstCalls": 0,
+        "secondCalls": 0,
+        "firstCount": 0,
+        "secondCount": 0,
+        "writes": 0,
+        "manualTitle": null,
+        "aiTitle": "기존 AI 제목"
+      },
+      "nonStringManualTitle": {
+        "error": "TypeError",
+        "calls": 0,
+        "writes": 0
+      },
+      "duplicateFormat": {
+        "calls": 2,
+        "reportedCount": 2,
+        "documentWrites": 1,
+        "savedTitleFields": 1
+      },
+      "parallelRequests": {
+        "calls": 2,
+        "writes": 2
+      },
+      "restartAfterWriteFailure": {
+        "firstCalls": 2,
+        "firstWrites": 1,
+        "retryCalls": 2,
+        "retryWrites": 2
+      },
+      "unauthenticated": {
+        "error": "unauthenticated",
+        "calls": 0,
+        "queryCount": 0
+      },
+      "notDeveloper": {
+        "error": "permission-denied",
+        "calls": 0,
+        "queryCount": 0
+      }
+    }
+  },
+  "deployedJavaScript": {
+    "source": {
+      "sha256": "3b0279ac6a2c2d1f13dc391c2a60d3edef6593b5f73ce24a94dfb2f17548a913",
+      "handlerLine": 3716
+    },
+    "cases": {
+      "noTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": null,
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "manualTitle": {
+        "firstCalls": 0,
+        "secondCalls": 0,
+        "firstCount": 0,
+        "secondCount": 0,
+        "writes": 0,
+        "manualTitle": "사용자가 작성한 제목",
+        "aiTitle": null
+      },
+      "existingAiTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": null,
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "invalidManualTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": "09:00",
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "invalidManualWithValidAiTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": "09:00",
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "invalidAiTitle": {
+        "firstCalls": 1,
+        "secondCalls": 1,
+        "firstCount": 1,
+        "secondCount": 1,
+        "writes": 2,
+        "manualTitle": null,
+        "aiTitle": "합성 생성 제목 2"
+      },
+      "noContent": {
+        "firstCalls": 0,
+        "secondCalls": 0,
+        "firstCount": 0,
+        "secondCount": 0,
+        "writes": 0,
+        "manualTitle": null,
+        "aiTitle": "기존 AI 제목"
+      },
+      "nonStringManualTitle": {
+        "error": "TypeError",
+        "calls": 0,
+        "writes": 0
+      },
+      "duplicateFormat": {
+        "calls": 2,
+        "reportedCount": 2,
+        "documentWrites": 1,
+        "savedTitleFields": 1
+      },
+      "parallelRequests": {
+        "calls": 2,
+        "writes": 2
+      },
+      "restartAfterWriteFailure": {
+        "firstCalls": 2,
+        "firstWrites": 1,
+        "retryCalls": 2,
+        "retryWrites": 2
+      },
+      "unauthenticated": {
+        "error": "unauthenticated",
+        "calls": 0,
+        "queryCount": 0
+      },
+      "notDeveloper": {
+        "error": "permission-denied",
+        "calls": 0,
+        "queryCount": 0
+      }
+    }
+  },
+  "status": "all assertions passed"
+}
