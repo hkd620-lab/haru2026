@@ -1,0 +1,19 @@
+{
+  "buildConfig": {
+    "entryPoint": "polishContent",
+    "runtime": "nodejs22",
+    "source": {
+      "storageSource": {
+        "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+        "generation": "1789286623874132",
+        "object": "polishContent/function-source.zip"
+      }
+    }
+  },
+  "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishContent",
+  "serviceConfig": {
+    "revision": "polishcontent-00242-pay"
+  },
+  "state": "ACTIVE",
+  "updateTime": "2026-09-13T08:05:26.095480723Z"
+}

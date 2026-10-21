@@ -1,0 +1,1073 @@
+{
+  "base": "8a2bbfd8cb24fd9d381ed75d9e3e5ce31d68fce9",
+  "method": "AST extraction; synthetic SDK/AI and memory storage; no network",
+  "sources": {
+    "functions/src/index.ts": "ae4127b70b9bd6e2ff5851f60c2fe2b6f46f3f994a2bdba45212e9302a44d3c7",
+    "deployed/src/index.ts": "c0d9bdd6f0b9f3357187f080693ea6095bb15620070ae1c1f293e89f63c867c2",
+    "deployed/lib/index.js": "8eb66e727630329ecdb7ee3f38d9b43536a827d9df4f081a69ba42be560e9d78",
+    "frontend/src/app/components/FormatModal.tsx": "11e047eab0832272174ad05557aabd6dc799a96179d13a0ec75e894eb0938f98",
+    "frontend/src/app/pages/RecordPage.tsx": "e9977ca82ff55c602b5ae9fc29a2561bfdec4bda655899f5b46e1804c605cc65",
+    "frontend/src/app/components/SayuModal.tsx": "eb6a443ae75a79642de2ef1555a2a7c75eb804202ce84e1348c6c31a1d3f42ae",
+    "frontend/src/app/services/firestoreService.ts": "30a815d4765761845d15a85cce9250e082479046a201bb78e6a025fa5d68fb7b",
+    "frontend/src/app/types/haruTypes.ts": "97eff0707e8995ec545ed571db572c34a0507f7a843c75e2d674125dd6a2f87e"
+  },
+  "server": {
+    "main": {
+      "supportedFormats": [
+        "diary",
+        "essay",
+        "mission",
+        "report",
+        "work",
+        "travel",
+        "garden",
+        "pet",
+        "child",
+        "memo"
+      ],
+      "scenarioCount": 27,
+      "cases": [
+        {
+          "name": "supported:diary",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:essay",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:mission",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:report",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:work",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:travel",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:garden",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:pet",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:child",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:memo",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "basic-mode-still-all-outputs",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "unsupported:reading",
+          "calls": [
+            "sayuPolish",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "unsupported:voiding",
+          "calls": [
+            "sayuPolish",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "unsupported:unknown",
+          "calls": [
+            "sayuPolish",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "unsupported:undefined",
+          "calls": [
+            "sayuPolish",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "false-options-currently-ignored",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "missing-text",
+          "calls": [],
+          "error": "invalid-argument",
+          "quotaReservations": 0,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "empty-text",
+          "calls": [],
+          "error": "invalid-argument",
+          "quotaReservations": 0,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "non-string-text",
+          "calls": [],
+          "error": "invalid-argument",
+          "quotaReservations": 0,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "over-limit",
+          "calls": [],
+          "error": "invalid-argument",
+          "quotaReservations": 0,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "unauthenticated",
+          "calls": [],
+          "error": "unauthenticated",
+          "quotaReservations": 0,
+          "quotaRollbacks": 0,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "invalid-stats-json",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "stats-provider-failure",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "comment-provider-failure",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": false
+        },
+        {
+          "name": "body-provider-failure",
+          "calls": [
+            "sayuPolish"
+          ],
+          "error": "internal",
+          "quotaReservations": 1,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "rate-limit",
+          "calls": [],
+          "error": "resource-exhausted",
+          "quotaReservations": 0,
+          "quotaRollbacks": 0,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "monthly-quota",
+          "calls": [],
+          "error": "resource-exhausted",
+          "quotaReservations": 1,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        }
+      ]
+    },
+    "deployedTs": {
+      "supportedFormats": [
+        "diary",
+        "essay",
+        "mission",
+        "report",
+        "work",
+        "travel",
+        "garden",
+        "pet",
+        "child",
+        "memo"
+      ],
+      "scenarioCount": 27,
+      "cases": [
+        {
+          "name": "supported:diary",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:essay",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:mission",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:report",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:work",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:travel",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:garden",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:pet",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:child",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:memo",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "basic-mode-still-all-outputs",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "unsupported:reading",
+          "calls": [
+            "sayuPolish",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "unsupported:voiding",
+          "calls": [
+            "sayuPolish",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "unsupported:unknown",
+          "calls": [
+            "sayuPolish",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "unsupported:undefined",
+          "calls": [
+            "sayuPolish",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "false-options-currently-ignored",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "missing-text",
+          "calls": [],
+          "error": "invalid-argument",
+          "quotaReservations": 0,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "empty-text",
+          "calls": [],
+          "error": "invalid-argument",
+          "quotaReservations": 0,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "non-string-text",
+          "calls": [],
+          "error": "invalid-argument",
+          "quotaReservations": 0,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "over-limit",
+          "calls": [],
+          "error": "invalid-argument",
+          "quotaReservations": 0,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "unauthenticated",
+          "calls": [],
+          "error": "unauthenticated",
+          "quotaReservations": 0,
+          "quotaRollbacks": 0,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "invalid-stats-json",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "stats-provider-failure",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "comment-provider-failure",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": false
+        },
+        {
+          "name": "body-provider-failure",
+          "calls": [
+            "sayuPolish"
+          ],
+          "error": "internal",
+          "quotaReservations": 1,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "rate-limit",
+          "calls": [],
+          "error": "resource-exhausted",
+          "quotaReservations": 0,
+          "quotaRollbacks": 0,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "monthly-quota",
+          "calls": [],
+          "error": "resource-exhausted",
+          "quotaReservations": 1,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        }
+      ]
+    },
+    "deployedJs": {
+      "supportedFormats": [
+        "diary",
+        "essay",
+        "mission",
+        "report",
+        "work",
+        "travel",
+        "garden",
+        "pet",
+        "child",
+        "memo"
+      ],
+      "scenarioCount": 27,
+      "cases": [
+        {
+          "name": "supported:diary",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:essay",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:mission",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:report",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:work",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:travel",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:garden",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:pet",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:child",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "supported:memo",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "basic-mode-still-all-outputs",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "unsupported:reading",
+          "calls": [
+            "sayuPolish",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "unsupported:voiding",
+          "calls": [
+            "sayuPolish",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "unsupported:unknown",
+          "calls": [
+            "sayuPolish",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "unsupported:undefined",
+          "calls": [
+            "sayuPolish",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "false-options-currently-ignored",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": true
+        },
+        {
+          "name": "missing-text",
+          "calls": [],
+          "error": "invalid-argument",
+          "quotaReservations": 0,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "empty-text",
+          "calls": [],
+          "error": "invalid-argument",
+          "quotaReservations": 0,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "non-string-text",
+          "calls": [],
+          "error": "invalid-argument",
+          "quotaReservations": 0,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "over-limit",
+          "calls": [],
+          "error": "invalid-argument",
+          "quotaReservations": 0,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "unauthenticated",
+          "calls": [],
+          "error": "unauthenticated",
+          "quotaReservations": 0,
+          "quotaRollbacks": 0,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "invalid-stats-json",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "stats-provider-failure",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "null",
+          "commentPresent": true
+        },
+        {
+          "name": "comment-provider-failure",
+          "calls": [
+            "sayuPolish",
+            "recordStats",
+            "sayuPolishComment"
+          ],
+          "error": null,
+          "quotaReservations": 1,
+          "quotaRollbacks": 0,
+          "statsKind": "object",
+          "commentPresent": false
+        },
+        {
+          "name": "body-provider-failure",
+          "calls": [
+            "sayuPolish"
+          ],
+          "error": "internal",
+          "quotaReservations": 1,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "rate-limit",
+          "calls": [],
+          "error": "resource-exhausted",
+          "quotaReservations": 0,
+          "quotaRollbacks": 0,
+          "statsKind": null,
+          "commentPresent": null
+        },
+        {
+          "name": "monthly-quota",
+          "calls": [],
+          "error": "resource-exhausted",
+          "quotaReservations": 1,
+          "quotaRollbacks": 1,
+          "statsKind": null,
+          "commentPresent": null
+        }
+      ]
+    }
+  },
+  "client": {
+    "formatSave": {
+      "statsInPayload": "object",
+      "statsAfterParentFilter": "absent",
+      "existingAiCommentPreserved": true,
+      "polishedBooleanAfterFilter": "absent",
+      "originalAndBodyPreserved": true
+    },
+    "repolishComment": {
+      "requestKeys": [
+        "text",
+        "format",
+        "mode"
+      ],
+      "savedKeys": [
+        "memo_sayu",
+        "memo_ai_comment"
+      ],
+      "existingStatsPreserved": true,
+      "oldCommentPreservedWhenEmpty": false
+    },
+    "repolishEmptyComment": {
+      "requestKeys": [
+        "text",
+        "format",
+        "mode"
+      ],
+      "savedKeys": [
+        "memo_sayu"
+      ],
+      "existingStatsPreserved": true,
+      "oldCommentPreservedWhenEmpty": true
+    },
+    "formatResponseReads": {
+      "handlePolishWithMode": [
+        "stats",
+        "text"
+      ],
+      "handleReadingFinishClick": [
+        "text"
+      ],
+      "handleSaveChapterNote": [
+        "stats",
+        "text"
+      ]
+    },
+    "statistics": {
+      "diaryAiStatsValuesDoNotChangeComputedResult": true,
+      "basicEmptyPositivity": 0,
+      "basicMetadataOnlyPositivity": 1,
+      "caution": "Generic prefix-field presence can count stats metadata as content; do not widen storage blindly."
+    }
+  },
+  "status": "all assertions passed",
+  "serverScenarioExecutions": 81
+}

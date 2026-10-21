@@ -1,0 +1,58 @@
+{
+  "status": "all assertions passed",
+  "serverScenarioExecutions": 81,
+  "perVersion": 27,
+  "client": {
+    "formatSave": {
+      "statsInPayload": "object",
+      "statsAfterParentFilter": "absent",
+      "existingAiCommentPreserved": true,
+      "polishedBooleanAfterFilter": "absent",
+      "originalAndBodyPreserved": true
+    },
+    "repolishComment": {
+      "requestKeys": [
+        "text",
+        "format",
+        "mode"
+      ],
+      "savedKeys": [
+        "memo_sayu",
+        "memo_ai_comment"
+      ],
+      "existingStatsPreserved": true,
+      "oldCommentPreservedWhenEmpty": false
+    },
+    "repolishEmptyComment": {
+      "requestKeys": [
+        "text",
+        "format",
+        "mode"
+      ],
+      "savedKeys": [
+        "memo_sayu"
+      ],
+      "existingStatsPreserved": true,
+      "oldCommentPreservedWhenEmpty": true
+    },
+    "formatResponseReads": {
+      "handlePolishWithMode": [
+        "stats",
+        "text"
+      ],
+      "handleReadingFinishClick": [
+        "text"
+      ],
+      "handleSaveChapterNote": [
+        "stats",
+        "text"
+      ]
+    },
+    "statistics": {
+      "diaryAiStatsValuesDoNotChangeComputedResult": true,
+      "basicEmptyPositivity": 0,
+      "basicMetadataOnlyPositivity": 1,
+      "caution": "Generic prefix-field presence can count stats metadata as content; do not widen storage blindly."
+    }
+  }
+}
