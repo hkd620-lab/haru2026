@@ -1371,6 +1371,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 ${contentValues}`,
         format: prefix,
         mode: mode,
+        includeAiComment: false,
       });
 
       const responseData = result.data as any;
@@ -3156,6 +3157,7 @@ AI 참고 메모는 보조자료이며 사용자의 생각·경험·판단으로
 ${entriesText}`,
         format: 'reading',
         mode: 'PREMIUM',
+        includeAiComment: false,
       });
       const responseData = result.data as any;
       setReadingEntriesSnapshot(entriesText);
@@ -3224,6 +3226,7 @@ AI 다듬기 강도 6 수준(10단계 중 6)으로 다듬어 주세요 — 사�
 ${contentValues.slice(0, 4100)}`,
         format: 'reading',
         mode: 'PREMIUM',
+        includeAiComment: false,
       });
       const responseData = result.data as any;
       const polished = String(responseData?.text || '');
