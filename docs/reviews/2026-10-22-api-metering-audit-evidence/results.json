@@ -1,0 +1,580 @@
+{
+  "sourceCommit": "8a2bbfd8cb24fd9d381ed75d9e3e5ce31d68fce9",
+  "method": "AST source extraction with fake AI and in-memory Firestore; no application SDK imports or network",
+  "sources": {
+    "functions/src/aiUsageLogger.ts": "23f496ead6b6b00caefb43ac6acfe26519757c8f3d983f10d3ad5fa2358f09d4",
+    "functions/src/sharedHelpers.ts": "b9f24e21d0c9d4c126ec00cd1ea236e66fd14096445b3dbf52ecbc2854b42d28",
+    "functions/src/utils/rateLimit.ts": "a0ffb524af93edb16aa465e0184a30386dc0d75e3285ba2b29c031821a4ac4c8",
+    "functions/src/index.ts": "ae4127b70b9bd6e2ff5851f60c2fe2b6f46f3f994a2bdba45212e9302a44d3c7",
+    "functions/src/ai/aiGateway.ts": "527839718ecf51fd235aa8a7bd96cfb01c2c63255c8a77783a41ab106daf211d",
+    "functions/src/utils/monthlyAiQuota.ts": "92d66eee35e60f7058808b5e90359a21ab8661ee1e5ca8aa973e5a76b720a64f",
+    "frontend/src/app/components/FormatModal.tsx": "11e047eab0832272174ad05557aabd6dc799a96179d13a0ec75e894eb0938f98",
+    "frontend/src/app/components/SayuModal.tsx": "eb6a443ae75a79642de2ef1555a2a7c75eb804202ce84e1348c6c31a1d3f42ae",
+    "frontend/src/app/pages/SettingsPage.tsx": "5c53f4e1e8d10e76d211b307438cb668feda997b25189df0d0a84b89592a1cf2"
+  },
+  "scenarios": [
+    {
+      "name": "normal-supported",
+      "modelCalls": 3,
+      "purposes": [
+        "sayuPolish",
+        "recordStats",
+        "sayuPolishComment"
+      ],
+      "logRows": 3,
+      "successes": 3,
+      "failures": 0,
+      "logOnlySubscriptionReads": 3,
+      "quotaReservations": 1,
+      "rollbacks": 0,
+      "logWriteAttempts": 3,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null,
+        null,
+        null
+      ],
+      "error": null,
+      "hasStats": true,
+      "commentLength": 6
+    },
+    {
+      "name": "normal-reading",
+      "modelCalls": 2,
+      "purposes": [
+        "sayuPolish",
+        "sayuPolishComment"
+      ],
+      "logRows": 2,
+      "successes": 2,
+      "failures": 0,
+      "logOnlySubscriptionReads": 2,
+      "quotaReservations": 1,
+      "rollbacks": 0,
+      "logWriteAttempts": 2,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null,
+        null
+      ],
+      "error": null,
+      "hasStats": false,
+      "commentLength": 6
+    },
+    {
+      "name": "developer",
+      "modelCalls": 3,
+      "purposes": [
+        "sayuPolish",
+        "recordStats",
+        "sayuPolishComment"
+      ],
+      "logRows": 3,
+      "successes": 3,
+      "failures": 0,
+      "logOnlySubscriptionReads": 0,
+      "quotaReservations": 1,
+      "rollbacks": 0,
+      "logWriteAttempts": 3,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null,
+        null,
+        null
+      ],
+      "error": null,
+      "hasStats": true,
+      "commentLength": 6
+    },
+    {
+      "name": "body-provider-failure",
+      "modelCalls": 1,
+      "purposes": [
+        "sayuPolish"
+      ],
+      "logRows": 1,
+      "successes": 0,
+      "failures": 1,
+      "logOnlySubscriptionReads": 1,
+      "quotaReservations": 1,
+      "rollbacks": 1,
+      "logWriteAttempts": 1,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null
+      ],
+      "error": "internal",
+      "hasStats": false,
+      "commentLength": null
+    },
+    {
+      "name": "body-text-failure",
+      "modelCalls": 1,
+      "purposes": [
+        "sayuPolish"
+      ],
+      "logRows": 2,
+      "successes": 1,
+      "failures": 1,
+      "logOnlySubscriptionReads": 2,
+      "quotaReservations": 1,
+      "rollbacks": 1,
+      "logWriteAttempts": 2,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null
+      ],
+      "error": "internal",
+      "hasStats": false,
+      "commentLength": null
+    },
+    {
+      "name": "stats-provider-failure",
+      "modelCalls": 3,
+      "purposes": [
+        "sayuPolish",
+        "recordStats",
+        "sayuPolishComment"
+      ],
+      "logRows": 3,
+      "successes": 2,
+      "failures": 1,
+      "logOnlySubscriptionReads": 3,
+      "quotaReservations": 1,
+      "rollbacks": 0,
+      "logWriteAttempts": 3,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null,
+        null,
+        null
+      ],
+      "error": null,
+      "hasStats": false,
+      "commentLength": 6
+    },
+    {
+      "name": "stats-invalid-json",
+      "modelCalls": 3,
+      "purposes": [
+        "sayuPolish",
+        "recordStats",
+        "sayuPolishComment"
+      ],
+      "logRows": 4,
+      "successes": 3,
+      "failures": 1,
+      "logOnlySubscriptionReads": 4,
+      "quotaReservations": 1,
+      "rollbacks": 0,
+      "logWriteAttempts": 4,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null,
+        null,
+        null
+      ],
+      "error": null,
+      "hasStats": false,
+      "commentLength": 6
+    },
+    {
+      "name": "stats-no-json",
+      "modelCalls": 3,
+      "purposes": [
+        "sayuPolish",
+        "recordStats",
+        "sayuPolishComment"
+      ],
+      "logRows": 3,
+      "successes": 3,
+      "failures": 0,
+      "logOnlySubscriptionReads": 3,
+      "quotaReservations": 1,
+      "rollbacks": 0,
+      "logWriteAttempts": 3,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null,
+        null,
+        null
+      ],
+      "error": null,
+      "hasStats": false,
+      "commentLength": 6
+    },
+    {
+      "name": "stats-text-failure",
+      "modelCalls": 3,
+      "purposes": [
+        "sayuPolish",
+        "recordStats",
+        "sayuPolishComment"
+      ],
+      "logRows": 4,
+      "successes": 3,
+      "failures": 1,
+      "logOnlySubscriptionReads": 4,
+      "quotaReservations": 1,
+      "rollbacks": 0,
+      "logWriteAttempts": 4,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null,
+        null,
+        null
+      ],
+      "error": null,
+      "hasStats": false,
+      "commentLength": 6
+    },
+    {
+      "name": "comment-provider-failure",
+      "modelCalls": 3,
+      "purposes": [
+        "sayuPolish",
+        "recordStats",
+        "sayuPolishComment"
+      ],
+      "logRows": 2,
+      "successes": 2,
+      "failures": 0,
+      "logOnlySubscriptionReads": 2,
+      "quotaReservations": 1,
+      "rollbacks": 0,
+      "logWriteAttempts": 2,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null,
+        null,
+        null
+      ],
+      "error": null,
+      "hasStats": true,
+      "commentLength": 0
+    },
+    {
+      "name": "comment-text-failure",
+      "modelCalls": 3,
+      "purposes": [
+        "sayuPolish",
+        "recordStats",
+        "sayuPolishComment"
+      ],
+      "logRows": 3,
+      "successes": 3,
+      "failures": 0,
+      "logOnlySubscriptionReads": 3,
+      "quotaReservations": 1,
+      "rollbacks": 0,
+      "logWriteAttempts": 3,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null,
+        null,
+        null
+      ],
+      "error": null,
+      "hasStats": true,
+      "commentLength": 0
+    },
+    {
+      "name": "invalid-empty-input",
+      "modelCalls": 0,
+      "purposes": [],
+      "logRows": 1,
+      "successes": 0,
+      "failures": 1,
+      "logOnlySubscriptionReads": 1,
+      "quotaReservations": 0,
+      "rollbacks": 0,
+      "logWriteAttempts": 1,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [],
+      "error": "invalid-argument",
+      "hasStats": false,
+      "commentLength": null
+    },
+    {
+      "name": "quota-denied",
+      "modelCalls": 0,
+      "purposes": [],
+      "logRows": 1,
+      "successes": 0,
+      "failures": 1,
+      "logOnlySubscriptionReads": 1,
+      "quotaReservations": 0,
+      "rollbacks": 0,
+      "logWriteAttempts": 1,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [],
+      "error": "resource-exhausted",
+      "hasStats": false,
+      "commentLength": null
+    },
+    {
+      "name": "logging-write-failure",
+      "modelCalls": 3,
+      "purposes": [
+        "sayuPolish",
+        "recordStats",
+        "sayuPolishComment"
+      ],
+      "logRows": 0,
+      "successes": 0,
+      "failures": 0,
+      "logOnlySubscriptionReads": 3,
+      "quotaReservations": 1,
+      "rollbacks": 0,
+      "logWriteAttempts": 3,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null,
+        null,
+        null
+      ],
+      "error": null,
+      "hasStats": true,
+      "commentLength": 6
+    },
+    {
+      "name": "post-generation-slice",
+      "modelCalls": 3,
+      "purposes": [
+        "sayuPolish",
+        "recordStats",
+        "sayuPolishComment"
+      ],
+      "logRows": 3,
+      "successes": 3,
+      "failures": 0,
+      "logOnlySubscriptionReads": 3,
+      "quotaReservations": 1,
+      "rollbacks": 0,
+      "logWriteAttempts": 3,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null,
+        null,
+        null
+      ],
+      "error": null,
+      "hasStats": true,
+      "commentLength": 50
+    },
+    {
+      "name": "identical-concurrent-polish",
+      "modelCalls": 6,
+      "purposes": [
+        "sayuPolish",
+        "sayuPolish",
+        "recordStats",
+        "recordStats",
+        "sayuPolishComment",
+        "sayuPolishComment"
+      ],
+      "logRows": 6,
+      "successes": 6,
+      "failures": 0,
+      "logOnlySubscriptionReads": 6,
+      "quotaReservations": 2,
+      "rollbacks": 0,
+      "logWriteAttempts": 6,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "note": "두 논리 요청 모두 처리됨. 실제 사용자 중복 비율을 뜻하지 않음"
+    },
+    {
+      "name": "actual-rate-limit",
+      "accepted": 10,
+      "denied": 1,
+      "note": "빈도 제한이며 동일 본문 중복 제거가 아님"
+    },
+    {
+      "name": "extract-title-short",
+      "modelCalls": 1,
+      "purposes": [
+        "recordTitle"
+      ],
+      "logRows": 0,
+      "successes": 0,
+      "failures": 0,
+      "logOnlySubscriptionReads": 0,
+      "quotaReservations": 0,
+      "rollbacks": 0,
+      "logWriteAttempts": 0,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null
+      ],
+      "returnedTitleLength": 20
+    },
+    {
+      "name": "extract-title-long",
+      "modelCalls": 1,
+      "purposes": [
+        "recordTitle"
+      ],
+      "logRows": 0,
+      "successes": 0,
+      "failures": 0,
+      "logOnlySubscriptionReads": 0,
+      "quotaReservations": 0,
+      "rollbacks": 0,
+      "logWriteAttempts": 0,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null
+      ],
+      "returnedTitleLength": 20
+    },
+    {
+      "name": "backfill-logging-only-check",
+      "modelCalls": 1,
+      "purposes": [
+        "recordTitleBackfill"
+      ],
+      "logRows": 0,
+      "successes": 0,
+      "failures": 0,
+      "logOnlySubscriptionReads": 0,
+      "quotaReservations": 0,
+      "rollbacks": 0,
+      "logWriteAttempts": 0,
+      "allRequestIdsNull": true,
+      "explicitMaxOutputTokens": [
+        null
+      ],
+      "count": 1,
+      "writes": 1,
+      "note": "기존 완료 건의 동작 변경 없이 로그 부재만 확인"
+    }
+  ],
+  "usageCases": [
+    {
+      "input": {},
+      "actual": {
+        "inputTokens": null,
+        "outputTokens": null
+      }
+    },
+    {
+      "input": {
+        "response": {
+          "usageMetadata": {
+            "promptTokenCount": 0,
+            "candidatesTokenCount": 0
+          }
+        }
+      },
+      "actual": {
+        "inputTokens": 0,
+        "outputTokens": 0
+      }
+    },
+    {
+      "input": {
+        "response": {
+          "usageMetadata": {
+            "promptTokenCount": 11,
+            "candidatesTokenCount": 7
+          }
+        }
+      },
+      "actual": {
+        "inputTokens": 11,
+        "outputTokens": 7
+      }
+    },
+    {
+      "input": {
+        "response": {
+          "usageMetadata": {
+            "promptTokenCount": null,
+            "candidatesTokenCount": ""
+          }
+        }
+      },
+      "actual": {
+        "inputTokens": 0,
+        "outputTokens": 0
+      }
+    },
+    {
+      "input": {
+        "response": {
+          "usageMetadata": {
+            "promptTokenCount": "invalid"
+          }
+        }
+      },
+      "actual": {
+        "inputTokens": null,
+        "outputTokens": null
+      }
+    }
+  ],
+  "planSemanticCheck": {
+    "syntheticSubscription": {
+      "plan": "premium",
+      "status": "inactive"
+    },
+    "loggedPlan": "premium",
+    "quotaResolvedPlan": "free",
+    "note": "중복 조회 개선 시 quota.plan을 그대로 재사용하면 현재 로그 의미가 바뀔 수 있음"
+  },
+  "targetCalls": [
+    {
+      "purpose": "sayuPolish",
+      "line": 2436,
+      "explicitGenerationConfig": false
+    },
+    {
+      "purpose": "sayuPolishComment",
+      "line": 2470,
+      "explicitGenerationConfig": false
+    },
+    {
+      "purpose": "recordTitle",
+      "line": 2583,
+      "explicitGenerationConfig": false
+    },
+    {
+      "purpose": "recordTitleBackfill",
+      "line": 4771,
+      "explicitGenerationConfig": false
+    },
+    {
+      "purpose": "recordStats",
+      "line": 4998,
+      "explicitGenerationConfig": false
+    }
+  ],
+  "guardedFunctions": [
+    {
+      "rel": "frontend/src/app/components/FormatModal.tsx",
+      "name": "handlePolishWithMode",
+      "hasExplicitBusyGuard": true,
+      "note": "JSX disabled 상태는 별도 존재하며 실제 UI 경쟁 조건을 재현한 시험은 아님"
+    },
+    {
+      "rel": "frontend/src/app/components/SayuModal.tsx",
+      "name": "handleRepolish",
+      "hasExplicitBusyGuard": false,
+      "note": "JSX disabled 상태는 별도 존재하며 실제 UI 경쟁 조건을 재현한 시험은 아님"
+    },
+    {
+      "rel": "frontend/src/app/pages/SettingsPage.tsx",
+      "name": "handleGenerateTitles",
+      "hasExplicitBusyGuard": false,
+      "note": "JSX disabled 상태는 별도 존재하며 실제 UI 경쟁 조건을 재현한 시험은 아님"
+    }
+  ]
+}

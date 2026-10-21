@@ -1,0 +1,20 @@
+{
+  "checkedDateKst": "2026-10-22",
+  "command": "gcloud functions describe polishContent --gen2 --project=haru2026-8abb8 --region=asia-northeast3 --format=json(name,state,updateTime,buildConfig.runtime,buildConfig.source.storageSource,serviceConfig.revision)",
+  "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishContent",
+  "state": "ACTIVE",
+  "updateTime": "2026-09-13T08:05:26.095480723Z",
+  "buildConfig": {
+    "runtime": "nodejs22",
+    "source": {
+      "storageSource": {
+        "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+        "generation": "1789286623874132",
+        "object": "polishContent/function-source.zip"
+      }
+    }
+  },
+  "serviceConfig": {
+    "revision": "polishcontent-00242-pay"
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "passed": true,
+  "serverScenarios": 20,
+  "usageCases": 5,
+  "planSemanticCheck": {
+    "syntheticSubscription": {
+      "plan": "premium",
+      "status": "inactive"
+    },
+    "loggedPlan": "premium",
+    "quotaResolvedPlan": "free",
+    "note": "중복 조회 개선 시 quota.plan을 그대로 재사용하면 현재 로그 의미가 바뀔 수 있음"
+  },
+  "targetCallAssertions": 5,
+  "clientGuardChecks": 3,
+  "scenarios": [
+    {
+      "name": "normal-supported",
+      "modelCalls": 3,
+      "logRows": 3,
+      "failures": 0,
+      "logOnlySubscriptionReads": 3
+    },
+    {
+      "name": "normal-reading",
+      "modelCalls": 2,
+      "logRows": 2,
+      "failures": 0,
+      "logOnlySubscriptionReads": 2
+    },
+    {
+      "name": "developer",
+      "modelCalls": 3,
+      "logRows": 3,
+      "failures": 0,
+      "logOnlySubscriptionReads": 0
+    },
+    {
+      "name": "body-provider-failure",
+      "modelCalls": 1,
+      "logRows": 1,
+      "failures": 1,
+      "logOnlySubscriptionReads": 1
+    },
+    {
+      "name": "body-text-failure",
+      "modelCalls": 1,
+      "logRows": 2,
+      "failures": 1,
+      "logOnlySubscriptionReads": 2
+    },
+    {
+      "name": "stats-provider-failure",
+      "modelCalls": 3,
+      "logRows": 3,
+      "failures": 1,
+      "logOnlySubscriptionReads": 3
+    },
+    {
+      "name": "stats-invalid-json",
+      "modelCalls": 3,
+      "logRows": 4,
+      "failures": 1,
+      "logOnlySubscriptionReads": 4
+    },
+    {
+      "name": "stats-no-json",
+      "modelCalls": 3,
+      "logRows": 3,
+      "failures": 0,
+      "logOnlySubscriptionReads": 3
+    },
+    {
+      "name": "stats-text-failure",
+      "modelCalls": 3,
+      "logRows": 4,
+      "failures": 1,
+      "logOnlySubscriptionReads": 4
+    },
+    {
+      "name": "comment-provider-failure",
+      "modelCalls": 3,
+      "logRows": 2,
+      "failures": 0,
+      "logOnlySubscriptionReads": 2
+    },
+    {
+      "name": "comment-text-failure",
+      "modelCalls": 3,
+      "logRows": 3,
+      "failures": 0,
+      "logOnlySubscriptionReads": 3
+    },
+    {
+      "name": "invalid-empty-input",
+      "modelCalls": 0,
+      "logRows": 1,
+      "failures": 1,
+      "logOnlySubscriptionReads": 1
+    },
+    {
+      "name": "quota-denied",
+      "modelCalls": 0,
+      "logRows": 1,
+      "failures": 1,
+      "logOnlySubscriptionReads": 1
+    },
+    {
+      "name": "logging-write-failure",
+      "modelCalls": 3,
+      "logRows": 0,
+      "failures": 0,
+      "logOnlySubscriptionReads": 3
+    },
+    {
+      "name": "post-generation-slice",
+      "modelCalls": 3,
+      "logRows": 3,
+      "failures": 0,
+      "logOnlySubscriptionReads": 3
+    },
+    {
+      "name": "identical-concurrent-polish",
+      "modelCalls": 6,
+      "logRows": 6,
+      "failures": 0,
+      "logOnlySubscriptionReads": 6
+    },
+    {
+      "name": "actual-rate-limit"
+    },
+    {
+      "name": "extract-title-short",
+      "modelCalls": 1,
+      "logRows": 0,
+      "failures": 0,
+      "logOnlySubscriptionReads": 0
+    },
+    {
+      "name": "extract-title-long",
+      "modelCalls": 1,
+      "logRows": 0,
+      "failures": 0,
+      "logOnlySubscriptionReads": 0
+    },
+    {
+      "name": "backfill-logging-only-check",
+      "modelCalls": 1,
+      "logRows": 0,
+      "failures": 0,
+      "logOnlySubscriptionReads": 0
+    }
+  ]
+}
