@@ -1,0 +1,9 @@
+{
+  "head": "19f4f25cfeaca67c9edbe5270d120c92fe9d879c",
+  "startedAt": "2026-10-22T00:58:11.743812+00:00",
+  "mode": "fresh Claude CLI read-only review; safe-mode; plan permissions; no persistence; no MCP; no model override",
+  "exitCode": 1,
+  "resultFileLastWrittenAt": "2026-10-22T00:58:16.101014+00:00",
+  "reviewVerdict": null,
+  "errorClass": "authentication"
+}

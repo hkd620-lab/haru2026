@@ -2342,7 +2342,7 @@ export const polishContent = onCall(
     await enforceRateLimit(uid, 'polishContent', 10, 60);
     let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
     try {
-      const { text, mode = 'premium', format } = request.data;
+      const { text, mode = 'premium', format, includeAiComment } = request.data;
 
       if (!text || typeof text !== 'string') {
         throw new HttpsError('invalid-argument', '텍스트가 필요합니다.');
@@ -2462,36 +2462,38 @@ export const polishContent = onCall(
         });
       }
 
-      // ===== 💬 AI 한마디 생성 (SAYU와 동시, 별도 호출 없음) =====
+      // 옵션 누락 시 기존 한마디 생성을 유지하고, 명시적 false에서만 생략한다.
       let aiComment = '';
-      try {
-        const commentModelName = getAiRoute('sayuPolishComment').model;
-        const commentPrompt = buildAiCommentPrompt(polishedText, formatGroup);
-        const commentResult = await callAi({ purpose: 'sayuPolishComment', input: commentPrompt });
-        await logAiUsage({
-          uid: request.auth.uid,
-          featureName: 'sayu_polish',
-          plan: AI_USAGE_PLAN,
-          model: commentModelName,
-          inputTokens: commentResult.inputTokens,
-          outputTokens: commentResult.outputTokens,
-          imageCount: 0,
-          externalApiProvider: null,
-          externalApiCalled: false,
-          groundingUsed: false,
-          requestId: null,
-          success: true,
-          errorCode: null,
-          isDev: DEVELOPER_UIDS.has(request.auth.uid),
-        });
-        const rawComment = (commentResult.text() || '').trim();
-        aiComment = rawComment
-          .replace(/^["'`*#\-•·]+|["'`*#\-•·]+$/g, '')
-          .replace(/\*\*|__/g, '')
-          .trim()
-          .slice(0, 50);
-      } catch (commentErr) {
-        console.warn('[polishContent] AI 한마디 생성 실패:', commentErr);
+      if (includeAiComment !== false) {
+        try {
+          const commentModelName = getAiRoute('sayuPolishComment').model;
+          const commentPrompt = buildAiCommentPrompt(polishedText, formatGroup);
+          const commentResult = await callAi({ purpose: 'sayuPolishComment', input: commentPrompt });
+          await logAiUsage({
+            uid: request.auth.uid,
+            featureName: 'sayu_polish',
+            plan: AI_USAGE_PLAN,
+            model: commentModelName,
+            inputTokens: commentResult.inputTokens,
+            outputTokens: commentResult.outputTokens,
+            imageCount: 0,
+            externalApiProvider: null,
+            externalApiCalled: false,
+            groundingUsed: false,
+            requestId: null,
+            success: true,
+            errorCode: null,
+            isDev: DEVELOPER_UIDS.has(request.auth.uid),
+          });
+          const rawComment = (commentResult.text() || '').trim();
+          aiComment = rawComment
+            .replace(/^["'`*#\-•·]+|["'`*#\-•·]+$/g, '')
+            .replace(/\*\*|__/g, '')
+            .trim()
+            .slice(0, 50);
+        } catch (commentErr) {
+          console.warn('[polishContent] AI 한마디 생성 실패:', commentErr);
+        }
       }
 
       await logPaidServiceUsage(uid, 'ai_polish', {

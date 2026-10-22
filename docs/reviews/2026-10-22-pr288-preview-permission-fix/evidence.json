@@ -1,0 +1,89 @@
+{
+  "project": "haru2026-8abb8",
+  "ciPrincipalFingerprint": "892886d9e33e9286de2f554bb1c65ed07ee76a67db734e5b1034d64d66bbbc9e",
+  "ciPrincipalUniquelyMatched": true,
+  "ciPrincipalRolesBefore": [
+    "roles/firebasehosting.admin"
+  ],
+  "addedCustomRole": {
+    "name": "projects/haru2026-8abb8/roles/firebaseHostingApiStateReader",
+    "title": "Firebase Hosting API State Reader",
+    "description": "Read API state for Hosting CI preflight. No API enable, disable, use, IAM or deployment permission.",
+    "stage": "GA",
+    "includedPermissions": [
+      "serviceusage.services.get"
+    ]
+  },
+  "iamDelta": {
+    "addedBindings": 1,
+    "removedBindings": 0,
+    "otherPolicyFieldsUnchanged": true
+  },
+  "diagnostic": {
+    "commit": "b62df5a100a2164ef187ae0aa842e7ed27b8afae",
+    "ciRun": 39712130045,
+    "fingerprintStep": "success",
+    "removalCommit": "99377e982502d5feb0445a02350c921c6bab307b",
+    "workflowIdenticalToReviewedBaseline": true,
+    "workflowSha256": "fbefe135b47fef197965f0b4eafa6b655efe5e61fc21c6acf75d7c873d48b095"
+  },
+  "hostingBefore": {
+    "observedAt": "2026-10-22T02:39:31.602879+00:00",
+    "project": "haru2026-8abb8",
+    "hostingApiState": "ENABLED",
+    "live": {
+      "name": "sites/haru2026-8abb8/channels/live",
+      "url": "https://haru2026-8abb8.web.app",
+      "updateTime": "2026-10-20T21:54:29.901Z",
+      "releaseName": "sites/haru2026-8abb8/channels/live/releases/1792533269901000",
+      "releaseTime": "2026-10-20T21:54:29.901Z",
+      "versionName": "sites/haru2026-8abb8/versions/4328b2c609937df9",
+      "versionStatus": "FINALIZED"
+    }
+  },
+  "afterFixCi": {
+    "run": 39712816798,
+    "head": "99377e982502d5feb0445a02350c921c6bab307b",
+    "conclusion": "success",
+    "completedAt": "2026-10-22T02:50:39Z",
+    "webBuild": "success",
+    "previewDeploy": "success"
+  },
+  "hostingAfter": {
+    "observedAt": "2026-10-22T04:05:29.599150+00:00",
+    "project": "haru2026-8abb8",
+    "hostingApiState": "ENABLED",
+    "live": {
+      "name": "sites/haru2026-8abb8/channels/live",
+      "url": "https://haru2026-8abb8.web.app",
+      "updateTime": "2026-10-20T21:54:29.901Z",
+      "releaseName": "sites/haru2026-8abb8/channels/live/releases/1792533269901000",
+      "releaseTime": "2026-10-20T21:54:29.901Z",
+      "versionName": "sites/haru2026-8abb8/versions/4328b2c609937df9",
+      "versionStatus": "FINALIZED"
+    }
+  },
+  "liveUnchanged": true,
+  "previewSmoke": {
+    "url": "https://haru2026-8abb8--pr288-codex-polish-comment-o9crqfa3.web.app",
+    "status": 200,
+    "bytes": 6154,
+    "hasRoot": true,
+    "hasJsBundle": true,
+    "contentType": "text/html; charset=utf-8"
+  },
+  "cliVersions": {
+    "priorSuccess": {
+      "run": 39425882963,
+      "version": "15.34.0"
+    },
+    "diagnosticFailure": {
+      "run": 39712130045,
+      "version": "15.34.1"
+    },
+    "afterFixSuccess": {
+      "run": 39712816798,
+      "version": "15.34.1"
+    }
+  }
+}
