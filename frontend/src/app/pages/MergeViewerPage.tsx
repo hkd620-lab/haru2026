@@ -170,6 +170,20 @@ export function MergeViewerPage() {
   const renderPhotosForPrint = (images: string[]) => {
     if (images.length === 0) return null;
 
+    // 4장 이상도 모두 표시한다. 기존 1~3장 배치는 유지한다.
+    if (images.length >= 4) {
+      return (
+        <div className="print-photos mb-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+          {images.map((img, idx) => (
+            <img key={idx} src={img} alt={`기록 사진 ${idx + 1}`}
+              className="w-full rounded-lg object-contain"
+              style={{ width: '100%', minWidth: 0, height: 120, maxHeight: 120, backgroundColor: '#f5f5f5' }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          ))}
+        </div>
+      );
+    }
+
     // 1장
     if (images.length === 1) {
       return (
@@ -238,6 +252,20 @@ export function MergeViewerPage() {
   // 화면 표시용 사진 레이아웃
   const renderPhotosForScreen = (images: string[]) => {
     if (images.length === 0) return null;
+
+    // 4장 이상도 모두 표시한다. 기존 1~3장 배치는 유지한다.
+    if (images.length >= 4) {
+      return (
+        <div className="mb-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+          {images.map((img, idx) => (
+            <img key={idx} src={img} alt={`기록 사진 ${idx + 1}`}
+              className="w-full rounded-lg object-contain"
+              style={{ width: '100%', minWidth: 0, height: 200, backgroundColor: '#f5f5f5' }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          ))}
+        </div>
+      );
+    }
 
     // 1장
     if (images.length === 1) {

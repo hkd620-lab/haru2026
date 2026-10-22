@@ -6240,7 +6240,15 @@ export function SayuPage() {
                   ))}
                 </div>
               )}
-              {validImages.length >= 3 && (
+              {validImages.length >= 4 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px', backgroundColor: 'white' }}>
+                  {validImages.map((img: string, idx: number) => (
+                    <img key={idx} src={img} alt={`사진 ${idx + 1}`}
+                      style={{ width: '100%', minWidth: 0, maxHeight: '45mm', objectFit: 'contain', borderRadius: '8px', backgroundColor: 'white' }} />
+                  ))}
+                </div>
+              )}
+              {validImages.length === 3 && (
                 <div style={{ backgroundColor: 'white' }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px', backgroundColor: 'white' }}>
                     <img src={validImages[0]} alt="사진 1" style={{ width: 'auto', maxWidth: '84mm', maxHeight: '65mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
