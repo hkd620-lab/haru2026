@@ -214,8 +214,9 @@ export function RecordPage() {
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
   const [draftContent, setDraftContent] = useState('');
   const [formatPickerOpen, setFormatPickerOpen] = useState(false);
-  const [draftFromComposer, setDraftFromComposer] = useState(false);
-  const composerSavedRef = useRef(false);
+  const [quickSaving, setQuickSaving] = useState(false);
+  const quickSavingRef = useRef(false);
+  const quickRecordIdRef = useRef<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [formatModalOpen, setFormatModalOpen] = useState(false);
   const [petAlertLevel, setPetAlertLevel] = useState<PetAlertLevel>(null);
@@ -531,7 +532,6 @@ export function RecordPage() {
     }
     const dateStr = getLocalDateString(currentDate);
     setSavedDateStr(dateStr);
-    setDraftFromComposer(false);
     setSavedFormat(format);
     setSelectedFormats([format]);
     setFormatModalOpen(true);
@@ -578,25 +578,54 @@ export function RecordPage() {
     setFormatModalOpen(true);
   };
 
-  const openDraftFormat = (format: RecordFormat) => {
+  const saveDraftAsFormat = async (format: RecordFormat) => {
     if (!user) {
       toast.error('로그인이 필요합니다.');
       navigate('/login');
       return;
     }
-    composerSavedRef.current = false;
-    setSavedDateStr(getLocalDateString(currentDate));
-    setSavedFormat(format);
-    setSelectedFormats([format]);
-    setDraftFromComposer(true);
-    setFormatPickerOpen(false);
-    setFormatModalOpen(true);
+    if (quickSavingRef.current) return;
+    const content = draftContent.trim();
+    if (!content) {
+      toast.warning('기록할 글을 먼저 작성해 주세요.');
+      return;
+    }
+    const date = getLocalDateString(currentDate);
+    const retryId = quickRecordIdRef.current;
+    const recordId = retryId || `${date}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    quickRecordIdRef.current = recordId;
+    quickSavingRef.current = true;
+    setQuickSaving(true);
+    try {
+      // 응답만 유실된 저장을 재시도할 때 같은 기록을 다시 만들지 않는다.
+      if (retryId) {
+        const existing = await getDoc(doc(db, 'users', user.uid, 'records', retryId));
+        if (existing.exists()) {
+          toast.info('이미 저장된 기록을 열었습니다.');
+          const existingFormat = Array.isArray(existing.data().formats) ? existing.data().formats[0] : format;
+          navigate('/sayu', { state: { filterFormat: existingFormat, openRecordId: retryId, tab: 'records' } });
+          return;
+        }
+      }
+      const payload = {
+        ...buildDraftFormatData(format, content),
+        _recordId: recordId,
+        formats: [format],
+      };
+      const savedId = await handleSaveFormatData(payload as unknown as Record<string, string>);
+      if (!savedId) throw new Error('record save did not return an id');
+      quickRecordIdRef.current = null;
+      setFormatPickerOpen(false);
+      setDraftContent('');
+      navigate('/sayu', { state: { filterFormat: format, openRecordId: savedId, tab: 'records' } });
+    } catch (error) {
+      console.error('공통 기록 저장 실패:', error);
+      toast.error('저장 결과를 확인하지 못했습니다. 같은 형식으로 다시 시도해 주세요.');
+    } finally {
+      quickSavingRef.current = false;
+      setQuickSaving(false);
+    }
   };
-
-  const draftInitialData = (() => {
-    if (!draftFromComposer || !savedFormat) return undefined;
-    return buildDraftFormatData(savedFormat, draftContent);
-  })();
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
     if (!user) return;
@@ -770,11 +799,7 @@ export function RecordPage() {
           { merge: true },
         );
       }
-      if (
-        savedFormat === '애완동물관찰일지' ||
-        savedFormats.map((format) => String(format)).includes('애완동물관찰일지') ||
-        savedFormats.map((format) => String(format)).includes('pet')
-      ) {
+      if (savedFormats.includes('애완동물관찰일지') || savedFormats.includes('pet')) {
         const level = detectPetAlertLevel(updateData as Record<string, string>);
         if (level) {
           setPetAlertLevel(level);
@@ -787,7 +812,6 @@ export function RecordPage() {
           }, 8000);
         }
       }
-      if (draftFromComposer) composerSavedRef.current = true;
       toast.success('내용이 저장되었습니다!');
       return recordId;
     } catch (error) {
@@ -1050,12 +1074,12 @@ export function RecordPage() {
           <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요.</p>
           <div className="mt-4 grid grid-cols-2 gap-2">
             {WRITABLE_FORMATS.map((format) => (
-              <button key={format} type="button" onClick={() => openDraftFormat(format)} className="rounded-lg border p-3 text-left text-sm hover:bg-yellow-50">
+              <button key={format} type="button" onClick={() => saveDraftAsFormat(format)} disabled={quickSaving} className="rounded-lg border p-3 text-left text-sm hover:bg-yellow-50 disabled:opacity-50">
                 {format === '애완동물관찰일지' ? '반려동물' : format}
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => setFormatPickerOpen(false)} className="mt-4 w-full rounded-lg border py-2 text-sm">돌아가기</button>
+          <button type="button" onClick={() => setFormatPickerOpen(false)} disabled={quickSaving} className="mt-4 w-full rounded-lg border py-2 text-sm">{quickSaving ? '저장 중...' : '돌아가기'}</button>
         </div>
       </div>
     )}
@@ -1066,13 +1090,10 @@ export function RecordPage() {
         isOpen={formatModalOpen}
         onClose={() => {
           setFormatModalOpen(false);
-          if (draftFromComposer && !composerSavedRef.current) return;
           closeToOrigin();
         }}
         format={savedFormat}
         recordId={savedDateStr}
-        initialData={draftInitialData}
-        startWithDraft={draftFromComposer}
         onSave={handleSaveFormatData}
       />
     )}

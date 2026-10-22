@@ -12,13 +12,15 @@ export const WRITABLE_FORMATS: RecordFormat[] = [
 ].includes(format));
 
 export function buildDraftFormatData(format: RecordFormat, content: string): Record<string, string> {
-  if (format === '독서사유') return { reading_journal: content };
-  if (format === '주식거래일지') return { stock_memo: content };
-
   const prefix = getFormatKey(format);
   const firstLine = content.split('\n').map((line) => line.trim()).find(Boolean) || '';
   return {
     [`${prefix}_simple`]: content,
     [`${prefix}_title`]: firstLine.slice(0, 48),
+    [`${prefix}_sayu`]: content,
+    [`${prefix}_style`]: 'simple',
+    [`${prefix}_mode`]: 'ORIGINAL',
+    [`${prefix}_images`]: '[]',
+    [`${prefix}_imageMeta`]: '[]',
   };
 }
