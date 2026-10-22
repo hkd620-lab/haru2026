@@ -15,23 +15,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Diagnose PR 288 deploy principal (temporary)
-        if: github.event.pull_request.number == 288 && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          CI_FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HARU2026 }}
-        run: |
-          node <<'NODE'
-          const { createHash } = require('node:crypto');
-          try {
-            const principal = JSON.parse(process.env.CI_FIREBASE_SERVICE_ACCOUNT || '').client_email;
-            if (typeof principal !== 'string' || !principal.trim()) throw new Error();
-            console.log('CI_DEPLOY_PRINCIPAL_SHA256=' + createHash('sha256').update(principal.trim()).digest('hex'));
-          } catch {
-            console.error('CI principal metadata could not be read');
-            process.exit(1);
-          }
-          NODE
-
       - name: Install and Build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || 'dummy' }}
