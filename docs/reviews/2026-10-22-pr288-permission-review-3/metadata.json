@@ -1,0 +1,11 @@
+{
+  "head": "99377e982502d5feb0445a02350c921c6bab307b",
+  "startedAt": "2026-10-22T02:48:21.423053+00:00",
+  "mode": "fresh read-only Claude CLI; safe-mode; plan; no persistence/MCP/model override; never resumes existing CC",
+  "exitCode": 0,
+  "resultLastWrittenAt": "2026-10-22T02:50:44.986344+00:00",
+  "isError": false,
+  "permissionDenials": [],
+  "numTurns": 12,
+  "verdict": "판정: 승인 — 조치 설계 기준입니다. 최신 CI와 판정① 조건은 아직 충족되지 않았습니다."
+}
