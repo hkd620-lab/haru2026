@@ -1,3 +1,4 @@
+import { getRecordPhotoLimit } from '../src/app/services/recordPhotoLimit.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
@@ -14,7 +15,7 @@ function fixture(outcomes) {
   let attempt = 0;
   const toast = Object.fromEntries(['warning', 'error', 'success', 'info'].map(level => [level, (...args) => notices.push({ level, message: args[0] })]));
   const context = {
-    toast, console: { error() {} }, File, Date, Math, Error, Uint8Array, btoa, startSelectedRecordPhotoReads, compressRecordPhoto,
+    getRecordPhotoLimit, toast, console: { error() {} }, File, Date, Math, Error, Uint8Array, btoa, startSelectedRecordPhotoReads, compressRecordPhoto,
     isCleaningSessionUploadsRef: { current: false }, ledgerInputMode: 'single',
     uploadedImages: [], format: '일기', user: { uid: 'fixture' }, recordId: 'record', prefix: 'diary',
     setIsUploading: value => busy.push(value), getStorage: () => ({}), getFunctions: () => ({}),
@@ -52,9 +53,9 @@ test('an upload failure does not discard another successfully uploaded photo', a
   assert.match(f.notices.at(-1).message, /1장은 실패/);
 });
 test('successful uploads preserve the notice about excluded extra selections', async () => {
-  const f = fixture(['ok', 'ok', 'ok']);
-  await f.run(5);
-  assert.equal(f.images.length, 3);
+  const f = fixture(Array(5).fill('ok'));
+  await f.run(7);
+  assert.equal(f.images.length, 5);
   assert.equal(f.notices.at(-1).level, 'success');
   assert.match(f.notices.at(-1).message, /초과한 2장/);
 });
@@ -152,3 +153,18 @@ test('unsupported local HEIC falls back to server conversion before uploading an
   assert.equal(metadata[0].takenDate, '2020-01-02');
   assert.equal(f.notices.at(-1).level, 'success');
 });
+
+for (const format of ['일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기', '성장기록', '메모', 'HARU가계부']) {
+  test(`${format}: existing three photos accept only two more from a larger selection`, async () => {
+    const f = fixture(['ok', 'ok']);
+    f.context.format = format;
+    f.context.uploadedImages = ['old1', 'old2', 'old3'];
+    await f.run(4);
+    assert.equal(f.images.length, 2);
+    assert.match(f.notices.at(-1).message, /초과한 2장/);
+    f.context.uploadedImages = ['1', '2', '3', '4', '5'];
+    await f.run(1);
+    assert.match(f.notices.at(-1).message, /최대 5장/);
+    assert.equal(f.images.length, 2);
+  });
+}

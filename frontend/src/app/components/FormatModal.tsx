@@ -1,3 +1,4 @@
+import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
 import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText, Pencil } from 'lucide-react';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { ReadingAiChat } from './ReadingAiChat';
@@ -981,6 +982,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const existingSayu = initialData[sayuKey];
   const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
   const isLedgerFormat = format === 'HARU보조장부';
+  const recordPhotoLimit = getRecordPhotoLimit(format);
   const isHouseholdFormat = format === 'HARU가계부';
   const isVoidingFormat = format === '배뇨일지';
   const selectedGrowthSubject = growthSubjects.find((subject) => subject.id === selectedGrowthSubjectId);
@@ -1861,7 +1863,7 @@ ${contentValues}`,
       ? ledgerXlsxPreviewRows.find((row) => row.id === expandedLedgerXlsxRowId)
       : undefined;
     const currentImageUrls = periodRow?.entry.imageUrls || uploadedImages;
-    const maxPhotos = format === 'HARU보조장부' ? 10 : 3;
+    const maxPhotos = getRecordPhotoLimit(format);
     const remainingSlots = maxPhotos - currentImageUrls.length;
     if (remainingSlots <= 0) {
       toast.warning(`최대 ${maxPhotos}장까지만 업로드할 수 있습니다.`);
@@ -6062,7 +6064,7 @@ ${contentValues.slice(0, 4100)}`,
                 <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8, marginTop: 0 }}>
                   {isLedgerFormat
                     ? '사진 없이도 저장할 수 있습니다 · 최대 10장 · PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다'
-                    : '사진 없이도 저장할 수 있습니다 · 최대 3장 · PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다'}
+                    : '사진 없이도 저장할 수 있습니다 · 최대 5장 · PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다'}
                 </p>
                 <input
                   ref={fileInputRef}
@@ -6075,18 +6077,18 @@ ${contentValues.slice(0, 4100)}`,
                 {format === '일기' ? (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || isCleaningSessionUploads || activeUploadedImages.length >= 3}
+                    disabled={isUploading || isCleaningSessionUploads || activeUploadedImages.length >= recordPhotoLimit}
                     style={{
                       width: '100%',
                       padding: '17px',
                       border: '1px solid #e4e4e4',
                       borderRadius: '20px',
                       backgroundColor: '#f7f7f7',
-                      cursor: isUploading || activeUploadedImages.length >= 3 ? 'not-allowed' : 'pointer',
+                      cursor: isUploading || activeUploadedImages.length >= recordPhotoLimit ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      opacity: isUploading || activeUploadedImages.length >= 3 ? 0.5 : 1,
+                      opacity: isUploading || activeUploadedImages.length >= recordPhotoLimit ? 0.5 : 1,
                     }}
                   >
                     {isUploading
@@ -6097,7 +6099,7 @@ ${contentValues.slice(0, 4100)}`,
                 ) : (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || isCleaningSessionUploads || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3)}
+                    disabled={isUploading || isCleaningSessionUploads || activeUploadedImages.length >= recordPhotoLimit}
                     style={{
                       width: '100%',
                       padding: '10px 16px',
@@ -6106,31 +6108,31 @@ ${contentValues.slice(0, 4100)}`,
                       borderRadius: 8,
                       backgroundColor: '#f9fafb',
                       color: '#6b7280',
-                      cursor: isUploading || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3) ? 'not-allowed' : 'pointer',
+                      cursor: isUploading || activeUploadedImages.length >= recordPhotoLimit ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: 8,
-                      opacity: isUploading || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3) ? 0.5 : 1,
+                      opacity: isUploading || activeUploadedImages.length >= recordPhotoLimit ? 0.5 : 1,
                     }}
                   >
                     <Upload style={{ width: 16, height: 16 }} />
                     {isUploading ? '업로드 중...' : isLedgerFormat
                       ? `증빙사진 선택 (${activeUploadedImages.length}/10)`
-                      : `사진 추가 (${activeUploadedImages.length}/3)`}
+                      : `사진 추가 (${activeUploadedImages.length}/${recordPhotoLimit})`}
                   </button>
                 )}
 
                 {activeUploadedImages.length > 0 && (
                   <div style={{ marginTop: 12 }}>
-                    {/* 4장 이상: 보조장부 전용 — 3열 그리드 */}
+                    {/* 4장 이상: 3열 그리드 */}
                     {activeUploadedImages.length >= 4 && (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                         {activeUploadedImages.map((url, index) => (
                           <div key={index} style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
                             <img
                               src={url}
-                              alt={`증빙사진 ${index + 1}`}
+                              alt={`${isLedgerFormat ? '증빙사진' : '사진'} ${index + 1}`}
                               style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e5e5' }}
                             />
                             <button
