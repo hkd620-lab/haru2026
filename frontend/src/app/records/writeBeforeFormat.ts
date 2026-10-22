@@ -2,11 +2,13 @@ import { CATEGORY_FORMATS, type RecordFormat } from '../types/haruTypes';
 import { getFormatKey } from './formatRegistry';
 
 // 장부·측정은 전용 도구에 남겨 두고, 글로 작성할 수 있는 기존 형식만 제시한다.
-export const WRITABLE_FORMATS: RecordFormat[] = [
+const WRITABLE_CANDIDATES: RecordFormat[] = [
   ...CATEGORY_FORMATS['생활'],
   ...CATEGORY_FORMATS['업무'],
   '주식거래일지',
-].filter((format) => ![
+];
+
+export const WRITABLE_FORMATS = WRITABLE_CANDIDATES.filter((format) => ![
   'HARU가계부', 'HARU보조장부', '성장기록',
   '선교보고', '일반보고', '주식거래일지',
 ].includes(format));

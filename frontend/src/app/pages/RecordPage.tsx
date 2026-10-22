@@ -13,6 +13,7 @@ import { PetHealthAlert, detectPetAlertLevel, type PetAlertLevel } from '../comp
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
 import { buildDraftSavePayload, WRITABLE_FORMATS } from '../records/writeBeforeFormat';
+import { getFormatKey } from '../records/formatRegistry';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
 import { findSameNameChildSubject } from '../services/growthSubjectLookup';
@@ -601,8 +602,14 @@ export function RecordPage() {
       if (retryId) {
         const existing = await getDoc(doc(db, 'users', user.uid, 'records', retryId));
         if (existing.exists()) {
-          toast.info('이미 저장된 기록을 열었습니다.');
           const existingFormat = Array.isArray(existing.data().formats) ? existing.data().formats[0] : format;
+          const savedContent = existing.data()[`${getFormatKey(existingFormat)}_simple`];
+          if (existingFormat !== format || savedContent !== content) {
+            quickRecordIdRef.current = null;
+            toast.warning('앞선 글은 이미 저장됐습니다. 현재 글을 별도 기록으로 저장하려면 형식을 다시 선택해 주세요.');
+            return;
+          }
+          toast.info('이미 저장된 기록을 열었습니다.');
           navigate('/sayu', { state: { filterFormat: existingFormat, openRecordId: retryId, tab: 'records' } });
           return;
         }
