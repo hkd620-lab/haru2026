@@ -86,6 +86,7 @@ interface FormatModalProps {
   format: RecordFormat;
   recordId: string;
   initialData?: Record<string, string>;
+  initialPhotos?: File[];
   onSave: (formatData: Record<string, string>) => Promise<string | void>;
 }
 
@@ -448,7 +449,7 @@ const LEDGER_OCR_PREVIEW_FIELDS: { key: keyof LedgerOcrFields; label: string }[]
   { key: 'memo', label: '메모' },
 ];
 
-export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
+export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, initialPhotos = [], onSave: onSaveRequest }: FormatModalProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
@@ -468,11 +469,26 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedImageMeta, setUploadedImageMeta] = useState<UploadedImageMeta[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const isUploadingRef = useRef(false);
+  const initialPhotoUploadKeyRef = useRef<string | null>(null);
+  const initialPhotoUploadFailedRef = useRef(false);
+  const [initialPhotoUploadFailed, setInitialPhotoUploadFailed] = useState(false);
   const [isCleaningSessionUploads, setIsCleaningSessionUploads] = useState(false);
   const isCleaningSessionUploadsRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sessionUploadedImageUrlsRef = useRef<string[]>([]);
   const committedCloseRef = useRef(false);
+  const onSave = async (formatData: Record<string, string>): Promise<string | void> => {
+    if (isUploadingRef.current || (initialPhotos.length > 0 && initialPhotoUploadKeyRef.current !== `${format}:${recordId}`)) {
+      toast.warning('사진 업로드가 끝난 뒤 저장해 주세요.');
+      throw new Error('record photo upload in progress');
+    }
+    if (initialPhotoUploadFailedRef.current) {
+      toast.warning('초안 사진을 모두 올리지 못했습니다. 편집창을 닫고 사진을 확인한 뒤 다시 시도해 주세요.');
+      throw new Error('initial record photo upload failed');
+    }
+    return onSaveRequest(formatData);
+  };
   const [isExtractingBookText, setIsExtractingBookText] = useState(false);
   const [readingOcrUsedCount, setReadingOcrUsedCount] = useState<number | null>(null);
   const [readingBookTextMode, setReadingBookTextMode] = useState<'photo' | 'manual'>('photo');
@@ -623,6 +639,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     if (isOpen) {
       sessionUploadedImageUrlsRef.current = [];
       committedCloseRef.current = false;
+      initialPhotoUploadFailedRef.current = false;
+      setInitialPhotoUploadFailed(false);
       setFormData((format === '육아일기' || format === '성장기록') ? { ...initialData, child_measuredate: initialData.child_measuredate || getTodayInputValue() } : initialData);
       setGrowthSubjectBirthdate('');
       setGrowthSubjectGender('');
@@ -1850,14 +1868,24 @@ ${contentValues}`,
     toast.success('추출 결과를 보조장부 입력칸에 반영했습니다.');
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadSelectedImages = async (files: File[], requireAll = false) => {
     if (isCleaningSessionUploadsRef.current) {
-      event.target.value = '';
+      if (requireAll) {
+        initialPhotoUploadFailedRef.current = true;
+        setInitialPhotoUploadFailed(true);
+      }
       toast.warning('사진 정리가 끝난 뒤 다시 추가해주세요.');
       return;
     }
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+    if (isUploadingRef.current) {
+      if (requireAll) {
+        initialPhotoUploadFailedRef.current = true;
+        setInitialPhotoUploadFailed(true);
+      }
+      toast.warning('사진 업로드가 끝난 뒤 다시 추가해주세요.');
+      return;
+    }
+    if (files.length === 0) return;
 
     const periodRow = ledgerInputMode === 'period'
       ? ledgerXlsxPreviewRows.find((row) => row.id === expandedLedgerXlsxRowId)
@@ -1866,6 +1894,10 @@ ${contentValues}`,
     const maxPhotos = getRecordPhotoLimit(format);
     const remainingSlots = maxPhotos - currentImageUrls.length;
     if (remainingSlots <= 0) {
+      if (requireAll) {
+        initialPhotoUploadFailedRef.current = true;
+        setInitialPhotoUploadFailed(true);
+      }
       toast.warning(`최대 ${maxPhotos}장까지만 업로드할 수 있습니다.`);
       return;
     }
@@ -1877,6 +1909,7 @@ ${contentValues}`,
     const filesToUpload = Array.from(files).slice(0, remainingSlots);
     const selectedPhotoReads = startSelectedRecordPhotoReads(filesToUpload);
 
+    isUploadingRef.current = true;
     setIsUploading(true);
     try {
       const storage = getStorage();
@@ -1887,7 +1920,7 @@ ${contentValues}`,
 
       while (selectedPhotoReads.length > 0) {
         const selectedPhoto = await selectedPhotoReads.shift()!;
-        if (!selectedPhoto.ok) {
+        if (selectedPhoto.ok === false) {
           failures.push(selectedPhoto.message);
           continue;
         }
@@ -1987,6 +2020,10 @@ ${contentValues}`,
       }
 
       const failureDetails = [...new Set(failures)].join(' ');
+      if (requireAll && (failures.length > 0 || excludedCount > 0 || newImageUrls.length !== files.length)) {
+        initialPhotoUploadFailedRef.current = true;
+        setInitialPhotoUploadFailed(true);
+      }
       if (newImageUrls.length === 0) {
         toast.error(`사진을 업로드하지 못했습니다. ${failureDetails}`, { id: uploadNoticeId });
         return;
@@ -2011,15 +2048,39 @@ ${contentValues}`,
         toast.success(uploadedMessage, { id: uploadNoticeId });
       }
     } catch (error) {
+      if (requireAll) {
+        initialPhotoUploadFailedRef.current = true;
+        setInitialPhotoUploadFailed(true);
+      }
       console.error('이미지 업로드 실패:', error);
       toast.error('이미지 업로드에 실패했습니다.');
     } finally {
+      isUploadingRef.current = false;
       setIsUploading(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
   };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.currentTarget.files || []);
+    // 원본 사진 스트림은 input 초기화 전에 uploadSelectedImages 안에서 즉시 읽기 시작한다.
+    await uploadSelectedImages(files);
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      initialPhotoUploadKeyRef.current = null;
+      return;
+    }
+    if (!initialPhotos.length) return;
+    const key = `${format}:${recordId}`;
+    if (initialPhotoUploadKeyRef.current === key) return;
+    initialPhotoUploadKeyRef.current = key;
+    void uploadSelectedImages(initialPhotos, true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, format, recordId, initialPhotos]);
 
   // Firebase Storage URL → 내부 경로 추출 (deleteObject 용)
   function getStoragePathFromDownloadUrl(url: string): string | null {
@@ -3443,6 +3504,12 @@ ${contentValues.slice(0, 4100)}`,
               <X style={{ width: 20, height: 20, color: '#666' }} />
             </button>
           </div>
+
+          {initialPhotoUploadFailed && (
+            <p role="alert" style={{ margin: 0, padding: '10px 24px', backgroundColor: '#fff7ed', color: '#9a3412', fontSize: 13 }}>
+              초안 사진을 모두 올리지 못했습니다. 편집창을 닫고 사진을 확인한 뒤 다시 형식을 선택해 주세요. 글과 사진 선택은 그대로 남아 있습니다.
+            </p>
+          )}
 
           {/* Test Data Button — 선택 화면에서 숨김 */}
           {isDeveloper && recordStep === 'input' && !(isLedgerFormat && ledgerInputMode === 'period') && (

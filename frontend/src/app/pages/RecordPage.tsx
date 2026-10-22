@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
-import { Calendar, Check, Pencil, X } from 'lucide-react';
+import { Calendar, Camera, Check, Pencil, X } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useLocation, useNavigate } from 'react-router';
 import { firestoreService, buildTimelineMeta } from '../services/firestoreService';
@@ -12,8 +12,9 @@ import { HaruLawPanel, useHaruLaw } from '../assistants/haruLaw/HaruLawPanel';
 import { PetHealthAlert, detectPetAlertLevel, type PetAlertLevel } from '../components/PetHealthAlert';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
-import { buildDraftSavePayload, WRITABLE_FORMATS } from '../records/writeBeforeFormat';
-import { getFormatKey } from '../records/formatRegistry';
+import { buildDraftEditorData, WRITABLE_FORMATS } from '../records/writeBeforeFormat';
+import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
+import { startSelectedRecordPhotoReads } from '../services/selectedRecordPhoto';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
 import { findSameNameChildSubject } from '../services/growthSubjectLookup';
@@ -40,6 +41,10 @@ type Weather = '쾌청' | '흐림' | '비' | '눈';
 type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 type GrowthSubjectType = 'child' | 'garden';
 type EnvTagType = 'weather' | 'temperature' | 'mood';
+type DraftPhoto = { id: string; file: File; previewUrl: string };
+
+const COMMON_PHOTO_LIMIT = getRecordPhotoLimit();
+const COMMON_PHOTO_TOTAL_BYTES = 60 * 1024 * 1024;
 
 const DEFAULT_WEATHER = ['쾌청', '흐림', '비', '눈'];
 const DEFAULT_TEMPERATURE = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
@@ -214,10 +219,17 @@ export function RecordPage() {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
   const [draftContent, setDraftContent] = useState('');
+  const [draftPhotos, setDraftPhotos] = useState<DraftPhoto[]>([]);
+  const draftPhotosRef = useRef<DraftPhoto[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlsRef = useRef<Set<string>>(new Set());
+  const photoReadBusyRef = useRef(false);
+  const [photoReadBusy, setPhotoReadBusy] = useState(false);
   const [formatPickerOpen, setFormatPickerOpen] = useState(false);
-  const [quickSaving, setQuickSaving] = useState(false);
-  const quickSavingRef = useRef(false);
-  const quickRecordIdRef = useRef<string | null>(null);
+  const [draftEditorData, setDraftEditorData] = useState<Record<string, string> | undefined>();
+  const [draftEditorPhotos, setDraftEditorPhotos] = useState<File[]>([]);
+  const [draftEditorRecordId, setDraftEditorRecordId] = useState<string | null>(null);
+  const draftRecordIdRef = useRef<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [formatModalOpen, setFormatModalOpen] = useState(false);
   const [petAlertLevel, setPetAlertLevel] = useState<PetAlertLevel>(null);
@@ -234,6 +246,8 @@ export function RecordPage() {
       if (petAlertTimerRef.current) {
         window.clearTimeout(petAlertTimerRef.current);
       }
+      for (const url of previewUrlsRef.current) URL.revokeObjectURL(url);
+      previewUrlsRef.current.clear();
     };
   }, []);
 
@@ -579,55 +593,103 @@ export function RecordPage() {
     setFormatModalOpen(true);
   };
 
-  const saveDraftAsFormat = async (format: RecordFormat) => {
+  const handleDraftPhotosSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const sources = Array.from(event.currentTarget.files || []);
+    if (!sources.length) return;
+    if (photoReadBusyRef.current || formatModalOpen) {
+      event.currentTarget.value = '';
+      toast.warning('사진 준비가 끝난 뒤 다시 선택해 주세요.');
+      return;
+    }
+    const remaining = COMMON_PHOTO_LIMIT - draftPhotosRef.current.length;
+    if (remaining <= 0) {
+      event.currentTarget.value = '';
+      toast.warning(`사진은 최대 ${COMMON_PHOTO_LIMIT}장까지 추가할 수 있습니다.`);
+      return;
+    }
+    // Android 사진 선택기의 원본 스트림은 input을 초기화하거나 await 하기 전에 읽기 시작한다.
+    const pendingReads = startSelectedRecordPhotoReads(sources.slice(0, remaining));
+    event.currentTarget.value = '';
+    photoReadBusyRef.current = true;
+    setPhotoReadBusy(true);
+    const additions: DraftPhoto[] = [];
+    const failures: string[] = [];
+    let totalBytes = draftPhotosRef.current.reduce((sum, photo) => sum + photo.file.size, 0);
+    try {
+      for (const pending of pendingReads) {
+        const selected = await pending;
+        if (selected.ok === false) {
+          failures.push(selected.message);
+          continue;
+        }
+        if (totalBytes + selected.file.size > COMMON_PHOTO_TOTAL_BYTES) {
+          failures.push('선택한 사진의 합계는 60MB까지 추가할 수 있습니다.');
+          continue;
+        }
+        const previewUrl = URL.createObjectURL(selected.file);
+        previewUrlsRef.current.add(previewUrl);
+        additions.push({
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+          file: selected.file,
+          previewUrl,
+        });
+        totalBytes += selected.file.size;
+      }
+      if (additions.length) {
+        draftPhotosRef.current = [...draftPhotosRef.current, ...additions];
+        setDraftPhotos(draftPhotosRef.current);
+      }
+      if (sources.length > remaining) failures.push(`사진은 최대 ${COMMON_PHOTO_LIMIT}장까지 추가할 수 있습니다.`);
+      if (failures.length) toast.warning([...new Set(failures)].join(' '));
+    } catch (error) {
+      for (const photo of additions) {
+        URL.revokeObjectURL(photo.previewUrl);
+        previewUrlsRef.current.delete(photo.previewUrl);
+      }
+      console.error('공통 기록 사진 선택 실패:', error);
+      toast.error('사진을 준비하지 못했습니다. 다시 선택해 주세요.');
+    } finally {
+      photoReadBusyRef.current = false;
+      setPhotoReadBusy(false);
+    }
+  };
+
+  const removeDraftPhoto = (photoId: string) => {
+    const photo = draftPhotosRef.current.find((item) => item.id === photoId);
+    if (!photo) return;
+    draftPhotosRef.current = draftPhotosRef.current.filter((item) => item.id !== photoId);
+    setDraftPhotos(draftPhotosRef.current);
+    URL.revokeObjectURL(photo.previewUrl);
+    previewUrlsRef.current.delete(photo.previewUrl);
+  };
+
+  const openDraftEditorForFormat = (format: RecordFormat) => {
     if (!user) {
       toast.error('로그인이 필요합니다.');
       navigate('/login');
       return;
     }
-    if (quickSavingRef.current) return;
+    if (photoReadBusyRef.current) {
+      toast.warning('사진 준비가 끝난 뒤 형식을 선택해 주세요.');
+      return;
+    }
     const content = draftContent.trim();
     if (!content) {
       toast.warning('기록할 글을 먼저 작성해 주세요.');
       return;
     }
     const date = getLocalDateString(currentDate);
-    const retryId = quickRecordIdRef.current;
-    const recordId = retryId || `${date}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    quickRecordIdRef.current = recordId;
-    quickSavingRef.current = true;
-    setQuickSaving(true);
-    try {
-      // 응답만 유실된 저장을 재시도할 때 같은 기록을 다시 만들지 않는다.
-      if (retryId) {
-        const existing = await getDoc(doc(db, 'users', user.uid, 'records', retryId));
-        if (existing.exists()) {
-          const existingFormat = Array.isArray(existing.data().formats) ? existing.data().formats[0] : format;
-          const savedContent = existing.data()[`${getFormatKey(existingFormat)}_simple`];
-          if (existingFormat !== format || savedContent !== content) {
-            quickRecordIdRef.current = null;
-            toast.warning('앞선 글은 이미 저장됐습니다. 현재 글을 별도 기록으로 저장하려면 형식을 다시 선택해 주세요.');
-            return;
-          }
-          toast.info('이미 저장된 기록을 열었습니다.');
-          navigate('/sayu', { state: { filterFormat: existingFormat, openRecordId: retryId, tab: 'records' } });
-          return;
-        }
-      }
-      const payload = buildDraftSavePayload(format, content, date, recordId);
-      const savedId = await handleSaveFormatData(payload as unknown as Record<string, string>);
-      if (!savedId) throw new Error('record save did not return an id');
-      quickRecordIdRef.current = null;
-      setFormatPickerOpen(false);
-      setDraftContent('');
-      navigate('/sayu', { state: { filterFormat: format, openRecordId: savedId, tab: 'records' } });
-    } catch (error) {
-      console.error('공통 기록 저장 실패:', error);
-      toast.error('저장 결과를 확인하지 못했습니다. 같은 형식으로 다시 시도해 주세요.');
-    } finally {
-      quickSavingRef.current = false;
-      setQuickSaving(false);
-    }
+    // 편집창에서 저장 결과를 확인하지 못해 돌아온 경우에도 같은 초안 ID로 다시 시도한다.
+    const recordId = draftRecordIdRef.current || `${date}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    draftRecordIdRef.current = recordId;
+    setSavedDateStr(date);
+    setSavedFormat(format);
+    setSelectedFormats([format]);
+    setDraftEditorRecordId(recordId);
+    setDraftEditorData(buildDraftEditorData(format, content, date, recordId));
+    setDraftEditorPhotos(draftPhotosRef.current.map((photo) => photo.file));
+    setFormatPickerOpen(false);
+    setFormatModalOpen(true);
   };
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
@@ -693,7 +755,7 @@ export function RecordPage() {
         : undefined;
     const targetRecordDate = customRecordDate || savedDateStr;
     const formatsOverride = Array.isArray((formatData as any).formats)
-      ? ((formatData as any).formats as string[])
+      ? ((formatData as any).formats as RecordFormat[])
       : undefined;
     const updateData: Record<string, any> = {};
     let hasContent = false;
@@ -709,7 +771,7 @@ export function RecordPage() {
       return;
     }
     try {
-      const recordId = await firestoreService.saveRecord(user.uid, {
+      const recordData = {
         ...(customRecordId ? { id: customRecordId } : {}),
         date: targetRecordDate,
         weather,
@@ -725,7 +787,20 @@ export function RecordPage() {
           ...(growthSubjectGender ? { growthSubjectGender } : {}),
         } : {}),
         ...updateData,
-      });
+      };
+      let recordId: string;
+      if (draftEditorRecordId && customRecordId === draftEditorRecordId) {
+        const quickRecordRef = doc(db, 'users', user.uid, 'records', customRecordId);
+        const existingQuickRecord = await getDoc(quickRecordRef);
+        if (existingQuickRecord.exists()) {
+          await setDoc(quickRecordRef, { ...recordData, updatedAt: new Date().toISOString() }, { merge: true });
+          recordId = customRecordId;
+        } else {
+          recordId = await firestoreService.saveRecord(user.uid, recordData);
+        }
+      } else {
+        recordId = await firestoreService.saveRecord(user.uid, recordData);
+      }
       const savedFormats = formatsOverride ?? selectedFormats;
       if (shouldSaveGrowthEntry && growthSubjectId && growthSubjectType) {
         const sourceFormat =
@@ -836,7 +911,7 @@ export function RecordPage() {
 
         <section className="bg-white rounded-lg p-4 shadow-sm">
           <h2 className="text-base font-semibold" style={{ color: '#1A3C6E' }}>오늘의 기록</h2>
-          <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 저장할 때 기록 형식을 고릅니다.</p>
+          <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 형식을 고른 뒤 기존 편집창에서 기록 방식을 선택하고 저장합니다.</p>
           <textarea
             aria-label="기록 내용"
             value={draftContent}
@@ -846,6 +921,47 @@ export function RecordPage() {
             className="w-full rounded-lg border p-3 text-base"
             style={{ resize: 'vertical' }}
           />
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-sm font-medium" style={{ color: '#1A3C6E' }}>사진 {draftPhotos.length}/{COMMON_PHOTO_LIMIT}</span>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*,.heic,.heif"
+              multiple
+              aria-label="기록 사진 선택"
+              className="hidden"
+              onChange={handleDraftPhotosSelected}
+              disabled={photoReadBusy || draftPhotos.length >= COMMON_PHOTO_LIMIT}
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={photoReadBusy || draftPhotos.length >= COMMON_PHOTO_LIMIT}
+              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
+              style={{ color: '#1A3C6E' }}
+            >
+              <Camera className="h-4 w-4" />
+              {photoReadBusy ? '사진 준비 중...' : '사진 추가'}
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">사진은 최대 5장까지 고를 수 있고, 편집창에서 최종 저장 전에 업로드됩니다.</p>
+          {draftPhotos.length > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label="선택한 사진 미리보기">
+              {draftPhotos.map((photo, index) => (
+                <div key={photo.id} className="relative aspect-square overflow-hidden rounded-lg border bg-gray-50">
+                  <img src={photo.previewUrl} alt={`선택한 사진 ${index + 1}`} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    aria-label={`사진 ${index + 1} 제거`}
+                    onClick={() => removeDraftPhoto(photo.id)}
+                    className="absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white disabled:opacity-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -855,7 +971,8 @@ export function RecordPage() {
               }
               setFormatPickerOpen(true);
             }}
-            className="mt-3 w-full rounded-lg py-3 text-sm font-semibold text-white"
+            disabled={photoReadBusy}
+            className="mt-3 w-full rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-50"
             style={{ backgroundColor: '#1A3C6E' }}
           >
             저장하기
@@ -1074,15 +1191,15 @@ export function RecordPage() {
       <div role="dialog" aria-modal="true" aria-label="저장할 기록 형식 선택" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl bg-white p-5">
           <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>어떤 형식으로 저장할까요?</h2>
-          <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요.</p>
+          <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요. 이어서 간편·프리미엄 방식을 고릅니다.</p>
           <div className="mt-4 grid grid-cols-2 gap-2">
             {WRITABLE_FORMATS.map((format) => (
-              <button key={format} type="button" onClick={() => saveDraftAsFormat(format)} disabled={quickSaving} className="rounded-lg border p-3 text-left text-sm hover:bg-yellow-50 disabled:opacity-50">
+              <button key={format} type="button" onClick={() => openDraftEditorForFormat(format)} className="rounded-lg border p-3 text-left text-sm hover:bg-yellow-50">
                 {format === '애완동물관찰일지' ? '반려동물' : format}
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => setFormatPickerOpen(false)} disabled={quickSaving} className="mt-4 w-full rounded-lg border py-2 text-sm">{quickSaving ? '저장 중...' : '돌아가기'}</button>
+          <button type="button" onClick={() => setFormatPickerOpen(false)} className="mt-4 w-full rounded-lg border py-2 text-sm">돌아가기</button>
         </div>
       </div>
     )}
@@ -1093,11 +1210,21 @@ export function RecordPage() {
         isOpen={formatModalOpen}
         onClose={() => {
           setFormatModalOpen(false);
+          if (draftEditorRecordId) {
+            setDraftEditorRecordId(null);
+            setDraftEditorData(undefined);
+            setDraftEditorPhotos([]);
+            return;
+          }
           closeToOrigin();
         }}
         format={savedFormat}
-        recordId={savedDateStr}
-        onSave={handleSaveFormatData}
+        recordId={draftEditorRecordId || savedDateStr}
+        initialData={draftEditorData}
+        initialPhotos={draftEditorPhotos}
+        onSave={(data) => handleSaveFormatData(draftEditorRecordId
+          ? { ...data, _recordId: draftEditorRecordId, _recordDate: savedDateStr }
+          : data)}
       />
     )}
     <PetHealthAlert

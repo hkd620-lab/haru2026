@@ -1,28 +1,29 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildDraftFormatData, buildDraftSavePayload, WRITABLE_FORMATS } from '../src/app/records/writeBeforeFormat.ts';
+import { buildDraftEditorData, WRITABLE_FORMATS } from '../src/app/records/writeBeforeFormat.ts';
 
-test('글을 쓴 뒤 고른 형식의 기존 저장 필드에 원문을 전달한다', () => {
+test('형식 선택 뒤 기존 편집창의 간편·프리미엄 입력칸에 초안이 이어진다', () => {
   const source = '첫 줄\n둘째 줄';
-  assert.deepEqual(buildDraftFormatData('일기', source), {
-    diary_simple: source,
-    diary_title: '첫 줄',
-    diary_sayu: source,
-    diary_style: 'simple',
-    diary_mode: 'ORIGINAL',
-    diary_images: '[]',
-    diary_imageMeta: '[]',
-  });
-  assert.deepEqual(buildDraftFormatData('육아일기', source), {
-    child_simple: source,
-    child_title: '첫 줄',
-    child_sayu: source,
-    child_style: 'simple',
-    child_mode: 'ORIGINAL',
-    child_images: '[]',
-    child_imageMeta: '[]',
-  });
-  assert.equal(buildDraftFormatData('독서사유', source).reading_sayu, source);
+  const diary = buildDraftEditorData('일기', source, '2026-10-23', 'record-1');
+  assert.equal(diary.diary_simple, source);
+  assert.equal(diary.diary_여백, source);
+  assert.equal(diary.diary_title, '첫 줄');
+  assert.equal(diary._recordDate, '2026-10-23');
+  assert.equal(diary._recordId, 'record-1');
+  assert.equal(diary.diary_sayu, undefined, '최종 저장 전에 SAYU 기록을 만들지 않는다');
+
+  const child = buildDraftEditorData('육아일기', source, '2026-10-23', 'record-2');
+  assert.equal(child.child_simple, source);
+  assert.equal(child.child_space, source);
+  assert.equal(buildDraftEditorData('독서사유', source, '2026-10-23', 'record-3').reading_journal, source);
+});
+
+test('글 형식마다 초안 원문이 간편과 프리미엄 방식 모두에 남는다', () => {
+  for (const format of WRITABLE_FORMATS) {
+    const fields = buildDraftEditorData(format, '내 기록', '2026-10-23', 'record-1');
+    assert.ok(Object.entries(fields).some(([key, value]) => key.endsWith('_simple') && value === '내 기록'), format);
+    assert.ok(Object.entries(fields).some(([key, value]) => !key.endsWith('_simple') && value === '내 기록'), format);
+  }
 });
 
 test('장부는 글 저장 형식에 나오지 않고 기존 일기가 첫 선택지다', () => {
@@ -32,22 +33,4 @@ test('장부는 글 저장 형식에 나오지 않고 기존 일기가 첫 선�
   assert.ok(!WRITABLE_FORMATS.includes('HARU보조장부'));
   assert.ok(!WRITABLE_FORMATS.includes('주식거래일지'));
   assert.equal(new Set(WRITABLE_FORMATS).size, WRITABLE_FORMATS.length);
-});
-
-test('저장 후보의 모든 글은 해당 형식 원문과 SAYU 원본을 함께 남긴다', () => {
-  for (const format of WRITABLE_FORMATS) {
-    const fields = buildDraftFormatData(format, '내 기록');
-    const sayuKey = Object.keys(fields).find((key) => key.endsWith('_sayu'));
-    assert.ok(sayuKey, `${format}: SAYU 원본 필드`);
-    assert.equal(fields[sayuKey], '내 기록');
-    assert.equal(fields[sayuKey.replace('_sayu', '_simple')], '내 기록');
-  }
-});
-
-test('기존 저장 경로에 선택 형식과 작성 날짜·고유 ID를 함께 전달한다', () => {
-  const payload = buildDraftSavePayload('일기', '오늘의 글', '2026-10-22', '2026-10-22_123');
-  assert.deepEqual(payload.formats, ['일기']);
-  assert.equal(payload._recordDate, '2026-10-22');
-  assert.equal(payload._recordId, '2026-10-22_123');
-  assert.equal(payload.diary_simple, '오늘의 글');
 });
