@@ -8,16 +8,11 @@ import { getOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
-import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
 import { HaruLawPanel, useHaruLaw } from '../assistants/haruLaw/HaruLawPanel';
 import { PetHealthAlert, detectPetAlertLevel, type PetAlertLevel } from '../components/PetHealthAlert';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
-import {
-  buildRecommendationTextFromFields,
-  getAssistantRecommendations,
-  type AssistantRecommendation,
-} from '../utils/assistantRecommendations';
+import { buildDraftFormatData, WRITABLE_FORMATS } from '../records/writeBeforeFormat';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
 import { findSameNameChildSubject } from '../services/growthSubjectLookup';
@@ -214,14 +209,18 @@ export function RecordPage() {
   const [weather, setWeather] = useState<Weather>('쾌청');
   const [temperature, setTemperature] = useState<Temperature>('쾌적');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>('생활' as Category);
+  const [showOtherEntryMethods, setShowOtherEntryMethods] = useState(() => Boolean((location.state as any)?.category || (location.state as any)?.format));
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
+  const [draftContent, setDraftContent] = useState('');
+  const [formatPickerOpen, setFormatPickerOpen] = useState(false);
+  const [draftFromComposer, setDraftFromComposer] = useState(false);
+  const composerSavedRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formatModalOpen, setFormatModalOpen] = useState(false);
   const [petAlertLevel, setPetAlertLevel] = useState<PetAlertLevel>(null);
   const [savedDateStr, setSavedDateStr] = useState('');
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
-  const [savedAssistantRecommendations, setSavedAssistantRecommendations] = useState<AssistantRecommendation[]>([]);
   const lawEntrySectionRef = useRef<HTMLElement>(null);
   // 하루LAW 상태·처리는 assistants/haruLaw/HaruLawPanel.tsx 의 useHaruLaw 에 있다(탭을 바꿔도 상태가 유지되도록 이 컴포넌트에서 부른다).
   const haruLaw = useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, temperature, mood });
@@ -532,7 +531,7 @@ export function RecordPage() {
     }
     const dateStr = getLocalDateString(currentDate);
     setSavedDateStr(dateStr);
-    setSavedAssistantRecommendations([]);
+    setDraftFromComposer(false);
     setSavedFormat(format);
     setSelectedFormats([format]);
     setFormatModalOpen(true);
@@ -558,6 +557,7 @@ export function RecordPage() {
     const incomingCategory = (location.state as any)?.category as string | undefined;
     if (incomingCategory) {
       setSelectedCategory(incomingCategory as any);
+      setShowOtherEntryMethods(true);
     }
   }, [location.state]);
 
@@ -578,13 +578,25 @@ export function RecordPage() {
     setFormatModalOpen(true);
   };
 
-  const handleAssistantRecommendationSelect = (recommendation: AssistantRecommendation) => {
-    if (recommendation.targetPath) {
-      navigate(recommendation.targetPath);
+  const openDraftFormat = (format: RecordFormat) => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      navigate('/login');
       return;
     }
-
+    composerSavedRef.current = false;
+    setSavedDateStr(getLocalDateString(currentDate));
+    setSavedFormat(format);
+    setSelectedFormats([format]);
+    setDraftFromComposer(true);
+    setFormatPickerOpen(false);
+    setFormatModalOpen(true);
   };
+
+  const draftInitialData = (() => {
+    if (!draftFromComposer || !savedFormat) return undefined;
+    return buildDraftFormatData(savedFormat, draftContent);
+  })();
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
     if (!user) return;
@@ -682,12 +694,7 @@ export function RecordPage() {
         } : {}),
         ...updateData,
       });
-      const recommendationFormats = formatsOverride ?? selectedFormats;
-      const recommendationText = buildRecommendationTextFromFields(updateData);
-      const nextRecommendations = getAssistantRecommendations(
-        recommendationText,
-        recommendationFormats.map((format) => String(format)),
-      );
+      const savedFormats = formatsOverride ?? selectedFormats;
       if (shouldSaveGrowthEntry && growthSubjectId && growthSubjectType) {
         const sourceFormat =
           typeof (formatData as any)._sourceFormat === 'string' && (formatData as any)._sourceFormat
@@ -765,8 +772,8 @@ export function RecordPage() {
       }
       if (
         savedFormat === '애완동물관찰일지' ||
-        recommendationFormats.map((format) => String(format)).includes('애완동물관찰일지') ||
-        recommendationFormats.map((format) => String(format)).includes('pet')
+        savedFormats.map((format) => String(format)).includes('애완동물관찰일지') ||
+        savedFormats.map((format) => String(format)).includes('pet')
       ) {
         const level = detectPetAlertLevel(updateData as Record<string, string>);
         if (level) {
@@ -780,7 +787,7 @@ export function RecordPage() {
           }, 8000);
         }
       }
-      setSavedAssistantRecommendations(nextRecommendations);
+      if (draftFromComposer) composerSavedRef.current = true;
       toast.success('내용이 저장되었습니다!');
       return recordId;
     } catch (error) {
@@ -798,6 +805,34 @@ export function RecordPage() {
         {/* Title Animation */}
         <section className="flex items-center justify-center py-1">
           <RecordTitleAnimation />
+        </section>
+
+        <section className="bg-white rounded-lg p-4 shadow-sm">
+          <h2 className="text-base font-semibold" style={{ color: '#1A3C6E' }}>오늘의 기록</h2>
+          <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 저장할 때 기록 형식을 고릅니다.</p>
+          <textarea
+            aria-label="기록 내용"
+            value={draftContent}
+            onChange={(event) => setDraftContent(event.target.value)}
+            placeholder="오늘 남기고 싶은 이야기를 적어 주세요..."
+            rows={9}
+            className="w-full rounded-lg border p-3 text-base"
+            style={{ resize: 'vertical' }}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (!draftContent.trim()) {
+                toast.warning('기록할 글을 먼저 작성해 주세요.');
+                return;
+              }
+              setFormatPickerOpen(true);
+            }}
+            className="mt-3 w-full rounded-lg py-3 text-sm font-semibold text-white"
+            style={{ backgroundColor: '#1A3C6E' }}
+          >
+            저장하기
+          </button>
         </section>
 
         {/* Date */}
@@ -853,14 +888,24 @@ export function RecordPage() {
           </div>
         </section>
 
-        {/* Format Selection */}
+        <button
+          type="button"
+          onClick={() => setShowOtherEntryMethods((open) => !open)}
+          className="w-full rounded-lg border bg-white px-3 py-2 text-left text-xs"
+          style={{ color: '#1A3C6E' }}
+        >
+          {showOtherEntryMethods ? '기존 형식 입력창 닫기' : '기존 형식 입력창 · 하루LAW 열기'}
+        </button>
+
+        {/* 기존 형식별 바로 작성과 하루LAW 진입 */}
+        {showOtherEntryMethods && (
         <section ref={lawEntrySectionRef} className="bg-white rounded-lg p-3 shadow-sm">
           <div className="mb-2">
             <h2 className="text-xs tracking-wider" style={{ color: '#666666' }}>
-              형식 선택
+              형식별 작성
             </h2>
             <p className="text-xs mt-0.5" style={{ color: '#999999' }}>
-              형식을 선택하면 바로 글쓰기
+              기존 형식 입력창으로 바로 작성할 수도 있습니다.
             </p>
           </div>
 
@@ -966,6 +1011,7 @@ export function RecordPage() {
           ) : selectedCategory ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {CATEGORY_FORMATS[selectedCategory]
+                .filter((format) => format !== 'HARU가계부' && format !== 'HARU보조장부')
                 .map((format) => {
                 return (
                   <button
@@ -992,9 +1038,27 @@ export function RecordPage() {
           )}
 
         </section>
+        )}
 
       </div>
     </div>
+
+    {formatPickerOpen && (
+      <div role="dialog" aria-modal="true" aria-label="저장할 기록 형식 선택" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl bg-white p-5">
+          <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>어떤 형식으로 저장할까요?</h2>
+          <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요.</p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {WRITABLE_FORMATS.map((format) => (
+              <button key={format} type="button" onClick={() => openDraftFormat(format)} className="rounded-lg border p-3 text-left text-sm hover:bg-yellow-50">
+                {format === '애완동물관찰일지' ? '반려동물' : format}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => setFormatPickerOpen(false)} className="mt-4 w-full rounded-lg border py-2 text-sm">돌아가기</button>
+        </div>
+      </div>
+    )}
 
     {diaryLearnOpen && <DiaryLearnModal onClose={() => setDiaryLearnOpen(false)} />}
     {savedFormat && (
@@ -1002,68 +1066,15 @@ export function RecordPage() {
         isOpen={formatModalOpen}
         onClose={() => {
           setFormatModalOpen(false);
+          if (draftFromComposer && !composerSavedRef.current) return;
           closeToOrigin();
         }}
         format={savedFormat}
         recordId={savedDateStr}
+        initialData={draftInitialData}
+        startWithDraft={draftFromComposer}
         onSave={handleSaveFormatData}
       />
-    )}
-    {savedAssistantRecommendations.length > 0 && !formatModalOpen && (
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="기록 속 비서 연결"
-        style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.42)',
-          zIndex: 1100,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 16,
-        }}
-      >
-        <div
-          style={{
-            width: '100%',
-            maxWidth: 520,
-            maxHeight: '86vh',
-            overflowY: 'auto',
-            borderRadius: 12,
-            backgroundColor: '#FFFFFF',
-            padding: 16,
-            boxShadow: '0 20px 44px rgba(15, 23, 42, 0.24)',
-          }}
-        >
-          <AssistantRecommendationCards
-            recommendations={savedAssistantRecommendations}
-            title="이 기록에서 도움받을 수 있는 AI 비서를 찾았습니다."
-            description="기록 속 고민 키워드를 바탕으로 필요한 비서와 연결할 수 있습니다."
-            privacyNote="선택한 경우에만 해당 기록 내용을 비서에게 전달합니다."
-            onSelect={handleAssistantRecommendationSelect}
-          />
-          <button
-            type="button"
-            onClick={() => setSavedAssistantRecommendations([])}
-            style={{
-              width: '100%',
-              minHeight: 40,
-              marginTop: 12,
-              borderRadius: 8,
-              border: '1px solid #D7D2E8',
-              backgroundColor: '#FFFFFF',
-              color: '#1A3C6E',
-              fontSize: 13,
-              fontWeight: 800,
-              cursor: 'pointer',
-            }}
-          >
-            닫기
-          </button>
-        </div>
-      </div>
     )}
     <PetHealthAlert
       level={petAlertLevel}

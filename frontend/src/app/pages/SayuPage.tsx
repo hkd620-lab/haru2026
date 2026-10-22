@@ -47,7 +47,6 @@ import { StructuredAssistantRecordModal } from '../components/StructuredAssistan
 import { OriginalAssistantRecords } from '../components/OriginalAssistantRecords';
 import { useRecordReadConsent } from '../hooks/useRecordReadConsent';
 import { buildStructuredAssistantView, hasStructuredAssistantRecord, isStructuredAssistantPrefix, structuredAssistantSourceText, type StructuredAssistantPrefix } from '../utils/structuredAssistantRecords';
-import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
 import { ResultChatButton } from '../components/ResultChatButton';
 import { ResultChatModal } from '../components/ResultChatModal';
 import { GrowthTimelineLibrary } from '../components/GrowthTimelineCreator';
@@ -55,11 +54,6 @@ import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, REA
 import type { RecordFormat } from '../types/haruTypes';
 import { getFormatKey } from '../records/formatRegistry';
 import { getResultChatConfig, getResultChatConfigForFormatKey, type ResultChatConfig } from '../config/resultChatConfig';
-import {
-  buildRecommendationTextFromFields,
-  getAssistantRecommendations,
-  type AssistantRecommendation,
-} from '../utils/assistantRecommendations';
 import { collection, getDocs, getDoc, orderBy, query, deleteDoc, doc, writeBatch, updateDoc, deleteField, limit, setDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db } from '../../firebase';
@@ -2963,14 +2957,6 @@ export function SayuPage() {
     }
   };
 
-  const handleAssistantRecommendationSelect = (recommendation: AssistantRecommendation) => {
-    if (recommendation.targetPath) {
-      navigate(recommendation.targetPath);
-      return;
-    }
-
-  };
-
   const openResultChat = (params: {
     recordId: string;
     config: ResultChatConfig;
@@ -5440,19 +5426,7 @@ export function SayuPage() {
             )
             .sort((a, b) => String((b as any).createdAt || '').localeCompare(String((a as any).createdAt || '')));
 
-          const recommendations = getAssistantRecommendations(
-            [
-              getRecordSourceText(record, formatKey),
-              sayuModalState.content,
-              buildRecommendationTextFromFields(sayuModalState.originalData || {}),
-            ].filter(Boolean).join('\n\n'),
-            [
-              sayuModalState.format || '',
-              ...(Array.isArray(record.formats) ? record.formats.map((format) => String(format)) : []),
-            ],
-          );
-
-          if (!shouldShowResultChat && recommendations.length === 0 && linkedMemos.length === 0) return null;
+          if (!shouldShowResultChat && linkedMemos.length === 0) return null;
 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -5487,14 +5461,6 @@ export function SayuPage() {
                     ))}
                   </div>
                 </section>
-              )}
-              {recommendations.length > 0 && (
-                <AssistantRecommendationCards
-                  recommendations={recommendations}
-                  title="이 기록과 연결 가능한 AI 비서"
-                  description="기록에 담긴 고민을 바탕으로 도움받을 수 있는 비서를 추천합니다."
-                  onSelect={handleAssistantRecommendationSelect}
-                />
               )}
             </div>
           );

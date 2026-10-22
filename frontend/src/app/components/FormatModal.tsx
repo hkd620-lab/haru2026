@@ -86,6 +86,7 @@ interface FormatModalProps {
   format: RecordFormat;
   recordId: string;
   initialData?: Record<string, string>;
+  startWithDraft?: boolean;
   onSave: (formatData: Record<string, string>) => Promise<string | void>;
 }
 
@@ -448,7 +449,7 @@ const LEDGER_OCR_PREVIEW_FIELDS: { key: keyof LedgerOcrFields; label: string }[]
   { key: 'memo', label: '메모' },
 ];
 
-export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, onSave }: FormatModalProps) {
+export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, startWithDraft = false, onSave }: FormatModalProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
@@ -765,7 +766,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       }
       setRecordStyle(format === '독서사유' || isStockFormat || isLedgerFormat || isHouseholdFormat || isVoidingFormatInit ? 'premium' : 'simple');
       // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. 주식/보조장부/가계부/배뇨일지 형식은 input 직진.
-      setRecordStep(isStockFormat || isLedgerFormat || isHouseholdFormat || isVoidingFormatInit ? 'input' : 'select');
+      setRecordStep((startWithDraft && format !== '독서사유') || isStockFormat || isLedgerFormat || isHouseholdFormat || isVoidingFormatInit ? 'input' : 'select');
       setStockCandidates([]);
       setShowCandidates(false);
       // 📚 독서사유 — 책 묶음 state 초기화 + 사용자 records 에서 책 목록 로드
@@ -2972,7 +2973,10 @@ ${contentValues}`,
     setIsReadingBookLocked(true);
     setBlockedBookMessage('');
     setFormData((prev) => bookId !== selectedExistingBookId
-      ? resetReadingBookDraft(prev, book.bookTitle, book.author, book.lastDate || new Date().toISOString().slice(0, 10))
+      ? {
+          ...resetReadingBookDraft(prev, book.bookTitle, book.author, book.lastDate || new Date().toISOString().slice(0, 10)),
+          ...(startWithDraft ? { reading_journal: prev.reading_journal || initialData.reading_journal || '' } : {}),
+        }
       : { ...prev, reading_book_title: book.bookTitle, reading_author: book.author });
   };
 
@@ -2988,7 +2992,10 @@ ${contentValues}`,
     setReadingBookTextMode('photo');
     setSelectedBookOcrFiles([]);
     setReadingOcrUsedCount(null);
-    setFormData((prev) => resetReadingBookDraft(prev, '', '', new Date().toISOString().slice(0, 10)));
+    setFormData((prev) => ({
+      ...resetReadingBookDraft(prev, '', '', new Date().toISOString().slice(0, 10)),
+      ...(startWithDraft ? { reading_journal: prev.reading_journal || initialData.reading_journal || '' } : {}),
+    }));
   };
 
   const prepareReadingAppend = (bookId: string) => {
@@ -3000,7 +3007,7 @@ ${contentValues}`,
     setFormData((prev) => ({
       ...prev,
       reading_book_text: '',
-      reading_journal: '',
+      reading_journal: startWithDraft ? prev.reading_journal || initialData.reading_journal || '' : '',
       reading_ai_context: '',
     }));
     window.setTimeout(() => {
@@ -3531,7 +3538,10 @@ ${contentValues.slice(0, 4100)}`,
                     setSelectedExistingBookId('');
                     setIsReadingBookLocked(false);
                     setBlockedBookMessage('');
-                    setFormData((prev) => resetReadingBookDraft(prev, '', '', new Date().toISOString().slice(0, 10)));
+                    setFormData((prev) => ({
+                      ...resetReadingBookDraft(prev, '', '', new Date().toISOString().slice(0, 10)),
+                      ...(startWithDraft && initialData.reading_journal ? { reading_journal: initialData.reading_journal } : {}),
+                    }));
                     setRecordStep('input');
                   }}
                   style={{
