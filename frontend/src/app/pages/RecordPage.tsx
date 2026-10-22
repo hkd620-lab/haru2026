@@ -12,7 +12,7 @@ import { HaruLawPanel, useHaruLaw } from '../assistants/haruLaw/HaruLawPanel';
 import { PetHealthAlert, detectPetAlertLevel, type PetAlertLevel } from '../components/PetHealthAlert';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
-import { buildDraftFormatData, WRITABLE_FORMATS } from '../records/writeBeforeFormat';
+import { buildDraftSavePayload, WRITABLE_FORMATS } from '../records/writeBeforeFormat';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
 import { findSameNameChildSubject } from '../services/growthSubjectLookup';
@@ -607,11 +607,7 @@ export function RecordPage() {
           return;
         }
       }
-      const payload = {
-        ...buildDraftFormatData(format, content),
-        _recordId: recordId,
-        formats: [format],
-      };
+      const payload = buildDraftSavePayload(format, content, date, recordId);
       const savedId = await handleSaveFormatData(payload as unknown as Record<string, string>);
       if (!savedId) throw new Error('record save did not return an id');
       quickRecordIdRef.current = null;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildDraftFormatData, WRITABLE_FORMATS } from '../src/app/records/writeBeforeFormat.ts';
+import { buildDraftFormatData, buildDraftSavePayload, WRITABLE_FORMATS } from '../src/app/records/writeBeforeFormat.ts';
 
 test('글을 쓴 뒤 고른 형식의 기존 저장 필드에 원문을 전달한다', () => {
   const source = '첫 줄\n둘째 줄';
@@ -42,4 +42,12 @@ test('저장 후보의 모든 글은 해당 형식 원문과 SAYU 원본을 함�
     assert.equal(fields[sayuKey], '내 기록');
     assert.equal(fields[sayuKey.replace('_sayu', '_simple')], '내 기록');
   }
+});
+
+test('기존 저장 경로에 선택 형식과 작성 날짜·고유 ID를 함께 전달한다', () => {
+  const payload = buildDraftSavePayload('일기', '오늘의 글', '2026-10-22', '2026-10-22_123');
+  assert.deepEqual(payload.formats, ['일기']);
+  assert.equal(payload._recordDate, '2026-10-22');
+  assert.equal(payload._recordId, '2026-10-22_123');
+  assert.equal(payload.diary_simple, '오늘의 글');
 });

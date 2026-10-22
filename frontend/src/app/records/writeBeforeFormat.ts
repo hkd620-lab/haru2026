@@ -24,3 +24,12 @@ export function buildDraftFormatData(format: RecordFormat, content: string): Rec
     [`${prefix}_imageMeta`]: '[]',
   };
 }
+
+export function buildDraftSavePayload(format: RecordFormat, content: string, date: string, recordId: string) {
+  return {
+    ...buildDraftFormatData(format, content),
+    _recordId: recordId,
+    _recordDate: date,
+    formats: [format],
+  };
+}
