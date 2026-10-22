@@ -1,0 +1,193 @@
+{
+  "project": "haru2026-8abb8",
+  "region": "asia-northeast3",
+  "function": "polishContent",
+  "runtime": "nodejs22",
+  "mergeCommit": "79c219c853b9b965678b78412116a4b1703c70e8",
+  "prHead": "8c6c4d5cbcaa50b4405a3621954ba6ec205c88b6",
+  "mergedAt": "2026-10-22T04:43:36Z",
+  "prAndMergedTreesIdentical": true,
+  "hostingCi": {
+    "run": 39723978658,
+    "conclusion": "success",
+    "completedAt": "2026-10-22T04:45:11Z"
+  },
+  "functionsTests": {
+    "total": 32,
+    "passed": 32,
+    "failed": 0
+  },
+  "buildExports": {
+    "count": 114,
+    "delta": []
+  },
+  "functionBefore": {
+    "buildConfig": {
+      "entryPoint": "polishContent",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286623874132",
+          "object": "polishContent/function-source.zip"
+        }
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishContent",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "polishcontent-00242-pay",
+      "service": "projects/haru2026-8abb8/locations/asia-northeast3/services/polishcontent",
+      "uri": "https://polishcontent-6ieesxet3q-du.a.run.app"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:26.095480723Z"
+  },
+  "hostingBefore": {
+    "observedAt": "2026-10-22T04:41:37.888133+00:00",
+    "project": "haru2026-8abb8",
+    "hostingApiState": "ENABLED",
+    "live": {
+      "name": "sites/haru2026-8abb8/channels/live",
+      "url": "https://haru2026-8abb8.web.app",
+      "updateTime": "2026-10-20T21:54:29.901Z",
+      "releaseName": "sites/haru2026-8abb8/channels/live/releases/1792533269901000",
+      "releaseTime": "2026-10-20T21:54:29.901Z",
+      "versionName": "sites/haru2026-8abb8/versions/4328b2c609937df9",
+      "versionStatus": "FINALIZED"
+    }
+  },
+  "deployArtifactFileHashes": {
+    "functions/src/index.ts": "3a4196ae623353e97eb6a09540560e3d2af72a39596acdd8321f2ab256b58a38",
+    "functions/lib/index.js": "b54d90079b709dacea0a05fcae061ab369ddb572bb826832d37dbea9410c1a4e",
+    "functions/package.json": "4a3a7df5e74a4eec9c8d5b71b6631c31bf7eeee607d11db149855f0ea7ea065d",
+    "functions/package-lock.json": "93ee6094d82e8c721ba4f84a79500f867cee87407325d4f5fee26fdfe1e21b2c",
+    "frontend/src/app/components/FormatModal.tsx": "da1b1d4a9a6feea103ef795fffa292ed079e8275fb9d70769e2f5e70bea42941",
+    "firebase.json": "186d210930ede81b13600a97f5ccca84ab797a4211e3138f7021a5da3e19b01c"
+  },
+  "realAiCallsExecuted": 0,
+  "productionUserRecordReadsOrWrites": 0,
+  "functionAfter": {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/788487d3-d91e-453e-93c8-669b58d53f39",
+      "entryPoint": "polishContent",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1792644582367159",
+          "object": "polishContent/function-source.zip"
+        }
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishContent",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "polishcontent-00243-des",
+      "service": "projects/haru2026-8abb8/locations/asia-northeast3/services/polishcontent",
+      "uri": "https://polishcontent-6ieesxet3q-du.a.run.app"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-10-22T04:51:09.570204446Z"
+  },
+  "trafficAfter": {
+    "metadata": {
+      "generation": 243,
+      "name": "polishcontent"
+    },
+    "status": {
+      "latestCreatedRevisionName": "polishcontent-00243-des",
+      "latestReadyRevisionName": "polishcontent-00243-des",
+      "traffic": [
+        {
+          "latestRevision": true,
+          "percent": 100,
+          "revisionName": "polishcontent-00243-des"
+        }
+      ],
+      "url": "https://polishcontent-6ieesxet3q-du.a.run.app"
+    }
+  },
+  "functionDeployment": {
+    "command": "firebase deploy --only functions:polishContent --project haru2026-8abb8 --non-interactive",
+    "firebaseCliVersion": "15.16.0",
+    "exitCode": 0,
+    "updatedTargets": [
+      "polishContent(asia-northeast3)"
+    ],
+    "predeployBuild": "passed"
+  },
+  "functionInventoryComparison": {
+    "beforeCount": 114,
+    "afterCount": 114,
+    "added": [],
+    "removed": [],
+    "changed": [
+      "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishContent"
+    ],
+    "otherFunctionsUnchanged": true,
+    "otherFunctionsMetadataSha256": "881328559b47031b67554ea32c5dfb8146bcd08aecab81d54ff6e97abc6bdcf8"
+  },
+  "hostingAfter": {
+    "observedAt": "2026-10-22T04:51:21.541325+00:00",
+    "project": "haru2026-8abb8",
+    "hostingApiState": "ENABLED",
+    "live": {
+      "name": "sites/haru2026-8abb8/channels/live",
+      "url": "https://haru2026-8abb8.web.app",
+      "updateTime": "2026-10-22T04:45:09.206Z",
+      "releaseName": "sites/haru2026-8abb8/channels/live/releases/1792644309206000",
+      "releaseTime": "2026-10-22T04:45:09.206Z",
+      "versionName": "sites/haru2026-8abb8/versions/509e8a0bba5531ef",
+      "versionStatus": "FINALIZED"
+    }
+  },
+  "hostingSmoke": {
+    "pages": [
+      {
+        "url": "https://haru2026.com",
+        "status": 200,
+        "htmlSha256": "3840bd9eacb73d2bf79f0e1cb322eb0f5bb2993e7e4fc10532b4556f7f590075",
+        "hasRoot": true,
+        "scripts": [
+          "https://developers.kakao.com/sdk/js/kakao.js",
+          "/assets/index-BawkdBYL.js",
+          "/assets/polyfills-legacy-oY9mAs8o.js",
+          "/assets/index-legacy-BkWlYeb1.js"
+        ]
+      },
+      {
+        "url": "https://haru2026-8abb8.web.app",
+        "status": 200,
+        "htmlSha256": "3840bd9eacb73d2bf79f0e1cb322eb0f5bb2993e7e4fc10532b4556f7f590075",
+        "hasRoot": true,
+        "scripts": [
+          "https://developers.kakao.com/sdk/js/kakao.js",
+          "/assets/index-BawkdBYL.js",
+          "/assets/polyfills-legacy-oY9mAs8o.js",
+          "/assets/index-legacy-BkWlYeb1.js"
+        ]
+      }
+    ],
+    "mainBundle": {
+      "asset": "/assets/index-BawkdBYL.js",
+      "status": 200,
+      "bytes": 5760491,
+      "sha256": "6c7686f8871e02b4a86e0dd25f5d900b1552869e01537e7ff67a209dcb91adf7",
+      "strictFalseOptionOccurrences": 3
+    }
+  },
+  "unauthenticatedCallableSmoke": {
+    "url": "https://asia-northeast3-haru2026-8abb8.cloudfunctions.net/polishContent",
+    "requestAuthenticated": false,
+    "status": 401,
+    "response": {
+      "error": {
+        "message": "로그인이 필요합니다.",
+        "status": "UNAUTHENTICATED"
+      }
+    },
+    "realAiCall": false,
+    "productionUserDataAccess": false
+  }
+}
