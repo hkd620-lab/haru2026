@@ -1,3 +1,4 @@
+import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
 import { readSelectedRecordPhoto } from '../services/selectedRecordPhoto';
 import { compressUploadPhoto } from '../services/photoUploadService';
 import { compressRecordPhoto } from '../services/recordPhotoCompression';
@@ -607,6 +608,7 @@ export function SayuModal({
   assistantContent,
   allHouseholdEntries,
 }: SayuModalProps) {
+  const recordPhotoLimit = getRecordPhotoLimit(formatKey || format);
   const { subscription } = useSubscription();
   const isPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
   const { user: currentUser } = useAuth();
@@ -1493,8 +1495,8 @@ export function SayuModal({
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const source = e.target.files?.[0];
     if (!source || !currentUser || !firestoreId || !formatKey || isUploadingImage) return;
-    if (localImages.length >= 3) {
-      toast.error('사진은 최대 3장까지 추가할 수 있습니다.');
+    if (localImages.length >= recordPhotoLimit) {
+      toast.error(`사진은 최대 ${recordPhotoLimit}장까지 추가할 수 있습니다.`);
       e.target.value = '';
       return;
     }
@@ -2854,8 +2856,25 @@ export function SayuModal({
                       </div>
                     )}
 
-                    {/* 3장 이상 */}
-                    {validImages.length >= 3 && (
+                    {/* 4장 이상: 모든 사진을 휴대폰에서도 두 열로 표시 */}
+                    {validImages.length >= 4 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+                        {validImages.map((img, idx) => (
+                          <div key={img} style={{ position: 'relative', minWidth: 0, aspectRatio: '1/1' }}>
+                            <img src={img} alt={`사진 ${idx + 1}`} onError={hideOnError}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e5e5' }} />
+                            <button onClick={() => handleDeleteImage(img, idx)} title="사진 삭제" aria-label={`사진 ${idx + 1} 삭제`}
+                              disabled={isUploadingImage}
+                              style={{ position: 'absolute', top: 6, right: 6, width: 28, height: 28, borderRadius: '50%', border: 'none', background: '#000', color: '#fff', boxShadow: '0 0 0 2px #fff', cursor: 'pointer' }}>
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 3장: 기존 대표 사진 배치 */}
+                    {validImages.length === 3 && (
                       <div>
                         <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
                           <img
@@ -2993,7 +3012,7 @@ export function SayuModal({
                 }}
                 onChange={handleImageUpload}
               />
-              {!isGrowthTimeline && localImages.length < 3 && (
+              {!isGrowthTimeline && localImages.length < recordPhotoLimit && (
                 <div style={{ marginBottom: '16px' }}>
                   <button
                     onClick={() => document.getElementById('sayu-image-upload')?.click()}
@@ -3012,7 +3031,7 @@ export function SayuModal({
                       gap: 6,
                     }}
                   >
-                    {isUploadingImage ? '⏳ 업로드 중...' : `📷 사진 추가 (${localImages.length}/3)`}
+                    {isUploadingImage ? '⏳ 업로드 중...' : `📷 사진 추가 (${localImages.length}/${recordPhotoLimit})`}
                   </button>
                   <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9ca3af' }}>
                     PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다
