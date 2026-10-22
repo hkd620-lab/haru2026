@@ -1,0 +1,56 @@
+{
+  "observedAt": "2026-10-22T05:14:43.756Z",
+  "url": "https://haru2026.com/sayu",
+  "testRecordTitle": "[PR288 E2E] 다듬기·한마디 저장 검증",
+  "testRecordDate": "2026-10-22",
+  "usedSyntheticText": true,
+  "authenticatedProductionAccount": true,
+  "formatModal": {
+    "aiExecutions": 1,
+    "bodyCharacters": 250,
+    "bodySha256": "b9ae8b973a92442ad3dc1316e6eb9ad38e918566e79fd48bc800459a88cc4407",
+    "saved": true,
+    "browserReloaded": true,
+    "reopenedBodyExactMatch": true
+  },
+  "sayuModal": {
+    "aiExecutions": 1,
+    "bodyCharacters": 378,
+    "bodySha256": "6ad35df36937f656094278aa3fbe316f49dde17ccbd0ca0e5c5a3d75764f3b92",
+    "aiCommentCharacters": 35,
+    "aiCommentSha256": "df67039eba33cd6f57a8018cd8f5c8da2c1006b185e08d394cda631e84be489a",
+    "savedByRepolishFlow": true,
+    "browserReloaded": true,
+    "reopenedBodyExactMatch": true,
+    "reopenedAiCommentExactMatch": true
+  },
+  "testRecordRetained": true,
+  "deletedRecords": 0,
+  "publicShareActions": 0,
+  "otherExistingRecordsEdited": 0,
+  "screenshots": [
+    "format-after-reload.jpg",
+    "sayu-generated.jpg",
+    "sayu-after-reload.jpg"
+  ],
+  "pr": 288,
+  "deploymentBasis": {
+    "mainSha": "79c219c853b9b965678b78412116a4b1703c70e8",
+    "hostingVersion": "509e8a0bba5531ef",
+    "function": "polishContent",
+    "functionRevision": "polishcontent-00243-des",
+    "region": "asia-northeast3"
+  },
+  "codeChanges": 0,
+  "mergeOperations": 0,
+  "deployOperations": 0,
+  "existingCcSessionTouched": false,
+  "providerCallCountMeasured": false,
+  "uiExecutionsTotal": 2,
+  "screenshotStorage": "private local artifacts; not committed to public repository",
+  "screenshotSha256": {
+    "format-after-reload.jpg": "d03a813ef5fbc258954873739ca26a64dbaeb8cc701820713cae10a891fc1a74",
+    "sayu-generated.jpg": "e2c3bc21a83586843b0b1b0dce2e229749b8966c0f76349e3b9b5cec0a2cda5d",
+    "sayu-after-reload.jpg": "6987350af225b8baff05f8f0cb6c9212383da64befb798c0e3178009c5f96edd"
+  }
+}
