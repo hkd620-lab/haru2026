@@ -26,6 +26,11 @@ import {
 
 const db = admin.firestore();
 
+interface EpubPhoto {
+  url: string;
+  caption?: string;
+}
+
 const EPUB_INCLUDE_FORMATS = [
   '일기', '에세이', '선교보고', '일반보고', '업무일지',
   '여행기록', '독서사유', '텃밭일지', '애완동물관찰일지',
@@ -45,7 +50,8 @@ function dateLabel(date: string): string {
 
 // 본문 HTML(사진 제외). 사진은 내려받기 확인 뒤 호출하는 쪽에서 붙인다.
 // bodyFormat 이 있으면 그 형식의 본문을, 없으면 기록의 첫 번째 포함 형식 본문을 쓴다.
-function recordToHtml(record: Record<string, any>, bodyFormat?: string): string {
+// 타임라인 사진은 timelinePhotos 로 돌려주고(본문에 원격 주소를 넣지 않음), 다른 사진과 같은 준비 단계를 거친다.
+function recordToHtml(record: Record<string, any>, bodyFormat?: string, timelinePhotos: EpubPhoto[] = []): string {
   const lines: string[] = [];
 
   // 날씨/기분
@@ -71,10 +77,9 @@ function recordToHtml(record: Record<string, any>, bodyFormat?: string): string 
     }
     const items = Array.isArray(record.timelineItems) ? record.timelineItems : [];
     for (const item of items) {
-      if (item?.url) {
+      if (typeof item?.url === 'string' && /^https?:\/\//.test(item.url)) {
         const cap = [item.takenDate, item.locationLabel, item.memo].filter(Boolean).join(' · ');
-        lines.push(`<img src="${item.url}" style="max-width:100%;margin:8px 0;">`);
-        if (cap) lines.push(`<p style="font-size:0.85em;color:#666;">${cap}</p>`);
+        timelinePhotos.push({ url: item.url, caption: cap || undefined });
         bodyAdded = true;
       }
     }
@@ -171,7 +176,7 @@ export const exportEpub = onCall(
       throw new HttpsError('invalid-argument', '합본 기록 목록이 올바르지 않습니다.');
     }
 
-    const chapters: { title: string; content: string; photos: string[] }[] = [];
+    const chapters: { title: string; content: string; photos: EpubPhoto[] }[] = [];
 
     if (recordIds) {
       // 합본: 화면·PDF에 보인 기록만 같은 순서로. 본인 기록 경로에서만 읽고 조건을 다시 확인한다.
@@ -186,7 +191,7 @@ export const exportEpub = onCall(
         chapters.push({
           title: dateLabel(String(record.date).slice(0, 10)),
           content: mergeRecordToHtml(record, prefix, []),
-          photos: getRecordPhotoUrls(record, prefix),
+          photos: getRecordPhotoUrls(record, prefix).map((url) => ({ url })),
         });
       }
       if (chapters.length === 0) {
@@ -213,11 +218,12 @@ export const exportEpub = onCall(
       if (includedFormats.length === 0) return;
       if (format && !includedFormats.includes(format)) return;
       const title = `${dateLabel(record.date)} [${includedFormats.join(' · ')}]`;
-      const content = recordToHtml(record, format);
-      // 사진: 요청 형식이 있으면 그 형식의 사진만, 없으면 포함된 형식마다(형식당 최대 5장, 같은 사진은 한 번)
+      const timelinePhotos: EpubPhoto[] = [];
+      const content = recordToHtml(record, format, timelinePhotos);
+      // 사진: 요청 형식이 있으면 그 형식의 사진만, 없으면 포함된 형식마다(형식당 최대 5장, 같은 사진은 한 번). 타임라인 사진도 같이 준비한다.
       const photoFormats = format ? [format] : includedFormats;
-      const photos = Array.from(new Set(photoFormats.flatMap((f) => (FORMAT_PREFIX[f] ? getRecordPhotoUrls(record, FORMAT_PREFIX[f]) : []))));
-      chapters.push({ title, content, photos });
+      const formatPhotos = Array.from(new Set(photoFormats.flatMap((f) => (FORMAT_PREFIX[f] ? getRecordPhotoUrls(record, FORMAT_PREFIX[f]) : []))));
+      chapters.push({ title, content, photos: [...timelinePhotos, ...formatPhotos.map((url) => ({ url }))] });
     });
 
     if (chapters.length === 0) {
@@ -233,16 +239,26 @@ async function buildAndSave(
   startDate: string,
   endDate: string,
   format: string | undefined,
-  rawChapters: { title: string; content: string; photos: string[] }[],
+  rawChapters: { title: string; content: string; photos: EpubPhoto[] }[],
 ) {
   // 사진은 서버가 한 번 내려받아 임시 파일로 넘긴다. 실제로 받은 사진만 넣고 받지 못한 장수를 센다.
   const photoDir = await mkdtemp(join(tmpdir(), 'epub-'));
   try {
-    const { srcByChapter, failed, overLimit } = await preparePhotos(rawChapters.map((chapter) => chapter.photos), createTempPhotoFetcher(photoDir));
-    const chapters = rawChapters.map((chapter, index) => ({
-      title: chapter.title,
-      content: [chapter.content, ...srcByChapter[index].map((src) => `<img src="${escapeHtml(src)}" style="max-width:100%;margin:8px 0;">`)].join('\n'),
-    }));
+    const { srcByChapter, failed, overLimit } = await preparePhotos(
+      rawChapters.map((chapter) => chapter.photos.map((photo) => photo.url)),
+      createTempPhotoFetcher(photoDir),
+    );
+    // 받은 사진만 넣는다. 사진을 받지 못하면 그 캡션도 함께 뺀다.
+    const chapters = rawChapters.map((chapter, index) => {
+      const lines = [chapter.content];
+      chapter.photos.forEach((photo, photoIndex) => {
+        const src = srcByChapter[index][photoIndex];
+        if (!src) return;
+        lines.push(`<img src="${escapeHtml(src)}" style="max-width:100%;margin:8px 0;">`);
+        if (photo.caption) lines.push(`<p style="font-size:0.85em;color:#666;">${escapeHtml(photo.caption)}</p>`);
+      });
+      return { title: chapter.title, content: lines.join('\n') };
+    });
 
     const epubOptions = {
       title: format

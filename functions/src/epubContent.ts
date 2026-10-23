@@ -8,6 +8,8 @@ import { STATS_MERGE_RECORD_FORMATS } from './formats/formatRegistry';
 export const MAX_RECORD_PHOTOS = 5;
 export const MAX_EPUB_PHOTOS = 200;
 export const MAX_MERGE_RECORD_IDS = 500;
+export const PHOTO_BUDGET_MS = 150_000;
+const PHOTO_ATTEMPT_MS = 8000;
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 
@@ -99,10 +101,13 @@ export type PhotoFetcher = (url: string, index: number) => Promise<string | null
 export async function preparePhotos(
   urlsByChapter: string[][],
   fetchPhoto: PhotoFetcher,
-  options: { maxTotal?: number; concurrency?: number } = {},
-): Promise<{ srcByChapter: string[][]; failed: number; overLimit: number }> {
+  options: { maxTotal?: number; concurrency?: number; budgetMs?: number } = {},
+  // srcByChapter 는 입력과 같은 자리에 받은 주소(받지 못하면 null)를 둔다. 캡션을 짝지어 빼기 위해서다.
+): Promise<{ srcByChapter: Array<Array<string | null>>; failed: number; overLimit: number }> {
   const maxTotal = options.maxTotal ?? MAX_EPUB_PHOTOS;
   const concurrency = Math.max(1, options.concurrency ?? 8);
+  // 사진 내려받기 전체 시간 예산. 지나면 남은 사진은 받지 않고 누락으로 센다(서버 300초 안에 EPUB 완성).
+  const deadline = Date.now() + (options.budgetMs ?? PHOTO_BUDGET_MS);
   let budget = maxTotal;
   let failed = 0;
   let overLimit = 0;
@@ -115,17 +120,16 @@ export async function preparePhotos(
   const unique = Array.from(new Set(planned.flat()));
   const fetched = new Map<string, string | null>();
   for (let i = 0; i < unique.length; i += concurrency) {
+    if (Date.now() >= deadline) break;
     const batch = unique.slice(i, i + concurrency);
     const results = await Promise.all(batch.map((url, offset) => fetchPhoto(url, i + offset).catch(() => null)));
     batch.forEach((url, offset) => fetched.set(url, results[offset]));
   }
-  const srcByChapter = planned.map((urls) => urls.flatMap((url) => {
-    const src = fetched.get(url);
-    if (!src) {
-      failed += 1;
-      return [];
-    }
-    return [src];
+  const srcByChapter = urlsByChapter.map((urls, chapterIndex) => urls.map((url, photoIndex) => {
+    if (photoIndex >= planned[chapterIndex].length) return null; // 상한 초과(overLimit 로 셈)
+    const src = fetched.get(url) || null;
+    if (!src) failed += 1;
+    return src;
   }));
   return { srcByChapter, failed, overLimit };
 }
@@ -138,12 +142,12 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
   'image/gif': 'gif',
 };
 
-// 임시 폴더에 사진을 내려받는다(시도당 15초, 실패 시 한 번 더). 이미지가 아니거나 비어 있으면 실패로 본다.
+// 임시 폴더에 사진을 내려받는다(시도당 8초, 실패 시 한 번 더). 이미지가 아니거나 비어 있으면 실패로 본다.
 export function createTempPhotoFetcher(dir: string): PhotoFetcher {
   return async (url, index) => {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 15000);
+      const timer = setTimeout(() => controller.abort(), PHOTO_ATTEMPT_MS);
       try {
         const response = await fetch(url, { signal: controller.signal });
         if (!response.ok) continue;

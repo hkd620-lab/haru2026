@@ -53,11 +53,11 @@ test('사진 준비: 받지 못한 사진만 빼고 개수를 세며, 파일당 
   const chapters = [['https://ok/1', 'https://bad/2'], ['https://ok/3', 'https://ok/4']];
   const fetchPhoto = async (url) => (url.includes('bad') ? null : `file:///tmp/${url.slice(-1)}.jpg`);
   const result = await epub.preparePhotos(chapters, fetchPhoto, { maxTotal: 3 });
-  assert.deepEqual(result.srcByChapter, [['file:///tmp/1.jpg'], ['file:///tmp/3.jpg']]);
+  assert.deepEqual(result.srcByChapter, [['file:///tmp/1.jpg', null], ['file:///tmp/3.jpg', null]]);
   assert.equal(result.failed, 1);
   assert.equal(result.overLimit, 1);
   const thrown = await epub.preparePhotos([['https://x/1']], async () => { throw new Error('net'); });
-  assert.deepEqual(thrown.srcByChapter, [[]]);
+  assert.deepEqual(thrown.srcByChapter, [[null]]);
   assert.equal(thrown.failed, 1);
   assert.equal(thrown.overLimit, 0);
 });
@@ -82,8 +82,8 @@ test('실제 EPUB: HEAD 200·GET 503 사진은 빈 이미지로 남지 않고 �
   try {
     const { srcByChapter, failed } = await epub.preparePhotos([[`${base}/ok.png`, `${base}/head-only.png`]], epub.createTempPhotoFetcher(dir));
     assert.equal(failed, 1);
-    assert.equal(srcByChapter[0].length, 1);
-    const content = ['<p>본문</p>', ...srcByChapter[0].map((src) => `<img src="${epub.escapeHtml(src)}">`)].join('\n');
+    assert.equal(srcByChapter[0].filter(Boolean).length, 1);
+    const content = ['<p>본문</p>', ...srcByChapter[0].filter(Boolean).map((src) => `<img src="${epub.escapeHtml(src)}">`)].join('\n');
     const buffer = await Epub({ title: 't', author: 'a', lang: 'ko', ignoreFailedDownloads: true, verbose: false }, [{ title: 'c', content }]);
     const zip = await JSZip.loadAsync(buffer);
     const images = Object.values(zip.files).filter((file) => file.name.startsWith('OEBPS/images/') && !file.dir);
@@ -94,4 +94,14 @@ test('실제 EPUB: HEAD 200·GET 503 사진은 빈 이미지로 남지 않고 �
     server.close();
     await fs.rm(dir, { recursive: true, force: true });
   }
+});
+
+test('사진 내려받기 전체 시간 예산이 지나면 남은 사진은 받지 않고 누락으로 센다(Codex 실행 6)', async () => {
+  const urls = Array.from({ length: 6 }, (_, i) => `https://slow/${i}`);
+  const calls = [];
+  const fetchPhoto = async (url) => { calls.push(url); await new Promise((resolve) => setTimeout(resolve, 30)); return `file:///tmp/${url.slice(-1)}.jpg`; };
+  const result = await epub.preparePhotos([urls], fetchPhoto, { concurrency: 2, budgetMs: 40 });
+  assert.ok(calls.length < urls.length, `calls=${calls.length}`);
+  assert.equal(result.failed, urls.length - calls.length);
+  assert.equal(result.srcByChapter[0].filter(Boolean).length, calls.length);
 });
