@@ -27,7 +27,16 @@ export function parseStatsPeriod(value: string | null): StatsPeriodKey {
 
 // URL의 period·start·end 로 기간을 정한다. 등급상 못 쓰는 기간이면 바꾸지 않고 locked 로 알린다.
 export function resolveStatsPeriod(params: URLSearchParams, tier: StatsTier, today = new Date()) {
-  const period = parseStatsPeriod(params.get('period'));
+  const start = params.get('start');
+  const end = params.get('end');
+  const legacyPeriod = !params.has('period') && start && end
+    ? STATS_PERIOD_KEYS.find((key) => {
+      if (key === 'custom') return false;
+      const range = getStatsPeriodRange(key, today);
+      return range.start === start && range.end === end;
+    }) || 'custom'
+    : null;
+  const period = legacyPeriod || parseStatsPeriod(params.get('period'));
   const range = getStatsPeriodRange(period, today, { start: params.get('start') || undefined, end: params.get('end') || undefined });
   return { period, range, locked: !canUseStatsPeriod(period, tier) };
 }
