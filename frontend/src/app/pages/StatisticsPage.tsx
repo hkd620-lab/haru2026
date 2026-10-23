@@ -1,526 +1,195 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BarChart3, Calendar, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { BarChart3, ChevronRight } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { StatsPeriodPicker, getStatsTier, resolveStatsPeriod, statsQuery } from '../components/StatsPeriodPicker';
 import { useAuth } from '../contexts/AuthContext';
-import { firestoreService, type AssistantPeriodStats } from '../services/firestoreService';
+import { useSubscription } from '../hooks/useSubscription';
+import { firestoreService } from '../services/firestoreService';
+import { STATS_MERGE_RECORD_FORMATS } from '../records/formatRegistry';
+import { FORMAT_EMOJI, type RecordFormat } from '../types/haruTypes';
+import {
+  compareCounts,
+  getPreviousRange,
+  selectFormatEntries,
+  type StatsPeriodKey,
+  type StatsRange,
+} from '../records/recordStats';
 
-type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '메모' | 'HARU보조장부';
+// 통계 첫 화면 — 생활/업무 구분 없이 기록형식을 바로 고른다(2026-10-23 허대표님 결정).
+// 비서(가계부·보조장부·주식·식물탐정·타임라인 등) 통계는 각 비서 화면에서 연다.
+const FORMAT_LABEL: Partial<Record<RecordFormat, string>> = { '애완동물관찰일지': '반려동물관찰일지' };
 
-interface FormatCategory {
-  title: string;
-  formats: RecordFormat[];
-  icon: string;
-  color: string;
-  bgColor: string;
-  borderColor: string;
-}
-
-const categories: FormatCategory[] = [
-  {
-    title: '생활',
-    formats: ['일기', '에세이', '여행기록', '애완동물관찰일지', '육아일기', '텃밭일지'],
-    icon: '🏡',
-    color: '#1A3C6E',
-    bgColor: '#FDF6C3',
-    borderColor: '#d0dff0',
-  },
-  {
-    title: '업무',
-    formats: ['일반보고', '업무일지', '선교보고', '메모', 'HARU보조장부'],
-    icon: '💼',
-    color: '#2A5C3E',
-    bgColor: '#F0FFF4',
-    borderColor: '#d0ffe0',
-  },
-];
-
-type StatsPeriodMode = 'recentYear' | 'thisYear' | 'custom';
-
-interface StatsSummary {
-  totalRecords: number;
-  polishedCount: number;
-  sayuCount: number;
-  formatCounts: Record<string, number>;
-  formatSayuCounts: Record<string, number>;
-}
-
-function formatDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function getStatsPeriodRange(mode: StatsPeriodMode, customStartDate: string, customEndDate: string) {
-  const today = new Date();
-  const end = formatDate(today);
-
-  if (mode === 'recentYear') {
-    const start = new Date(today);
-    start.setFullYear(start.getFullYear() - 1);
-    return {
-      start: formatDate(start),
-      end,
-      label: '최근 1년',
-    };
-  }
-
-  if (mode === 'thisYear') {
-    return {
-      start: `${today.getFullYear()}-01-01`,
-      end,
-      label: '올해',
-    };
-  }
-
-  return {
-    start: customStartDate,
-    end: customEndDate,
-    label: '직접 선택',
-  };
+interface FormatSummary {
+  format: RecordFormat;
+  count: number;
+  days: number;
+  change: string | null;
 }
 
 export function StatisticsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
-  const [assistantStats, setAssistantStats] = useState<AssistantPeriodStats | null>(null);
-  const [assistantStatsLoading, setAssistantStatsLoading] = useState(false);
-  const today = new Date();
-  const [periodMode, setPeriodMode] = useState<StatsPeriodMode>('recentYear');
-  const [customStartDate, setCustomStartDate] = useState(`${today.getFullYear()}-01-01`);
-  const [customEndDate, setCustomEndDate] = useState(formatDate(today));
-  const [stats, setStats] = useState<StatsSummary | null>(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-
-  const periodRange = getStatsPeriodRange(periodMode, customStartDate, customEndDate);
-
-  const toggleCategory = (title: string) => {
-    setExpandedCategory(expandedCategory === title ? null : title);
-  };
-
-  const handleFormatClick = (format: RecordFormat) => {
-    const params = new URLSearchParams({
-      start: periodRange.start,
-      end: periodRange.end,
-    });
-    navigate(`/stats/${format}?${params.toString()}`);  // statistics → stats로 변경
-  };
-
-  const handleAssistantClick = (assistantType: 'plant' | 'timeline') => {
-    const params = new URLSearchParams({
-      start: periodRange.start,
-      end: periodRange.end,
-    });
-    navigate(`/stats/assistant/${assistantType}?${params.toString()}`);
-  };
+  const { subscription, loading: subscriptionLoading } = useSubscription();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tier = getStatsTier(subscription);
+  const { period, range, locked } = resolveStatsPeriod(searchParams, tier);
+  const [records, setRecords] = useState<Record<string, any>[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [showEmpty, setShowEmpty] = useState(false);
+  const previous = useMemo(() => getPreviousRange(range), [range.start, range.end]);
 
   useEffect(() => {
-    if (!user?.uid) {
-      setStats(null);
+    if (!user?.uid || subscriptionLoading || locked) {
+      setRecords(null);
       return;
     }
-
-    setStatsLoading(true);
-    firestoreService.getStats(user.uid, periodRange.start, periodRange.end)
-      .then((data) => setStats(data))
+    let cancelled = false;
+    setRecords(null);
+    setLoadFailed(false);
+    firestoreService.getRecordsInRange(user.uid, previous.start, range.end)
+      .then((data) => { if (!cancelled) setRecords(data as Record<string, any>[]); })
       .catch((error) => {
         console.warn('기록 통계 로딩 실패:', error);
-        setStats(null);
-      })
-      .finally(() => setStatsLoading(false));
-  }, [user?.uid, periodRange.start, periodRange.end]);
+        if (!cancelled) setLoadFailed(true);
+      });
+    return () => { cancelled = true; };
+  }, [user?.uid, subscriptionLoading, locked, previous.start, range.end]);
 
-  useEffect(() => {
-    if (!user?.uid) {
-      setAssistantStats(null);
-      return;
+  const summaries: FormatSummary[] = useMemo(() => {
+    if (!records) return [];
+    return STATS_MERGE_RECORD_FORMATS.map((format) => {
+      const current = selectFormatEntries(records, format, range);
+      const before = selectFormatEntries(records, format, previous);
+      return {
+        format,
+        count: current.length,
+        days: new Set(current.map((entry) => entry.date)).size,
+        change: compareCounts(current.length, before.length),
+      };
+    });
+  }, [records, range.start, range.end, previous.start, previous.end]);
+
+  const totals = useMemo(() => {
+    if (!records) return null;
+    const ids = new Set<string>();
+    const dates = new Set<string>();
+    for (const format of STATS_MERGE_RECORD_FORMATS) {
+      for (const entry of selectFormatEntries(records, format, range)) {
+        ids.add(entry.recordId);
+        dates.add(entry.date);
+      }
     }
+    return { records: ids.size, days: dates.size };
+  }, [records, range.start, range.end]);
 
-    setAssistantStatsLoading(true);
-    firestoreService.getAssistantPeriodStats(user.uid, periodRange.start, periodRange.end)
-      .then((data) => setAssistantStats(data))
-      .catch((error) => {
-        console.warn('비서 원본 기록 통계 로딩 실패:', error);
-        setAssistantStats(null);
-      })
-      .finally(() => setAssistantStatsLoading(false));
-  }, [user?.uid, periodRange.start, periodRange.end]);
+  const withRecords = summaries.filter((item) => item.count > 0).sort((a, b) => b.count - a.count);
+  const withoutRecords = summaries.filter((item) => item.count === 0);
 
-  const assistantTypeCounts = assistantStats?.typeCounts || {};
-  const assistantMonthCounts = assistantStats?.monthCounts || {};
-  const assistantMonths = Object.entries(assistantMonthCounts)
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .slice(0, 6);
-  const maxAssistantMonthCount = Math.max(...assistantMonths.map(([, count]) => count), 1);
-  const typeLabel: Record<string, string> = {
-    timeline: '타임라인',
-    plant: '식물탐정',
+  const changePeriod = (nextPeriod: StatsPeriodKey, nextRange: StatsRange) => {
+    setSearchParams(statsQuery(nextPeriod, nextRange), { replace: true });
   };
-  const assistantTotalCount = Object.values(assistantTypeCounts).reduce((sum, count) => sum + count, 0);
-  const plantStats = assistantStats?.plant;
-  const timelineStats = assistantStats?.timeline;
+
+  const openFormat = (format: RecordFormat) => {
+    navigate(`/stats/${encodeURIComponent(format)}?${statsQuery(period, range)}`);
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <PageHeaderActions />
-      {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="flex items-center gap-3 mb-2">
           <BarChart3 className="w-8 h-8" style={{ color: '#1A3C6E' }} />
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#1A3C6E' }}>
-            통계
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#1A3C6E' }}>통계</h1>
         </div>
         <p className="text-sm" style={{ color: '#666666' }}>
-          형식별 기록을 분석하고 나의 성향을 확인하세요
+          기록형식을 골라 내가 쓴 기록을 돌아봅니다.
         </p>
       </div>
 
-      {/* Period Filter */}
-      <section className="mb-6 bg-white rounded-lg shadow-sm p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Calendar className="w-5 h-5" style={{ color: '#1A3C6E' }} />
-          <h2 className="text-sm font-semibold" style={{ color: '#333' }}>
-            기간 선택
-          </h2>
-        </div>
+      <StatsPeriodPicker period={period} range={range} tier={tier} locked={locked} onChange={changePeriod} />
 
-        <div className="flex flex-wrap gap-2 mb-4">
-          {[
-            { mode: 'recentYear' as const, label: '최근 1년' },
-            { mode: 'thisYear' as const, label: '올해' },
-            { mode: 'custom' as const, label: '직접 선택' },
-          ].map(({ mode, label }) => (
-            <button
-              key={mode}
-              onClick={() => setPeriodMode(mode)}
-              className="px-4 py-2 rounded-lg text-sm transition-all"
-              style={{
-                backgroundColor: periodMode === mode ? '#1A3C6E' : '#FEFBE8',
-                color: periodMode === mode ? '#FAF9F6' : '#333',
-                border: periodMode === mode ? '1px solid #1A3C6E' : '1px solid #e5e5e5',
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {periodMode === 'custom' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-            <div>
-              <label htmlFor="stats-custom-start-date" className="text-xs mb-1 block" style={{ color: '#666' }}>시작일</label>
-              <input
-                id="stats-custom-start-date"
-                type="date"
-                value={customStartDate}
-                max={customEndDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300"
-              />
-            </div>
-            <div>
-              <label htmlFor="stats-custom-end-date" className="text-xs mb-1 block" style={{ color: '#666' }}>종료일</label>
-              <input
-                id="stats-custom-end-date"
-                type="date"
-                value={customEndDate}
-                min={customStartDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300"
-              />
-            </div>
-          </div>
-        )}
-
-        <p className="text-xs" style={{ color: '#666' }}>
-          {periodRange.label}: {periodRange.start} ~ {periodRange.end}
-        </p>
-      </section>
-
-      {/* Record Summary */}
-      <section className="mb-6 bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="p-4 border-b" style={{ borderColor: '#e5e5e5' }}>
-          <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>
-            기록 통계
-          </h2>
-          <p className="text-xs mt-1" style={{ color: '#999' }}>
-            users/{'{uid}'}/records/{'{date}'} 기준
-          </p>
-        </div>
-        <div className="p-4">
-          {statsLoading ? (
-            <p className="text-sm" style={{ color: '#999' }}>기록 통계를 불러오는 중...</p>
-          ) : !stats ? (
-            <p className="text-sm" style={{ color: '#999' }}>기록 통계를 불러오지 못했습니다.</p>
-          ) : (
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: '총 기록', value: `${stats.totalRecords}개` },
-                { label: '다듬기 완료', value: `${stats.polishedCount}개` },
-                { label: 'SAYU 완료', value: `${stats.sayuCount}개` },
-              ].map(({ label, value }) => (
-                <div key={label} className="rounded-lg p-3 text-center" style={{ backgroundColor: '#FEFBE8', border: '1px solid #e5e5e5' }}>
-                  <p className="text-xs" style={{ color: '#999' }}>{label}</p>
-                  <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{value}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Assistant Library Pilot Stats */}
-      <section className="mb-6 bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="p-4 border-b" style={{ borderColor: '#e5e5e5' }}>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>
-                비서 통계
-              </h2>
-              <p className="text-xs mt-1" style={{ color: '#999' }}>
-                원본 기록 날짜 기준
-              </p>
-            </div>
-            <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>
-              파일럿
-            </span>
-          </div>
-        </div>
-
-        <div className="p-4">
-          {assistantStatsLoading ? (
-            <p className="text-sm" style={{ color: '#999' }}>비서 통계를 불러오는 중...</p>
-          ) : assistantTotalCount === 0 ? (
-            <p className="text-sm" style={{ color: '#999' }}>
-              선택한 기간에 타임라인 또는 식물탐정 기록이 없습니다.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-4">
+      {!locked && (
+        <>
+          <section className="mb-4 bg-white rounded-lg shadow-sm p-4">
+            {loadFailed ? (
+              <p className="text-sm" style={{ color: '#999' }}>기록을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.</p>
+            ) : !totals ? (
+              <p className="text-sm" style={{ color: '#999' }}>기록을 불러오는 중...</p>
+            ) : (
               <div className="grid grid-cols-2 gap-3">
-                {Object.entries(assistantTypeCounts).filter(([, count]) => count > 0).map(([type, count]) => (
-                  <div key={type} className="rounded-lg p-3" style={{ backgroundColor: '#FEFBE8', border: '1px solid #e5e5e5' }}>
-                    <p className="text-xs" style={{ color: '#999' }}>{typeLabel[type] || type}</p>
-                    <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{count}개</p>
+                {[
+                  { label: '이 기간 기록', value: `${totals.records}건` },
+                  { label: '기록한 날', value: `${totals.days}일` },
+                ].map(({ label, value }) => (
+                  <div key={label} className="rounded-lg p-3 text-center" style={{ backgroundColor: '#FEFBE8', border: '1px solid #e5e5e5' }}>
+                    <p className="text-xs" style={{ color: '#999' }}>{label}</p>
+                    <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{value}</p>
                   </div>
                 ))}
               </div>
+            )}
+          </section>
 
-              {plantStats && plantStats.totalCount > 0 && (
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => handleAssistantClick('plant')}
-                    className="flex items-center gap-1 mb-2"
-                  >
-                    <span className="text-xs font-semibold" style={{ color: '#333' }}>🌿 식물탐정 상세</span>
-                    <span className="text-xs" style={{ color: '#2A5C3E' }}>상세 보기</span>
-                    <ChevronRight className="w-4 h-4" style={{ color: '#2A5C3E' }} />
-                  </button>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
-                      <p className="text-xs" style={{ color: '#999' }}>판독 식물</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantStats.detectiveCount}개</p>
-                    </div>
-                    <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
-                      <p className="text-xs" style={{ color: '#999' }}>식물 종류</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantStats.speciesCount}종</p>
-                    </div>
-                    <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
-                      <p className="text-xs" style={{ color: '#999' }}>관찰 기록</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#2A5C3E' }}>{plantStats.observationCount}개</p>
-                    </div>
-                    <div className="rounded-lg p-3" style={{ backgroundColor: '#F0FFF4', border: '1px solid #d0ffe0' }}>
-                      <p className="text-xs" style={{ color: '#999' }}>가장 많이 본 식물</p>
-                      <p className="text-sm font-bold mt-1 truncate" style={{ color: '#2A5C3E' }}>
-                        {plantStats.topPlant ? `${plantStats.topPlant.name} (${plantStats.topPlant.count})` : '-'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+          {records && (
+            <section className="mb-4 bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="p-4 border-b" style={{ borderColor: '#e5e5e5' }}>
+                <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>기록형식</h2>
+                <p className="text-xs mt-1" style={{ color: '#999' }}>형식을 누르면 형식별 돌아보기 지표를 봅니다.</p>
+              </div>
+              {withRecords.length === 0 && (
+                <p className="p-4 text-sm" style={{ color: '#999' }}>이 기간에 쓴 기록이 없습니다.</p>
               )}
-
-              {timelineStats && timelineStats.timelineCount > 0 && (
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => handleAssistantClick('timeline')}
-                    className="flex items-center gap-1 mb-2"
-                  >
-                    <span className="text-xs font-semibold" style={{ color: '#333' }}>📌 성장타임라인 상세</span>
-                    <span className="text-xs" style={{ color: '#1A3C6E' }}>상세 보기</span>
-                    <ChevronRight className="w-4 h-4" style={{ color: '#1A3C6E' }} />
+              {withRecords.map((item) => (
+                <button
+                  key={item.format}
+                  type="button"
+                  onClick={() => openFormat(item.format)}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left border-b hover:bg-gray-50"
+                  style={{ borderColor: '#f0f0f0' }}
+                >
+                  <span className="flex items-center gap-3 min-w-0">
+                    <span style={{ fontSize: 22 }}>{FORMAT_EMOJI[item.format]}</span>
+                    <span className="min-w-0">
+                      <span className="block font-semibold" style={{ color: '#333' }}>{FORMAT_LABEL[item.format] || item.format}</span>
+                      <span className="block text-xs mt-0.5" style={{ color: '#666' }}>
+                        {item.count}건 · 기록한 날 {item.days}일{item.change ? ` · ${item.change}` : ''}
+                      </span>
+                    </span>
+                  </span>
+                  <ChevronRight className="w-5 h-5 flex-shrink-0" style={{ color: '#999' }} />
+                </button>
+              ))}
+              {withoutRecords.length > 0 && (
+                <div className="px-4 py-3">
+                  <button type="button" className="text-xs underline" style={{ color: '#666' }} onClick={() => setShowEmpty((value) => !value)}>
+                    {showEmpty ? '기록이 없는 형식 접기' : `기록이 없는 형식 ${withoutRecords.length}개 보기`}
                   </button>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
-                      <p className="text-xs" style={{ color: '#999' }}>타임라인 수</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineStats.timelineCount}개</p>
-                    </div>
-                    <div className="rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
-                      <p className="text-xs" style={{ color: '#999' }}>총 연결 기록</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineStats.linkedRecordCount}개</p>
-                    </div>
-                    <div className="rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
-                      <p className="text-xs" style={{ color: '#999' }}>평균 기록 수</p>
-                      <p className="text-xl font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineStats.avgRecords}개</p>
-                    </div>
-                    <div className="rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
-                      <p className="text-xs" style={{ color: '#999' }}>가장 오래 기록</p>
-                      <p className="text-sm font-bold mt-1 truncate" style={{ color: '#1A3C6E' }}>
-                        {timelineStats.longestTimeline ? `${timelineStats.longestTimeline.title} (${timelineStats.longestTimeline.durationDays}일)` : '-'}
-                      </p>
-                    </div>
-                  </div>
-                  {timelineStats.subjectText && (
-                    <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: '#EEF6FF', border: '1px solid #d0dff0' }}>
-                      <p className="text-xs" style={{ color: '#999' }}>주제별 타임라인</p>
-                      <p className="text-sm font-bold mt-1" style={{ color: '#1A3C6E' }}>{timelineStats.subjectText}</p>
+                  {showEmpty && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {withoutRecords.map((item) => (
+                        <button
+                          key={item.format}
+                          type="button"
+                          onClick={() => openFormat(item.format)}
+                          className="px-3 py-1.5 rounded-lg text-xs"
+                          style={{ backgroundColor: '#FEFBE8', border: '1px solid #e5e5e5', color: '#666' }}
+                        >
+                          {FORMAT_EMOJI[item.format]} {FORMAT_LABEL[item.format] || item.format}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
               )}
-
-              {assistantMonths.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold mb-2" style={{ color: '#333' }}>월별 추이</p>
-                  <div className="flex flex-col gap-2">
-                    {assistantMonths.map(([month, count]) => (
-                      <div key={month} className="flex items-center gap-2">
-                        <span className="text-xs w-14" style={{ color: '#666' }}>{month}</span>
-                        <div className="flex-1 rounded-full overflow-hidden" style={{ backgroundColor: '#f3f4f6', height: 10 }}>
-                          <div
-                            style={{
-                              width: `${(count / maxAssistantMonthCount) * 100}%`,
-                              height: '100%',
-                              backgroundColor: '#1A3C6E',
-                            }}
-                          />
-                        </div>
-                        <span className="text-xs font-semibold w-8 text-right" style={{ color: '#1A3C6E' }}>{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            </section>
           )}
-        </div>
-      </section>
+        </>
+      )}
 
-      {/* Info Box */}
-      <div
-        className="mb-6 p-4 rounded-lg border-l-4"
-        style={{
-          backgroundColor: '#FFF8F0',
-          borderColor: '#DAA520',
-        }}
-      >
-        <p className="text-xs" style={{ color: '#B8860B' }}>
-          💡 각 형식을 클릭하면 상세 통계를 확인할 수 있습니다
-        </p>
-        <p className="text-xs mt-1" style={{ color: '#999' }}>
-          (현재는 개발자용 시뮬레이션 화면입니다)
-        </p>
-      </div>
-
-      {/* Categories */}
-      <div className="space-y-4">
-        {categories.map((category) => {
-          const isExpanded = expandedCategory === category.title;
-
-          return (
-            <div
-              key={category.title}
-              className="bg-white rounded-lg shadow-sm overflow-hidden transition-all"
-            >
-              {/* Category Header */}
-              <button
-                onClick={() => toggleCategory(category.title)}
-                className="w-full p-4 flex items-center justify-between hover:opacity-80 transition-opacity"
-                style={{
-                  backgroundColor: category.bgColor,
-                  borderBottom: isExpanded ? `1px solid ${category.borderColor}` : 'none',
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <span style={{ fontSize: 24 }}>{category.icon}</span>
-                  <h2
-                    className="text-lg font-semibold"
-                    style={{ color: category.color }}
-                  >
-                    {category.title}
-                  </h2>
-                  <span
-                    className="text-xs px-2 py-1 rounded-full"
-                    style={{
-                      backgroundColor: '#fff',
-                      color: category.color,
-                      border: `1px solid ${category.borderColor}`,
-                    }}
-                  >
-                    {category.formats.length}개
-                  </span>
-                </div>
-                <div
-                  className="transition-transform"
-                  style={{
-                    color: category.color,
-                    transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                  }}
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </div>
-              </button>
-
-              {/* Format List */}
-              {isExpanded && (
-                <div className="p-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {category.formats.map((format) => (
-                      <button
-                        key={format}
-                        onClick={() => handleFormatClick(format)}
-                        className="p-3 rounded-lg text-left transition-all hover:shadow-md"
-                        style={{
-                          backgroundColor: '#FEFBE8',
-                          border: `1px solid ${category.borderColor}`,
-                        }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span
-                            className="text-sm font-medium"
-                            style={{ color: category.color }}
-                          >
-                            📊 {format}
-                          </span>
-                          <ChevronRight
-                            className="w-4 h-4"
-                            style={{ color: '#999' }}
-                          />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Developer Note */}
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <p className="text-xs text-gray-600">
-          🔧 <strong>개발자 노트:</strong>
-        </p>
-        <ul className="text-xs text-gray-500 mt-2 space-y-1 ml-4">
-          <li>• 각 형식을 클릭하면 형식별 통계 페이지로 이동합니다</li>
-          <li>• 통계는 SAYU 생성 시 자동으로 수집됩니다</li>
-          <li>• 현재는 시뮬레이션 데이터를 표시합니다</li>
-        </ul>
-      </div>
+      <p className="text-xs px-1" style={{ color: '#888', lineHeight: 1.6 }}>
+        통계는 내가 쓴 원문을 그대로 세어 보여 줍니다. 가계부·보조장부·주식·식물탐정·타임라인 같은 비서 기록은 각 비서 화면에서 확인합니다.
+      </p>
     </div>
   );
 }

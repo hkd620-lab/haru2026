@@ -62,6 +62,7 @@ import { useSubscription } from '../hooks/useSubscription';
 import { compressUploadPhoto as compressImage } from '../services/photoUploadService';
 import { fingerprintPlantEntry, readPlantDetectiveSelection, PLANT_EDIT_CONFLICT, type PlantDetectiveSelection } from '../utils/plantDetectiveEdit';
 import { parseHouseholdAmountText, parseKoreanUnitAmount } from '../utils/householdAmount';
+import { isSpecialDayRecord } from '../records/recordStats';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
 const FORMAT_FIRST_FIELD: Record<string, string> = {
@@ -2401,10 +2402,9 @@ export function SayuPage() {
     setSelectedDateFormats([{ key: formatKey, label: formatLabel, recordId: record.id }]);
 
     const sayuKey = `${formatKey}_sayu`;
-    const ratingKey = `${formatKey}_rating`;
     const imagesKey = `${formatKey}_images`;
 
-    const sayuRating = record[ratingKey] || 0;
+    const sayuRating = isSpecialDayRecord(record, formatKey) ? 1 : 0;
 
     const originalData: Record<string, string> = {};
     Object.keys(record).forEach((key) => {
@@ -2414,7 +2414,8 @@ export function SayuPage() {
         !key.includes('rating') &&
         !key.includes('polished') &&
         !key.includes('images') &&
-        !key.includes('imageMeta')
+        !key.includes('imageMeta') &&
+        typeof record[key] === 'string' // 텃밭 고른 작물 배열(garden_crops) 같은 비문자열 값은 원본 칸에 넣지 않는다
       ) {
         originalData[key] = record[key];
       }
@@ -2686,11 +2687,17 @@ export function SayuPage() {
 
     const sayuKey = `${formatKey}_sayu`;
     const ratingKey = `${formatKey}_rating`;
+    // 특별한 날은 specialDays[형식 키]에 따로 둔다. 업무일지 Rating 칸(work_rating) 문장을 덮어쓰지 않기 위해서다.
+    // (형식_special 은 반려동물 '특별한 일' 입력 칸 pet_special 과 겹쳐 맵으로 둔다.)
+    // 옛 숫자 _rating(0/1)은 그대로 두고 읽을 때 구분한다. 업무일지만 Rating 칸이 숫자로 덮인 값이라 지운다.
+    const isSpecial = rating > 0;
+    const hasLegacyRating = formatKey === 'work' && typeof record[ratingKey] === 'number';
 
     try {
       await firestoreService.updateRecord(user!.uid, record.id, {
         [sayuKey]: editedContent,
-        [ratingKey]: rating,
+        [`specialDays.${formatKey}`]: isSpecial,
+        ...(hasLegacyRating ? { [ratingKey]: null } : {}),
       });
 
       if (record.isPublic === true) {
@@ -2700,7 +2707,11 @@ export function SayuPage() {
       setRecords((prev) =>
         prev.map((r) =>
           r.id === record.id
-            ? { ...r, [sayuKey]: editedContent, [ratingKey]: rating }
+            ? (() => {
+                const next: any = { ...r, [sayuKey]: editedContent, specialDays: { ...(r.specialDays || {}), [formatKey]: isSpecial } };
+                if (hasLegacyRating) delete next[ratingKey];
+                return next;
+              })()
             : r
         )
       );

@@ -2100,6 +2100,8 @@ class FirestoreService {
     if (key === 'rating' || key.endsWith('_rating')) return true;
     if (key === 'style' || key.endsWith('_style')) return true;
     if (key === 'mode' || key.endsWith('_mode')) return true;
+    // 통계·특별한 날 표시와 텃밭 고른 작물 배열(본문 아님, garden_crop 문자열이 본문에 남는다)
+    if (key === 'specialDays' || key === 'statsChecks' || key === 'garden_crops') return true;
     return false;
   }
 

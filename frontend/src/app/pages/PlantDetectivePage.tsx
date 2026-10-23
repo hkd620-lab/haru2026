@@ -2191,6 +2191,14 @@ export function PlantDetectivePage() {
             <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7654', lineHeight: 1.5 }}>
               AI 판독 + 관찰일기 + 나만의 식물도감
             </p>
+            {/* 비서 통계는 통계 화면에서 빠져 각 비서 화면에서 연다(2026-10-23 결정 ④) */}
+            <button
+              type="button"
+              onClick={() => navigate('/stats/assistant/plant')}
+              style={{ marginTop: 6, padding: 0, border: 'none', background: 'none', color: '#4A5A2C', fontSize: 12, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}
+            >
+              내 식물 기록 통계 보기 →
+            </button>
           </div>
         </div>
       </header>

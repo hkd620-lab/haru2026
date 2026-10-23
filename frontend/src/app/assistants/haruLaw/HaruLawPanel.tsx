@@ -308,7 +308,7 @@ export function useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, tempera
         date: dateStr,
         weather: existingRecord?.weather || weather,
         temperature: existingRecord?.temperature || temperature,
-        mood: existingRecord?.mood || mood,
+        ...((existingRecord?.mood || mood) ? { mood: existingRecord?.mood || mood } : {}),
         formats: mergedFormats,
         content: typeof existingRecord?.content === 'string' ? existingRecord.content : '',
         sourceAgent: '하루LAW',

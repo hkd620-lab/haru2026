@@ -1,16 +1,35 @@
 /**
  * HARU2026 EPUB 내보내기 — Firebase Function
  * Firestore: users/{uid}/records/{date}
- * 요청: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD' }
- * 응답: { success, base64, fileName, count }
+ * 요청: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD', format?, recordIds?, filter? }
+ *   recordIds 가 있으면 합본 화면·PDF에 보인 기록만 같은 순서로 담는다(SAYU 글 + 그 형식 사진, 서버에서 조건 재확인).
+ * 응답: { success, downloadUrl, fileName, count, skippedPhotos }
  */
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { hasInternalPremiumAccess } from './internalEntitlements';
 import { buildFormatPrefixMap } from './formats/formatRegistry';
 import Epub from 'epub-gen-memory';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  createTempPhotoFetcher,
+  escapeHtml,
+  preparePhotos,
+  getRecordPhotoUrls,
+  isEligibleMergeRecord,
+  isMergeRecordFormat,
+  mergeRecordToHtml,
+  validateRecordIds,
+} from './epubContent';
 
 const db = admin.firestore();
+
+interface EpubPhoto {
+  url: string;
+  caption?: string;
+}
 
 const EPUB_INCLUDE_FORMATS = [
   '일기', '에세이', '선교보고', '일반보고', '업무일지',
@@ -29,7 +48,10 @@ function dateLabel(date: string): string {
   return date.replace(/-/g, '.');
 }
 
-function recordToHtml(record: Record<string, any>): string {
+// 본문 HTML(사진 제외). 사진은 내려받기 확인 뒤 호출하는 쪽에서 붙인다.
+// bodyFormat 이 있으면 그 형식의 본문을, 없으면 기록의 첫 번째 포함 형식 본문을 쓴다.
+// 타임라인 사진은 timelinePhotos 로 돌려주고(본문에 원격 주소를 넣지 않음), 다른 사진과 같은 준비 단계를 거친다.
+function recordToHtml(record: Record<string, any>, bodyFormat?: string, timelinePhotos: EpubPhoto[] = []): string {
   const lines: string[] = [];
 
   // 날씨/기분
@@ -38,12 +60,12 @@ function recordToHtml(record: Record<string, any>): string {
 
   // 제목
   const title = record.title || record.ai_title;
-  if (title) lines.push(`<h2>${String(title)}</h2>`);
+  if (title) lines.push(`<h2>${escapeHtml(String(title))}</h2>`);
 
   // 본문
   const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
   const includedFormats = formats.filter((f) => EPUB_INCLUDE_FORMATS.includes(f));
-  const firstFormat = includedFormats[0] ?? null;
+  const firstFormat = bodyFormat && includedFormats.includes(bodyFormat) ? bodyFormat : (includedFormats[0] ?? null);
   const prefix = firstFormat ? (FORMAT_PREFIX[firstFormat] ?? null) : null;
   let bodyAdded = false;
 
@@ -55,10 +77,9 @@ function recordToHtml(record: Record<string, any>): string {
     }
     const items = Array.isArray(record.timelineItems) ? record.timelineItems : [];
     for (const item of items) {
-      if (item?.url) {
+      if (typeof item?.url === 'string' && /^https?:\/\//.test(item.url)) {
         const cap = [item.takenDate, item.locationLabel, item.memo].filter(Boolean).join(' · ');
-        lines.push(`<img src="${item.url}" style="max-width:100%;margin:8px 0;">`);
-        if (cap) lines.push(`<p style="font-size:0.85em;color:#666;">${cap}</p>`);
+        timelinePhotos.push({ url: item.url, caption: cap || undefined });
         bodyAdded = true;
       }
     }
@@ -82,14 +103,14 @@ function recordToHtml(record: Record<string, any>): string {
     // 일반 포맷 — prefix_sayu → prefix_simple → prefix_content 우선
     const bodyText = record[`${prefix}_sayu`] ?? record[`${prefix}_simple`] ?? record[`${prefix}_content`] ?? null;
     if (bodyText) {
-      lines.push(`<div>${String(bodyText).replace(/\n/g, '<br/>')}</div>`);
+      lines.push(`<div>${escapeHtml(String(bodyText)).replace(/\n/g, '<br/>')}</div>`);
       bodyAdded = true;
     }
     if (!bodyAdded) {
       // 블랙리스트 제외 prefix_ 필드 조합
       const SUFFIX_BLACKLIST = new Set([
         '_sayu', '_simple', '_content', '_mode', '_style',
-        '_polishedAt', '_final_sayu', '_imageMeta',
+        '_polishedAt', '_final_sayu', '_imageMeta', '_images',
       ]);
       const bodyParts: string[] = [];
       for (const [key, val] of Object.entries(record)) {
@@ -98,7 +119,7 @@ function recordToHtml(record: Record<string, any>): string {
         bodyParts.push(`${key.slice(prefix.length + 1)}: ${val}`);
       }
       if (bodyParts.length > 0) {
-        lines.push(`<div>${bodyParts.join('<br/>')}</div>`);
+        lines.push(`<div>${bodyParts.map(escapeHtml).join('<br/>')}</div>`);
         bodyAdded = true;
       }
     }
@@ -106,26 +127,6 @@ function recordToHtml(record: Record<string, any>): string {
 
   if (!bodyAdded) {
     lines.push('<p>(내용 없음)</p>');
-  }
-
-  // 이미지 — record.images 배열 우선, 없으면 imageMeta 필드
-  if (Array.isArray(record.images) && record.images.length > 0) {
-    for (const url of record.images) {
-      if (typeof url === 'string' && url) lines.push(`<img src="${url}" style="max-width:100%;margin:8px 0;">`);
-    }
-  } else {
-    for (const [key, val] of Object.entries(record)) {
-      if (!key.endsWith('imageMeta')) continue;
-      let items: any[] = [];
-      if (Array.isArray(val)) {
-        items = val;
-      } else if (typeof val === 'string') {
-        try { const parsed = JSON.parse(val); if (Array.isArray(parsed)) items = parsed; } catch { /* 무시 */ }
-      }
-      for (const item of items) {
-        if (item?.url) lines.push(`<img src="${item.url}" style="max-width:100%;margin:8px 0;">`);
-      }
-    }
   }
 
   return lines.join('\n');
@@ -155,8 +156,10 @@ async function requirePaidSubscription(uid: string): Promise<void> {
 export const exportEpub = onCall(
   {
     region: 'asia-northeast3',
-    timeoutSeconds: 120,
-    memory: '512MiB',
+    // 사진을 포함한 EPUB 생성 여유를 확보하고 한 인스턴스의 생성 작업이 겹치지 않게 한다.
+    timeoutSeconds: 300,
+    memory: '1GiB',
+    concurrency: 1,
   },
   async (request) => {
     if (!request.auth) {
@@ -165,9 +168,37 @@ export const exportEpub = onCall(
     const uid = request.auth.uid;
     await requirePaidSubscription(uid);
 
-    const { startDate, endDate, format } = request.data as { startDate: string; endDate: string; format?: string };
+    const { startDate, endDate, format, filter } = request.data as { startDate: string; endDate: string; format?: string; filter?: string };
     if (!startDate || !endDate || startDate > endDate) {
       throw new HttpsError('invalid-argument', '날짜 범위가 올바르지 않습니다.');
+    }
+    const recordIds = validateRecordIds((request.data as { recordIds?: unknown }).recordIds);
+    if (recordIds !== null && (recordIds.length === 0 || !isMergeRecordFormat(format))) {
+      throw new HttpsError('invalid-argument', '합본 기록 목록이 올바르지 않습니다.');
+    }
+
+    const chapters: { title: string; content: string; photos: EpubPhoto[] }[] = [];
+
+    if (recordIds) {
+      // 합본: 화면·PDF에 보인 기록만 같은 순서로. 본인 기록 경로에서만 읽고 조건을 다시 확인한다.
+      const prefix = FORMAT_PREFIX[format as string];
+      const refs = recordIds.map((id) => db.doc(`users/${uid}/records/${id}`));
+      const snaps = [];
+      for (let i = 0; i < refs.length; i += 100) snaps.push(...await db.getAll(...refs.slice(i, i + 100)));
+      for (const snap of snaps) {
+        if (!snap.exists) continue;
+        const record: Record<string, any> = { id: snap.id, ...snap.data() };
+        if (!isEligibleMergeRecord(record, prefix, { startDate, endDate, filter })) continue;
+        chapters.push({
+          title: dateLabel(String(record.date).slice(0, 10)),
+          content: mergeRecordToHtml(record, prefix, []),
+          photos: getRecordPhotoUrls(record, prefix).map((url) => ({ url })),
+        });
+      }
+      if (chapters.length === 0) {
+        throw new HttpsError('not-found', '조건에 맞는 SAYU 완료 기록이 없습니다.');
+      }
+      return buildAndSave(uid, startDate, endDate, format, chapters);
     }
 
     const recordsRef = db.collection(`users/${uid}/records`);
@@ -181,7 +212,6 @@ export const exportEpub = onCall(
       throw new HttpsError('not-found', '선택한 기간에 기록이 없습니다.');
     }
 
-    const chapters: { title: string; content: string }[] = [];
     snapshot.forEach((docSnap) => {
       const record: Record<string, any> = { id: docSnap.id, ...docSnap.data() };
       const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
@@ -189,13 +219,47 @@ export const exportEpub = onCall(
       if (includedFormats.length === 0) return;
       if (format && !includedFormats.includes(format)) return;
       const title = `${dateLabel(record.date)} [${includedFormats.join(' · ')}]`;
-      const content = recordToHtml(record);
-      chapters.push({ title, content });
+      const timelinePhotos: EpubPhoto[] = [];
+      const content = recordToHtml(record, format, timelinePhotos);
+      // 사진: 요청 형식이 있으면 그 형식의 사진만, 없으면 포함된 형식마다(형식당 최대 5장, 같은 사진은 한 번). 타임라인 사진도 같이 준비한다.
+      const photoFormats = format ? [format] : includedFormats;
+      const formatPhotos = Array.from(new Set(photoFormats.flatMap((f) => (FORMAT_PREFIX[f] ? getRecordPhotoUrls(record, FORMAT_PREFIX[f]) : []))));
+      chapters.push({ title, content, photos: [...timelinePhotos, ...formatPhotos.map((url) => ({ url }))] });
     });
 
     if (chapters.length === 0) {
       throw new HttpsError('not-found', '내보낼 기록 형식이 없습니다.');
     }
+
+    return buildAndSave(uid, startDate, endDate, format, chapters);
+  },
+);
+
+async function buildAndSave(
+  uid: string,
+  startDate: string,
+  endDate: string,
+  format: string | undefined,
+  rawChapters: { title: string; content: string; photos: EpubPhoto[] }[],
+) {
+  // 사진은 서버가 한 번 내려받아 임시 파일로 넘긴다. 실제로 받은 사진만 넣고 받지 못한 장수를 센다.
+  const photoDir = await mkdtemp(join(tmpdir(), 'epub-'));
+  try {
+    const { srcByChapter, failed, overLimit } = await preparePhotos(
+      rawChapters.map((chapter) => chapter.photos.map((photo) => photo.url)),
+      createTempPhotoFetcher(photoDir),
+    );
+    // 받은 사진만 넣는다. 사진을 받지 못하면 그 캡션도 함께 뺀다.
+    const chapters = rawChapters.map((chapter, index) => {
+      const lines = [chapter.content];
+      chapter.photos.forEach((photo, photoIndex) => {
+        const src = srcByChapter[index][photoIndex];
+        if (!src) return;
+        lines.push(`<img src="${escapeHtml(src)}" style="max-width:100%;margin:8px 0;">`);
+        if (photo.caption) lines.push(`<p style="font-size:0.85em;color:#666;">${escapeHtml(photo.caption)}</p>`);
+      });
+      return { title: chapter.title, content: lines.join('\n') };
+    });
 
     const epubOptions = {
       title: format
@@ -204,6 +268,8 @@ export const exportEpub = onCall(
       author: 'HARU2026',
       lang: 'ko',
       css: 'body,html{column-count:1!important;columns:1!important;column-width:auto!important;}*{column-count:unset!important;}',
+      // 사진은 이미 임시 파일로 받아 두었다(file://). 만일 읽기에 실패해도 전체를 멈추지 않는다.
+      ignoreFailedDownloads: true,
     };
 
     const epubBuffer = await Epub(epubOptions, chapters);
@@ -225,6 +291,10 @@ export const exportEpub = onCall(
       downloadUrl,
       fileName,
       count: chapters.length,
+      skippedPhotos: failed,
+      limitedPhotos: overLimit,
     };
-  },
-);
+  } finally {
+    await rm(photoDir, { recursive: true, force: true }).catch(() => undefined);
+  }
+}

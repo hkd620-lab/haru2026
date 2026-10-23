@@ -194,7 +194,8 @@ export function RecordPage() {
     }
   };
   const [currentDate] = useState(new Date());
-  const [mood, setMood] = useState<Mood>('평온');
+  // 기분은 기본값 없이, 사용자가 고를 때만 저장한다(2026-10-23 결정 ①). 같은 기분을 다시 누르면 선택을 해제한다.
+  const [mood, setMood] = useState<Mood | ''>('');
   const [showEnvToast, setShowEnvToast] = useState(false);
   const [weatherTags, setWeatherTags] = useState<string[]>(DEFAULT_WEATHER);
   const [temperatureTags, setTemperatureTags] = useState<string[]>(DEFAULT_TEMPERATURE);
@@ -477,7 +478,7 @@ export function RecordPage() {
                   onClick={() => {
                     if (type === 'weather') setWeather(tag as Weather);
                     else if (type === 'temperature') setTemperature(tag as Temperature);
-                    else setMood(tag as Mood);
+                    else setMood((prev) => (prev === tag ? '' : tag as Mood));
                   }}
                   onStartEdit={() => setEditingTag({ type, original: tag, value: tag })}
                   onEditValueChange={(value) =>
@@ -773,6 +774,9 @@ export function RecordPage() {
       if (typeof value === 'string' && value.trim().length > 0) {
         updateData[key] = value;
         hasContent = true;
+      } else if (key === 'garden_crops' && Array.isArray(value)) {
+        // 텃밭일지에서 고른 작물(문자열 배열). 내용으로 세지는 않는다 — 2026-10-23 결정 ②
+        updateData[key] = value.filter((crop) => typeof crop === 'string' && crop.trim()).map((crop) => crop.trim());
       }
     });
     if (!hasContent) {
@@ -785,7 +789,7 @@ export function RecordPage() {
         date: targetRecordDate,
         weather,
         temperature,
-        mood,
+        ...(mood ? { mood } : {}),
         formats: formatsOverride ?? selectedFormats,
         content: '',
         ...(shouldSaveGrowthEntry && growthSubjectId ? {
