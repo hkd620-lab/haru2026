@@ -1715,7 +1715,7 @@ export function SayuModal({
     showLoading('AI가 다듬고 있습니다');
     try {
       const contentValues = Object.values(editedOriginalData)
-        .filter(v => v && v.trim())
+        .filter(v => typeof v === 'string' && v.trim())
         .join('\n\n');
       if (!contentValues.trim()) {
         toast.error('다듬을 내용이 없습니다.');

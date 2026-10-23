@@ -2414,7 +2414,8 @@ export function SayuPage() {
         !key.includes('rating') &&
         !key.includes('polished') &&
         !key.includes('images') &&
-        !key.includes('imageMeta')
+        !key.includes('imageMeta') &&
+        typeof record[key] === 'string' // 텃밭 고른 작물 배열(garden_crops) 같은 비문자열 값은 원본 칸에 넣지 않는다
       ) {
         originalData[key] = record[key];
       }

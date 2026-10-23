@@ -30,6 +30,12 @@ assert.doesNotMatch(sayuPage, /\[ratingKey\]: rating[,\s]/);
 // 새 필드는 기록 내보내기 본문에 섞지 않는다
 assert.match(service, /key === 'specialDays' \|\| key === 'statsChecks' \|\| key === 'garden_crops'/);
 
+// 원본 칸·다시 다듬기에 비문자열 값(garden_crops 배열)이 섞이지 않는다
+assert.match(sayuPage, /typeof record\[key\] === 'string' \/\/ 텃밭 고른 작물 배열/);
+assert.match(sayuModal, /\.filter\(v => typeof v === 'string' && v\.trim\(\)\)/);
+// 옛 garden_crop 문자열을 고른 작물로 복원하지 않는다
+assert.doesNotMatch(formatModal, /initialData\.garden_crop\.split/);
+
 // 구형 iOS Safari 호환: 통계 모듈은 lookbehind 정규식을 쓰지 않는다
 assert.doesNotMatch(stats, /\(\?<[=!]/);
 

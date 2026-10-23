@@ -544,15 +544,17 @@ function formatInsights(format: RecordFormat, entries: StatsEntry[], context: Fo
     }
     case '텃밭일지': {
       const selected: StatsCandidate[] = [];
+      // 고른 작물이 1개 이상이면 사실, 빈 배열(고르지 않음·선택 해제)은 본문 대조로 넘긴다.
+      const hasSelectedCrops = (entry: StatsEntry) => Array.isArray(entry.record.garden_crops) && entry.record.garden_crops.length > 0;
       for (const entry of entries) {
-        const list = Array.isArray(entry.record.garden_crops) ? entry.record.garden_crops : [];
+        const list = hasSelectedCrops(entry) ? entry.record.garden_crops : [];
         for (const crop of list) {
           const value = text(crop);
           if (value) selected.push({ id: candidateId('crop', value, entry.recordId), recordId: entry.recordId, date: entry.date, kind: 'crop', value, sentence: `고른 작물: ${list.join(', ')}`, source: 'auto' });
         }
       }
       const rule = dictionaryRule('crop', context.crops || []);
-      const mentioned = rule ? collect(entries.filter((entry) => !Array.isArray(entry.record.garden_crops)), prefix, rule) : [];
+      const mentioned = rule ? collect(entries.filter((entry) => !hasSelectedCrops(entry)), prefix, rule) : [];
       const crops = [...selected, ...mentioned];
       const work = collect(entries, prefix, {
         kind: 'work',

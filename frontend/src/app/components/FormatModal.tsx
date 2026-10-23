@@ -644,13 +644,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       initialPhotoUploadFailedRef.current = false;
       setInitialPhotoUploadFailed(false);
       setFormData((format === '육아일기' || format === '성장기록') ? { ...initialData, child_measuredate: initialData.child_measuredate || getTodayInputValue() } : initialData);
-      // 편집: 고른 작물 배열이 있으면 그대로, 없으면(옛 기록) 저장된 작물 문자열을 나눠 복원한다.
+      // 편집: 고른 작물 배열이 있으면 그대로 복원한다. 옛 기록의 garden_crop 문자열은 등록 작물 전체나 자유 문장이라
+      // 고른 작물로 볼 수 없어 빈 선택으로 시작한다.
       setSelectedCrops(
         Array.isArray((initialData as any).garden_crops)
           ? (initialData as any).garden_crops.filter((crop: unknown) => typeof crop === 'string')
-          : typeof initialData.garden_crop === 'string'
-            ? initialData.garden_crop.split(/\s*,\s*/).map((crop) => crop.trim()).filter(Boolean)
-            : [],
+          : [],
       );
       setGrowthSubjectBirthdate('');
       setGrowthSubjectGender('');

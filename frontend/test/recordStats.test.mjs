@@ -135,6 +135,10 @@ test('텃밭 예시: 고른 작물(사실)·등록 작물 본문 언급(후보)�
   const chosen = stats.computeFormatStats([{ id: '3', date: '2026-10-22', formats: ['텃밭일지'], garden_crops: ['고추'], garden_simple: '토마토 이야기' }], '텃밭일지', range('2026-10-01', '2026-10-31'), { today: '2026-10-23', crops: ['고추', '토마토'] });
   assert.equal(insight(chosen, 'crops').source, 'auto');
   assert.deepEqual(insight(chosen, 'crops').candidates.map((c) => c.value), ['고추']);
+  // 빈 배열(고르지 않음)은 본문 대조로 넘어간다
+  const none = stats.computeFormatStats([{ id: '4', date: '2026-10-22', formats: ['텃밭일지'], garden_crops: [], garden_simple: '고추에 물을 줬다.' }], '텃밭일지', range('2026-10-01', '2026-10-31'), { today: '2026-10-23', crops: ['고추', '토마토'] });
+  assert.equal(insight(none, 'crops').source, 'candidate');
+  assert.deepEqual(insight(none, 'crops').candidates.map((c) => c.value), ['고추']);
 });
 
 test('반려동물·육아 예시: 수치는 대상·단위·원문 문장과 함께, 한 기록에 수치가 여럿이면 모두', () => {
