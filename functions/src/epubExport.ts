@@ -10,10 +10,13 @@ import * as admin from 'firebase-admin';
 import { hasInternalPremiumAccess } from './internalEntitlements';
 import { buildFormatPrefixMap } from './formats/formatRegistry';
 import Epub from 'epub-gen-memory';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
-  checkPhotoUrl,
+  createTempPhotoFetcher,
   escapeHtml,
-  filterReachablePhotos,
+  preparePhotos,
   getRecordPhotoUrls,
   isEligibleMergeRecord,
   isMergeRecordFormat,
@@ -232,45 +235,49 @@ async function buildAndSave(
   format: string | undefined,
   rawChapters: { title: string; content: string; photos: string[] }[],
 ) {
-  const { urlsByChapter, failed, overLimit } = await filterReachablePhotos(rawChapters.map((chapter) => chapter.photos), checkPhotoUrl);
-  const chapters = rawChapters.map((chapter, index) => ({
-    title: chapter.title,
-    content: [chapter.content, ...urlsByChapter[index].map((url) => `<img src="${escapeHtml(url)}" style="max-width:100%;margin:8px 0;">`)].join('\n'),
-  }));
+  // 사진은 서버가 한 번 내려받아 임시 파일로 넘긴다. 실제로 받은 사진만 넣고 받지 못한 장수를 센다.
+  const photoDir = await mkdtemp(join(tmpdir(), 'epub-'));
+  try {
+    const { srcByChapter, failed, overLimit } = await preparePhotos(rawChapters.map((chapter) => chapter.photos), createTempPhotoFetcher(photoDir));
+    const chapters = rawChapters.map((chapter, index) => ({
+      title: chapter.title,
+      content: [chapter.content, ...srcByChapter[index].map((src) => `<img src="${escapeHtml(src)}" style="max-width:100%;margin:8px 0;">`)].join('\n'),
+    }));
 
-  const epubOptions = {
-    title: format
-      ? `HARU ${format} ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`
-      : `HARU 기록 ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`,
-    author: 'HARU2026',
-    lang: 'ko',
-    css: 'body,html{column-count:1!important;columns:1!important;column-width:auto!important;}*{column-count:unset!important;}',
-    // 미리 확인한 뒤에도 내려받기가 실패하면 그 사진만 빼고 계속 만든다.
-    ignoreFailedDownloads: true,
-    fetchTimeout: 15000,
-    retryTimes: 2,
-  };
+    const epubOptions = {
+      title: format
+        ? `HARU ${format} ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`
+        : `HARU 기록 ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`,
+      author: 'HARU2026',
+      lang: 'ko',
+      css: 'body,html{column-count:1!important;columns:1!important;column-width:auto!important;}*{column-count:unset!important;}',
+      // 사진은 이미 임시 파일로 받아 두었다(file://). 만일 읽기에 실패해도 전체를 멈추지 않는다.
+      ignoreFailedDownloads: true,
+    };
 
-  const epubBuffer = await Epub(epubOptions, chapters);
-  const fileName = format
-    ? `HARU_${format}_${startDate}_${endDate}.epub`
-    : `HARU_기록_${startDate}_${endDate}.epub`;
+    const epubBuffer = await Epub(epubOptions, chapters);
+    const fileName = format
+      ? `HARU_${format}_${startDate}_${endDate}.epub`
+      : `HARU_기록_${startDate}_${endDate}.epub`;
 
-  const bucket = admin.storage().bucket();
-  const filePath = `epub/${uid}/${fileName}`;
-  const fileRef = bucket.file(filePath);
-  await fileRef.save(epubBuffer, { contentType: 'application/epub+zip' });
-  const [downloadUrl] = await fileRef.getSignedUrl({
-    action: 'read',
-    expires: Date.now() + 10 * 60 * 1000, // 10분
-  });
+    const bucket = admin.storage().bucket();
+    const filePath = `epub/${uid}/${fileName}`;
+    const fileRef = bucket.file(filePath);
+    await fileRef.save(epubBuffer, { contentType: 'application/epub+zip' });
+    const [downloadUrl] = await fileRef.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 10 * 60 * 1000, // 10분
+    });
 
-  return {
-    success: true,
-    downloadUrl,
-    fileName,
-    count: chapters.length,
-    skippedPhotos: failed,
-    limitedPhotos: overLimit,
-  };
+    return {
+      success: true,
+      downloadUrl,
+      fileName,
+      count: chapters.length,
+      skippedPhotos: failed,
+      limitedPhotos: overLimit,
+    };
+  } finally {
+    await rm(photoDir, { recursive: true, force: true }).catch(() => undefined);
+  }
 }

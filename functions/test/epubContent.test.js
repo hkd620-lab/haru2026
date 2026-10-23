@@ -49,15 +49,49 @@ test('합본 장: 요청 형식의 SAYU 글을 쓰고 HTML 을 이스케이프�
   assert.doesNotMatch(html, /에세이/);
 });
 
-test('사진 내려받기 확인: 실패한 사진만 빼고 개수를 세며, 파일당 상한을 넘는 사진도 센다', async () => {
+test('사진 준비: 받지 못한 사진만 빼고 개수를 세며, 파일당 상한을 넘는 사진도 따로 센다', async () => {
   const chapters = [['https://ok/1', 'https://bad/2'], ['https://ok/3', 'https://ok/4']];
-  const check = async (url) => !url.includes('bad');
-  const result = await epub.filterReachablePhotos(chapters, check, { maxTotal: 3 });
-  assert.deepEqual(result.urlsByChapter, [['https://ok/1'], ['https://ok/3']]);
+  const fetchPhoto = async (url) => (url.includes('bad') ? null : `file:///tmp/${url.slice(-1)}.jpg`);
+  const result = await epub.preparePhotos(chapters, fetchPhoto, { maxTotal: 3 });
+  assert.deepEqual(result.srcByChapter, [['file:///tmp/1.jpg'], ['file:///tmp/3.jpg']]);
   assert.equal(result.failed, 1);
   assert.equal(result.overLimit, 1);
-  const thrown = await epub.filterReachablePhotos([['https://x/1']], async () => { throw new Error('net'); });
-  assert.deepEqual(thrown.urlsByChapter, [[]]);
+  const thrown = await epub.preparePhotos([['https://x/1']], async () => { throw new Error('net'); });
+  assert.deepEqual(thrown.srcByChapter, [[]]);
   assert.equal(thrown.failed, 1);
   assert.equal(thrown.overLimit, 0);
+});
+
+test('실제 EPUB: HEAD 200·GET 503 사진은 빈 이미지로 남지 않고 누락으로 세며, 받은 사진만 들어간다', async () => {
+  const http = require('node:http');
+  const os = require('node:os');
+  const fs = require('node:fs/promises');
+  const path = require('node:path');
+  const Epub = require('epub-gen-memory').default;
+  const JSZip = require('jszip');
+  // 1x1 PNG
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const server = http.createServer((req, res) => {
+    if (req.url === '/ok.png') { res.writeHead(200, { 'content-type': 'image/png' }); res.end(req.method === 'HEAD' ? undefined : png); return; }
+    if (req.url === '/head-only.png') { res.writeHead(req.method === 'HEAD' ? 200 : 503, { 'content-type': 'image/png' }); res.end(); return; }
+    res.writeHead(404); res.end();
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'epub-test-'));
+  try {
+    const { srcByChapter, failed } = await epub.preparePhotos([[`${base}/ok.png`, `${base}/head-only.png`]], epub.createTempPhotoFetcher(dir));
+    assert.equal(failed, 1);
+    assert.equal(srcByChapter[0].length, 1);
+    const content = ['<p>본문</p>', ...srcByChapter[0].map((src) => `<img src="${epub.escapeHtml(src)}">`)].join('\n');
+    const buffer = await Epub({ title: 't', author: 'a', lang: 'ko', ignoreFailedDownloads: true, verbose: false }, [{ title: 'c', content }]);
+    const zip = await JSZip.loadAsync(buffer);
+    const images = Object.values(zip.files).filter((file) => file.name.startsWith('OEBPS/images/') && !file.dir);
+    assert.equal(images.length, 1);
+    const data = await images[0].async('nodebuffer');
+    assert.ok(data.length > 0);
+  } finally {
+    server.close();
+    await fs.rm(dir, { recursive: true, force: true });
+  }
 });

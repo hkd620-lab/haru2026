@@ -1,5 +1,8 @@
 // EPUB 본문·사진 규칙 — firebase-admin 없이 테스트할 수 있게 epubExport.ts 에서 분리했다.
 // 사진·특별한 날·SAYU 판정은 프런트 frontend/src/app/records/recordStats.ts 와 같은 규칙을 쓴다(2026-10-23).
+import { writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { STATS_MERGE_RECORD_FORMATS } from './formats/formatRegistry';
 
 export const MAX_RECORD_PHOTOS = 5;
@@ -88,16 +91,18 @@ export function mergeRecordToHtml(record: Record<string, any>, prefix: string, p
   return lines.join('\n');
 }
 
-export type PhotoChecker = (url: string) => Promise<boolean>;
+// 사진 1장을 받아 EPUB 라이브러리가 읽을 주소(file://…)로 돌려준다. 받지 못하면 null.
+export type PhotoFetcher = (url: string, index: number) => Promise<string | null>;
 
-// 내려받을 수 없는 사진은 미리 빼고 개수를 센다. 사진 1장 때문에 EPUB 전체가 실패하지 않게 한다.
-export async function filterReachablePhotos(
+// 사진을 실제로 한 번 내려받은 것만 EPUB에 넣고, 받지 못한 사진(failed)과 파일당 상한을 넘은 사진(overLimit)을 센다.
+// HEAD 만 성공하고 실제 내려받기가 실패해 빈 사진이 들어가는 일을 막는다.
+export async function preparePhotos(
   urlsByChapter: string[][],
-  check: PhotoChecker,
+  fetchPhoto: PhotoFetcher,
   options: { maxTotal?: number; concurrency?: number } = {},
-): Promise<{ urlsByChapter: string[][]; failed: number; overLimit: number }> {
+): Promise<{ srcByChapter: string[][]; failed: number; overLimit: number }> {
   const maxTotal = options.maxTotal ?? MAX_EPUB_PHOTOS;
-  const concurrency = Math.max(1, options.concurrency ?? 12);
+  const concurrency = Math.max(1, options.concurrency ?? 8);
   let budget = maxTotal;
   let failed = 0;
   let overLimit = 0;
@@ -108,34 +113,53 @@ export async function filterReachablePhotos(
     return kept;
   });
   const unique = Array.from(new Set(planned.flat()));
-  const reachable = new Map<string, boolean>();
+  const fetched = new Map<string, string | null>();
   for (let i = 0; i < unique.length; i += concurrency) {
     const batch = unique.slice(i, i + concurrency);
-    const results = await Promise.all(batch.map((url) => check(url).catch(() => false)));
-    batch.forEach((url, index) => reachable.set(url, results[index]));
+    const results = await Promise.all(batch.map((url, offset) => fetchPhoto(url, i + offset).catch(() => null)));
+    batch.forEach((url, offset) => fetched.set(url, results[offset]));
   }
-  const filtered = planned.map((urls) => urls.filter((url) => {
-    const ok = reachable.get(url) === true;
-    if (!ok) failed += 1;
-    return ok;
+  const srcByChapter = planned.map((urls) => urls.flatMap((url) => {
+    const src = fetched.get(url);
+    if (!src) {
+      failed += 1;
+      return [];
+    }
+    return [src];
   }));
-  return { urlsByChapter: filtered, failed, overLimit };
+  return { srcByChapter, failed, overLimit };
 }
 
-// HEAD 로 확인하고, HEAD 가 성공하지 않으면(저장소가 HEAD 를 다르게 답하는 경우 포함) 첫 1바이트 GET 으로 한 번 더 확인한다.
-export const checkPhotoUrl: PhotoChecker = async (url) => {
-  const attempt = async (init: RequestInit) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    try {
-      const response = await fetch(url, { ...init, signal: controller.signal });
-      await response.body?.cancel().catch(() => undefined);
-      return response.ok;
-    } catch {
-      return false;
-    } finally {
-      clearTimeout(timer);
-    }
-  };
-  return (await attempt({ method: 'HEAD' })) || attempt({ method: 'GET', headers: { Range: 'bytes=0-0' } });
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
 };
+
+// 임시 폴더에 사진을 내려받는다(시도당 15초, 실패 시 한 번 더). 이미지가 아니거나 비어 있으면 실패로 본다.
+export function createTempPhotoFetcher(dir: string): PhotoFetcher {
+  return async (url, index) => {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) continue;
+        const type = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+        const extension = IMAGE_EXTENSIONS[type];
+        const data = Buffer.from(await response.arrayBuffer());
+        if (!extension || data.length === 0) return null;
+        const file = join(dir, `photo-${index}.${extension}`);
+        await writeFile(file, data);
+        return pathToFileURL(file).href;
+      } catch {
+        // 다음 시도
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    return null;
+  };
+}
