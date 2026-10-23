@@ -10,12 +10,14 @@ const WRITABLE_CANDIDATES: RecordFormat[] = [
 
 export const WRITABLE_FORMATS = WRITABLE_CANDIDATES.filter((format) => ![
   'HARU가계부', 'HARU보조장부', '성장기록',
-  '선교보고', '일반보고', '주식거래일지',
+  '주식거래일지',
 ].includes(format));
 
 const PREMIUM_DRAFT_FIELD: Partial<Record<RecordFormat, string>> = {
   '일기': 'diary_여백',
   '에세이': 'essay_space',
+  '선교보고': 'mission_space',
+  '일반보고': 'report_space',
   '업무일지': 'work_space',
   '여행기록': 'travel_space',
   '독서사유': 'reading_journal',
