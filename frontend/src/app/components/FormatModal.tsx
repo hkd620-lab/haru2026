@@ -644,7 +644,14 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       initialPhotoUploadFailedRef.current = false;
       setInitialPhotoUploadFailed(false);
       setFormData((format === '육아일기' || format === '성장기록') ? { ...initialData, child_measuredate: initialData.child_measuredate || getTodayInputValue() } : initialData);
-      setSelectedCrops(Array.isArray((initialData as any).garden_crops) ? (initialData as any).garden_crops.filter((crop: unknown) => typeof crop === 'string') : []);
+      // 편집: 고른 작물 배열이 있으면 그대로, 없으면(옛 기록) 저장된 작물 문자열을 나눠 복원한다.
+      setSelectedCrops(
+        Array.isArray((initialData as any).garden_crops)
+          ? (initialData as any).garden_crops.filter((crop: unknown) => typeof crop === 'string')
+          : typeof initialData.garden_crop === 'string'
+            ? initialData.garden_crop.split(/\s*,\s*/).map((crop) => crop.trim()).filter(Boolean)
+            : [],
+      );
       setGrowthSubjectBirthdate('');
       setGrowthSubjectGender('');
       setPolishedContent('');
@@ -1258,9 +1265,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     setIsSaving(true);
     try {
       const dataToSave = { ...formData, ...getGrowthSaveFields() };
-      if (format === '텃밭일지' && selectedCrops.length > 0) {
-        dataToSave.garden_crop = selectedCrops.join(', ');
+      if (format === '텃밭일지') {
+        // 고른 작물 배열은 비어 있어도 저장한다(선택 해제도 기록에 남김). 문자열 칸은 고른 작물이 있을 때만 쓴다.
         (dataToSave as any).garden_crops = selectedCrops;
+        if (selectedCrops.length > 0) dataToSave.garden_crop = selectedCrops.join(', ');
       }
 
       dataToSave[`${prefix}_style`] = recordStyle;
@@ -2891,9 +2899,9 @@ ${contentValues}`,
         .trim();
     }
 
-    if (format === '텃밭일지' && selectedCrops.length > 0) {
-      dataToSave.garden_crop = selectedCrops.join(', ');
+    if (format === '텃밭일지') {
       (dataToSave as any).garden_crops = selectedCrops;
+      if (selectedCrops.length > 0) dataToSave.garden_crop = selectedCrops.join(', ');
     }
 
     setIsSaving(true);
@@ -2939,9 +2947,9 @@ ${contentValues}`,
       updateData[`${prefix}_stats`] = polishStats;
     }
 
-    if (format === '텃밭일지' && selectedCrops.length > 0) {
-      updateData.garden_crop = selectedCrops.join(', ');
+    if (format === '텃밭일지') {
       (updateData as any).garden_crops = selectedCrops;
+      if (selectedCrops.length > 0) updateData.garden_crop = selectedCrops.join(', ');
     }
 
     updateData[`${prefix}_style`] = recordStyle;

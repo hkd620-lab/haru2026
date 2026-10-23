@@ -10,6 +10,8 @@ import { buildFormatKeyMap } from '../records/formatRegistry';
 import { getRecordPhotoUrls } from '../records/recordStats';
 
 // 합본 보기에서 사진을 찾을 형식(그 밖의 형식은 일기 접두어로 찾는다)
+const MAX_EPUB_RECORDS = 500;
+
 const MERGE_VIEWER_FORMATS: RecordFormat[] = [
   '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기', '메모', '독서사유',
 ];
@@ -142,10 +144,15 @@ export function MergeViewerPage() {
   const handleSaveEPUB = async () => {
     setEpubLoading(true);
     try {
-      // 화면·PDF와 같은 기록(같은 순서)을 EPUB에 담도록 기록 ID를 넘긴다.
-      const { count, fileName, skippedPhotos } = await exportRecordsToEpub(startDate, endDate, format as string, records.map((record) => String(record.id)), state.filter);
+      // 화면·PDF와 같은 기록(같은 순서)을 EPUB에 담도록 기록 ID를 넘긴다. 서버는 한 번에 500개까지 받는다.
+      if (records.length > MAX_EPUB_RECORDS) {
+        toast.warning(`EPUB은 한 번에 ${MAX_EPUB_RECORDS}개 기록까지 만들 수 있습니다. 기간을 나눠 주세요.`);
+        return;
+      }
+      const { count, fileName, skippedPhotos, limitedPhotos } = await exportRecordsToEpub(startDate, endDate, format as string, records.map((record) => String(record.id)), state.filter);
       toast.success(`EPUB 저장 완료 — ${count}개 기록 · ${fileName}`);
       if (skippedPhotos > 0) toast.warning(`사진 ${skippedPhotos}장을 내려받지 못해 EPUB에서 뺐습니다.`);
+      if (limitedPhotos > 0) toast.warning(`EPUB 한 파일에는 사진을 200장까지 넣습니다. 사진 ${limitedPhotos}장은 넣지 않았습니다.`);
     } catch (err) {
       console.error('EPUB 저장 실패:', err);
       toast.error('EPUB 저장에 실패했습니다. 다시 시도해 주세요.');

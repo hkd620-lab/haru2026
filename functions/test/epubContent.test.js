@@ -54,8 +54,10 @@ test('사진 내려받기 확인: 실패한 사진만 빼고 개수를 세며, �
   const check = async (url) => !url.includes('bad');
   const result = await epub.filterReachablePhotos(chapters, check, { maxTotal: 3 });
   assert.deepEqual(result.urlsByChapter, [['https://ok/1'], ['https://ok/3']]);
-  assert.equal(result.skipped, 2);
+  assert.equal(result.failed, 1);
+  assert.equal(result.overLimit, 1);
   const thrown = await epub.filterReachablePhotos([['https://x/1']], async () => { throw new Error('net'); });
   assert.deepEqual(thrown.urlsByChapter, [[]]);
-  assert.equal(thrown.skipped, 1);
+  assert.equal(thrown.failed, 1);
+  assert.equal(thrown.overLimit, 0);
 });

@@ -148,7 +148,8 @@ async function requirePaidSubscription(uid: string): Promise<void> {
 export const exportEpub = onCall(
   {
     region: 'asia-northeast3',
-    timeoutSeconds: 120,
+    // 사진 확인·내려받기 시간을 감안해 120초 → 300초(실행한 만큼만 과금, 메모리는 그대로)
+    timeoutSeconds: 300,
     memory: '512MiB',
   },
   async (request) => {
@@ -231,7 +232,7 @@ async function buildAndSave(
   format: string | undefined,
   rawChapters: { title: string; content: string; photos: string[] }[],
 ) {
-  const { urlsByChapter, skipped } = await filterReachablePhotos(rawChapters.map((chapter) => chapter.photos), checkPhotoUrl);
+  const { urlsByChapter, failed, overLimit } = await filterReachablePhotos(rawChapters.map((chapter) => chapter.photos), checkPhotoUrl);
   const chapters = rawChapters.map((chapter, index) => ({
     title: chapter.title,
     content: [chapter.content, ...urlsByChapter[index].map((url) => `<img src="${escapeHtml(url)}" style="max-width:100%;margin:8px 0;">`)].join('\n'),
@@ -246,6 +247,8 @@ async function buildAndSave(
     css: 'body,html{column-count:1!important;columns:1!important;column-width:auto!important;}*{column-count:unset!important;}',
     // 미리 확인한 뒤에도 내려받기가 실패하면 그 사진만 빼고 계속 만든다.
     ignoreFailedDownloads: true,
+    fetchTimeout: 15000,
+    retryTimes: 2,
   };
 
   const epubBuffer = await Epub(epubOptions, chapters);
@@ -267,6 +270,7 @@ async function buildAndSave(
     downloadUrl,
     fileName,
     count: chapters.length,
-    skippedPhotos: skipped,
+    skippedPhotos: failed,
+    limitedPhotos: overLimit,
   };
 }

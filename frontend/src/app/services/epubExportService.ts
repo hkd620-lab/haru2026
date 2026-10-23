@@ -18,6 +18,7 @@ interface EpubExportResponse {
   fileName: string;
   count: number;
   skippedPhotos?: number;
+  limitedPhotos?: number;
 }
 
 export async function exportRecordsToEpub(
@@ -26,12 +27,12 @@ export async function exportRecordsToEpub(
   format?: string,
   recordIds?: string[],
   filter?: 'all' | 'special',
-): Promise<{ count: number; fileName: string; downloadUrl: string; skippedPhotos: number }> {
+): Promise<{ count: number; fileName: string; downloadUrl: string; skippedPhotos: number; limitedPhotos: number }> {
   const functions = getFunctions(undefined, 'asia-northeast3');
   const exportEpub = httpsCallable<EpubExportRequest, EpubExportResponse>(functions, 'exportEpub');
 
   const result = await exportEpub({ startDate, endDate, ...(format ? { format } : {}), ...(recordIds?.length ? { recordIds, ...(filter ? { filter } : {}) } : {}) });
-  const { downloadUrl, fileName, count, skippedPhotos = 0 } = result.data;
+  const { downloadUrl, fileName, count, skippedPhotos = 0, limitedPhotos = 0 } = result.data;
 
   const a = document.createElement('a');
   a.href = downloadUrl;
@@ -40,5 +41,5 @@ export async function exportRecordsToEpub(
   a.click();
   document.body.removeChild(a);
 
-  return { count, fileName, downloadUrl, skippedPhotos };
+  return { count, fileName, downloadUrl, skippedPhotos, limitedPhotos };
 }

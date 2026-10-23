@@ -2687,9 +2687,10 @@ export function SayuPage() {
     const sayuKey = `${formatKey}_sayu`;
     const ratingKey = `${formatKey}_rating`;
     // 특별한 날은 specialDays[형식 키]에 따로 둔다. 업무일지 Rating 칸(work_rating) 문장을 덮어쓰지 않기 위해서다.
-    // 옛 기록의 숫자 _rating(0/1)만 지우고, 문장 별점은 그대로 둔다.
+    // (형식_special 은 반려동물 '특별한 일' 입력 칸 pet_special 과 겹쳐 맵으로 둔다.)
+    // 옛 숫자 _rating(0/1)은 그대로 두고 읽을 때 구분한다. 업무일지만 Rating 칸이 숫자로 덮인 값이라 지운다.
     const isSpecial = rating > 0;
-    const hasLegacyRating = typeof record[ratingKey] === 'number';
+    const hasLegacyRating = formatKey === 'work' && typeof record[ratingKey] === 'number';
 
     try {
       await firestoreService.updateRecord(user!.uid, record.id, {

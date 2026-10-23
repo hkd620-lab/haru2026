@@ -331,9 +331,12 @@ export function computeCommonStats(entries: StatsEntry[], format: RecordFormat):
 // 본문 후보 규칙
 
 // 문장 나누기: 줄바꿈과 문장 끝(. ! ? 。 / 슬래시 구분)을 기준으로 한다.
+// 뒤돌아보기(lookbehind) 정규식은 iOS Safari 16.4 미만에서 오류가 나므로 쓰지 않는다.
 export function splitSentences(body: string): string[] {
   return body
-    .split(/\n+|(?<=[.!?。])\s+|\s+\/\s+/)
+    .replace(/([.!?。])\s+/g, '$1\n')
+    .replace(/\s+\/\s+/g, '\n')
+    .split(/\n+/)
     .map((sentence) => sentence.trim())
     .filter(Boolean);
 }

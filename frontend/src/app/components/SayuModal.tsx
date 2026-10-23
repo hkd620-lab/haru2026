@@ -1427,8 +1427,9 @@ export function SayuModal({
         const titleUpdate: Record<string, string> = {
           weather: editedWeather,
           temperature: editedTemperature,
-          mood: editedMood,
         };
+        // 기분은 고른 경우에만 저장한다(빈 값 저장 금지) — 2026-10-23 결정 ①
+        if (editedMood) titleUpdate.mood = editedMood;
         if (formatKey) {
           titleUpdate[`${formatKey}_title`] = editedTitle.trim();
         }

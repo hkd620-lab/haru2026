@@ -95,14 +95,15 @@ export async function filterReachablePhotos(
   urlsByChapter: string[][],
   check: PhotoChecker,
   options: { maxTotal?: number; concurrency?: number } = {},
-): Promise<{ urlsByChapter: string[][]; skipped: number }> {
+): Promise<{ urlsByChapter: string[][]; failed: number; overLimit: number }> {
   const maxTotal = options.maxTotal ?? MAX_EPUB_PHOTOS;
-  const concurrency = Math.max(1, options.concurrency ?? 8);
+  const concurrency = Math.max(1, options.concurrency ?? 12);
   let budget = maxTotal;
-  let skipped = 0;
+  let failed = 0;
+  let overLimit = 0;
   const planned = urlsByChapter.map((urls) => {
     const kept = urls.slice(0, Math.max(0, budget));
-    skipped += urls.length - kept.length;
+    overLimit += urls.length - kept.length;
     budget -= kept.length;
     return kept;
   });
@@ -115,24 +116,26 @@ export async function filterReachablePhotos(
   }
   const filtered = planned.map((urls) => urls.filter((url) => {
     const ok = reachable.get(url) === true;
-    if (!ok) skipped += 1;
+    if (!ok) failed += 1;
     return ok;
   }));
-  return { urlsByChapter: filtered, skipped };
+  return { urlsByChapter: filtered, failed, overLimit };
 }
 
+// HEAD 로 확인하고, HEAD 가 성공하지 않으면(저장소가 HEAD 를 다르게 답하는 경우 포함) 첫 1바이트 GET 으로 한 번 더 확인한다.
 export const checkPhotoUrl: PhotoChecker = async (url) => {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
-  try {
-    const response = await fetch(url, { method: 'HEAD', signal: controller.signal });
-    if (response.ok) return true;
-    if (response.status === 405) {
-      const retry = await fetch(url, { method: 'GET', headers: { Range: 'bytes=0-0' }, signal: controller.signal });
-      return retry.ok;
+  const attempt = async (init: RequestInit) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try {
+      const response = await fetch(url, { ...init, signal: controller.signal });
+      await response.body?.cancel().catch(() => undefined);
+      return response.ok;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timer);
     }
-    return false;
-  } finally {
-    clearTimeout(timer);
-  }
+  };
+  return (await attempt({ method: 'HEAD' })) || attempt({ method: 'GET', headers: { Range: 'bytes=0-0' } });
 };

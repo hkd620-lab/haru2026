@@ -765,6 +765,9 @@ export function RecordPage() {
       if (typeof value === 'string' && value.trim().length > 0) {
         updateData[key] = value;
         hasContent = true;
+      } else if (key === 'garden_crops' && Array.isArray(value)) {
+        // 텃밭일지에서 고른 작물(문자열 배열). 내용으로 세지는 않는다 — 2026-10-23 결정 ②
+        updateData[key] = value.filter((crop) => typeof crop === 'string' && crop.trim()).map((crop) => crop.trim());
       }
     });
     if (!hasContent) {
