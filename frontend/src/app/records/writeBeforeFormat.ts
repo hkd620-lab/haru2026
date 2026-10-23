@@ -42,3 +42,8 @@ export function buildDraftEditorData(
     _recordDate: date,
   };
 }
+
+export function applyDraftSaveTarget(data: Record<string, string>, draftId: string, draftDate: string): Record<string, string> {
+  if (data.reading_accumulation_mode === 'edit' && data._recordId && data._recordDate) return data;
+  return { ...data, _recordId: draftId, _recordDate: draftDate };
+}

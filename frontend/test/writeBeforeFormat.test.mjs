@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildDraftEditorData, WRITABLE_FORMATS } from '../src/app/records/writeBeforeFormat.ts';
+import { applyDraftSaveTarget, buildDraftEditorData, WRITABLE_FORMATS } from '../src/app/records/writeBeforeFormat.ts';
 
 test('형식 선택 뒤 기존 편집창의 간편·프리미엄 입력칸에 초안이 이어진다', () => {
   const source = '첫 줄\n둘째 줄';
@@ -46,4 +46,12 @@ test('선교·일반보고 초안은 간편 본문과 프리미엄 여백에 전
     assert.equal(draft[`${prefix}_title`], '보고 제목');
     assert.equal(draft[`${prefix}_sayu`], undefined);
   }
+});
+
+test('새 독서 회차는 초안 ID로 재시도하고 기존 회차 수정은 원래 ID·날짜를 유지한다', () => {
+  const existing = { reading_accumulation_mode: 'edit', _recordId: 'old-entry', _recordDate: '2026-10-01', reading_journal: '수정한 소감' };
+  assert.deepEqual(applyDraftSaveTarget(existing, 'draft-id', '2026-10-23'), existing);
+  const appended = applyDraftSaveTarget({ ...existing, reading_accumulation_mode: 'append', _recordId: 'new-entry' }, 'draft-id', '2026-10-23');
+  assert.equal(appended._recordId, 'draft-id');
+  assert.equal(appended._recordDate, '2026-10-23');
 });

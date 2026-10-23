@@ -87,6 +87,7 @@ interface FormatModalProps {
   recordId: string;
   initialData?: Record<string, string>;
   initialPhotos?: File[];
+  initialWritingDraft?: boolean;
   onSave: (formatData: Record<string, string>) => Promise<string | void>;
 }
 
@@ -449,7 +450,7 @@ const LEDGER_OCR_PREVIEW_FIELDS: { key: keyof LedgerOcrFields; label: string }[]
   { key: 'memo', label: '메모' },
 ];
 
-export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, initialPhotos = [], onSave: onSaveRequest }: FormatModalProps) {
+export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, initialPhotos = [], initialWritingDraft = false, onSave: onSaveRequest }: FormatModalProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
@@ -471,6 +472,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isUploading, setIsUploading] = useState(false);
   const isUploadingRef = useRef(false);
   const initialPhotoUploadKeyRef = useRef<string | null>(null);
+  const initialReadingJournalRef = useRef('');
   const initialPhotoUploadFailedRef = useRef(false);
   const [initialPhotoUploadFailed, setInitialPhotoUploadFailed] = useState(false);
   const [isCleaningSessionUploads, setIsCleaningSessionUploads] = useState(false);
@@ -640,6 +642,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       sessionUploadedImageUrlsRef.current = [];
       committedCloseRef.current = false;
       initialPhotoUploadFailedRef.current = false;
+      initialReadingJournalRef.current = initialWritingDraft && format === '독서사유' ? initialData.reading_journal || '' : '';
       setInitialPhotoUploadFailed(false);
       setFormData((format === '육아일기' || format === '성장기록') ? { ...initialData, child_measuredate: initialData.child_measuredate || getTodayInputValue() } : initialData);
       setGrowthSubjectBirthdate('');
@@ -3008,6 +3011,12 @@ ${contentValues}`,
     return selectedExistingBookId ? { ...meta, readingId: selectedExistingBookId, readingBookId: selectedExistingBookId } : meta;
   };
 
+  const resetReadingForBook = (title: string, author: string, startedAt: string) => {
+    const journal = initialReadingJournalRef.current;
+    initialReadingJournalRef.current = '';
+    setFormData((prev) => resetReadingBookDraft(prev, title, author, startedAt, journal));
+  };
+
   // 📚 기존 책 선택 핸들러 — 책 제목/저자 자동 채움 + readonly + 마무리 책 차단
   const onSelectExistingBook = (bookId: string) => {
     if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
@@ -3032,9 +3041,11 @@ ${contentValues}`,
     setEditingReadingEntryDate('');
     setIsReadingBookLocked(true);
     setBlockedBookMessage('');
-    setFormData((prev) => bookId !== selectedExistingBookId
-      ? resetReadingBookDraft(prev, book.bookTitle, book.author, book.lastDate || new Date().toISOString().slice(0, 10))
-      : { ...prev, reading_book_title: book.bookTitle, reading_author: book.author });
+    if (bookId !== selectedExistingBookId) {
+      resetReadingForBook(book.bookTitle, book.author, book.lastDate || new Date().toISOString().slice(0, 10));
+    } else {
+      setFormData((prev) => ({ ...prev, reading_book_title: book.bookTitle, reading_author: book.author }));
+    }
   };
 
   // 📚 "새 책 시작" — 잠금 해제 + 책 제목/저자 비우기
@@ -3049,7 +3060,7 @@ ${contentValues}`,
     setReadingBookTextMode('photo');
     setSelectedBookOcrFiles([]);
     setReadingOcrUsedCount(null);
-    setFormData((prev) => resetReadingBookDraft(prev, '', '', new Date().toISOString().slice(0, 10)));
+    resetReadingForBook('', '', new Date().toISOString().slice(0, 10));
   };
 
   const prepareReadingAppend = (bookId: string) => {
@@ -3594,11 +3605,11 @@ ${contentValues.slice(0, 4100)}`,
                 {/* 새작성 카드 */}
                 <div
                   onClick={() => {
-                    // 빈 폼으로 input 단계 진입
+                    // 공통 작성창의 초안은 첫 책 선택에서 유지한다.
                     setSelectedExistingBookId('');
                     setIsReadingBookLocked(false);
                     setBlockedBookMessage('');
-                    setFormData((prev) => resetReadingBookDraft(prev, '', '', new Date().toISOString().slice(0, 10)));
+                    resetReadingForBook('', '', new Date().toISOString().slice(0, 10));
                     setRecordStep('input');
                   }}
                   style={{
