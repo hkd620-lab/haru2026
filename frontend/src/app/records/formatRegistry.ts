@@ -46,6 +46,13 @@ export const FORMAT_REGISTRY: Record<RecordFormat, FormatDefinition> = {
 // 등록부 순서의 전체 형식 목록
 export const ALL_REGISTERED_FORMATS = Object.keys(FORMAT_REGISTRY) as RecordFormat[];
 
+// 통계·합본·EPUB 대상 기록형식(2026-10-23 허대표님 결정). 비서(가계부·보조장부·주식·성장·타임라인·HARUraw·배뇨)는 넣지 않는다.
+// Functions 복사본: functions/src/formats/formatRegistry.ts STATS_MERGE_RECORD_FORMATS
+export const STATS_MERGE_RECORD_FORMATS: readonly RecordFormat[] = [
+  '일기', '에세이', '여행기록', '독서사유', '텃밭일지', '애완동물관찰일지', '육아일기',
+  '업무일지', '메모', '선교보고', '일반보고',
+];
+
 // 형식의 역할 키(없으면 저장 필드 접두어)
 export function getFormatKey(format: RecordFormat, role?: FormatRoleKey): string {
   const definition = FORMAT_REGISTRY[format];

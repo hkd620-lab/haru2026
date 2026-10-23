@@ -571,6 +571,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
   // 🌱 텃밭일지 전용: 작물 목록 관리
   const [crops, setCrops] = useState<string[]>([]);
+  // 이 기록에서 고른 작물(2026-10-23 결정 ②). 등록 목록 전체가 아니라 고른 작물만 garden_crop·garden_crops에 저장한다.
+  const [selectedCrops, setSelectedCrops] = useState<string[]>([]);
   const [newCropName, setNewCropName] = useState('');
   const [growthSubjects, setGrowthSubjects] = useState<GrowthSubject[]>([]);
   const [selectedGrowthSubjectId, setSelectedGrowthSubjectId] = useState('');
@@ -642,6 +644,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       initialPhotoUploadFailedRef.current = false;
       setInitialPhotoUploadFailed(false);
       setFormData((format === '육아일기' || format === '성장기록') ? { ...initialData, child_measuredate: initialData.child_measuredate || getTodayInputValue() } : initialData);
+      setSelectedCrops(Array.isArray((initialData as any).garden_crops) ? (initialData as any).garden_crops.filter((crop: unknown) => typeof crop === 'string') : []);
       setGrowthSubjectBirthdate('');
       setGrowthSubjectGender('');
       setPolishedContent('');
@@ -1234,6 +1237,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const handleRemoveCrop = async (cropToRemove: string) => {
     const updated = crops.filter(c => c !== cropToRemove);
     setCrops(updated);
+    setSelectedCrops((prev) => prev.filter((crop) => crop !== cropToRemove));
 
     try {
       const db = getFirestore();
@@ -1254,8 +1258,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     setIsSaving(true);
     try {
       const dataToSave = { ...formData, ...getGrowthSaveFields() };
-      if (format === '텃밭일지' && crops.length > 0) {
-        dataToSave.garden_crop = crops.join(', ');
+      if (format === '텃밭일지' && selectedCrops.length > 0) {
+        dataToSave.garden_crop = selectedCrops.join(', ');
+        (dataToSave as any).garden_crops = selectedCrops;
       }
 
       dataToSave[`${prefix}_style`] = recordStyle;
@@ -1352,8 +1357,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
           .map(field => formData[field.key])
           .filter(v => typeof v === "string" && v.trim())
           .join('\n\n');
-        if (format === '텃밭일지' && crops.length > 0) {
-          contentValues = `작물: ${crops.join(', ')}\n\n${contentValues}`;
+        if (format === '텃밭일지' && selectedCrops.length > 0) {
+          contentValues = `작물: ${selectedCrops.join(', ')}\n\n${contentValues}`;
         }
       }
 
@@ -2857,8 +2862,8 @@ ${contentValues}`,
         .map(field => formData[field.key])
         .filter(v => typeof v === 'string' && v.trim())
         .join('\n\n');
-      if (format === '텃밭일지' && crops.length > 0) {
-        originalContent = `작물: ${crops.join(', ')}\n\n${originalContent}`;
+      if (format === '텃밭일지' && selectedCrops.length > 0) {
+        originalContent = `작물: ${selectedCrops.join(', ')}\n\n${originalContent}`;
       }
     }
 
@@ -2886,8 +2891,9 @@ ${contentValues}`,
         .trim();
     }
 
-    if (format === '텃밭일지' && crops.length > 0) {
-      dataToSave.garden_crop = crops.join(', ');
+    if (format === '텃밭일지' && selectedCrops.length > 0) {
+      dataToSave.garden_crop = selectedCrops.join(', ');
+      (dataToSave as any).garden_crops = selectedCrops;
     }
 
     setIsSaving(true);
@@ -2933,8 +2939,9 @@ ${contentValues}`,
       updateData[`${prefix}_stats`] = polishStats;
     }
 
-    if (format === '텃밭일지' && crops.length > 0) {
-      updateData.garden_crop = crops.join(', ');
+    if (format === '텃밭일지' && selectedCrops.length > 0) {
+      updateData.garden_crop = selectedCrops.join(', ');
+      (updateData as any).garden_crops = selectedCrops;
     }
 
     updateData[`${prefix}_style`] = recordStyle;
@@ -3382,7 +3389,7 @@ ${contentValues.slice(0, 4100)}`,
     return fields.some(field => {
       const value = formData[field.key];
       return typeof value === "string" && value.trim().length > 0;
-    }) || (format === '텃밭일지' && crops.length > 0);
+    }) || (format === '텃밭일지' && selectedCrops.length > 0);
   })();
 
   const visibleLedgerEntries = ledgerInputMode === 'single'
@@ -3729,6 +3736,19 @@ ${contentValues.slice(0, 4100)}`,
           {recordStep === 'input' && (
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* 보조장부 엑셀·신고 준비 — 합본 화면 형식 목록에서 빠져 여기서 연다(2026-10-23 결정 ④) */}
+              {isLedgerFormat && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate('/merge?mode=ledger');
+                  }}
+                  style={{ padding: '10px 12px', border: '1px solid #1A3C6E', borderRadius: 9, backgroundColor: '#fff', color: '#1A3C6E', fontSize: 13, fontWeight: 700, textAlign: 'left', cursor: 'pointer' }}
+                >
+                  🧾 엑셀 저장·부가세·종합소득세 준비 열기 →
+                </button>
+              )}
               {/* 입력 방식 + 모드 배지 */}
               <div>
                 {isLedgerFormat ? (
@@ -4404,6 +4424,9 @@ ${contentValues.slice(0, 4100)}`,
                   <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
                     🌱 작물 목록
                   </label>
+                  <p style={{ fontSize: 12, color: '#888', margin: '0 0 8px' }}>
+                    이 기록에 해당하는 작물을 눌러 고르세요. 고른 작물만 이 기록에 저장됩니다.
+                  </p>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                     <input
                       type="text"
@@ -4440,7 +4463,9 @@ ${contentValues.slice(0, 4100)}`,
                     </button>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {crops.map((crop) => (
+                    {crops.map((crop) => {
+                      const isCropSelected = selectedCrops.includes(crop);
+                      return (
                       <div
                         key={crop}
                         style={{
@@ -4449,13 +4474,20 @@ ${contentValues.slice(0, 4100)}`,
                           gap: 4,
                           padding: '4px 10px',
                           fontSize: 12,
-                          backgroundColor: '#f0f9ff',
-                          color: '#1A3C6E',
+                          backgroundColor: isCropSelected ? '#1A3C6E' : '#f0f9ff',
+                          color: isCropSelected ? '#FAF9F6' : '#1A3C6E',
                           borderRadius: 6,
                           border: '1px solid #bfdbfe',
                         }}
                       >
-                        {crop}
+                        <button
+                          type="button"
+                          aria-pressed={isCropSelected}
+                          onClick={() => setSelectedCrops((prev) => (prev.includes(crop) ? prev.filter((item) => item !== crop) : [...prev, crop]))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', fontSize: 12 }}
+                        >
+                          {isCropSelected ? '✓ ' : ''}{crop}
+                        </button>
                         <button
                           onClick={() => handleRemoveCrop(crop)}
                           style={{
@@ -4471,7 +4503,8 @@ ${contentValues.slice(0, 4100)}`,
                           <X style={{ width: 12, height: 12 }} />
                         </button>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

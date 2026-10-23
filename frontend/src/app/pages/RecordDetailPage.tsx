@@ -202,6 +202,8 @@ export function RecordDetailPage() {
           [`${formatKey}_tags`]: deleteField(),
           [`${formatKey}_images`]: deleteField(),
           [`${formatKey}_rating`]: deleteField(),
+          [`specialDays.${formatKey}`]: deleteField(),
+          [`statsChecks.${formatKey}`]: deleteField(),
         };
         // 해당 prefix로 시작하는 모든 필드 삭제
         Object.keys(data).forEach(k => {

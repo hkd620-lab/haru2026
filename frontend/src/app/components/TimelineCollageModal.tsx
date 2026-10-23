@@ -471,6 +471,18 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
             <p style={{ fontSize: 12, color: '#888', margin: '2px 0 0' }}>
               {CHANGE_RECORD_ASSISTANT_DESCRIPTION}
             </p>
+            {/* 비서 통계는 통계 화면에서 빠져 각 비서 화면에서 연다(2026-10-23 결정 ④) */}
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                navigate('/stats/assistant/timeline');
+              }}
+              disabled={step === 'generating' || growthSaving}
+              style={{ marginTop: 4, padding: 0, border: 'none', background: 'none', color: '#1A3C6E', fontSize: 12, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}
+            >
+              내 타임라인 통계 보기 →
+            </button>
           </div>
           <button
             onClick={handleClose}
