@@ -28,7 +28,16 @@ const plain = value => JSON.parse(JSON.stringify(value));
 function fixture(options = {}) {
   const calls = [], usage = [], paid = [], reservations = [], rollbacks = [], rateChecks = [];
   class HttpsError extends Error { constructor(code, message) { super(message); this.code = code; } }
+  const helperModule = { exports: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../lib/polishUsage.js'), 'utf8'), {
+    exports: helperModule.exports,
+    require: () => ({ createRequestAiUsageLogger: () => async value => usage.push(plain(value)) }),
+    Date,
+  });
+  let requestSequence = 0;
   const run = new vm.Script(compiled).runInNewContext({
+    createPolishUsage: helperModule.exports.createPolishUsage,
+    createAiUsageRequestId: () => `synthetic-request-${++requestSequence}`,
     HttpsError, formatPrefixesOf, getAiRoute, DEVELOPER_UIDS: new Set(), AI_USAGE_PLAN: 'beta',
     console: { log() {}, warn() {}, error() {} }, logger: { warn() {} },
     enforceRateLimit: async (...args) => { rateChecks.push(args); if (options.rateDenied) throw new HttpsError('resource-exhausted', 'synthetic-rate'); },
@@ -157,4 +166,61 @@ test('기존 한마디 실패는 빈 문자열로 부분 성공하며 false에�
 test('옵션 누락 시 한마디 정리·50자 반환 제한도 기존대로 유지한다', async () => {
   const f = fixture({ commentText: `**${'합성'.repeat(40)}**` }); const result = await f.request();
   assert.equal(result.aiComment, '합성'.repeat(25)); assert.equal(f.calls.length, 3);
+});
+
+test('요청마다 고유 ID이고 한 요청의 세 단계는 같은 ID·purpose·결과 한 행을 남긴다', async () => {
+  const f = fixture(); await f.request(); await f.request();
+  assert.equal(new Set(f.usage.map(row => row.requestId)).size, 2);
+  for (const rows of [f.usage.slice(0, 3), f.usage.slice(3)]) {
+    assert.equal(new Set(rows.map(row => row.requestId)).size, 1);
+    assert.deepEqual(rows.map(row => row.purpose), ['sayuPolish', 'recordStats', 'sayuPolishComment']);
+    for (const row of rows) {
+      assert.equal(row.stage, row.purpose); assert.equal(row.modelInvoked, true);
+      assert.equal(row.providerOutcome, 'returned'); assert.equal(row.processingOutcome, 'success');
+      assert.equal(row.success, true); assert.ok(row.latencyMs >= 0);
+      assert.equal(row.inputTokens, 11); assert.equal(row.outputTokens, 7);
+      assert.ok(!JSON.stringify(row).includes('합성 원문'));
+    }
+  }
+});
+
+for (const purpose of ['sayuPolish', 'recordStats', 'sayuPolishComment']) {
+  for (const failure of ['failPurpose', 'failTextPurpose']) {
+    test(`${purpose}/${failure}: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다`, async () => {
+      const f = fixture({ [failure]: purpose });
+      if (purpose === 'sayuPolish') await assert.rejects(f.request()); else await f.request();
+      const rows = f.usage.filter(row => row.purpose === purpose);
+      assert.equal(rows.length, 1);
+      assert.equal(f.usage.length, f.calls.length);
+      const row = rows[0]; assert.equal(row.success, false);
+      assert.equal(row.processingOutcome, failure === 'failPurpose' ? 'provider_error' : 'response_error');
+      assert.equal(row.providerOutcome, failure === 'failPurpose' ? 'error' : 'returned');
+      assert.equal(row.inputTokens, failure === 'failPurpose' ? null : 11);
+      assert.ok(!JSON.stringify(row).includes('synthetic-provider-failure'));
+    });
+  }
+}
+
+test('통계 JSON 없음/파싱 실패는 한 단계 실패로 기록하고 본문·한마디·quota를 유지한다', async () => {
+  for (const statsText of ['JSON 없음', '{broken JSON}']) {
+    const f = fixture({ statsText }); const result = await f.request();
+    assert.equal(result.stats, null); assert.equal(result.text, '합성 본문');
+    assert.equal(f.usage.length, 3); assert.equal(f.usage[1].processingOutcome, 'processing_error');
+    assert.equal(f.usage[1].providerOutcome, 'returned'); assert.equal(f.usage[1].success, false);
+    assert.equal(f.rollbacks.length, 0);
+  }
+});
+
+test('입력·quota 거부는 모델을 호출하지 않은 요청 실패로만 기록한다', async () => {
+  for (const [options, data] of [[{}, { text: '' }], [{ quotaDenied: true }, {}]]) {
+    const f = fixture(options); await assert.rejects(f.request(data));
+    assert.equal(f.calls.length, 0); assert.equal(f.usage.length, 1);
+    assert.equal(f.usage[0].stage, 'request'); assert.equal(f.usage[0].modelInvoked, false);
+    assert.equal(f.usage[0].providerOutcome, 'not_called');
+  }
+});
+
+test('인증·rate 거부는 기존처럼 usage 행을 추가하지 않는다', async () => {
+  const f = fixture({ rateDenied: true }); await assert.rejects(f.request());
+  assert.equal(f.usage.length, 0); assert.equal(f.rollbacks.length, 0);
 });
