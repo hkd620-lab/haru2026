@@ -167,6 +167,12 @@ test('메모·선교·일반보고 예시', () => {
   const memo = stats.computeFormatStats([{ id: '1', date: '2026-10-23', formats: ['메모'], memo_content: '우유, 계란 사기 / 10/28 치과 예약 / https://example.com' }], '메모', range('2026-10-01', '2026-10-31'), ctx);
   assert.equal(insight(memo, 'todos').candidates.length, 2);
   assert.deepEqual(insight(memo, 'links').candidates.map((c) => c.value), ['10/28', 'https://example.com']);
+  // 다음 행동 칸(사실)과 같은 문장은 본문 후보로 다시 세지 않는다
+  const action = stats.computeFormatStats([{ id: '2', date: '2026-10-23', formats: ['메모'], memo_action: '치과 예약', memo_content: '우유 사기' }], '메모', range('2026-10-01', '2026-10-31'), ctx);
+  assert.deepEqual(insight(action, 'todos').candidates.map((c) => [c.value, c.source]), [['치과 예약', 'auto'], ['우유 사기', 'candidate']]);
+  const onlyAction = stats.computeFormatStats([{ id: '3', date: '2026-10-23', formats: ['메모'], memo_action: '치과 예약' }], '메모', range('2026-10-01', '2026-10-31'), ctx);
+  assert.equal(insight(onlyAction, 'todos').headline, '1개');
+  assert.equal(insight(onlyAction, 'todos').source, 'auto');
   const mission = stats.computeFormatStats([{ id: '1', date: '2026-10-23', formats: ['선교보고'], mission_simple: '○○마을에서 어린이 10명에게 위생 교육. 어른 5명과 인사. 우물 공사가 순조롭기를 기도 부탁드립니다.' }], '선교보고', range('2026-10-01', '2026-10-31'), ctx);
   assert.deepEqual(insight(mission, 'people').candidates.map((c) => c.value), ['어린이 10명', '어른 5명']);
   assert.doesNotMatch(insight(mission, 'people').headline, /15/);

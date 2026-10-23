@@ -621,7 +621,10 @@ function formatInsights(format: RecordFormat, entries: StatsEntry[], context: Fo
     }
     case '메모': {
       const actions = fieldItems(entries, 'memo_action', 'action');
-      const todos = collect(entries, prefix, { kind: 'todo', pattern: /^\s*(?:[-*•□☐]|\[\s?\])|사기|사오기|예약|전화|연락|챙기기|할 일/ });
+      // '다음 행동' 칸 문장은 사실로 이미 셌으므로, 같은 기록에서 같은 문장이 본문 후보로 다시 잡히면 뺀다.
+      const actionSentences = new Map(entries.map((entry) => [entry.recordId, new Set(splitSentences(text(entry.record.memo_action)))]));
+      const todos = collect(entries, prefix, { kind: 'todo', pattern: /^\s*(?:[-*•□☐]|\[\s?\])|사기|사오기|예약|전화|연락|챙기기|할 일/ })
+        .filter((todo) => !actionSentences.get(todo.recordId)?.has(todo.sentence));
       const links = collect(entries, prefix, { kind: 'link', pattern: /https?:\/\/[^\s)]+|\d{4}-\d{2}-\d{2}|\d{1,2}\s?\/\s?\d{1,2}|\d{1,2}월\s?\d{1,2}일/, value: (match) => match[0] });
       return [
         autoInsight('memos', '메모', `${entries.length}개`, '기록 수'),
