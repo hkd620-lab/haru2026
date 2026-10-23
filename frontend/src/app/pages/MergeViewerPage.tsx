@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { exportRecordsToEpub } from '../services/epubExportService';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
 import { buildFormatKeyMap } from '../records/formatRegistry';
-import { getRecordPhotoUrls } from '../records/recordStats';
+import { getRecordPhotoUrls, isSpecialDayRecord } from '../records/recordStats';
 
 // 합본 보기에서 사진을 찾을 형식(그 밖의 형식은 일기 접두어로 찾는다)
 const MAX_EPUB_RECORDS = 500;
@@ -22,7 +22,6 @@ interface ViewerRecord {
   weather?: string;
   temperature?: string;
   mood?: string;
-  mergeRating?: number;
   [key: string]: any;
 }
 
@@ -31,7 +30,6 @@ interface LocationState {
   format: RecordFormat;
   startDate: string;
   endDate: string;
-  threshold: number;
   filter?: 'all' | 'special';
 }
 
@@ -64,11 +62,13 @@ export function MergeViewerPage() {
     );
   }
 
-  const { records, format, startDate, endDate, threshold } = state;
+  const { records, format, startDate, endDate } = state;
   const totalPages = records.length + 2;
 
   // 형식별 prefix (값은 형식 등록부, 범위는 MERGE_VIEWER_FORMATS)
   const formatPrefix = buildFormatKeyMap(MERGE_VIEWER_FORMATS)[format as RecordFormat] || 'diary';
+  const filterLabel = state.filter === 'special' ? '특별한 날로 표시한 SAYU 기록' : 'SAYU 완료 기록';
+  const specialDayCount = records.filter((record) => isSpecialDayRecord(record, formatPrefix)).length;
 
   // 사진: 그 형식의 _images(없으면 _imageMeta), 기록당 최대 5장 — EPUB(functions/src/epubExport.ts)과 같은 규칙
   const getImages = (record: ViewerRecord): string[] => getRecordPhotoUrls(record, formatPrefix);
@@ -331,14 +331,13 @@ export function MergeViewerPage() {
     if (currentPage === 0) {
       return {
         title: `${format} 합본`,
-        preview: `${startDate} ~ ${endDate}\n총 ${records.length}개의 기록 · 별점 ${threshold}점 이상`,
+        preview: `${startDate} ~ ${endDate}\n총 ${records.length}개의 기록 · ${filterLabel}`,
       };
     }
     if (currentPage === totalPages - 1) {
-      const avg = (records.reduce((sum, r) => sum + (r.mergeRating || 0), 0) / records.length).toFixed(1);
       return {
         title: '기록 요약',
-        preview: `총 ${records.length}개 · 평균 별점 ${avg}점`,
+        preview: `총 ${records.length}개 · 특별한 날 ${specialDayCount}건`,
       };
     }
     const record = records[currentPage - 1];
@@ -368,7 +367,7 @@ export function MergeViewerPage() {
               총 {records.length}개의 기록
             </p>
             <p className="text-sm" style={{ color: '#999' }}>
-              별점 {threshold}점 이상
+              {filterLabel}
             </p>
           </div>
           
@@ -418,10 +417,10 @@ export function MergeViewerPage() {
             </div>
             <div className="bg-white rounded-lg p-6 shadow-md text-center">
               <p className="text-sm mb-2" style={{ color: '#999' }}>
-                평균 별점
+                특별한 날
               </p>
               <p className="text-4xl font-bold" style={{ color: '#1A3C6E' }}>
-                {(records.reduce((sum, r) => sum + (r.mergeRating || 0), 0) / records.length).toFixed(1)}
+                {specialDayCount}
               </p>
             </div>
           </div>
@@ -450,12 +449,12 @@ export function MergeViewerPage() {
           </h2>
           {/* 환경 정보 */}
           <div className="flex gap-2 flex-wrap mb-6">
-            {record.mergeRating && (
+            {isSpecialDayRecord(record, formatPrefix) && (
               <span
                 className="px-4 py-2 rounded-full text-sm font-medium"
                 style={{ backgroundColor: '#FFF8F0', color: '#F59E0B' }}
               >
-                {'⭐'.repeat(record.mergeRating)}
+                ✨ 특별한 날
               </span>
             )}
             {record.weather && (
@@ -546,7 +545,7 @@ export function MergeViewerPage() {
             background-color: white !important;
           }
 
-          /* 환경 태그(날씨/기분/별점 뱃지) 인쇄 시 흰색 처리 */
+          /* 환경 태그(날씨/기분/특별한 날 뱃지) 인쇄 시 흰색 처리 */
           .env-tag {
             background: white !important;
             background-color: white !important;
@@ -885,7 +884,7 @@ export function MergeViewerPage() {
             총 {records.length}개의 기록
           </p>
           <p style={{ fontSize: '12pt', color: '#999' }}>
-            별점 {threshold}점 이상
+            {filterLabel}
           </p>
           {coverImage && (
             <img src={coverImage} alt="대표 사진" />
@@ -910,7 +909,7 @@ export function MergeViewerPage() {
                   })}
                 </h2>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
-                  {record.mergeRating && (
+                  {isSpecialDayRecord(record, formatPrefix) && (
                     <span className="env-tag" style={{
                       fontSize: '10pt',
                       padding: '4px 12px',
@@ -918,7 +917,7 @@ export function MergeViewerPage() {
                       backgroundColor: '#FFF8F0',
                       color: '#F59E0B'
                     }}>
-                      {'⭐'.repeat(record.mergeRating)}
+                      ✨ 특별한 날
                     </span>
                   )}
                   {record.weather && (
@@ -988,9 +987,9 @@ export function MergeViewerPage() {
               borderRadius: '8px',
               border: '1px solid #e5e5e5'
             }}>
-              <p style={{ fontSize: '10pt', color: '#999', marginBottom: '10px' }}>평균 별점</p>
+              <p style={{ fontSize: '10pt', color: '#999', marginBottom: '10px' }}>특별한 날</p>
               <p style={{ fontSize: '28pt', fontWeight: 'bold', color: '#1A3C6E' }}>
-                {(records.reduce((sum, r) => sum + (r.mergeRating || 0), 0) / records.length).toFixed(1)}점
+                {specialDayCount}건
               </p>
             </div>
           </div>
