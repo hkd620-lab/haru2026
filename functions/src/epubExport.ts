@@ -156,9 +156,10 @@ async function requirePaidSubscription(uid: string): Promise<void> {
 export const exportEpub = onCall(
   {
     region: 'asia-northeast3',
-    // 사진 확인·내려받기 시간을 감안해 120초 → 300초(실행한 만큼만 과금, 메모리는 그대로)
+    // 사진을 포함한 EPUB 생성 여유를 확보하고 한 인스턴스의 생성 작업이 겹치지 않게 한다.
     timeoutSeconds: 300,
-    memory: '512MiB',
+    memory: '1GiB',
+    concurrency: 1,
   },
   async (request) => {
     if (!request.auth) {
