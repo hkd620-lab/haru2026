@@ -692,6 +692,15 @@ export function RecordPage() {
     setFormatModalOpen(true);
   };
 
+  const finishDraftAfterSave = (recordId: string) => {
+    if (recordId !== draftRecordIdRef.current) return;
+    draftRecordIdRef.current = null;
+    setDraftContent('');
+    draftPhotosRef.current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+    draftPhotosRef.current = [];
+    setDraftPhotos([]);
+  };
+
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
     if (!user) return;
     const typedGrowthSubjectName =
@@ -890,6 +899,7 @@ export function RecordPage() {
           }, 8000);
         }
       }
+      finishDraftAfterSave(recordId);
       toast.success('내용이 저장되었습니다!');
       return recordId;
     } catch (error) {

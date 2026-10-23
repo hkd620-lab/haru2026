@@ -472,6 +472,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isUploading, setIsUploading] = useState(false);
   const isUploadingRef = useRef(false);
   const initialPhotoUploadKeyRef = useRef<string | null>(null);
+  const initialUploadedImagesRef = useRef<string[]>([]);
   const initialReadingJournalRef = useRef('');
   const initialPhotoUploadFailedRef = useRef(false);
   const [initialPhotoUploadFailed, setInitialPhotoUploadFailed] = useState(false);
@@ -894,17 +895,18 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       const prefix = FORMAT_PREFIX[format];
       const imagesKey = `${prefix}_images`;
       const imageMetaKey = `${prefix}_imageMeta`;
+      let initialImages: string[] = [];
       if (initialData[imagesKey]) {
         try {
           const parsedImages = JSON.parse(initialData[imagesKey]);
           const arr = Array.isArray(parsedImages) ? parsedImages : [];
-          setUploadedImages(arr.filter((v: any) => typeof v === 'string' && v.startsWith('http')));
+          initialImages = arr.filter((v: any) => typeof v === 'string' && v.startsWith('http'));
         } catch {
-          setUploadedImages([]);
+          initialImages = [];
         }
-      } else {
-        setUploadedImages([]);
       }
+      initialUploadedImagesRef.current = initialImages;
+      setUploadedImages(initialImages);
       if (initialData[imageMetaKey]) {
         try {
           const parsedMeta = JSON.parse(initialData[imageMetaKey]);
@@ -1906,7 +1908,7 @@ ${contentValues}`,
     const periodRow = ledgerInputMode === 'period'
       ? ledgerXlsxPreviewRows.find((row) => row.id === expandedLedgerXlsxRowId)
       : undefined;
-    const currentImageUrls = periodRow?.entry.imageUrls || uploadedImages;
+    const currentImageUrls = periodRow?.entry.imageUrls || (requireAll ? initialUploadedImagesRef.current : uploadedImages);
     const maxPhotos = getRecordPhotoLimit(format);
     const remainingSlots = maxPhotos - currentImageUrls.length;
     if (remainingSlots <= 0) {
