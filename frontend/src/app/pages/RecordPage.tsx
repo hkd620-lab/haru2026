@@ -12,7 +12,7 @@ import { HaruLawPanel, useHaruLaw } from '../assistants/haruLaw/HaruLawPanel';
 import { PetHealthAlert, detectPetAlertLevel, type PetAlertLevel } from '../components/PetHealthAlert';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
-import { buildDraftEditorData, WRITABLE_FORMATS } from '../records/writeBeforeFormat';
+import { applyDraftSaveTarget, buildDraftEditorData, WRITABLE_FORMATS } from '../records/writeBeforeFormat';
 import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
 import { startSelectedRecordPhotoReads } from '../services/selectedRecordPhoto';
 import { db } from '../../firebase';
@@ -1226,8 +1226,9 @@ export function RecordPage() {
         recordId={draftEditorRecordId || savedDateStr}
         initialData={draftEditorData}
         initialPhotos={draftEditorPhotos}
+        initialWritingDraft={!!draftEditorRecordId}
         onSave={(data) => handleSaveFormatData(draftEditorRecordId
-          ? { ...data, _recordId: draftEditorRecordId, _recordDate: savedDateStr }
+          ? applyDraftSaveTarget(data, draftEditorRecordId, savedDateStr)
           : data)}
       />
     )}

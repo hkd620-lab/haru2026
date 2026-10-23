@@ -38,6 +38,17 @@ test('switching books drops old completion flags, OCR and AI fields while preser
   for (const key of ['reading_status', 'readingStatus', 'readingId', 'entryType', 'reading_final_sayu', 'reading_ocr_photo_count']) assert.equal(reset[key], undefined);
   assert.equal(reset.reading_book_text, ''); assert.equal(reset.reading_ai_context, '');
 });
+
+test('첫 책 선택은 공통 작성창 초안을 보존하고 이후 책 전환은 소감을 비운다', () => {
+  const source = '공통 작성창에서 쓴 독서 소감';
+  for (const title of ['', '기존 책']) {
+    const first = resetReadingBookDraft({ reading_journal: source, reading_ai_context: '이전 대화' }, title, '저자', '2026-10-23', source);
+    assert.equal(first.reading_journal, source);
+    assert.equal(first.reading_ai_context, '');
+    const next = resetReadingBookDraft(first, '다른 책', '', '2026-10-23');
+    assert.equal(next.reading_journal, '');
+  }
+});
 test('reapplying a selection does not duplicate user questions', () => {
   const selected = selectedReadingAnswers(messages, ['a1']);
   const first = applyReadingAiReference('내 생각', 'book-a', selected, '메모');

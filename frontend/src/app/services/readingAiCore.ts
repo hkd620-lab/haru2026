@@ -1,9 +1,9 @@
 import type { ReadingAiMessage, ReadingAiReference } from '../types/readingAi';
 
-export function resetReadingBookDraft(previous: Record<string, string>, title: string, author: string, startedAt: string): Record<string, string> {
+export function resetReadingBookDraft(previous: Record<string, string>, title: string, author: string, startedAt: string, initialJournal = ''): Record<string, string> {
   const metadata = new Set(['bookTitle', 'author', 'bookTitleNormalized', 'authorNormalized', 'entryType']);
   const otherFields = Object.fromEntries(Object.entries(previous).filter(([key]) => !key.startsWith('reading') && !metadata.has(key)));
-  return { ...otherFields, reading_book_title: title, reading_author: author, reading_started_at: startedAt, reading_book_text: '', reading_journal: '', reading_ai_context: '' };
+  return { ...otherFields, reading_book_title: title, reading_author: author, reading_started_at: startedAt, reading_book_text: '', reading_journal: initialJournal, reading_ai_context: '' };
 }
 
 export function boundedReadingConversation(messages: ReadingAiMessage[]) {
