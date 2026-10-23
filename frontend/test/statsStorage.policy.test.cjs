@@ -36,6 +36,10 @@ assert.match(sayuModal, /\.filter\(v => typeof v === 'string' && v\.trim\(\)\)/)
 // 옛 garden_crop 문자열을 고른 작물로 복원하지 않는다
 assert.doesNotMatch(formatModal, /initialData\.garden_crop\.split/);
 
+// EPUB 호출 제한 시간이 서버 제한(300초)을 수용한다(Codex P2)
+assert.match(read('services/epubExportService.ts'), /httpsCallable<EpubExportRequest, EpubExportResponse>\(functions, 'exportEpub', \{ timeout: 310_000 \}\)/);
+assert.match(fs.readFileSync(path.join(__dirname, '../../functions/src/epubExport.ts'), 'utf8'), /timeoutSeconds: 300,/);
+
 // 구형 iOS Safari 호환: 통계 모듈은 lookbehind 정규식을 쓰지 않는다
 assert.doesNotMatch(stats, /\(\?<[=!]/);
 

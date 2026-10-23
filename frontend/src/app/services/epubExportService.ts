@@ -29,7 +29,8 @@ export async function exportRecordsToEpub(
   filter?: 'all' | 'special',
 ): Promise<{ count: number; fileName: string; downloadUrl: string; skippedPhotos: number; limitedPhotos: number }> {
   const functions = getFunctions(undefined, 'asia-northeast3');
-  const exportEpub = httpsCallable<EpubExportRequest, EpubExportResponse>(functions, 'exportEpub');
+  // 서버 exportEpub 제한(300초)에 맞춰 SDK 기본 70초보다 길게 기다린다(사진 확인·내려받기 시간 포함).
+  const exportEpub = httpsCallable<EpubExportRequest, EpubExportResponse>(functions, 'exportEpub', { timeout: 310_000 });
 
   const result = await exportEpub({ startDate, endDate, ...(format ? { format } : {}), ...(recordIds?.length ? { recordIds, ...(filter ? { filter } : {}) } : {}) });
   const { downloadUrl, fileName, count, skippedPhotos = 0, limitedPhotos = 0 } = result.data;
