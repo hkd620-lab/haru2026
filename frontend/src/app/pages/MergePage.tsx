@@ -64,7 +64,7 @@ export function MergePage() {
   const isLedgerMode = searchParams.get('mode') === 'ledger';
   const [selectedFormat, setSelectedFormat] = useState<RecordFormat | null>(null);
   const [mergeFilter, setMergeFilter] = useState<MergeFilter>('all');
-  const [selectedPeriod, setSelectedPeriod] = useState<MergePeriod | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<MergePeriod>('monthly');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -110,7 +110,7 @@ export function MergePage() {
     setLedgerVatEnd(today);
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    setStartDate(getLocalDateString(thirtyDaysAgo));
+    setStartDate(getStatsPeriodRange('month', new Date()).start);
     setLedgerVatStart(getLocalDateString(thirtyDaysAgo));
   }, []);
 
@@ -350,6 +350,11 @@ export function MergePage() {
 
     if (!selectedFormat) {
       toast.warning('형식을 선택해주세요.');
+      return;
+    }
+
+    if (!canUsePeriod(selectedPeriod)) {
+      toast.warning('선택한 합본 기간을 이용할 수 없습니다. 다른 기간을 선택해 주세요.');
       return;
     }
 
