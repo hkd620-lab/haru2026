@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin';
 
-type AiUsageLogInput = {
+export type AiUsageLogInput = {
   uid: string;
   featureName: string;
   plan: string;
@@ -28,6 +28,11 @@ type AiUsageLogInput = {
   success: boolean;
   errorCode: string | null;
   isDev: boolean;
+  purpose?: string;
+  stage?: string;
+  modelInvoked?: boolean;
+  providerOutcome?: 'not_called' | 'returned' | 'error';
+  processingOutcome?: 'success' | 'provider_error' | 'response_error' | 'processing_error' | 'rejected';
 };
 
 async function resolveActualPlan(input: AiUsageLogInput): Promise<string> {
@@ -51,6 +56,25 @@ async function resolveActualPlan(input: AiUsageLogInput): Promise<string> {
   }
   if (input.plan && input.plan !== 'beta') return input.plan;
   return 'free';
+}
+
+// Create once per server request. Snapshot only the logging plan, never quota or entitlement.
+// A lookup failure keeps the existing fallback for this request; the next request retries.
+export function createRequestAiUsageLogger(): typeof logAiUsage {
+  const plans = new Map<string, Promise<string>>();
+  return async (input) => {
+    try {
+      const key = JSON.stringify([input.uid, input.plan, input.isDev, input.actualPlan ?? null]);
+      let plan = plans.get(key);
+      if (!plan) {
+        plan = resolveActualPlan(input);
+        plans.set(key, plan);
+      }
+      await logAiUsage({ ...input, actualPlan: await plan });
+    } catch {
+      // Instrumentation must not change the response or quota rollback path.
+    }
+  };
 }
 
 export async function logAiUsage(input: AiUsageLogInput): Promise<void> {
