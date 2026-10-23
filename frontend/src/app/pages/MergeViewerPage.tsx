@@ -7,10 +7,11 @@ import { toast } from 'sonner';
 import { exportRecordsToEpub } from '../services/epubExportService';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
 import { buildFormatKeyMap } from '../records/formatRegistry';
+import { getRecordPhotoUrls } from '../records/recordStats';
 
 // 합본 보기에서 사진을 찾을 형식(그 밖의 형식은 일기 접두어로 찾는다)
 const MERGE_VIEWER_FORMATS: RecordFormat[] = [
-  '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기', '메모',
+  '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기', '메모', '독서사유',
 ];
 
 
@@ -29,6 +30,7 @@ interface LocationState {
   startDate: string;
   endDate: string;
   threshold: number;
+  filter?: 'all' | 'special';
 }
 
 export function MergeViewerPage() {
@@ -66,24 +68,8 @@ export function MergeViewerPage() {
   // 형식별 prefix (값은 형식 등록부, 범위는 MERGE_VIEWER_FORMATS)
   const formatPrefix = buildFormatKeyMap(MERGE_VIEWER_FORMATS)[format as RecordFormat] || 'diary';
 
-  // 사진 파싱 함수
-  const getImages = (record: ViewerRecord): string[] => {
-    const imagesKey = `${formatPrefix}_images`;
-    const imagesData = record[imagesKey];
-    
-    if (!imagesData) return [];
-    
-    try {
-      const parsed = JSON.parse(imagesData);
-      if (Array.isArray(parsed)) {
-        return parsed.filter((url: any) => typeof url === 'string' && url.startsWith('http'));
-      }
-    } catch {
-      return [];
-    }
-    
-    return [];
-  };
+  // 사진: 그 형식의 _images(없으면 _imageMeta), 기록당 최대 5장 — EPUB(functions/src/epubExport.ts)과 같은 규칙
+  const getImages = (record: ViewerRecord): string[] => getRecordPhotoUrls(record, formatPrefix);
 
   // 대표 사진 후보 목록 (records 순서대로 각 레코드 첫 번째 이미지)
   const getCoverCandidates = (): string[] => {
@@ -156,8 +142,10 @@ export function MergeViewerPage() {
   const handleSaveEPUB = async () => {
     setEpubLoading(true);
     try {
-      const { count, fileName } = await exportRecordsToEpub(startDate, endDate, format as string);
+      // 화면·PDF와 같은 기록(같은 순서)을 EPUB에 담도록 기록 ID를 넘긴다.
+      const { count, fileName, skippedPhotos } = await exportRecordsToEpub(startDate, endDate, format as string, records.map((record) => String(record.id)), state.filter);
       toast.success(`EPUB 저장 완료 — ${count}개 기록 · ${fileName}`);
+      if (skippedPhotos > 0) toast.warning(`사진 ${skippedPhotos}장을 내려받지 못해 EPUB에서 뺐습니다.`);
     } catch (err) {
       console.error('EPUB 저장 실패:', err);
       toast.error('EPUB 저장에 실패했습니다. 다시 시도해 주세요.');
