@@ -221,6 +221,12 @@ export function getOriginalBody(record: Record<string, any>, format: RecordForma
   return premium || simple || text(record[`${prefix}_content`]);
 }
 
+// 원문이 프리미엄 칸에서 왔는지(getOriginalBody 와 같은 판정). 간편으로 저장한 기록에 남은 프리미엄 칸 값은 사실로 세지 않는다.
+export function usesPremiumFields(record: Record<string, any>, format: RecordFormat): boolean {
+  const prefix = getFormatKey(format);
+  return !(record[`${prefix}_style`] === 'simple' && text(record[`${prefix}_simple`]));
+}
+
 // 사진: 그 형식의 _images(JSON 문자열 또는 배열)를 먼저, 없으면 _imageMeta의 url. 같은 주소는 한 번만, 최대 5장.
 export function getRecordPhotoUrls(record: Record<string, any>, prefix: string, limit = MAX_RECORD_PHOTOS): string[] {
   const parse = (value: unknown): unknown[] => {
@@ -339,6 +345,11 @@ export function splitSentences(body: string): string[] {
     .split(/\n+/)
     .map((sentence) => sentence.trim())
     .filter(Boolean);
+}
+
+// 끝 문장부호·목록 기호·공백 차이를 무시하고 같은 문장인지 본다.
+function normalizeSentence(sentence: string): string {
+  return sentence.replace(/^\s*(?:[-*•□☐]|\[\s?\])\s*/, '').replace(/[.!?。\s]+$/, '').replace(/\s+/g, ' ').trim();
 }
 
 // 짧은 고정 해시(후보 ID용)
@@ -620,11 +631,12 @@ function formatInsights(format: RecordFormat, entries: StatsEntry[], context: Fo
       ];
     }
     case '메모': {
-      const actions = fieldItems(entries, 'memo_action', 'action');
-      // '다음 행동' 칸 문장은 사실로 이미 셌으므로, 같은 기록에서 같은 문장이 본문 후보로 다시 잡히면 뺀다.
-      const actionSentences = new Map(entries.map((entry) => [entry.recordId, new Set(splitSentences(text(entry.record.memo_action)))]));
+      const premiumEntries = entries.filter((entry) => usesPremiumFields(entry.record, format));
+      const actions = fieldItems(premiumEntries, 'memo_action', 'action');
+      // '다음 행동' 칸 문장은 사실로 이미 셌으므로, 같은 기록에서 같은 문장(끝 문장부호 무시)이 본문 후보로 다시 잡히면 뺀다.
+      const actionSentences = new Map(premiumEntries.map((entry) => [entry.recordId, new Set(splitSentences(text(entry.record.memo_action)).map(normalizeSentence))]));
       const todos = collect(entries, prefix, { kind: 'todo', pattern: /^\s*(?:[-*•□☐]|\[\s?\])|사기|사오기|예약|전화|연락|챙기기|할 일/ })
-        .filter((todo) => !actionSentences.get(todo.recordId)?.has(todo.sentence));
+        .filter((todo) => !actionSentences.get(todo.recordId)?.has(normalizeSentence(todo.sentence)));
       const links = collect(entries, prefix, { kind: 'link', pattern: /https?:\/\/[^\s)]+|\d{4}-\d{2}-\d{2}|\d{1,2}\s?\/\s?\d{1,2}|\d{1,2}월\s?\d{1,2}일/, value: (match) => match[0] });
       return [
         autoInsight('memos', '메모', `${entries.length}개`, '기록 수'),
@@ -633,8 +645,9 @@ function formatInsights(format: RecordFormat, entries: StatsEntry[], context: Fo
       ];
     }
     case '선교보고': {
-      const prayerFields = fieldItems(entries, 'mission_prayer', 'prayer');
-      const prayerBody = collect(entries.filter((entry) => !text(entry.record.mission_prayer)), prefix, { kind: 'prayer', pattern: /기도/ });
+      const hasPrayerField = (entry: StatsEntry) => usesPremiumFields(entry.record, format) && Boolean(text(entry.record.mission_prayer));
+      const prayerFields = fieldItems(entries.filter(hasPrayerField), 'mission_prayer', 'prayer');
+      const prayerBody = collect(entries.filter((entry) => !hasPrayerField(entry)), prefix, { kind: 'prayer', pattern: /기도/ });
       const people = collect(entries, prefix, { kind: 'people', pattern: new RegExp(`([가-힣]{0,8}\\s?)(${NUMBER})\\s?명`), value: (match) => match[0].trim() });
       return [
         autoInsight('reports', '보고', `${entries.length}건`, '기록 수'),
@@ -644,8 +657,9 @@ function formatInsights(format: RecordFormat, entries: StatsEntry[], context: Fo
     }
     case '일반보고': {
       const numbers = collect(entries, prefix, { kind: 'number', pattern: new RegExp(`((?:[가-힣]{1,10}\\s){0,2})(${NUMBER})\\s?(%|퍼센트|건|명|만\\s?원|원|개|회|시간)`), value: (match) => match[0].trim() });
-      const futureFields = fieldItems(entries, 'report_future', 'plan');
-      const futureBody = collect(entries.filter((entry) => !text(entry.record.report_future)), prefix, { kind: 'plan', pattern: /다음|향후|예정|계획/ });
+      const hasFutureField = (entry: StatsEntry) => usesPremiumFields(entry.record, format) && Boolean(text(entry.record.report_future));
+      const futureFields = fieldItems(entries.filter(hasFutureField), 'report_future', 'plan');
+      const futureBody = collect(entries.filter((entry) => !hasFutureField(entry)), prefix, { kind: 'plan', pattern: /다음|향후|예정|계획/ });
       return [
         autoInsight('reports', '보고', `${entries.length}건`, '기록 수'),
         candidateInsight('numbers', '수치 표기', `${numbers.length}개`, '본문의 ‘숫자+%·건·명·원·개’ 표기(보고끼리 나란히 보기, 증감 판단 안 함)', numbers, LIMIT_NUMBERS),

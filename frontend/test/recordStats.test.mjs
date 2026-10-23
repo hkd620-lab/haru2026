@@ -173,6 +173,15 @@ test('메모·선교·일반보고 예시', () => {
   const onlyAction = stats.computeFormatStats([{ id: '3', date: '2026-10-23', formats: ['메모'], memo_action: '치과 예약' }], '메모', range('2026-10-01', '2026-10-31'), ctx);
   assert.equal(insight(onlyAction, 'todos').headline, '1개');
   assert.equal(insight(onlyAction, 'todos').source, 'auto');
+  const dotted = stats.computeFormatStats([{ id: '4', date: '2026-10-23', formats: ['메모'], memo_action: '치과 예약', memo_content: '치과 예약.' }], '메모', range('2026-10-01', '2026-10-31'), ctx);
+  assert.equal(insight(dotted, 'todos').candidates.length, 1);
+  // 간편으로 저장한 기록에 남은 프리미엄 칸은 사실로 세지 않고, 간편 본문을 대조한다(Codex 실행 4)
+  const simpleReport = stats.computeFormatStats([{ id: '5', date: '2026-10-23', formats: ['일반보고'], report_style: 'simple', report_simple: '다음 주 설문 조사 예정.', report_future: '다음 달 간담회' }], '일반보고', range('2026-10-01', '2026-10-31'), ctx);
+  assert.deepEqual(insight(simpleReport, 'plans').candidates.map((c) => [c.sentence, c.source]), [['다음 주 설문 조사 예정.', 'candidate']]);
+  const simpleMission = stats.computeFormatStats([{ id: '6', date: '2026-10-23', formats: ['선교보고'], mission_style: 'simple', mission_simple: '우물 공사를 위해 기도 부탁드립니다.', mission_prayer: '옛 기도제목' }], '선교보고', range('2026-10-01', '2026-10-31'), ctx);
+  assert.deepEqual(insight(simpleMission, 'prayer').candidates.map((c) => c.source), ['candidate']);
+  const simpleMemo = stats.computeFormatStats([{ id: '7', date: '2026-10-23', formats: ['메모'], memo_style: 'simple', memo_simple: '우유 사기', memo_action: '옛 행동 전화' }], '메모', range('2026-10-01', '2026-10-31'), ctx);
+  assert.deepEqual(insight(simpleMemo, 'todos').candidates.map((c) => c.value), ['우유 사기']);
   const mission = stats.computeFormatStats([{ id: '1', date: '2026-10-23', formats: ['선교보고'], mission_simple: '○○마을에서 어린이 10명에게 위생 교육. 어른 5명과 인사. 우물 공사가 순조롭기를 기도 부탁드립니다.' }], '선교보고', range('2026-10-01', '2026-10-31'), ctx);
   assert.deepEqual(insight(mission, 'people').candidates.map((c) => c.value), ['어린이 10명', '어른 5명']);
   assert.doesNotMatch(insight(mission, 'people').headline, /15/);
