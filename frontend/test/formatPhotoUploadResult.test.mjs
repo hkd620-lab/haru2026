@@ -8,7 +8,7 @@ import { startSelectedRecordPhotoReads } from '../src/app/services/selectedRecor
 import { compressRecordPhoto } from '../src/app/services/recordPhotoCompression.ts';
 
 const source = readFileSync(new URL('../src/app/components/FormatModal.tsx', import.meta.url), 'utf8');
-const handler = source.slice(source.indexOf('  const handleImageUpload = async'), source.indexOf('  // Firebase Storage URL →'));
+const handler = source.slice(source.indexOf('  const uploadSelectedImages = async'), source.indexOf('  // Firebase Storage URL →'));
 const { code } = await transform(`${handler}\nglobalThis.runUpload = handleImageUpload;`, { loader: 'ts' });
 function fixture(outcomes) {
   const notices = [], images = [], tracked = [], busy = [];
@@ -16,7 +16,7 @@ function fixture(outcomes) {
   const toast = Object.fromEntries(['warning', 'error', 'success', 'info'].map(level => [level, (...args) => notices.push({ level, message: args[0] })]));
   const context = {
     getRecordPhotoLimit, toast, console: { error() {} }, File, Date, Math, Error, Uint8Array, btoa, startSelectedRecordPhotoReads, compressRecordPhoto,
-    isCleaningSessionUploadsRef: { current: false }, ledgerInputMode: 'single',
+    isCleaningSessionUploadsRef: { current: false }, isUploadingRef: { current: false }, ledgerInputMode: 'single',
     uploadedImages: [], format: '일기', user: { uid: 'fixture' }, recordId: 'record', prefix: 'diary',
     setIsUploading: value => busy.push(value), getStorage: () => ({}), getFunctions: () => ({}),
     readOriginalImageMeta: async () => ({ metadataSource: 'none' }),
@@ -27,9 +27,17 @@ function fixture(outcomes) {
     fileInputRef: { current: { value: 'selected' } }, deleteObject: async () => {}, enqueuePendingRecordPhotoCleanup: () => {},
   };
   vm.runInNewContext(code, context);
-  const run = async count => context.runUpload({ target: { files: Array.isArray(count) ? count : Array.from({ length: count }, () => new File(['photo'], 'fixture.jpg', { type: 'image/jpeg' })), value: 'selected' } });
+  const run = async count => context.runUpload({ currentTarget: { files: Array.isArray(count) ? count : Array.from({ length: count }, () => new File(['photo'], 'fixture.jpg', { type: 'image/jpeg' })), value: 'selected' } });
   return { run, notices, images, tracked, busy, context };
 }
+
+test('편집창을 닫아도 초안 사진 effect의 Hook 호출을 건너뛰지 않는다', () => {
+  const closedReturn = source.indexOf('  if (!isOpen) return null;');
+  const hooks = [...source.matchAll(/\buse(?:Effect|State|Ref|Memo|Callback)\s*\(/g)];
+  assert.ok(closedReturn > 0);
+  assert.ok(hooks.length > 0);
+  assert.ok(hooks.every(hook => hook.index < closedReturn), '모든 Hook은 닫힌 편집창의 반환보다 먼저 호출되어야 한다');
+});
 test('all unreadable photos retain the failure reason and never report zero-photo success; retry works', async () => {
   const f = fixture([new Error('FILE_READER_ERROR'), 'ok']);
   await f.run(1);

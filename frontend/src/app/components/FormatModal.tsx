@@ -990,6 +990,19 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     };
   }, [ledgerXlsxPreviewRows, ledgerXlsxYear, isOpen, format]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      initialPhotoUploadKeyRef.current = null;
+      return;
+    }
+    if (!initialPhotos.length) return;
+    const key = `${format}:${recordId}`;
+    if (initialPhotoUploadKeyRef.current === key) return;
+    initialPhotoUploadKeyRef.current = key;
+    void uploadSelectedImages(initialPhotos, true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, format, recordId, initialPhotos]);
+
   if (!isOpen) return null;
 
   const fields = FORMAT_FIELDS[format];
@@ -2068,19 +2081,6 @@ ${contentValues}`,
     // 원본 사진 스트림은 input 초기화 전에 uploadSelectedImages 안에서 즉시 읽기 시작한다.
     await uploadSelectedImages(files);
   };
-
-  useEffect(() => {
-    if (!isOpen) {
-      initialPhotoUploadKeyRef.current = null;
-      return;
-    }
-    if (!initialPhotos.length) return;
-    const key = `${format}:${recordId}`;
-    if (initialPhotoUploadKeyRef.current === key) return;
-    initialPhotoUploadKeyRef.current = key;
-    void uploadSelectedImages(initialPhotos, true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, format, recordId, initialPhotos]);
 
   // Firebase Storage URL → 내부 경로 추출 (deleteObject 용)
   function getStoragePathFromDownloadUrl(url: string): string | null {
