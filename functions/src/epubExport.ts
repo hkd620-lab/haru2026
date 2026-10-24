@@ -55,8 +55,8 @@ function recordToHtml(record: Record<string, any>, bodyFormat?: string, timeline
   const lines: string[] = [];
 
   // 날씨/기분
-  if (record.weather) lines.push(`<p>날씨: ${record.weather}${record.temperature ? ` / ${record.temperature}` : ''}</p>`);
-  if (record.mood) lines.push(`<p>기분: ${record.mood}</p>`);
+  if (record.weather) lines.push(`<p>날씨: ${escapeHtml(String(record.weather))}${record.temperature ? ` / ${escapeHtml(String(record.temperature))}` : ''}</p>`);
+  if (record.mood) lines.push(`<p>기분: ${escapeHtml(String(record.mood))}</p>`);
 
   // 제목
   const title = record.title || record.ai_title;
@@ -72,7 +72,7 @@ function recordToHtml(record: Record<string, any>, bodyFormat?: string, timeline
   if (record.recordType === 'growthTimeline') {
     // 성장타임라인: content 필드(buildTimelineSummary 결과) + timelineItems 사진
     if (record.content) {
-      lines.push(`<div>${String(record.content).replace(/\n/g, '<br/>')}</div>`);
+      lines.push(`<div>${escapeHtml(String(record.content)).replace(/\n/g, '<br/>')}</div>`);
       bodyAdded = true;
     }
     const items = Array.isArray(record.timelineItems) ? record.timelineItems : [];
@@ -87,7 +87,7 @@ function recordToHtml(record: Record<string, any>, bodyFormat?: string, timeline
     // 성장기록 전용: growth_sayu → growth_note 본문 + child_* 측정값
     const growthBody = record.growth_sayu ?? record.growth_note ?? null;
     if (growthBody) {
-      lines.push(`<div>${String(growthBody).replace(/\n/g, '<br/>')}</div>`);
+      lines.push(`<div>${escapeHtml(String(growthBody)).replace(/\n/g, '<br/>')}</div>`);
       bodyAdded = true;
     }
     const measurements: string[] = [];
@@ -96,7 +96,7 @@ function recordToHtml(record: Record<string, any>, bodyFormat?: string, timeline
     if (record.child_weight) measurements.push(`몸무게: ${record.child_weight}`);
     if (record.child_headcircum) measurements.push(`머리둘레: ${record.child_headcircum}`);
     if (measurements.length > 0) {
-      lines.push(`<p>${measurements.join('<br/>')}</p>`);
+      lines.push(`<p>${measurements.map(escapeHtml).join('<br/>')}</p>`);
       bodyAdded = true;
     }
   } else if (prefix) {
@@ -177,7 +177,7 @@ export const exportEpub = onCall(
       throw new HttpsError('invalid-argument', '합본 기록 목록이 올바르지 않습니다.');
     }
 
-    const chapters: { title: string; content: string; photos: EpubPhoto[] }[] = [];
+    const chapters: { title: string; content: string; photos: EpubPhoto[]; photoOnly?: boolean }[] = [];
 
     if (recordIds) {
       // 합본: 화면·PDF에 보인 기록만 같은 순서로. 본인 기록 경로에서만 읽고 조건을 다시 확인한다.
@@ -224,7 +224,9 @@ export const exportEpub = onCall(
       // 사진: 요청 형식이 있으면 그 형식의 사진만, 없으면 포함된 형식마다(형식당 최대 5장, 같은 사진은 한 번). 타임라인 사진도 같이 준비한다.
       const photoFormats = format ? [format] : includedFormats;
       const formatPhotos = Array.from(new Set(photoFormats.flatMap((f) => (FORMAT_PREFIX[f] ? getRecordPhotoUrls(record, FORMAT_PREFIX[f]) : []))));
-      chapters.push({ title, content, photos: [...timelinePhotos, ...formatPhotos.map((url) => ({ url }))] });
+      // 글 없이 사진만 있는 타임라인 기록은 사진을 하나도 받지 못하면 안내 문구를 넣는다(빈 장 방지).
+      const photoOnly = record.recordType === 'growthTimeline' && !record.content;
+      chapters.push({ title, content, photos: [...timelinePhotos, ...formatPhotos.map((url) => ({ url }))], photoOnly });
     });
 
     if (chapters.length === 0) {
@@ -240,7 +242,7 @@ async function buildAndSave(
   startDate: string,
   endDate: string,
   format: string | undefined,
-  rawChapters: { title: string; content: string; photos: EpubPhoto[] }[],
+  rawChapters: { title: string; content: string; photos: EpubPhoto[]; photoOnly?: boolean }[],
 ) {
   // 사진은 서버가 한 번 내려받아 임시 파일로 넘긴다. 실제로 받은 사진만 넣고 받지 못한 장수를 센다.
   const photoDir = await mkdtemp(join(tmpdir(), 'epub-'));
@@ -258,6 +260,7 @@ async function buildAndSave(
         lines.push(`<img src="${escapeHtml(src)}" style="max-width:100%;margin:8px 0;">`);
         if (photo.caption) lines.push(`<p style="font-size:0.85em;color:#666;">${escapeHtml(photo.caption)}</p>`);
       });
+      if (chapter.photoOnly && srcByChapter[index].every((src) => !src)) lines.push('<p>(사진을 불러오지 못했습니다)</p>');
       return { title: chapter.title, content: lines.join('\n') };
     });
 

@@ -40,6 +40,19 @@ assert.doesNotMatch(formatModal, /initialData\.garden_crop\.split/);
 assert.match(read('services/epubExportService.ts'), /httpsCallable<EpubExportRequest, EpubExportResponse>\(functions, 'exportEpub', \{ timeout: 310_000 \}\)/);
 assert.match(fs.readFileSync(path.join(__dirname, '../../functions/src/epubExport.ts'), 'utf8'), /timeoutSeconds: 300,/);
 
+// 후속(2026-10-24): SAYU 원본 보기가 비어 있는 garden_crop 을 등록 작물 전체로 채우지 않는다
+assert.doesNotMatch(sayuModal, /garden_crop: crops\.join/);
+// 통계 화면은 불러오기 실패를 '기록 없음'과 구분한다
+assert.match(read('pages/StatisticsPage.tsx'), /getRecordsInRange\(user\.uid, previous\.start, range\.end, \{ throwOnError: true \}\)/);
+assert.match(read('pages/FormatStatisticsPage.tsx'), /getRecordsInRange\(user\.uid, previous\.start, range\.end, \{ throwOnError: true \}\)/);
+assert.match(service, /if \(options\.throwOnError\) throw error;/);
+// EPUB: 날씨·기분·타임라인·성장 본문 이스케이프, 사진만 있는 장이 비지 않게 안내
+const epubSource = fs.readFileSync(path.join(__dirname, '../../functions/src/epubExport.ts'), 'utf8');
+assert.match(epubSource, /기분: \$\{escapeHtml\(String\(record\.mood\)\)\}/);
+assert.match(epubSource, /escapeHtml\(String\(record\.content\)\)/);
+assert.match(epubSource, /escapeHtml\(String\(growthBody\)\)/);
+assert.match(epubSource, /사진을 불러오지 못했습니다/);
+
 // 구형 iOS Safari 호환: 통계 모듈은 lookbehind 정규식을 쓰지 않는다
 assert.doesNotMatch(stats, /\(\?<[=!]/);
 
