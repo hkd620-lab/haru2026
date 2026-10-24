@@ -811,7 +811,8 @@ class FirestoreService {
    * @param startDate 시작 날짜 (YYYY-MM-DD 형식)
    * @param endDate 종료 날짜 (YYYY-MM-DD 형식)
    */
-  async getRecordsInRange(userId: string, startDate: string, endDate: string): Promise<HaruRecord[]> {
+  // throwOnError: 통계 화면처럼 '기록 없음'과 '불러오기 실패'를 구분해야 하는 곳에서 true 로 쓴다(기본은 기존대로 빈 목록).
+  async getRecordsInRange(userId: string, startDate: string, endDate: string, options: { throwOnError?: boolean } = {}): Promise<HaruRecord[]> {
     try {
       console.log('\n📥 getRecordsInRange 호출');
       console.log('  userId:', userId);
@@ -839,6 +840,7 @@ class FirestoreService {
       return records;
     } catch (error) {
       console.error('❌ 날짜 범위 기록 불러오기 실패:', error);
+      if (options.throwOnError) throw error;
       return [];
     }
   }

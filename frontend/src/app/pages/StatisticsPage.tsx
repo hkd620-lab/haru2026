@@ -47,7 +47,7 @@ export function StatisticsPage() {
     let cancelled = false;
     setRecords(null);
     setLoadFailed(false);
-    firestoreService.getRecordsInRange(user.uid, previous.start, range.end)
+    firestoreService.getRecordsInRange(user.uid, previous.start, range.end, { throwOnError: true })
       .then((data) => { if (!cancelled) setRecords(data as Record<string, any>[]); })
       .catch((error) => {
         console.warn('기록 통계 로딩 실패:', error);
