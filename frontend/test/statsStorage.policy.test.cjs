@@ -69,3 +69,7 @@ for (const page of [read('pages/StatisticsPage.tsx'), read('pages/FormatStatisti
 assert.match(formatModal, /await withRecordPhotoUploadDeadline\(uploadBytesResumable\(storageRef, compressed, \{ contentType: 'image\/jpeg' \}\)\);/);
 assert.match(formatModal, /const retryAction = !requireAll && retryableFiles\.length > 0/);
 assert.match(formatModal, /uploadSelectedImagesRef\.current = uploadSelectedImages;/);
+// PR #297 검토 지적: '다시 시도'는 편집창이 닫히거나 기록·형식·보조장부 행이 바뀌면 올리지 않는다
+assert.match(formatModal, /useEffect\(\(\) => \{\n\s*photoEditorSessionRef\.current \+= 1;\n\s*\}, \[isOpen, format, recordId\]\);/);
+assert.match(formatModal, /if \(photoEditorSessionRef\.current !== retrySession \|\| \(periodRow && latestExpandedLedgerRowIdRef\.current !== retryLedgerRowId\)\) \{/);
+assert.ok(formatModal.indexOf('photoEditorSessionRef.current += 1') < formatModal.indexOf('if (!isOpen) return null;'));

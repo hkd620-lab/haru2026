@@ -479,6 +479,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const initialPhotoUploadFailedRef = useRef(false);
   // 업로드 실패 안내의 '다시 시도' 버튼이 눌린 시점의 최신 사진 목록 기준으로 다시 올리도록 최신 함수를 담아 둔다.
   const uploadSelectedImagesRef = useRef<((files: File[], requireAll?: boolean) => Promise<void>) | null>(null);
+  // 편집창을 열고 닫거나 기록·형식이 바뀔 때마다 올린다. '다시 시도'는 실패 당시와 같은 편집 세션·보조장부 행일 때만 올린다.
+  const photoEditorSessionRef = useRef(0);
+  const latestExpandedLedgerRowIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    photoEditorSessionRef.current += 1;
+  }, [isOpen, format, recordId]);
   const [initialPhotoUploadFailed, setInitialPhotoUploadFailed] = useState(false);
   const [isCleaningSessionUploads, setIsCleaningSessionUploads] = useState(false);
   const isCleaningSessionUploadsRef = useRef(false);
@@ -2068,10 +2074,18 @@ ${contentValues}`,
 
       const failureDetails = [...new Set(failures)].join(' ');
       // 초안 사진(requireAll)은 기존 안내대로 편집창을 닫고 다시 고르게 하고, 직접 고른 사진만 바로 다시 올릴 수 있게 한다.
+      const retrySession = photoEditorSessionRef.current;
+      const retryLedgerRowId = periodRow?.id ?? null;
       const retryAction = !requireAll && retryableFiles.length > 0
         ? {
             label: '다시 시도',
-            onClick: () => { void uploadSelectedImagesRef.current?.(retryableFiles); },
+            onClick: () => {
+              if (photoEditorSessionRef.current !== retrySession || (periodRow && latestExpandedLedgerRowIdRef.current !== retryLedgerRowId)) {
+                toast.info('편집 중인 기록이 바뀌어 다시 올리지 않았습니다. 해당 기록에서 사진을 다시 선택해 주세요.');
+                return;
+              }
+              void uploadSelectedImagesRef.current?.(retryableFiles);
+            },
           }
         : undefined;
       if (requireAll && (failures.length > 0 || excludedCount > 0 || newImageUrls.length !== files.length)) {
@@ -2117,6 +2131,7 @@ ${contentValues}`,
     }
   };
   uploadSelectedImagesRef.current = uploadSelectedImages;
+  latestExpandedLedgerRowIdRef.current = ledgerInputMode === 'period' ? expandedLedgerXlsxRowId ?? null : null;
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.currentTarget.files || []);
