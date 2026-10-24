@@ -484,6 +484,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const latestExpandedLedgerRowIdRef = useRef<string | null>(null);
   useEffect(() => {
     photoEditorSessionRef.current += 1;
+    // 편집창이 열린 채 화면을 벗어나(뒤로가기 등) 언마운트될 때도 세션을 바꿔 남은 '다시 시도'를 막는다.
+    return () => { photoEditorSessionRef.current += 1; };
   }, [isOpen, format, recordId]);
   const [initialPhotoUploadFailed, setInitialPhotoUploadFailed] = useState(false);
   const [isCleaningSessionUploads, setIsCleaningSessionUploads] = useState(false);
