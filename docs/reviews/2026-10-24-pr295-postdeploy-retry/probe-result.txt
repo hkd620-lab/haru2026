@@ -1,0 +1,4 @@
+PASS original production handlers: before failure -> preserve input, reset saving, retry same ID, one record, original SAYU, correct navigation
+PASS original production handlers: after failure -> preserve input, reset saving, retry same ID, one record, original SAYU, correct navigation
+PASS production effect pages/StatisticsPage.tsx: rejection remains error/null, next effect clears error and recovers records
+PASS production effect pages/FormatStatisticsPage.tsx: rejection remains error/null, next effect clears error and recovers records
