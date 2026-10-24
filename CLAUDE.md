@@ -356,3 +356,12 @@ Cowork(claude-opus-5) 세션에서 로컬 폴더 구조를 실측 조사하고 �
 - 상세 규칙·판정 조건·멈춤 조건의 단일 원본은 `docs/HARU2026_Slack_운영정책.md` 8.1절이다.
 - 위 "원격(아이폰) 작업 끝까지 완료 원칙"의 "반드시 멈추고 보고" 항목은 자동 판정 대상이 아니며, 그대로 허대표님 결정 후 진행한다.
 - 위 「Git 브랜치 필수 원칙」의 "허대표님 승인 또는 작업 성격 확인 후 main merge·배포"에서 '작업 성격 확인'은 8.1절 판정①로 대신한다. 멈춤 조건 해당 작업은 판정①이 있어도 허대표님 승인이 필요하다.
+
+## PWA 앱 아이콘 v2 채택 기록 (2026-10-24 추가)
+
+- 허대표님이 PWA 앱 아이콘으로 B안을 최종 확정했다. 근거: Slack `#haru2026-감사` 스레드 <https://harulab-hq.slack.com/archives/C0C1LQ394JY/p1792841746252699>, 검토 자료 `docs/reviews/2026-10-24-app-icon-design-review/`.
+- 그림: 호박잎 두 장 + U자 덩굴 + 골이 있는 호박(꼭지 오른쪽, 열매자루는 덩굴이 갈라지는 마디에서 나옴). 글자 없음. 색상 짙은 초록 `#004A28`, 배경 `#FDFEF7`.
+- 원본(SVG): `docs/brand/haru2026-app-icon-v2/` — `symbol.svg`(그림만, 투명), `icon.svg`(1024 정사각, 배경 포함), `favicon.svg`(탭 아이콘용 확대 배치). 크기별 PNG는 이 원본에서 생성한다.
+- 적용 파일: `frontend/public/icons/icon-v2-192.png`·`icon-v2-512.png`(PWA any·maskable 겸용, 최외곽 35.6%로 maskable 안전영역 40% 안), `apple-touch-icon-v2.png`(180), `favicon-v2-32.png`·`favicon-v2-16.png`. 모두 배경 불투명.
+- 이 결정은 위 「브랜드 로고 및 호박 상징 원칙」의 앱 아이콘 브랜드 변경에 대한 허대표님 승인이다. 포도 로고의 다른 사용처와 랜딩·명함용 호박 원본은 이 결정으로 바뀌지 않는다.
+- 기존 `icons/icon-192.png`·`icon-512.png`는 알림(`notificationService.ts`) 등에서 아직 참조하므로 삭제하지 않는다. 교체 여부는 별도 결정.
