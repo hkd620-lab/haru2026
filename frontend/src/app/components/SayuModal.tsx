@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
 import { buildFormatKeyMap, invertFormatKeyMap } from '../records/formatRegistry';
 import { exportRecordsToEpub } from '../services/epubExportService';
+import { getEpubReaderHint } from '../utils/epubReaderGuide';
 import GrapeLoadingMini from './GrapeLoadingMini';
 import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './GrowthTimelineDocumentModal';
 import { compressImage } from '../services/imageService';
@@ -1022,7 +1023,7 @@ export function SayuModal({
     try {
       const date = firestoreId;
       const { fileName } = await exportRecordsToEpub(date, date, format);
-      toast.success(`📖 EPUB 생성 완료! ${fileName}`);
+      toast.success(`📖 EPUB 생성 완료! ${fileName}`, { description: getEpubReaderHint(), duration: 8000 });
     } catch (e: any) {
       toast.error(`EPUB 생성 실패: ${e.message}`);
     } finally {

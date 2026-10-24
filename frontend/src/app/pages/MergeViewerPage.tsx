@@ -6,6 +6,8 @@ import { getOrigin } from '../services/v2Origin';
 import { toast } from 'sonner';
 import { exportRecordsToEpub } from '../services/epubExportService';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
+import { EpubReaderNotice } from '../components/EpubReaderNotice';
+import { getEpubReaderHint } from '../utils/epubReaderGuide';
 import { buildFormatKeyMap } from '../records/formatRegistry';
 import { getRecordPhotoUrls, isSpecialDayRecord } from '../records/recordStats';
 
@@ -150,7 +152,7 @@ export function MergeViewerPage() {
         return;
       }
       const { count, fileName, skippedPhotos, limitedPhotos } = await exportRecordsToEpub(startDate, endDate, format as string, records.map((record) => String(record.id)), state.filter);
-      toast.success(`EPUB 저장 완료 — ${count}개 기록 · ${fileName}`);
+      toast.success(`EPUB 저장 완료 — ${count}개 기록 · ${fileName}`, { description: getEpubReaderHint(), duration: 8000 });
       if (skippedPhotos > 0) toast.warning(`사진 ${skippedPhotos}장을 내려받지 못해 EPUB에서 뺐습니다.`);
       if (limitedPhotos > 0) toast.warning(`EPUB 한 파일에는 사진을 200장까지 넣습니다. 사진 ${limitedPhotos}장은 넣지 않았습니다.`);
     } catch (err) {
@@ -859,6 +861,7 @@ export function MergeViewerPage() {
                   ? <><GrapeLoadingMini size={18} color="#FEFBE8" /> EPUB 생성 중...</>
                   : '📚 EPUB 저장'}
               </button>
+              <div className="mb-3"><EpubReaderNotice /></div>
               {/* 취소 버튼 */}
               <button
                 onClick={() => setShowPreviewModal(false)}
