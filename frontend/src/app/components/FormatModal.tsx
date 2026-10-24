@@ -8,7 +8,7 @@ import { applyReadingAiReference, buildPreviousReadingSummary, buildReadingSnaps
 import { useNavigate } from 'react-router';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, type StorageReference } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject, type StorageReference } from 'firebase/storage';
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { compressImage } from '../services/imageService';
 import { startSelectedRecordPhotoReads, readSelectedRecordPhotos } from '../services/selectedRecordPhoto';
@@ -25,6 +25,8 @@ import {
   enqueuePendingRecordPhotoCleanup,
   excludeCommittedRecordPhotoUrls,
   retryPendingRecordPhotoCleanup,
+  RECORD_PHOTO_UPLOAD_TIMEOUT,
+  withRecordPhotoUploadDeadline,
 } from '../services/recordPhotoUploadCore';
 import {
   makeReadingBookId,
@@ -475,6 +477,16 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const initialUploadedImagesRef = useRef<string[]>([]);
   const initialReadingJournalRef = useRef('');
   const initialPhotoUploadFailedRef = useRef(false);
+  // 업로드 실패 안내의 '다시 시도' 버튼이 눌린 시점의 최신 사진 목록 기준으로 다시 올리도록 최신 함수를 담아 둔다.
+  const uploadSelectedImagesRef = useRef<((files: File[], requireAll?: boolean) => Promise<void>) | null>(null);
+  // 편집창을 열고 닫거나 기록·형식이 바뀔 때마다 올린다. '다시 시도'는 실패 당시와 같은 편집 세션·보조장부 행일 때만 올린다.
+  const photoEditorSessionRef = useRef(0);
+  const latestExpandedLedgerRowIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    photoEditorSessionRef.current += 1;
+    // 편집창이 열린 채 화면을 벗어나(뒤로가기 등) 언마운트될 때도 세션을 바꿔 남은 '다시 시도'를 막는다.
+    return () => { photoEditorSessionRef.current += 1; };
+  }, [isOpen, format, recordId]);
   const [initialPhotoUploadFailed, setInitialPhotoUploadFailed] = useState(false);
   const [isCleaningSessionUploads, setIsCleaningSessionUploads] = useState(false);
   const isCleaningSessionUploadsRef = useRef(false);
@@ -1946,6 +1958,8 @@ ${contentValues}`,
       const newImageUrls: string[] = [];
       const newImageMeta: UploadedImageMeta[] = [];
       const failures: string[] = [];
+      // 통신 문제로 실패한 사진은 '다시 시도' 버튼으로 같은 파일을 다시 올릴 수 있게 모아 둔다.
+      const retryableFiles: File[] = [];
       const functionsInstance = getFunctions(undefined, 'asia-northeast3');
 
       while (selectedPhotoReads.length > 0) {
@@ -2010,7 +2024,7 @@ ${contentValues}`,
           const imagePath = `users/${user.uid}/format_photos/${recordId}_${prefix}_${fileName}`;
           const storageRef = ref(storage, imagePath);
           pendingStorageRef = storageRef;
-          await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
+          await withRecordPhotoUploadDeadline(uploadBytesResumable(storageRef, compressed, { contentType: 'image/jpeg' }));
           const downloadUrl = await getDownloadURL(storageRef);
           sessionUploadedImageUrlsRef.current.push(downloadUrl);
           uploadTracked = true;
@@ -2030,10 +2044,15 @@ ${contentValues}`,
           }
         } catch (fileError: any) {
           if (pendingStorageRef && !uploadTracked) {
-            try {
-              await deleteObject(pendingStorageRef);
-            } catch {
+            if (fileError?.message === RECORD_PHOTO_UPLOAD_TIMEOUT) {
+              // 시간 초과는 대개 통신 장애라 지금 지우기를 기다리면 다시 오래 멈춘다. 다음 정리 때 지우도록 미뤄 둔다.
               enqueuePendingRecordPhotoCleanup(pendingStorageRef.fullPath);
+            } else {
+              try {
+                await deleteObject(pendingStorageRef);
+              } catch {
+                enqueuePendingRecordPhotoCleanup(pendingStorageRef.fullPath);
+              }
             }
           }
           if (fileError?.message === 'HEIC_CONVERSION_FAILED') {
@@ -2044,18 +2063,39 @@ ${contentValues}`,
             failures.push('사진 원본을 읽지 못했습니다. 사진을 기기에 다운로드한 뒤 다시 선택해주세요.');
             continue;
           }
+          if (fileError?.message === RECORD_PHOTO_UPLOAD_TIMEOUT) {
+            retryableFiles.push(file);
+            failures.push('업로드 시간이 초과되었습니다. 인터넷 연결을 확인한 뒤 다시 시도해주세요.');
+            continue;
+          }
           console.error('사진 처리 실패:', fileError?.code || fileError?.name || 'unknown');
+          retryableFiles.push(file);
           failures.push('사진 처리 또는 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.');
         }
       }
 
       const failureDetails = [...new Set(failures)].join(' ');
+      // 초안 사진(requireAll)은 기존 안내대로 편집창을 닫고 다시 고르게 하고, 직접 고른 사진만 바로 다시 올릴 수 있게 한다.
+      const retrySession = photoEditorSessionRef.current;
+      const retryLedgerRowId = periodRow?.id ?? null;
+      const retryAction = !requireAll && retryableFiles.length > 0
+        ? {
+            label: '다시 시도',
+            onClick: () => {
+              if (photoEditorSessionRef.current !== retrySession || (periodRow && latestExpandedLedgerRowIdRef.current !== retryLedgerRowId)) {
+                toast.info('편집 중인 기록이 바뀌어 다시 올리지 않았습니다. 해당 기록에서 사진을 다시 선택해 주세요.');
+                return;
+              }
+              void uploadSelectedImagesRef.current?.(retryableFiles);
+            },
+          }
+        : undefined;
       if (requireAll && (failures.length > 0 || excludedCount > 0 || newImageUrls.length !== files.length)) {
         initialPhotoUploadFailedRef.current = true;
         setInitialPhotoUploadFailed(true);
       }
       if (newImageUrls.length === 0) {
-        toast.error(`사진을 업로드하지 못했습니다. ${failureDetails}`, { id: uploadNoticeId });
+        toast.error(`사진을 업로드하지 못했습니다. ${failureDetails}`, { id: uploadNoticeId, action: retryAction, duration: retryAction ? 15000 : undefined });
         return;
       }
 
@@ -2073,7 +2113,7 @@ ${contentValues}`,
         ? `${newImageUrls.length}장의 사진이 업로드되었습니다. 최대 ${maxPhotos}장 제한으로 초과한 ${excludedCount}장은 제외되었습니다.`
         : `${newImageUrls.length}장의 사진이 업로드되었습니다!`;
       if (failures.length > 0) {
-        toast.warning(`${uploadedMessage} ${failures.length}장은 실패했습니다. ${failureDetails}`, { id: uploadNoticeId });
+        toast.warning(`${uploadedMessage} ${failures.length}장은 실패했습니다. ${failureDetails}`, { id: uploadNoticeId, action: retryAction, duration: retryAction ? 15000 : undefined });
       } else {
         toast.success(uploadedMessage, { id: uploadNoticeId });
       }
@@ -2092,6 +2132,8 @@ ${contentValues}`,
       }
     }
   };
+  uploadSelectedImagesRef.current = uploadSelectedImages;
+  latestExpandedLedgerRowIdRef.current = ledgerInputMode === 'period' ? expandedLedgerXlsxRowId ?? null : null;
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.currentTarget.files || []);

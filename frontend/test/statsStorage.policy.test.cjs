@@ -57,3 +57,19 @@ assert.match(epubSource, /사진을 불러오지 못했습니다/);
 assert.doesNotMatch(stats, /\(\?<[=!]/);
 
 console.log('stats storage policy tests passed');
+
+// 오류 시험 ①(2026-10-24): 오프라인에서 캐시 결과(0건)를 '기록 없음'으로 보여 주지 않는다
+assert.match(service, /if \(options\.throwOnError && querySnapshot\.metadata\.fromCache\) \{\n\s*throw new Error\('RECORDS_IN_RANGE_FROM_CACHE'\);/);
+// 통계 두 화면 모두 실패 안내에 '다시 불러오기'가 있고, 누르면 불러오기를 다시 실행한다
+for (const page of [read('pages/StatisticsPage.tsx'), read('pages/FormatStatisticsPage.tsx')]) {
+  assert.match(page, /onClick=\{\(\) => setReloadKey\(\(key\) => key \+ 1\)\}[^>]*>다시 불러오기</);
+  assert.match(page, /range\.end, reloadKey\]\);/);
+}
+// 오류 시험 ③: 기록 사진 업로드는 제한 시간을 두고, 통신 실패한 직접 고른 사진은 '다시 시도'로 다시 올린다
+assert.match(formatModal, /await withRecordPhotoUploadDeadline\(uploadBytesResumable\(storageRef, compressed, \{ contentType: 'image\/jpeg' \}\)\);/);
+assert.match(formatModal, /const retryAction = !requireAll && retryableFiles\.length > 0/);
+assert.match(formatModal, /uploadSelectedImagesRef\.current = uploadSelectedImages;/);
+// PR #297 검토 지적: '다시 시도'는 편집창이 닫히거나 기록·형식·보조장부 행이 바뀌면 올리지 않는다
+assert.match(formatModal, /useEffect\(\(\) => \{\n\s*photoEditorSessionRef\.current \+= 1;\n[^\n]*\n\s*return \(\) => \{ photoEditorSessionRef\.current \+= 1; \};\n\s*\}, \[isOpen, format, recordId\]\);/);
+assert.match(formatModal, /if \(photoEditorSessionRef\.current !== retrySession \|\| \(periodRow && latestExpandedLedgerRowIdRef\.current !== retryLedgerRowId\)\) \{/);
+assert.ok(formatModal.indexOf('photoEditorSessionRef.current += 1') < formatModal.indexOf('if (!isOpen) return null;'));

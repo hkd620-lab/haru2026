@@ -36,6 +36,8 @@ export function StatisticsPage() {
   const { period, range, locked } = resolveStatsPeriod(searchParams, tier);
   const [records, setRecords] = useState<Record<string, any>[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  // '다시 불러오기'를 누를 때마다 올려 기록 불러오기를 다시 실행한다.
+  const [reloadKey, setReloadKey] = useState(0);
   const [showEmpty, setShowEmpty] = useState(false);
   const previous = useMemo(() => getPreviousRange(range), [range.start, range.end]);
 
@@ -54,7 +56,7 @@ export function StatisticsPage() {
         if (!cancelled) setLoadFailed(true);
       });
     return () => { cancelled = true; };
-  }, [user?.uid, subscriptionLoading, locked, previous.start, range.end]);
+  }, [user?.uid, subscriptionLoading, locked, previous.start, range.end, reloadKey]);
 
   const summaries: FormatSummary[] = useMemo(() => {
     if (!records) return [];
@@ -113,7 +115,10 @@ export function StatisticsPage() {
         <>
           <section className="mb-4 bg-white rounded-lg shadow-sm p-4">
             {loadFailed ? (
-              <p className="text-sm" style={{ color: '#999' }}>기록을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm" style={{ color: '#999' }}>기록을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.</p>
+                <button type="button" onClick={() => setReloadKey((key) => key + 1)} className="shrink-0 px-3 py-1.5 rounded text-sm" style={{ border: '1px solid #1A3C6E', color: '#1A3C6E', backgroundColor: '#fff' }}>다시 불러오기</button>
+              </div>
             ) : !totals ? (
               <p className="text-sm" style={{ color: '#999' }}>기록을 불러오는 중...</p>
             ) : (

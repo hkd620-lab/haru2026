@@ -59,6 +59,8 @@ export function FormatStatisticsPage() {
   const [records, setRecords] = useState<Record<string, any>[] | null>(null);
   const [crops, setCrops] = useState<string[]>([]);
   const [loadFailed, setLoadFailed] = useState(false);
+  // '다시 불러오기'를 누를 때마다 올려 기록 불러오기를 다시 실행한다.
+  const [reloadKey, setReloadKey] = useState(0);
   const [openKeys, setOpenKeys] = useState<Set<string>>(new Set());
   const [showCommonDetail, setShowCommonDetail] = useState(false);
   const validFormat = isStatsRecordFormat(format);
@@ -79,7 +81,7 @@ export function FormatStatisticsPage() {
         if (!cancelled) setLoadFailed(true);
       });
     return () => { cancelled = true; };
-  }, [user?.uid, subscriptionLoading, locked, validFormat, previous.start, range.end]);
+  }, [user?.uid, subscriptionLoading, locked, validFormat, previous.start, range.end, reloadKey]);
 
   // 텃밭일지: 사용자가 등록한 작물 목록을 본문 대조 사전으로 쓴다.
   useEffect(() => {
@@ -163,7 +165,10 @@ export function FormatStatisticsPage() {
       <StatsPeriodPicker period={period} range={range} tier={tier} locked={locked} onChange={changePeriod} />
 
       {!locked && (loadFailed ? (
-        <p className="text-sm" style={{ color: '#999' }}>기록을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm" style={{ color: '#999' }}>기록을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.</p>
+          <button type="button" onClick={() => setReloadKey((key) => key + 1)} className="shrink-0 px-3 py-1.5 rounded text-sm" style={{ border: '1px solid #1A3C6E', color: '#1A3C6E', backgroundColor: '#fff' }}>다시 불러오기</button>
+        </div>
       ) : !result || !common ? (
         <p className="text-sm" style={{ color: '#999' }}>기록을 불러오는 중...</p>
       ) : common.recordCount === 0 ? (
