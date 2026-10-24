@@ -129,3 +129,34 @@ export async function decodeConvertedJpeg(data: unknown): Promise<Blob> {
 
   throw new Error('HEIC 변환 결과가 올바르지 않습니다.');
 }
+
+// 기록 사진 한 장 업로드 제한 시간. 통신이 끊기면 Storage SDK 가 오래(기본 약 10분) 재시도해 업로드 화면이 멈춘 것처럼 보이므로,
+// 이 시간이 지나면 업로드를 취소하고 실패로 안내한다. 압축된 기록 사진(긴 변 800px)은 보통 몇 초 안에 끝난다.
+export const RECORD_PHOTO_UPLOAD_TIMEOUT_MS = 60_000;
+export const RECORD_PHOTO_UPLOAD_TIMEOUT = 'RECORD_PHOTO_UPLOAD_TIMEOUT';
+
+type CancelableUpload<T> = PromiseLike<T> & { cancel: () => boolean };
+
+export function withRecordPhotoUploadDeadline<T>(
+  task: CancelableUpload<T>,
+  timeoutMs = RECORD_PHOTO_UPLOAD_TIMEOUT_MS,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      task.cancel();
+      reject(new Error(RECORD_PHOTO_UPLOAD_TIMEOUT));
+    }, timeoutMs);
+    task.then(
+      (value) => {
+        clearTimeout(timer);
+        if (!timedOut) resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        if (!timedOut) reject(error);
+      },
+    );
+  });
+}

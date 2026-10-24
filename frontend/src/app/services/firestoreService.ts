@@ -827,6 +827,11 @@ class FirestoreService {
         orderBy('date', 'desc')
       );
       const querySnapshot = await getDocs(q);
+      // 오프라인이면 getDocs 가 오류 대신 메모리 캐시(비어 있으면 0건)를 돌려준다. 통계처럼 '기록 없음'과
+      // '불러오기 실패'를 구분해야 하는 곳에서는 서버에서 받은 결과가 아니면 실패로 다룬다.
+      if (options.throwOnError && querySnapshot.metadata.fromCache) {
+        throw new Error('RECORDS_IN_RANGE_FROM_CACHE');
+      }
       
       console.log('  Firestore 쿼리 결과:', querySnapshot.docs.length, '개');
       
