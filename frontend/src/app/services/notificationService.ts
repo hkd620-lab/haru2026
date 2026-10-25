@@ -114,8 +114,8 @@ export async function requestNotificationPermission(userId: string): Promise<boo
       const body = payload.notification?.body || '';
       new Notification(title, {
         body: body,
-        icon: '/icons/icon-192.png',
-        badge: '/icons/icon-192.png',
+        icon: '/icons/icon-v2-192.png',
+        badge: '/icons/badge-v2-96.png',
         tag: 'haru-notification',
       });
     });
