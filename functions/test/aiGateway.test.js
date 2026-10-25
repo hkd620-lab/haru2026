@@ -95,8 +95,8 @@ test('OpenAI 어댑터: 회사를 바꾸면 같은 요청을 OpenAI 형식으로
   }
 });
 
-test('설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(모델 변경 없음)', () => {
-  const migrated = ['sayuPolish', 'sayuPolishComment', 'recordStats', 'recordTitle', 'recordTitleBackfill', 'recordKeywords', 'haruMemo',
+test('설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(제목 추출만 승인받아 Luna 로 교체)', () => {
+  const migrated = ['sayuPolish', 'sayuPolishComment', 'recordStats', 'recordTitleBackfill', 'recordKeywords', 'haruMemo',
     'bookPhotoOcr', 'stockPhotoOcr', 'subledgerPhotoOcr', 'householdPhotoOcr',
     'bibleWordMeaning', 'bibleVerseQuiz', 'bibleVerseTranslation', 'bibleVerseWordMapping', 'englishTranslate',
     'newsDigest', 'newsDigestRefresh', 'newsMetadata', 'prophecyAnalysis', 'prophecySynopsis',
@@ -108,9 +108,50 @@ test('설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(�
   }
   for (const purpose of migrated) {
     assert.deepEqual([models.AI_ROUTES[purpose].provider, models.AI_ROUTES[purpose].model], ['gemini', 'gemini-3.1-flash-lite'], purpose);
+    assert.equal(models.AI_ROUTES[purpose].openai, undefined, purpose);
   }
+  assert.deepEqual(models.AI_ROUTES.recordTitle, {
+    provider: 'openai', model: 'gpt-6-luna', label: '기록 제목 추출(extractTitle)',
+    openai: { reasoningEffort: 'none', maxCompletionTokens: 512 },
+  });
   // 설정 표에 위 32개 외 용도가 생기면 이 테스트에도 모델을 고정해야 한다
-  assert.deepEqual(Object.keys(models.AI_ROUTES).sort(), [...migrated, 'prophecyStory', 'petFoodCheck'].sort());
+  assert.deepEqual(Object.keys(models.AI_ROUTES).sort(), [...migrated, 'prophecyStory', 'petFoodCheck', 'recordTitle'].sort());
+});
+
+test('제목 추출(recordTitle)은 OpenAI 키로 Luna 에 추론 없이 보내고, 키워드는 Gemini 그대로 보낸다', async () => {
+  // 함수 secrets: 제목은 OpenAI 키만, 키워드·제목 일괄 보정은 Gemini 키만 연결된다
+  assert.deepEqual(gateway.aiSecretsFor('recordTitle').map((s) => s.name), ['OPENAI_API_KEY']);
+  assert.deepEqual(gateway.aiSecretsFor('recordKeywords').map((s) => s.name), ['GEMINI_API_KEY']);
+  assert.deepEqual(gateway.aiSecretsFor('recordTitleBackfill').map((s) => s.name), ['GEMINI_API_KEY']);
+
+  const calls = [];
+  gateway.aiClientFactories.openai = (apiKey) => ({ chat: { completions: { create: async (...args) => {
+    calls.push({ apiKey, args });
+    return { choices: [{ message: { content: '"산책 기록"' } }], usage: { prompt_tokens: 40, completion_tokens: 4 } };
+  } } } });
+  const log = [];
+  gateway.aiClientFactories.gemini = fakeGemini(log, { response: { text: () => '["산책"]' } });
+
+  // extractTitle 은 input 하나만 넘긴다(아래 호출부 설정 테스트가 고정)
+  const title = await gateway.callAi({ purpose: 'recordTitle', input: '제목 프롬프트' });
+  assert.deepEqual(calls, [{ apiKey: 'k-openai', args: [{
+    model: 'gpt-6-luna',
+    messages: [{ role: 'user', content: '제목 프롬프트' }],
+    reasoning_effort: 'none', max_completion_tokens: 512,
+  }] }]);
+  assert.deepEqual([title.provider, title.model, title.text(), title.inputTokens, title.outputTokens], ['openai', 'gpt-6-luna', '"산책 기록"', 40, 4]);
+  // 호출부가 출력 한도를 넘기면 그 값이 우선한다
+  await gateway.callAi({ purpose: 'recordTitle', input: 'p', generationConfig: { maxOutputTokens: 64 } });
+  assert.equal(calls[1].args[0].max_completion_tokens, 64);
+  assert.equal(calls[1].args[0].reasoning_effort, 'none');
+
+  const keywords = await gateway.callAi({ purpose: 'recordKeywords', input: '키워드 프롬프트' });
+  assert.deepEqual(log, [
+    { apiKey: 'k-gemini', params: { model: 'gemini-3.1-flash-lite' }, requestOptions: undefined, argc: 1 },
+    { input: '키워드 프롬프트' },
+  ]);
+  assert.deepEqual([keywords.provider, keywords.model], ['gemini', 'gemini-3.1-flash-lite']);
+  assert.equal(calls.length, 2);
 });
 
 test('옮긴 호출부는 SDK 를 직접 만들지 않고 창구를 쓴다', () => {

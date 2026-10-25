@@ -10,6 +10,8 @@ export interface AiRoute {
   provider: AiProvider;
   model: string;
   label: string; // 사람이 읽는 기능 이름
+  // OpenAI 로 보낼 때만 붙는 용도별 설정. 넣은 용도의 요청에만 추가되고, Gemini 로 보낼 때는 쓰지 않는다.
+  openai?: { reasoningEffort?: 'none'; maxCompletionTokens?: number };
 }
 
 export const AI_ROUTES = {
@@ -18,7 +20,11 @@ export const AI_ROUTES = {
   sayuPolishComment: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: 'SAYU 다듬기 AI 한마디' },
   recordStats: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '기록 통계 분석' },
   // 기록 보조
-  recordTitle: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '기록 제목 추출(extractTitle)' },
+  // 제목은 짧은 한 줄이라 추론을 끄고(none) 출력 한도 512 로 보낸다(허대표님 승인으로 Luna 교체)
+  recordTitle: {
+    provider: 'openai', model: 'gpt-6-luna', label: '기록 제목 추출(extractTitle)',
+    openai: { reasoningEffort: 'none', maxCompletionTokens: 512 },
+  },
   recordTitleBackfill: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '기록 제목 일괄 보정(generateTitlesForAll)' },
   recordKeywords: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: 'SAYU 미리보기 키워드(extractKeywords)' },
   haruMemo: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: 'HARU 메모(generateHaruMemo)' },
