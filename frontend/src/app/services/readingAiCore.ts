@@ -31,6 +31,19 @@ export function importExternalReadingAnswer(rawReference: unknown, bookId: strin
   return { version: 1, bookId, questions: [...new Set(selected.map((item) => item.question).filter(Boolean))], selectedAnswers: selected, aiMemo };
 }
 
+export function mergeInAppReadingReference(rawReference: unknown, bookId: string, selected: Array<{ question: string; answer: string }>, memo: string) {
+  const previous = parseReadingAiReference(rawReference, bookId);
+  const external = (previous?.selectedAnswers || []).filter((item) => item.answer.startsWith('[외부 AI 답변 · '));
+  const answers = [...external];
+  for (const item of selected) {
+    if (!answers.some((answer) => answer.question === item.question && answer.answer === item.answer)) answers.push(item);
+  }
+  if (answers.length > 3) throw new Error('외부 참고자료와 합쳐 답변 3개를 넘습니다. 선택을 줄이거나 새 회차에서 반영해 주세요.');
+  const aiMemo = [...external.map((item) => item.answer), memo.trim()].filter(Boolean).join('\n\n');
+  if (aiMemo.length > 4000) throw new Error('외부 참고자료와 합쳐 4,000자를 넘습니다. 메모를 줄이거나 새 회차에서 반영해 주세요.');
+  return { selected: answers, aiMemo };
+}
+
 export function resetReadingBookDraft(previous: Record<string, string>, title: string, author: string, startedAt: string, initialJournal = ''): Record<string, string> {
   const metadata = new Set(['bookTitle', 'author', 'bookTitleNormalized', 'authorNormalized', 'entryType']);
   const otherFields = Object.fromEntries(Object.entries(previous).filter(([key]) => !key.startsWith('reading') && !metadata.has(key)));

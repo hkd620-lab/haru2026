@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useReadingAiChat } from '../hooks/useReadingAiChat';
-import { buildExternalReadingPrompt, importExternalReadingAnswer, parseReadingAiReference, READING_EXTERNAL_SOURCES } from '../services/readingAiCore';
+import { buildExternalReadingPrompt, importExternalReadingAnswer, mergeInAppReadingReference, parseReadingAiReference, READING_EXTERNAL_SOURCES } from '../services/readingAiCore';
 import type { ReadingAiContext } from '../types/readingAi';
 
 const button: CSSProperties = { padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: 8, background: '#fff', color: '#1a3c6e', cursor: 'pointer', fontSize: 13 };
@@ -18,6 +18,7 @@ export function ReadingAiChat({ uid, bookId, entryId, context, reference, disabl
   const [applied, setApplied] = useState(false);
   const [externalOpen, setExternalOpen] = useState(!!chat.externalAnswer);
   const [externalFeedback, setExternalFeedback] = useState<{ error: boolean; text: string } | null>(null);
+  const [applyError, setApplyError] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
   const savedReference = parseReadingAiReference(reference, bookId);
   useEffect(() => { onBusy(chat.busy); return () => onBusy(false); }, [chat.busy, onBusy]);
@@ -93,7 +94,7 @@ export function ReadingAiChat({ uid, bookId, entryId, context, reference, disabl
           </select>
         </label>
         <label style={{ display: 'block', fontSize: 13 }}>외부 AI 답변 (최대 3,000자)
-          <textarea aria-label="외부 AI 답변" rows={4} maxLength={3000} style={{ ...textarea, marginTop: 6 }} value={chat.externalAnswer} disabled={locked} onChange={(e) => { chat.setExternalAnswer(e.target.value); setExternalFeedback(null); }} placeholder="외부 AI 답변을 여기에 붙여넣으세요." />
+          <textarea aria-label="외부 AI 답변" rows={4} style={{ ...textarea, marginTop: 6 }} value={chat.externalAnswer} disabled={locked} onChange={(e) => { chat.setExternalAnswer(e.target.value); setExternalFeedback(null); }} placeholder="외부 AI 답변을 여기에 붙여넣으세요." />
         </label>
         <p style={{ fontSize: 12 }}>위 질문도 함께 반영됩니다. 답변만 가져오려면 질문 칸을 비워 두세요. 반영 후 ‘독서장 추가하기’를 눌러야 저장됩니다.</p>
         <button type="button" style={button} disabled={locked} onClick={importExternalAnswer}>외부 AI 답변 가져오기</button>
@@ -109,7 +110,17 @@ export function ReadingAiChat({ uid, bookId, entryId, context, reference, disabl
           <textarea aria-label="AI 참고 메모 제안" rows={4} maxLength={4000} style={{ ...textarea, marginTop: 6 }} value={chat.proposal} onChange={(e) => chat.setProposal(e.target.value)} />
         </label>
         <p style={{ fontSize: 12 }}>질문은 아래 독서장에 추가되고, AI 메모는 별도 참고자료로 남습니다. 아직 SAYU에 저장되지 않습니다. 내 생각은 독서장에 직접 덧붙여 주세요.</p>
-        <button type="button" style={button} disabled={locked} onClick={() => { onApply(chat.selected, chat.proposal); setApplied(true); }}>확인 후 독서장에 반영</button>
+        <button type="button" style={button} disabled={locked} onClick={() => {
+          setApplyError('');
+          try {
+            const merged = mergeInAppReadingReference(reference, bookId, chat.selected, chat.proposal);
+            onApply(merged.selected, merged.aiMemo);
+            setApplied(true);
+          } catch (error) {
+            setApplyError(error instanceof Error ? error.message : '참고자료를 반영하지 못했습니다. 기존 자료와 제안은 유지됩니다.');
+          }
+        }}>확인 후 독서장에 반영</button>
+        {applyError && <p role="alert" style={{ fontSize: 12, color: '#b91c1c' }}>{applyError}</p>}
       </div>}
       {savedReference && <div style={{ fontSize: 12, marginTop: 12 }}>
         <p role="status">질문 {savedReference.questions.length}개와 AI 참고자료가 반영되었습니다. 아래 독서장을 수정한 뒤 ‘독서장 추가하기’로 저장하세요.</p>

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildExternalReadingPrompt, importExternalReadingAnswer, appendReadingAiTurn, resetReadingBookDraft, boundedReadingConversation, selectedReadingAnswers, applyReadingAiReference, parseReadingAiReference, readingAiReferenceText, buildPreviousReadingSummary, buildReadingSnapshot, readingAiErrorMessage } from '../src/app/services/readingAiCore.ts';
+import { buildExternalReadingPrompt, importExternalReadingAnswer, mergeInAppReadingReference, appendReadingAiTurn, resetReadingBookDraft, boundedReadingConversation, selectedReadingAnswers, applyReadingAiReference, parseReadingAiReference, readingAiReferenceText, buildPreviousReadingSummary, buildReadingSnapshot, readingAiErrorMessage } from '../src/app/services/readingAiCore.ts';
 import { makeReadingBookId, buildReadingMetaCombined } from '../src/app/types/haruTypes.ts';
 import { saveReadingDraft, readReadingDraft, clearReadingDraft, readingDraftKey, readingChatKey } from '../src/app/services/readingDraft.ts';
 
@@ -50,6 +50,32 @@ test('external import rejects empty, excessive, duplicate and full references wi
   assert.throws(() => importExternalReadingAnswer(third, 'b', '', '추가', 'ChatGPT'), /3개/);
   assert.throws(() => importExternalReadingAnswer({ ...first, aiMemo: 'x'.repeat(3990) }, 'b', '', '새 답변', 'ChatGPT'), /4,000/);
   assert.equal(first.selectedAnswers.length, 1);
+});
+test('applying internal AI notes after an external import preserves external answers and attribution', () => {
+  const external = importExternalReadingAnswer(undefined, 'b', '외부 질문', '외부 원문', 'Claude');
+  const internal = selectedReadingAnswers(messages, ['a1']);
+  const merged = mergeInAppReadingReference(external, 'b', internal, '내부 참고 메모');
+  const applied = applyReadingAiReference('내 생각', 'b', merged.selected, merged.aiMemo);
+  assert.deepEqual(applied.reference.selectedAnswers, [...external.selectedAnswers, ...internal]);
+  assert.match(applied.reference.aiMemo, /외부 AI 답변 · Claude/);
+  assert.match(applied.reference.aiMemo, /외부 원문/);
+  assert.match(applied.reference.aiMemo, /내부 참고 메모/);
+  assert.ok(!applied.journal.includes('외부 원문'));
+  const repeated = mergeInAppReadingReference(applied.reference, 'b', internal, '새 내부 메모');
+  assert.deepEqual(repeated.selected, merged.selected);
+  assert.ok(!repeated.aiMemo.includes('내부 참고 메모'));
+  assert.match(repeated.aiMemo, /외부 원문/);
+  const reverseOrder = importExternalReadingAnswer(applied.reference, 'b', '추가 질문', '추가 답변', 'Gemini');
+  assert.equal(reverseOrder.selectedAnswers.length, 3);
+  assert.equal(mergeInAppReadingReference(external, 'other-book', internal, '메모').selected.length, 1);
+});
+test('combined internal/external limits reject changes without mutating saved references', () => {
+  const external = importExternalReadingAnswer(undefined, 'b', '질문', '외부 원문', 'ChatGPT');
+  const original = JSON.stringify(external);
+  const three = [...selectedReadingAnswers(messages, ['a1', 'a2']), { question: '셋', answer: '셋 답변' }];
+  assert.throws(() => mergeInAppReadingReference(external, 'b', three, '메모'), /3개/);
+  assert.throws(() => mergeInAppReadingReference(external, 'b', three.slice(0, 1), 'm'.repeat(4000)), /4,000/);
+  assert.equal(JSON.stringify(external), original);
 });
 
 test('only chosen answers and their actual user questions become reference material', () => {

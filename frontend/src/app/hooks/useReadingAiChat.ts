@@ -17,7 +17,7 @@ function loadSession(key: string): Session {
       question: typeof data.question === 'string' ? data.question.slice(0, 1000) : '',
       selectedIds: Array.isArray(data.selectedIds) ? data.selectedIds.filter((id: unknown) => typeof id === 'string').slice(-3) : [],
       proposal: typeof data.proposal === 'string' ? data.proposal.slice(0, 4000) : '',
-      externalAnswer: typeof data.externalAnswer === 'string' ? data.externalAnswer.slice(0, 3000) : '',
+      externalAnswer: typeof data.externalAnswer === 'string' ? data.externalAnswer : '',
       externalSource: ['ChatGPT', 'Gemini', 'Claude', '기타 AI'].includes(data.externalSource) ? data.externalSource : 'ChatGPT',
     };
   } catch { return emptySession(); }
