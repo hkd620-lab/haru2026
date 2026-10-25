@@ -1,5 +1,5 @@
 import { state, emit, user } from './fixture';
-export const db = {}, auth = { currentUser: user }, app = {}, storage = {};
+export const db = {}, auth = { currentUser: user }, app = {}, storage = {}, functions = {};
 export const getFirestore = () => db, getFunctions = () => ({}), getStorage = () => ({});
 export const doc = (...args: any[]) => ({ path: args.filter((arg) => typeof arg === 'string').join('/') });
 export const collection = doc, query = (reference: any, ...constraints: any[]) => ({ ...reference, constraints }), where = (...args: any[]) => args;
@@ -12,6 +12,7 @@ export const setDoc = async () => { throw new Error('QA: direct write forbidden'
 export const writeBatch = () => { throw new Error('QA: batch write forbidden'); };
 export const ref = (...args: any[]) => args;
 export const uploadBytes = async () => { throw new Error('QA: permanent image upload forbidden'); };
+export const uploadBytesResumable = () => { throw new Error('QA: permanent image upload forbidden'); };
 export const getDownloadURL = async () => { throw new Error('QA: storage lookup forbidden'); };
 export const deleteObject = async () => {};
 export const httpsCallable = (_functions: unknown, name: string) => async (input: any) => {

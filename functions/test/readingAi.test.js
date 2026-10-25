@@ -18,9 +18,23 @@ function fixture(overrides = {}) {
 }
 
 test('authentication and invalid/empty input never spend quota or call the provider', async () => {
-  for (const request of [{ data: data() }, { auth: { uid: 'test' }, data: { ...data(), question: ' ' } }, { auth: { uid: 'test' }, data: { ...data(), currentBookText: '' } }]) {
+  for (const request of [{ data: data() }, { auth: { uid: 'test' }, data: { ...data(), question: ' ' } }, { auth: { uid: 'test' }, data: { ...data(), bookTitle: '' } }]) {
     const f = fixture(); await assert.rejects(f.handler(request)); assert.deepEqual(f.calls, []);
   }
+});
+test('questions without a passage use the same quota and preserve an honestly empty passage', async () => {
+  let prompt;
+  const f = fixture({ generate: async (input) => {
+    prompt = JSON.parse(buildReadingAiPrompt(input));
+    return { text: JSON.stringify({ answer: '일반 역사 배경 설명입니다.', memory: '사용자 질문: 중국의 노예제.' }), inputTokens: 20, outputTokens: 10 };
+  } });
+  const response = await f.handler({ auth: { uid: 'test' }, data: { ...data(), currentBookText: '', readingJournal: '', question: '중국에도 노예제도가 있었나?' } });
+  assert.equal(prompt.currentBookText, '');
+  assert.equal(prompt.userQuestion, '중국에도 노예제도가 있었나?');
+  assert.equal(response.usage.used, 1);
+  assert.deepEqual(f.calls.slice(0, 2), ['rate', 'reserve']);
+  const note = validateReadingAiInput({ ...data(), currentBookText: '', action: 'journal', question: '', conversation: [{ role: 'assistant', content: '배경 설명' }] });
+  assert.equal(note.action, 'journal');
 });
 test('all context fields, roles and conversation totals have enforced limits', () => {
   for (const [key, size] of Object.entries({ bookTitle: 201, author: 121, currentBookText: 12001, readingJournal: 3001, previousReadingSummary: 3001, memory: 1601, question: 1001 })) {
