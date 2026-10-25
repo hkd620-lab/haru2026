@@ -1,4 +1,35 @@
-import type { ReadingAiMessage, ReadingAiReference } from '../types/readingAi';
+import type { ReadingAiContext, ReadingAiMessage, ReadingAiReference } from '../types/readingAi';
+
+export const READING_EXTERNAL_SOURCES = ['ChatGPT', 'Gemini', 'Claude', '기타 AI'] as const;
+
+export function buildExternalReadingPrompt(context: ReadingAiContext, question: string): string {
+  if (!question.trim()) throw new Error('외부 AI에 물어볼 질문을 입력해 주세요.');
+  return [
+    '독서 중 생긴 질문입니다. 일반 배경지식과 제공된 본문에 근거한 해석을 구분해 한국어로 답해 주세요. 제공되지 않은 책 내용을 추측하거나 인용하지 마세요.',
+    context.bookTitle.trim() ? `책: ${context.bookTitle.slice(0, 200)}${context.author.trim() ? ` / ${context.author.slice(0, 120)}` : ''}` : '',
+    context.currentBookText.trim() ? `[현재 본문]\n${context.currentBookText.slice(-12000)}` : '',
+    context.readingJournal.trim() ? `[내 독서장]\n${context.readingJournal.slice(0, 3000)}` : '',
+    `[질문]\n${question.trim().slice(0, 1000)}`,
+  ].filter(Boolean).join('\n\n');
+}
+
+// External answers go straight to reference material; importing never calls AI.
+export function importExternalReadingAnswer(rawReference: unknown, bookId: string, question: string, answer: string, source: string): ReadingAiReference {
+  if (!answer.trim()) throw new Error('외부 AI 답변을 붙여넣어 주세요.');
+  if (answer.trim().length > 3000) throw new Error('외부 AI 답변은 3,000자 이내로 나누어 가져와 주세요.');
+  if (!READING_EXTERNAL_SOURCES.some((item) => item === source)) throw new Error('AI 출처를 선택해 주세요.');
+  const previous = parseReadingAiReference(rawReference, bookId);
+  const content = `[외부 AI 답변 · ${source}]\n${answer.trim()}`;
+  const selectedAnswers = previous?.selectedAnswers || [];
+  if (selectedAnswers.some((item) => item.question === question.trim() && item.answer === content)) {
+    throw new Error('이미 반영한 답변입니다.');
+  }
+  if (selectedAnswers.length >= 3) throw new Error('참고 답변은 회차당 3개까지 반영할 수 있습니다. 현재 독서장을 저장하고 새 회차에서 가져와 주세요.');
+  const aiMemo = [previous?.aiMemo, content].filter(Boolean).join('\n\n');
+  if (aiMemo.length > 4000) throw new Error('기존 참고자료와 합쳐 4,000자를 넘습니다. 답변을 줄이거나 새 회차에서 가져와 주세요.');
+  const selected = [...selectedAnswers, { question: question.trim().slice(0, 1000), answer: content }];
+  return { version: 1, bookId, questions: [...new Set(selected.map((item) => item.question).filter(Boolean))], selectedAnswers: selected, aiMemo };
+}
 
 export function resetReadingBookDraft(previous: Record<string, string>, title: string, author: string, startedAt: string, initialJournal = ''): Record<string, string> {
   const metadata = new Set(['bookTitle', 'author', 'bookTitleNormalized', 'authorNormalized', 'entryType']);

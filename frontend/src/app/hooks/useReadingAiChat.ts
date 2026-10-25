@@ -4,8 +4,8 @@ import { readingChatKey } from '../services/readingDraft';
 import { appendReadingAiTurn, readingAiErrorMessage, selectedReadingAnswers } from '../services/readingAiCore';
 import { requestReadingAi } from '../services/readingAiService';
 
-type Session = { messages: ReadingAiMessage[]; memory: string; question: string; selectedIds: string[]; proposal: string };
-const emptySession = (): Session => ({ messages: [], memory: '', question: '', selectedIds: [], proposal: '' });
+type Session = { messages: ReadingAiMessage[]; memory: string; question: string; selectedIds: string[]; proposal: string; externalAnswer: string; externalSource: string };
+const emptySession = (): Session => ({ messages: [], memory: '', question: '', selectedIds: [], proposal: '', externalAnswer: '', externalSource: 'ChatGPT' });
 function loadSession(key: string): Session {
   try {
     const data = JSON.parse(window.localStorage.getItem(key) || 'null');
@@ -17,6 +17,8 @@ function loadSession(key: string): Session {
       question: typeof data.question === 'string' ? data.question.slice(0, 1000) : '',
       selectedIds: Array.isArray(data.selectedIds) ? data.selectedIds.filter((id: unknown) => typeof id === 'string').slice(-3) : [],
       proposal: typeof data.proposal === 'string' ? data.proposal.slice(0, 4000) : '',
+      externalAnswer: typeof data.externalAnswer === 'string' ? data.externalAnswer.slice(0, 3000) : '',
+      externalSource: ['ChatGPT', 'Gemini', 'Claude', '기타 AI'].includes(data.externalSource) ? data.externalSource : 'ChatGPT',
     };
   } catch { return emptySession(); }
 }
@@ -34,7 +36,7 @@ export function useReadingAiChat(uid: string, bookId: string, entryId: string, c
   useEffect(() => {
     if (!uid || !bookId) return;
     try {
-      if (!session.messages.length && !session.question && !session.proposal) {
+      if (!session.messages.length && !session.question && !session.proposal && !session.externalAnswer) {
         window.localStorage.removeItem(key);
         return;
       }
@@ -49,7 +51,6 @@ export function useReadingAiChat(uid: string, bookId: string, entryId: string, c
     setError('');
     if (!uid) { setError('로그인 후 질문해 주세요.'); return; }
     if (!context.bookTitle.trim()) { setError('책 제목을 먼저 입력해 주세요.'); return; }
-    if (!context.currentBookText.trim()) { setError('사진으로 가져오거나 직접 입력한 현재 본문이 필요합니다.'); return; }
     const question = session.question.trim();
     if (action === 'chat' && !question) { setError('질문을 입력해 주세요.'); return; }
     if (action === 'journal' && !selected.length) { setError('독서장에 반영할 답변을 선택해 주세요.'); return; }
@@ -81,6 +82,8 @@ export function useReadingAiChat(uid: string, bookId: string, entryId: string, c
     ...session, busy, error, usage, storageError, selected,
     setQuestion: (question: string) => setSession((prev) => ({ ...prev, question })),
     setProposal: (proposal: string) => setSession((prev) => ({ ...prev, proposal })),
+    setExternalAnswer: (externalAnswer: string) => setSession((prev) => ({ ...prev, externalAnswer })),
+    setExternalSource: (externalSource: string) => setSession((prev) => ({ ...prev, externalSource })),
     send: () => run('chat'), propose: () => run('journal'),
     toggleAnswer: (id: string) => {
       setSession((prev) => {
