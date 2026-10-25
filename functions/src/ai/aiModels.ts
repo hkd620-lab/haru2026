@@ -17,6 +17,12 @@ export interface AiRoute {
 export const AI_ROUTES = {
   // SAYU 다듬기(polishContent) — featureName 'sayu_polish'
   sayuPolish: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: 'SAYU 다듬기 본문' },
+  // 기본(mode 'BASIC') 본문만 Luna 로 보낸다(허대표님 승인). 풍성형·균형형·보수형은 위 sayuPolish(Gemini) 그대로.
+  // 출력 한도는 최대 입력 5000자를 다듬은 본문이 잘리지 않도록 8192 로 둔다.
+  sayuPolishBasic: {
+    provider: 'openai', model: 'gpt-6-luna', label: 'SAYU 기본 다듬기 본문(BASIC)',
+    openai: { reasoningEffort: 'none', maxCompletionTokens: 8192 },
+  },
   sayuPolishComment: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: 'SAYU 다듬기 AI 한마디' },
   recordStats: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '기록 통계 분석' },
   // 기록 보조
