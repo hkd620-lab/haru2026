@@ -1,0 +1,90 @@
+
+<Write>
+<parameter name="file_path">/Users/heogyeongdae/.claude/plans/4-1-2-3-concurrent-origami.md</parameter>
+<parameter name="content"># PR #292 독립 설계·완료 검토 — 실행4 결과
+
+## Context
+- 대상 구현: `63d9b25c`. 현재 PR HEAD는 `93bff761`이며 docs/reviews 추가만 있다고 전달받음. CI `40410062184`는 SUCCESS로 전달받음.
+- 이번 검토는 첨부 diff, 전체 파일 2개, 시험 결과만 근거로 함. 저장소 파일 읽기, 셸, MCP, 수정은 하지 않음.
+- 실행1·2·3은 OAuth401로 실패함. 따라서 이번 실행4가 **첫 기술 검토**임. 이전 승인 판정은 없음.
+
+## 판정: **수정 후 승인**
+- 작업 규모: **소~중규모**. Functions 계측 코드만 수정함. 모델, 프롬프트, 호출 수, 응답 계약, quota, 인증, Rules, 라우터, 리전 설정은 diff상 변경이 없음.
+- 멈춤조건: **해당 없음**.
+  - 모델 다운그레이드나 교체가 없음.
+  - 커밋 메시지 "다듬기 단계별 계측과 로그 구독 조회 재사용"과 실제 변경이 일치함.
+  - 대규모 작업이 아님.
+- 이 판정은 main 병합이나 운영 배포를 승인하는 것이 아님. 그 승인은 별도이며 아직 미승인 상태임.
+
+## 확인된 정상 사항 (근거)
+1. **실패 행 중복이 제거됨.**
+   - 이전 동작: 성공 로그를 남긴 뒤 `text()`를 호출했음. 그래서 `text()`가 실패하면 성공 행과 외부 catch의 실패 행이 **2행**으로 남았음.
+   - 현재 동작: `stage()`가 `finally`에서 결과 1행만 기록함. 이후 외부 catch의 `usage.rejected()`는 `stagesStarted !== 0`이면 아무것도 기록하지 않음.
+   - 통계 JSON 파싱 실패도 이전에는 성공 행과 실패 행이 함께 남았으나, 지금은 `processing_error` 1행만 남음.
+2. **quota 환원과 부분 성공 계약이 유지됨.**
+   - 본문 단계 실패는 rethrow되어 외부 catch로 감. `rollbackMonthlyAiQuotaReservation`가 1회 실행됨.
+   - 통계 실패는 `analyzeStats` 안의 catch에서 처리되어 `null`을 반환함. 한마디 실패는 기존 try에서 처리되어 `''`가 됨. 두 경우 모두 환원은 0회임.
+   - 시험 결과와 일치함.
+3. **로그 기록이 응답 흐름을 바꾸지 않음.** `createRequestAiUsageLogger`는 모든 예외를 삼킴. 따라서 `finally` 안의 `await log()`가 원래 오류를 덮어쓰지 않음.
+4. **plan 판정 재사용이 정상임.**
+   - `resolveActualPlan`이 캐시한 결과는 절대 `'beta'`가 아님. 그래서 `logAiUsage` 안에서 `actualPlan !== 'beta'` 단락에 걸려 추가 조회가 없음. 요청당 조회가 3회에서 1회로 줄어듦.
+   - Map은 `createPolishUsage` 호출 때마다 새로 만들어짐. 요청 사이 캐시가 없음.
+   - quota와 권한 판정에는 쓰이지 않음.
+   - 같은 요청 안에서 첫 판정 결과를 계속 쓰는 차이는 허용 가능한 범위이며, 문서화되어 있음.
+5. **인증·rate 거부 시 기록이 없음.** `usage` 객체가 `enforceRateLimit` 뒤에, try 밖에서 생성됨. 이전 동작과 같음.
+6. **사용자 본문이 기록되지 않음.**
+   - 기록 필드는 uid, plan, isDev, requestId, purpose, stage, model, 토큰 수, latency, 결과 코드뿐임.
+   - 공급자 오류 메시지도 기록되지 않음. 시험으로 확인됨.
+   - 부수 효과로, 기존 `console.error('JSON 파싱 실패:', responseText)`가 없어져 Cloud Logging에 AI 응답 원문이 남지 않게 됨. 개선임.
+7. **Firestore에 undefined 값이 들어가지 않음.** `stage`에서는 토큰 값에 `?? null`을 적용함. `rejected`에서는 `latencyMs` 키 자체를 넣지 않음.
+8. **반환값이 같음.** `analyzeStats`의 반환값은 usage가 있든 없든 성공 시 stats 객체, 실패 시 `null`로 기존과 같음.
+
+## 필수 수정 (병합 전)
+### A. 실패 행의 `errorCode` 정보가 퇴보함
+```ts
+// polishUsage.ts — 현재
+success: outcome === 'success', errorCode: outcome === 'success' ? null : outcome,
+```
+- 이전에는 본문·통계 실패 행에 `getAiUsageErrorCode(error)`가 들어갔음. 이 값으로 429, 시한 초과, 공급자 오류 등을 구분할 수 있었음.
+- 지금은 `'provider_error'` 같은 단계 결과 문자열이 들어감. 이 값은 `processingOutcome`과 **완전히 같은 정보**임. 결과적으로 기존의 진단 정보만 사라짐.
+- 제안: `stage()`가 실패 시 catch한 오류를 보관하고, 정제 함수로 `errorCode`를 채우도록 함.
+  - `getAiUsageErrorCode`를 주입받는 방식이 좋음. 이 함수는 기존과 같은 코드이므로 노출 범위도 기존과 같음.
+  - 정제 함수가 없을 때만 `outcome`을 대신 넣음.
+- 시험 추가: 실패 행의 `errorCode`가 정제된 코드이고, 원문 메시지는 포함하지 않음을 확인하는 시험이 필요함.
+
+### B. 단계가 모두 성공한 뒤 요청이 실패하면 실패 기록이 남지 않음 (도달 가능한 경우)
+- `rejected()`는 `stagesStarted > 0`이면 아무것도 기록하지 않음.
+- 그래서 마지막 단계 이후의 코드가 throw하면 다음 상태가 됨.
+  - 해당 코드 예: `logPaidServiceUsage`, 예약 확정, 응답 조립. 첨부 자료에는 이 구간이 없어서 확인하지 못함.
+  - quota는 환원되지만, 로그에는 **성공 3행만 남고 요청 실패 흔적이 없음**.
+  - 이전에는 실패 행이 1개 남았으므로 관측성이 퇴보한 것임.
+- 제안 (택1):
+  - (a) 마지막으로 실패한 단계를 추적함. 실패한 단계가 없는데 `rejected`가 호출되면 `stage:'request'`, `modelInvoked:true`, `processingOutcome:'processing_error'` 행을 1개 기록함.
+  - (b) 해당 구간이 throw할 수 없음을 코드로 확인하고, 그 근거를 PR에 적음.
+
+## 비차단 참고
+- **값 의미 변화**: 실패 행의 `model`이 이전 `null`에서 실제 모델명으로 바뀌었음. `requestId`도 `null`에서 실제 값으로 바뀌었음. 행 수, `model`, `requestId` 기준으로 집계하는 관리자 통계나 쿼리가 있다면 영향을 확인해야 함. CC 통계·합본 작업과의 경계 확인이 필요함.
+- **`modelInvoked:true`의 범위**: 이 값은 SDK 전송 전에 설정 오류로 막힌 경우에도 true가 됨. 예: OpenAI 어댑터의 "옮길 수 없는 설정" 오류. 주석에 "논리 callAi 진입 결과"라고 명시되어 있으므로 허용함. 다만 과금 근거로 해석하지 않도록 지표 설명에도 같은 내용을 적는 것을 권장함.
+- **`createAiUsageRequestId()` 위치**: 이 함수는 try 밖에서 호출됨. 예외를 던질 가능성이 없는지 구현 확인이 필요함. 첨부 자료에는 구현이 없었음.
+- **시험 범위**: polishContent 시험은 logger를 대체해서 실행함. 그래서 plan 캐시와 Firestore 기록의 결합 동작은 `aiUsageLogger.request.test.js`로만 검증됨. 현재 구조로는 충분함.
+- **배포 시 리전**: `asia-northeast3` 설정은 diff에서 변경이 없음. 배포 시 다시 확인해야 함.
+
+## 미확인 (첨부 자료 밖)
+- `getAiUsageErrorCode`, `createAiUsageRequestId`, `CallAiResult` 정의
+- 한마디 단계부터 `return`까지의 코드
+- 실제 운영 환경, AI 호출, 청구 데이터
+
+## Verification (수정 후)
+- `functions`에서 `npm run build`를 실행함.
+- 관련 시험 55건에 A·B 추가 시험을 더해 전체 통과를 확인함.
+- export 114개가 동일한지 재확인함.
+- `git diff`로 다음을 확인함.
+  - 모델, 프롬프트, quota 코드가 변경되지 않았음.
+  - Firestore 경로가 `aiUsageLogs`로 유지됨.
+</parameter>
+</invoke>
+
+<invoke name="ExitPlanMode">
+</invoke>
+
+```

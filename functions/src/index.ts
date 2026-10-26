@@ -2484,7 +2484,7 @@ export const polishContent = onCall(
     } catch (error: any) {
       console.error('AI 처리 실패:', error);
       await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
-      await usage.rejected(getAiUsageErrorCode(error));
+      await usage.rejected(error);
       if (error instanceof HttpsError) {
         throw error;
       }
