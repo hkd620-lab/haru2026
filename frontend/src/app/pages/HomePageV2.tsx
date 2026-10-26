@@ -194,20 +194,7 @@ const RECORDS: RecordItem[] = [
       </>
     ),
   },
-  {
-    label: '주식거래일지',
-    sub: '거래와 복기',
-    bg: '#E0E8B8',
-    stroke: '#4A5A2C',
-    format: '주식거래일지',
-    icon: (
-      <>
-        <path d="M3 17l6-6 4 4 8-8" />
-        <path d="M14 7h7v7" />
-        <path d="M5 21h14" />
-      </>
-    ),
-  },
+  // 주식거래일지는 비서(비서실 'HARU주식')로 본다 — 2026-10-23 허대표님 결정 ②
   {
     label: '메모',
     sub: '짧은 한 조각',
@@ -222,25 +209,16 @@ const RECORDS: RecordItem[] = [
       </>
     ),
   },
-  {
-    label: 'HARU보조장부',
-    sub: '수입·지출 보조',
-    bg: '#E5DBC2',
-    stroke: '#7A6F5A',
-    format: 'HARU보조장부',
-    icon: (
-      <>
-        <path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z" />
-        <path d="M8 8h8M8 12h8M8 16h5" />
-      </>
-    ),
-  },
+];
+
+const AGENTS: Agent[] = [
   {
     label: 'HARU가계부',
     sub: '수입·지출 기록',
-    bg: '#D4EDD4',
+    tag: 'MONEY · 가계부',
+    variant: 'green',
     stroke: '#166534',
-    format: 'HARU가계부',
+    path: '/household',
     icon: (
       <>
         <path d="M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z" />
@@ -249,9 +227,21 @@ const RECORDS: RecordItem[] = [
       </>
     ),
   },
-];
-
-const AGENTS: Agent[] = [
+  {
+    label: 'HARU보조장부',
+    sub: '수입·지출 보조',
+    tag: 'MONEY · 장부',
+    variant: 'lilac',
+    stroke: '#7A6F5A',
+    path: '/record',
+    state: { format: 'HARU보조장부' },
+    icon: (
+      <>
+        <path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z" />
+        <path d="M8 8h8M8 12h8M8 16h5" />
+      </>
+    ),
+  },
   {
     label: 'HARU타임라인',
     sub: '여러 날짜의 사진 기록을 시간순으로 묶어 변화의 흐름을 한 장으로 보여줍니다.',
@@ -781,15 +771,23 @@ export function HomePageV2() {
     : hasPersonalizedHome
     ? currentPersonalization?.selectedAgents || []
     : visibleAgents.map((agent) => getAgentKey(agent));
-  const selectedRecordSet = useMemo(() => new Set(selectedRecordFormats), [selectedRecordFormats]);
-  const selectedAgentSet = useMemo(() => new Set(selectedAgents), [selectedAgents]);
+  const selectedAgentSet = useMemo(() => {
+    const keys = new Set(selectedAgents);
+    // 기존 개인화에서 장부를 기록 카드로 골랐던 사용자는 비서실 카드로 이어서 보여준다.
+    for (const agent of visibleAgents) {
+      if ((agent.label === 'HARU가계부' || agent.label === 'HARU보조장부') && selectedRecordFormats.includes(agent.label)) {
+        keys.add(getAgentKey(agent));
+      }
+    }
+    return keys;
+  }, [selectedAgents, selectedRecordFormats, visibleAgents]);
   const homeRecords = homeViewMode === 'all'
     ? visibleRecords
-    : visibleRecords.filter((record) => selectedRecordSet.has(record.format));
+    : [];
   const homeAgents = homeViewMode === 'all'
     ? visibleAgents
     : visibleAgents.filter((agent) => selectedAgentSet.has(getAgentKey(agent)));
-  const isMyHaruEmpty = effectivePersonalizationLoaded && homeViewMode === 'my' && hasPersonalizedHome && homeRecords.length === 0 && homeAgents.length === 0;
+  const isMyHaruEmpty = effectivePersonalizationLoaded && homeViewMode === 'my' && hasPersonalizedHome && homeAgents.length === 0;
 
   useEffect(() => {
     if (authLoading || !user?.uid || !onboardingGateReady || !effectivePersonalizationLoaded) return;
@@ -1524,7 +1522,7 @@ export function HomePageV2() {
               <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                 <span style={{ fontSize: 14, fontWeight: 800 }}>내 HARU를 만들어 보세요</span>
                 <span style={{ fontSize: 11, color: '#7A6F5A' }}>
-                  자주 사용하는 기록과 AI 비서만 골라 홈을 간단하게 만들 수 있습니다.
+                  자주 사용하는 AI 비서를 골라 홈에 표시할 수 있습니다.
                 </span>
               </span>
               <span
@@ -1576,14 +1574,14 @@ export function HomePageV2() {
         )}
 
         {/* RECORDS SECTION */}
-        {!isPersonalizationPending && !isMyHaruEmpty && (
+        {!isPersonalizationPending && (
         <section data-v2="section" style={{ marginBottom: 36 }}>
           <SectionHead
             iconBg="#E0E8B8"
             iconStroke="#4A5A2C"
             title="HARU 기록"
             sub="매일의 한 줄, 오래 남는 자산"
-            badge={`${homeRecords.length}가지 형식`}
+            badge={homeViewMode === 'all' ? `${homeRecords.length}가지 형식` : '글쓰기'}
             badgeDot="#7A8B4E"
             icon={
               <>
@@ -1593,6 +1591,14 @@ export function HomePageV2() {
               </>
             }
           />
+          <button
+            type="button"
+            onClick={() => navigate('/record', { state: { from: '/v2' } })}
+            className="v2-pill"
+            style={{ width: '100%', padding: '18px 20px', marginBottom: 16, borderRadius: 18, border: '1px solid #4A5A2C', background: '#E0E8B8', color: '#2C2C2A', fontSize: 17, fontWeight: 800, textAlign: 'left', cursor: 'pointer' }}
+          >
+            ✍️ 글쓰기 <span style={{ display: 'block', marginTop: 4, fontSize: 12, fontWeight: 400 }}>먼저 글을 쓰고 저장할 때 형식을 고르세요.</span>
+          </button>
           <div
             data-v2="records-grid"
             style={{
@@ -1605,7 +1611,7 @@ export function HomePageV2() {
               <button
                 key={r.label}
                 type="button"
-                onClick={() => navigate(r.format === 'HARU가계부' ? '/household' : '/record', { state: { format: r.format, from: '/v2' } })}
+                onClick={() => navigate('/record', { state: { format: r.format, from: '/v2' } })}
                 className="v2-rec"
                 style={{
                   background: '#fff',
@@ -2081,18 +2087,14 @@ export function HomePageV2() {
 
       <HomePersonalizationModal
         isOpen={personalizationModalOpen}
-        records={visibleRecords.map((record) => ({
-          key: record.format,
-          label: record.label,
-          sub: record.sub,
-        }))}
+        records={[]}
         agents={visibleAgents.map((agent) => ({
           key: getAgentKey(agent),
           label: agent.label,
           sub: agent.sub,
         }))}
-        initialRecordKeys={selectedRecordFormats}
-        initialAgentKeys={selectedAgents}
+        initialRecordKeys={[]}
+        initialAgentKeys={Array.from(selectedAgentSet)}
         saving={personalizationSaving}
         onClose={() => {
           if (!personalizationSaving) setPersonalizationModalOpen(false);
@@ -2190,10 +2192,10 @@ function EmptyMyHaru({
           letterSpacing: 0,
         }}
       >
-        내 HARU가 비어 있습니다
+        선택한 비서가 없습니다
       </h2>
       <p style={{ margin: '8px 0 18px', color: '#7A6F5A', fontSize: 13, lineHeight: 1.7 }}>
-        필요한 기록과 AI 비서를 골라 나만의 HARU를 만들어 보세요.
+        기록은 위 글쓰기에서 시작하고, 필요한 비서는 직접 골라 둘 수 있습니다.
       </p>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
         <button type="button" onClick={onShowAll} style={pillStyle}>

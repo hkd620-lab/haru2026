@@ -99,6 +99,7 @@ const PLANS: Record<PaidPlan, {
     description: '1개월 단위로 자동 갱신되는 기본 구독입니다',
     features: [
       'EPUB 저장',
+      '통계·합본 최근 3개월·올해',
       '하루LAW 첨부파일',
       '더 넉넉한 AI 이용',
       '독서 OCR 월 100장',

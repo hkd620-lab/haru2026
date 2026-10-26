@@ -2,7 +2,7 @@ import { createRequestAiUsageLogger } from './aiUsageLogger';
 import type { AiUsageLogInput } from './aiUsageLogger';
 import type { CallAiResult } from './ai/aiGateway';
 
-type Purpose = 'sayuPolish' | 'recordStats' | 'sayuPolishComment';
+type Purpose = 'sayuPolishBasic' | 'sayuPolish' | 'recordStats' | 'sayuPolishComment';
 type Context = { uid: string; plan: string; isDev: boolean; requestId: string };
 
 // Unlike the shared helper, never fall back to an arbitrary error.message.

@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
 import { buildFormatKeyMap, invertFormatKeyMap } from '../records/formatRegistry';
 import { exportRecordsToEpub } from '../services/epubExportService';
+import { getEpubReaderHint } from '../utils/epubReaderGuide';
 import GrapeLoadingMini from './GrapeLoadingMini';
 import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './GrowthTimelineDocumentModal';
 import { compressImage } from '../services/imageService';
@@ -1022,7 +1023,7 @@ export function SayuModal({
     try {
       const date = firestoreId;
       const { fileName } = await exportRecordsToEpub(date, date, format);
-      toast.success(`📖 EPUB 생성 완료! ${fileName}`);
+      toast.success(`📖 EPUB 생성 완료! ${fileName}`, { description: getEpubReaderHint(), duration: 8000 });
     } catch (e: any) {
       toast.error(`EPUB 생성 실패: ${e.message}`);
     } finally {
@@ -1310,24 +1311,8 @@ export function SayuModal({
       const baseData = originalData || {};
       setEditedOriginalData(baseData);
 
-      // 🌱 텃밭일지: garden_crop 없으면 Firestore에서 작물목록 보완
-      if ((format === '텃밭일지' || formatKey === 'garden') && !baseData['garden_crop']?.trim() && currentUser?.uid) {
-        (async () => {
-          try {
-            const gardenRef = doc(db, 'users', currentUser.uid, 'settings', 'garden');
-            const snap = await getDoc(gardenRef);
-            if (snap.exists()) {
-              const data = snap.data();
-              const crops: string[] = Array.isArray(data.crops) ? data.crops : [];
-              if (crops.length > 0) {
-                setEditedOriginalData(prev => ({ ...prev, garden_crop: crops.join(', ') }));
-              }
-            }
-          } catch {
-            // 조용히 실패 — 기존 데이터 그대로 유지
-          }
-        })();
-      }
+      // 🌱 텃밭일지: garden_crop 이 비어 있어도 등록 작물 전체로 채우지 않는다.
+      // 기록마다 고른 작물만 저장한다(2026-10-23 결정 ②). 원본 저장 시 등록 목록 전체가 기록되던 문제 방지.
 
       // 이미지 프리로드 - 브라우저 캐시 활용
       if (images && images.length > 0) {
@@ -1427,8 +1412,9 @@ export function SayuModal({
         const titleUpdate: Record<string, string> = {
           weather: editedWeather,
           temperature: editedTemperature,
-          mood: editedMood,
         };
+        // 기분은 고른 경우에만 저장한다(빈 값 저장 금지) — 2026-10-23 결정 ①
+        if (editedMood) titleUpdate.mood = editedMood;
         if (formatKey) {
           titleUpdate[`${formatKey}_title`] = editedTitle.trim();
         }
@@ -1714,7 +1700,7 @@ export function SayuModal({
     showLoading('AI가 다듬고 있습니다');
     try {
       const contentValues = Object.values(editedOriginalData)
-        .filter(v => v && v.trim())
+        .filter(v => typeof v === 'string' && v.trim())
         .join('\n\n');
       if (!contentValues.trim()) {
         toast.error('다듬을 내용이 없습니다.');

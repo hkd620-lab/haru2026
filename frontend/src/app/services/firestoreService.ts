@@ -811,7 +811,8 @@ class FirestoreService {
    * @param startDate 시작 날짜 (YYYY-MM-DD 형식)
    * @param endDate 종료 날짜 (YYYY-MM-DD 형식)
    */
-  async getRecordsInRange(userId: string, startDate: string, endDate: string): Promise<HaruRecord[]> {
+  // throwOnError: 통계 화면처럼 '기록 없음'과 '불러오기 실패'를 구분해야 하는 곳에서 true 로 쓴다(기본은 기존대로 빈 목록).
+  async getRecordsInRange(userId: string, startDate: string, endDate: string, options: { throwOnError?: boolean } = {}): Promise<HaruRecord[]> {
     try {
       console.log('\n📥 getRecordsInRange 호출');
       console.log('  userId:', userId);
@@ -826,6 +827,11 @@ class FirestoreService {
         orderBy('date', 'desc')
       );
       const querySnapshot = await getDocs(q);
+      // 오프라인이면 getDocs 가 오류 대신 메모리 캐시(비어 있으면 0건)를 돌려준다. 통계처럼 '기록 없음'과
+      // '불러오기 실패'를 구분해야 하는 곳에서는 서버에서 받은 결과가 아니면 실패로 다룬다.
+      if (options.throwOnError && querySnapshot.metadata.fromCache) {
+        throw new Error('RECORDS_IN_RANGE_FROM_CACHE');
+      }
       
       console.log('  Firestore 쿼리 결과:', querySnapshot.docs.length, '개');
       
@@ -839,6 +845,7 @@ class FirestoreService {
       return records;
     } catch (error) {
       console.error('❌ 날짜 범위 기록 불러오기 실패:', error);
+      if (options.throwOnError) throw error;
       return [];
     }
   }
@@ -2100,6 +2107,8 @@ class FirestoreService {
     if (key === 'rating' || key.endsWith('_rating')) return true;
     if (key === 'style' || key.endsWith('_style')) return true;
     if (key === 'mode' || key.endsWith('_mode')) return true;
+    // 통계·특별한 날 표시와 텃밭 고른 작물 배열(본문 아님, garden_crop 문자열이 본문에 남는다)
+    if (key === 'specialDays' || key === 'statsChecks' || key === 'garden_crops') return true;
     return false;
   }
 

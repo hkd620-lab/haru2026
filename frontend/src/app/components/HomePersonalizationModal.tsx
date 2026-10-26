@@ -125,7 +125,7 @@ export function HomePersonalizationModal({
                 내 HARU 관리
               </h2>
               <p style={{ margin: '6px 0 0', color: '#7A6F5A', fontSize: 12, lineHeight: 1.6 }}>
-                자주 쓰는 기록과 AI 비서만 골라 홈에 표시합니다.
+                자주 쓰는 AI 비서를 골라 홈에 표시합니다. 기록은 글쓰기에서 시작합니다.
               </p>
             </div>
             <button
@@ -148,12 +148,14 @@ export function HomePersonalizationModal({
         </div>
 
         <div style={{ padding: 22, display: 'grid', gap: 24 }}>
-          <OptionGroup
-            title="HARU 기록"
-            options={records}
-            selected={selectedRecords}
-            onToggle={(key) => toggle(key, setSelectedRecords)}
-          />
+          {records.length > 0 && (
+            <OptionGroup
+              title="HARU 기록"
+              options={records}
+              selected={selectedRecords}
+              onToggle={(key) => toggle(key, setSelectedRecords)}
+            />
+          )}
           <OptionGroup
             title="HARU AI 비서"
             options={agents}

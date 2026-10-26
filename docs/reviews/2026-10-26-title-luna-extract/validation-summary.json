@@ -1,0 +1,31 @@
+{
+  "status": "local-development-verified",
+  "application": "HARU2026",
+  "baseCommit": "39b4f20d",
+  "scope": "extractTitle only -> gpt-6-luna; recordKeywords, recordTitleBackfill, polish remain Gemini",
+  "checks": {
+    "titleLiveProvider": "gpt-6-luna",
+    "titleResult": "첫 방울토마토 수확",
+    "keywordLiveProvider": "gemini-3.1-flash-lite",
+    "keywordResult": [
+      "방울토마토",
+      "텃밭",
+      "오이지지대"
+    ],
+    "providerFailureFallback": "내 텃밭 기록",
+    "emptyResponseFallback": "2026.10.26 성장타임라인",
+    "unauthenticatedTitle": "UNAUTHENTICATED, no extra AI call",
+    "actualApiCalls": 2,
+    "testsPassed": 34,
+    "functionExportsBefore": 114,
+    "functionExportsAfter": 114,
+    "productionDeployment": false,
+    "productionDataWrites": false
+  },
+  "limits": [
+    "Real GrowthTimelineCreator and Firebase callable SDK were tested via a localhost protocol bridge using AST-extracted actual callable handlers and built aiGateway.",
+    "Photo metadata/upload and record persistence use synthetic local fixtures; Firebase deployment identity, actual auth tokens, Rules, IAM and production record persistence were not exercised.",
+    "No other production UI paths or live operator data were tested."
+  ],
+  "evidenceSha256": "c0961bd5c04a6c8a89ac6b4a65d587712f1cb1d352b3236472cc00a26ccdd388"
+}

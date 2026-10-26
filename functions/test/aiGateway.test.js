@@ -95,8 +95,8 @@ test('OpenAI 어댑터: 회사를 바꾸면 같은 요청을 OpenAI 형식으로
   }
 });
 
-test('설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(모델 변경 없음)', () => {
-  const migrated = ['sayuPolish', 'sayuPolishComment', 'recordStats', 'recordTitle', 'recordTitleBackfill', 'recordKeywords', 'haruMemo',
+test('설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(제목 추출만 승인받아 Luna 로 교체)', () => {
+  const migrated = ['sayuPolish', 'sayuPolishComment', 'recordStats', 'recordTitleBackfill', 'recordKeywords', 'haruMemo',
     'bookPhotoOcr', 'stockPhotoOcr', 'subledgerPhotoOcr', 'householdPhotoOcr',
     'bibleWordMeaning', 'bibleVerseQuiz', 'bibleVerseTranslation', 'bibleVerseWordMapping', 'englishTranslate',
     'newsDigest', 'newsDigestRefresh', 'newsMetadata', 'prophecyAnalysis', 'prophecySynopsis',
@@ -108,9 +108,82 @@ test('설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(�
   }
   for (const purpose of migrated) {
     assert.deepEqual([models.AI_ROUTES[purpose].provider, models.AI_ROUTES[purpose].model], ['gemini', 'gemini-3.1-flash-lite'], purpose);
+    assert.equal(models.AI_ROUTES[purpose].openai, undefined, purpose);
   }
-  // 설정 표에 위 32개 외 용도가 생기면 이 테스트에도 모델을 고정해야 한다
-  assert.deepEqual(Object.keys(models.AI_ROUTES).sort(), [...migrated, 'prophecyStory', 'petFoodCheck'].sort());
+  assert.deepEqual(models.AI_ROUTES.recordTitle, {
+    provider: 'openai', model: 'gpt-6-luna', label: '기록 제목 추출(extractTitle)',
+    openai: { reasoningEffort: 'none', maxCompletionTokens: 512 },
+  });
+  assert.deepEqual(models.AI_ROUTES.sayuPolishBasic, {
+    provider: 'openai', model: 'gpt-6-luna', label: 'SAYU 기본 다듬기 본문(BASIC)',
+    openai: { reasoningEffort: 'none', maxCompletionTokens: 8192 },
+  });
+  // 설정 표에 위 용도 외 용도가 생기면 이 테스트에도 모델을 고정해야 한다
+  assert.deepEqual(Object.keys(models.AI_ROUTES).sort(), [...migrated, 'prophecyStory', 'petFoodCheck', 'recordTitle', 'sayuPolishBasic'].sort());
+});
+
+test('기본 다듬기(sayuPolishBasic)만 Luna 로 보내고, 같은 함수의 나머지 다듬기·한마디·통계는 Gemini 로 보낸다', async () => {
+  // polishContent 는 두 회사 키를 모두 연결해야 한다(기본=OpenAI, 그 밖=Gemini)
+  assert.deepEqual(gateway.aiSecretsFor('sayuPolish', 'sayuPolishBasic', 'sayuPolishComment', 'recordStats').map((s) => s.name), ['GEMINI_API_KEY', 'OPENAI_API_KEY']);
+  const calls = [];
+  gateway.aiClientFactories.openai = (apiKey) => ({ chat: { completions: { create: async (...args) => {
+    calls.push({ apiKey, args });
+    return { choices: [{ message: { content: '다듬은 본문' } }], usage: { prompt_tokens: 9, completion_tokens: 3 } };
+  } } } });
+  const log = [];
+  gateway.aiClientFactories.gemini = fakeGemini(log, { response: { text: () => '풍성형 본문' } });
+
+  const basic = await gateway.callAi({ purpose: 'sayuPolishBasic', input: '원문', systemInstruction: '편집자' });
+  assert.deepEqual(calls, [{ apiKey: 'k-openai', args: [{
+    model: 'gpt-6-luna',
+    messages: [{ role: 'system', content: '편집자' }, { role: 'user', content: '원문' }],
+    reasoning_effort: 'none', max_completion_tokens: 8192,
+  }] }]);
+  assert.deepEqual([basic.provider, basic.model, basic.text()], ['openai', 'gpt-6-luna', '다듬은 본문']);
+
+  for (const purpose of ['sayuPolish', 'sayuPolishComment', 'recordStats']) {
+    log.length = 0;
+    const result = await gateway.callAi({ purpose, input: '원문', systemInstruction: '편집자' });
+    assert.deepEqual(log[0], { apiKey: 'k-gemini', params: { model: 'gemini-3.1-flash-lite', systemInstruction: '편집자' }, requestOptions: undefined, argc: 1 }, purpose);
+    assert.deepEqual([result.provider, result.model], ['gemini', 'gemini-3.1-flash-lite'], purpose);
+  }
+  assert.equal(calls.length, 1);
+});
+
+test('제목 추출(recordTitle)은 OpenAI 키로 Luna 에 추론 없이 보내고, 키워드는 Gemini 그대로 보낸다', async () => {
+  // 함수 secrets: 제목은 OpenAI 키만, 키워드·제목 일괄 보정은 Gemini 키만 연결된다
+  assert.deepEqual(gateway.aiSecretsFor('recordTitle').map((s) => s.name), ['OPENAI_API_KEY']);
+  assert.deepEqual(gateway.aiSecretsFor('recordKeywords').map((s) => s.name), ['GEMINI_API_KEY']);
+  assert.deepEqual(gateway.aiSecretsFor('recordTitleBackfill').map((s) => s.name), ['GEMINI_API_KEY']);
+
+  const calls = [];
+  gateway.aiClientFactories.openai = (apiKey) => ({ chat: { completions: { create: async (...args) => {
+    calls.push({ apiKey, args });
+    return { choices: [{ message: { content: '"산책 기록"' } }], usage: { prompt_tokens: 40, completion_tokens: 4 } };
+  } } } });
+  const log = [];
+  gateway.aiClientFactories.gemini = fakeGemini(log, { response: { text: () => '["산책"]' } });
+
+  // extractTitle 은 input 하나만 넘긴다(아래 호출부 설정 테스트가 고정)
+  const title = await gateway.callAi({ purpose: 'recordTitle', input: '제목 프롬프트' });
+  assert.deepEqual(calls, [{ apiKey: 'k-openai', args: [{
+    model: 'gpt-6-luna',
+    messages: [{ role: 'user', content: '제목 프롬프트' }],
+    reasoning_effort: 'none', max_completion_tokens: 512,
+  }] }]);
+  assert.deepEqual([title.provider, title.model, title.text(), title.inputTokens, title.outputTokens], ['openai', 'gpt-6-luna', '"산책 기록"', 40, 4]);
+  // 호출부가 출력 한도를 넘기면 그 값이 우선한다
+  await gateway.callAi({ purpose: 'recordTitle', input: 'p', generationConfig: { maxOutputTokens: 64 } });
+  assert.equal(calls[1].args[0].max_completion_tokens, 64);
+  assert.equal(calls[1].args[0].reasoning_effort, 'none');
+
+  const keywords = await gateway.callAi({ purpose: 'recordKeywords', input: '키워드 프롬프트' });
+  assert.deepEqual(log, [
+    { apiKey: 'k-gemini', params: { model: 'gemini-3.1-flash-lite' }, requestOptions: undefined, argc: 1 },
+    { input: '키워드 프롬프트' },
+  ]);
+  assert.deepEqual([keywords.provider, keywords.model], ['gemini', 'gemini-3.1-flash-lite']);
+  assert.equal(calls.length, 2);
 });
 
 test('옮긴 호출부는 SDK 를 직접 만들지 않고 창구를 쓴다', () => {
@@ -122,7 +195,9 @@ test('옮긴 호출부는 SDK 를 직접 만들지 않고 창구를 쓴다', () 
   const polishStart = src.indexOf('export const polishContent =');
   const polishBlock = src.slice(polishStart, src.indexOf("await logPaidServiceUsage(uid, 'ai_polish'", polishStart));
   assert.ok(polishStart > 0 && polishBlock.length > 0);
-  assert.match(polishBlock, /callAi\(\{ purpose: 'sayuPolish'/);
+  assert.match(polishBlock, /const polishPurpose = mode === 'BASIC' \? 'sayuPolishBasic' : 'sayuPolish';/);
+  assert.match(polishBlock, /getAiRoute\(polishPurpose\)\.model/);
+  assert.match(polishBlock, /callAi\(\{ purpose: polishPurpose,/);
   assert.match(polishBlock, /callAi\(\{ purpose: 'sayuPolishComment'/);
   assert.doesNotMatch(polishBlock, /new GoogleGenerativeAI|getGenerativeModel|gemini-3\.1/);
 });
@@ -303,14 +378,15 @@ test('호출부마다 넘기는 설정(시스템 지시·생성 설정·호출 �
   for (const file of files) {
     const src = fs.readFileSync(path.join(__dirname, '../src', file), 'utf8');
     for (const call of callAiCalls(src)) {
-      const purpose = (/purpose: (?:type === 'story' \? )?'(\w+)'/.exec(call) || [])[1];
+      // 다듬기 본문은 모드에 따라 용도 변수(polishPurpose)로 고른다
+      const purpose = (/purpose: (?:type === 'story' \? )?'?(\w+)/.exec(call) || [])[1];
       found.push({ file, purpose, keys: topLevelKeys(call).join(','), image: /inlineData|inlineParts|imageParts|\bparts\b/.test(call.slice(call.indexOf('input'))) });
     }
   }
   const sig = found.map((f) => `${f.file}:${f.purpose}:${f.keys}${f.image ? ':image' : ''}`).sort();
   const base = 'input,purpose';
   const expected = [
-    `index.ts:sayuPolish:${base},systemInstruction`, `index.ts:sayuPolishComment:${base}`, `index.ts:recordStats:${base}`,
+    `index.ts:polishPurpose:${base},systemInstruction`, `index.ts:sayuPolishComment:${base}`, `index.ts:recordStats:${base}`,
     `index.ts:recordTitle:${base}`, `index.ts:haruMemo:${base}`, `index.ts:recordKeywords:${base}`, `index.ts:recordTitleBackfill:${base}`,
     `index.ts:bookPhotoOcr:${base}:image`, `index.ts:stockPhotoOcr:${base}:image`, `index.ts:subledgerPhotoOcr:${base}:image`, `index.ts:householdPhotoOcr:${base}:image`,
     `index.ts:bibleWordMeaning:${base}`, `index.ts:bibleWordMeaning:${base}`, `index.ts:bibleVerseQuiz:${base}`, `index.ts:englishTranslate:${base}`,
@@ -330,7 +406,7 @@ test('호출부마다 넘기는 설정(시스템 지시·생성 설정·호출 �
 test('창구를 쓰는 함수는 secrets 를 설정 표(aiSecretsFor)로 연결하고, Gemini 키를 직접 읽지 않는다', () => {
   const src = fs.readFileSync(path.join(__dirname, '../src/index.ts'), 'utf8');
   const expected = {
-    polishContent: "'sayuPolish', 'sayuPolishComment', 'recordStats'", extractTitle: "'recordTitle'", generateHaruMemo: "'haruMemo'",
+    polishContent: "'sayuPolish', 'sayuPolishBasic', 'sayuPolishComment', 'recordStats'", extractTitle: "'recordTitle'", generateHaruMemo: "'haruMemo'",
     extractKeywords: "'recordKeywords'", generateTitlesForAll: "'recordTitleBackfill'", extractReadingBookTextFromPhoto: "'bookPhotoOcr'",
     extractStockTradeTextFromPhoto: "'stockPhotoOcr'", extractLedgerTextFromImage: "'subledgerPhotoOcr'", extractHouseholdTextFromImage: "'householdPhotoOcr'",
     getWordMeaning: "'bibleWordMeaning'", getVerseQuiz: "'bibleVerseQuiz'", translateToEnglish: "'englishTranslate'", fetchTopNews: "'newsDigest'",

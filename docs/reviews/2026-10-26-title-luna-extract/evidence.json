@@ -1,0 +1,112 @@
+{
+  "mode": "unauthenticated",
+  "apiCalls": 2,
+  "events": [
+    {
+      "stage": "ai-call",
+      "purpose": "recordTitle",
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "mode": "normal",
+      "ms": 1771,
+      "inputTokens": 125,
+      "outputTokens": 11,
+      "actualApi": true
+    },
+    {
+      "stage": "openai-request",
+      "model": "gpt-6-luna",
+      "reasoningEffort": "none",
+      "maxCompletionTokens": 512
+    },
+    {
+      "stage": "callable-result",
+      "name": "extractTitle",
+      "result": {
+        "title": "첫 방울토마토 수확"
+      }
+    },
+    {
+      "stage": "ai-call",
+      "purpose": "recordKeywords",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite",
+      "mode": "normal",
+      "ms": 731,
+      "inputTokens": 728,
+      "outputTokens": 17,
+      "actualApi": true
+    },
+    {
+      "stage": "local-usage",
+      "model": "gemini-3.1-flash-lite",
+      "success": true
+    },
+    {
+      "stage": "callable-result",
+      "name": "extractKeywords",
+      "result": {
+        "keywords": [
+          "방울토마토",
+          "텃밭",
+          "오이지지대"
+        ]
+      }
+    },
+    {
+      "stage": "ai-call",
+      "purpose": "recordTitle",
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "mode": "provider-fail"
+    },
+    {
+      "stage": "handler-error"
+    },
+    {
+      "stage": "callable-error",
+      "name": "extractTitle",
+      "status": "INTERNAL"
+    },
+    {
+      "stage": "ai-call",
+      "purpose": "recordTitle",
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "mode": "empty"
+    },
+    {
+      "stage": "callable-result",
+      "name": "extractTitle",
+      "result": {
+        "title": ""
+      }
+    },
+    {
+      "stage": "callable-error",
+      "name": "extractTitle",
+      "status": "UNAUTHENTICATED"
+    }
+  ],
+  "routes": {
+    "title": {
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "label": "기록 제목 추출(extractTitle)",
+      "openai": {
+        "reasoningEffort": "none",
+        "maxCompletionTokens": 512
+      }
+    },
+    "keywords": {
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite",
+      "label": "SAYU 미리보기 키워드(extractKeywords)"
+    },
+    "backfill": {
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite",
+      "label": "기록 제목 일괄 보정(generateTitlesForAll)"
+    }
+  }
+}

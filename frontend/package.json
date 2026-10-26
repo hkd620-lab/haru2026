@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "test:record-stats": "node --import tsx --test test/recordStats.test.mjs test/recordPhotoUploadDeadline.test.mjs && node test/statsStorage.policy.test.cjs",
     "validate:build-env": "node scripts/validate-build-env.mjs",
     "prebuild": "npm run validate:build-env",
     "build": "vite build",

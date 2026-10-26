@@ -1,0 +1,88 @@
+## PR #300 독립 설계·완료 검토 1: 결과
+
+- **대상 HEAD:** `a3dcdc40` (기준 main `535cae73`). 현재 작업 트리를 Read/Glob/Grep으로만 읽었습니다. git과 테스트는 실행하지 않았습니다.
+- **이전 실행:** `auth-failure.json`은 401 토큰 만료로 끝났고(`num_turns: 1`), 검토를 시작하지 못했습니다. 판정이 없었으므로 승인으로 보지 않았습니다.
+
+---
+
+### 차단 지적
+
+**B1. 앱 안 AI 답변을 반영하면 먼저 가져온 외부 AI 답변이 경고 없이 사라집니다.**
+
+외부 답변 가져오기는 기존 참고자료에 **누적**합니다. 앱 안 AI 답변 반영은 참고자료를 통째로 **덮어씁니다**. 두 경로가 같은 `reading_ai_context`를 쓰는데 방식이 달라서, 순서에 따라 외부 답변이 없어집니다.
+
+```ts
+// services/readingAiCore.ts:21-31 — 외부 가져오기: 기존 참고자료와 합침
+const previous = parseReadingAiReference(rawReference, bookId);
+const selectedAnswers = previous?.selectedAnswers || [];
+const aiMemo = [previous?.aiMemo, content].filter(Boolean).join('\n\n');
+
+// components/FormatModal.tsx:4238-4239 — 앱 안 반영: 기존 참고자료를 보지 않고 덮어씀
+const applied = applyReadingAiReference(formData.reading_journal || '', bookId, selected, memo);
+setFormData((prev) => ({ ...prev, reading_journal: applied.journal, reading_ai_context: JSON.stringify(applied.reference) }));
+```
+
+**재현 순서:**
+1. 독서사유에서 책 제목을 입력하고 「외부 AI 답변 가져오기」를 누릅니다. 「질문 1개와 AI 참고자료가 반영되었습니다」가 표시됩니다.
+2. 「질문 보내기」로 앱 안 답변을 받고, 그 답변을 선택한 뒤 「선택한 답변을 독서장에 반영」과 「확인 후 독서장에 반영」을 누릅니다.
+3. 「반영한 AI 참고자료 확인」을 열면 외부 답변 블록 `[외부 AI 답변 · …]`이 없습니다. 이 상태로 저장하면 외부 답변은 기록에서도 빠집니다.
+4. 저장된 회차를 다시 편집할 때도 같습니다(`prepareReadingEdit`가 `entry.readingAiContext`를 복원하고, 앱 안 반영이 이를 덮어씀). 이미 저장된 외부 참고자료도 다음 저장에서 사라집니다.
+
+반대 순서(앱 안 반영 → 외부 가져오기)는 테스트 `frontend/test/readingAi.test.mjs:27-37`이 확인합니다. 위 순서는 테스트가 없습니다. 「참고자료 보존」이 이번 검토 항목이고, 사용자가 직접 붙여넣은 내용이 알림 없이 사라지므로 차단으로 봅니다.
+
+**수정 방향 (예시):** 앱 안 반영에서 기존 참고자료의 외부 답변을 유지합니다. 한도(3개, 4,000자)를 넘으면 반영하지 않고 안내합니다.
+
+```ts
+// readingAiCore.ts
+const EXTERNAL_PREFIX = '[외부 AI 답변 · ';
+export function mergeInAppReadingReference(raw: unknown, bookId: string, selected: Array<{ question: string; answer: string }>, memo: string) {
+  const previous = parseReadingAiReference(raw, bookId);
+  const external = (previous?.selectedAnswers || []).filter((a) => a.answer.startsWith(EXTERNAL_PREFIX));
+  const merged = [...external, ...selected];
+  const aiMemo = [memo, ...external.map((a) => a.answer)].filter(Boolean).join('\n\n');
+  if (merged.length > 3 || aiMemo.length > 4000) throw new Error('외부 AI 참고자료와 합쳐 한도를 넘습니다. 현재 독서장을 저장하고 새 회차에서 반영해 주세요.');
+  return { selected: merged, aiMemo };
+}
+```
+
+FormatModal의 `onApply`(앱 안 경로)에서 이 함수를 거친 뒤 `applyReadingAiReference`를 호출합니다. 외부 경로는 지금처럼 이미 합친 값을 넘깁니다. 「외부 가져오기 → 앱 안 반영 → 외부 답변 유지」와 「한도 초과 거부」 테스트를 하나씩 추가합니다.
+
+---
+
+### 비차단 메모
+
+1. **질문과 답변의 짝이 AI에 전달되지 않습니다.** `selectedAnswers`에는 질문과 답변이 짝으로 남습니다. 그러나 중간기록과 마무리 분석에 보내는 텍스트(`readingAiReferenceText`, `readingAiCore.ts:82-89`)는 질문 목록과 AI 메모를 따로 나열합니다. 외부 답변 블록에 질문이 없어서, 답변이 여러 개면 어느 질문의 답인지 알 수 없습니다. `content`를 `[외부 AI 답변 · ${source}] 질문: …` 형태로 만들 것을 권합니다.
+2. **외부 답변만 반영한 상태는 UI에서 지울 수 없습니다.** 「대화 삭제」는 `!chat.messages.length`이면 비활성입니다(`ReadingAiChat.tsx:77`). 따라서 외부 참고자료만 있을 때는 비활성이고, 잘못 가져온 답변을 지울 수 없습니다.
+3. **책 제목 입력 전에 붙여넣은 답변이 화면에서 사라집니다.** 새 책이면 `ReadingAiChat`의 key와 bookId가 제목·저자에서 계산됩니다(`FormatModal.tsx:4224`). 가져오기는 제목이 있어야 동작합니다. 제목 없이 외부 답변을 붙여넣고 제목을 입력하면, 다른 저장 키의 세션이 열립니다. 붙여넣은 답변은 이전 키에 남지만 보이지 않습니다. 기존 대화에도 있던 동작이지만, 본문 없이 바로 질문하는 이번 흐름에서 더 자주 생깁니다. 안내 문구만 추가해도 됩니다.
+4. **반영 후 제목·저자를 바꾸면 참고자료가 `"null"`로 저장됩니다.** 저장 시 bookId가 다르면 `parseReadingAiReference`가 null을 돌려주고, `JSON.stringify(null)`이 그대로 저장됩니다(`FormatModal.tsx:3371, 3412`). 다른 책 참고자료를 거부하는 설계 의도와는 맞습니다. 사용자 안내는 없습니다.
+5. **한도와 비용:** 외부 답변 1개는 최대 3,000자, 합계는 4,000자입니다. 중간기록 저장은 `contentValues.slice(0, 4100)`이고 참고자료가 본문보다 앞에 들어갑니다(`FormatModal.tsx:3331-3358`). 외부 답변이 길면 책 본문이 잘리고, 다듬은 SAYU에 AI 설명이 섞일 위험이 커집니다. 구분 지시(5번 항목)는 있습니다. 호출 횟수나 모델은 바뀌지 않았습니다.
+6. **가져오기 후에도 질문 칸이 유지됩니다.** 의도된 동작으로 보입니다. 다만 다음 「질문 보내기」에서 같은 질문이 다시 전송되어 1회가 차감될 수 있습니다.
+
+### 확인한 항목 (문제 없음)
+
+- **본문 없이 질문:** 서버는 `currentBookText`가 비어도 허용하고, 질문과 책 제목은 반드시 요구합니다(`functions/src/readingAiCore.ts:39-40`). 시스템 프롬프트는 일반 지식 설명과 본문 해석을 나누고, 본문을 추측하지 말라고 지시합니다. 테스트 `functions/test/readingAi.test.js:25-38`이 있습니다.
+- **사용자 생각과 AI 설명 구분:** 독서장에는 사용자 질문만 들어가고, 외부 답변 원문은 들어가지 않습니다(테스트 36행). 참고 텍스트에는 「사용자의 생각이 아님」 표시가 붙습니다.
+- **인증과 비용:** 가져오기는 서버를 호출하지 않으므로 할당량을 쓰지 않습니다. 채팅은 기존 인증 → rate → reserve 순서를 지키고, 실패하면 rollback합니다.
+- **닫기·새로고침·책 전환 복원:** `reading_ai_context`는 `reading_` 접두사라 초안 복원에 포함됩니다. 외부 답변 입력값과 출처는 계정·책·회차별 localStorage에 7일간 보관됩니다. 책 전환과 회차 추가·취소 때는 참고자료를 비웁니다.
+- **기존 저장 호환:** 필드가 없거나 깨진 기록은 null이나 빈 문자열로 읽습니다. 형식(`version: 1`)도 바뀌지 않았습니다.
+- **오류와 동시 동작:** `locked`가 처리 중 입력을 막습니다. 가져오기 실패 시 입력은 유지됩니다(예외 후 `setExternalAnswer('')`에 도달하지 않음).
+
+### 작업 규모와 멈춤 조건
+
+- **규모: 중.** 기존 독서 AI 대화를 확장한 것입니다. 홈화면·라우터·Rules·저장 경로·모델은 바뀌지 않았습니다.
+- **멈춤 조건: 해당 없음으로 판단합니다.** 새 AI 호출이나 모델 변경은 없습니다. 본문 없이 질문할 수 있어 호출 기회는 늘지만, 같은 월간 한도 안에서만 가능합니다.
+- **배포 승인 범위:** 병합·배포 승인은 프롬프트에 적힌 이번 건에 대한 허대표님 지시에 근거합니다. 8.1절의 상시 승인은 특정 CC 세션에 묶여 있으니, 판정 기록에 이번 지시의 근거 링크를 함께 남기는 것이 좋습니다.
+
+### 이번 판정과 따로 보는 항목
+
+- **Codex 자동 리뷰:** 대기 중이며, 8.1절 판정① 조건 3을 아직 충족하지 않았습니다. 이 판정에는 포함하지 않았습니다.
+- **운영 E2E와 실제 모델 답변 품질:** 확인하지 않았습니다. 「운영 완료」로 보지 않습니다.
+- **테스트·빌드·CI 결과:** 프롬프트에 적힌 실행 결과를 그대로 옮긴 것이고, 이 검토에서 다시 실행하지 않았습니다.
+
+---
+
+**판정: 수정 후 승인**
+
+차단 지적 B1(앱 안 반영 시 외부 참고자료 소실)을 고치고, 그 순서의 테스트를 추가하면 승인할 수 있습니다. 비차단 메모는 이번 PR에서 반영하지 않아도 됩니다.
+
+이 결과는 파일로 저장하지 않았습니다. 8.1절 기록 규칙에 따라 CC가 원문 그대로 `docs/reviews/2026-10-25-pr300-independent-review-1/`에 보관해야 합니다.
