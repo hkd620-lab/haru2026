@@ -1,0 +1,28 @@
+{
+  "headRefOid": "606577c13b4a799ecdb69a15a8d04582dcb8e076",
+  "isDraft": true,
+  "mergeable": "CONFLICTING",
+  "state": "OPEN",
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-26T22:46:27Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/hkd620-lab/haru2026/actions/runs/40414734298/job/121894079473",
+      "name": "build_and_preview",
+      "startedAt": "2026-10-26T22:44:32Z",
+      "status": "COMPLETED",
+      "workflowName": "Deploy to Firebase Hosting on PR"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-26T22:46:24Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/hkd620-lab/haru2026/runs/121894827360",
+      "name": "Deploy Preview",
+      "startedAt": "2026-10-26T22:46:13Z",
+      "status": "COMPLETED",
+      "workflowName": "Deploy to Firebase Hosting on PR"
+    }
+  ]
+}
