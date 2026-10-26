@@ -6,7 +6,7 @@ import type { GenerateContentRequest, GenerationConfig, ModelParams, Part, Reque
 import type OpenAI from 'openai';
 import { defineSecret } from 'firebase-functions/params';
 import { getAiRoute } from './aiModels';
-import type { AiProvider, AiPurpose } from './aiModels';
+import type { AiProvider, AiPurpose, AiRoute } from './aiModels';
 
 type SecretParam = ReturnType<typeof defineSecret>;
 
@@ -110,7 +110,7 @@ function toOpenAiContent(input: AiInput, purpose: AiPurpose): string | Array<Rec
 // 참고: 추론 모델 일부는 temperature 를 받지 않는다. 그런 모델로 바꿀 때는 해당 기능의 temperature 를 함께 점검한다.
 const OPENAI_SUPPORTED_GENERATION_CONFIG = new Set(['temperature', 'maxOutputTokens', 'responseMimeType']);
 
-async function callOpenAi(model: string, apiKey: string, request: CallAiRequest): Promise<CallAiResult> {
+async function callOpenAi(model: string, apiKey: string, request: CallAiRequest, routeOptions: AiRoute['openai']): Promise<CallAiResult> {
   const fail = (what: string) => new Error(`OpenAI 로 옮길 수 없는 설정입니다 (${request.purpose}): ${what}`);
   if (request.geminiParams && Object.keys(request.geminiParams).length > 0) {
     throw new Error(`Gemini 전용 설정을 쓰는 기능은 OpenAI 로 옮길 수 없습니다 (${request.purpose})`);
@@ -136,6 +136,9 @@ async function callOpenAi(model: string, apiKey: string, request: CallAiRequest)
   if (request.systemInstruction) messages.push({ role: 'system', content: request.systemInstruction });
   messages.push({ role: 'user', content: toOpenAiContent(request.input, request.purpose) });
   const body: Record<string, unknown> = { model, messages };
+  // 설정 표에 용도별 OpenAI 설정이 있을 때만 붙인다. 호출부가 넘긴 maxOutputTokens 가 있으면 그 값이 우선한다.
+  if (routeOptions?.reasoningEffort !== undefined) body.reasoning_effort = routeOptions.reasoningEffort;
+  if (routeOptions?.maxCompletionTokens !== undefined) body.max_completion_tokens = routeOptions.maxCompletionTokens;
   if (config.temperature !== undefined) body.temperature = config.temperature;
   if (config.maxOutputTokens !== undefined) body.max_completion_tokens = config.maxOutputTokens;
   if (config.responseMimeType === 'application/json') body.response_format = { type: 'json_object' };
@@ -163,6 +166,6 @@ export async function callAi(request: CallAiRequest): Promise<CallAiResult> {
   const apiKey = aiCredentials.get(route.provider);
   if (!apiKey) throw new Error(`AI 키 없음: ${route.provider} (${request.purpose}) — 함수 secrets 에 aiSecretsFor('${request.purpose}') 를 넣었는지 확인`);
   if (route.provider === 'gemini') return callGemini(route.model, apiKey, request);
-  if (route.provider === 'openai') return callOpenAi(route.model, apiKey, request);
+  if (route.provider === 'openai') return callOpenAi(route.model, apiKey, request, route.openai);
   throw new Error(`지원하지 않는 AI 회사: ${(route as { provider: string }).provider}`);
 }
