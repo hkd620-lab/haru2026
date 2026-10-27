@@ -42,7 +42,7 @@ import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
-import { SayuModal } from '../components/SayuModal';
+import { SayuModal, type SayuEditMeta } from '../components/SayuModal';
 import { StructuredAssistantRecordModal } from '../components/StructuredAssistantRecordModal';
 import { OriginalAssistantRecords } from '../components/OriginalAssistantRecords';
 import { useRecordReadConsent } from '../hooks/useRecordReadConsent';
@@ -2674,16 +2674,25 @@ export function SayuPage() {
     }
   };
 
-  const handleSaveSayu = async (editedContent: string, rating: number) => {
+  const handleSaveSayu = async (editedContent: string, rating: number, meta: SayuEditMeta) => {
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return false;
+    }
     if (!selectedDate) return false;
     const currentFormatInfo = selectedDateFormats[0];
     const record = currentFormatInfo?.recordId
       ? records.find((r) => r.id === currentFormatInfo.recordId)
       : records.find((r) => r.date === selectedDate);
-    if (!record) return false;
 
-    const formatKey = currentFormatInfo?.key || selectedDateFormats.find((f) => record[`${f.key}_sayu`])?.key;
-    if (!formatKey) return false;
+    const formatKey = record
+      ? currentFormatInfo?.key || selectedDateFormats.find((f) => record[`${f.key}_sayu`])?.key
+      : undefined;
+    // 모달이 편집한 기록·형식과 저장 대상이 다르면 다른 기록을 덮어쓰지 않도록 저장하지 않는다.
+    if (!record || !formatKey || record.id !== meta.recordId || formatKey !== meta.formatKey) {
+      toast.error('저장할 기록을 확인하지 못했습니다. 다시 열어 시도해주세요.');
+      return false;
+    }
 
     const sayuKey = `${formatKey}_sayu`;
     const ratingKey = `${formatKey}_rating`;
@@ -2693,36 +2702,64 @@ export function SayuPage() {
     const isSpecial = rating > 0;
     const hasLegacyRating = formatKey === 'work' && typeof record[ratingKey] === 'number';
 
+    const titleKey = `${formatKey}_title`;
+    const aiTitleKey = `${formatKey}_ai_title`;
+    const metaUpdate: Record<string, string | null> = {
+      [titleKey]: meta.title,
+      weather: meta.weather,
+      temperature: meta.temperature,
+      ...(meta.mood ? { mood: meta.mood } : {}),
+      // updateRecord는 null을 필드 삭제로 바꾼다.
+      ...(meta.clearAiTitle ? { [aiTitleKey]: null } : {}),
+    };
+
     try {
-      await firestoreService.updateRecord(user!.uid, record.id, {
+      // 제목·날씨·기분과 본문·특별한 날을 한 번의 updateRecord로 저장해 일부만 반영되는 일을 막는다.
+      await firestoreService.updateRecord(user.uid, record.id, {
+        ...metaUpdate,
         [sayuKey]: editedContent,
         [`specialDays.${formatKey}`]: isSpecial,
         ...(hasLegacyRating ? { [ratingKey]: null } : {}),
       });
-
-      if (record.isPublic === true) {
-        await firestoreService.publishRecordToShared(user!.uid, record.id);
-      }
-
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.id === record.id
-            ? (() => {
-                const next: any = { ...r, [sayuKey]: editedContent, specialDays: { ...(r.specialDays || {}), [formatKey]: isSpecial } };
-                if (hasLegacyRating) delete next[ratingKey];
-                return next;
-              })()
-            : r
-        )
-      );
-
-      toast.success('SAYU-나의기록에 저장되었습니다!');
-      return true;
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('저장에 실패했습니다.');
       return false;
     }
+
+    setRecords((prev) =>
+      prev.map((r) =>
+        r.id === record.id
+          ? (() => {
+              const next: any = {
+                ...r,
+                [titleKey]: meta.title,
+                weather: meta.weather,
+                temperature: meta.temperature,
+                ...(meta.mood ? { mood: meta.mood } : {}),
+                [sayuKey]: editedContent,
+                specialDays: { ...(r.specialDays || {}), [formatKey]: isSpecial },
+              };
+              if (meta.clearAiTitle) delete next[aiTitleKey];
+              if (hasLegacyRating) delete next[ratingKey];
+              return next;
+            })()
+          : r
+      )
+    );
+
+    // 공개본은 원본 저장이 성공한 뒤에만 갱신하고, 실패해도 원본 저장 실패로 보고하지 않는다.
+    if (record.isPublic === true) {
+      try {
+        await firestoreService.publishRecordToShared(user.uid, record.id);
+      } catch (error) {
+        console.error('함께보기 공개본 갱신 실패:', error);
+        toast.warning('기록은 저장됐지만 함께보기 공개본 갱신에 실패했습니다.');
+      }
+    }
+
+    toast.success('SAYU-나의기록에 저장되었습니다!');
+    return true;
   };
 
   const handleToggleSharedRecord = async (record: HaruRecord) => {

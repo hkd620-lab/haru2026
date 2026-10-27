@@ -545,6 +545,19 @@ async function recoverTimelineLocationFromImage(item: GrowthTimelineEditItem): P
   }
 }
 
+/** 일반 편집 저장 시 본문과 같은 문서에 한 번에 저장할 편집 메타데이터. */
+export interface SayuEditMeta {
+  recordId: string;
+  formatKey: string;
+  title: string;
+  /** 직접 고친 제목이 있으면 과거 AI 제목을 해제한다. */
+  clearAiTitle: boolean;
+  weather: string;
+  temperature: string;
+  /** 고른 경우에만 저장한다(빈 값 저장 금지). */
+  mood?: string;
+}
+
 export interface SayuModalProps {
   isOpen: boolean;
   onClose: (deleted?: boolean) => void;
@@ -553,7 +566,7 @@ export interface SayuModalProps {
   format?: string;
   dateLabel: string;
   currentRating?: number;
-  onSave: (content: string, rating: number) => Promise<boolean>;
+  onSave: (content: string, rating: number, meta: SayuEditMeta) => Promise<boolean>;
   recordDate?: string;
   weather?: string;
   temperature?: string;
@@ -1408,24 +1421,22 @@ export function SayuModal({
       }
 
       const titleChanged = editedTitle.trim() !== savedDraftRef.current.title.trim();
-      if (currentUser && firestoreId) {
-        const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
-        const titleUpdate: Record<string, string | ReturnType<typeof deleteField>> = {
-          weather: editedWeather,
-          temperature: editedTemperature,
-        };
-        // 기분은 고른 경우에만 저장한다(빈 값 저장 금지) — 2026-10-23 결정 ①
-        if (editedMood) titleUpdate.mood = editedMood;
-        if (formatKey) {
-          titleUpdate[`${formatKey}_title`] = editedTitle.trim();
-          // 목록·검색·공개본은 ai_title을 먼저 읽으므로, 직접 고친 제목이 있으면 과거 AI 제목을 해제한다.
-          if (titleChanged) {
-            titleUpdate[`${formatKey}_ai_title`] = deleteField();
-          }
-        }
-        await updateDoc(recordRef, titleUpdate);
+      if (!currentUser || !firestoreId || !formatKey) {
+        toast.error('❌ 저장할 기록을 확인하지 못했습니다. 다시 열어 시도해주세요.');
+        return;
       }
-      const saved = await onSave(editedContent, isSpecialDay ? 1 : 0);
+      // 제목·날씨·기분과 본문·특별한 날은 부모가 같은 문서에 한 번에 저장한다(부분 저장 방지).
+      const saved = await onSave(editedContent, isSpecialDay ? 1 : 0, {
+        recordId: firestoreId,
+        formatKey,
+        title: editedTitle.trim(),
+        // 목록·검색·공개본은 ai_title을 먼저 읽으므로, 직접 고친 제목이 있으면 과거 AI 제목을 해제한다.
+        clearAiTitle: titleChanged,
+        weather: editedWeather,
+        temperature: editedTemperature,
+        // 기분은 고른 경우에만 저장한다(빈 값 저장 금지) — 2026-10-23 결정 ①
+        ...(editedMood ? { mood: editedMood } : {}),
+      });
       if (!saved) return;
       if (titleChanged) {
         try {
