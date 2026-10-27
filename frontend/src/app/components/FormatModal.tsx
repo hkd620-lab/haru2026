@@ -476,6 +476,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const initialPhotoUploadKeyRef = useRef<string | null>(null);
   const initialUploadedImagesRef = useRef<string[]>([]);
   const initialReadingJournalRef = useRef('');
+  // 원본 저장 중복 클릭 방지(저장을 시작한 편집 세션 번호를 담는다) + 자동 제목을 기다리는 동안 바뀐 입력 확인용
+  const isSavingOriginalRef = useRef<number | null>(null);
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
+  const originalSaveContextRef = useRef('');
   const initialPhotoUploadFailedRef = useRef(false);
   // 업로드 실패 안내의 '다시 시도' 버튼이 눌린 시점의 최신 사진 목록 기준으로 다시 올리도록 최신 함수를 담아 둔다.
   const uploadSelectedImagesRef = useRef<((files: File[], requireAll?: boolean) => Promise<void>) | null>(null);
@@ -1042,6 +1047,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const recordPhotoLimit = getRecordPhotoLimit(format);
   const isHouseholdFormat = format === 'HARU가계부';
   const isVoidingFormat = format === '배뇨일지';
+  // 제목 없이 원본 저장하면 본문으로 제목을 만들어 주는 대상: 처음 만드는 일반 기록만. 기존 기록·기존 제목·독서·주식은 제외
+  const canAutoTitleOnOriginalSave = format !== '독서사유' && !isStockFormat && !initialData._recordId && !initialData[sayuKey] && !String(initialData[`${prefix}_title`] || '').trim();
   const selectedGrowthSubject = growthSubjects.find((subject) => subject.id === selectedGrowthSubjectId);
   // 아이는 "새 대상 추가"에 이미 있는 이름을 다시 쓰면 새로 만들지 않고 그 아이에 이어서 기록한다 (같은 아이가 둘로 갈라지는 것을 막는다)
   const sameNameGrowthSubject = format !== '텃밭일지' ? findSameNameGrowthSubject(growthSubjects, newGrowthSubjectName) : undefined;
@@ -2880,6 +2887,10 @@ ${contentValues}
     }
   };
 
+  // 원본 저장 payload 중 formData 밖 입력(기록 방식·사진·사진 정보·작물·성장 대상) — 자동 제목을 기다리는 동안 바뀌었는지 비교한다
+  const getOriginalSaveContext = () => JSON.stringify([recordStyle, uploadedImages, getUploadedImageMetaForSave(), selectedCrops, getGrowthSaveFields()]);
+  originalSaveContextRef.current = getOriginalSaveContext();
+
   const handleSaveOriginalAsSayu = async () => {
     if (isCleaningSessionUploadsRef.current) {
       toast.warning('사진 정리가 끝난 뒤 저장해주세요.');
@@ -2891,8 +2902,11 @@ ${contentValues}
     if (isHouseholdFormat) {
       return handleSaveHouseholdEntries();
     }
+    const saveSession = photoEditorSessionRef.current;
+    if (isSavingOriginalRef.current === saveSession) return;
     const currentTitle = (formData[`${prefix}_title`] || (format === '독서사유' ? formData.reading_book_title : '') || (isStockFormat ? formData.stock_name : '') || '').trim();
-    if (!currentTitle) {
+    const needsAutoTitle = !currentTitle && canAutoTitleOnOriginalSave;
+    if (!currentTitle && !needsAutoTitle) {
       toast.warning('제목을 입력해 주세요. 제목이 있어야 나중에 목록에서 내용을 확인하기 편합니다.');
       return;
     }
@@ -2944,8 +2958,40 @@ ${contentValues}
       if (selectedCrops.length > 0) dataToSave.garden_crop = selectedCrops.join(', ');
     }
 
+    const saveContext = getOriginalSaveContext();
+    isSavingOriginalRef.current = saveSession;
     setIsSaving(true);
     try {
+      if (needsAutoTitle) {
+        // AI 제목이 실패·빈 값이거나 본문이 짧으면 본문 첫 줄을 제목으로 쓴다 — 제목 때문에 저장이 막히지 않게 한다.
+        const fallbackTitle = (originalContent.split('\n').map(line => line.trim()).find(Boolean) || '').slice(0, 20);
+        let autoTitle = '';
+        if (originalContent.trim().length > 5) {
+          try {
+            const functions = getFunctions(undefined, 'asia-northeast3');
+            const extractTitleFn = httpsCallable(functions, 'extractTitle', { timeout: 10000 });
+            // 서버는 앞 600자만 쓴다.
+            const result = await extractTitleFn({ text: originalContent.slice(0, 600), format });
+            const rawTitle = (result.data as { title?: unknown } | null)?.title;
+            autoTitle = typeof rawTitle === 'string' ? rawTitle.trim() : '';
+          } catch (e) {
+            console.warn('AI 제목 추출 실패:', e);
+          }
+        }
+        // 기다리는 동안 화면을 닫거나 다른 기록으로 바뀌었으면 저장·이동하지 않는다.
+        if (photoEditorSessionRef.current !== saveSession) return;
+        // 기다리는 동안 제목 말고 다른 입력(사진·작물·성장 대상 등 포함)이 바뀌었으면, 예전 내용으로 저장하지 않고 다시 누르게 한다(지금 입력은 그대로 둔다).
+        const latestFormData = formDataRef.current;
+        const changedWhileWaiting = originalSaveContextRef.current !== saveContext || Object.keys({ ...formData, ...latestFormData })
+          .some(key => key !== `${prefix}_title` && (latestFormData[key] ?? '') !== (formData[key] ?? ''));
+        if (changedWhileWaiting) {
+          toast.info('제목을 만드는 동안 내용이 바뀌었습니다. 다시 저장해 주세요.');
+          return;
+        }
+        // 기다리는 동안 사용자가 제목을 직접 적었으면 그 제목을 쓴다.
+        const typedTitle = String(latestFormData[`${prefix}_title`] || '').trim();
+        dataToSave[`${prefix}_title`] = typedTitle || autoTitle || fallbackTitle;
+      }
       const savedRecordId = await onSave(dataToSave);
       const openRecordId = savedRecordId || (dataToSave._recordId as string) || undefined;
       toast.success('SAYU-나의 기록에 저장했습니다.');
@@ -2963,7 +3009,11 @@ ${contentValues}
       console.error('저장 중 오류:', error);
       toast.error('저장에 실패했습니다.');
     } finally {
-      setIsSaving(false);
+      // 새 편집 세션이 이미 저장을 시작했으면 그 잠금·저장 중 표시는 건드리지 않는다.
+      if (isSavingOriginalRef.current === saveSession) {
+        isSavingOriginalRef.current = null;
+        setIsSaving(false);
+      }
     }
   };
 
@@ -3857,7 +3907,9 @@ ${contentValues.slice(0, 4100)}`,
               {format !== 'HARU주식관리' && format !== '독서사유' && !isHouseholdFormat && !isLedgerFormat && (
                 <div>
                   <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6, fontWeight: 600 }}>
-                    📌 제목 <span style={{ color: '#ef4444', fontSize: 11 }}>*필수</span>
+                    📌 제목 {canAutoTitleOnOriginalSave
+                      ? <span style={{ color: '#888', fontSize: 11, fontWeight: 400 }}>(비워 두고 원본 저장하면 자동으로 붙여요)</span>
+                      : <span style={{ color: '#ef4444', fontSize: 11 }}>*필수</span>}
                   </label>
                   <input
                     type="text"
