@@ -1407,9 +1407,10 @@ export function SayuModal({
         return;
       }
 
+      const titleChanged = editedTitle.trim() !== savedDraftRef.current.title.trim();
       if (currentUser && firestoreId) {
         const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
-        const titleUpdate: Record<string, string> = {
+        const titleUpdate: Record<string, string | ReturnType<typeof deleteField>> = {
           weather: editedWeather,
           temperature: editedTemperature,
         };
@@ -1417,11 +1418,23 @@ export function SayuModal({
         if (editedMood) titleUpdate.mood = editedMood;
         if (formatKey) {
           titleUpdate[`${formatKey}_title`] = editedTitle.trim();
+          // 목록·검색·공개본은 ai_title을 먼저 읽으므로, 직접 고친 제목이 있으면 과거 AI 제목을 해제한다.
+          if (titleChanged) {
+            titleUpdate[`${formatKey}_ai_title`] = deleteField();
+          }
         }
         await updateDoc(recordRef, titleUpdate);
       }
       const saved = await onSave(editedContent, isSpecialDay ? 1 : 0);
       if (!saved) return;
+      if (titleChanged) {
+        try {
+          await onRefresh?.();
+        } catch (refreshError) {
+          console.error('저장 후 목록 갱신 실패:', refreshError);
+          toast.warning('기록은 저장됐지만 목록을 갱신하지 못했습니다. 다시 열어 확인해주세요.');
+        }
+      }
       rememberSavedEdit(editedContent);
       toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
       setIsEditing(false);
