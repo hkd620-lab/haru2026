@@ -2679,7 +2679,10 @@ export function SayuPage() {
       toast.error('로그인이 필요합니다.');
       return false;
     }
-    if (!selectedDate) return false;
+    if (!selectedDate) {
+      toast.error('저장할 기록을 확인하지 못했습니다. 다시 열어 시도해주세요.');
+      return false;
+    }
     const currentFormatInfo = selectedDateFormats[0];
     const record = currentFormatInfo?.recordId
       ? records.find((r) => r.id === currentFormatInfo.recordId)

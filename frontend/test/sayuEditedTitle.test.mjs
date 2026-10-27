@@ -24,7 +24,7 @@ function fixture({
   prefix = 'diary', oldTitle = '이전 제목', aiTitle = '과거 AI 제목', editedTitle = '직접 수정한 제목',
   saveFails = false, refreshFails = false, publishFails = false, isPublic = false,
   modalUser = { uid: 'synthetic-user' }, pageUser = { uid: 'synthetic-user' },
-  selectedRecordId = 'fixture', selectedKey = prefix,
+  selectedRecordId = 'fixture', selectedKey = prefix, selectedDate = '2026-10-27',
 } = {}) {
   const persisted = {
     id: 'fixture', date: '2026-10-27', formats: [prefix === 'memo' ? '메모' : '일기'],
@@ -40,7 +40,7 @@ function fixture({
   const toast = { success: () => { state.successes++; }, error: value => state.errors.push(value), warning: value => state.warnings.push(value) };
   // 실제 부모 저장 handler도 실행해, 서버 데이터와 화면 records를 구분한다.
   const onSave = handler(page, 'handleSaveSayu', {
-    selectedDate: persisted.date, selectedDateFormats: [{ key: selectedKey, recordId: selectedRecordId }], records: state.records, user: pageUser, toast,
+    selectedDate, selectedDateFormats: [{ key: selectedKey, recordId: selectedRecordId }], records: state.records, user: pageUser, toast,
     firestoreService: {
       // 실제 updateRecord처럼 null은 필드 삭제, 점 표기는 맵 하위 필드로 반영한다. 실패하면 아무 필드도 바뀌지 않는다.
       updateRecord: async (uid, id, update) => {
@@ -156,6 +156,12 @@ test('부모 저장 handler에 로그인이 없으면 쓰기 없이 실패한다
   const f = fixture({ pageUser: null }); const before = structuredClone(f.persisted);
   await f.save();
   assertFailedUnchanged(f, before); assert.equal(f.state.writes, 0);
+});
+test('선택 날짜가 비어 있으면 쓰기 없이 오류를 안내하고 초안을 유지한다', async () => {
+  const f = fixture({ selectedDate: '' }); const before = structuredClone(f.persisted);
+  await f.save();
+  assertFailedUnchanged(f, before); assert.equal(f.state.writes, 0);
+  assert.deepEqual(f.state.errors, ['저장할 기록을 확인하지 못했습니다. 다시 열어 시도해주세요.']);
 });
 for (const [name, options] of [['다른 기록', { selectedRecordId: 'other-record' }], ['다른 형식', { selectedKey: 'memo' }]]) {
   test(`저장 대상이 ${name}이면 덮어쓰지 않고 실패한다`, async () => {
