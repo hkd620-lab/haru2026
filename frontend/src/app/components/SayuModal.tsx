@@ -49,6 +49,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { parseHouseholdAmountText } from '../utils/householdAmount';
+import { HOUSEHOLD_SUMMARY_NOTE, summarizeHouseholdEntries } from '../utils/householdSummary';
 
 const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
 const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
@@ -157,42 +158,23 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
   });
 
   const summaryEntries = totalEntries && totalEntries.length > 0 ? totalEntries : entries;
-  const income = summaryEntries.reduce((sum, entry) => entry.transactionType === '수입' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
-  const expense = summaryEntries.reduce((sum, entry) => entry.transactionType === '지출' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
-  const transfer = summaryEntries.reduce((sum, entry) => entry.transactionType === '이체' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
-  const totalIncome = income + transfer;
-  const balance = totalIncome - expense;
+  const { income, expense, balance } = summarizeHouseholdEntries(summaryEntries);
   const money = (value: number) => `${value.toLocaleString()}원`;
-
-  // 통장잔액 — summaryEntries 범위 안에서 날짜상 가장 마지막 거래의 거래후잔액 (동일 날짜면 배열상 뒤쪽을 채택)
-  let bankBalance = 0;
-  let hasBankBalance = false;
-  let lastBalanceDate = '';
-  for (const entry of summaryEntries) {
-    if (!entry.balanceAfter || !entry.date) continue;
-    if (entry.date >= lastBalanceDate) {
-      lastBalanceDate = entry.date;
-      bankBalance = parseHouseholdAmount(entry.balanceAfter);
-      hasBankBalance = true;
-    }
-  }
 
   const summaryItems: { label: string; value: string; color: string; note?: string }[] = [
     {
-      label: '전체수입',
-      value: `+${money(totalIncome)}`,
+      label: '수입',
+      value: money(income),
       color: '#059669',
-      note: `순수입 ${income.toLocaleString()} + 충전 ${transfer.toLocaleString()}`,
     },
-    { label: '지출', value: `-${money(expense)}`, color: '#dc2626' },
-    { label: '수입 지출 차액', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
-    ...(hasBankBalance ? [{ label: '통장잔액', value: money(bankBalance), color: '#059669' }] : []),
+    { label: '지출', value: money(expense), color: '#dc2626' },
+    { label: '수입−지출', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
   ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: hasBankBalance ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
           {summaryItems.map((item) => (
             <div key={item.label} style={{ minWidth: 0 }}>
               <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 700 }}>{item.label}</div>
@@ -203,6 +185,7 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
             </div>
           ))}
         </div>
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>{HOUSEHOLD_SUMMARY_NOTE}</p>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

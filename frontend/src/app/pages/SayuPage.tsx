@@ -61,7 +61,8 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSubscription } from '../hooks/useSubscription';
 import { compressUploadPhoto as compressImage } from '../services/photoUploadService';
 import { fingerprintPlantEntry, readPlantDetectiveSelection, PLANT_EDIT_CONFLICT, type PlantDetectiveSelection } from '../utils/plantDetectiveEdit';
-import { parseHouseholdAmountText, parseKoreanUnitAmount } from '../utils/householdAmount';
+import { parseKoreanUnitAmount } from '../utils/householdAmount';
+import { summarizeHouseholdEntries } from '../utils/householdSummary';
 import { isSpecialDayRecord } from '../records/recordStats';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
@@ -553,10 +554,6 @@ function buildLedgerEntryDisplay(entry: any, record: any) {
   };
 }
 
-function parseHouseholdDisplayAmount(value: unknown): number {
-  return Math.abs(parseHouseholdAmountText(value) ?? 0);
-}
-
 function formatHouseholdDisplayMoney(value: number, signed = false): string {
   const sign = signed && value > 0 ? '+' : '';
   return `${sign}${value.toLocaleString('ko-KR')}원`;
@@ -570,24 +567,15 @@ function buildHouseholdSummaryTitle(record: any): string {
     const entries = JSON.parse(stored);
     if (!Array.isArray(entries) || entries.length === 0) return '';
 
-    let income = 0;
-    let expense = 0;
-    let transfer = 0;
+    const { income, expense, balance } = summarizeHouseholdEntries(entries);
     const months = new Set<string>();
 
     for (const entry of entries) {
       const date = String(entry?.date || '').replace(/\./g, '-');
       const month = date.slice(0, 7);
       if (/^\d{4}-\d{2}$/.test(month)) months.add(month);
-
-      const amount = parseHouseholdDisplayAmount(entry?.amount);
-      if (entry?.transactionType === '수입') income += amount;
-      if (entry?.transactionType === '이체') transfer += amount;
-      if (entry?.transactionType === '지출') expense += amount;
     }
 
-    const totalIncome = income + transfer;
-    const balance = totalIncome - expense;
     const [monthKey] = Array.from(months);
     const label = months.size === 1
       ? `${Number(monthKey.slice(0, 4))}년 ${Number(monthKey.slice(5, 7))}월 가계부`
@@ -595,9 +583,9 @@ function buildHouseholdSummaryTitle(record: any): string {
 
     return [
       label,
-      `수입 ${formatHouseholdDisplayMoney(totalIncome)}`,
+      `수입 ${formatHouseholdDisplayMoney(income)}`,
       `지출 ${formatHouseholdDisplayMoney(expense)}`,
-      `수입 지출 차액 ${formatHouseholdDisplayMoney(balance, true)}`,
+      `수입−지출 ${formatHouseholdDisplayMoney(balance, true)}`,
     ].join(' · ');
   } catch {
     return '';

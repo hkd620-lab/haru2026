@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
 import type { HaruRecord } from '../services/firestoreService';
 import { parseHouseholdAmountText } from '../utils/householdAmount';
+import { HOUSEHOLD_SUMMARY_NOTE, summarizeHouseholdEntries } from '../utils/householdSummary';
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
 
@@ -157,25 +158,10 @@ export function HouseholdPage() {
     return result;
   }, [records, currentMonth]);
 
-  const { income, expense, transfer, balance, bankBalance, hasBankBalance } = useMemo(() => {
-    let income = 0, expense = 0, transfer = 0;
-    let lastDate = '';
-    let bankBalance = 0;
-    let hasBankBalance = false;
-    for (const e of thisMonthEntries) {
-      const amt = parseAmount(e.amount);
-      if (e.transactionType === '수입') income += amt;
-      else if (e.transactionType === '지출') expense += amt;
-      else if (e.transactionType === '이체') transfer += amt;
-      // 통장잔액 — 이 범위 안에서 날짜상 가장 마지막 거래의 거래후잔액 (동일 날짜면 배열상 뒤쪽을 채택)
-      if (e.balanceAfter && e.date && e.date >= lastDate) {
-        lastDate = e.date;
-        bankBalance = parseAmount(e.balanceAfter);
-        hasBankBalance = true;
-      }
-    }
-    return { income, expense, transfer, balance: income + transfer - expense, bankBalance, hasBankBalance };
-  }, [thisMonthEntries]);
+  const { income, expense, balance } = useMemo(
+    () => summarizeHouseholdEntries(thisMonthEntries),
+    [thisMonthEntries],
+  );
 
   // 카테고리별 지출 집계 (파이차트)
   const categoryData = useMemo(() => {
@@ -195,18 +181,16 @@ export function HouseholdPage() {
     return Array.from({ length: 6 }, (_, i) => {
       const ym = getYearMonth(i - 5);
       const ymKey = toMonthKey(ym);
-      let inc = 0, exp = 0, trf = 0;
+      const entries: ExpandedEntry[] = [];
       for (const r of records) {
         for (const e of expandRecord(r)) {
           if (toMonthKey(e.date) !== ymKey) continue;
-          const amt = parseAmount(e.amount);
-          if (e.transactionType === '수입') inc += amt;
-          else if (e.transactionType === '지출') exp += amt;
-          else if (e.transactionType === '이체') trf += amt;
+          entries.push(e);
         }
       }
       const label = ym.substring(5) + '월';
-      return { month: label, 수입: inc, 지출: exp, 이체: trf };
+      const { income, expense } = summarizeHouseholdEntries(entries);
+      return { month: label, 수입: income, 지출: expense };
     });
   }, [records]);
 
@@ -270,19 +254,16 @@ export function HouseholdPage() {
           <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>
             {currentMonth.replace('.', '년 ')}월
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: hasBankBalance ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
             <SummaryCard
-              label="전체수입"
-              value={fmt(income + transfer)}
+              label="수입"
+              value={fmt(income)}
               color="#10b981"
-              note={`순수입 ${income.toLocaleString()} + 충전 ${transfer.toLocaleString()}`}
             />
             <SummaryCard label="지출" value={fmt(expense)} color="#ef4444" />
-            <SummaryCard label="수지" value={fmt(balance)} color={balance >= 0 ? '#166534' : '#ef4444'} />
-            {hasBankBalance && (
-              <SummaryCard label="통장잔액" value={fmt(bankBalance)} color="#166534" />
-            )}
+            <SummaryCard label="수입−지출" value={fmt(balance)} color={balance >= 0 ? '#166534' : '#ef4444'} />
           </div>
+          <p style={{ margin: '10px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>{HOUSEHOLD_SUMMARY_NOTE}</p>
         </div>
 
         {/* 예산 알림 */}
@@ -329,7 +310,7 @@ export function HouseholdPage() {
               )}
 
               {/* 바차트 */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#6b7280', margin: '12px 0 8px' }}>최근 6개월 수입·지출·이체</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#6b7280', margin: '12px 0 8px' }}>최근 6개월 수입·지출</div>
               <div style={{ overflowX: 'auto' }}>
                 <BarChart width={330} height={200} data={monthlyData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
@@ -338,7 +319,6 @@ export function HouseholdPage() {
                   <BarLegend wrapperStyle={{ fontSize: 12 }} />
                   <Bar dataKey="지출" fill="#FF6B6B" radius={[3, 3, 0, 0]} />
                   <Bar dataKey="수입" fill="#4ECDC4" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="이체" fill="#3b82f6" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </div>
             </div>
