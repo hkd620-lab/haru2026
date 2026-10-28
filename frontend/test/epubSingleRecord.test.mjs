@@ -7,11 +7,15 @@ import { transformSync } from 'esbuild';
 test('단건 서비스는 날짜와 선택 ID를 분리해 전송하고 다운로드한다', async () => {
   const source = readFileSync(new URL('../src/app/services/epubExportService.ts', import.meta.url), 'utf8');
   const calls = [];
+  let confirmed = true;
+  let guideCount = 0;
   let downloaded = false;
   const context = {
     exports: {},
     module: { exports: {} },
-    require: () => ({
+    require: (name) => name === './epubExportGuide' ? {
+      confirmEpubExport: async () => { guideCount++; return confirmed; },
+    } : ({
       getFunctions: (_, region) => { assert.equal(region, 'asia-northeast3'); return {}; },
       httpsCallable: (_, name) => {
         assert.equal(name, 'exportEpub');
@@ -31,6 +35,12 @@ test('단건 서비스는 날짜와 선택 ID를 분리해 전송하고 다운�
   assert.equal(downloaded, true);
   await context.module.exports.exportRecordsToEpub('2026-10-01', '2026-10-28', '일기', ['a', 'b'], 'special');
   assert.deepEqual(JSON.parse(JSON.stringify(calls[1])), { startDate: '2026-10-01', endDate: '2026-10-28', format: '일기', recordIds: ['a', 'b'], filter: 'special' });
+  confirmed = false;
+  downloaded = false;
+  assert.equal(await context.module.exports.exportRecordsToEpub('2026-10-28', '2026-10-28'), null);
+  assert.equal(calls.length, 2, '취소하면 서버를 호출하지 않는다');
+  assert.equal(downloaded, false);
+  assert.equal(guideCount, 3, '단건·합본·기간 요청 모두 안내한다');
 });
 
 test('SAYU 단건 버튼은 문서 ID를 날짜 대신 쓰지 않고 별도 인자로 넘긴다', () => {

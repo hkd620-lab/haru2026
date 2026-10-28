@@ -2,6 +2,7 @@
  * HARU2026 EPUB 내보내기 — 프론트엔드 서비스
  */
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { confirmEpubExport } from './epubExportGuide';
 
 interface EpubExportRequest {
   startDate: string;
@@ -29,7 +30,8 @@ export async function exportRecordsToEpub(
   recordIds?: string[],
   filter?: 'all' | 'special',
   singleRecordId?: string,
-): Promise<{ count: number; fileName: string; downloadUrl: string; skippedPhotos: number; limitedPhotos: number }> {
+): Promise<{ count: number; fileName: string; downloadUrl: string; skippedPhotos: number; limitedPhotos: number } | null> {
+  if (!await confirmEpubExport()) return null;
   const functions = getFunctions(undefined, 'asia-northeast3');
   // 서버 exportEpub 제한(300초)에 맞춰 SDK 기본 70초보다 길게 기다린다(사진 확인·내려받기 시간 포함).
   const exportEpub = httpsCallable<EpubExportRequest, EpubExportResponse>(functions, 'exportEpub', { timeout: 310_000 });

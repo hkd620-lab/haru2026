@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { getCurrentEpubReaderGuide } from '../utils/epubReaderGuide';
 
 // EPUB 저장 버튼 옆에 두는 '전자책 앱이 필요해요' 안내. 기기에 맞는 앱과 여는 방법을 보여 준다.
-// 안드로이드는 기본 앱이 없어 처음부터 펼쳐 둔다.
+// 안드로이드는 별도 리더 앱이 필요할 수 있어 처음부터 펼쳐 둔다.
 export function EpubReaderNotice({ defaultOpen }: { defaultOpen?: boolean }) {
   const guide = getCurrentEpubReaderGuide();
   const [open, setOpen] = useState(defaultOpen ?? guide.platform === 'android');

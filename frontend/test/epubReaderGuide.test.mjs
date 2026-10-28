@@ -15,13 +15,23 @@ test('기기 판별: 갤럭시(안드로이드)·아이폰·아이패드(데스�
   assert.equal(guide.detectEpubReaderPlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64)'), 'desktop');
 });
 
-test('안드로이드 안내: 기본 앱이 없다는 사실과 Google Play 북 설치 링크', () => {
+test('안드로이드 안내: 지원 앱이 없을 때의 설치 안내와 공식 링크', () => {
   const android = guide.getEpubReaderGuide('android');
-  assert.match(android.steps.join(' '), /기본으로 없습니다/);
+  assert.match(android.steps.join(' '), /EPUB 지원 앱이 없다면/);
   assert.match(android.steps.join(' '), /Google Play 북/);
   assert.equal(android.linkUrl, 'https://play.google.com/store/apps/details?id=com.google.android.apps.books');
   assert.match(guide.getEpubReaderHint(android), /Google Play 북/);
   assert.match(guide.getEpubReaderHint(guide.getEpubReaderGuide('ios')), /도서/);
+});
+
+test('EPUB 경로 네 곳은 공통 서비스를 거치고 안내 취소를 실패로 표시하지 않는다', () => {
+  for (const file of ['components/SayuModal.tsx', 'pages/MergeViewerPage.tsx', 'pages/SayuTogetherPage.tsx', 'pages/RecordBookPage.tsx']) {
+    const source = read(file);
+    assert.match(source, /const result = await exportRecordsToEpub\(/, file);
+    assert.match(source, /if \(!result\) return;/, file);
+  }
+  const service = read('services/epubExportService.ts');
+  assert.ok(service.indexOf('await confirmEpubExport()') < service.indexOf('const functions = getFunctions('));
 });
 
 test('EPUB 저장 화면 4곳에 안내가 연결돼 있다', () => {
