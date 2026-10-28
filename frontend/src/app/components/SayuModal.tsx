@@ -1034,8 +1034,9 @@ export function SayuModal({
     }
     setIsExportingEpub(true);
     try {
-      const date = firestoreId;
-      const { fileName } = await exportRecordsToEpub(date, date, format);
+      // 날짜와 문서 ID는 다를 수 있다. 같은 날짜의 다른 기록이 섞이지 않게 ID도 별도로 보낸다.
+      const date = recordDate || firestoreId.slice(0, 10);
+      const { fileName } = await exportRecordsToEpub(date, date, format, undefined, undefined, firestoreId);
       toast.success(`📖 EPUB 생성 완료! ${fileName}`, { description: getEpubReaderHint(), duration: 8000 });
     } catch (e: any) {
       toast.error(`EPUB 생성 실패: ${e.message}`);

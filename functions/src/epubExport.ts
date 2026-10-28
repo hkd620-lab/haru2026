@@ -1,7 +1,7 @@
 /**
  * HARU2026 EPUB 내보내기 — Firebase Function
  * Firestore: users/{uid}/records/{date}
- * 요청: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD', format?, recordIds?, filter? }
+ * 요청: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD', format?, singleRecordId?, recordIds?, filter? }
  *   recordIds 가 있으면 합본 화면·PDF에 보인 기록만 같은 순서로 담는다(SAYU 글 + 그 형식 사진, 서버에서 조건 재확인).
  * 응답: { success, downloadUrl, fileName, count, skippedPhotos }
  */
@@ -173,6 +173,12 @@ export const exportEpub = onCall(
       throw new HttpsError('invalid-argument', '날짜 범위가 올바르지 않습니다.');
     }
     const recordIds = validateRecordIds((request.data as { recordIds?: unknown }).recordIds);
+    const singleRecordId = (request.data as { singleRecordId?: unknown }).singleRecordId;
+    if (singleRecordId !== undefined && (
+      validateRecordIds([singleRecordId])?.length !== 1 || recordIds !== null
+    )) {
+      throw new HttpsError('invalid-argument', '선택한 기록 ID가 올바르지 않습니다.');
+    }
     if (recordIds !== null && (recordIds.length === 0 || !isMergeRecordFormat(format))) {
       throw new HttpsError('invalid-argument', '합본 기록 목록이 올바르지 않습니다.');
     }
@@ -202,17 +208,20 @@ export const exportEpub = onCall(
     }
 
     const recordsRef = db.collection(`users/${uid}/records`);
-    const snapshot = await recordsRef
-      .where('date', '>=', startDate)
-      .where('date', '<=', endDate)
-      .orderBy('date', 'asc')
-      .get();
+    // 단건은 인증된 사용자 경로의 해당 문서만 읽는다. 날짜가 같은 다른 기록은 포함하지 않는다.
+    const documents = singleRecordId !== undefined
+      ? [await recordsRef.doc(singleRecordId as string).get()].filter((snap) => snap.exists)
+      : (await recordsRef
+        .where('date', '>=', startDate)
+        .where('date', '<=', endDate)
+        .orderBy('date', 'asc')
+        .get()).docs;
 
-    if (snapshot.empty) {
-      throw new HttpsError('not-found', '선택한 기간에 기록이 없습니다.');
+    if (documents.length === 0) {
+      throw new HttpsError('not-found', singleRecordId !== undefined ? '선택한 기록이 없습니다.' : '선택한 기간에 기록이 없습니다.');
     }
 
-    snapshot.forEach((docSnap) => {
+    documents.forEach((docSnap) => {
       const record: Record<string, any> = { id: docSnap.id, ...docSnap.data() };
       const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
       const includedFormats = formats.filter((f) => EPUB_INCLUDE_FORMATS.includes(f));
