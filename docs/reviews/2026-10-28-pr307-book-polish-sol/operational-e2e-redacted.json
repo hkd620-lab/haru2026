@@ -1,0 +1,197 @@
+{
+  "invocationStartedAt": "2026-10-28T08:56:17.506Z",
+  "bookPolishedAt": "2026-10-28T08:57:25.180Z",
+  "bookBefore": "drafted",
+  "bookAfter": "polished",
+  "bookChangedFields": [
+    "polishedAt",
+    "stage",
+    "updatedAt"
+  ],
+  "chapterCount": 8,
+  "allOriginalDraftsPreserved": true,
+  "allResultsSavedAndNonempty": true,
+  "onlyExpectedFieldsChanged": true,
+  "reloadUiAll8BodiesMatchSaved": true,
+  "server": {
+    "requestStatuses": [
+      {
+        "status": 204,
+        "at": "2026-10-28T08:56:17.829107Z"
+      },
+      {
+        "status": 200,
+        "at": "2026-10-28T08:56:21.636882Z"
+      }
+    ],
+    "chapterCompletionCount": 8,
+    "revisions": [
+      "polishelderbookchapters-00035-rox"
+    ],
+    "executionIds": [
+      "rvr3iy3yy3wa"
+    ],
+    "errors": 0
+  },
+  "chapters": [
+    {
+      "chapterId": "ch1",
+      "draftChars": 1448,
+      "polishedChars": 1399,
+      "changedFields": [
+        "polished",
+        "polishedWordCount",
+        "status",
+        "updatedAt"
+      ],
+      "polishedWordCountVerified": true,
+      "numbersAdded": [],
+      "numbersRemoved": [],
+      "acronymsAdded": {},
+      "acronymsRemoved": {},
+      "updatedAt": "2026-10-28T08:56:36.182Z",
+      "documentUpdateTime": "2026-10-28T08:56:36.197899Z"
+    },
+    {
+      "chapterId": "ch2",
+      "draftChars": 1622,
+      "polishedChars": 1582,
+      "changedFields": [
+        "polished",
+        "polishedWordCount",
+        "status",
+        "updatedAt"
+      ],
+      "polishedWordCountVerified": true,
+      "numbersAdded": [],
+      "numbersRemoved": [],
+      "acronymsAdded": {},
+      "acronymsRemoved": {},
+      "updatedAt": "2026-10-28T08:56:44.287Z",
+      "documentUpdateTime": "2026-10-28T08:56:44.306729Z"
+    },
+    {
+      "chapterId": "ch3",
+      "draftChars": 1652,
+      "polishedChars": 1654,
+      "changedFields": [
+        "polished",
+        "polishedWordCount",
+        "status",
+        "updatedAt"
+      ],
+      "polishedWordCountVerified": true,
+      "numbersAdded": [],
+      "numbersRemoved": [],
+      "acronymsAdded": {},
+      "acronymsRemoved": {},
+      "updatedAt": "2026-10-28T08:56:53.256Z",
+      "documentUpdateTime": "2026-10-28T08:56:53.274974Z"
+    },
+    {
+      "chapterId": "ch4",
+      "draftChars": 1474,
+      "polishedChars": 1443,
+      "changedFields": [
+        "polished",
+        "polishedWordCount",
+        "status",
+        "updatedAt"
+      ],
+      "polishedWordCountVerified": true,
+      "numbersAdded": [],
+      "numbersRemoved": [],
+      "acronymsAdded": {},
+      "acronymsRemoved": {},
+      "updatedAt": "2026-10-28T08:57:01.082Z",
+      "documentUpdateTime": "2026-10-28T08:57:01.094759Z"
+    },
+    {
+      "chapterId": "ch5",
+      "draftChars": 1415,
+      "polishedChars": 1398,
+      "changedFields": [
+        "polished",
+        "polishedWordCount",
+        "status",
+        "updatedAt"
+      ],
+      "polishedWordCountVerified": true,
+      "numbersAdded": [],
+      "numbersRemoved": [],
+      "acronymsAdded": {},
+      "acronymsRemoved": {},
+      "updatedAt": "2026-10-28T08:57:09.168Z",
+      "documentUpdateTime": "2026-10-28T08:57:09.183562Z"
+    },
+    {
+      "chapterId": "ch6",
+      "draftChars": 1721,
+      "polishedChars": 1719,
+      "changedFields": [
+        "polished",
+        "polishedWordCount",
+        "status",
+        "updatedAt"
+      ],
+      "polishedWordCountVerified": true,
+      "numbersAdded": [],
+      "numbersRemoved": [],
+      "acronymsAdded": {},
+      "acronymsRemoved": {},
+      "updatedAt": "2026-10-28T08:57:18.546Z",
+      "documentUpdateTime": "2026-10-28T08:57:18.564567Z"
+    },
+    {
+      "chapterId": "epilogue",
+      "draftChars": 1518,
+      "polishedChars": 1508,
+      "changedFields": [
+        "polished",
+        "polishedWordCount",
+        "status",
+        "updatedAt"
+      ],
+      "polishedWordCountVerified": true,
+      "numbersAdded": [],
+      "numbersRemoved": [],
+      "acronymsAdded": {},
+      "acronymsRemoved": {},
+      "updatedAt": "2026-10-28T08:57:25.143Z",
+      "documentUpdateTime": "2026-10-28T08:57:25.165999Z"
+    },
+    {
+      "chapterId": "preface",
+      "draftChars": 1393,
+      "polishedChars": 1384,
+      "changedFields": [
+        "polished",
+        "polishedWordCount",
+        "status",
+        "updatedAt"
+      ],
+      "polishedWordCountVerified": true,
+      "numbersAdded": [],
+      "numbersRemoved": [],
+      "acronymsAdded": {},
+      "acronymsRemoved": {},
+      "updatedAt": "2026-10-28T08:56:30.008Z",
+      "documentUpdateTime": "2026-10-28T08:56:30.027125Z"
+    }
+  ],
+  "qualityReview": {
+    "scope": "All changed sentences across all 8 production draft/result pairs, with unchanged sentences matched exactly. Compared to drafts, not revalidated against historical sources.",
+    "majorFactualChangeFound": false,
+    "numericTokenDifferences": 0,
+    "latinTokenDifferences": 0,
+    "quoteChanges": {
+      "chapterId": "ch6",
+      "wordingChanges": 2,
+      "whitespaceOnlyChanges": 1
+    },
+    "literalQuotePreservation": "not passed; quoted text was rephrased",
+    "automaticQualityClaims": false
+  },
+  "publicationActionPerformed": false,
+  "productCodeChanged": false
+}
