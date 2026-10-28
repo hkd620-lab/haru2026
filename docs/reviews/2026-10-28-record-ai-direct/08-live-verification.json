@@ -1,0 +1,15 @@
+{
+  "domain": "https://haru2026.com",
+  "html_status": 200,
+  "entry_asset": "/assets/index-CfCiDka3.js",
+  "asset_sha256": "d8a51d0c60e1be3d6c2e60d72744380c22c766e6697789300a306d7af2219a4a",
+  "checks": {
+    "new_draft_intro": true,
+    "new_picker_intro": true,
+    "grape_wait_message": true,
+    "dialog_label": true,
+    "old_mode_picker_absent": true,
+    "old_picker_intro_absent": true
+  },
+  "all_passed": true
+}

@@ -1,0 +1,2 @@
+build_and_deploy	Run FirebaseExtended/action-hosting-deploy@v0	2026-10-28T08:54:38.5579947Z [command]/opt/hostedtoolcache/node/20.20.2/x64/bin/npx firebase-tools@latest deploy --only hosting --project *** --json
+build_and_deploy	Run FirebaseExtended/action-hosting-deploy@v0	2026-10-28T08:54:46.4464004Z     "hosting": "projects/***/sites/***/versions/bce59454f6bba074"

@@ -1,0 +1,82 @@
+{
+  "conclusion": "success",
+  "headSha": "d5301f7f7d7a12a8ffa90e61ebc837bbfe33f741",
+  "jobs": [
+    {
+      "completedAt": "2026-10-28T08:54:48Z",
+      "conclusion": "success",
+      "databaseId": 122720272638,
+      "name": "build_and_deploy",
+      "startedAt": "2026-10-28T08:52:56Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-28T08:52:58Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-28T08:52:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T08:53:00Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-28T08:52:58Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T08:53:06Z",
+          "conclusion": "success",
+          "name": "Setup Node.js",
+          "number": 3,
+          "startedAt": "2026-10-28T08:53:00Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T08:54:38Z",
+          "conclusion": "success",
+          "name": "Install and Build",
+          "number": 4,
+          "startedAt": "2026-10-28T08:53:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T08:54:46Z",
+          "conclusion": "success",
+          "name": "Run FirebaseExtended/action-hosting-deploy@v0",
+          "number": 5,
+          "startedAt": "2026-10-28T08:54:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T08:54:46Z",
+          "conclusion": "success",
+          "name": "Post Setup Node.js",
+          "number": 9,
+          "startedAt": "2026-10-28T08:54:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T08:54:46Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 10,
+          "startedAt": "2026-10-28T08:54:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T08:54:46Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 11,
+          "startedAt": "2026-10-28T08:54:46Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/hkd620-lab/haru2026/actions/runs/40659975804/job/122720272638"
+    }
+  ],
+  "url": "https://github.com/hkd620-lab/haru2026/actions/runs/40659975804"
+}
