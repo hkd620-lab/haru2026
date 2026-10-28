@@ -1,0 +1,18 @@
+CC(Claude Code)에게 요청하는 읽기 전용 코드·배포 검토입니다. 허대표님이 'cc에게 검토받자'라고 직접 지시했습니다. 파일 변경, Git 변경, 외부 게시, 배포는 하지 마세요. Read/Grep/Glob만 사용하세요. 비밀값·환경 파일·개인정보는 읽거나 출력하지 마세요.
+저장소: /Users/heogyeongdae/Developer/HARU2026
+PR: https://github.com/hkd620-lab/haru2026/pull/308
+대상 HEAD: b38797a5637fd9369b620cc6e0db4c184b6ac599
+전체 diff: /private/tmp/haru-pr308-cc-review/change.diff
+프론트 빌드 원문: /private/tmp/haru-pr308-cc-review/frontend-build.log
+프론트 테스트 원문: /private/tmp/haru-pr308-cc-review/frontend-tests.log
+서버 테스트 원문: /private/tmp/haru-pr308-cc-review/functions-tests.log
+이전 검토 질문 원문: docs/reviews/2026-10-28-pr308-epub/independent-1-prompt.txt
+이전 검토 결과 원문: docs/reviews/2026-10-28-pr308-epub/independent-1-result.md 및 independent-1-result.json
+이전 검토 판정은 '승인'이고 코드 수정 없이 동일 HEAD입니다. 원문을 반드시 읽고 이전 지적의 차단 여부를 다시 판단하세요. 이전에는 저장소 밖 diff·빌드 로그를 읽지 못했으나 이번 세션에는 근거 폴더를 읽기 경로로 추가했습니다.
+검토 대상: 단건 EPUB이 문서 ID를 날짜로 보내던 오류 수정, 본인 선택 기록 한 개만 조회, 모든 웹 EPUB 진입점의 기기별 사전 안내와 Android 공식 리더 설치 링크, 취소 시 서버 요청 안 함. diff 안의 변경과 관련 코드·테스트·AGENTS.md·운영정책을 대조하세요.
+상태: CI·프리뷰 성공. 허대표님이 PR 병합과 웹·exportEpub 배포를 승인했고, 별도 GitHub 자동 리뷰의 장시간 지연 후 이번 대체 검토를 CC에게 맡기라고 지시했습니다. 자동 리뷰의 '통과'로 표시하지 말고 이번 CC 코드 검토 결과를 명확히 판정하세요.
+질문:
+1. 실제 요구와 구현의 일치 및 런타임·타입 문제, 같은 날짜의 타 기록 혼입, 인증/권한/정보노출, 기존 기간·합본·단건 호환성을 확인하세요.
+2. 이전 검토의 구형 dialog 미지원, 날짜 대체값, 파일명 동시 생성 충돌, 설치 링크 접근성 권고가 이번 배포 차단 사유인지 구체적인 코드 근거로 구분하세요. 무조건 이전 승인을 따르지 마세요.
+3. 서버 선배포 → 웹 반영 순서와 롤백 방법을 확인하세요.
+결과 첫 줄은 '승인', '수정 후 승인', '재설계' 중 하나로 쓰고, 배포 차단 지적(파일/위치·재현·영향·수정안)과 비차단 후속 권고를 분리하세요. 확인 못 한 부분과 운영 E2E 잔여 항목을 명시하세요. 간결하게 답하되 판정을 흐리지 마세요.
