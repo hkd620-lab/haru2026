@@ -69,6 +69,39 @@ test('날짜형 기존 ID도 단건으로 내보낸다', async () => {
   assert.equal(result.count, 1);
 });
 
+test('단건은 선택 형식의 저장 제목을 EPUB 메타데이터·본문·파일명에 반영한다', async () => {
+  const record = records.get(recordId);
+  records.set(recordId, { ...record, diary_title: '나의 하루 & <기록>: 봄/가을', essay_title: '다른 에세이 제목', title: '공통 제목' });
+  try {
+    const result = await run(request);
+    assert.equal(result.fileName, 'HARU_나의 하루 & _기록__ 봄_가을_2026-10-28.epub');
+    const zip = await JSZip.loadAsync(savedBuffer);
+    const decode = (text) => text.replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+      .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    const opfFile = Object.values(zip.files).find((file) => /\.opf$/.test(file.name));
+    const opf = decode(await opfFile.async('string'));
+    assert.ok(opf.includes('<dc:title>나의 하루 & <기록>: 봄/가을</dc:title>'));
+    const html = decode((await Promise.all(Object.values(zip.files).filter((file) => /\.xhtml$/.test(file.name)).map((file) => file.async('string')))).join('\n'));
+    assert.ok(html.includes('<h2>나의 하루 & <기록>: 봄/가을</h2>'));
+    assert.doesNotMatch(html, /공통 제목|다른 에세이 제목/);
+    const { singleRecordId, ...rangeRequest } = request;
+    assert.equal((await run(rangeRequest)).fileName, 'HARU_일기_2026-10-28_2026-10-28.epub');
+  } finally { records.set(recordId, record); }
+});
+
+test('형식 제목이 비면 공통·AI 제목을 쓰고 긴 파일명은 제한한다', async () => {
+  const record = records.get(recordId);
+  try {
+    records.set(recordId, { ...record, diary_title: '  ', title: ' 공통 제목 ', ai_title: 'AI 제목' });
+    assert.equal((await run(request)).fileName, 'HARU_공통 제목_2026-10-28.epub');
+    records.set(recordId, { ...record, ai_title: 'AI 제목' });
+    assert.equal((await run(request)).fileName, 'HARU_AI 제목_2026-10-28.epub');
+    records.set(recordId, { ...record, diary_title: '가'.repeat(200) });
+    assert.equal((await run(request)).fileName, `HARU_${'가'.repeat(40)}_2026-10-28.epub`);
+  } finally { records.set(recordId, record); }
+});
+
 test('단건 ID가 없는 기간별 요청은 같은 날 기록을 모두 내보낸다', async () => {
   const { singleRecordId, ...rangeRequest } = request;
   assert.equal((await run(rangeRequest)).count, 2);
