@@ -704,6 +704,14 @@ export function RecordPage() {
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
     if (!user) return;
+    if (formatData.household_saveVersion === 'dedup-v1') {
+      // 가계부 신규 입력·가져오기는 공통 중복 검사 및 원자 저장만 거친다.
+      // 다른 형식의 저장·기존 SAYU 편집 경로는 변경하지 않는다.
+      const result = await firestoreService.saveHouseholdRecord(user.uid, JSON.parse(formatData.household_entries),
+        JSON.parse(formatData.household_saveDecisions || '{}'), { weather, temperature, ...(mood ? { mood } : {}) });
+      if (draftEditorRecordId) finishDraftAfterSave(draftEditorRecordId);
+      return result;
+    }
     const typedGrowthSubjectName =
       typeof (formatData as any)._growthSubjectName === 'string'
         ? ((formatData as any)._growthSubjectName as string).trim()
