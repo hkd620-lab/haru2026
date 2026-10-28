@@ -416,7 +416,7 @@ ${sourceBlock}
 );
 
 // ───────────────────────────────────────────────────────────
-// 4-1단계 — AI 윤문 (초고 다듬기, gpt-5.5). 사실·내용 불변, 흐름·가독성만.
+// 4-1단계 — AI 윤문 (초고 다듬기, gpt-6.1-sol, low). 사실·내용 불변, 흐름·가독성만.
 // ───────────────────────────────────────────────────────────
 export const polishElderBookChapters = onCall(
   { region: "asia-northeast3", memory: "512MiB", secrets: [OPENAI_API_KEY], timeoutSeconds: 540 },
@@ -446,7 +446,8 @@ export const polishElderBookChapters = onCall(
 [초고]
 ${c.draft}`;
       const res = await client.chat.completions.create({
-        model: OPENAI_MODEL,
+        model: "gpt-6.1-sol",
+        reasoning_effort: "low",
         max_completion_tokens: 6000,
         messages: [{ role: "user", content: prompt }],
       });
