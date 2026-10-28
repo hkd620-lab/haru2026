@@ -15,14 +15,15 @@ function fixture(outcomes) {
   let attempt = 0;
   const toast = Object.fromEntries(['warning', 'error', 'success', 'info'].map(level => [level, (...args) => notices.push({ level, message: args[0] })]));
   const context = {
-    getRecordPhotoLimit, toast, console: { error() {} }, File, Date, Math, Error, Uint8Array, btoa, startSelectedRecordPhotoReads, compressRecordPhoto,
+    RECORD_PHOTO_UPLOAD_TIMEOUT: 'RECORD_PHOTO_UPLOAD_TIMEOUT', getRecordPhotoLimit, toast, console: { error() {} }, File, Date, Math, Error, Uint8Array, btoa, startSelectedRecordPhotoReads, compressRecordPhoto,
+    uploadSelectedImagesRef: { current: null }, latestExpandedLedgerRowIdRef: { current: null }, photoEditorSessionRef: { current: 1 },
     isCleaningSessionUploadsRef: { current: false }, isUploadingRef: { current: false }, ledgerInputMode: 'single',
     initialUploadedImagesRef: { current: [] }, initialPhotoUploadFailedRef: { current: false }, setInitialPhotoUploadFailed: () => {},
     uploadedImages: [], format: '일기', user: { uid: 'fixture' }, recordId: 'record', prefix: 'diary',
     setIsUploading: value => busy.push(value), getStorage: () => ({}), getFunctions: () => ({}),
     readOriginalImageMeta: async () => ({ metadataSource: 'none' }),
     compressImage: async () => { const result = outcomes[attempt++]; if (result instanceof Error) throw result; return new Blob(['photo']); },
-    ref: (_, path) => ({ fullPath: path }), uploadBytes: async () => {}, getDownloadURL: async () => `fixture:${attempt}`,
+    ref: (_, path) => ({ fullPath: path }), uploadBytes: async () => {}, uploadBytesResumable: async () => {}, withRecordPhotoUploadDeadline: async task => task, getDownloadURL: async () => `fixture:${attempt}`,
     sessionUploadedImageUrlsRef: { current: tracked }, isStockFormat: false,
     setUploadedImages: update => images.push(...update([])), setUploadedImageMeta: () => {},
     fileInputRef: { current: { value: 'selected' } }, deleteObject: async () => {}, enqueuePendingRecordPhotoCleanup: () => {},

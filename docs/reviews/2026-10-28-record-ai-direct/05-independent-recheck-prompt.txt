@@ -1,0 +1,136 @@
+독립 재검토 요청 2. 파일 수정·추가 에이전트·Git 변경·Slack 게시 금지. Read/Grep/Glob만 사용하세요. 실행자 대화는 제공하지 않습니다.
+저장소 /private/tmp/haru-record-ai-direct-review. PR https://github.com/hkd620-lab/haru2026/pull/306
+최신 검토 HEAD 8d020b8ecc48f0994aeec1f7dd74c33f2129e050, 기준 main d14ead17. 이전 검토 HEAD a5ebca14.
+공유 작업 폴더의 브랜치가 다른 작업으로 바뀌어 이번 검토는 위 전용 worktree로 분리했습니다. 이전 원문의 Developer/HARU2026 경로 대신 반드시 이 worktree의 코드를 읽으세요.
+반영 diff: /private/tmp/haru-record-ai-recheck.diff. 반영 내역·브라우저 실행 근거: docs/reviews/2026-10-28-record-ai-direct/03-review-response.md. 검증: 같은 디렉터리 03-validation.md, 03-tests.log(85/85), 03-build-summary.txt.
+Codex 최신 재검토는 지적 없이 완료. 원문: docs/reviews/2026-10-28-record-ai-direct/04-codex-recheck-source.json. 색인 04-codex-recheck-index.md. 최신 HEAD CI와 Preview 성공 근거 04-ci.json.
+S2(iOS PWA 로그인 유지·앱 복귀)는 실기기 추가 확인으로 남겼으며 운영 E2E 완료를 주장하지 않습니다. 사용자 요청에 따라 일반 신규 직접 입력에서도 방식 선택을 제거한 범위(S3)를 PR 설명과 반영 내역에 명시했습니다. R1, S1과 실제 저장 handler 테스트(S4)를 반영했습니다.
+아래 이전 판정 원문과 실제 수정본을 대조해 승인 / 수정 후 승인 / 재설계 중 하나를 판정하세요. 미반영 문제와 새 회귀가 있으면 구체적으로 적으세요. 규모와 멈춤 조건도 다시 확인하세요. 병합·운영 배포는 아직 승인된 범위로 판단하지 마세요.
+
+--- 이전 판정 원문 (변형 없음) ---
+# PR #306 독립 설계·완료 검토 (HEAD `a5ebca14`, 기준 main `d14ead17`)
+
+## 판정: **수정 후 승인**
+
+막히는 문제는 하나입니다. 기록 형식 선택 창의 안내 문구가 이번 요구와 반대로 남아 있습니다. 나머지 실행 경로, 사진 보존, AI 호출 계약, 기존 기록 호환성은 문제를 찾지 못했습니다.
+
+---
+
+## 1. 규모와 멈춤 조건
+
+- **규모: 중규모(컴포넌트 수정).** 바뀐 코드는 `FormatModal.tsx`와 `RecordPage.tsx` 문구 1줄, 그리고 테스트와 검증용 화면(harness)입니다.
+- **멈춤 조건: 해당 없음.**
+  - **홈화면·라우터:** `/` 경로는 `App.tsx:199`의 `HomeOrLanding`입니다. `RecordPage`는 홈화면이 아니고, `App.tsx`와 `routes.tsx`도 바뀌지 않았습니다.
+  - **저장 경로:** `onSave`에서 `handleSaveFormatData`로 이어지는 흐름이 그대로이고, `users/{uid}/records`도 바뀌지 않았습니다.
+  - **리전:** `getFunctions(undefined, 'asia-northeast3')`가 그대로입니다.
+  - **비용:** 새 AI 호출은 없습니다. 자동으로 부르는 것은 `getMonthlyAiQuotaStatus`뿐입니다(`functions/src/index.ts:2556`). 이 함수는 인증을 확인한 뒤 사용량을 조회만 하고 횟수를 쓰지 않습니다. 실제 AI 호출인 `polishContent`는 사용자가 「AI로 다듬기」를 눌렀을 때만 나갑니다.
+  - **모델·결제 정책:** 바뀌지 않았습니다. 요금제는 링크만 바뀌었습니다.
+
+## 2. 반드시 고칠 것
+
+**R1. 형식 선택 창 문구가 요구와 반대입니다** — `frontend/src/app/pages/RecordPage.tsx:1208`
+```tsx
+<p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요. 이어서 간편·프리미엄 방식을 고릅니다.</p>
+```
+- **재현:** 기록 페이지에서 글을 쓴 뒤 형식 선택 창을 엽니다. 창에는 "간편·프리미엄 방식을 고릅니다"라고 나오지만, 실제로는 방식 선택 없이 AI 도움 안내가 바로 열립니다.
+- diff는 `:308` 문구만 고쳤고 이 문구는 빠졌습니다.
+- **제안:** `애매하면 일기를 선택하세요. 작성한 글과 사진으로 AI 도움 안내가 이어집니다.`
+
+## 3. 권장 (막히는 문제 아님, 반영하거나 PR에 설명)
+
+**S1. AI 도움 안내 창에 대화상자 표시가 없습니다** — `FormatModal.tsx:6843-6866`
+- 원래 있던 문제입니다. 다만 이번 변경으로 편집창에 들어가자마자 자동으로 열리게 되어 영향이 커졌습니다.
+- 지금은 `role="dialog"`, `aria-modal`, `aria-labelledby`가 없습니다. 화면낭독기 사용자는 갑자기 덮인 창이 무엇인지 안내받지 못합니다.
+- 로딩 영역의 `role="status" aria-live="polite"`(:6872)는 적절합니다.
+```tsx
+<div role="dialog" aria-modal="true" aria-labelledby="monthly-ai-guide-title" style={{...}} onClick={e => e.stopPropagation()}>
+  <h2 id="monthly-ai-guide-title" ...>AI 도움 사용 안내</h2>
+```
+
+**S2. 「요금제 보기」를 새 탭으로 여는 방식은 실기기 확인이 필요합니다** — `FormatModal.tsx:6936-6953`
+- 같은 창에서 이동하던 방식보다 작성 중인 글이 남는다는 점에서 맞는 방향입니다.
+- 다만 iOS 홈 화면 앱(PWA)에서 새 탭으로 열면 Safari로 넘어가는데, 저장 공간이 분리되어 있어 로그인 화면이 나올 수 있습니다.
+- iOS PWA 실기기 확인 항목으로 넣어 주세요.
+
+**S3. 방식 선택 제거가 초안 흐름 밖에도 적용됩니다**
+- `recordStep`은 `독서사유`를 빼고 모두 `'input'`이 됩니다(:589, :817).
+- `recordStyle`은 `!initialWritingDraft && savedStyle === 'premium'`일 때만 premium입니다.
+- 그런데 `RecordPage`가 여는 편집창은 `initialData`가 `{}`이거나 초안 데이터입니다(:1237). 그래서 바로 입력(`openFormatDirectly` :543, `handleSave` :580)으로 여는 신규 기록에서도 항목별(프리미엄) 입력에 들어갈 방법이 없어집니다. 대상은 일기 `DIARY_PREMIUM_FIELDS` 등 형식 전체입니다.
+- 요구 원문 "기록 방식 선택은 없애고"와는 맞습니다. 하지만 화면에서 기능 하나가 사실상 사라지는 것이므로 PR과 보고에 명시해 주세요.
+- 성장기록(:4390)과 텃밭 작물(:4493) 입력은 방식과 상관없이 따로 보이므로 손실이 없습니다.
+
+**S4. 사진이 끝까지 남는지에 대한 자동 검증이 약합니다**
+- `formatPolishRequest.test.mjs`의 `assert.equal(data.essay_images, ...)`는 아무도 바꾸지 않는 입력 객체를 다시 비교할 뿐입니다. 사진 보존을 증명하지 못합니다.
+- 실제로 사진을 지키는 것은 기존 `handleSaveSayu`의 `[imagesKey]: JSON.stringify(uploadedImages)`(:3052)입니다. 코드상 맞습니다.
+- 그러나 README에 적힌 `/?draft` 검증 화면을 실제로 돌렸다는 로그는 제공되지 않았습니다. 실행 결과(스크린샷 또는 단계 기록)를 PR에 남기거나, 확인하지 못한 항목이라고 적어 주세요.
+
+## 4. 확인한 항목 (문제 없음)
+
+**실행 경로·초기화**
+- 새 effect(:1040-1049)는 세션 effect(:491) 뒤에 선언되어 있습니다. 그래서 세션 번호가 먼저 오른 다음 `fetchMonthlyAiQuotaStatus`가 그 번호를 잡습니다.
+- 사진 업로드 effect(:1027)가 먼저 실행되고 `uploadSelectedImages`가 :1978에서 바로 `isUploadingRef`를 켭니다. 따라서 안내 창이 열리는 순간 업로드 잠금이 이미 걸려 있습니다.
+- `openMonthlyAiGuide`는 조기 반환(:1051) 아래에 선언되어 있지만 `isOpen`이 참일 때만 불리므로 선언 전 접근(TDZ) 문제는 없습니다.
+
+**재시도·이전 응답 무시**
+- 조회 실패: `quota=null`, 로딩 해제, 「다시 시도」 노출(:6919).
+- 편집창을 닫거나 기록이 바뀐 뒤 늦게 온 응답은 세션 비교(:1364, :1367, :1372)로 버립니다.
+- 조회 중에는 다듬기 버튼이 비활성(:6666)이라 겹친 호출이 생기지 않습니다.
+
+**실행 조건** — `handleConfirmMonthlyAiPolish`(:1394-1398)는 다음 경우 실행하지 않습니다.
+- 조회 중이거나 사용량 정보가 없을 때
+- 남은 횟수가 0일 때
+- 저장 중일 때
+- 사진 업로드 중이거나 업로드에 실패했을 때
+
+버튼의 비활성과 문구(:6904-6916)도 같은 조건을 따릅니다.
+
+**초안 이어받기**
+- `buildDraftEditorData`가 `_simple`과 첫 줄 제목을 채웁니다(`writeBeforeFormat.ts:38-39`).
+- 그래서 자동 안내가 제목 확인을 건너뛰어도 `polishContent`에 원문이 들어갑니다(:1416-1417).
+
+**기존 기록 호환**
+- 저장된 기록을 고치는 SAYU 편집은 `SayuModal`이 담당하므로 영향이 없습니다.
+- `savedStyle`을 보는 분기는 기존 premium 기록의 입력 구조를 그대로 유지합니다.
+- `독서사유`의 책 선택 단계는 그대로입니다.
+
+**포도송이 로딩**
+- `isLoadingMonthlyAiQuota`일 때 기존 `GrapeLoadingMini size={64}`와 안내 문구를 우선 보여 줍니다(:6871-6875). 요구와 맞습니다.
+
+**검증 근거**
+- 테스트: 53 pass / 0 fail (`haru-record-direct-tests.log`). 새 테스트 3개(초안 직접 안내, 한도 소진·업로드 중·업로드 실패, 재시도와 이전 응답 무시)를 포함합니다.
+- `npm run build`: 성공 (`✓ built in 56.39s`).
+- CI 결과는 이 검토에서 직접 열어 보지 못했습니다. 판정①을 기록할 때 최신 HEAD 기준으로 다시 확인해 주세요.
+
+## 5. 재검토 요청 시 넘길 것
+
+- 이 판정 원문
+- R1 반영 diff
+- S1~S4 반영 내역 또는 반박 사유
+- 새 HEAD SHA와 Codex 재검토 결과
+
+이번 판정은 병합·배포 승인이 아닙니다. iOS PWA 실기기 확인(S2)과 운영 E2E는 따로 남아 있습니다.
+
+--- 실행자 반영 내역 원문 ---
+# 독립 검토 1 반영 내역
+
+대상 원문: [01-independent-result.md](01-independent-result.md). 판정 원문은 수정하지 않는다.
+
+- R1: RecordPage 형식 선택창의 간편·프리미엄 안내 문구를 글·사진 → AI 도움 안내 문구로 교체했다.
+- S1: AI 도움 안내에 role=dialog, aria-modal=true, aria-labelledby와 제목 ID를 추가했다. 이번 범위는 대화상자 의미 표시이며 기존 모달 전체의 포커스 제어를 재설계하지 않는다.
+- S2: iOS PWA의 새 탭 로그인 유지 및 앱 복귀는 실기기 추가 E2E로 남긴다. 실기기 확인 완료를 주장하지 않는다.
+- S3: 방식 선택 제거는 공통 초안 이외의 일반 신규 직접 입력에도 적용되어 항목별 입력 선택이 사라진다. 사용자 요구의 ‘기록 방식 선택은 없애고’를 일반 신규 기록에 일관되게 적용한 범위다. 기존 premium 저장 데이터와 독서사유 책 선택 흐름은 유지된다. 성장기록·작물의 별도 입력은 유지된다.
+- S4: 원래의 무변경 입력 객체 비교와 별도로 실제 handlePolishWithMode → handleSaveSayu를 실행하여 onSave로 원문·AI 결과·업로드된 사진 2장·메타데이터·초안 ID가 함께 전달되는 테스트를 추가했다.
+
+## 이전 단계의 격리 브라우저 실행 기록
+
+2026-10-28 이 대화의 실제 CUA 검증 결과다. 운영 Firebase와 AI에는 연결하지 않았다.
+
+1. /?draft → 신규 기록: 간편/프리미엄 선택 없이 AI 도움 안내가 열림. 합성 글 2줄·기존 사진 URL 1장 전달 확인.
+2. 모의 사용량 조회 2.5초 동안 64px 포도송이와 대기 안내 표시.
+3. 조회 완료 뒤 AI로 다듬기 → 합성 결과 → 저장: 저장 완료 안내 및 ‘저장된 사진 1장’ 확인.
+4. /?mobile&draft: 390px iframe에서 안내와 포도송이 표시 확인.
+5. /?draft&quota=empty: 남은 횟수 0 및 소진 안내, AI 실행 버튼 없음.
+6. /?draft&quota=error: 실패 안내·재시도 버튼 확인, 취소 후 편집창에 기존 글·사진 유지.
+
+증거 스크린샷: [데스크톱](haru-record-ai-loading-desktop.png), [390px](haru-record-ai-loading.png).
+실기기·운영 계정·운영 업로드 E2E와는 구분한다.

@@ -925,7 +925,7 @@ export function RecordPage() {
 
         <section className="bg-white rounded-lg p-4 shadow-sm">
           <h2 className="text-base font-semibold" style={{ color: '#1A3C6E' }}>오늘의 기록</h2>
-          <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 형식을 고른 뒤 기존 편집창에서 기록 방식을 선택하고 저장합니다.</p>
+          <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 형식을 고르면 작성한 글과 사진으로 AI 도움을 받거나 그대로 저장할 수 있습니다.</p>
           <textarea
             aria-label="기록 내용"
             value={draftContent}
@@ -1205,7 +1205,7 @@ export function RecordPage() {
       <div role="dialog" aria-modal="true" aria-label="저장할 기록 형식 선택" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl bg-white p-5">
           <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>어떤 형식으로 저장할까요?</h2>
-          <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요. 이어서 간편·프리미엄 방식을 고릅니다.</p>
+          <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요. 작성한 글과 사진으로 AI 도움 안내가 이어집니다.</p>
           <div className="mt-4 grid grid-cols-2 gap-2">
             {WRITABLE_FORMATS.map((format) => (
               <button key={format} type="button" onClick={() => openDraftEditorForFormat(format)} className="rounded-lg border p-3 text-left text-sm hover:bg-yellow-50">
