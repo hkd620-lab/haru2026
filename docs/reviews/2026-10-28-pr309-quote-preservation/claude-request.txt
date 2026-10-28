@@ -1,0 +1,7 @@
+독립 Claude 설계·완료 검토를 수행하세요. 이전 구현 대화 맥락은 제공하지 않습니다. Read 도구만 사용하고 파일 수정·명령 실행·외부 전송·서브에이전트 호출은 금지합니다.
+저장소: /private/tmp/haru-book-polish-preserve-quotes
+PR: https://github.com/hkd620-lab/haru2026/pull/309
+검토 HEAD: 8808c8a74ac2d09a254e6cbbbd404caed795645e
+근거: /private/tmp/haru-book-quotes-review-309/pr.json, /private/tmp/haru-book-quotes-review-309/diff.patch, 저장소 docs/reviews/2026-10-28-book-polish-quotes/validation.md.
+저장소 AGENTS.md와 docs/HARU2026_Slack_운영정책.md 8.1절, 변경 소스/테스트를 확인하세요. 구현자가 실행한 검증과 직접 확인한 사실은 구분하세요. 최초 독립 검토이며 이전 검토 결과는 없습니다.
+변경의 정확성, 직접 인용문 보존 효과와 한계, 테스트 적절성, 작업 규모(소/중/대), 멈춤 조건 및 승인 필요 범위를 검토하세요. 구체적인 문제는 파일·줄 근거를 제시하세요. 코드 개발 승인과 운영 배포/운영 E2E 완료 판정을 구분하며 최종 판정은 승인/수정 후 승인/재설계 중 하나로 명시하세요. 파일은 수정하지 마세요.
