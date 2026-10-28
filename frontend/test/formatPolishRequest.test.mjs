@@ -12,6 +12,10 @@ const start = source.indexOf('  const fetchMonthlyAiQuotaStatus = async');
 const polishStart = source.indexOf('  const handlePolishWithMode = async');
 const handler = source.slice(start, source.indexOf('\n  };\n', polishStart) + 5);
 const { code } = await transform(`${handler}\nglobalThis.runPolish = handlePolishWithMode; globalThis.runClick = handlePolishClick; globalThis.runConfirm = handleConfirmMonthlyAiPolish; globalThis.openGuide = openMonthlyAiGuide; globalThis.retryQuota = fetchMonthlyAiQuotaStatus;`, { loader: 'ts' });
+// 실제 저장 handler도 함께 실행해 AI 결과와 원문·사진이 onSave에 전달되는지 확인한다.
+const saveStart = source.indexOf('  const handleSaveSayu = async');
+const saveHandler = source.slice(saveStart, source.indexOf('\n  };', saveStart) + 5);
+const { code: saveCode } = await transform(`${saveHandler}\nglobalThis.saveSayu = handleSaveSayu;`, { loader: 'ts' });
 // 컴포넌트의 pendingPolishMode 초기값
 const initialPendingMode = /const \[pendingPolishMode, setPendingPolishMode\] = useState<SayuMode>\('(\w+)'\);/.exec(source)[1];
 
@@ -22,10 +26,16 @@ function fixture({ format = '일기', prefix = 'diary', formData = {}, fields = 
   const context = {
     isPolishing: false, pendingPolishMode: initialPendingMode, format, prefix, formData, fields, selectedCrops, recordStyle, isStockFormat, isSaving: false, isLoadingMonthlyAiQuota: false, monthlyAiQuotaStatus: null,
     photoEditorSessionRef: { current: 1 }, isUploadingRef: { current: false }, initialPhotoUploadFailedRef: { current: false },
+    polishedContent: '', polishStats: null, sayuMode: 'BASIC', uploadedImages: [],
+    sayuKey: `${prefix}_sayu`, imagesKey: `${prefix}_images`, imageMetaKey: `${prefix}_imageMeta`,
+    isCleaningSessionUploadsRef: { current: false }, getGrowthSaveFields: () => ({}),
+    getUploadedImageMetaForSave: () => '[]', setIsSaving: () => {},
+    onSave: async data => { state.saved = JSON.parse(JSON.stringify(data)); return data._recordId; },
+    navigate: (path, options) => { state.navigation = { path, options }; },
     DIARY_PREMIUM_FIELDS: [{ key: 'diary_a' }, { key: 'diary_b' }],
     toast, console: { error() {} },
-    setSayuMode: v => { state.mode = v; }, setShowModeSelect: () => {}, setIsPolishing: v => { state.busy = v; context.isPolishing = v; },
-    setPolishedContent: v => { state.polished = v; }, setPolishStats: v => { state.stats = v; }, setShowPolishModal: v => { state.modal = v; },
+    setSayuMode: v => { state.mode = v; context.sayuMode = v; }, setShowModeSelect: () => {}, setIsPolishing: v => { state.busy = v; context.isPolishing = v; },
+    setPolishedContent: v => { state.polished = v; context.polishedContent = v; }, setPolishStats: v => { state.stats = v; context.polishStats = v; }, setShowPolishModal: v => { state.modal = v; },
     setPendingPolishMode: v => { context.pendingPolishMode = v; }, setMonthlyAiQuotaStatus: v => { state.quota = v; context.monthlyAiQuotaStatus = v; },
     setShowMonthlyAiQuotaModal: v => { state.quotaModal = v; }, setIsLoadingMonthlyAiQuota: v => { state.quotaLoading = v; context.isLoadingMonthlyAiQuota = v; },
     getFunctions: (_, region) => ({ region }),
@@ -41,6 +51,7 @@ function fixture({ format = '일기', prefix = 'diary', formData = {}, fields = 
     },
   };
   vm.runInNewContext(code, context);
+  vm.runInNewContext(saveCode, context);
   return { run: mode => context.runPolish(mode), click: () => context.runClick(), confirm: () => context.runConfirm(), requests, notices, state, context };
 }
 const polishRequests = f => f.requests.filter(r => r.name === 'polishContent');
@@ -179,4 +190,25 @@ test('사용량 조회 실패 뒤 재시도할 수 있고 닫힌 세션 응답�
   stale.context.photoEditorSessionRef.current += 1;
   finish({ data: { remaining: 9 } }); await settle();
   assert.equal(stale.state.quota, null);
+});
+
+
+test('AI 안내에서 다듬은 뒤 실제 저장 handler는 원문·사진·메타데이터·초안 ID를 함께 전달한다', async () => {
+  const original = '첫 줄\n둘째 줄';
+  const data = { _recordId: 'draft-1', essay_title: '첫 줄', essay_simple: original, essay_images: '[]' };
+  const f = fixture({ format: '에세이', prefix: 'essay', recordStyle: 'simple', formData: data });
+  const photos = ['https://example.invalid/first.jpg', 'https://example.invalid/second.jpg'];
+  const metadata = [{ url: photos[0], metadataSource: 'none' }, { url: photos[1], metadataSource: 'none' }];
+  f.context.uploadedImages = [...photos];
+  f.context.getUploadedImageMetaForSave = () => JSON.stringify(metadata);
+  f.context.openGuide(); await settle();
+  f.confirm(); await settle();
+  await f.context.saveSayu();
+  assert.equal(f.state.saved.essay_simple, original);
+  assert.equal(f.state.saved.essay_sayu, '다듬은 본문');
+  assert.deepEqual(JSON.parse(f.state.saved.essay_images), photos);
+  assert.deepEqual(JSON.parse(f.state.saved.essay_imageMeta), metadata);
+  assert.equal(f.state.saved._recordId, 'draft-1');
+  assert.equal(f.state.saved.essay_style, 'simple');
+  assert.equal(f.state.navigation.options.state.openRecordId, 'draft-1');
 });

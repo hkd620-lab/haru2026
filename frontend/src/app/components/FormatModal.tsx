@@ -6854,6 +6854,9 @@ ${contentValues.slice(0, 4100)}`,
           onClick={() => setShowMonthlyAiQuotaModal(false)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="monthly-ai-guide-title"
             style={{
               backgroundColor: '#fff',
               borderRadius: 10,
@@ -6864,7 +6867,7 @@ ${contentValues.slice(0, 4100)}`,
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ margin: 0, fontSize: 20, color: '#1A3C6E', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h2 id="monthly-ai-guide-title" style={{ margin: 0, fontSize: 20, color: '#1A3C6E', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
               AI 도움 사용 안내
             </h2>
             <div style={{ marginTop: 18, display: 'grid', gap: 8, fontSize: 14, color: '#374151', lineHeight: 1.6 }}>

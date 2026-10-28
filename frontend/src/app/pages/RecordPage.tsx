@@ -1205,7 +1205,7 @@ export function RecordPage() {
       <div role="dialog" aria-modal="true" aria-label="저장할 기록 형식 선택" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl bg-white p-5">
           <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>어떤 형식으로 저장할까요?</h2>
-          <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요. 이어서 간편·프리미엄 방식을 고릅니다.</p>
+          <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요. 작성한 글과 사진으로 AI 도움 안내가 이어집니다.</p>
           <div className="mt-4 grid grid-cols-2 gap-2">
             {WRITABLE_FORMATS.map((format) => (
               <button key={format} type="button" onClick={() => openDraftEditorForFormat(format)} className="rounded-lg border p-3 text-left text-sm hover:bg-yellow-50">
