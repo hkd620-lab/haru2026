@@ -5,6 +5,7 @@
 
 import type { HaruRecord } from './firestoreService';
 import { parseHouseholdAmountText } from '../utils/householdAmount';
+import { HOUSEHOLD_SUMMARY_NOTE, summarizeHouseholdEntries } from '../utils/householdSummary';
 
 function parseAmount(amountStr: string): number {
   if (!amountStr) return 0;
@@ -196,7 +197,7 @@ export function exportHouseholdToXlsx(
     return ad.localeCompare(bd);
   });
 
-  const detailHeader: (string | number)[] = ['No', '날짜', '수입/지출', '카테고리', '사용처', '금액(원)', '결제수단', '메모'];
+  const detailHeader: (string | number)[] = ['No', '날짜', '거래종류', '카테고리', '사용처', '금액(원)', '결제수단', '메모'];
   const detailRows: (string | number)[][] = [detailHeader];
   const categorySummary: Record<string, { income: number; expense: number }> = {};
   let rowNo = 0;
@@ -207,24 +208,24 @@ export function exportHouseholdToXlsx(
       rowNo++;
       const amountNum = parseAmount(e.amount);
       detailRows.push([rowNo, e.date, e.transactionType, e.category, e.vendor, amountNum > 0 ? amountNum : e.amount, e.paymentMethod, e.memo]);
-      if (amountNum > 0) {
-        // 이체는 가계부 화면·SAYU와 같이 "충전"으로 보고 수입 쪽에 더한다 (전체수입 = 순수입 + 충전)
-        const isTransfer = e.transactionType === '이체';
-        const cat = isTransfer ? '이체(충전)' : (e.category || '기타');
+      if (e.transactionType === '수입' || e.transactionType === '지출') {
+        const cat = e.category || '기타';
         if (!categorySummary[cat]) categorySummary[cat] = { income: 0, expense: 0 };
-        if (e.transactionType === '수입' || isTransfer) categorySummary[cat].income += amountNum;
-        else categorySummary[cat].expense += amountNum;
+        const { income, expense } = summarizeHouseholdEntries([e]);
+        categorySummary[cat].income += income;
+        categorySummary[cat].expense += expense;
       }
     }
   }
 
-  const summaryHeader: (string | number)[] = ['카테고리', '수입합계(원)', '지출합계(원)', '순액(원)'];
+  const summaryHeader: (string | number)[] = ['카테고리', '수입합계(원)', '지출합계(원)', '수입−지출(원)'];
   const summaryRows: (string | number)[][] = [summaryHeader];
   let totalIncome = 0; let totalExpense = 0;
   for (const [cat, { income, expense }] of Object.entries(categorySummary).sort((a, b) => (b[1].expense + b[1].income) - (a[1].expense + a[1].income))) {
     summaryRows.push([cat, income, expense, income - expense]);
     totalIncome += income; totalExpense += expense;
   }
+  summaryRows.push([HOUSEHOLD_SUMMARY_NOTE]);
   summaryRows.push(['합  계', totalIncome, totalExpense, totalIncome - totalExpense]);
 
   const xlsx = buildXlsxMultiSheet([
