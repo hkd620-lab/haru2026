@@ -36,6 +36,7 @@ import {
   READING_STATUS,
 } from '../types/haruTypes';
 import { buildFormatKeyMap } from '../records/formatRegistry';
+import { WRITABLE_FORMATS } from '../records/writeBeforeFormat';
 import { findGrowthLMS, type GrowthGender } from '../../data/growthLMS';
 import { calcAgeInMonths, calcPercentile } from '../../utils/growthCalc';
 import { GrowthChart } from '../../components/GrowthChart';
@@ -586,7 +587,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     format === '독서사유' || format === 'HARU보조장부' ? 'premium' : 'simple',
   );
   const [recordStep, setRecordStep] = useState<'select' | 'input'>(
-    format === 'HARU보조장부' ? 'input' : 'select',
+    format === '독서사유' ? 'select' : 'input',
   );
 
   // 🌱 텃밭일지 전용: 작물 목록 관리
@@ -811,9 +812,11 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       } else {
         setVoidingEntries([]);
       }
-      setRecordStyle(format === '독서사유' || isStockFormat || isLedgerFormat || isHouseholdFormat || isVoidingFormatInit ? 'premium' : 'simple');
-      // 독서사유는 select 단계에서 "이어작성 / 새작성" 분기. 주식/보조장부/가계부/배뇨일지 형식은 input 직진.
-      setRecordStep(isStockFormat || isLedgerFormat || isHouseholdFormat || isVoidingFormatInit ? 'input' : 'select');
+      // 새 글은 자유 입력을 그대로 사용하고, 기존 항목별 기록은 저장된 입력 구조를 유지한다.
+      const savedStyle = initialData[`${FORMAT_PREFIX[format]}_style`];
+      setRecordStyle(format === '독서사유' || isStockFormat || isLedgerFormat || isHouseholdFormat || isVoidingFormatInit || (!initialWritingDraft && savedStyle === 'premium') ? 'premium' : 'simple');
+      // 독서사유의 책 선택만 유지한다.
+      setRecordStep(format === '독서사유' ? 'select' : 'input');
       setStockCandidates([]);
       setShowCandidates(false);
       // 📚 독서사유 — 책 묶음 state 초기화 + 사용자 records 에서 책 목록 로드
@@ -1033,6 +1036,17 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     void uploadSelectedImages(initialPhotos, true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, format, recordId, initialPhotos]);
+
+  useEffect(() => {
+    setShowMonthlyAiQuotaModal(false);
+    setMonthlyAiQuotaStatus(null);
+    setIsLoadingMonthlyAiQuota(false);
+    if (isOpen && initialWritingDraft && format !== '독서사유' && WRITABLE_FORMATS.some(candidate => candidate === format)) {
+      openMonthlyAiGuide();
+    }
+  // 초기 초안에서 한 번만 안내한다. 취소·재시도 중에는 입력 내용을 초기화하지 않는다.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, format, recordId, initialWritingDraft]);
 
   if (!isOpen) return null;
 
@@ -1341,19 +1355,29 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
   // AI 도움 사용량 조회 — 모달과 분리된 비동기 조회. 모달은 이 호출을 기다리지 않고 즉시 열린다.
   const fetchMonthlyAiQuotaStatus = async () => {
+    const session = photoEditorSessionRef.current;
     setIsLoadingMonthlyAiQuota(true);
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const getMonthlyAiQuotaStatus = httpsCallable(functions, 'getMonthlyAiQuotaStatus');
       const result = await getMonthlyAiQuotaStatus();
+      if (session !== photoEditorSessionRef.current) return;
       setMonthlyAiQuotaStatus(result.data as MonthlyAiQuotaStatus);
     } catch (error) {
+      if (session !== photoEditorSessionRef.current) return;
       console.error('AI 도움 사용량 조회 실패:', error);
       toast.error('AI 도움 사용량을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');
       setMonthlyAiQuotaStatus(null);
     } finally {
-      setIsLoadingMonthlyAiQuota(false);
+      if (session === photoEditorSessionRef.current) setIsLoadingMonthlyAiQuota(false);
     }
+  };
+
+  const openMonthlyAiGuide = () => {
+    setPendingPolishMode('BASIC');
+    setMonthlyAiQuotaStatus(null);
+    setShowMonthlyAiQuotaModal(true);
+    void fetchMonthlyAiQuotaStatus();
   };
 
   const handlePolishClick = () => {
@@ -1363,16 +1387,15 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       return;
     }
 
-    // 일반 다듬기 버튼은 기본(BASIC, Luna) 모드로 보낸다. 독서 전용·배뇨일지 다듬기는 각자 PREMIUM 경로 그대로.
-    setPendingPolishMode('BASIC');
-    setMonthlyAiQuotaStatus(null);
-    setShowMonthlyAiQuotaModal(true);
-    // 사용량 조회는 모달 표시와 분리된 비동기 호출 — 모달이 서버 응답을 기다리지 않는다.
-    fetchMonthlyAiQuotaStatus();
+    openMonthlyAiGuide();
   };
 
   const handleConfirmMonthlyAiPolish = () => {
-    if (isPolishing) return;
+    if (isPolishing || isSaving || isLoadingMonthlyAiQuota || !monthlyAiQuotaStatus || monthlyAiQuotaStatus.remaining <= 0) return;
+    if (isUploadingRef.current || initialPhotoUploadFailedRef.current) {
+      toast.warning('사진 업로드가 완료된 뒤 AI로 다듬어 주세요.');
+      return;
+    }
     const mode = pendingPolishMode;
     setShowMonthlyAiQuotaModal(false);
     handlePolishWithMode(mode);
@@ -3786,58 +3809,6 @@ ${contentValues.slice(0, 4100)}`,
             </div>
           )}
 
-          {/* Step 1 — 기존 형식 (간편/프리미엄) */}
-          {recordStep === 'select' && format !== '독서사유' && (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '32px 24px' }}>
-              <p style={{ textAlign: 'center', fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '4px' }}>
-                기록 방식을 선택하세요
-              </p>
-              <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
-                선택하면 바로 입력 화면으로 이동합니다
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {/* 간편 기록 카드 */}
-                <div
-                  onClick={() => { setRecordStyle('simple'); setRecordStep('input'); }}
-                  style={{
-                    border: '0.5px solid #10b981',
-                    borderRadius: '12px',
-                    padding: '20px 14px',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    background: '#f0fdf8',
-                  }}
-                >
-                  <div style={{ display: 'inline-block', fontSize: '10px', padding: '2px 10px', borderRadius: '20px', background: '#dcfce7', color: '#166534', fontWeight: 500, marginBottom: '8px' }}>
-                    간편
-                  </div>
-                  <div style={{ fontSize: '26px', marginBottom: '8px' }}>✏️</div>
-                  <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '6px' }}>간편 기록</div>
-                  <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>자유롭게 한 번에<br />부담 없이 기록</div>
-                </div>
-                {/* 프리미엄 기록 카드 */}
-                <div
-                  onClick={() => { setRecordStyle('premium'); setRecordStep('input'); }}
-                  style={{
-                    border: '0.5px solid #1A3C6E',
-                    borderRadius: '12px',
-                    padding: '20px 14px',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    background: '#EEF3FA',
-                  }}
-                >
-                  <div style={{ display: 'inline-block', fontSize: '10px', padding: '2px 10px', borderRadius: '20px', background: '#dbeafe', color: '#1e3a8a', fontWeight: 500, marginBottom: '8px' }}>
-                    프리미엄
-                  </div>
-                  <div style={{ fontSize: '26px', marginBottom: '8px' }}>📋</div>
-                  <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '6px' }}>프리미엄 기록</div>
-                  <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>항목별로 꼼꼼하게<br />체계적으로 기록</div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Step 2 — 입력 화면 */}
           {recordStep === 'input' && (
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
@@ -3886,20 +3857,12 @@ ${contentValues.slice(0, 4100)}`,
                       </button>
                     ))}
                   </div>
-                ) : format !== '독서사유' ? (
-                  <button
-                    onClick={() => setRecordStep('select')}
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: '14px', padding: 0 }}
-                  >
-                    ← 방식 다시 선택
-                  </button>
                 ) : null}
-                {!isLedgerFormat && <span style={{
+                {format === '독서사유' && <span style={{
                   display: 'inline-block', fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: 500,
-                  background: recordStyle === 'simple' ? '#dcfce7' : '#dbeafe',
-                  color: recordStyle === 'simple' ? '#166534' : '#1e3a8a',
+                  background: '#dbeafe', color: '#1e3a8a',
                 }}>
-                  {format === '독서사유' ? '📚 진행형 독서 기록' : recordStyle === 'simple' ? '✏️ 간편 기록' : '📋 프리미엄 기록'}
+                  📚 진행형 독서 기록
                 </span>}
               </div>
 
@@ -6700,7 +6663,7 @@ ${contentValues.slice(0, 4100)}`,
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <button
                   onClick={handlePolishClick}
-                  disabled={isPolishing || isSaving}
+                  disabled={isPolishing || isSaving || isLoadingMonthlyAiQuota}
                   style={{
                     padding: '12px 16px',
                     fontSize: 14,
@@ -6708,8 +6671,8 @@ ${contentValues.slice(0, 4100)}`,
                     borderRadius: 8,
                     backgroundColor: '#10b981',
                     color: '#fff',
-                    cursor: (isPolishing || isSaving) ? 'not-allowed' : 'pointer',
-                    opacity: (isPolishing || isSaving) ? 0.7 : 1,
+                    cursor: (isPolishing || isSaving || isLoadingMonthlyAiQuota) ? 'not-allowed' : 'pointer',
+                    opacity: (isPolishing || isSaving || isLoadingMonthlyAiQuota) ? 0.7 : 1,
                     fontWeight: 600,
                     display: 'flex',
                     alignItems: 'center',
@@ -6903,10 +6866,14 @@ ${contentValues.slice(0, 4100)}`,
           >
             <h2 style={{ margin: 0, fontSize: 20, color: '#1A3C6E', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
               AI 도움 사용 안내
-              {isLoadingMonthlyAiQuota && <GrapeLoadingMini size={16} />}
             </h2>
             <div style={{ marginTop: 18, display: 'grid', gap: 8, fontSize: 14, color: '#374151', lineHeight: 1.6 }}>
-              {monthlyAiQuotaStatus ? (
+              {isLoadingMonthlyAiQuota ? (
+                <div role="status" aria-live="polite" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '16px 0' }}>
+                  <GrapeLoadingMini size={64} />
+                  <p style={{ margin: 0 }}>AI 도움 가능 횟수를 확인하고 있어요</p>
+                </div>
+              ) : monthlyAiQuotaStatus ? (
                 <>
                   <p style={{ margin: 0 }}>현재 요금제: {MONTHLY_AI_PLAN_LABELS[monthlyAiQuotaStatus.plan]}</p>
                   <p style={{ margin: 0 }}>
@@ -6922,12 +6889,6 @@ ${contentValues.slice(0, 4100)}`,
                     </p>
                   )}
                 </>
-              ) : isLoadingMonthlyAiQuota ? (
-                <>
-                  <p style={{ margin: 0, color: '#9CA3AF' }}>현재 요금제: 확인 중…</p>
-                  <p style={{ margin: 0, color: '#9CA3AF' }}>이번 달 AI 도움: 확인 중…</p>
-                  <p style={{ margin: 0, color: '#9CA3AF' }}>남은 AI 도움: 확인 중…</p>
-                </>
               ) : (
                 <p style={{ margin: 0, color: '#B91C1C' }}>
                   사용량 정보를 확인하지 못했습니다. 다시 시도해 주세요.
@@ -6940,7 +6901,7 @@ ${contentValues.slice(0, 4100)}`,
                   <button
                     type="button"
                     onClick={handleConfirmMonthlyAiPolish}
-                    disabled={isPolishing}
+                    disabled={isPolishing || isSaving || isUploading || initialPhotoUploadFailed}
                     style={{
                       padding: '10px 16px',
                       border: 'none',
@@ -6948,11 +6909,11 @@ ${contentValues.slice(0, 4100)}`,
                       backgroundColor: '#10b981',
                       color: '#fff',
                       fontWeight: 700,
-                      cursor: isPolishing ? 'not-allowed' : 'pointer',
-                      opacity: isPolishing ? 0.7 : 1,
+                      cursor: (isPolishing || isSaving || isUploading || initialPhotoUploadFailed) ? 'not-allowed' : 'pointer',
+                      opacity: (isPolishing || isSaving || isUploading || initialPhotoUploadFailed) ? 0.7 : 1,
                     }}
                   >
-                    AI 다듬기 실행
+                    {isUploading ? '사진 업로드 중…' : initialPhotoUploadFailed ? '사진 업로드를 확인해 주세요' : 'AI로 다듬기'}
                   </button>
                 )
               ) : !isLoadingMonthlyAiQuota ? (
@@ -6972,21 +6933,24 @@ ${contentValues.slice(0, 4100)}`,
                   다시 시도
                 </button>
               ) : null}
-              <button
-                type="button"
-                onClick={() => { window.location.href = '/subscription'; }}
+              <a
+                href="/subscription"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
                   padding: '10px 16px',
-                  border: '1px solid #1A3C6E',
+                  border: 'none',
                   borderRadius: 8,
                   backgroundColor: '#fff',
                   color: '#1A3C6E',
-                  fontWeight: 700,
+                  fontWeight: 400,
+                  fontSize: 13,
+                  textDecoration: 'underline',
                   cursor: 'pointer',
                 }}
               >
                 요금제 보기
-              </button>
+              </a>
               <button
                 type="button"
                 onClick={() => setShowMonthlyAiQuotaModal(false)}

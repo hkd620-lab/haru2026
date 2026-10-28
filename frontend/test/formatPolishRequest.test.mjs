@@ -11,26 +11,30 @@ const source = readFileSync(new URL('../src/app/components/FormatModal.tsx', imp
 const start = source.indexOf('  const fetchMonthlyAiQuotaStatus = async');
 const polishStart = source.indexOf('  const handlePolishWithMode = async');
 const handler = source.slice(start, source.indexOf('\n  };\n', polishStart) + 5);
-const { code } = await transform(`${handler}\nglobalThis.runPolish = handlePolishWithMode; globalThis.runClick = handlePolishClick; globalThis.runConfirm = handleConfirmMonthlyAiPolish;`, { loader: 'ts' });
+const { code } = await transform(`${handler}\nglobalThis.runPolish = handlePolishWithMode; globalThis.runClick = handlePolishClick; globalThis.runConfirm = handleConfirmMonthlyAiPolish; globalThis.openGuide = openMonthlyAiGuide; globalThis.retryQuota = fetchMonthlyAiQuotaStatus;`, { loader: 'ts' });
 // 컴포넌트의 pendingPolishMode 초기값
 const initialPendingMode = /const \[pendingPolishMode, setPendingPolishMode\] = useState<SayuMode>\('(\w+)'\);/.exec(source)[1];
 
-function fixture({ format = '일기', prefix = 'diary', formData = {}, fields = [], selectedCrops = [], reply, isStockFormat = false } = {}) {
+function fixture({ format = '일기', prefix = 'diary', formData = {}, fields = [], selectedCrops = [], reply, quotaReply, recordStyle = 'detailed', isStockFormat = false } = {}) {
   const requests = [], notices = [], state = {};
   const toast = Object.fromEntries(['info', 'success', 'error', 'warning'].map(level => [level, message => notices.push({ level, message })]));
   // 상태 값은 context 에 두어 다음 호출(다음 렌더)이 바뀐 값을 읽게 한다
   const context = {
-    isPolishing: false, pendingPolishMode: initialPendingMode, format, prefix, formData, fields, selectedCrops, recordStyle: 'detailed', isStockFormat,
+    isPolishing: false, pendingPolishMode: initialPendingMode, format, prefix, formData, fields, selectedCrops, recordStyle, isStockFormat, isSaving: false, isLoadingMonthlyAiQuota: false, monthlyAiQuotaStatus: null,
+    photoEditorSessionRef: { current: 1 }, isUploadingRef: { current: false }, initialPhotoUploadFailedRef: { current: false },
     DIARY_PREMIUM_FIELDS: [{ key: 'diary_a' }, { key: 'diary_b' }],
     toast, console: { error() {} },
     setSayuMode: v => { state.mode = v; }, setShowModeSelect: () => {}, setIsPolishing: v => { state.busy = v; context.isPolishing = v; },
     setPolishedContent: v => { state.polished = v; }, setPolishStats: v => { state.stats = v; }, setShowPolishModal: v => { state.modal = v; },
-    setPendingPolishMode: v => { context.pendingPolishMode = v; }, setMonthlyAiQuotaStatus: v => { state.quota = v; },
-    setShowMonthlyAiQuotaModal: v => { state.quotaModal = v; }, setIsLoadingMonthlyAiQuota: v => { state.quotaLoading = v; },
+    setPendingPolishMode: v => { context.pendingPolishMode = v; }, setMonthlyAiQuotaStatus: v => { state.quota = v; context.monthlyAiQuotaStatus = v; },
+    setShowMonthlyAiQuotaModal: v => { state.quotaModal = v; }, setIsLoadingMonthlyAiQuota: v => { state.quotaLoading = v; context.isLoadingMonthlyAiQuota = v; },
     getFunctions: (_, region) => ({ region }),
     httpsCallable: (fns, name) => async payload => {
       requests.push({ region: fns.region, name, payload: JSON.parse(JSON.stringify(payload ?? null)) });
-      if (name === 'getMonthlyAiQuotaStatus') return { data: { used: 1, limit: 10 } };
+      if (name === 'getMonthlyAiQuotaStatus') {
+        if (typeof quotaReply === 'function') return quotaReply();
+        return { data: { used: 1, limit: 10, remaining: 9 } };
+      }
       if (typeof reply === 'function') return reply();
       if (reply instanceof Error) throw reply;
       return { data: reply ?? { text: '다듬은 본문', stats: { content_richness: 3 }, aiComment: '' } };
@@ -102,7 +106,7 @@ test('일반 다듬기 버튼: 제목 확인 → 월 한도 모달 → 확인 �
     // 모달은 사용량 응답을 기다리지 않고 열리고, 다듬기 요청은 아직 없다
     assert.deepEqual([f.state.quotaModal, f.state.quota, f.context.pendingPolishMode], [true, null, 'BASIC']);
     assert.deepEqual(f.requests.map(r => r.name), ['getMonthlyAiQuotaStatus']);
-    f.confirm(); await settle();
+    await settle(); f.confirm(); await settle();
     assert.equal(f.state.quotaModal, false);
     const [request] = polishRequests(f);
     assert.deepEqual([polishRequests(f).length, request.payload.mode, request.payload.format, request.payload.includeAiComment], [1, 'BASIC', prefix, false]);
@@ -121,12 +125,58 @@ test('제목이 없으면 모달·사용량 조회·다듬기 요청 없이 안�
 test('다듬는 중에는 확인을 다시 눌러도 요청이 한 번만 나가고, 끝나면 다시 할 수 있다', async () => {
   let finish;
   const f = fixture({ formData: { diary_title: '제목', diary_a: '기록' }, reply: () => new Promise(resolve => { finish = resolve; }) });
-  f.click(); f.confirm(); f.confirm(); await settle();
+  f.click(); await settle(); f.confirm(); f.confirm(); await settle();
   assert.equal(polishRequests(f).length, 1); assert.equal(f.context.isPolishing, true);
   finish({ data: { text: '끝', stats: null, aiComment: '' } }); await settle();
   assert.deepEqual([f.context.isPolishing, f.state.polished], [false, '끝']);
-  f.click(); f.confirm(); await settle();
+  f.click(); await settle(); f.confirm(); await settle();
   assert.equal(polishRequests(f).length, 2);
   finish({ data: { text: '두 번째', stats: null, aiComment: '' } }); await settle();
   assert.equal(f.state.polished, '두 번째');
+});
+
+
+test('초안 직접 안내: 응답 전에는 AI 요청이 없고 원문·사진 필드는 그대로 남는다', async () => {
+  let finish;
+  const data = { essay_title: '합성 제목', essay_simple: '첫 줄\n둘째 줄', essay_images: '["https://example.invalid/photo.jpg"]' };
+  const f = fixture({ format: '에세이', prefix: 'essay', recordStyle: 'simple', formData: data, quotaReply: () => new Promise(resolve => { finish = resolve; }) });
+  f.context.openGuide();
+  assert.equal(f.state.quotaModal, true);
+  assert.equal(f.state.quotaLoading, true);
+  f.confirm();
+  assert.equal(polishRequests(f).length, 0);
+  finish({ data: { remaining: 9 } }); await settle();
+  f.confirm(); await settle();
+  assert.equal(between(polishRequests(f)[0].payload.text), data.essay_simple);
+  assert.equal(data.essay_images, '["https://example.invalid/photo.jpg"]');
+});
+
+test('한도 소진·사진 업로드 중·사진 실패에는 실행하지 않는다', async () => {
+  for (const scenario of ['quota', 'uploading', 'failed']) {
+    const f = fixture({ formData: { diary_title: '제목', diary_a: '내용' } });
+    f.context.openGuide(); await settle();
+    if (scenario === 'quota') f.context.monthlyAiQuotaStatus.remaining = 0;
+    if (scenario === 'uploading') f.context.isUploadingRef.current = true;
+    if (scenario === 'failed') f.context.initialPhotoUploadFailedRef.current = true;
+    f.confirm(); await settle();
+    assert.equal(polishRequests(f).length, 0, scenario);
+    assert.equal(f.state.quotaModal, true, scenario);
+  }
+});
+
+test('사용량 조회 실패 뒤 재시도할 수 있고 닫힌 세션 응답은 버린다', async () => {
+  let fail = true;
+  const f = fixture({ quotaReply: async () => { if (fail) throw new Error('offline'); return { data: { remaining: 9 } }; } });
+  f.context.openGuide(); await settle();
+  assert.equal(f.state.quota, null);
+  assert.equal(f.state.quotaLoading, false);
+  fail = false;
+  await f.context.retryQuota();
+  assert.equal(f.state.quota.remaining, 9);
+  let finish;
+  const stale = fixture({ quotaReply: () => new Promise(resolve => { finish = resolve; }) });
+  stale.context.openGuide();
+  stale.context.photoEditorSessionRef.current += 1;
+  finish({ data: { remaining: 9 } }); await settle();
+  assert.equal(stale.state.quota, null);
 });

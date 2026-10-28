@@ -925,7 +925,7 @@ export function RecordPage() {
 
         <section className="bg-white rounded-lg p-4 shadow-sm">
           <h2 className="text-base font-semibold" style={{ color: '#1A3C6E' }}>오늘의 기록</h2>
-          <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 형식을 고른 뒤 기존 편집창에서 기록 방식을 선택하고 저장합니다.</p>
+          <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 형식을 고르면 작성한 글과 사진으로 AI 도움을 받거나 그대로 저장할 수 있습니다.</p>
           <textarea
             aria-label="기록 내용"
             value={draftContent}
