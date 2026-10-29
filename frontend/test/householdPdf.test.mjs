@@ -43,3 +43,9 @@ test('줄바꿈된 거래처를 다음 거래와 섞지 않고 읽는다',async(
  const result=await parseKakaoBankPdfDocument(doc,'줄바꿈.pdf');
  assert.equal(result.rows[0].entry.vendor,'시험 카페 두번째줄');assert.equal(result.rows[1].entry.vendor,'시험 카페');
 });
+
+test('예금주와 같은 줄에 다른 정보가 있어도 이름에 계좌번호를 합치지 않는다',async()=>{
+ const items=page().map(item=>item.str==='출금'?{...item,str:'입금'}:item.str==='-4,500'?{...item,str:'+4,500'}:item.str==='시험 카페'?{...item,str:'시험사용자'}:item);
+ const doc=document([[...items,text('계좌번호 :',250,750),text('0000-00-0000000',350,750)]]);
+ const result=await parseKakaoBankPdfDocument(doc,'합성.pdf');assert.equal(result.rows[0].entry.transactionType,'이체');
+});

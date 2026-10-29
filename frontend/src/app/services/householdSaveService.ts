@@ -5,7 +5,7 @@ import { checkHouseholdDuplicates, householdDate, householdIdentity, householdSt
   HouseholdDuplicateReviewRequired, type HouseholdDecisions, type HouseholdStoredRecord } from './householdDuplicates';
 
 export interface HouseholdSaveResult {
-  kind: 'household'; added: number; skipped: number; already: number; recordIds: string[];
+  kind: 'household'; added: number; skipped: number; already: number; recordIds: string[]; createdRecords: number;
 }
 
 export async function loadHouseholdRecords(db: Firestore, uid: string): Promise<HouseholdStoredRecord[]> {
@@ -18,6 +18,22 @@ export async function loadHouseholdRecords(db: Firestore, uid: string): Promise<
 
 export function householdMonthRecordId(date: string) { return `${householdDate(date).slice(0, 7)}-01_household`; }
 
+// 원본 편집은 바꾼 필드만 저장한다. 열어 둔 사이 추가된 거래를 낡은 배열로 덮어쓰지 않는다.
+export async function saveHouseholdOriginal(db: Firestore, uid: string, recordId: string,
+  opened: Record<string, string>, edited: Record<string, string>) {
+  const changed = Object.fromEntries(Object.entries(edited).filter(([key, value]) => value !== opened[key]));
+  if (!Object.keys(changed).length) return;
+  const ref = doc(db, 'users', uid, 'records', recordId);
+  await runTransaction(db, async transaction => {
+    const current = await transaction.get(ref);
+    if (!current.exists() || current.data().household_entries !== opened.household_entries
+      || Object.keys(changed).some(key => current.data()?.[key] !== opened[key])) {
+      throw new Error('다른 곳에서 가계부가 바뀌었습니다. 창을 닫고 다시 열어 확인해 주세요. 저장하지 않았습니다.');
+    }
+    transaction.update(ref, changed);
+  });
+}
+
 function fields(entries: HouseholdEntry[]) {
   const first = entries[0];
   return {
@@ -28,7 +44,7 @@ function fields(entries: HouseholdEntry[]) {
   };
 }
 
-export async function saveHouseholdEntries(db: Firestore, uid: string, entries: HouseholdEntry[], decisions: HouseholdDecisions = {}, environment: { weather?: string; temperature?: string; mood?: string } = {}): Promise<HouseholdSaveResult> {
+export async function saveHouseholdEntries(db: Firestore, uid: string, entries: HouseholdEntry[], decisions: HouseholdDecisions = {}): Promise<HouseholdSaveResult> {
   if (!uid || uid.includes('/')) throw new Error('로그인이 필요합니다.');
   if (!entries.length) throw new Error('저장할 거래가 없습니다.');
   const ids = new Set<string>();
@@ -57,12 +73,13 @@ export async function saveHouseholdEntries(db: Firestore, uid: string, entries: 
     const checks = analyzed.map(check => check.status === 'new' && decisions[check.entry.id]
       ? { ...check, status: 'suspect' as const } : check);
     if (checks.some(check => check.status === 'suspect' && (decisions[check.entry.id]?.token !== check.token
-      || !['skip', 'keep'].includes(decisions[check.entry.id]?.action)))) {
+      || !['skip', 'keep'].includes(decisions[check.entry.id]?.action)
+      || (decisions[check.entry.id]?.action === 'skip' && !check.matches.length)))) {
       throw new HouseholdDuplicateReviewRequired(checks);
     }
     const additions = new Map<string, HouseholdEntry[]>();
     const receipts = new Map<string, string[]>();
-    let already = 0, skipped = 0, added = 0;
+    let already = 0, skipped = 0, added = 0, createdRecords = 0;
     for (const check of checks) {
       if (check.status === 'already') { already++; continue; }
       if (check.status === 'suspect' && decisions[check.entry.id]?.action === 'skip') {
@@ -94,15 +111,13 @@ export async function saveHouseholdEntries(db: Firestore, uid: string, entries: 
         }
         patch.formats = [...new Set([...(Array.isArray(old?.data.formats) ? old.data.formats : []), 'HARU가계부'])];
         if (!old) {
+          createdRecords++;
           Object.assign(patch, { date: id.slice(0,10), createdAt: new Date().toISOString() });
-          for (const key of ['weather', 'temperature', 'mood'] as const) {
-            if (environment[key]) patch[key] = environment[key];
-          }
         }
       }
       if (receipts.has(id)) patch.household_importKeys = [...new Set([...(old?.data.household_importKeys || []), ...receipts.get(id)!])];
       transaction.set(doc(db, 'users', uid, 'records', id), patch, { merge: true });
     }
-    return { kind: 'household', added, skipped, already, recordIds: [...touched] };
+    return { kind: 'household', added, skipped, already, recordIds: [...touched], createdRecords };
   });
 }

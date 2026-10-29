@@ -12,6 +12,6 @@ export default defineConfig({root,envDir:root,plugins:[{name:'household-isolatio
   const resolved=path.resolve(path.dirname(importer.split('?')[0]),source);
   if(/\/firebase(?:\.ts)?$/.test(resolved))return path.join(root,'sdk.ts');
   if(/\/AuthContext(?:\.tsx?)?$/.test(resolved))return path.join(root,'providers.tsx');
-  if(/\/firestoreService(?:\.ts)?$/.test(resolved))return path.join(prior,'firestore.ts');
+  if(/\/firestoreService(?:\.ts)?$/.test(resolved))return path.join(root,'firestore.ts');
   if(/\/(useSubscription|LoadingContext)(?:\.tsx?)?$/.test(resolved))return path.join(prior,'providers.tsx');
 }},react(),tailwindcss()],resolve:{dedupe:['react','react-dom']},server:{host:'127.0.0.1',port:18767,strictPort:true,fs:{allow:[path.resolve(root,'../..')]}}});

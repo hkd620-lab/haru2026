@@ -56,3 +56,10 @@ test('잘못된 날짜와 손상된 기존 내역은 조용히 저장하지 않�
   for(const date of ['2026.02.30','2026.13.01','날짜없음']) assert.throws(()=>householdDate(date));
   await assert.rejects(checkHouseholdDuplicates([], [{id:'broken',data:{household_entries:'잘못된 JSON'}}]));
 });
+
+test('비교 후보가 없어진 거래에서는 기존 거래 사용을 선택할 수 없다',async()=>{
+ const entry=(await parse([bankRow()])).rows[0].entry;
+ const markup=renderToStaticMarkup(React.createElement(HouseholdDuplicateReview,{checks:[{entry,status:'suspect',matches:[],token:'changed'}],decisions:{},onChoose(){}}));
+ assert.match(markup,/<button[^>]*disabled=""[^>]*>기존 거래 사용<\/button>/);
+ assert.match(markup,/이전에 비교한 거래가 변경됐습니다/);
+});

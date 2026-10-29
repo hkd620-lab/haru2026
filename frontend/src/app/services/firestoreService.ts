@@ -446,10 +446,9 @@ class FirestoreService {
   }
 
   // 기존 기록 관련 함수들
-  async saveHouseholdRecord(userId: string, entries: HouseholdEntry[], decisions: HouseholdDecisions,
-    environment: { weather?: string; temperature?: string; mood?: string }) {
-    const result = await saveHouseholdEntries(db, userId, entries, decisions, environment);
-    if (result.added > 0) void this.recordPaidServiceUsage(userId, 'record_created', {
+  async saveHouseholdRecord(userId: string, entries: HouseholdEntry[], decisions: HouseholdDecisions) {
+    const result = await saveHouseholdEntries(db, userId, entries, decisions);
+    if (result.added > 0) void this.recordPaidServiceUsage(userId, result.createdRecords ? 'record_created' : 'record_updated', {
       recordId: result.recordIds[0], date: entries[0].date, formats: 'HARU가계부', source: 'household',
     });
     return result;

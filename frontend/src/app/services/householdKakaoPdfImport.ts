@@ -38,7 +38,7 @@ export async function parseKakaoBankPdfDocument(pdf: HouseholdPdfDocument, fileN
       if (pageNumber === 1) {
         const label = items.find(item => /^(예금주|성명)[:：]?$/.test(compact(item.str)));
         if (label) owner = items.filter(item => item !== label && item.transform[4] > label.transform[4] + label.width
-          && Math.abs(item.transform[5] - label.transform[5]) < scale).sort((a,b) => a.transform[4] - b.transform[4]).map(item => item.str).join(' ').trim();
+          && Math.abs(item.transform[5] - label.transform[5]) < scale).sort((a,b) => a.transform[4] - b.transform[4])[0]?.str.trim() || '';
       }
       const body = items.filter(item => item.transform[5] < header.transform[5] - scale);
       const anchors = body.filter(item => column(item) === 0 && dateTime.test(item.str.trim())).sort((a,b) => b.transform[5] - a.transform[5]);

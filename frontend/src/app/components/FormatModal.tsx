@@ -174,7 +174,7 @@ export interface HouseholdEntry {
 
 function newHouseholdEntry(overrides?: Partial<HouseholdEntry>): HouseholdEntry {
   return {
-    id: Math.random().toString(36).slice(2, 9),
+    id: Array.from(crypto.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join(''),
     transactionType: '지출',
     category: '',
     date: '',
@@ -514,12 +514,17 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       toast.warning('초안 사진을 모두 올리지 못했습니다. 편집창을 닫고 사진을 확인한 뒤 다시 시도해 주세요.');
       throw new Error('initial record photo upload failed');
     }
-    if (formatData.household_saveVersion === 'dedup-v1') householdSaveReceiptRef.current = null;
-    const result = await onSaveRequest(formatData);
-    if (result && typeof result === 'object' && result.kind === 'household') {
+    if (formatData.household_saveVersion === 'dedup-v1') {
+      householdSaveReceiptRef.current = null;
+      if (!user?.uid) throw new Error('로그인이 필요합니다.');
+      // 어느 작성 화면에서 열어도 일반 저장 콜백으로 중복 검사를 우회하지 않는다.
+      const { firestoreService } = await import('../services/firestoreService');
+      const result = await firestoreService.saveHouseholdRecord(user.uid, JSON.parse(formatData.household_entries),
+        JSON.parse(formatData.household_saveDecisions || '{}'));
       householdSaveReceiptRef.current = result;
       return result.recordIds[0];
     }
+    const result = await onSaveRequest(formatData);
     return typeof result === 'string' ? result : undefined;
   };
   const [isExtractingBookText, setIsExtractingBookText] = useState(false);

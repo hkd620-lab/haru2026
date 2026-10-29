@@ -3,7 +3,7 @@ import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator, doc, setDoc, getDocFromServer, getDocsFromServer, collection } from 'firebase/firestore';
-import { saveHouseholdEntries, loadHouseholdRecords, householdMonthRecordId } from '../src/app/services/householdSaveService.ts';
+import { saveHouseholdEntries, saveHouseholdOriginal, loadHouseholdRecords, householdMonthRecordId } from '../src/app/services/householdSaveService.ts';
 import { checkHouseholdDuplicates, HouseholdDuplicateReviewRequired } from '../src/app/services/householdDuplicates.ts';
 import { summarizeHouseholdEntries } from '../src/app/utils/householdSummary.ts';
 
@@ -150,7 +150,44 @@ test('비교한 거래의 금액이 바뀌어 후보에서 빠져도 낡은 선�
  let current;
  await assert.rejects(saveHouseholdEntries(db,uid,[incoming],decisions),error=>{current=error.checks?.[0];return error instanceof HouseholdDuplicateReviewRequired;});
  assert.equal((await allEntries()).length,1);
- const result=await saveHouseholdEntries(db,uid,[incoming],{[incoming.id]:{token:current.token,action:'skip'}});
- assert.equal(result.added,0);assert.equal(result.skipped,1);
+ await assert.rejects(saveHouseholdEntries(db,uid,[incoming],{[incoming.id]:{token:current.token,action:'skip'}}),HouseholdDuplicateReviewRequired);
+ assert.equal((await allEntries()).length,1);
+ const result=await saveHouseholdEntries(db,uid,[incoming],{[incoming.id]:{token:current.token,action:'keep'}});
+ assert.equal(result.added,1);assert.equal(result.skipped,0);
  async function allEntries(){return JSON.parse((await stored(db,uid)).household_entries);}
+});
+
+test('기존 배열 거래의 빈 날짜는 문서 날짜로 비교하며 저장 원본은 바꾸지 않는다',async()=>{
+ const uid=uidFor('empty-date'),db=client(uid),ref=doc(db,'users',uid,'records','legacy-empty-date');
+ const original=JSON.stringify([entry({id:'legacy',date:''})]);
+ await setDoc(ref,{date:'2026-10-05',formats:['HARU가계부'],household_entries:original});
+ const incoming=bank();await assert.rejects(saveHouseholdEntries(db,uid,[incoming]),HouseholdDuplicateReviewRequired);
+ assert.equal((await saveHouseholdEntries(db,uid,[incoming],await choose(db,uid,[incoming]))).skipped,1);
+ assert.equal((await getDocFromServer(ref)).data().household_entries,original);
+});
+
+test('오래 열어 둔 원본에서 아무것도 바꾸지 않고 저장해도 새로 가져온 거래를 보존한다',async()=>{
+ const uid=uidFor('original-no-change'),db=client(uid);await saveHouseholdEntries(db,uid,[entry({id:'first'})]);
+ const opened=await stored(db,uid),ref=householdMonthRecordId('2026-10-05');
+ await saveHouseholdEntries(db,uid,[bank({amount:'3000'})]);
+ const before=await stored(db,uid);await saveHouseholdOriginal(db,uid,ref,opened,{...opened});
+ assert.deepEqual(await stored(db,uid),before);assert.equal(JSON.parse(before.household_entries).length,2);
+});
+
+test('오래 열린 원본의 편집 저장은 동시 가져오기 후 거부하고 모든 거래를 보존한다',async()=>{
+ const uid=uidFor('original-stale'),db=client(uid);await saveHouseholdEntries(db,uid,[entry({id:'first'})]);
+ const opened=await stored(db,uid),ref=householdMonthRecordId('2026-10-05');
+ await saveHouseholdEntries(db,uid,[bank({amount:'3000'})]);
+ const before=await stored(db,uid);
+ await assert.rejects(saveHouseholdOriginal(db,uid,ref,opened,{...opened,household_sayu:'편집한 원본'}),/다른 곳에서 가계부가 바뀌었습니다/);
+ assert.deepEqual(await stored(db,uid),before);
+ await saveHouseholdOriginal(db,uid,ref,before,{...before,household_sayu:'다시 연 뒤 편집'});
+ const after=await stored(db,uid);assert.equal(after.household_entries,before.household_entries);assert.equal(after.household_sayu,'다시 연 뒤 편집');
+});
+
+test('월별 신규 문서 생성과 기존 문서 추가를 구별하고 날짜별 환경을 월 문서에 붙이지 않는다',async()=>{
+ const uid=uidFor('created'),db=client(uid);
+ assert.equal((await saveHouseholdEntries(db,uid,[entry()])).createdRecords,1);
+ assert.equal((await saveHouseholdEntries(db,uid,[entry({amount:'3000'})])).createdRecords,0);
+ const data=await stored(db,uid);for(const key of ['weather','temperature','mood'])assert.equal(key in data,false);
 });

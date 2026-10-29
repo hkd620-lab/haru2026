@@ -53,7 +53,9 @@ function sameDayAmount(a: HouseholdEntry, b: HouseholdEntry) {
 
 export async function checkHouseholdDuplicates(entries: HouseholdEntry[], records: HouseholdStoredRecord[]): Promise<HouseholdDuplicateCheck[]> {
   const stored = records.flatMap(record => householdStoredEntries(record).map((entry, index) => ({
-    recordId: record.id, entryId: entry.id || `index:${index}`, entry,
+    recordId: record.id, entryId: entry.id || `index:${index}`,
+    // 화면 집계처럼 빈 날짜는 문서 날짜로 비교한다. 저장 배열 자체는 바꾸지 않는다.
+    entry: { ...entry, date: entry.date?.trim() ? entry.date : String(record.data.date || record.id).slice(0, 10) },
   })));
   const result: HouseholdDuplicateCheck[] = [];
   for (const entry of entries) {
