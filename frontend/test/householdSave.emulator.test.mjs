@@ -6,6 +6,7 @@ import { getFirestore, connectFirestoreEmulator, doc, setDoc, getDocFromServer, 
 import { saveHouseholdEntries, saveHouseholdOriginal, loadHouseholdRecords, householdMonthRecordId } from '../src/app/services/householdSaveService.ts';
 import { checkHouseholdDuplicates, HouseholdDuplicateReviewRequired } from '../src/app/services/householdDuplicates.ts';
 import { summarizeHouseholdEntries } from '../src/app/utils/householdSummary.ts';
+import { previewHouseholdSave } from '../src/app/services/householdSavePreview.ts';
 
 const host=process.env.FIRESTORE_EMULATOR_HOST;
 if(!host || !/^(127\.0\.0\.1|localhost):\d+$/.test(host)) throw new Error('로컬 Firestore 에뮬레이터에서만 실행할 수 있습니다.');
@@ -18,6 +19,25 @@ const entry=(overrides={})=>({id:crypto.randomUUID(),date:'2026-10-05',transacti
 const bank=(overrides={})=>entry({id:'bank-row-1',importSource:{kind:'kakao',fileDigest:'file-a',key:'kakao:key-a'},transactionAt:'2026-10-05 12:00:00',...overrides});
 async function stored(db,uid) {return (await getDocFromServer(doc(db,'users',uid,'records',householdMonthRecordId('2026-10-05')))).data();}
 async function choose(db,uid,entries,action='skip') {const checks=await checkHouseholdDuplicates(entries,await loadHouseholdRecords(db,uid)); return Object.fromEntries(checks.filter(c=>c.status==='suspect').map(c=>[c.entry.id,{token:c.token,action}]));}
+
+test('표시한 추가·중복 제외 건수가 실제 트랜잭션 결과와 일치한다',async()=>{
+ const uid=uidFor('preview-count'),db=client(uid);
+ const exact=bank(),manual=entry({id:'manual',amount:'7000'});
+ await saveHouseholdEntries(db,uid,[exact,manual]);
+ const entries=[exact,bank({id:'overlap',amount:'7000',importSource:{kind:'kakao',fileDigest:'file-b',key:'key-b'}}),entry({id:'new',amount:'9000'})];
+ const checks=await checkHouseholdDuplicates(entries,await loadHouseholdRecords(db,uid));
+ for(const action of ['skip','keep']) {
+  const decisions=Object.fromEntries(checks.filter(c=>c.status==='suspect').map(c=>[c.entry.id,{token:c.token,action}]));
+  const preview=previewHouseholdSave(entries.map(entry=>({entry,selected:true})),checks,decisions);
+  // 별개 추가는 다음 사용자 공간에서 독립 검증한다.
+  const targetUid=uidFor(`preview-${action}`),targetDb=client(targetUid);
+  await saveHouseholdEntries(targetDb,targetUid,[exact,manual]);
+  const result=await saveHouseholdEntries(targetDb,targetUid,entries,decisions);
+  assert.equal(preview.added,result.added);
+  assert.equal(preview.excluded,result.already+result.skipped);
+  assert.equal(preview.pending+preview.unchecked,0);
+ }
+});
 
 test('동일 파일 재저장·응답 유실 후 재시도에도 한 번만 집계',async()=>{
  const uid=uidFor('retry'),db=client(uid),entries=[bank()];

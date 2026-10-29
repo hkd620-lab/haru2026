@@ -80,6 +80,8 @@ import { parseHouseholdAmountText } from '../utils/householdAmount';
 import { checkHouseholdDuplicates, HouseholdDuplicateReviewRequired, type HouseholdDecisions, type HouseholdDuplicateCheck } from '../services/householdDuplicates';
 import { loadHouseholdRecords, type HouseholdSaveResult } from '../services/householdSaveService';
 import { HouseholdDuplicateReview } from './HouseholdDuplicateReview';
+import { householdSaveLabel, previewHouseholdSave } from '../services/householdSavePreview';
+import { HouseholdSaveSummary } from './HouseholdSaveSummary';
 import { parseKakaoBankPdf } from '../services/householdKakaoPdfImport';
 import { findSameNameGrowthSubject, growthSubjectOptionLabel } from '../utils/growthSubject';
 
@@ -587,6 +589,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isDecryptingKakaoXlsx, setIsDecryptingKakaoXlsx] = useState(false);
   const [kakaoXlsxMonthGroups, setKakaoXlsxMonthGroups] = useState<KakaoXlsxMonthGroup[]>([]);
   const [isSavingKakaoXlsx, setIsSavingKakaoXlsx] = useState(false);
+  const hasHouseholdImport = kakaoXlsxMonthGroups.length > 0;
+  const householdSaveRows = hasHouseholdImport
+    ? kakaoXlsxMonthGroups.flatMap(group => group.rows)
+    : fillEmptyHouseholdDates(householdEntries, recordId).map(entry => ({ entry, selected: true }));
+  const householdSavePreview = previewHouseholdSave(householdSaveRows, householdChecks, householdDecisions);
+  const householdSaveBusy = isSaving || isSavingKakaoXlsx;
 
   // 🚿 배뇨일지
   const [voidingEntries, setVoidingEntries] = useState<import('../utils/voidingStats').VoidingEntry[]>([]);
@@ -5347,13 +5355,14 @@ ${contentValues.slice(0, 4100)}`,
                           </div>
                         );
                       })}
+                      <HouseholdSaveSummary preview={householdSavePreview} />
                       <button
                         type="button"
                         onClick={handleSaveKakaoXlsxImport}
-                        disabled={isSavingKakaoXlsx}
+                        disabled={householdSaveBusy || !householdSaveRows.some(row => row.selected)}
                         style={{ width: '100%', padding: '12px', border: 'none', borderRadius: 10, backgroundColor: '#1A3C6E', color: '#fff', fontSize: 14, fontWeight: 800, cursor: isSavingKakaoXlsx ? 'wait' : 'pointer' }}
                       >
-                        {isSavingKakaoXlsx ? '가계부에 저장 중...' : '가계부에 저장'}
+                        {householdSaveBusy ? '가계부에 저장 중...' : householdSaveLabel(householdSavePreview)}
                       </button>
                     </div>
                   )}
@@ -6711,13 +6720,16 @@ ${contentValues.slice(0, 4100)}`,
               </button>
             ) : isHouseholdFormat ? (
               /* 📒 HARU가계부 전용 저장 버튼 */
-              <button
-                onClick={handleSaveHouseholdEntries}
-                disabled={isSaving}
-                style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#166534', color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1, fontWeight: 700 }}
-              >
-                {isSaving ? '저장 중...' : `거래 저장하기 (${householdEntries.length}건)`}
-              </button>
+              <div style={{ width: '100%' }}>
+                <HouseholdSaveSummary preview={householdSavePreview} />
+                <button
+                  onClick={hasHouseholdImport ? handleSaveKakaoXlsxImport : handleSaveHouseholdEntries}
+                  disabled={householdSaveBusy || !householdSaveRows.some(row => row.selected)}
+                  style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#166534', color: '#fff', cursor: householdSaveBusy ? 'not-allowed' : 'pointer', opacity: householdSaveBusy ? 0.7 : 1, fontWeight: 700 }}
+                >
+                  {householdSaveBusy ? '저장 중...' : householdSaveLabel(householdSavePreview)}
+                </button>
+              </div>
             ) : isVoidingFormat ? (
               /* 🚿 배뇨일지 전용 저장 버튼 */
               <button
