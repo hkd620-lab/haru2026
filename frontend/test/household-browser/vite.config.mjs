@@ -10,6 +10,7 @@ export default defineConfig({root,envDir:root,plugins:[{name:'household-isolatio
   if(source.startsWith('firebase/'))return path.join(root,'sdk.ts');
   if(!importer||!source.startsWith('.'))return;
   const resolved=path.resolve(path.dirname(importer.split('?')[0]),source);
+  if(importer.includes('/src/app/components/FormatModal') && resolved.endsWith('/services/householdCardImport'))return path.join(root,'card-read.ts');
   if(/\/firebase(?:\.ts)?$/.test(resolved))return path.join(root,'sdk.ts');
   if(/\/AuthContext(?:\.tsx?)?$/.test(resolved))return path.join(root,'providers.tsx');
   if(/\/firestoreService(?:\.ts)?$/.test(resolved))return path.join(root,'firestore.ts');
