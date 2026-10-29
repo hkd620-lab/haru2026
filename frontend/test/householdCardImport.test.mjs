@@ -110,3 +110,17 @@ test('7기관 안내와 실제 파서 가능 여부를 구분한다',()=>{
     if(item.id==='kakaobank'){assert.match(markup,/FaqView\/view\/9413/);assert.match(markup,/service-transaction-statement/);}
   }
 });
+
+for(const format of ['"CNY "#,##0','"CAD "#,##0','"CHF "#,##0','"₹"#,##0']) test(`실제 XLSX 숫자 셀의 미지원 외화 서식 ${format} 거부`,async()=>{
+  const wb=cardWorkbook();wb.Sheets['합성내역'].C2.z=format;
+  await assert.rejects(readHouseholdCardFile(cardBytes(wb),cardOptions));
+});
+for(const format of ['General','0','mm-dd']) test(`숫자 월일 1005를 ${format} 서식에서 연도 있는 날짜로 추정하지 않는다`,async()=>{
+  const wb=cardWorkbook();wb.Sheets['합성내역'].A2={t:'n',v:1005,z:format};
+  await assert.rejects(readHouseholdCardFile(cardBytes(wb),cardOptions));
+});
+for(const currency of ['KRW','원','원화']) test(`통화 ${currency}와 해외이용금액 0은 정상 원화로 읽는다`,async()=>{
+  const wb=cardWorkbook([cardRow({5:currency})],[...cardHeader,'해외이용금액']);wb.Sheets['합성내역'].I2={t:'n',v:0};wb.Sheets['합성내역']['!ref']='A1:I2';
+  const result=await readHouseholdCardFile(cardBytes(wb),cardOptions);
+  assert.equal(result.reviews[0].state,'ok');assert.equal(result.rows[0].entry.amount,'4500');assert.equal(result.rows[0].selected,true);
+});

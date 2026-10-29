@@ -13,15 +13,18 @@ export interface CardImportResult {
   reviews: CardImportReview[];
   rows: { id: string; selected: boolean; warning: string; entry: HouseholdEntry }[];
 }
-type SheetReader = Pick<typeof import('xlsx'), 'utils'>;
+type SheetReader = Pick<typeof import('xlsx'), 'utils' | 'SSF'>;
 const normalize = (value: unknown) => String(value ?? '').normalize('NFKC').replace(/\s/g, '');
 const fail = (sheet: number, row?: number): never => { throw new Error(`${sheet + 1}번째 시트${row === undefined ? '' : ` ${row + 1}행`}의 형식을 읽지 못했습니다. 연도가 있는 날짜·가맹점·이용금액·상태 열이 있는 승인 이용내역인지 확인해 주세요. 파일 전체를 가져오지 않았습니다.`); };
 const headers = { date: ['이용일자', '이용일'], vendor: ['가맹점명', '가맹점'], amount: ['이용금액'], status: ['상태'], installment: ['할부개월', '할부'], foreign: ['현지금액', '해외이용금액'], currency: ['통화'] } as const;
 type Column = keyof typeof headers;
-function cardDate(cell: CellObject | undefined, date1904: boolean): string {
+function cardDate(cell: CellObject | undefined, date1904: boolean, isDateFormat: (format: string) => boolean): string {
   if (!cell || cell.f) throw new Error('date');
   let raw: string;
   if (typeof cell.v === 'number') {
+    // 숫자 월일(1005 등)을 일련번호로 추정하지 않는다. 연도가 표시되는 실제 날짜 셀만 허용한다.
+    const format = String(cell.z || '');
+    if (!isDateFormat(format) || !/y/i.test(format.replace(/"[^"]*"|\\./g, ''))) throw new Error('date');
     if (!Number.isFinite(cell.v) || cell.v < 1 || cell.v > 120000) throw new Error('date');
     const serial = Math.floor(cell.v);
     if (!date1904 && serial === 60) throw new Error('date'); // 엑셀의 가상 날짜 1900-02-29
@@ -40,7 +43,11 @@ function cardAmount(cell: CellObject | undefined): string | null {
   if (cell.f || !['s', 'n', 'str'].includes(cell.t)) throw new Error('amount');
   // 숫자 셀의 표시·서식에 외화/소수점이 있으면 원화 정수로 추정하지 않는다.
   if (typeof cell.v === 'number') {
-    if (!Number.isSafeInteger(cell.v) || /[$€¥£]|USD|EUR|JPY|GBP|\./i.test(`${cell.z || ''} ${cell.w || ''}`)) throw new Error('amount');
+    const format = String(cell.z || 'General');
+    const plainFormat = format.replace(/"원"|원/g, '');
+    // 알려진 외화를 나열하는 대신, 통화 표시가 없는 정수/원화 형식만 허용한다.
+    if (!Number.isSafeInteger(cell.v) || (format !== 'General' && !/^[#0,;() \-+]+$/.test(plainFormat))) throw new Error('amount');
+    if (cell.w && !/^(?:-?(?:\d+|\d{1,3}(?:,\d{3})+)|\((?:\d+|\d{1,3}(?:,\d{3})+)\))원?$/.test(cell.w.trim())) throw new Error('amount');
     return String(cell.v);
   }
   const raw = String(cell.v).trim();
@@ -83,7 +90,7 @@ export async function parseHouseholdCardWorkbook(workbook: WorkBook, XLSX: Sheet
       const value = (key: Column) => normalize(cell(key)?.v);
       if (!value('date') && row.some(v => /^(?:합계|소계|총계)(?:\s|$|:)/.test(String(v).trim()))) continue;
       try {
-        const date = cardDate(cell('date'), !!workbook.Workbook?.WBProps?.date1904);
+        const date = cardDate(cell('date'), !!workbook.Workbook?.WBProps?.date1904, XLSX.SSF.is_date);
         const status = value('status');
         if (!['정상', '승인', '매입', '취소', '승인취소', '매입취소'].includes(status) || cell('status')?.f || cell('vendor')?.f) fail(si, ri);
         const vendor = String(cell('vendor')?.v ?? '').replace(/\s+/g, ' ').trim();
@@ -92,7 +99,10 @@ export async function parseHouseholdCardWorkbook(workbook: WorkBook, XLSX: Sheet
         if (['installment', 'foreign', 'currency'].some(key => cell(key as Column)?.f)) fail(si, ri);
         if (installment && !/^(?:일시불|\d{1,2}(?:개월)?)$/.test(installment)) fail(si, ri);
         const parsed = cardAmount(cell('amount'));
-        const foreign = !!(value('foreign') || value('currency'));
+        const currency = value('currency').toUpperCase();
+        const localAmount = value('foreign').replace(/,/g, '');
+        const hasForeignAmount = localAmount !== '' && !/^[+-]?0+(?:\.0+)?$/.test(localAmount);
+        const foreign = hasForeignAmount || !['', 'KRW', '원', '원화', 'WON', '₩'].includes(currency);
         if (parsed === null && !foreign) fail(si, ri);
         const state = foreign ? 'blocked' : status.includes('취소') && Number(parsed) > 0 ? 'needsChoice' : 'ok';
         const reasons = state === 'blocked' ? ['외화 거래는 직접 입력해 주세요.'] : state === 'needsChoice' ? ['취소(양수): 음수로 기록하거나 제외해 주세요.'] : Number(parsed) < 0 ? ['취소·환불: 원거래와 함께 확인해 주세요.'] : [];
