@@ -1,0 +1,205 @@
+✔ 실제 SheetJS xlsx 바이트 읽기와 개인정보 최소화 (32.824458ms)
+✔ 실제 SheetJS xls 바이트 읽기와 개인정보 최소화 (9.785458ms)
+✔ 카드 종류·승인이용내역 사전 확인 없이는 파싱하지 않는다 (0.368792ms)
+✔ 모호한 금액 "$12" 파일 전체 거부 (0.770583ms)
+✔ 모호한 금액 "USD 12" 파일 전체 거부 (0.461834ms)
+✔ 모호한 금액 "₩1,000" 파일 전체 거부 (0.540041ms)
+✔ 모호한 금액 "12.50" 파일 전체 거부 (0.490209ms)
+✔ 모호한 금액 12.5 파일 전체 거부 (0.470083ms)
+✔ 모호한 금액 "1,00" 파일 전체 거부 (0.664625ms)
+✔ 모호한 금액 "5천원" 파일 전체 거부 (0.509708ms)
+✔ 모호한 금액 "" 파일 전체 거부 (0.505709ms)
+✔ 원화 정수 (1,000) 부호 보존 (0.404541ms)
+✔ 원화 정수 -1,000원 부호 보존 (0.320667ms)
+✔ 원화 정수 1,000 부호 보존 (0.271625ms)
+✔ 숫자 셀 z 서식의 외화·소수 거부 (0.293834ms)
+✔ 숫자 셀 w 서식의 외화·소수 거부 (0.275375ms)
+✔ 숫자 셀 z 서식의 외화·소수 거부 (0.244292ms)
+✔ 연도 누락·잘못된 날짜 1005 거부 (0.235375ms)
+✔ 연도 누락·잘못된 날짜 10-05 거부 (0.218125ms)
+✔ 연도 누락·잘못된 날짜 2026-02-30 거부 (0.22875ms)
+✔ 연도 누락·잘못된 날짜 2026-10-05 24:00 거부 (0.230917ms)
+✔ 엑셀 날짜 셀은 연도가 포함된 실제 날짜로 읽는다 (0.337291ms)
+✔ 잘못된 형식 missing-status 부분 가져오기 금지 (0.302875ms)
+✔ 잘못된 형식 billed 부분 가져오기 금지 (0.220583ms)
+✔ 잘못된 형식 duplicate 부분 가져오기 금지 (0.20725ms)
+✔ 잘못된 형식 unknown-status 부분 가져오기 금지 (0.278166ms)
+✔ 잘못된 형식 invalid-vendor 부분 가져오기 금지 (0.316709ms)
+✔ 잘못된 형식 bad-installment 부분 가져오기 금지 (0.738708ms)
+✔ 잘못된 형식 formula 부분 가져오기 금지 (0.478ms)
+✔ 합계는 날짜 없는 명시 합계 행만 제외, 가맹점 이름의 건수·합계는 보존 (0.523166ms)
+✔ 외화와 취소양수는 기본 미선택·금액비움, 음수 취소와 할부 원금은 보존 (1.88925ms)
+✔ 취소 선택과 실제 선택 행·기대 금액의 저장 검증을 우회할 수 없다 (0.681625ms)
+✔ 같은 파일 재가져오기·정상반복·다른 파일 기간겹침을 구분한다 (27.920792ms)
+✔ 카드와 은행 체크카드 거래는 확인만 요구하고 카카오 파서·합계는 불변 (1.126792ms)
+✔ 카드 경로는 PDF·빈파일·암호용 CFB 오류를 서버전송 없이 거부한다 (1.843209ms)
+✔ 7기관 안내와 실제 파서 가능 여부를 구분한다 (5.15125ms)
+✖ 실제 XLSX 숫자 셀의 미지원 외화 서식 "CNY "#,##0 거부 (6.640042ms)
+✖ 실제 XLSX 숫자 셀의 미지원 외화 서식 "CAD "#,##0 거부 (3.318041ms)
+✖ 실제 XLSX 숫자 셀의 미지원 외화 서식 "CHF "#,##0 거부 (2.644125ms)
+✖ 실제 XLSX 숫자 셀의 미지원 외화 서식 "₹"#,##0 거부 (2.753375ms)
+✖ 숫자 월일 1005를 General 서식에서 연도 있는 날짜로 추정하지 않는다 (3.133791ms)
+✖ 숫자 월일 1005를 0 서식에서 연도 있는 날짜로 추정하지 않는다 (2.706542ms)
+✖ 숫자 월일 1005를 mm-dd 서식에서 연도 있는 날짜로 추정하지 않는다 (2.506833ms)
+✖ 통화 KRW와 해외이용금액 0은 정상 원화로 읽는다 (2.361958ms)
+✖ 통화 원와 해외이용금액 0은 정상 원화로 읽는다 (1.887167ms)
+✖ 통화 원화와 해외이용금액 0은 정상 원화로 읽는다 (1.720833ms)
+ℹ tests 46
+ℹ suites 0
+ℹ pass 36
+ℹ fail 10
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 414.53275
+
+✖ failing tests:
+
+test at test/householdCardImport.test.mjs:114:77
+✖ 실제 XLSX 숫자 셀의 미지원 외화 서식 "CNY "#,##0 거부 (6.640042ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/householdCardImport.test.mjs:116:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at test/householdCardImport.test.mjs:114:77
+✖ 실제 XLSX 숫자 셀의 미지원 외화 서식 "CAD "#,##0 거부 (3.318041ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/householdCardImport.test.mjs:116:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at test/householdCardImport.test.mjs:114:77
+✖ 실제 XLSX 숫자 셀의 미지원 외화 서식 "CHF "#,##0 거부 (2.644125ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/householdCardImport.test.mjs:116:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at test/householdCardImport.test.mjs:114:77
+✖ 실제 XLSX 숫자 셀의 미지원 외화 서식 "₹"#,##0 거부 (2.753375ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/householdCardImport.test.mjs:116:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at test/householdCardImport.test.mjs:118:46
+✖ 숫자 월일 1005를 General 서식에서 연도 있는 날짜로 추정하지 않는다 (3.133791ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/householdCardImport.test.mjs:120:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at test/householdCardImport.test.mjs:118:46
+✖ 숫자 월일 1005를 0 서식에서 연도 있는 날짜로 추정하지 않는다 (2.706542ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/householdCardImport.test.mjs:120:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at test/householdCardImport.test.mjs:118:46
+✖ 숫자 월일 1005를 mm-dd 서식에서 연도 있는 날짜로 추정하지 않는다 (2.506833ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/householdCardImport.test.mjs:120:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: undefined,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at test/householdCardImport.test.mjs:122:41
+✖ 통화 KRW와 해외이용금액 0은 정상 원화로 읽는다 (2.361958ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  'blocked' !== 'ok'
+  
+      at TestContext.<anonymous> (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/householdCardImport.test.mjs:125:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'blocked',
+    expected: 'ok',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/householdCardImport.test.mjs:122:41
+✖ 통화 원와 해외이용금액 0은 정상 원화로 읽는다 (1.887167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  'blocked' !== 'ok'
+  
+      at TestContext.<anonymous> (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/householdCardImport.test.mjs:125:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'blocked',
+    expected: 'ok',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/householdCardImport.test.mjs:122:41
+✖ 통화 원화와 해외이용금액 0은 정상 원화로 읽는다 (1.720833ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  'blocked' !== 'ok'
+  
+      at TestContext.<anonymous> (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/householdCardImport.test.mjs:125:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'blocked',
+    expected: 'ok',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
