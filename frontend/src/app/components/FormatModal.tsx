@@ -80,7 +80,7 @@ import { parseHouseholdAmountText } from '../utils/householdAmount';
 import { checkHouseholdDuplicates, HouseholdDuplicateReviewRequired, type HouseholdDecisions, type HouseholdDuplicateCheck } from '../services/householdDuplicates';
 import { loadHouseholdRecords, type HouseholdSaveResult } from '../services/householdSaveService';
 import { HouseholdDuplicateReview } from './HouseholdDuplicateReview';
-import { householdSaveLabel, previewHouseholdSave } from '../services/householdSavePreview';
+import { householdSaveLabel, mergeHouseholdChecks, previewHouseholdSave } from '../services/householdSavePreview';
 import { HouseholdSaveSummary } from './HouseholdSaveSummary';
 import { parseKakaoBankPdf } from '../services/householdKakaoPdfImport';
 import { findSameNameGrowthSubject, growthSubjectOptionLabel } from '../utils/growthSubject';
@@ -2775,7 +2775,7 @@ ${contentValues}
     setIsSaving(true);
     try {
       const result = await saveHouseholdEntriesBatch(householdEntries);
-      toast.success(`신규 ${result.added}건 · 이미 저장됨 ${result.already}건 · 기존 거래 사용 ${result.skipped}건`);
+      toast.success(`추가 ${result.added}건 · 중복 제외 ${result.already + result.skipped}건`);
       closeAfterCommit();
     } catch (error) {
       if (error instanceof HouseholdDuplicateReviewRequired) {
@@ -2959,15 +2959,17 @@ ${contentValues}
     setIsSavingKakaoXlsx(true);
     try {
       const entries = validGroups.flatMap(group => group.rows.map(row => row.entry));
+      const autoExcluded = previewHouseholdSave(householdSaveRows.filter(row => !row.selected), householdChecks, householdDecisions).excluded;
       const result = await saveHouseholdEntriesBatch(entries);
-      toast.success(`신규 ${result.added}건 · 이미 저장됨 ${result.already}건 · 기존 거래 사용 ${result.skipped}건`);
+      toast.success(`추가 ${result.added}건 · 중복 제외 ${result.already + result.skipped + autoExcluded}건`);
       // 선택한 모든 달이 함께 저장된 뒤 목록을 정리한다.
       const savedMonths = new Set(validGroups.map((g) => g.month));
       setKakaoXlsxMonthGroups((groups) => groups.filter((g) => !savedMonths.has(g.month)));
       closeAfterCommit();
     } catch (error) {
       if (error instanceof HouseholdDuplicateReviewRequired) {
-        setHouseholdChecks(error.checks);
+        // 선택해서 저장한 행만 재검사되므로, 자동 제외·미선택 행의 결과도 보존한다.
+        setHouseholdChecks(previous => mergeHouseholdChecks(previous, error.checks));
         toast.warning(error.message);
       } else toast.error('저장하지 못했습니다. 반영 여부를 확인한 뒤 다시 시도해 주세요. 이미 반영된 거래는 다시 추가하지 않습니다.');
     } finally {

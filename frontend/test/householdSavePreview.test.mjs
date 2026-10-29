@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { checkHouseholdDuplicates } from '../src/app/services/householdDuplicates.ts';
-import { previewHouseholdSave, householdSaveLabel } from '../src/app/services/householdSavePreview.ts';
+import { previewHouseholdSave, householdSaveLabel, mergeHouseholdChecks } from '../src/app/services/householdSavePreview.ts';
 import { HouseholdSaveSummary } from '../src/app/components/HouseholdSaveSummary.tsx';
 
 const entry = id => ({ id, date: '2026-10-05', amount: '4500', vendor: '합성 카페', transactionType: '지출', category: '식비', paymentMethod: '', memo: '' });
@@ -51,4 +51,25 @@ test('입력 내용·비교 토큰 변경과 비교 후보 소멸은 예전 제�
   assert.equal(previewHouseholdSave(rows([incoming]), [{ ...checks[0], token: 'changed' }], decisions).pending, 1);
   assert.equal(previewHouseholdSave(rows([incoming]), [{ ...checks[0], matches: [] }], decisions).pending, 1);
   assert.equal(previewHouseholdSave(rows([incoming]), [], {}).unchecked, 1);
+});
+
+test('일부 선택 행만 재확인돼도 자동 중복 제외와 미선택 건수를 보존한다', async () => {
+  const exact = entry('exact'), suspect = entry('suspect'), omitted = entry('omitted');
+  const initial = await checkHouseholdDuplicates([exact, suspect, omitted], stored([exact]));
+  const updated = await checkHouseholdDuplicates([suspect], stored([exact]));
+  const checks = mergeHouseholdChecks(initial, updated);
+  const selection = [{ entry: exact, selected: false }, { entry: suspect, selected: true }, { entry: omitted, selected: false }];
+  const before = previewHouseholdSave(selection, checks, {});
+  assert.deepEqual(before, { total: 3, added: 0, excluded: 1, pending: 1, unchecked: 0, unselected: 1 });
+  const after = previewHouseholdSave(selection, checks, { suspect: { token: updated[0].token, action: 'skip' } });
+  assert.equal(after.excluded, 2); assert.equal(after.pending, 0);
+});
+
+test('실제 저장 래퍼의 JSON 왕복으로 undefined 필드가 사라져도 비교 결과가 유효하다', async () => {
+  const incoming = { ...entry('incoming'), ocrSourceFile: undefined };
+  const payload = JSON.parse(JSON.stringify([incoming]));
+  const checks = await checkHouseholdDuplicates(payload, stored([entry('manual')]));
+  const decisions = { incoming: { token: checks[0].token, action: 'skip' } };
+  assert.equal(previewHouseholdSave(rows([incoming]), checks, decisions).excluded, 1);
+  assert.equal(previewHouseholdSave(rows([incoming]), [{ ...checks[0], status: 'new', matches: [] }], decisions).pending, 1);
 });
