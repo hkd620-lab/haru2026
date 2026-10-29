@@ -1,0 +1,81 @@
+.hhp-picker {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.hhp-row {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.hhp-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5d6a62;
+}
+.hhp-select,
+.hhp-input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #d9ded4;
+  border-radius: 10px;
+  background: #fff;
+  color: #263d35;
+  padding: 0 12px;
+  font-size: 16px;
+  font-family: inherit;
+}
+.hhp-select:disabled {
+  background: #f3f4f0;
+  color: #9aa49d;
+}
+.hhp-custom {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+.hhp-add {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #214e41;
+  color: #fff;
+  font-weight: 700;
+  font-family: inherit;
+}
+.hhp-error {
+  margin: 0;
+  font-size: 12px;
+  color: #a34129;
+  line-height: 1.6;
+}
+.hhp-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.hhp-compact {
+  gap: 4px;
+  min-width: 128px;
+}
+.hhp-compact .hhp-row {
+  gap: 4px;
+}
+.hhp-compact .hhp-select,
+.hhp-compact .hhp-input {
+  min-height: 30px;
+  border-radius: 5px;
+  padding: 0 6px;
+  font-size: 11px;
+}
+.hhp-compact .hhp-add {
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 5px;
+  font-size: 11px;
+}

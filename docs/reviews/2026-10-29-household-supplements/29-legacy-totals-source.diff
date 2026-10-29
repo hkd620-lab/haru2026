@@ -1,0 +1,413 @@
+diff --git a/frontend/src/app/components/SayuModal.tsx b/frontend/src/app/components/SayuModal.tsx
+index cc006ef9..97b7acd5 100644
+--- a/frontend/src/app/components/SayuModal.tsx
++++ b/frontend/src/app/components/SayuModal.tsx
+@@ -54 +54 @@ import { HOUSEHOLD_SUMMARY_NOTE, summarizeHouseholdEntries } from '../utils/hous
+-import { hasTransactionFields, householdRecordShape } from '../utils/householdRecordShape';
++import { householdRecordShape, householdSayuEntries, type HouseholdSayuEntry } from '../utils/householdRecordShape';
+@@ -64,12 +63,0 @@ type EnvTagType = 'weather' | 'temperature' | 'mood';
+-type HouseholdSayuEntry = {
+-  date: string;
+-  transactionType: string;
+-  category: string;
+-  vendor: string;
+-  amount: string;
+-  paymentMethod: string;
+-  memo: string;
+-  balanceAfter?: string;
+-  subcategory?: string;
+-};
+-
+@@ -80 +68 @@ function parseHouseholdAmount(value: string): number {
+-// 가계부 대시보드·편집과 같은 문서 모양 판정을 쓴다. 배열에 거래가 없으면(없음·'[]') 예전 단건 필드를 최신 거래로 보여 준다.
++// 가계부 대시보드·편집과 같은 문서 모양 판정을 쓴다. SAYU 전체 합계(SayuPage)도 같은 읽기를 쓴다.
+@@ -82 +70 @@ function parseHouseholdAmount(value: string): number {
+-function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdSayuEntry[] {
++function parseHouseholdEntriesForSayu(data?: Record<string, any>): HouseholdSayuEntry[] {
+@@ -84,19 +72,7 @@ function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdS
+-  const shape = householdRecordShape(data);
+-  if (shape.kind === 'corrupt') return [];
+-  const raw: any[] = shape.kind === 'array'
+-    ? shape.raw.filter((entry: any) => entry && typeof entry === 'object' && hasTransactionFields(entry))
+-    : [{
+-      date: data.household_date, transactionType: data.household_type, category: data.household_category, subcategory: data.household_subcategory,
+-      vendor: data.household_vendor, amount: data.household_amount, paymentMethod: data.household_payment, memo: data.household_memo,
+-    }].filter(entry => hasTransactionFields(entry));
+-  return raw.map((entry: any) => ({
+-    date: String(entry.date || ''),
+-    transactionType: String(entry.transactionType || ''),
+-    category: String(entry.category || ''),
+-    vendor: String(entry.vendor || ''),
+-    amount: String(entry.amount || ''),
+-    paymentMethod: String(entry.paymentMethod || ''),
+-    memo: String(entry.memo || ''),
+-    balanceAfter: entry.balanceAfter ? String(entry.balanceAfter) : undefined,
+-    subcategory: entry.subcategory ? String(entry.subcategory) : undefined,
+-  }));
++  return householdSayuEntries(data);
++}
++
++// 원본 칸(originalData)에는 본문(household_sayu)·숫자 금액·기록 날짜가 빠져 있으므로 열린 기록 원본을 바탕에 두고 원본 칸 값을 위에 얹는다.
++// 표시용 복사본만 만들며 원본 기록과 원본 칸은 바꾸지 않는다.
++function householdSayuViewData(record: Record<string, any> | undefined, originalData: Record<string, string>): Record<string, any> {
++  return { ...(record || {}), ...originalData };
+@@ -107 +83 @@ function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdS
+-function householdSayuIsUserText(data?: Record<string, string>) {
++function householdSayuIsUserText(data?: Record<string, any>) {
+@@ -211,0 +188,6 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
++        {userText && fallbackText && (
++          <details style={{ marginTop: 8 }}>
++            <summary style={{ fontSize: 12, color: '#83642d', fontWeight: 700, cursor: 'pointer' }}>작성 당시 본문 보기</summary>
++            <div style={{ marginTop: 8, padding: 12, border: '1px solid #e5e5e5', borderRadius: 8, fontSize: 14, color: '#333', lineHeight: 1.8, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{fallbackText}</div>
++          </details>
++        )}
+@@ -592,0 +575,2 @@ export interface SayuModalProps {
++  // 가계부 상세 표시용 열린 기록 원본(읽기 전용). 원본 칸에서 빠지는 본문·숫자 금액을 상세에서도 같은 기준으로 읽는다.
++  householdRecord?: Record<string, any>;
+@@ -632,0 +617 @@ export function SayuModal({
++  householdRecord,
+@@ -682 +667,4 @@ export function SayuModal({
+-  const householdSayuEntries = isHouseholdSayu ? parseHouseholdEntriesForSayu(editedOriginalData) : [];
++  const householdViewData = householdSayuViewData(householdRecord, editedOriginalData);
++  const householdDetailEntries = isHouseholdSayu ? parseHouseholdEntriesForSayu(householdViewData) : [];
++  const householdUserText = isHouseholdSayu && householdSayuIsUserText(householdViewData);
++  const householdBodyText = (typeof householdViewData.household_sayu === 'string' && householdViewData.household_sayu) || editedContent;
+@@ -2602 +2590 @@ export function SayuModal({
+-                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent, allHouseholdEntries, householdSayuIsUserText(editedOriginalData))
++                renderHouseholdSayuView(householdDetailEntries, householdBodyText, allHouseholdEntries, householdUserText)
+@@ -3201 +3189 @@ export function SayuModal({
+-                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent, allHouseholdEntries, householdSayuIsUserText(editedOriginalData))
++                renderHouseholdSayuView(householdDetailEntries, householdBodyText, allHouseholdEntries, householdUserText)
+diff --git a/frontend/src/app/pages/SayuPage.tsx b/frontend/src/app/pages/SayuPage.tsx
+index e3e6d065..1bd779b6 100644
+--- a/frontend/src/app/pages/SayuPage.tsx
++++ b/frontend/src/app/pages/SayuPage.tsx
+@@ -65,0 +66 @@ import { summarizeHouseholdEntries } from '../utils/householdSummary';
++import { householdSayuEntries, type HouseholdSayuEntry } from '../utils/householdRecordShape';
+@@ -594,0 +596,49 @@ function buildHouseholdSummaryTitle(record: any): string {
++// SAYU 상세의 원본 칸 값. 본문·평점·사진 등 메타와 비문자열 값은 원본 칸에 넣지 않는다.
++function buildSayuOriginalData(record: Record<string, any>, formatKey: string): Record<string, string> {
++  const originalData: Record<string, string> = {};
++  Object.keys(record).forEach((key) => {
++    if (
++      key.startsWith(`${formatKey}_`) &&
++      !key.includes('sayu') &&
++      !key.includes('rating') &&
++      !key.includes('polished') &&
++      !key.includes('images') &&
++      !key.includes('imageMeta') &&
++      typeof record[key] === 'string' // 텃밭 고른 작물 배열(garden_crops) 같은 비문자열 값은 원본 칸에 넣지 않는다
++    ) {
++      originalData[key] = record[key];
++    }
++  });
++  return originalData;
++}
++
++// 가계부 상세의 상단 합계에 쓸 전체 거래. undefined면 SayuModal이 열린 기록 자체 거래로 요약한다.
++// 상세 목록과 같은 읽기(householdSayuEntries)를 써서 예전 단건 기록도 합계에 넣고, 손상된 배열 기록은 제외한다.
++function buildSayuHouseholdTotals(records: readonly Record<string, any>[], currentRecordId: string | undefined, scope: 'month' | 'all'): HouseholdSayuEntry[] | undefined {
++  // 월별 가계부 기록은 전체보기 목록에서 열어도 이 기록의 entries만으로 요약한다.
++  const currentRecord = currentRecordId
++    ? records.find((item) => item.id === currentRecordId)
++    : undefined;
++  const currentStored = currentRecord ? currentRecord.household_entries : undefined;
++  if (typeof currentStored === 'string') {
++    try {
++      const parsed = JSON.parse(currentStored);
++      if (Array.isArray(parsed) && parsed.length > 0) {
++        const months = new Set(
++          parsed
++            .map((entry: any) => String(entry?.date || '').replace(/\./g, '-').slice(0, 7))
++            .filter((month: string) => /^\d{4}-\d{2}$/.test(month)),
++        );
++        if (months.size === 1) return undefined;
++      }
++    } catch { /* fall through to scope fallback */ }
++  }
++  // 월별보기에서는 전체 합계를 넘기지 않는다 — SayuModal이 이 기록(그 달) 자체 entries만으로 요약을 집계하도록.
++  if (scope !== 'all') return undefined;
++  const allEntries: HouseholdSayuEntry[] = [];
++  for (const rec of records) {
++    if (!Object.keys(rec).some((key) => key.startsWith('household_'))) continue;    allEntries.push(...householdSayuEntries(rec));
++  }
++  return allEntries.length > 0 ? allEntries : undefined;
++}
++
+@@ -2397,14 +2447 @@ export function SayuPage() {
+-    const originalData: Record<string, string> = {};
+-    Object.keys(record).forEach((key) => {
+-      if (
+-        key.startsWith(`${formatKey}_`) &&
+-        !key.includes('sayu') &&
+-        !key.includes('rating') &&
+-        !key.includes('polished') &&
+-        !key.includes('images') &&
+-        !key.includes('imageMeta') &&
+-        typeof record[key] === 'string' // 텃밭 고른 작물 배열(garden_crops) 같은 비문자열 값은 원본 칸에 넣지 않는다
+-      ) {
+-        originalData[key] = record[key];
+-      }
+-    });
++    const originalData = buildSayuOriginalData(record, formatKey);
+@@ -5511,43 +5548,7 @@ export function SayuPage() {
+-          // 월별 가계부 기록은 전체보기 목록에서 열어도 이 기록의 entries만으로 요약한다.
+-          const currentRecord = sayuModalState.firestoreId
+-            ? records.find((item) => item.id === sayuModalState.firestoreId)
+-            : undefined;
+-          const currentStored = currentRecord ? (currentRecord as any).household_entries : undefined;
+-          if (typeof currentStored === 'string') {
+-            try {
+-              const parsed = JSON.parse(currentStored);
+-              if (Array.isArray(parsed) && parsed.length > 0) {
+-                const months = new Set(
+-                  parsed
+-                    .map((entry: any) => String(entry?.date || '').replace(/\./g, '-').slice(0, 7))
+-                    .filter((month: string) => /^\d{4}-\d{2}$/.test(month)),
+-                );
+-                if (months.size === 1) return undefined;
+-              }
+-            } catch { /* fall through to scope fallback */ }
+-          }
+-          // 월별보기에서는 전체 합계를 넘기지 않는다 — SayuModal이 이 기록(그 달) 자체 entries만으로 요약을 집계하도록.
+-          if (sayuScope !== 'all') return undefined;
+-          const allEntries: { date: string; transactionType: string; category: string; vendor: string; amount: string; paymentMethod: string; memo: string; balanceAfter?: string }[] = [];
+-          for (const rec of records) {
+-            const stored = (rec as any).household_entries;
+-            if (!stored) continue;
+-            try {
+-              const parsed = JSON.parse(stored);
+-              if (Array.isArray(parsed)) {
+-                for (const e of parsed) {
+-                  allEntries.push({
+-                    date: String(e.date || ''),
+-                    transactionType: String(e.transactionType || ''),
+-                    category: String(e.category || ''),
+-                    vendor: String(e.vendor || ''),
+-                    amount: String(e.amount || ''),
+-                    paymentMethod: String(e.paymentMethod || ''),
+-                    memo: String(e.memo || ''),
+-                    balanceAfter: e.balanceAfter ? String(e.balanceAfter) : undefined,
+-                  });
+-                }
+-              }
+-            } catch { /* skip */ }
+-          }
+-          return allEntries.length > 0 ? allEntries : undefined;
++          return buildSayuHouseholdTotals(records as Record<string, any>[], sayuModalState.firestoreId, sayuScope);
++        })()}
++        householdRecord={(() => {
++          const formatKey = sayuModalState.formatKey || '';
++          const isHousehold = formatKey === 'household' || sayuModalState.format === 'HARU가계부';
++          if (!isHousehold || !sayuModalState.firestoreId) return undefined;
++          return records.find((item) => item.id === sayuModalState.firestoreId) as Record<string, any> | undefined;
+diff --git a/frontend/src/app/utils/householdRecordShape.ts b/frontend/src/app/utils/householdRecordShape.ts
+index c2c36803..9d6faf3a 100644
+--- a/frontend/src/app/utils/householdRecordShape.ts
++++ b/frontend/src/app/utils/householdRecordShape.ts
+@@ -53,0 +54,37 @@ export function householdRecordShape(record: Record<string, any>): HouseholdReco
++export interface HouseholdSayuEntry {
++  date: string;
++  transactionType: string;
++  category: string;
++  vendor: string;
++  amount: string;
++  paymentMethod: string;
++  memo: string;
++  balanceAfter?: string;
++  subcategory?: string;
++}
++
++// SAYU 상세와 전체 합계가 함께 쓰는 읽기 전용 거래 목록. 배열에 거래가 없으면(없음·'[]') 예전 단건 필드를 거래 1건으로 본다.
++// 손상된 배열은 단건 필드로 대신하지 않고 빈 목록을 돌려준다(상세는 본문 보기, 합계는 제외). 원본은 바꾸지 않는다.
++export function householdSayuEntries(record: Record<string, any>): HouseholdSayuEntry[] {
++  const shape = householdRecordShape(record);
++  if (shape.kind === "corrupt") return [];
++  const raw: any[] = shape.kind === "array"
++    ? shape.raw.filter((entry: any) => entry && typeof entry === "object" && hasTransactionFields(entry))
++    : [{
++      date: record.household_date || record.date, transactionType: record.household_type, category: record.household_category,
++      subcategory: record.household_subcategory, vendor: record.household_vendor, amount: record.household_amount,
++      paymentMethod: record.household_payment, memo: record.household_memo,
++    }].filter((entry) => hasTransactionFields(entry));
++  return raw.map((entry: any) => ({
++    date: String(entry.date || ""),
++    transactionType: String(entry.transactionType || ""),
++    category: String(entry.category || ""),
++    vendor: String(entry.vendor || ""),
++    amount: String(entry.amount || ""),
++    paymentMethod: String(entry.paymentMethod || ""),
++    memo: String(entry.memo || ""),
++    balanceAfter: entry.balanceAfter ? String(entry.balanceAfter) : undefined,
++    subcategory: entry.subcategory ? String(entry.subcategory) : undefined,
++  }));
++}
++
+diff --git a/frontend/test/householdSayuView.helper.mjs b/frontend/test/householdSayuView.helper.mjs
+index 7dbcfd88..2d2c5e47 100644
+--- a/frontend/test/householdSayuView.helper.mjs
++++ b/frontend/test/householdSayuView.helper.mjs
+@@ -9 +9 @@ import { HOUSEHOLD_SUMMARY_NOTE, summarizeHouseholdEntries } from "../src/app/ut
+-import { hasTransactionFields, householdRecordShape } from "../src/app/utils/householdRecordShape.ts";
++import { householdRecordShape, householdSayuEntries } from "../src/app/utils/householdRecordShape.ts";
+@@ -13,8 +13,20 @@ const require = createRequire(import.meta.url);
+-const names = ["parseHouseholdEntriesForSayu", "householdSayuIsUserText", "renderHouseholdSayuView", "formatHouseholdDate", "parseHouseholdAmount"];
+-const source = readFileSync(new URL("../src/app/components/SayuModal.tsx", import.meta.url), "utf8");
+-const ast = parse(source, { sourceType: "module", plugins: ["typescript", "jsx"] });
+-const declarations = ast.program.body.filter((node) => node.type === "FunctionDeclaration" && names.includes(node.id.name));
+-assert.equal(declarations.length, names.length, "검증할 실제 SayuModal 함수를 모두 찾는다");
+-const js = transformSync(declarations.map((node) => source.slice(node.start, node.end)).join("\n"), { loader: "tsx", jsx: "automatic", format: "cjs" }).code;
+-const bindings = { parseHouseholdAmountText, summarizeHouseholdEntries, HOUSEHOLD_SUMMARY_NOTE, hasTransactionFields, householdRecordShape, householdSayuText };
+-export const sayu = new Function("require", ...Object.keys(bindings), `${js}\nreturn { ${names.join(", ")} };`)(require, ...Object.values(bindings));
++function loadFunctions(relativePath, names, bindings) {
++  const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
++  const ast = parse(source, { sourceType: "module", plugins: ["typescript", "jsx"] });
++  const declarations = ast.program.body.filter((node) => node.type === "FunctionDeclaration" && names.includes(node.id.name));
++  assert.equal(declarations.length, names.length, `검증할 실제 ${relativePath} 함수를 모두 찾는다`);
++  const js = transformSync(declarations.map((node) => source.slice(node.start, node.end)).join("\n"), { loader: "tsx", jsx: "automatic", format: "cjs" }).code;
++  return new Function("require", ...Object.keys(bindings), `${js}\nreturn { ${names.join(", ")} };`)(require, ...Object.values(bindings));
++}
++
++export const sayu = loadFunctions(
++  "../src/app/components/SayuModal.tsx",
++  ["parseHouseholdEntriesForSayu", "householdSayuViewData", "householdSayuIsUserText", "renderHouseholdSayuView", "formatHouseholdDate", "parseHouseholdAmount"],
++  { parseHouseholdAmountText, summarizeHouseholdEntries, HOUSEHOLD_SUMMARY_NOTE, householdRecordShape, householdSayuEntries, householdSayuText },
++);
++// SayuPage가 SayuModal에 넘기는 원본 칸과 상단 합계를 만드는 실제 함수.
++export const sayuPage = loadFunctions(
++  "../src/app/pages/SayuPage.tsx",
++  ["buildSayuOriginalData", "buildSayuHouseholdTotals"],
++  { householdSayuEntries },
++);
+@@ -24,0 +37,14 @@ export const renderSayuDetail = (data) =>
++
++// SayuPage에서 가계부 기록을 열 때 넘기는 값(원본 칸, 본문, 열린 기록 원본, 상단 합계)으로 SayuModal 상세를 렌더한다.
++// SayuModal 안의 조합(householdViewData → 거래 목록·사용자 본문 판정·본문 문자열)과 같은 순서로 실제 함수를 부른다.
++export function renderSayuPageDetail(records, recordId, scope) {
++  const record = records.find((item) => item.id === recordId);
++  const originalData = sayuPage.buildSayuOriginalData(record, "household");
++  const content = record.household_sayu || record.household_final_sayu || "";
++  const totals = sayuPage.buildSayuHouseholdTotals(records, recordId, scope);
++  const viewData = sayu.householdSayuViewData(record, originalData);
++  const entries = sayu.parseHouseholdEntriesForSayu(viewData);
++  const userText = sayu.householdSayuIsUserText(viewData);
++  const body = (typeof viewData.household_sayu === "string" && viewData.household_sayu) || content;
++  return { originalData, totals, entries, userText, element: sayu.renderHouseholdSayuView(entries, body, totals, userText) };
++}
+diff --git a/frontend/test/householdSummary.test.mjs b/frontend/test/householdSummary.test.mjs
+index d35f4367..9d27af60 100644
+--- a/frontend/test/householdSummary.test.mjs
++++ b/frontend/test/householdSummary.test.mjs
+@@ -337,0 +338,105 @@ test("실제 SAYU 상세: 배열 거래는 자동 본문이면 안내하지 않
++
++// 상단 3개 합계 칸의 실제 표시 값.
++function topSummary(markup) {
++  const read = (label) => new RegExp(`>${label}</div><div[^>]*>([^<]*)</div>`).exec(markup)?.[1];
++  return { income: read("수입"), expense: read("지출"), balance: read("수입−지출") };
++}
++
++// SayuPage가 실제로 들고 있는 기록 모양: 단건 금액은 숫자, 본문은 household_sayu, 다른 형식 기록과 손상 기록이 섞여 있다.
++const legacyBody = "예전 <b>단건</b> 본문\n둘째 줄";
++const sayuRecords = () => [
++  {
++    id: "legacy", date: "2026-02-03", household_type: "지출", household_category: "식비", household_subcategory: "간식",
++    household_vendor: "예전 가게", household_amount: 3000, household_payment: "현금", household_memo: "고친 메모", household_sayu: legacyBody,
++  },
++  { id: "empty", date: "2026-02-04", household_entries: "[]", household_type: "지출", household_vendor: "빈배열 가게", household_amount: "1,500원", household_sayu: "빈배열 본문" },
++  {
++    id: "jan", date: "2026-01-31",
++    household_entries: JSON.stringify([entry({ date: "2026-01-10", amount: 5000, vendor: "배열 가게" })]),
++    household_sayu: "1월 사용자 본문",
++  },
++  {
++    id: "multi", date: "2026-03-31",
++    household_entries: JSON.stringify([
++      entry({ date: "2026-02-10", transactionType: "수입", amount: "10000", vendor: "급여" }),
++      entry({ date: "2026-03-01", transactionType: "이체", amount: "2000", memo: "내 계좌" }),
++      entry({ date: "2026-03-02", amount: "-1000", vendor: "환불" }),
++      entry({ date: "2026-03-05", amount: "700", vendor: "같은 가게" }),
++      entry({ date: "2026-03-05", amount: "700", vendor: "같은 가게" }),
++    ]),
++  },
++  { id: "broken", date: "2026-02-05", household_entries: "{broken", household_type: "지출", household_amount: "9999", household_sayu: "손상 본문" },
++  { id: "diary", date: "2026-02-03", diary_content: "가계부 아님", amount: 123456 },
++];
++
++test("실제 SAYU 전체보기 합계: SayuPage가 넘기는 합계에 예전 단건(배열 없음·'[]')을 같은 읽기로 포함하고 손상·다른 형식 기록은 제외한다", async () => {
++  const { renderSayuPageDetail } = await import("./householdSayuView.helper.mjs");
++  const records = sayuRecords();
++  // 레거시 3,000 + 빈 배열 단건 1,500 + 배열 5,000 + 여러 달 묶음(지출 -1,000·700·700, 수입 10,000, 이체 제외) = 지출 9,900. 손상 9,999는 제외.
++  const opened = renderSayuPageDetail(records, "legacy", "all");
++  assert.equal(opened.totals.length, 8);
++  const markup = renderToStaticMarkup(opened.element);
++  assert.deepEqual(topSummary(markup), { income: "10,000원", expense: "9,900원", balance: "100원" });
++  // 열린 레거시 기록은 숫자 금액이 원본 칸에서 빠져도 같은 읽기로 3,000원 거래 1건을 보여 준다.
++  assert.equal(opened.originalData.household_amount, undefined);
++  assert.equal(opened.entries.length, 1);
++  assert.match(markup, /-3,000원/);
++  assert.match(markup, /식비 · 간식 · 현금/);
++  assert.match(markup, /메모: 고친 메모/);
++  assert.doesNotMatch(markup, /9,999|123,456/);
++
++  // 이체 제외·음수 원부호·같은 내용 거래 2건 보존을 합계 거래에서 직접 확인한다.
++  const types = opened.totals.map((item) => `${item.transactionType}:${item.amount}`);
++  assert.deepEqual(types.filter((item) => item === "지출:700"), ["지출:700", "지출:700"]);
++  assert.ok(types.includes("이체:2000") && types.includes("지출:-1000"));
++
++  // 코덱스 지적 재현: 레거시 3,000 + 배열 5,000이면 상단 지출은 8,000원.
++  const pair = [records[0], records[2]];
++  assert.deepEqual(topSummary(renderToStaticMarkup(renderSayuPageDetail(pair, "legacy", "all").element)).expense, "8,000원");
++  // '[]' 단건도 같은 기준이다: 1,500 + 5,000.
++  const empty = renderSayuPageDetail([records[1], records[2]], "empty", "all");
++  assert.equal(empty.entries[0].amount, "1,500원");
++  assert.equal(topSummary(renderToStaticMarkup(empty.element)).expense, "6,500원");
++});
++
++test("실제 SAYU 합계 범위: 월별보기와 한 달짜리 묶음 기록은 기존처럼 자체 합계, 여러 달 묶음은 전체보기에서 전체 합계를 쓴다", async () => {
++  const { renderSayuPageDetail } = await import("./householdSayuView.helper.mjs");
++  const records = sayuRecords();
++  const monthLegacy = renderSayuPageDetail(records, "legacy", "month");
++  assert.equal(monthLegacy.totals, undefined);
++  assert.deepEqual(topSummary(renderToStaticMarkup(monthLegacy.element)), { income: "0원", expense: "3,000원", balance: "-3,000원" });
++  // 한 달짜리 배열 기록은 전체보기에서 열어도 자기 거래만 요약한다.
++  const jan = renderSayuPageDetail(records, "jan", "all");
++  assert.equal(jan.totals, undefined);
++  assert.equal(topSummary(renderToStaticMarkup(jan.element)).expense, "5,000원");
++  // 여러 달 묶음 기록: 월별보기면 자체 합계(이체 제외, -1,000 원부호), 전체보기면 레거시 포함 전체 합계.
++  assert.deepEqual(topSummary(renderToStaticMarkup(renderSayuPageDetail(records, "multi", "month").element)), { income: "10,000원", expense: "400원", balance: "9,600원" });
++  assert.deepEqual(topSummary(renderToStaticMarkup(renderSayuPageDetail(records, "multi", "all").element)), { income: "10,000원", expense: "9,900원", balance: "100원" });
++  // 손상 기록을 열면 기존 본문 보기를 유지한다.
++  const broken = renderToStaticMarkup(renderSayuPageDetail(records, "broken", "month").element);
++  assert.match(broken, /<textarea[^>]*readonly=""[^>]*>손상 본문<\/textarea>/);
++});
++
++test("실제 SAYU 상세: 사용자 본문은 기본 닫힌 '작성 당시 본문 보기'로 그대로 읽고, 원본 기록은 바뀌지 않는다", async () => {
++  const { renderSayuPageDetail } = await import("./householdSayuView.helper.mjs");
++  const records = sayuRecords();
++  const before = structuredClone(records);
++  const keys = records.map((record) => Object.keys(record));
++  const legacy = renderSayuPageDetail(records, "legacy", "all");
++  assert.equal(legacy.userText, true);
++  const markup = renderToStaticMarkup(legacy.element);
++  assert.match(markup, /자동으로 고치지 않습니다/);
++  // details에 open 속성이 없다(기본 닫힘). 본문은 문자열 그대로(HTML로 해석하지 않고) 표시한다.
++  assert.match(markup, /<details[^>]*><summary[^>]*>작성 당시 본문 보기<\/summary><div[^>]*>예전 &lt;b&gt;단건&lt;\/b&gt; 본문\n둘째 줄<\/div><\/details>/);
++  assert.doesNotMatch(markup, /<details[^>]*open/);
++  // 배열 기록의 사용자 본문도 같은 안내 범위에서 보여 준다.
++  const jan = renderToStaticMarkup(renderSayuPageDetail(records, "jan", "all").element);
++  assert.match(jan, /<summary[^>]*>작성 당시 본문 보기<\/summary><div[^>]*>1월 사용자 본문<\/div>/);
++  // 본문이 없는 배열 기록은 안내·본문 보기를 만들지 않는다.
++  const multi = renderToStaticMarkup(renderSayuPageDetail(records, "multi", "all").element);
++  assert.doesNotMatch(multi, /작성 당시 본문 보기|자동으로 고치지 않습니다/);
++  // 손상 기록은 사용자 본문 안내 대상이 아니다.
++  assert.doesNotMatch(renderToStaticMarkup(renderSayuPageDetail(records, "broken", "all").element), /작성 당시 본문 보기/);
++  assert.deepEqual(records, before);
++  assert.deepEqual(records.map((record) => Object.keys(record)), keys);
++});
+diff --git a/frontend/test/sayuGrowthTimeline.harness.mjs b/frontend/test/sayuGrowthTimeline.harness.mjs
+index e3440177..4bd43335 100644
+--- a/frontend/test/sayuGrowthTimeline.harness.mjs
++++ b/frontend/test/sayuGrowthTimeline.harness.mjs
+@@ -15,0 +16,2 @@ const TOP_LEVEL = [
++  // openFormatSayu가 원본 칸을 이 최상위 함수로 만든다.
++  'buildSayuOriginalData',

@@ -1,0 +1,1030 @@
+TAP version 13
+# Subtest: 등록부: 역할별 값이 소비처의 기존 값과 같다(육아일기 child/parenting)
+ok 1 - 등록부: 역할별 값이 소비처의 기존 값과 같다(육아일기 child/parenting)
+  ---
+  duration_ms: 2.398917
+  type: 'test'
+  ...
+# Subtest: haruTypes: FORMAT_PREFIX·PREFIX_TO_FORMAT 이 기존과 같다(순서 포함)
+ok 2 - haruTypes: FORMAT_PREFIX·PREFIX_TO_FORMAT 이 기존과 같다(순서 포함)
+  ---
+  duration_ms: 0.34725
+  type: 'test'
+  ...
+# Subtest: firestoreService: 공개·형식 통계·전체 통계·내보내기 정의가 기존과 같다(순서 포함)
+ok 3 - firestoreService: 공개·형식 통계·전체 통계·내보내기 정의가 기존과 같다(순서 포함)
+  ---
+  duration_ms: 1.232709
+  type: 'test'
+  ...
+# Subtest: SAYU 계열(P3.5b): 공개 허용 키·SAYU 형식 키·삭제 라벨·콜라주 접두어가 기존과 같다(순서 포함)
+ok 4 - SAYU 계열(P3.5b): 공개 허용 키·SAYU 형식 키·삭제 라벨·콜라주 접두어가 기존과 같다(순서 포함)
+  ---
+  duration_ms: 6.525583
+  type: 'test'
+  ...
+# Subtest: 기록 입력(P3.5c1): FormatModal 의 FORMAT_PREFIX 가 기존과 같다(순서 포함)
+ok 5 - 기록 입력(P3.5c1): FormatModal 의 FORMAT_PREFIX 가 기존과 같다(순서 포함)
+  ---
+  duration_ms: 2.573459
+  type: 'test'
+  ...
+# Subtest: 합본·미래전망·추천(P3.5c3·c4·c5): 기존 값과 같다
+ok 6 - 합본·미래전망·추천(P3.5c3·c4·c5): 기존 값과 같다
+  ---
+  duration_ms: 73.0445
+  type: 'test'
+  ...
+# Subtest: 바꾼 곳에 형식·접두어 표가 다시 생기지 않는다
+ok 7 - 바꾼 곳에 형식·접두어 표가 다시 생기지 않는다
+  ---
+  duration_ms: 28.564584
+  type: 'test'
+  ...
+# Subtest: A단계 조사에서 확인한 입력 7개
+ok 8 - A단계 조사에서 확인한 입력 7개
+  ---
+  duration_ms: 10.1955
+  type: 'test'
+  ...
+# Subtest: 한글 단위가 숫자와 함께 쓰인 금액을 계산한다
+ok 9 - 한글 단위가 숫자와 함께 쓰인 금액을 계산한다
+  ---
+  duration_ms: 3.912583
+  type: 'test'
+  ...
+# Subtest: 단위가 없는 입력은 예전 해석과 결과가 같다(못 읽으면 null ↔ 예전의 0)
+ok 10 - 단위가 없는 입력은 예전 해석과 결과가 같다(못 읽으면 null ↔ 예전의 0)
+  ---
+  duration_ms: 1.647958
+  type: 'test'
+  ...
+# Subtest: 숫자를 읽을 수 없으면 null
+ok 11 - 숫자를 읽을 수 없으면 null
+  ---
+  duration_ms: 0.623083
+  type: 'test'
+  ...
+# Subtest: 숫자 타입 입력과 0은 그대로 읽는다
+ok 12 - 숫자 타입 입력과 0은 그대로 읽는다
+  ---
+  duration_ms: 9.214375
+  type: 'test'
+  ...
+# Subtest: parseKoreanUnitAmount — 한글 단위 금액만 계산하고 나머지는 null
+ok 13 - parseKoreanUnitAmount — 한글 단위 금액만 계산하고 나머지는 null
+  ---
+  duration_ms: 1.312166
+  type: 'test'
+  ...
+# Subtest: parseKoreanUnitAmount 와 parseHouseholdAmountText 는 단위 금액에서 같은 값을 낸다
+ok 14 - parseKoreanUnitAmount 와 parseHouseholdAmountText 는 단위 금액에서 같은 값을 낸다
+  ---
+  duration_ms: 0.201625
+  type: 'test'
+  ...
+# Subtest: 기본 날짜는 기기 시간대와 무관한 한국 날짜다
+ok 15 - 기본 날짜는 기기 시간대와 무관한 한국 날짜다
+  ---
+  duration_ms: 87.647209
+  type: 'test'
+  ...
+# Subtest: 현금 거래는 결제수단을 현금으로 고정하고 금액은 양수만, 시트를 연 동안 같은 id를 쓴다
+ok 16 - 현금 거래는 결제수단을 현금으로 고정하고 금액은 양수만, 시트를 연 동안 같은 id를 쓴다
+  ---
+  duration_ms: 3.169959
+  type: 'test'
+  ...
+# Subtest: 현금 입력 화면에는 사진·파일·이체·결제수단·테스트 버튼과 입력 전 거래 건수가 없다
+ok 17 - 현금 입력 화면에는 사진·파일·이체·결제수단·테스트 버튼과 입력 전 거래 건수가 없다
+  ---
+  duration_ms: 21.907333
+  type: 'test'
+  ...
+# Subtest: 저장된 거래 수정 화면은 날짜·금액·거래처를 표시만 하고 분류 확정·기억(기본 꺼짐)을 제공한다
+ok 18 - 저장된 거래 수정 화면은 날짜·금액·거래처를 표시만 하고 분류 확정·기억(기본 꺼짐)을 제공한다
+  ---
+  duration_ms: 13.504
+  type: 'test'
+  ...
+# Subtest: 여러 거래 분류 화면은 메모를 바꾸지 않는다고 알리고 현재 분류 건수를 보여 준다
+ok 19 - 여러 거래 분류 화면은 메모를 바꾸지 않는다고 알리고 현재 분류 건수를 보여 준다
+  ---
+  duration_ms: 1.996625
+  type: 'test'
+  ...
+# Subtest: 분류 관리는 구분별 추가·세부분류·보관 해제와 거래처 기억 탭을 제공한다
+ok 20 - 분류 관리는 구분별 추가·세부분류·보관 해제와 거래처 기억 탭을 제공한다
+  ---
+  duration_ms: 5.266833
+  type: 'test'
+  ...
+# Subtest: 분류 선택은 직접 입력 선택지를 제공하고 표에서도 같은 컴포넌트를 쓴다
+ok 21 - 분류 선택은 직접 입력 선택지를 제공하고 표에서도 같은 컴포넌트를 쓴다
+  ---
+  duration_ms: 3.779417
+  type: 'test'
+  ...
+# Subtest: 은행 버튼은 파일 가져오기 진입 표시를 넘기고 현금 버튼은 같은 화면의 간편 입력을 연다
+ok 22 - 은행 버튼은 파일 가져오기 진입 표시를 넘기고 현금 버튼은 같은 화면의 간편 입력을 연다
+  ---
+  duration_ms: 0.971209
+  type: 'test'
+  ...
+# Subtest: 저장 중 상태 확인용 mounted 값은 effect setup에서 다시 true가 되어 StrictMode 재실행 뒤에도 저장 결과를 받는다
+ok 23 - 저장 중 상태 확인용 mounted 값은 effect setup에서 다시 true가 되어 StrictMode 재실행 뒤에도 저장 결과를 받는다
+  ---
+  duration_ms: 1.743083
+  type: 'test'
+  ...
+# Subtest: 분류 관리는 연 계정에만 그리고 계정별 key로 내부 입력을 나누며, 늦은 설정 조회는 최신 변경을 덮지 않는다
+ok 24 - 분류 관리는 연 계정에만 그리고 계정별 key로 내부 입력을 나누며, 늦은 설정 조회는 최신 변경을 덮지 않는다
+  ---
+  duration_ms: 8.783333
+  type: 'test'
+  ...
+# Subtest: 수입·지출·이체마다 기본 분류가 있고 이체에도 선택지가 여러 개다
+ok 25 - 수입·지출·이체마다 기본 분류가 있고 이체에도 선택지가 여러 개다
+  ---
+  duration_ms: 7.550209
+  type: 'test'
+  ...
+# Subtest: 직접 만든 분류·세부분류는 그 구분 안에서만 재사용되고 같은 이름은 정규화 후 막는다
+ok 26 - 직접 만든 분류·세부분류는 그 구분 안에서만 재사용되고 같은 이름은 정규화 후 막는다
+  ---
+  duration_ms: 5.132333
+  type: 'test'
+  ...
+# Subtest: 보관은 새 선택지에서만 빼고, 기존 거래에 쓰인 분류와 현재 값은 계속 보인다
+ok 27 - 보관은 새 선택지에서만 빼고, 기존 거래에 쓰인 분류와 현재 값은 계속 보인다
+  ---
+  duration_ms: 1.407833
+  type: 'test'
+  ...
+# Subtest: 이름 바꾸기는 새 분류 추가 + 기존 분류 보관이며 세부분류를 옮기고 거래는 건드리지 않는다
+ok 28 - 이름 바꾸기는 새 분류 추가 + 기존 분류 보관이며 세부분류를 옮기고 거래는 건드리지 않는다
+  ---
+  duration_ms: 1.338584
+  type: 'test'
+  ...
+# Subtest: 분류 개수 상한과 손상된 설정 문서를 빈 설정으로 덮어쓰지 않는 규칙
+ok 29 - 분류 개수 상한과 손상된 설정 문서를 빈 설정으로 덮어쓰지 않는 규칙
+  ---
+  duration_ms: 170.981292
+  type: 'test'
+  ...
+# Subtest: 거래처 기억은 정규화 후 정확히 같은 거래처·구분일 때만 찾는다
+ok 30 - 거래처 기억은 정규화 후 정확히 같은 거래처·구분일 때만 찾는다
+  ---
+  duration_ms: 96.839209
+  type: 'test'
+  ...
+# Subtest: 제안은 비어 있거나 자동 기본값인 새 거래에만 채우고 사용자가 고른 분류는 덮지 않는다
+ok 31 - 제안은 비어 있거나 자동 기본값인 새 거래에만 채우고 사용자가 고른 분류는 덮지 않는다
+  ---
+  duration_ms: 0.529083
+  type: 'test'
+  ...
+# Subtest: 은행 파일의 분류는 자동 기본값으로 표시되어 거래처 기억이 그 위에만 적용된다
+ok 32 - 은행 파일의 분류는 자동 기본값으로 표시되어 거래처 기억이 그 위에만 적용된다
+  ---
+  duration_ms: 205.859625
+  type: 'test'
+  ...
+# Subtest: 은행 파일 제안 기준은 최신 분류 설정과 규칙을 함께 읽고, 설정을 못 읽으면 규칙을 적용하지 않는다
+ok 33 - 은행 파일 제안 기준은 최신 분류 설정과 규칙을 함께 읽고, 설정을 못 읽으면 규칙을 적용하지 않는다
+  ---
+  duration_ms: 1.126166
+  type: 'test'
+  ...
+# Subtest: 은행 화면의 분류 설정은 계정·편집 세션·수정 번호 경계 안에서만 반영한다
+ok 34 - 은행 화면의 분류 설정은 계정·편집 세션·수정 번호 경계 안에서만 반영한다
+  ---
+  duration_ms: 1.755833
+  type: 'test'
+  ...
+# Subtest: 529건 월별 문서를 펼쳐도 상위 복제 필드로 중복이 늘지 않으며 금액·메모·원본이 보존된다
+ok 35 - 529건 월별 문서를 펼쳐도 상위 복제 필드로 중복이 늘지 않으며 금액·메모·원본이 보존된다
+  ---
+  duration_ms: 94.897417
+  type: 'test'
+  ...
+# Subtest: 점·대시·슬래시·한자리·월만·윤년 날짜를 정규화하고 잘못된 날은 거부한다
+ok 36 - 점·대시·슬래시·한자리·월만·윤년 날짜를 정규화하고 잘못된 날은 거부한다
+  ---
+  duration_ms: 0.337166
+  type: 'test'
+  ...
+# Subtest: 월말 31일·윤년·연말의 월 경계를 정확하게 만든다
+ok 37 - 월말 31일·윤년·연말의 월 경계를 정확하게 만든다
+  ---
+  duration_ms: 0.896833
+  type: 'test'
+  ...
+# Subtest: 단건 레거시와 날짜 대체 표시, 메타데이터 전용 문서·잘못된 빈 항목을 구분한다
+ok 38 - 단건 레거시와 날짜 대체 표시, 메타데이터 전용 문서·잘못된 빈 항목을 구분한다
+  ---
+  duration_ms: 2.188833
+  type: 'test'
+  ...
+# Subtest: 월·연도·전체 선택과 양끝 포함 기간, 역전·빈 날짜 범위
+ok 39 - 월·연도·전체 선택과 양끝 포함 기간, 역전·빈 날짜 범위
+  ---
+  duration_ms: 24.487
+  type: 'test'
+  ...
+# Subtest: 거래처·메모·카테고리·숫자·여러 단어 검색과 유형 필터 조합, 미분류 조회
+ok 40 - 거래처·메모·카테고리·숫자·여러 단어 검색과 유형 필터 조합, 미분류 조회
+  ---
+  duration_ms: 16.593083
+  type: 'test'
+  ...
+# Subtest: 기간과 검색을 바꿔도 메모 및 원본 객체를 쓰거나 소실하지 않는다
+ok 41 - 기간과 검색을 바꿔도 메모 및 원본 객체를 쓰거나 소실하지 않는다
+  ---
+  duration_ms: 119.445667
+  type: 'test'
+  ...
+# Subtest: 음수 환불·이체·단위금액의 월 합계가 원래 합계와 일치한다
+ok 42 - 음수 환불·이체·단위금액의 월 합계가 원래 합계와 일치한다
+  ---
+  duration_ms: 1.22525
+  type: 'test'
+  ...
+# Subtest: 직전 달은 전월 전체, 연도는 전년 전체, 직접 기간은 직전 같은 일수
+ok 43 - 직전 달은 전월 전체, 연도는 전년 전체, 직접 기간은 직전 같은 일수
+  ---
+  duration_ms: 1.062917
+  type: 'test'
+  ...
+# Subtest: 전년 동기의 윤일은 2월 28일로 보정, 빈/범위 밖 날짜는 안전하게 처리
+ok 44 - 전년 동기의 윤일은 2월 28일로 보정, 빈/범위 밖 날짜는 안전하게 처리
+  ---
+  duration_ms: 0.841709
+  type: 'test'
+  ...
+# Subtest: 0원 및 음수 기준에서는 오해되는 증감률을 표시하지 않는다
+ok 45 - 0원 및 음수 기준에서는 오해되는 증감률을 표시하지 않는다
+  ---
+  duration_ms: 0.658042
+  type: 'test'
+  ...
+# Subtest: 이전 운영 펼침 규칙과 529건의 날짜·금액·메모·유형이 동등하다
+ok 46 - 이전 운영 펼침 규칙과 529건의 날짜·금액·메모·유형이 동등하다
+  ---
+  duration_ms: 48.925625
+  type: 'test'
+  ...
+# Subtest: 숫자 금액 검색은 쉼표·원 단위·한글 단위 저장 형식과 무관하다
+ok 47 - 숫자 금액 검색은 쉼표·원 단위·한글 단위 저장 형식과 무관하다
+  ---
+  duration_ms: 1.984583
+  type: 'test'
+  ...
+# Subtest: 같은 파일의 이름을 바꿔도 출처 키가 같고 원본 시각을 보존한다
+ok 48 - 같은 파일의 이름을 바꿔도 출처 키가 같고 원본 시각을 보존한다
+  ---
+  duration_ms: 12.6505
+  type: 'test'
+  ...
+# Subtest: 파일 안의 완전히 같은 반복 결제 행도 각각 보존한다
+ok 49 - 파일 안의 완전히 같은 반복 결제 행도 각각 보존한다
+  ---
+  duration_ms: 10.122542
+  type: 'test'
+  ...
+# Subtest: 기간이 겹치는 다른 파일은 확정 중복이 아닌 의심으로 비교한다
+ok 50 - 기간이 겹치는 다른 파일은 확정 중복이 아닌 의심으로 비교한다
+  ---
+  duration_ms: 6.33625
+  type: 'test'
+  ...
+# Subtest: 수동 입력과 은행 거래는 사용처·유형이 달라도 같은 날 금액이 같으면 확인한다
+ok 51 - 수동 입력과 은행 거래는 사용처·유형이 달라도 같은 날 금액이 같으면 확인한다
+  ---
+  duration_ms: 20.92975
+  type: 'test'
+  ...
+# Subtest: 금액 표기는 정규화하고 기존 필드가 바뀌면 확인 토큰을 갱신한다
+ok 52 - 금액 표기는 정규화하고 기존 필드가 바뀌면 확인 토큰을 갱신한다
+  ---
+  duration_ms: 13.295625
+  type: 'test'
+  ...
+# Subtest: 잘못된 날짜와 손상된 기존 내역은 조용히 저장하지 않는다
+ok 53 - 잘못된 날짜와 손상된 기존 내역은 조용히 저장하지 않는다
+  ---
+  duration_ms: 4.290708
+  type: 'test'
+  ...
+# Subtest: 비교 후보가 없어진 거래에서는 기존 거래 사용을 선택할 수 없다
+ok 54 - 비교 후보가 없어진 거래에서는 기존 거래 사용을 선택할 수 없다
+  ---
+  duration_ms: 1.726041
+  type: 'test'
+  ...
+# Subtest: 빈 행을 걸러낸 뒤의 표시 위치가 아니라 저장 배열의 실제 위치를 편집 위치로 쓴다
+ok 55 - 빈 행을 걸러낸 뒤의 표시 위치가 아니라 저장 배열의 실제 위치를 편집 위치로 쓴다
+  ---
+  duration_ms: 5.948042
+  type: 'test'
+  ...
+# Subtest: id 없는 거래·중복 id·문서 사이 중복 출처키도 기록 위치와 원본 지문으로 각각 편집 위치를 갖는다(M1)
+ok 56 - id 없는 거래·중복 id·문서 사이 중복 출처키도 기록 위치와 원본 지문으로 각각 편집 위치를 갖는다(M1)
+  ---
+  duration_ms: 1.00725
+  type: 'test'
+  ...
+# Subtest: []와 예전 단건 필드가 함께 있는 문서는 저장 시 단건 거래를 함께 읽고, 실제 빈 문서·손상 배열은 구분한다
+ok 57 - []와 예전 단건 필드가 함께 있는 문서는 저장 시 단건 거래를 함께 읽고, 실제 빈 문서·손상 배열은 구분한다
+  ---
+  duration_ms: 0.950375
+  type: 'test'
+  ...
+# Subtest: 보관한 분류는 거래처 기억이 새 거래에 제안하지 않고, 보관한 세부분류만이면 분류만 제안한다
+ok 58 - 보관한 분류는 거래처 기억이 새 거래에 제안하지 않고, 보관한 세부분류만이면 분류만 제안한다
+  ---
+  duration_ms: 1.968375
+  type: 'test'
+  ...
+# Subtest: 현금 재시도가 이미 저장됨이면 실패한 첫 시도와 다른 분류는 기억하지 않는다
+ok 59 - 현금 재시도가 이미 저장됨이면 실패한 첫 시도와 다른 분류는 기억하지 않는다
+  ---
+  duration_ms: 0.350333
+  type: 'test'
+  ...
+# Subtest: 내용이 완전히 같은 두 거래도 id가 다르면 각자의 위치·지문으로 따로 편집한다
+ok 60 - 내용이 완전히 같은 두 거래도 id가 다르면 각자의 위치·지문으로 따로 편집한다
+  ---
+  duration_ms: 0.346
+  type: 'test'
+  ...
+# Subtest: 문서 모양으로 배열·단건을 판정하고 손상된 배열은 편집하지 않는다
+ok 61 - 문서 모양으로 배열·단건을 판정하고 손상된 배열은 편집하지 않는다
+  ---
+  duration_ms: 0.639625
+  type: 'test'
+  ...
+# Subtest: 분류 확인 필요는 원본 분류로 판정하고, 사용자가 확정하면 빠진다
+ok 62 - 분류 확인 필요는 원본 분류로 판정하고, 사용자가 확정하면 빠진다
+  ---
+  duration_ms: 75.465958
+  type: 'test'
+  ...
+# Subtest: 편집은 분류·세부분류·메모만 바꾸고 날짜·금액·거래처·원본 키·잔액은 그대로 둔다
+ok 63 - 편집은 분류·세부분류·메모만 바꾸고 날짜·금액·거래처·원본 키·잔액은 그대로 둔다
+  ---
+  duration_ms: 5.611667
+  type: 'test'
+  ...
+# Subtest: 편집 입력은 길이·제어문자·빈 분류를 막고 이름을 정규화한다
+ok 64 - 편집 입력은 길이·제어문자·빈 분류를 막고 이름을 정규화한다
+  ---
+  duration_ms: 5.579833
+  type: 'test'
+  ...
+# Subtest: 입력하지 않은 기본 행은 거래 1건·중복 확인 필요 1건으로 세지 않는다
+ok 65 - 입력하지 않은 기본 행은 거래 1건·중복 확인 필요 1건으로 세지 않는다
+  ---
+  duration_ms: 2.293958
+  type: 'test'
+  ...
+# Subtest: 자동 생성 본문 규칙은 저장 서비스와 같고 사용자 본문과 구분된다
+ok 66 - 자동 생성 본문 규칙은 저장 서비스와 같고 사용자 본문과 구분된다
+  ---
+  duration_ms: 0.740458
+  type: 'test'
+  ...
+# Subtest: 이체는 분류별 수입·지출 집계에서 제외한다
+ok 67 - 이체는 분류별 수입·지출 집계에서 제외한다
+  ---
+  duration_ms: 4.499208
+  type: 'test'
+  ...
+# Subtest: 합계 행: 이체를 제외한 수입−지출이며 공통 화면 계산과 일치한다
+ok 68 - 합계 행: 이체를 제외한 수입−지출이며 공통 화면 계산과 일치한다
+  ---
+  duration_ms: 1.197333
+  type: 'test'
+  ...
+# Subtest: 거래상세내역은 그대로다 (이체 거래도 유형 "이체"로 한 줄씩 나온다)
+ok 69 - 거래상세내역은 그대로다 (이체 거래도 유형 "이체"로 한 줄씩 나온다)
+  ---
+  duration_ms: 0.623334
+  type: 'test'
+  ...
+# Subtest: 수입·지출만 있는 가계부의 집계는 달라지지 않는다
+ok 70 - 수입·지출만 있는 가계부의 집계는 달라지지 않는다
+  ---
+  duration_ms: 0.660291
+  type: 'test'
+  ...
+# Subtest: 카테고리가 비어 있는 이체도 기타 수입에 섞이지 않는다
+ok 71 - 카테고리가 비어 있는 이체도 기타 수입에 섞이지 않는다
+  ---
+  duration_ms: 0.768125
+  type: 'test'
+  ...
+# Subtest: 이체만 있으면 상세에 남고 집계는 모두 0원이다
+ok 72 - 이체만 있으면 상세에 남고 집계는 모두 0원이다
+  ---
+  duration_ms: 0.436542
+  type: 'test'
+  ...
+# Subtest: 음수 정정 금액과 미지정 유형도 공통 계산 기준을 따른다
+ok 73 - 음수 정정 금액과 미지정 유형도 공통 계산 기준을 따른다
+  ---
+  duration_ms: 25.26575
+  type: 'test'
+  ...
+# Subtest: 빈 기록은 0원 합계와 집계 범위 안내로 내보낸다
+ok 74 - 빈 기록은 0원 합계와 집계 범위 안내로 내보낸다
+  ---
+  duration_ms: 4.182958
+  type: 'test'
+  ...
+# Subtest: 실제 PDF.js로 합성 PDF 두 쪽을 읽고 월·수입/지출·본인이체를 매핑한다
+ok 75 - 실제 PDF.js로 합성 PDF 두 쪽을 읽고 월·수입/지출·본인이체를 매핑한다
+  ---
+  duration_ms: 975.929791
+  type: 'test'
+  ...
+# Subtest: 텍스트 내부 순서가 뒤섞여도 표 위치로 반복 거래를 각각 보존한다
+ok 76 - 텍스트 내부 순서가 뒤섞여도 표 위치로 반복 거래를 각각 보존한다
+  ---
+  duration_ms: 2.245917
+  type: 'test'
+  ...
+# Subtest: 금액·날짜·구분 열 누락은 앞쪽 정상 거래까지 부분 가져오지 않는다
+ok 77 - 금액·날짜·구분 열 누락은 앞쪽 정상 거래까지 부분 가져오지 않는다
+  ---
+  duration_ms: 2.757041
+  type: 'test'
+  ...
+# Subtest: 스캔 PDF·타 은행·알 수 없는 표와 지나치게 긴 자료는 저장 전 거부한다
+ok 78 - 스캔 PDF·타 은행·알 수 없는 표와 지나치게 긴 자료는 저장 전 거부한다
+  ---
+  duration_ms: 4.616625
+  type: 'test'
+  ...
+# Subtest: 줄바꿈된 거래처를 다음 거래와 섞지 않고 읽는다
+ok 79 - 줄바꿈된 거래처를 다음 거래와 섞지 않고 읽는다
+  ---
+  duration_ms: 2.824292
+  type: 'test'
+  ...
+# Subtest: 예금주와 같은 줄에 다른 정보가 있어도 이름에 계좌번호를 합치지 않는다
+ok 80 - 예금주와 같은 줄에 다른 정보가 있어도 이름에 계좌번호를 합치지 않는다
+  ---
+  duration_ms: 1.643625
+  type: 'test'
+  ...
+# Subtest: PDF 예금주 이름이 여러 조각이어도 다음 라벨 앞까지만 이어서 본인 이체를 판별한다
+ok 81 - PDF 예금주 이름이 여러 조각이어도 다음 라벨 앞까지만 이어서 본인 이체를 판별한다
+  ---
+  duration_ms: 3.11625
+  type: 'test'
+  ...
+# Subtest: 명의·거래가 같아도 서로 다른 계좌의 PDF는 확정 중복으로 합치지 않는다
+ok 82 - 명의·거래가 같아도 서로 다른 계좌의 PDF는 확정 중복으로 합치지 않는다
+  ---
+  duration_ms: 3.27325
+  type: 'test'
+  ...
+# Subtest: 529건 중 142건 겹침: 선택 전·모두 제외·별개 추가 결과가 각각 합산된다
+ok 83 - 529건 중 142건 겹침: 선택 전·모두 제외·별개 추가 결과가 각각 합산된다
+  ---
+  duration_ms: 96.075917
+  type: 'test'
+  ...
+# Subtest: 자동 제외와 미선택을 구분하고 파일 내 정상 반복 결제를 추가 건수로 유지한다
+ok 84 - 자동 제외와 미선택을 구분하고 파일 내 정상 반복 결제를 추가 건수로 유지한다
+  ---
+  duration_ms: 201.309
+  type: 'test'
+  ...
+# Subtest: 사용자가 모두 제외로 선택했지만 아직 저장 전이면 저장 불필요라고 안내하지 않는다
+ok 85 - 사용자가 모두 제외로 선택했지만 아직 저장 전이면 저장 불필요라고 안내하지 않는다
+  ---
+  duration_ms: 10.244917
+  type: 'test'
+  ...
+# Subtest: 최신 내역 확인 중이거나 확인 실패 시 이전 추가 예정 건수를 확정 표시하지 않는다
+ok 86 - 최신 내역 확인 중이거나 확인 실패 시 이전 추가 예정 건수를 확정 표시하지 않는다
+  ---
+  duration_ms: 30.049833
+  type: 'test'
+  ...
+# Subtest: 입력 내용·비교 토큰 변경과 비교 후보 소멸은 예전 제외 선택을 확정 건수로 쓰지 않는다
+ok 87 - 입력 내용·비교 토큰 변경과 비교 후보 소멸은 예전 제외 선택을 확정 건수로 쓰지 않는다
+  ---
+  duration_ms: 50.034208
+  type: 'test'
+  ...
+# Subtest: 일부 선택 행만 재확인돼도 자동 중복 제외와 미선택 건수를 보존한다
+ok 88 - 일부 선택 행만 재확인돼도 자동 중복 제외와 미선택 건수를 보존한다
+  ---
+  duration_ms: 122.12075
+  type: 'test'
+  ...
+# Subtest: 실제 저장 래퍼의 JSON 왕복으로 undefined 필드가 사라져도 비교 결과가 유효하다
+ok 89 - 실제 저장 래퍼의 JSON 왕복으로 undefined 필드가 사라져도 비교 결과가 유효하다
+  ---
+  duration_ms: 4.301917
+  type: 'test'
+  ...
+# Subtest: 본인 이체 양쪽을 제외하고 계좌이체로 지급한 월세는 지출로 계산한다
+ok 90 - 본인 이체 양쪽을 제외하고 계좌이체로 지급한 월세는 지출로 계산한다
+  ---
+  duration_ms: 9.918833
+  type: 'test'
+  ...
+# Subtest: 이체만 있거나 빈 내역이면 합계 0, 적자는 음수 차액으로 유지한다
+ok 91 - 이체만 있거나 빈 내역이면 합계 0, 적자는 음수 차액으로 유지한다
+  ---
+  duration_ms: 0.4915
+  type: 'test'
+  ...
+# Subtest: 음수 금액의 부호를 유지하고 알 수 없는 유형은 수입·지출로 확정하지 않는다
+ok 92 - 음수 금액의 부호를 유지하고 알 수 없는 유형은 수입·지출로 확정하지 않는다
+  ---
+  duration_ms: 0.25425
+  type: 'test'
+  ...
+# Subtest: 실제 상세 화면: 이체·잔액이 있어도 3개 합계만 표시하고 거래는 보존한다
+ok 93 - 실제 상세 화면: 이체·잔액이 있어도 3개 합계만 표시하고 거래는 보존한다
+  ---
+  duration_ms: 90.795417
+  type: 'test'
+  ...
+# Subtest: 실제 SAYU 목록 제목도 같은 수입·지출·차액을 표시한다
+ok 94 - 실제 SAYU 목록 제목도 같은 수입·지출·차액을 표시한다
+  ---
+  duration_ms: 1.176917
+  type: 'test'
+  ...
+# Subtest: 실제 가계부 화면: 이체 보존, 음수 지출 원부호 표시, 현재월 예산에 이체 제외
+ok 95 - 실제 가계부 화면: 이체 보존, 음수 지출 원부호 표시, 현재월 예산에 이체 제외
+  ---
+  duration_ms: 147.765875
+  type: 'test'
+  ...
+# Subtest: 실제 통계 화면: 선택 기간의 수입·지출과 월별 숫자 표, 이체 차트 제외
+ok 96 - 실제 통계 화면: 선택 기간의 수입·지출과 월별 숫자 표, 이체 차트 제외
+  ---
+  duration_ms: 14.224084
+  type: 'test'
+  ...
+# Subtest: 실제 빈 가계부는 0원 합계와 첫 기록 추가를 표시한다
+ok 97 - 실제 빈 가계부는 0원 합계와 첫 기록 추가를 표시한다
+  ---
+  duration_ms: 14.117375
+  type: 'test'
+  ...
+# Subtest: 로그아웃·계정 전환 첫 화면은 빈 편집·선택 상태에 접근하지 않고 이전 계정 거래를 숨긴다
+ok 98 - 로그아웃·계정 전환 첫 화면은 빈 편집·선택 상태에 접근하지 않고 이전 계정 거래를 숨긴다
+  ---
+  duration_ms: 25.805667
+  type: 'test'
+  ...
+# Subtest: pet records read only the current owner collection and use document IDs
+ok 99 - pet records read only the current owner collection and use document IDs
+  ---
+  duration_ms: 212.193541
+  type: 'test'
+  ...
+# Subtest: legal records preserve the source status and return to the exact case ID
+ok 100 - legal records preserve the source status and return to the exact case ID
+  ---
+  duration_ms: 37.661083
+  type: 'test'
+  ...
+# Subtest: invalid owner or kind is rejected before any read
+ok 101 - invalid owner or kind is rejected before any read
+  ---
+  duration_ms: 10.811625
+  type: 'test'
+  ...
+# Subtest: an account change during the read cannot return the previous owner records
+ok 102 - an account change during the read cannot return the previous owner records
+  ---
+  duration_ms: 6.167791
+  type: 'test'
+  ...
+# Subtest: read permission failure is propagated and never reported as an empty collection
+ok 103 - read permission failure is propagated and never reported as an empty collection
+  ---
+  duration_ms: 4.375667
+  type: 'test'
+  ...
+# Subtest: actual source list renders escaped saved content and no input, save or AI controls
+ok 104 - actual source list renders escaped saved content and no input, save or AI controls
+  ---
+  duration_ms: 20.860792
+  type: 'test'
+  ...
+# Subtest: legal consent denies list rendering and offers only the original consent screen
+ok 105 - legal consent denies list rendering and offers only the original consent screen
+  ---
+  duration_ms: 5.987917
+  type: 'test'
+  ...
+# Subtest: pending legal consent does not expose a list
+ok 106 - pending legal consent does not expose a list
+  ---
+  duration_ms: 3.968459
+  type: 'test'
+  ...
+# Subtest: actual source list distinguishes error and empty states
+ok 107 - actual source list distinguishes error and empty states
+  ---
+  duration_ms: 11.682125
+  type: 'test'
+  ...
+# Subtest: opening the source panel initially does not read collections and provides existing query destinations
+ok 108 - opening the source panel initially does not read collections and provides existing query destinations
+  ---
+  duration_ms: 3.728667
+  type: 'test'
+  ...
+# Subtest: actual lifecycle cancels a delayed list result after unmount
+ok 109 - actual lifecycle cancels a delayed list result after unmount
+  ---
+  duration_ms: 12.236584
+  type: 'test'
+  ...
+# Subtest: 비서 탭 항목은 이동 전 원본 출력 스냅샷과 같다
+ok 110 - 비서 탭 항목은 이동 전 원본 출력 스냅샷과 같다
+  ---
+  duration_ms: 96.181334
+  type: 'test'
+  ...
+# Subtest: 완료된 SNS 갈무리만 포함하고 essay 상세로 연다
+ok 111 - 완료된 SNS 갈무리만 포함하고 essay 상세로 연다
+  ---
+  duration_ms: 1.379708
+  type: 'test'
+  ...
+# Subtest: sourceAgent 없는 옛 하루LAW 기록도 기존 조건대로 포함한다
+ok 112 - sourceAgent 없는 옛 하루LAW 기록도 기존 조건대로 포함한다
+  ---
+  duration_ms: 1.573958
+  type: 'test'
+  ...
+# Subtest: 지식창고·범위 밖 기록은 빠지고, 성장일기는 관찰일 기준으로 범위를 본다
+ok 113 - 지식창고·범위 밖 기록은 빠지고, 성장일기는 관찰일 기준으로 범위를 본다
+  ---
+  duration_ms: 1.354375
+  type: 'test'
+  ...
+# Subtest: 판독기록 단건 빌더는 객체가 아닌 항목에 null 을 돌려준다
+ok 114 - 판독기록 단건 빌더는 객체가 아닌 항목에 null 을 돌려준다
+  ---
+  duration_ms: 0.490875
+  type: 'test'
+  ...
+# Subtest: 구조화 뷰 열람 판정은 이동 전 세 곳의 조건과 같다
+ok 115 - 구조화 뷰 열람 판정은 이동 전 세 곳의 조건과 같다
+  ---
+  duration_ms: 0.292417
+  type: 'test'
+  ...
+# Subtest: diary: 수정 제목이 저장·목록·검색·재열기·공개본에 반영되고 본문·다른 형식은 보존된다
+ok 116 - diary: 수정 제목이 저장·목록·검색·재열기·공개본에 반영되고 본문·다른 형식은 보존된다
+  ---
+  duration_ms: 19.194333
+  type: 'test'
+  ...
+# Subtest: memo: 수정 제목이 저장·목록·검색·재열기·공개본에 반영되고 본문·다른 형식은 보존된다
+ok 117 - memo: 수정 제목이 저장·목록·검색·재열기·공개본에 반영되고 본문·다른 형식은 보존된다
+  ---
+  duration_ms: 6.094084
+  type: 'test'
+  ...
+# Subtest: 제목을 바꾸지 않은 저장은 과거 AI 제목을 보존한다: "이전 제목"
+ok 118 - 제목을 바꾸지 않은 저장은 과거 AI 제목을 보존한다: "이전 제목"
+  ---
+  duration_ms: 6.412416
+  type: 'test'
+  ...
+# Subtest: 제목을 바꾸지 않은 저장은 과거 AI 제목을 보존한다: "  이전 제목  "
+ok 119 - 제목을 바꾸지 않은 저장은 과거 AI 제목을 보존한다: "  이전 제목  "
+  ---
+  duration_ms: 3.776167
+  type: 'test'
+  ...
+# Subtest: AI 제목이 없는 기록도 수정 제목으로 조회된다
+ok 120 - AI 제목이 없는 기록도 수정 제목으로 조회된다
+  ---
+  duration_ms: 4.487709
+  type: 'test'
+  ...
+# Subtest: 목록 재조회 실패는 저장 실패로 보고하지 않고 경고한다
+ok 121 - 목록 재조회 실패는 저장 실패로 보고하지 않고 경고한다
+  ---
+  duration_ms: 5.77375
+  type: 'test'
+  ...
+# Subtest: 원자 저장 실패 시 제목·AI제목·날씨·기분·본문·특별한날이 모두 그대로이고, 같은 초안으로 재시도하면 모두 저장된다
+ok 122 - 원자 저장 실패 시 제목·AI제목·날씨·기분·본문·특별한날이 모두 그대로이고, 같은 초안으로 재시도하면 모두 저장된다
+  ---
+  duration_ms: 5.86425
+  type: 'test'
+  ...
+# Subtest: 공개본 갱신 실패는 원본 저장 실패와 구분해 경고하고 편집을 완료한다
+ok 123 - 공개본 갱신 실패는 원본 저장 실패와 구분해 경고하고 편집을 완료한다
+  ---
+  duration_ms: 3.888458
+  type: 'test'
+  ...
+# Subtest: 저장 화면에 로그인이 없으면 쓰기 없이 실패하고 초안을 유지한다
+ok 124 - 저장 화면에 로그인이 없으면 쓰기 없이 실패하고 초안을 유지한다
+  ---
+  duration_ms: 3.860833
+  type: 'test'
+  ...
+# Subtest: 부모 저장 handler에 로그인이 없으면 쓰기 없이 실패한다
+ok 125 - 부모 저장 handler에 로그인이 없으면 쓰기 없이 실패한다
+  ---
+  duration_ms: 3.5835
+  type: 'test'
+  ...
+# Subtest: 선택 날짜가 비어 있으면 쓰기 없이 오류를 안내하고 초안을 유지한다
+ok 126 - 선택 날짜가 비어 있으면 쓰기 없이 오류를 안내하고 초안을 유지한다
+  ---
+  duration_ms: 3.728166
+  type: 'test'
+  ...
+# Subtest: 저장 대상이 다른 기록이면 덮어쓰지 않고 실패한다
+ok 127 - 저장 대상이 다른 기록이면 덮어쓰지 않고 실패한다
+  ---
+  duration_ms: 3.594834
+  type: 'test'
+  ...
+# Subtest: 저장 대상이 다른 형식이면 덮어쓰지 않고 실패한다
+ok 128 - 저장 대상이 다른 형식이면 덮어쓰지 않고 실패한다
+  ---
+  duration_ms: 3.833458
+  type: 'test'
+  ...
+# Subtest: English reader preserves original Korean, English and learning sentences without altering the record
+ok 129 - English reader preserves original Korean, English and learning sentences without altering the record
+  ---
+  duration_ms: 4.21875
+  type: 'test'
+  ...
+# Subtest: growth reader separates record date from measurement date and preserves decimal strings/units
+ok 130 - growth reader separates record date from measurement date and preserves decimal strings/units
+  ---
+  duration_ms: 0.465959
+  type: 'test'
+  ...
+# Subtest: voiding reader keeps zero amounts, entry order and the stored interpretation
+ok 131 - voiding reader keeps zero amounts, entry order and the stored interpretation
+  ---
+  duration_ms: 0.318708
+  type: 'test'
+  ...
+# Subtest: malformed voiding entries show an explicit warning and never become invented measurements
+ok 132 - malformed voiding entries show an explicit warning and never become invented measurements
+  ---
+  duration_ms: 0.267042
+  type: 'test'
+  ...
+# Subtest: ordinary memo records are not misclassified as any structured assistant format
+ok 133 - ordinary memo records are not misclassified as any structured assistant format
+  ---
+  duration_ms: 0.230042
+  type: 'test'
+  ...
+# Subtest: existing childcare journals with measurement fields keep their existing format
+ok 134 - existing childcare journals with measurement fields keep their existing format
+  ---
+  duration_ms: 0.183291
+  type: 'test'
+  ...
+# Subtest: actual reader renders escaped original text and only close/origin controls
+ok 135 - actual reader renders escaped original text and only close/origin controls
+  ---
+  duration_ms: 6.398875
+  type: 'test'
+  ...
+# Subtest: actual voiding reader renders the units and saved interpretation without an analysis control
+ok 136 - actual voiding reader renders the units and saved interpretation without an analysis control
+  ---
+  duration_ms: 1.276875
+  type: 'test'
+  ...
+# Subtest: read consent waits for a strict true value and cannot grant consent
+ok 137 - read consent waits for a strict true value and cannot grant consent
+  ---
+  duration_ms: 4.608458
+  type: 'test'
+  ...
+# Subtest: account switch immediately hides prior consent and rejects late callbacks from the old account
+ok 138 - account switch immediately hides prior consent and rejects late callbacks from the old account
+  ---
+  duration_ms: 2.365125
+  type: 'test'
+  ...
+# Subtest: SAYU exact-ID reader preserves the selected structured record, consent and session boundaries
+ok 139 - SAYU exact-ID reader preserves the selected structured record, consent and session boundaries
+  ---
+  duration_ms: 20.982291
+  type: 'test'
+  ...
+# Subtest: growth save preserves measurement date and fields, then views the actual saved ID
+ok 140 - growth save preserves measurement date and fields, then views the actual saved ID
+  ---
+  duration_ms: 8.99925
+  type: 'test'
+  ...
+# Subtest: partial growth linkage retries the same entry without creating another record or rewriting the linked subject
+ok 141 - partial growth linkage retries the same entry without creating another record or rewriting the linked subject
+  ---
+  duration_ms: 7.74025
+  type: 'test'
+  ...
+# Subtest: growth linkage retry preserves newer unsaved measurements
+ok 142 - growth linkage retry preserves newer unsaved measurements
+  ---
+  duration_ms: 7.918875
+  type: 'test'
+  ...
+# Subtest: growth initial record failure has no view target or linkage writes
+ok 143 - growth initial record failure has no view target or linkage writes
+  ---
+  duration_ms: 6.715458
+  type: 'test'
+  ...
+# Subtest: growth save: a child picked from the list is saved as before, without any lookup and without a new createdAt
+ok 144 - growth save: a child picked from the list is saved as before, without any lookup and without a new createdAt
+  ---
+  duration_ms: 2.727166
+  type: 'test'
+  ...
+# Subtest: growth save: a typed name already on the list continues that child without creating one or looking up again
+ok 145 - growth save: a typed name already on the list continues that child without creating one or looking up again
+  ---
+  duration_ms: 4.48
+  type: 'test'
+  ...
+# Subtest: growth save: when the list arrives after a birthdate and gender were typed, the registered values win over the stale typed ones
+ok 146 - growth save: when the list arrives after a birthdate and gender were typed, the registered values win over the stale typed ones
+  ---
+  duration_ms: 2.404666
+  type: 'test'
+  ...
+# Subtest: growth save: a new name the server confirms is unregistered creates a new child with createdAt
+ok 147 - growth save: a new name the server confirms is unregistered creates a new child with createdAt
+  ---
+  duration_ms: 2.567209
+  type: 'test'
+  ...
+# Subtest: growth save: a typed name missing from a stale list is found by the pre-save lookup and continues that child
+ok 148 - growth save: a typed name missing from a stale list is found by the pre-save lookup and continues that child
+  ---
+  duration_ms: 2.069333
+  type: 'test'
+  ...
+# Subtest: growth save: a failed pre-save lookup stops saving so no duplicate child is created, and a retry continues the existing child
+ok 149 - growth save: a failed pre-save lookup stops saving so no duplicate child is created, and a retry continues the existing child
+  ---
+  duration_ms: 6.918166
+  type: 'test'
+  ...
+# Subtest: growth save: a typed birthdate or gender that disagrees with the registered child stops saving without overwriting it
+ok 150 - growth save: a typed birthdate or gender that disagrees with the registered child stops saving without overwriting it
+  ---
+  duration_ms: 4.881458
+  type: 'test'
+  ...
+# Subtest: growth save: a disagreeing birthdate alone, or a disagreeing gender alone, also stops saving
+ok 151 - growth save: a disagreeing birthdate alone, or a disagreeing gender alone, also stops saving
+  ---
+  duration_ms: 12.306917
+  type: 'test'
+  ...
+# Subtest: growth save: a found child keeps its registered name, birthdate and gender, and only blanks are filled from the typed values
+ok 152 - growth save: a found child keeps its registered name, birthdate and gender, and only blanks are filled from the typed values
+  ---
+  duration_ms: 12.464708
+  type: 'test'
+  ...
+# Subtest: growth save: a lookup that finishes after the account left writes nothing
+ok 153 - growth save: a lookup that finishes after the account left writes nothing
+  ---
+  duration_ms: 6.025834
+  type: 'test'
+  ...
+# Subtest: same-name child lookup adapter: queries only this user's child subjects and hands the snapshot to the decision
+ok 154 - same-name child lookup adapter: queries only this user's child subjects and hands the snapshot to the decision
+  ---
+  duration_ms: 5.758083
+  type: 'test'
+  ...
+# Subtest: same-name child lookup adapter: a thrown query and a cache-only snapshot are both "could not confirm", never "none"
+ok 155 - same-name child lookup adapter: a thrown query and a cache-only snapshot are both "could not confirm", never "none"
+  ---
+  duration_ms: 13.018
+  type: 'test'
+  ...
+# Subtest: English save success keeps learning on screen and explicit view uses the returned ID
+ok 156 - English save success keeps learning on screen and explicit view uses the returned ID
+  ---
+  duration_ms: 14.842208
+  type: 'test'
+  ...
+# Subtest: English save failure still enters learning, clears an old saved target and offers no invalid view
+ok 157 - English save failure still enters learning, clears an old saved target and offers no invalid view
+  ---
+  duration_ms: 10.599083
+  type: 'test'
+  ...
+# Subtest: health pending and nonboolean consent cannot start growth persistence
+ok 158 - health pending and nonboolean consent cannot start growth persistence
+  ---
+  duration_ms: 11.670375
+  type: 'test'
+  ...
+# Subtest: account departure during growth record save prevents subsequent subject/entry writes and view publication
+ok 159 - account departure during growth record save prevents subsequent subject/entry writes and view publication
+  ---
+  duration_ms: 8.658375
+  type: 'test'
+  ...
+# Subtest: account departure during growth subject linkage stops the entry write
+ok 160 - account departure during growth subject linkage stops the entry write
+  ---
+  duration_ms: 21.581583
+  type: 'test'
+  ...
+# Subtest: late translation from a departed account cannot start an English record save or enter learning
+ok 161 - late translation from a departed account cannot start an English record save or enter learning
+  ---
+  duration_ms: 2.45075
+  type: 'test'
+  ...
+# Subtest: late English save from a departed account cannot publish a view target
+ok 162 - late English save from a departed account cannot publish a view target
+  ---
+  duration_ms: 7.076417
+  type: 'test'
+  ...
+# Subtest: departed account cannot start a selected-diary translation or cache persistence
+ok 163 - departed account cannot start a selected-diary translation or cache persistence
+  ---
+  duration_ms: 2.820667
+  type: 'test'
+  ...
+# Subtest: late selected-diary translation cannot start cache persistence after account departure
+ok 164 - late selected-diary translation cannot start cache persistence after account departure
+  ---
+  duration_ms: 2.595416
+  type: 'test'
+  ...
+# Subtest: actual page session guards reject changed Firebase owners before React rerenders and after cleanup
+ok 165 - actual page session guards reject changed Firebase owners before React rerenders and after cleanup
+  ---
+  duration_ms: 2.347416
+  type: 'test'
+  ...
+# Subtest: 형식 선택 뒤 기존 편집창의 간편·프리미엄 입력칸에 초안이 이어진다
+ok 166 - 형식 선택 뒤 기존 편집창의 간편·프리미엄 입력칸에 초안이 이어진다
+  ---
+  duration_ms: 1.716209
+  type: 'test'
+  ...
+# Subtest: 글 형식마다 초안 원문이 간편과 프리미엄 방식 모두에 남는다
+ok 167 - 글 형식마다 초안 원문이 간편과 프리미엄 방식 모두에 남는다
+  ---
+  duration_ms: 0.478084
+  type: 'test'
+  ...
+# Subtest: 장부는 글 저장 형식에 나오지 않고 기존 일기가 첫 선택지다
+ok 168 - 장부는 글 저장 형식에 나오지 않고 기존 일기가 첫 선택지다
+  ---
+  duration_ms: 0.158834
+  type: 'test'
+  ...
+# Subtest: 선교·일반보고 초안은 간편 본문과 프리미엄 여백에 전달된다
+ok 169 - 선교·일반보고 초안은 간편 본문과 프리미엄 여백에 전달된다
+  ---
+  duration_ms: 0.1815
+  type: 'test'
+  ...
+# Subtest: 새 독서 회차는 초안 ID로 재시도하고 기존 회차 수정은 원래 ID·날짜를 유지한다
+ok 170 - 새 독서 회차는 초안 ID로 재시도하고 기존 회차 수정은 원래 ID·날짜를 유지한다
+  ---
+  duration_ms: 0.451208
+  type: 'test'
+  ...
+1..170
+# tests 170
+# suites 0
+# pass 170
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3600.927167

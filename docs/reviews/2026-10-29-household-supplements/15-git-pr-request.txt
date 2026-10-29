@@ -1,0 +1,8 @@
+CC Git 실행 요청. 코드 수정은 끝났고 13 보완까지 코드 동결. cwd /Users/heogyeongdae/Developer/HARU2026, branch codex-household-supplements, 기준 origin/main 2e622d82911748a0e380f0b75c6584a8891d05ee. pwd/branch/status와 AGENTS.md·Slack 정책 8.1·HANDOFF.md·14-final-validation.md를 확인한다.
+기장 최종 검증: 관련 단위/SSR170/170, 실제 SDK/Rules34/34, 합성 Firebase 설정으로 환경검사 포함 npm run build 통과. git diff/check 통과. 다른 성장타임라인 하네스6실패는 HEAD/현재 양쪽에서 동일 재현하여 14에 증거를 보존했다. 기존 전체 tsc의 ExportModal 구문 오류는 범위 밖. 운영 쓰기/비밀값/Rules/Functions 변경 없음.
+수행 범위: 지금 status에 있는 가계부 관련 frontend 소스/테스트와 docs/reviews/2026-10-29-household-supplements 아래 새 인수인계/리뷰/검증 기록만 개별 파일 stage → git diff --cached --name-only 및 staged diff 확인 → 한국어 커밋 → 작업 브랜치 push → main 대상 한국어 초안 PR 생성. git add . 또는 -A/디렉터리 통째 stage 금지. 사용자 인수인계 새 HANDOFF도 보존하여 포함한다. 원본 금융자료·개인정보·.env·인증값·ignored scripts/qa 산출물은 넣지 않는다. 민감 문자열 유무는 필요한 범위만 확인하고 실제 값을 출력하지 않는다. 모든 현재 변경이 이 범위인지 확인하고 다른 파일이 있으면 임의 포함/삭제하지 말고 보고한다.
+커밋: feat: 가계부 현금 입력과 분류·메모 편집 추가
+PR 제목 예: 가계부 보완 1단계: 현금 간편 입력과 안전한 분류·메모 편집
+PR 설명은 한국어로 목적·핵심 변경·검증결과와 기존 실패 대조·Hosting 영향·위험 및 revert 방법을 포함한다. Firestore 경로 유지, Functions asia-northeast3 유지/배포 없음, Rules/환경변수/결제/인증 변경 없음, 운영529건 실행자 수정 없음, 새 사용자 설정 2문서와 사용자 명시 조작의 트랜잭션만 있음을 명시한다. 1단위 뒤의 카드/반복/할부/배분/잔액/목표/조회공유/자동연동은 미구현 장부 유지로 명확히 쓴다. 독립 설계 수정 후 승인(M1–M7) 반영 기록과 14 검증 링크 포함. 아이폰 PWA E2E는 추가 필요.
+PR 설명은 /private/tmp/haru-household-supplements-pr-body.md에 정확한 텍스트를 Write로 쓰고 gh pr create --draft --base main --head codex-household-supplements --body-file로 만든다. 기존 동일 head PR이 있으면 중복 생성하지 않는다. push를 누락하지 않는다.
+main 병합·배포·ready 전환·자동 병합·@codex 리뷰 요청·Slack 전송은 아직 하지 않는다. 기장이 PR을 연결하고 최신 HEAD Codex 리뷰와 별도 독립 Claude 완료 검토를 요청한다. 최종 commit SHA, push상태, PR URL, stage 파일 수와 예상 외 변경 여부를 반환한다. 코드/기존 검토 기록은 수정하지 않는다.

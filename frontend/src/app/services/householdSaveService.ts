@@ -41,13 +41,18 @@ export async function saveHouseholdOriginal(db: Firestore, uid: string, recordId
   });
 }
 
+// 저장 서비스가 자동으로 만드는 기록 본문. 거래 편집은 본문이 이 결과와 같을 때만 다시 만든다.
+export function householdSayuText(entries: HouseholdEntry[]) {
+  return entries.map(entry => `[${entry.transactionType}] ${entry.date} ${entry.amount}원 ${entry.vendor}${entry.memo ? '\n메모: ' + entry.memo : ''}`).join('\n\n');
+}
+
 function fields(entries: HouseholdEntry[]) {
   const first = entries[0];
   return {
     household_entries: JSON.stringify(entries), household_type: first.transactionType,
     household_category: first.category, household_date: first.date, household_vendor: first.vendor,
     household_amount: first.amount, household_payment: first.paymentMethod, household_memo: first.memo,
-    household_sayu: entries.map(entry => `[${entry.transactionType}] ${entry.date} ${entry.amount}원 ${entry.vendor}${entry.memo ? '\n메모: ' + entry.memo : ''}`).join('\n\n'),
+    household_sayu: householdSayuText(entries),
   };
 }
 

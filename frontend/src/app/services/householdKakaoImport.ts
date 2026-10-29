@@ -101,7 +101,8 @@ function mapPaymentMethod(raw: unknown): string {
   return '기타';
 }
 
-function mapCategory(transactionType: HouseholdEntry['transactionType'], vendor: string): string {
+// 은행 미리보기에서 구분·거래처를 고칠 때도 같은 파서 기본값을 다시 쓴다.
+export function mapCategory(transactionType: HouseholdEntry['transactionType'], vendor: string): string {
   if (transactionType === '수입') return '기타수입';
   if (transactionType === '이체') return '이체'; // FormatModal 수동입력의 이체 카테고리 규칙과 동일
   const v = vendor.toLowerCase();
@@ -149,6 +150,8 @@ export async function parseKakaoBankWorkbook(
       id: key,
       transactionType,
       category,
+      // 파서가 정한 분류는 사용자가 고른 값과 구분한다. 거래처 기억은 이 값 위에만 제안한다.
+      categorySource: 'import-default',
       date,
       vendor,
       amount,

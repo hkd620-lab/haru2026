@@ -63,6 +63,7 @@ import { compressUploadPhoto as compressImage } from '../services/photoUploadSer
 import { fingerprintPlantEntry, readPlantDetectiveSelection, PLANT_EDIT_CONFLICT, type PlantDetectiveSelection } from '../utils/plantDetectiveEdit';
 import { parseKoreanUnitAmount } from '../utils/householdAmount';
 import { summarizeHouseholdEntries } from '../utils/householdSummary';
+import { householdSayuEntries, type HouseholdSayuEntry } from '../utils/householdRecordShape';
 import { isSpecialDayRecord } from '../records/recordStats';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
@@ -428,7 +429,7 @@ function getRecordSourceText(r: any, prefix: string): string {
   Object.keys(r).forEach((k) => {
     if (!k.startsWith(`${prefix}_`)) return;
     if (isStructuredMeasurementFieldOfFormat(r, prefix, k)) return;
-    if (k.endsWith('_sayu') || k.endsWith('_keywords') || k.endsWith('_ai_title') || k.endsWith('_title') || k.endsWith('_polished') || k.endsWith('_polishedAt') || k.endsWith('_mode') || k.endsWith('_stats') || k.endsWith('_images') || k.endsWith('_imageMeta') || k.endsWith('_rating') || k.endsWith('_tags') || k.endsWith('_space') || k.endsWith('_style')) return;
+    if (k.endsWith('_sayu') || k.endsWith('_keywords') || k.endsWith('_ai_title') || k.endsWith('_title') || k.endsWith('_polished') || k.endsWith('_polishedAt') || k.endsWith('_mode') || k.endsWith('_stats') || k.endsWith('_images') || k.endsWith('_imageMeta') || k.endsWith('_rating') || k.endsWith('_tags') || k.endsWith('_space') || k.endsWith('_style') || k === 'household_categorySource') return;
     const v = r[k];
     if (typeof v === 'string' && v.trim()) parts.push(v);
   });
@@ -590,6 +591,55 @@ function buildHouseholdSummaryTitle(record: any): string {
   } catch {
     return '';
   }
+}
+
+// SAYU 상세의 원본 칸 값. 본문·평점·사진 등 메타와 비문자열 값은 원본 칸에 넣지 않는다.
+function buildSayuOriginalData(record: Record<string, any>, formatKey: string): Record<string, string> {
+  const originalData: Record<string, string> = {};
+  Object.keys(record).forEach((key) => {
+    if (
+      key.startsWith(`${formatKey}_`) &&
+      !key.includes('sayu') &&
+      !key.includes('rating') &&
+      !key.includes('polished') &&
+      !key.includes('images') &&
+      !key.includes('imageMeta') &&
+      typeof record[key] === 'string' // 텃밭 고른 작물 배열(garden_crops) 같은 비문자열 값은 원본 칸에 넣지 않는다
+    ) {
+      originalData[key] = record[key];
+    }
+  });
+  return originalData;
+}
+
+// 가계부 상세의 상단 합계에 쓸 전체 거래. undefined면 SayuModal이 열린 기록 자체 거래로 요약한다.
+// 상세 목록과 같은 읽기(householdSayuEntries)를 써서 예전 단건 기록도 합계에 넣고, 손상된 배열 기록은 제외한다.
+function buildSayuHouseholdTotals(records: readonly Record<string, any>[], currentRecordId: string | undefined, scope: 'month' | 'all'): HouseholdSayuEntry[] | undefined {
+  // 월별 가계부 기록은 전체보기 목록에서 열어도 이 기록의 entries만으로 요약한다.
+  const currentRecord = currentRecordId
+    ? records.find((item) => item.id === currentRecordId)
+    : undefined;
+  const currentStored = currentRecord ? currentRecord.household_entries : undefined;
+  if (typeof currentStored === 'string') {
+    try {
+      const parsed = JSON.parse(currentStored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const months = new Set(
+          parsed
+            .map((entry: any) => String(entry?.date || '').replace(/\./g, '-').slice(0, 7))
+            .filter((month: string) => /^\d{4}-\d{2}$/.test(month)),
+        );
+        if (months.size === 1) return undefined;
+      }
+    } catch { /* fall through to scope fallback */ }
+  }
+  // 월별보기에서는 전체 합계를 넘기지 않는다 — SayuModal이 이 기록(그 달) 자체 entries만으로 요약을 집계하도록.
+  if (scope !== 'all') return undefined;
+  const allEntries: HouseholdSayuEntry[] = [];
+  for (const rec of records) {
+    if (!Object.keys(rec).some((key) => key.startsWith('household_'))) continue;    allEntries.push(...householdSayuEntries(rec));
+  }
+  return allEntries.length > 0 ? allEntries : undefined;
 }
 
 // IntersectionObserver 백필 메타
@@ -2394,20 +2444,7 @@ export function SayuPage() {
 
     const sayuRating = isSpecialDayRecord(record, formatKey) ? 1 : 0;
 
-    const originalData: Record<string, string> = {};
-    Object.keys(record).forEach((key) => {
-      if (
-        key.startsWith(`${formatKey}_`) &&
-        !key.includes('sayu') &&
-        !key.includes('rating') &&
-        !key.includes('polished') &&
-        !key.includes('images') &&
-        !key.includes('imageMeta') &&
-        typeof record[key] === 'string' // 텃밭 고른 작물 배열(garden_crops) 같은 비문자열 값은 원본 칸에 넣지 않는다
-      ) {
-        originalData[key] = record[key];
-      }
-    });
+    const originalData = buildSayuOriginalData(record, formatKey);
 
     const isResultChatMemo = formatKey === 'memo' && (record as any).source === 'result_ai_chat';
     const resultChatSourceLabel = String((record as any).sourceLabel || '').trim()
@@ -5508,49 +5545,13 @@ export function SayuPage() {
           const formatKey = sayuModalState.formatKey || '';
           const isHousehold = formatKey === 'household' || sayuModalState.format === 'HARU가계부';
           if (!isHousehold) return undefined;
-          // 월별 가계부 기록은 전체보기 목록에서 열어도 이 기록의 entries만으로 요약한다.
-          const currentRecord = sayuModalState.firestoreId
-            ? records.find((item) => item.id === sayuModalState.firestoreId)
-            : undefined;
-          const currentStored = currentRecord ? (currentRecord as any).household_entries : undefined;
-          if (typeof currentStored === 'string') {
-            try {
-              const parsed = JSON.parse(currentStored);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                const months = new Set(
-                  parsed
-                    .map((entry: any) => String(entry?.date || '').replace(/\./g, '-').slice(0, 7))
-                    .filter((month: string) => /^\d{4}-\d{2}$/.test(month)),
-                );
-                if (months.size === 1) return undefined;
-              }
-            } catch { /* fall through to scope fallback */ }
-          }
-          // 월별보기에서는 전체 합계를 넘기지 않는다 — SayuModal이 이 기록(그 달) 자체 entries만으로 요약을 집계하도록.
-          if (sayuScope !== 'all') return undefined;
-          const allEntries: { date: string; transactionType: string; category: string; vendor: string; amount: string; paymentMethod: string; memo: string; balanceAfter?: string }[] = [];
-          for (const rec of records) {
-            const stored = (rec as any).household_entries;
-            if (!stored) continue;
-            try {
-              const parsed = JSON.parse(stored);
-              if (Array.isArray(parsed)) {
-                for (const e of parsed) {
-                  allEntries.push({
-                    date: String(e.date || ''),
-                    transactionType: String(e.transactionType || ''),
-                    category: String(e.category || ''),
-                    vendor: String(e.vendor || ''),
-                    amount: String(e.amount || ''),
-                    paymentMethod: String(e.paymentMethod || ''),
-                    memo: String(e.memo || ''),
-                    balanceAfter: e.balanceAfter ? String(e.balanceAfter) : undefined,
-                  });
-                }
-              }
-            } catch { /* skip */ }
-          }
-          return allEntries.length > 0 ? allEntries : undefined;
+          return buildSayuHouseholdTotals(records as Record<string, any>[], sayuModalState.firestoreId, sayuScope);
+        })()}
+        householdRecord={(() => {
+          const formatKey = sayuModalState.formatKey || '';
+          const isHousehold = formatKey === 'household' || sayuModalState.format === 'HARU가계부';
+          if (!isHousehold || !sayuModalState.firestoreId) return undefined;
+          return records.find((item) => item.id === sayuModalState.firestoreId) as Record<string, any> | undefined;
         })()}
       />
 
