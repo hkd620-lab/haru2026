@@ -51,6 +51,43 @@ export function householdRecordShape(record: Record<string, any>): HouseholdReco
     : { kind: "legacy", raw: parsed };
 }
 
+export interface HouseholdSayuEntry {
+  date: string;
+  transactionType: string;
+  category: string;
+  vendor: string;
+  amount: string;
+  paymentMethod: string;
+  memo: string;
+  balanceAfter?: string;
+  subcategory?: string;
+}
+
+// SAYU 상세와 전체 합계가 함께 쓰는 읽기 전용 거래 목록. 배열에 거래가 없으면(없음·'[]') 예전 단건 필드를 거래 1건으로 본다.
+// 손상된 배열은 단건 필드로 대신하지 않고 빈 목록을 돌려준다(상세는 본문 보기, 합계는 제외). 원본은 바꾸지 않는다.
+export function householdSayuEntries(record: Record<string, any>): HouseholdSayuEntry[] {
+  const shape = householdRecordShape(record);
+  if (shape.kind === "corrupt") return [];
+  const raw: any[] = shape.kind === "array"
+    ? shape.raw.filter((entry: any) => entry && typeof entry === "object" && hasTransactionFields(entry))
+    : [{
+      date: record.household_date || record.date, transactionType: record.household_type, category: record.household_category,
+      subcategory: record.household_subcategory, vendor: record.household_vendor, amount: record.household_amount,
+      paymentMethod: record.household_payment, memo: record.household_memo,
+    }].filter((entry) => hasTransactionFields(entry));
+  return raw.map((entry: any) => ({
+    date: String(entry.date || ""),
+    transactionType: String(entry.transactionType || ""),
+    category: String(entry.category || ""),
+    vendor: String(entry.vendor || ""),
+    amount: String(entry.amount || ""),
+    paymentMethod: String(entry.paymentMethod || ""),
+    memo: String(entry.memo || ""),
+    balanceAfter: entry.balanceAfter ? String(entry.balanceAfter) : undefined,
+    subcategory: entry.subcategory ? String(entry.subcategory) : undefined,
+  }));
+}
+
 // 열 때 본 원본 그대로의 지문. 위치가 같아도 내용이 달라졌으면 다른 거래로 본다.
 export function householdEntryFingerprint(entry: unknown): string {
   return JSON.stringify(entry);

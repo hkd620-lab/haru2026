@@ -335,3 +335,108 @@ test("실제 SAYU 상세: 배열 거래는 자동 본문이면 안내하지 않�
   assert.equal(sayu.parseHouseholdEntriesForSayu(auto).length, 2);
   assert.match(renderToStaticMarkup(renderSayuDetail({ ...auto, household_sayu: "사용자 본문" })), /자동으로 고치지 않습니다/);
 });
+
+// 상단 3개 합계 칸의 실제 표시 값.
+function topSummary(markup) {
+  const read = (label) => new RegExp(`>${label}</div><div[^>]*>([^<]*)</div>`).exec(markup)?.[1];
+  return { income: read("수입"), expense: read("지출"), balance: read("수입−지출") };
+}
+
+// SayuPage가 실제로 들고 있는 기록 모양: 단건 금액은 숫자, 본문은 household_sayu, 다른 형식 기록과 손상 기록이 섞여 있다.
+const legacyBody = "예전 <b>단건</b> 본문\n둘째 줄";
+const sayuRecords = () => [
+  {
+    id: "legacy", date: "2026-02-03", household_type: "지출", household_category: "식비", household_subcategory: "간식",
+    household_vendor: "예전 가게", household_amount: 3000, household_payment: "현금", household_memo: "고친 메모", household_sayu: legacyBody,
+  },
+  { id: "empty", date: "2026-02-04", household_entries: "[]", household_type: "지출", household_vendor: "빈배열 가게", household_amount: "1,500원", household_sayu: "빈배열 본문" },
+  {
+    id: "jan", date: "2026-01-31",
+    household_entries: JSON.stringify([entry({ date: "2026-01-10", amount: 5000, vendor: "배열 가게" })]),
+    household_sayu: "1월 사용자 본문",
+  },
+  {
+    id: "multi", date: "2026-03-31",
+    household_entries: JSON.stringify([
+      entry({ date: "2026-02-10", transactionType: "수입", amount: "10000", vendor: "급여" }),
+      entry({ date: "2026-03-01", transactionType: "이체", amount: "2000", memo: "내 계좌" }),
+      entry({ date: "2026-03-02", amount: "-1000", vendor: "환불" }),
+      entry({ date: "2026-03-05", amount: "700", vendor: "같은 가게" }),
+      entry({ date: "2026-03-05", amount: "700", vendor: "같은 가게" }),
+    ]),
+  },
+  { id: "broken", date: "2026-02-05", household_entries: "{broken", household_type: "지출", household_amount: "9999", household_sayu: "손상 본문" },
+  { id: "diary", date: "2026-02-03", diary_content: "가계부 아님", amount: 123456 },
+];
+
+test("실제 SAYU 전체보기 합계: SayuPage가 넘기는 합계에 예전 단건(배열 없음·'[]')을 같은 읽기로 포함하고 손상·다른 형식 기록은 제외한다", async () => {
+  const { renderSayuPageDetail } = await import("./householdSayuView.helper.mjs");
+  const records = sayuRecords();
+  // 레거시 3,000 + 빈 배열 단건 1,500 + 배열 5,000 + 여러 달 묶음(지출 -1,000·700·700, 수입 10,000, 이체 제외) = 지출 9,900. 손상 9,999는 제외.
+  const opened = renderSayuPageDetail(records, "legacy", "all");
+  assert.equal(opened.totals.length, 8);
+  const markup = renderToStaticMarkup(opened.element);
+  assert.deepEqual(topSummary(markup), { income: "10,000원", expense: "9,900원", balance: "100원" });
+  // 열린 레거시 기록은 숫자 금액이 원본 칸에서 빠져도 같은 읽기로 3,000원 거래 1건을 보여 준다.
+  assert.equal(opened.originalData.household_amount, undefined);
+  assert.equal(opened.entries.length, 1);
+  assert.match(markup, /-3,000원/);
+  assert.match(markup, /식비 · 간식 · 현금/);
+  assert.match(markup, /메모: 고친 메모/);
+  assert.doesNotMatch(markup, /9,999|123,456/);
+
+  // 이체 제외·음수 원부호·같은 내용 거래 2건 보존을 합계 거래에서 직접 확인한다.
+  const types = opened.totals.map((item) => `${item.transactionType}:${item.amount}`);
+  assert.deepEqual(types.filter((item) => item === "지출:700"), ["지출:700", "지출:700"]);
+  assert.ok(types.includes("이체:2000") && types.includes("지출:-1000"));
+
+  // 코덱스 지적 재현: 레거시 3,000 + 배열 5,000이면 상단 지출은 8,000원.
+  const pair = [records[0], records[2]];
+  assert.deepEqual(topSummary(renderToStaticMarkup(renderSayuPageDetail(pair, "legacy", "all").element)).expense, "8,000원");
+  // '[]' 단건도 같은 기준이다: 1,500 + 5,000.
+  const empty = renderSayuPageDetail([records[1], records[2]], "empty", "all");
+  assert.equal(empty.entries[0].amount, "1,500원");
+  assert.equal(topSummary(renderToStaticMarkup(empty.element)).expense, "6,500원");
+});
+
+test("실제 SAYU 합계 범위: 월별보기와 한 달짜리 묶음 기록은 기존처럼 자체 합계, 여러 달 묶음은 전체보기에서 전체 합계를 쓴다", async () => {
+  const { renderSayuPageDetail } = await import("./householdSayuView.helper.mjs");
+  const records = sayuRecords();
+  const monthLegacy = renderSayuPageDetail(records, "legacy", "month");
+  assert.equal(monthLegacy.totals, undefined);
+  assert.deepEqual(topSummary(renderToStaticMarkup(monthLegacy.element)), { income: "0원", expense: "3,000원", balance: "-3,000원" });
+  // 한 달짜리 배열 기록은 전체보기에서 열어도 자기 거래만 요약한다.
+  const jan = renderSayuPageDetail(records, "jan", "all");
+  assert.equal(jan.totals, undefined);
+  assert.equal(topSummary(renderToStaticMarkup(jan.element)).expense, "5,000원");
+  // 여러 달 묶음 기록: 월별보기면 자체 합계(이체 제외, -1,000 원부호), 전체보기면 레거시 포함 전체 합계.
+  assert.deepEqual(topSummary(renderToStaticMarkup(renderSayuPageDetail(records, "multi", "month").element)), { income: "10,000원", expense: "400원", balance: "9,600원" });
+  assert.deepEqual(topSummary(renderToStaticMarkup(renderSayuPageDetail(records, "multi", "all").element)), { income: "10,000원", expense: "9,900원", balance: "100원" });
+  // 손상 기록을 열면 기존 본문 보기를 유지한다.
+  const broken = renderToStaticMarkup(renderSayuPageDetail(records, "broken", "month").element);
+  assert.match(broken, /<textarea[^>]*readonly=""[^>]*>손상 본문<\/textarea>/);
+});
+
+test("실제 SAYU 상세: 사용자 본문은 기본 닫힌 '작성 당시 본문 보기'로 그대로 읽고, 원본 기록은 바뀌지 않는다", async () => {
+  const { renderSayuPageDetail } = await import("./householdSayuView.helper.mjs");
+  const records = sayuRecords();
+  const before = structuredClone(records);
+  const keys = records.map((record) => Object.keys(record));
+  const legacy = renderSayuPageDetail(records, "legacy", "all");
+  assert.equal(legacy.userText, true);
+  const markup = renderToStaticMarkup(legacy.element);
+  assert.match(markup, /자동으로 고치지 않습니다/);
+  // details에 open 속성이 없다(기본 닫힘). 본문은 문자열 그대로(HTML로 해석하지 않고) 표시한다.
+  assert.match(markup, /<details[^>]*><summary[^>]*>작성 당시 본문 보기<\/summary><div[^>]*>예전 &lt;b&gt;단건&lt;\/b&gt; 본문\n둘째 줄<\/div><\/details>/);
+  assert.doesNotMatch(markup, /<details[^>]*open/);
+  // 배열 기록의 사용자 본문도 같은 안내 범위에서 보여 준다.
+  const jan = renderToStaticMarkup(renderSayuPageDetail(records, "jan", "all").element);
+  assert.match(jan, /<summary[^>]*>작성 당시 본문 보기<\/summary><div[^>]*>1월 사용자 본문<\/div>/);
+  // 본문이 없는 배열 기록은 안내·본문 보기를 만들지 않는다.
+  const multi = renderToStaticMarkup(renderSayuPageDetail(records, "multi", "all").element);
+  assert.doesNotMatch(multi, /작성 당시 본문 보기|자동으로 고치지 않습니다/);
+  // 손상 기록은 사용자 본문 안내 대상이 아니다.
+  assert.doesNotMatch(renderToStaticMarkup(renderSayuPageDetail(records, "broken", "all").element), /작성 당시 본문 보기/);
+  assert.deepEqual(records, before);
+  assert.deepEqual(records.map((record) => Object.keys(record)), keys);
+});
