@@ -39,6 +39,28 @@ test('표시한 추가·중복 제외 건수가 실제 트랜잭션 결과와 �
  }
 });
 
+test('529건 중 142건 기존 거래 사용 후 최신 재가져오기는 529건 모두 제외하고 저장본을 보존한다',async()=>{
+ const uid=uidFor('529-reimport'),db=client(uid);
+ const entries=Array.from({length:529},(_,i)=>bank({id:`row-${i}`,amount:String(1000+i),importSource:{kind:'kakao',fileDigest:'fixture-529',key:`fixture-key-${i}`}}));
+ const legacy=entries.slice(0,142).map((e,i)=>({...e,id:`legacy-${i}`,importSource:undefined,transactionAt:undefined}));
+ const ref=doc(db,'users',uid,'records','legacy');
+ await setDoc(ref,{date:'2026-10-05',household_entries:JSON.stringify(legacy)});
+ const before=await checkHouseholdDuplicates(entries,await loadHouseholdRecords(db,uid));
+ const stalePreview=previewHouseholdSave(entries.map(entry=>({entry,selected:true})),before,{});
+ assert.equal(stalePreview.added,387);assert.equal(stalePreview.pending,142);
+ const decisions=Object.fromEntries(before.filter(c=>c.status==='suspect').map(c=>[c.entry.id,{token:c.token,action:'skip'}]));
+ const first=await saveHouseholdEntries(db,uid,entries,decisions);
+ assert.equal(first.added,387);assert.equal(first.skipped,142);
+ const records=await loadHouseholdRecords(db,uid);
+ assert.equal(records.reduce((n,r)=>n+JSON.parse(r.data.household_entries).length,0),529);
+ const checks=await checkHouseholdDuplicates(entries,records);
+ const refreshed=previewHouseholdSave(entries.map(entry=>({entry,selected:false})),checks,decisions);
+ assert.equal(refreshed.added,0);assert.equal(refreshed.excluded,529);assert.equal(refreshed.pending,0);
+ const retry=await saveHouseholdEntries(db,uid,entries,decisions);
+ assert.equal(retry.added,0);assert.equal(retry.already,529);
+ assert.deepEqual(await loadHouseholdRecords(db,uid),records);
+});
+
 test('동일 파일 재저장·응답 유실 후 재시도에도 한 번만 집계',async()=>{
  const uid=uidFor('retry'),db=client(uid),entries=[bank()];
  assert.equal((await saveHouseholdEntries(db,uid,entries)).added,1);

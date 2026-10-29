@@ -589,12 +589,69 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isDecryptingKakaoXlsx, setIsDecryptingKakaoXlsx] = useState(false);
   const [kakaoXlsxMonthGroups, setKakaoXlsxMonthGroups] = useState<KakaoXlsxMonthGroup[]>([]);
   const [isSavingKakaoXlsx, setIsSavingKakaoXlsx] = useState(false);
+  const [isCheckingHouseholdImport, setIsCheckingHouseholdImport] = useState(false);
+  const [householdImportCheckFailed, setHouseholdImportCheckFailed] = useState(false);
+  const householdImportRefreshVersion = useRef(0);
+  const householdImportRefreshing = useRef(false);
   const hasHouseholdImport = kakaoXlsxMonthGroups.length > 0;
+  const householdImportSignature = JSON.stringify([user?.uid, kakaoXlsxMonthGroups.flatMap(group => group.rows.map(row => row.entry))]);
+  const householdImportSignatureRef = useRef(householdImportSignature);
+  householdImportSignatureRef.current = householdImportSignature;
   const householdSaveRows = hasHouseholdImport
     ? kakaoXlsxMonthGroups.flatMap(group => group.rows)
     : fillEmptyHouseholdDates(householdEntries, recordId).map(entry => ({ entry, selected: true }));
   const householdSavePreview = previewHouseholdSave(householdSaveRows, householdChecks, householdDecisions);
-  const householdSaveBusy = isSaving || isSavingKakaoXlsx;
+  const householdAllAlready = householdSavePreview.total > 0 && householdSavePreview.excluded === householdSavePreview.total
+    && householdSaveRows.every(row => householdChecks.some(check => check.entry.id === row.entry.id && check.status === 'already'));
+  const householdSaveBusy = isSaving || isSavingKakaoXlsx || (hasHouseholdImport && (isCheckingHouseholdImport || householdImportCheckFailed));
+  const discardHouseholdImport = () => {
+    householdImportRefreshVersion.current++;
+    householdImportRefreshing.current = false;
+    setIsCheckingHouseholdImport(false);
+    setHouseholdImportCheckFailed(false);
+    setHouseholdChecks([]);
+    setHouseholdDecisions({});
+    setKakaoXlsxMonthGroups([]);
+  };
+  const refreshHouseholdImport = async () => {
+    if (!isOpen || !user?.uid || !hasHouseholdImport || householdSavingRef.current || isDecryptingKakaoXlsx || householdImportRefreshing.current) return;
+    const version = ++householdImportRefreshVersion.current;
+    const signature = householdImportSignature;
+    householdImportRefreshing.current = true;
+    setIsCheckingHouseholdImport(true);
+    setHouseholdImportCheckFailed(false);
+    try {
+      const entries = kakaoXlsxMonthGroups.flatMap(group => group.rows.map(row => row.entry));
+      const checked = await checkHouseholdDuplicates(entries, await loadHouseholdRecords(getFirestore(), user.uid));
+      if (version !== householdImportRefreshVersion.current || signature !== householdImportSignatureRef.current) return;
+      // 이전 선택이 남은 행은 저장 서비스와 동일하게 다시 확인한다.
+      const checks = checked.map(check => check.status === 'new' && householdDecisions[check.entry.id]
+        ? { ...check, status: 'suspect' as const } : check);
+      setHouseholdChecks(checks);
+      const already = new Set(checks.filter(check => check.status === 'already').map(check => check.entry.id));
+      setKakaoXlsxMonthGroups(groups => groups.map(group => ({ ...group, rows: group.rows.map(row => ({ ...row, selected: row.selected && !already.has(row.entry.id) })) })));
+    } catch {
+      if (version === householdImportRefreshVersion.current) setHouseholdImportCheckFailed(true);
+    } finally {
+      if (version === householdImportRefreshVersion.current) {
+        householdImportRefreshing.current = false;
+        setIsCheckingHouseholdImport(false);
+      }
+    }
+  };
+  useEffect(() => {
+    householdImportRefreshVersion.current++;
+    householdImportRefreshing.current = false;
+    setIsCheckingHouseholdImport(false);
+    setHouseholdImportCheckFailed(false);
+    return () => { householdImportRefreshVersion.current++; };
+  }, [isOpen, format, user?.uid]);
+  useEffect(() => {
+    if (!isOpen || !hasHouseholdImport) return;
+    const onFocus = () => { void refreshHouseholdImport(); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [isOpen, hasHouseholdImport, householdImportSignature, householdDecisions, isSavingKakaoXlsx, isDecryptingKakaoXlsx]);
 
   // 🚿 배뇨일지
   const [voidingEntries, setVoidingEntries] = useState<import('../utils/voidingStats').VoidingEntry[]>([]);
@@ -2874,6 +2931,7 @@ ${contentValues}
       const checks = await checkHouseholdDuplicates(parseResult.rows.map(row => row.entry), await loadHouseholdRecords(getFirestore(), user.uid));
       if (session !== photoEditorSessionRef.current) return;
       setHouseholdChecks(checks);
+      setHouseholdImportCheckFailed(false);
       setHouseholdDecisions({});
       const already = new Set(checks.filter(check => check.status === 'already').map(check => check.entry.id));
       setKakaoXlsxMonthGroups(groupKakaoRowsByMonth(parseResult.rows.map(row => ({ ...row, selected: !already.has(row.entry.id) }))));
@@ -5131,7 +5189,7 @@ ${contentValues.slice(0, 4100)}`,
               {isHouseholdFormat && householdChecks.some(check => check.status === 'suspect') && (
                 <div ref={householdReviewRef} style={{ marginBottom: 16 }}>
                   <HouseholdDuplicateReview checks={householdChecks} decisions={householdDecisions}
-                    onChoose={chooseHouseholdDuplicate} disabled={isSaving || isSavingKakaoXlsx} />
+                    onChoose={chooseHouseholdDuplicate} disabled={householdSaveBusy} />
                 </div>
               )}
               {isHouseholdFormat && (
@@ -5255,7 +5313,7 @@ ${contentValues.slice(0, 4100)}`,
                     <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: 12, color: '#374151', fontWeight: 700 }}>불러온 거래 미리보기 — 확인 후 저장하세요</span>
-                        <button type="button" onClick={() => setKakaoXlsxMonthGroups([])} disabled={isSavingKakaoXlsx}
+                        <button type="button" onClick={discardHouseholdImport} disabled={isSavingKakaoXlsx}
                           style={{ padding: '4px 10px', border: 'none', borderRadius: 6, backgroundColor: 'transparent', color: '#9ca3af', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                           목록 지우기
                         </button>
@@ -5357,14 +5415,14 @@ ${contentValues.slice(0, 4100)}`,
                           </div>
                         );
                       })}
-                      <HouseholdSaveSummary preview={householdSavePreview} />
+                      <HouseholdSaveSummary preview={householdSavePreview} allAlready={householdAllAlready} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={refreshHouseholdImport} />
                       <button
                         type="button"
                         onClick={handleSaveKakaoXlsxImport}
                         disabled={householdSaveBusy || !householdSaveRows.some(row => row.selected)}
                         style={{ width: '100%', padding: '12px', border: 'none', borderRadius: 10, backgroundColor: '#1A3C6E', color: '#fff', fontSize: 14, fontWeight: 800, cursor: isSavingKakaoXlsx ? 'wait' : 'pointer' }}
                       >
-                        {householdSaveBusy ? '가계부에 저장 중...' : householdSaveLabel(householdSavePreview)}
+                        {isSaving || isSavingKakaoXlsx ? '가계부에 저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview, householdAllAlready)}
                       </button>
                     </div>
                   )}
@@ -6723,13 +6781,13 @@ ${contentValues.slice(0, 4100)}`,
             ) : isHouseholdFormat ? (
               /* 📒 HARU가계부 전용 저장 버튼 */
               <div style={{ width: '100%' }}>
-                <HouseholdSaveSummary preview={householdSavePreview} />
+                <HouseholdSaveSummary preview={householdSavePreview} allAlready={householdAllAlready} checking={hasHouseholdImport && isCheckingHouseholdImport} failed={hasHouseholdImport && householdImportCheckFailed} onRecheck={hasHouseholdImport ? refreshHouseholdImport : undefined} />
                 <button
                   onClick={hasHouseholdImport ? handleSaveKakaoXlsxImport : handleSaveHouseholdEntries}
                   disabled={householdSaveBusy || !householdSaveRows.some(row => row.selected)}
                   style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#166534', color: '#fff', cursor: householdSaveBusy ? 'not-allowed' : 'pointer', opacity: householdSaveBusy ? 0.7 : 1, fontWeight: 700 }}
                 >
-                  {householdSaveBusy ? '저장 중...' : householdSaveLabel(householdSavePreview)}
+                  {isSaving || isSavingKakaoXlsx ? '저장 중...' : hasHouseholdImport && isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : hasHouseholdImport && householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview, householdAllAlready)}
                 </button>
               </div>
             ) : isVoidingFormat ? (
