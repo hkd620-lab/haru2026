@@ -697,7 +697,7 @@ export function HouseholdPage() {
               disabled={!user}
             >
               <FileUp size={18} />
-              은행 내역 가져오기
+              은행·카드 파일 가져오기
             </button>
             <button
               className="hh-button hh-secondary"

@@ -1,0 +1,2 @@
+# Preserve Vite's original reporter lines, including their trailing spaces.
+17-build.txt -whitespace
