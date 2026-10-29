@@ -8,6 +8,13 @@ export interface HouseholdSaveResult {
   kind: 'household'; added: number; skipped: number; already: number; recordIds: string[]; createdRecords: number;
 }
 
+export class HouseholdOriginalConflict extends Error {
+  constructor() {
+    super('다른 곳에서 가계부가 바뀌었습니다. 창을 닫고 다시 열어 확인해 주세요. 저장하지 않았습니다.');
+    this.name = 'HouseholdOriginalConflict';
+  }
+}
+
 export async function loadHouseholdRecords(db: Firestore, uid: string): Promise<HouseholdStoredRecord[]> {
   if (!uid || uid.includes('/')) throw new Error('로그인이 필요합니다.');
   // 캐시/오프라인의 빈 결과로 중복 검사를 우회하지 않는다.
@@ -28,7 +35,7 @@ export async function saveHouseholdOriginal(db: Firestore, uid: string, recordId
     const current = await transaction.get(ref);
     if (!current.exists() || current.data().household_entries !== opened.household_entries
       || Object.keys(changed).some(key => current.data()?.[key] !== opened[key])) {
-      throw new Error('다른 곳에서 가계부가 바뀌었습니다. 창을 닫고 다시 열어 확인해 주세요. 저장하지 않았습니다.');
+      throw new HouseholdOriginalConflict();
     }
     transaction.update(ref, changed);
   });

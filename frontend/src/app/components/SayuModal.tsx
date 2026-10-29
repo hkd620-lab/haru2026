@@ -15,7 +15,7 @@ import { httpsCallable, getFunctions } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
-import { saveHouseholdOriginal } from '../services/householdSaveService';
+import { saveHouseholdOriginal, HouseholdOriginalConflict } from '../services/householdSaveService';
 import { buildFormatKeyMap, invertFormatKeyMap } from '../records/formatRegistry';
 import { exportRecordsToEpub } from '../services/epubExportService';
 import { getEpubReaderHint } from '../utils/epubReaderGuide';
@@ -1702,7 +1702,7 @@ export function SayuModal({
       } else await updateDoc(recordRef, editedOriginalData);
       toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
     } catch (error) {
-      if (isHouseholdSayu) toast.error(error instanceof Error ? error.message : '가계부를 저장하지 못했습니다. 다시 열어 확인해 주세요.');
+      if (isHouseholdSayu) toast.error(error instanceof HouseholdOriginalConflict ? error.message : '가계부를 저장하지 못했습니다. 인터넷 연결과 접근 권한을 확인한 뒤 다시 시도해 주세요.');
       else {
         console.error('원본 저장 실패:', error);
         toast.error('저장 실패. 다시 시도해주세요.');

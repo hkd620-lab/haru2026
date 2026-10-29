@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { parseKakaoBankPdfDocument } from '../src/app/services/householdKakaoPdfImport.ts';
+import { checkHouseholdDuplicates } from '../src/app/services/householdDuplicates.ts';
 
 const text=(str,x,y,width=30)=>({str,transform:[1,0,0,1,x,y],width,height:8});
 const headers=()=>['거래일시','구분','거래금액','거래 후 잔액','거래내용(메모)','거래구분'].map((s,i)=>text(s,[60,132,192,285,397,512][i],700));
@@ -48,4 +49,18 @@ test('예금주와 같은 줄에 다른 정보가 있어도 이름에 계좌번�
  const items=page().map(item=>item.str==='출금'?{...item,str:'입금'}:item.str==='-4,500'?{...item,str:'+4,500'}:item.str==='시험 카페'?{...item,str:'시험사용자'}:item);
  const doc=document([[...items,text('계좌번호 :',250,750),text('0000-00-0000000',350,750)]]);
  const result=await parseKakaoBankPdfDocument(doc,'합성.pdf');assert.equal(result.rows[0].entry.transactionType,'이체');
+});
+
+test('PDF 예금주 이름이 여러 조각이어도 다음 라벨 앞까지만 이어서 본인 이체를 판별한다',async()=>{
+ const items=page().filter(item=>!(item.str==='시험사용자'&&item.transform[5]===750)).map(item=>item.str==='출금'?{...item,str:'입금'}:item.str==='-4,500'?{...item,str:'+4,500'}:item.str==='시험 카페'?{...item,str:'시험사용자'}:item);
+ const result=await parseKakaoBankPdfDocument(document([[...items,text('시험',80,750),text('사용자',115,750),text('계좌번호 :',250,750),text('0000-00-0000000',350,750)]]),'조각이름.pdf');
+ assert.equal(result.rows[0].entry.transactionType,'이체');
+});
+
+test('명의·거래가 같아도 서로 다른 계좌의 PDF는 확정 중복으로 합치지 않는다',async()=>{
+ const a=await parseKakaoBankPdfDocument(document([[...page(),text('계좌번호 :',250,750),text('0000-00-0000001',350,750)]]),'같은이름.pdf');
+ const b=await parseKakaoBankPdfDocument(document([[...page(),text('계좌번호 :',250,750),text('0000-00-0000002',350,750)]]),'같은이름.pdf');
+ assert.notEqual(a.rows[0].id,b.rows[0].id);
+ const checks=await checkHouseholdDuplicates(b.rows.map(r=>r.entry),[{id:'a',data:{household_entries:JSON.stringify(a.rows.map(r=>r.entry))}}]);
+ assert.equal(checks[0].status,'suspect');
 });

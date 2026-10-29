@@ -1,5 +1,5 @@
 import { parseKakaoBankWorkbook, type KakaoXlsxParseResult } from './householdKakaoImport';
-import { householdDate } from './householdDuplicates';
+import { householdDate, householdDigest } from './householdDuplicates';
 
 interface PdfTextItem { str: string; transform: number[]; width: number; height: number }
 interface PdfPage { getTextContent(): Promise<{ items: unknown[] }>; cleanup(): unknown }
@@ -13,7 +13,7 @@ const money = /^[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?$/;
 export async function parseKakaoBankPdfDocument(pdf: HouseholdPdfDocument, fileName: string): Promise<KakaoXlsxParseResult> {
   if (pdf.numPages > 200) throw new Error('PDF는 한 번에 200쪽까지 읽을 수 있습니다. 조회 기간을 나눠 주세요.');
   const rows: unknown[][] = [];
-  let owner = '', bankFound = false;
+  let owner = '', metadataDigest = '', bankFound = false;
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
     const page = await pdf.getPage(pageNumber);
     try {
@@ -36,9 +36,18 @@ export async function parseKakaoBankPdfDocument(pdf: HouseholdPdfDocument, fileN
         return index < 0 ? 5 : index;
       };
       if (pageNumber === 1) {
+        // 같은 명의의 서로 다른 계좌 내역을 같은 파일로 보지 않는다.
+        // 계좌·조회 정보 원문은 저장하지 않고 표 위 메타정보를 해시에만 포함한다.
+        metadataDigest = await householdDigest(items.filter(item => item.transform[5] > header.transform[5] + scale)
+          .sort((a,b) => b.transform[5] - a.transform[5] || a.transform[4] - b.transform[4])
+          .map(item => item.str.normalize('NFKC').trim()));
         const label = items.find(item => /^(예금주|성명)[:：]?$/.test(compact(item.str)));
-        if (label) owner = items.filter(item => item !== label && item.transform[4] > label.transform[4] + label.width
-          && Math.abs(item.transform[5] - label.transform[5]) < scale).sort((a,b) => a.transform[4] - b.transform[4])[0]?.str.trim() || '';
+        if (label) {
+          const right = items.filter(item => item !== label && item.transform[4] > label.transform[4] + label.width
+            && Math.abs(item.transform[5] - label.transform[5]) < scale).sort((a,b) => a.transform[4] - b.transform[4]);
+          const stop = right.findIndex(item => /[:：]/.test(item.str) || /^(계좌번호|조회기간|예금종류)/.test(compact(item.str)));
+          owner = right.slice(0, stop < 0 ? right.length : stop).map(item => item.str.trim()).join('');
+        }
       }
       const body = items.filter(item => item.transform[5] < header.transform[5] - scale);
       const anchors = body.filter(item => column(item) === 0 && dateTime.test(item.str.trim())).sort((a,b) => b.transform[5] - a.transform[5]);
@@ -62,7 +71,7 @@ export async function parseKakaoBankPdfDocument(pdf: HouseholdPdfDocument, fileN
     } finally { page.cleanup(); }
   }
   if (!bankFound) throw new Error('카카오뱅크 거래내역서인지 확인해 주세요.');
-  const raw = [['성명', owner], ...rows];
+  const raw = [['_pdf_metadata', metadataDigest], ['성명', owner], ...rows];
   return parseKakaoBankWorkbook({ SheetNames: ['거래내역'], Sheets: { 거래내역: raw } }, {
     utils: { sheet_to_json: <T,>() => raw as T[] },
   }, fileName);
