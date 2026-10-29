@@ -1,0 +1,11 @@
+독립 설계·완료 검토를 수행하십시오. 파일 수정이나 추가 에이전트 실행은 금지합니다. Read/Grep/Glob만 사용하십시오.
+저장소: /Users/heogyeongdae/Developer/HARU2026
+기준 main: 0eac428337b655e0645e3ef6f262993d14bc6910
+검토 대상 HEAD: 15db3808c035421cb5abe3d58a75931ae6d54ecb
+근거: /private/tmp/haru-household-review/validation.md, /private/tmp/haru-household-review/pr-body.md, 저장소 frontend/test/household-browser/README.md 및 변경 코드·테스트.
+이 작업의 이전 독립 검토는 없습니다.
+요청 목적: 카카오뱅크 PDF·엑셀 직접 가져오기 및 기존 거래를 보존하는 중복 집계 방지.
+보안 경계: Downloads 디렉터리·실제 사용자 자료·/private/tmp/haru-household-real-statement·node_modules/.cache의 실전 자료를 읽지 마십시오. 실제 사용자 정보는 검토 대상이 아닙니다. test/fixtures/household-synthetic.pdf는 합성 자료입니다.
+다음 파일만 필요한 범위에서 독립적으로 검토하십시오: frontend/src/app/services/{householdDuplicates,householdSaveService,householdKakaoImport,householdKakaoPdfImport}.ts, frontend/src/app/components/HouseholdDuplicateReview.tsx, FormatModal.tsx 가계부 관련 구간, pages/RecordPage.tsx 가계부 저장 분기, services/firestoreService.ts 가계부 래퍼, 관련 test/household*와 workflow/package 의존성 변경. 변경 범위는 pr-body에 기술되어 있습니다.
+집계 정확성·기존 기록 보존·동시성·재시도·사용자 선택 무효화·PDF 전 페이지 해석·파일 및 암호 취급·기존 기록 흐름 회귀를 점검하십시오. 특히 월별 신규 저장 문서 방식과 선택적 메타데이터가 정책의 Firestore 경로/데이터 구조 변경 멈춤 조건에 해당하는지도 판단하십시오.
+작업 규모 소/중/대와 정책 멈춤 조건 해당 여부를 명시하십시오. 판정은 승인 / 수정 후 승인 / 재설계 중 하나를 정확히 사용하고 발견 사항에는 우선순위·파일·줄·사용자 영향·수정 방향을 제시하십시오. 확인하지 않은 검증은 확인했다고 하지 마십시오.

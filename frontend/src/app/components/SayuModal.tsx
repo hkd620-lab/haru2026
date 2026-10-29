@@ -15,6 +15,7 @@ import { httpsCallable, getFunctions } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
+import { saveHouseholdOriginal, HouseholdOriginalConflict } from '../services/householdSaveService';
 import { buildFormatKeyMap, invertFormatKeyMap } from '../records/formatRegistry';
 import { exportRecordsToEpub } from '../services/epubExportService';
 import { getEpubReaderHint } from '../utils/epubReaderGuide';
@@ -620,6 +621,7 @@ export function SayuModal({
   const [isSpecialDay, setIsSpecialDay] = useState(false);
   const [viewMode, setViewMode] = useState<'ai' | 'original'>('ai');
   const [editedOriginalData, setEditedOriginalData] = useState<Record<string, string>>(originalData || {});
+  const openedHouseholdOriginalRef = useRef<Record<string, string>>({});
   const [isSavingOriginal, setIsSavingOriginal] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [localAiComment, setLocalAiComment] = useState(aiComment);
@@ -1309,6 +1311,7 @@ export function SayuModal({
       setShowTimelineDocument(false);
       const baseData = originalData || {};
       setEditedOriginalData(baseData);
+      openedHouseholdOriginalRef.current = { ...baseData };
 
       // 🌱 텃밭일지: garden_crop 이 비어 있어도 등록 작물 전체로 채우지 않는다.
       // 기록마다 고른 작물만 저장한다(2026-10-23 결정 ②). 원본 저장 시 등록 목록 전체가 기록되던 문제 방지.
@@ -1693,11 +1696,17 @@ export function SayuModal({
     try {
       const docId = firestoreId || recordDate!;
       const recordRef = doc(db, 'users', currentUser.uid, 'records', docId);
-      await updateDoc(recordRef, editedOriginalData);
+      if (isHouseholdSayu) {
+        await saveHouseholdOriginal(db, currentUser.uid, docId, openedHouseholdOriginalRef.current, editedOriginalData);
+        openedHouseholdOriginalRef.current = { ...editedOriginalData };
+      } else await updateDoc(recordRef, editedOriginalData);
       toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
     } catch (error) {
-      console.error('원본 저장 실패:', error);
-      toast.error('저장 실패. 다시 시도해주세요.');
+      if (isHouseholdSayu) toast.error(error instanceof HouseholdOriginalConflict ? error.message : '가계부를 저장하지 못했습니다. 인터넷 연결과 접근 권한을 확인한 뒤 다시 시도해 주세요.');
+      else {
+        console.error('원본 저장 실패:', error);
+        toast.error('저장 실패. 다시 시도해주세요.');
+      }
     } finally {
       setIsSavingOriginal(false);
     }
