@@ -603,7 +603,16 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const householdSavePreview = previewHouseholdSave(householdSaveRows, householdChecks, householdDecisions);
   const householdAllAlready = householdSavePreview.total > 0 && householdSavePreview.excluded === householdSavePreview.total
     && householdSaveRows.every(row => householdChecks.some(check => check.entry.id === row.entry.id && check.status === 'already'));
-  const householdSaveBusy = isSaving || isSavingKakaoXlsx || isCheckingHouseholdImport || householdImportCheckFailed;
+  const householdSaveBusy = isSaving || isSavingKakaoXlsx || (hasHouseholdImport && (isCheckingHouseholdImport || householdImportCheckFailed));
+  const discardHouseholdImport = () => {
+    householdImportRefreshVersion.current++;
+    householdImportRefreshing.current = false;
+    setIsCheckingHouseholdImport(false);
+    setHouseholdImportCheckFailed(false);
+    setHouseholdChecks([]);
+    setHouseholdDecisions({});
+    setKakaoXlsxMonthGroups([]);
+  };
   const refreshHouseholdImport = async () => {
     if (!isOpen || !user?.uid || !hasHouseholdImport || householdSavingRef.current || isDecryptingKakaoXlsx || householdImportRefreshing.current) return;
     const version = ++householdImportRefreshVersion.current;
@@ -5304,7 +5313,7 @@ ${contentValues.slice(0, 4100)}`,
                     <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: 12, color: '#374151', fontWeight: 700 }}>불러온 거래 미리보기 — 확인 후 저장하세요</span>
-                        <button type="button" onClick={() => setKakaoXlsxMonthGroups([])} disabled={isSavingKakaoXlsx}
+                        <button type="button" onClick={discardHouseholdImport} disabled={isSavingKakaoXlsx}
                           style={{ padding: '4px 10px', border: 'none', borderRadius: 6, backgroundColor: 'transparent', color: '#9ca3af', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                           목록 지우기
                         </button>
@@ -6772,13 +6781,13 @@ ${contentValues.slice(0, 4100)}`,
             ) : isHouseholdFormat ? (
               /* 📒 HARU가계부 전용 저장 버튼 */
               <div style={{ width: '100%' }}>
-                <HouseholdSaveSummary preview={householdSavePreview} allAlready={householdAllAlready} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={hasHouseholdImport ? refreshHouseholdImport : undefined} />
+                <HouseholdSaveSummary preview={householdSavePreview} allAlready={householdAllAlready} checking={hasHouseholdImport && isCheckingHouseholdImport} failed={hasHouseholdImport && householdImportCheckFailed} onRecheck={hasHouseholdImport ? refreshHouseholdImport : undefined} />
                 <button
                   onClick={hasHouseholdImport ? handleSaveKakaoXlsxImport : handleSaveHouseholdEntries}
                   disabled={householdSaveBusy || !householdSaveRows.some(row => row.selected)}
                   style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#166534', color: '#fff', cursor: householdSaveBusy ? 'not-allowed' : 'pointer', opacity: householdSaveBusy ? 0.7 : 1, fontWeight: 700 }}
                 >
-                  {isSaving || isSavingKakaoXlsx ? '저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview, householdAllAlready)}
+                  {isSaving || isSavingKakaoXlsx ? '저장 중...' : hasHouseholdImport && isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : hasHouseholdImport && householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview, householdAllAlready)}
                 </button>
               </div>
             ) : isVoidingFormat ? (
