@@ -263,3 +263,13 @@ test("이전 운영 펼침 규칙과 529건의 날짜·금액·메모·유형이
     ]),
   );
 });
+
+test('숫자 금액 검색은 쉼표·원 단위·한글 단위 저장 형식과 무관하다', () => {
+  const items=expandHouseholdRecords([{date:'2026-07-01',household_entries:JSON.stringify([
+    entry({amount:'12,000원'}),entry({amount:'1만원'}),entry({amount:'-5천원'}),entry({amount:'12000'})
+  ])}]);
+  assert.equal(filterTransactions(items,'전체','전체','12000').length,2);
+  assert.equal(filterTransactions(items,'전체','전체','12,000').length,2);
+  assert.equal(filterTransactions(items,'전체','전체','10000').length,1);
+  assert.equal(filterTransactions(items,'전체','전체','-5000').length,1);
+});

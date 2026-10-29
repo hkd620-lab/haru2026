@@ -233,6 +233,7 @@ export function filterTransactions(
             entry.paymentMethod,
             entry.transactionType,
             entry.amount,
+            String(parseHouseholdAmountText(entry.amount) ?? ""),
             (parseHouseholdAmountText(entry.amount) ?? 0).toLocaleString(
               "ko-KR",
             ),

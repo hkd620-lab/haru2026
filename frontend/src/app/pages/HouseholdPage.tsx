@@ -501,7 +501,7 @@ export function HouseholdPage() {
                 <p className="hh-comparison-caution">
                   날짜 확인 필요{" "}
                   {selected.filter((e) => e.dateEstimated).length}건 · 월만
-                  있으면 1일로, 날짜가 없거나 잘못되면 기록 저장일로
+                  있으면 1일로, 날짜가 없거나 잘못되면 기록 문서 날짜(월별 문서는 1일)로
                   표시했습니다.
                 </p>
               )}
