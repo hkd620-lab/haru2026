@@ -149,6 +149,8 @@ export async function parseKakaoBankWorkbook(
       id: key,
       transactionType,
       category,
+      // 파서가 정한 분류는 사용자가 고른 값과 구분한다. 거래처 기억은 이 값 위에만 제안한다.
+      categorySource: 'import-default',
       date,
       vendor,
       amount,

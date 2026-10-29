@@ -1,5 +1,12 @@
 import { parseHouseholdAmountText } from "./householdAmount";
 import { summarizeHouseholdEntries } from "./householdSummary";
+import {
+  hasTransactionFields,
+  householdEntryFingerprint,
+  householdLegacyFingerprint,
+  householdRecordShape,
+  type HouseholdLocator,
+} from "./householdRecordShape";
 
 export interface DashboardEntry {
   date: string;
@@ -11,7 +18,34 @@ export interface DashboardEntry {
   amount: string;
   paymentMethod: string;
   memo: string;
+  subcategory?: string;
+  // 저장된 원본의 분류 값(표시용 '기타' 대체 전)과 출처.
+  rawCategory?: string;
+  categorySource?: string;
+  needsCategoryReview?: boolean;
+  // 편집 가능한 행만 위치 정보를 가진다. 편집할 수 없으면 이유를 표시한다.
+  locator?: HouseholdLocator;
+  editBlock?: string;
 }
+
+// 자동 기본값과 구분할 수 없는 분류. 사용자가 확정(categorySource=user)하면 목록에서 빠진다.
+const GENERIC_CATEGORIES = new Set(["기타", "기타수입", "이체"]);
+export function needsHouseholdCategoryReview(
+  category: unknown,
+  categorySource: unknown,
+): boolean {
+  const value = String(category ?? "").trim();
+  if (!value) return true;
+  return (
+    categorySource !== "user" &&
+    categorySource !== "rule" &&
+    GENERIC_CATEGORIES.has(value)
+  );
+}
+
+// 저장 서비스의 householdIdentity와 같은 값. 위치를 찾는 데 쓰지 않고 같은 위치의 추가 확인에만 쓴다.
+const entryIdentity = (entry: Record<string, any>) =>
+  entry.importSource?.key || `manual:${entry.id}`;
 export interface DateRange {
   start: string;
   end: string;
@@ -34,57 +68,61 @@ export function normalizeHouseholdDate(value: unknown): string {
     : "";
 }
 
-function hasTransactionFields(entry: Record<string, any>): boolean {
-  return [
-    "transactionType",
-    "category",
-    "vendor",
-    "amount",
-    "paymentMethod",
-    "memo",
-  ].some((key) => String(entry[key] ?? "").trim());
-}
-
 export function readHouseholdDashboard(
   records: readonly Record<string, any>[],
 ) {
   let ignoredRecords = 0;
   let ignoredEntries = 0;
-  const result = records
-    .filter((record) =>
-      Object.keys(record).some((key) => key.startsWith("household_")),
-    )
-    .flatMap((record, recordIndex) => {
-      let entries: any[] = [];
-      try {
-        const parsed = JSON.parse(record.household_entries || "[]");
-        if (Array.isArray(parsed)) {
-          entries = parsed.filter(
-            (entry) =>
-              entry && typeof entry === "object" && hasTransactionFields(entry),
-          );
-          ignoredEntries += parsed.length - entries.length;
-        }
-      } catch {
-        /* 레거시 단건 필드로 표시 */
-      }
-      if (!entries.length)
-        entries = [
-          {
+  const householdRecords = records.filter((record) =>
+    Object.keys(record).some((key) => key.startsWith("household_")),
+  );
+  const shapes = householdRecords.map((record) => householdRecordShape(record));
+  const result = householdRecords.flatMap((record, recordIndex) => {
+    const shape = shapes[recordIndex];
+    let entries: { entry: any; rawIndex: number }[] = [];
+    if (shape.kind === "array") {
+      entries = shape.raw
+        .map((entry, rawIndex) => ({ entry, rawIndex }))
+        .filter(
+          ({ entry }) =>
+            entry && typeof entry === "object" && hasTransactionFields(entry),
+        );
+      ignoredEntries += shape.raw.length - entries.length;
+    } else if (shape.kind === "legacy" && shape.raw) {
+      ignoredEntries += shape.raw.length;
+    }
+    const legacy = !entries.length;
+    if (legacy)
+      entries = [
+        {
+          rawIndex: -1,
+          entry: {
             date: record.household_date,
             transactionType: record.household_type,
             category: record.household_category,
+            subcategory: record.household_subcategory,
+            categorySource: record.household_categorySource,
             vendor: record.household_vendor,
             amount: record.household_amount,
             paymentMethod: record.household_payment,
             memo: record.household_memo,
           },
-        ];
-      if (!entries.some(hasTransactionFields)) {
-        ignoredRecords++;
-        return [];
-      }
-      return entries.map((entry, index) => ({
+        },
+      ];
+    if (!entries.some(({ entry }) => hasTransactionFields(entry))) {
+      ignoredRecords++;
+      return [];
+    }
+    const recordId = typeof record.id === "string" ? record.id : "";
+    return entries.map(({ entry, rawIndex }, index) => {
+      // 거래 id가 없거나 같은 id가 여러 건이어도 기록 위치(recordId + rawIndex)와 원본 지문으로 구분한다.
+      const identity = legacy ? `legacy:${recordId}` : entryIdentity(entry);
+      const editBlock = !recordId
+        ? "기록 위치를 확인할 수 없어 편집할 수 없습니다."
+        : shape.kind === "corrupt"
+          ? "저장된 거래 목록을 읽을 수 없어 편집하지 않습니다. 원본은 그대로 둡니다."
+          : undefined;
+      return {
         sourceKey: `${record.id || recordIndex}:${index}`,
         dateEstimated:
           !/^\d{4}[.\/-]\d{1,2}[.\/-]\d{1,2}(?:$|[T\s])/.test(
@@ -99,8 +137,32 @@ export function readHouseholdDashboard(
         amount: String(entry.amount ?? ""),
         paymentMethod: String(entry.paymentMethod || ""),
         memo: String(entry.memo || ""),
-      }));
+        subcategory: String(entry.subcategory || ""),
+        rawCategory: String(entry.category ?? ""),
+        categorySource:
+          typeof entry.categorySource === "string"
+            ? entry.categorySource
+            : undefined,
+        needsCategoryReview: needsHouseholdCategoryReview(
+          entry.category,
+          entry.categorySource,
+        ),
+        editBlock,
+        locator: editBlock
+          ? undefined
+          : {
+              recordId,
+              rawIndex,
+              identity,
+              fingerprint: legacy
+                ? householdLegacyFingerprint(record)
+                : householdEntryFingerprint(
+                    (shape as { raw: unknown[] }).raw[rawIndex],
+                  ),
+            },
+      };
     });
+  });
   return { entries: result, ignoredRecords, ignoredEntries };
 }
 
@@ -210,6 +272,7 @@ export function filterTransactions(
   type: string,
   category: string,
   query: string,
+  options: { needsReview?: boolean } = {},
 ): DashboardEntry[] {
   const words = query
     .trim()
@@ -224,12 +287,14 @@ export function filterTransactions(
             ? !["수입", "지출", "이체"].includes(entry.transactionType)
             : entry.transactionType === type)) &&
         (category === "전체" || entry.category === category) &&
+        (!options.needsReview || entry.needsCategoryReview) &&
         words.every((word) =>
           [
             entry.date,
             entry.vendor,
             entry.memo,
             entry.category,
+            entry.subcategory || "",
             entry.paymentMethod,
             entry.transactionType,
             entry.amount,

@@ -15,7 +15,7 @@ import { httpsCallable, getFunctions } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
-import { saveHouseholdOriginal, HouseholdOriginalConflict } from '../services/householdSaveService';
+import { saveHouseholdOriginal, HouseholdOriginalConflict, householdSayuText } from '../services/householdSaveService';
 import { buildFormatKeyMap, invertFormatKeyMap } from '../records/formatRegistry';
 import { exportRecordsToEpub } from '../services/epubExportService';
 import { getEpubReaderHint } from '../utils/epubReaderGuide';
@@ -69,6 +69,7 @@ type HouseholdSayuEntry = {
   paymentMethod: string;
   memo: string;
   balanceAfter?: string;
+  subcategory?: string;
 };
 
 function parseHouseholdAmount(value: string): number {
@@ -90,9 +91,22 @@ function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdS
       paymentMethod: String(entry.paymentMethod || ''),
       memo: String(entry.memo || ''),
       balanceAfter: entry.balanceAfter ? String(entry.balanceAfter) : undefined,
+      subcategory: entry.subcategory ? String(entry.subcategory) : undefined,
     }));
   } catch {
     return [];
+  }
+}
+
+// 기록 본문이 저장 서비스가 만든 그대로가 아니면 사용자가 쓴 본문이므로 고치지 않고 안내만 한다.
+function householdSayuIsUserText(data?: Record<string, string>) {
+  const sayu = data?.household_sayu;
+  if (typeof sayu !== 'string' || !sayu.trim() || typeof data?.household_entries !== 'string') return false;
+  try {
+    const entries = JSON.parse(data.household_entries);
+    return Array.isArray(entries) && entries.every(entry => entry && typeof entry === 'object') && sayu !== householdSayuText(entries);
+  } catch {
+    return false;
   }
 }
 
@@ -126,7 +140,7 @@ function formatHouseholdDate(date: string): string {
   return date.match(/^\d{4}\.(\d{2})\.(\d{2})/)?.slice(1).join('/') || date;
 }
 
-function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: string, totalEntries?: HouseholdSayuEntry[]) {
+function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: string, totalEntries?: HouseholdSayuEntry[], userText = false) {
   if (entries.length === 0) {
     return (
       <textarea
@@ -187,6 +201,11 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
           ))}
         </div>
         <p style={{ margin: '10px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>{HOUSEHOLD_SUMMARY_NOTE}</p>
+        {userText && (
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: '#83642d', lineHeight: 1.6 }}>
+            아래 거래 목록이 최신 분류·메모 기준입니다. 기록 본문은 작성 당시 내용이며 자동으로 고치지 않습니다.
+          </p>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -204,7 +223,7 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
               : entry.vendor || entry.category || '지출';
           const detailLabel = isTransfer ? '메모' : isIncome ? '출처' : '사용처';
           const detail = isTransfer ? entry.memo || '이체' : title;
-          const meta = [entry.category || entry.transactionType, entry.paymentMethod, entry.date].filter(Boolean).join(' · ');
+          const meta = [entry.category || entry.transactionType, entry.subcategory, entry.paymentMethod, entry.date].filter(Boolean).join(' · ');
           return (
             <div key={`${entry.date}_${entry.amount}_${index}`} style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -2574,7 +2593,7 @@ export function SayuModal({
               </div>
 
               {isHouseholdSayu ? (
-                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent, allHouseholdEntries)
+                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent, allHouseholdEntries, householdSayuIsUserText(editedOriginalData))
               ) : (
               <>
               {/* 환경 정보 */}
@@ -3173,7 +3192,7 @@ export function SayuModal({
                 </header>
 
               {isHouseholdSayu ? (
-                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent, allHouseholdEntries)
+                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent, allHouseholdEntries, householdSayuIsUserText(editedOriginalData))
               ) : (
               <>
                 {isGrowthTimeline && editedTimelineItems.length > 0 && (

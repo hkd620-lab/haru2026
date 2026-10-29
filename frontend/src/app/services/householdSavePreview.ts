@@ -8,6 +8,11 @@ export interface HouseholdSavePreview {
 // 내용 수정 뒤에는 이전 비교 결과·선택을 저장 예정 건수에 사용하지 않는다.
 const snapshot = (entry: HouseholdEntry) => JSON.stringify(Object.keys(entry).filter(key => entry[key as keyof HouseholdEntry] !== undefined).sort().map(key => [key, entry[key as keyof HouseholdEntry]]));
 
+// 아무것도 입력하지 않은 기본 행은 저장 대상·건수에 넣지 않는다. 일부라도 입력한 행은 그대로 확인한다.
+export function isBlankHouseholdEntry(entry: HouseholdEntry) {
+  return ![entry.amount, entry.vendor, entry.memo, entry.category, entry.paymentMethod].some(value => String(value ?? '').trim()) && !entry.ocrSourceFile;
+}
+
 export function mergeHouseholdChecks(previous: HouseholdDuplicateCheck[], updated: HouseholdDuplicateCheck[]) {
   const next = new Map(previous.map(check => [check.entry.id, check]));
   updated.forEach(check => next.set(check.entry.id, check));

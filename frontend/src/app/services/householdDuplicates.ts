@@ -1,5 +1,6 @@
 import type { HouseholdEntry } from '../components/FormatModal';
 import { parseHouseholdAmountText } from '../utils/householdAmount';
+import { hasTransactionFields, householdRecordShape } from '../utils/householdRecordShape';
 
 export interface HouseholdStoredRecord { id: string; data: Record<string, any> }
 export interface HouseholdMatch { recordId: string; entryId: string; entry: HouseholdEntry }
@@ -31,18 +32,26 @@ export function householdIdentity(entry: HouseholdEntry): string {
 
 export function householdStoredEntries(record: HouseholdStoredRecord): HouseholdEntry[] {
   const data = record.data;
-  if (typeof data.household_entries === 'string') {
-    // 손상된 배열을 빈 내역으로 간주해 기존 거래를 덮어쓰지 않는다.
-    const entries = JSON.parse(data.household_entries);
-    if (!Array.isArray(entries)) throw new Error('기존 가계부 내역을 읽지 못했습니다. 저장하지 않았습니다.');
-    return entries;
-  }
-  if (!Object.keys(data).some(key => key.startsWith('household_'))) return [];
-  return [{ id: `legacy:${record.id}`, date: data.household_date || data.date || '',
+  const legacy = (): HouseholdEntry => ({ id: `legacy:${record.id}`, date: data.household_date || data.date || '',
     transactionType: data.household_type || '', category: data.household_category || '',
     vendor: data.household_vendor || '', amount: data.household_amount || '',
     paymentMethod: data.household_payment || '', memo: data.household_memo || '',
-  }];
+    ...(data.household_subcategory ? { subcategory: data.household_subcategory } : {}),
+    ...(data.household_categorySource ? { categorySource: data.household_categorySource } : {}),
+  });
+  if (data.household_entries === undefined || data.household_entries === null) {
+    if (!Object.keys(data).some(key => key.startsWith('household_'))) return [];
+    return [legacy()];
+  }
+  // 대시보드·거래 편집과 같은 문서 모양 판정을 쓴다.
+  const shape = householdRecordShape(data);
+  // 손상된 배열을 빈 내역으로 간주해 기존 거래를 덮어쓰지 않는다.
+  if (shape.kind === 'corrupt') throw new Error('기존 가계부 내역을 읽지 못했습니다. 저장하지 않았습니다.');
+  if (shape.kind === 'array') return shape.raw as HouseholdEntry[];
+  // 거래 없는 배열('[]' 등)과 예전 단건 필드가 함께 있으면 화면에 보이던 단건 거래를 함께 남긴다.
+  // 단건 필드도 비어 있는 문서만 실제 빈 문서로 본다.
+  const old = legacy();
+  return hasTransactionFields(old) ? [...shape.raw as HouseholdEntry[], old] : shape.raw as HouseholdEntry[];
 }
 
 function sameDayAmount(a: HouseholdEntry, b: HouseholdEntry) {

@@ -80,9 +80,14 @@ import { parseHouseholdAmountText } from '../utils/householdAmount';
 import { checkHouseholdDuplicates, HouseholdDuplicateReviewRequired, type HouseholdDecisions, type HouseholdDuplicateCheck } from '../services/householdDuplicates';
 import { loadHouseholdRecords, type HouseholdSaveResult } from '../services/householdSaveService';
 import { HouseholdDuplicateReview } from './HouseholdDuplicateReview';
-import { householdSaveLabel, mergeHouseholdChecks, previewHouseholdSave } from '../services/householdSavePreview';
+import { householdSaveLabel, isBlankHouseholdEntry, mergeHouseholdChecks, previewHouseholdSave } from '../services/householdSavePreview';
 import { HouseholdSaveSummary } from './HouseholdSaveSummary';
 import { parseKakaoBankPdf } from '../services/householdKakaoPdfImport';
+import { HouseholdCategoryPicker } from './HouseholdCategoryPicker';
+import './HouseholdCategoryPicker.css';
+import { emptyHouseholdCategories, householdCategoryOptions, householdSubcategoryOptions, isHouseholdType, loadHouseholdCategories, mergeHouseholdCategories,
+  updateHouseholdCategories, type HouseholdCategorySettings } from '../services/householdCategories';
+import { loadHouseholdVendorRules, readHouseholdSuggestionBasis, suggestHouseholdCategory, type HouseholdVendorRule } from '../services/householdVendorRules';
 import { findSameNameGrowthSubject, growthSubjectOptionLabel } from '../utils/growthSubject';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부' | '배뇨일지';
@@ -96,6 +101,8 @@ interface FormatModalProps {
   initialData?: Record<string, string>;
   initialPhotos?: File[];
   initialWritingDraft?: boolean;
+  // 가계부 화면의 '은행 내역 가져오기'로 열었을 때만 'bank'. 없으면 기존 화면 그대로다.
+  householdEntryMode?: 'bank';
   onSave: (formatData: Record<string, string>) => Promise<string | void | HouseholdSaveResult>;
 }
 
@@ -172,6 +179,9 @@ export interface HouseholdEntry {
   balanceAfter?: string; // 거래 후 잔액(카카오뱅크 임포트 전용) — 손입력 기록엔 없음
   transactionAt?: string;
   importSource?: { kind: 'kakao'; fileDigest: string; key: string };
+  subcategory?: string;
+  // 새로 저장·수정한 거래에만 붙는다. 기존 거래에는 쓰지 않는다.
+  categorySource?: 'user' | 'rule' | 'import-default';
 }
 
 function newHouseholdEntry(overrides?: Partial<HouseholdEntry>): HouseholdEntry {
@@ -460,7 +470,7 @@ const LEDGER_OCR_PREVIEW_FIELDS: { key: keyof LedgerOcrFields; label: string }[]
   { key: 'memo', label: '메모' },
 ];
 
-export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, initialPhotos = [], initialWritingDraft = false, onSave: onSaveRequest }: FormatModalProps) {
+export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, initialPhotos = [], initialWritingDraft = false, householdEntryMode, onSave: onSaveRequest }: FormatModalProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
@@ -599,7 +609,44 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   householdImportSignatureRef.current = householdImportSignature;
   const householdSaveRows = hasHouseholdImport
     ? kakaoXlsxMonthGroups.flatMap(group => group.rows)
-    : fillEmptyHouseholdDates(householdEntries, recordId).map(entry => ({ entry, selected: true }));
+    : fillEmptyHouseholdDates(householdEntries.filter(entry => !isBlankHouseholdEntry(entry)), recordId).map(entry => ({ entry, selected: true }));
+  const householdBankMode = householdEntryMode === 'bank';
+  const [householdManualOpen, setHouseholdManualOpen] = useState(false);
+  const householdImportRulesRef = useRef<{ ownerUid: string; rules: HouseholdVendorRule[] } | null>(null);
+  // 은행 미리보기의 유형별 분류 선택지. 계정이 바뀌면 이전 계정의 설정을 쓰지 않는다.
+  const [householdCategorySettings, setHouseholdCategorySettings] = useState<{ ownerUid: string; settings: HouseholdCategorySettings } | null>(null);
+  // 늦게 도착한 결과는 같은 계정·같은 편집 세션일 때만 쓴다. 수정 번호는 트랜잭션 결과를 과거 조회 값이 덮지 않게 한다.
+  const householdOwnerRef = useRef(user?.uid);
+  householdOwnerRef.current = user?.uid;
+  const householdCategoryRevision = useRef(0);
+  const ownsHouseholdSession = (uid: string, session: number) => householdOwnerRef.current === uid && photoEditorSessionRef.current === session;
+  const keepHouseholdCategories = (uid: string, settings: HouseholdCategorySettings) => {
+    householdCategoryRevision.current++;
+    setHouseholdCategorySettings({ ownerUid: uid, settings });
+  };
+  useEffect(() => {
+    setHouseholdManualOpen(false);
+    if (!isOpen || format !== 'HARU가계부' || !user?.uid) return;
+    let active = true;
+    const uid = user.uid;
+    const session = photoEditorSessionRef.current;
+    const revision = householdCategoryRevision.current;
+    loadHouseholdCategories(getFirestore(), uid)
+      .then(settings => { if (active && ownsHouseholdSession(uid, session) && revision === householdCategoryRevision.current) keepHouseholdCategories(uid, settings); })
+      .catch(() => { if (active && ownsHouseholdSession(uid, session)) toast.info('분류 설정을 불러오지 못해 기본 분류로 표시합니다.'); });
+    return () => { active = false; };
+  }, [isOpen, format, user?.uid]);
+  const householdCategoryViews = mergeHouseholdCategories(user?.uid && householdCategorySettings?.ownerUid === user.uid ? householdCategorySettings.settings : emptyHouseholdCategories());
+  const createHouseholdCategory = (type: string, kind: 'category' | 'subcategory', name: string, category?: string) => {
+    if (!user?.uid || !isHouseholdType(type)) return;
+    const uid = user.uid;
+    const session = photoEditorSessionRef.current;
+    updateHouseholdCategories(getFirestore(), uid, type, kind === 'category' ? { kind: 'add', name } : { kind: 'addSub', category: category || '', name })
+      .then(settings => { if (ownsHouseholdSession(uid, session)) keepHouseholdCategories(uid, settings); })
+      .catch(error => {
+        if (ownsHouseholdSession(uid, session) && !/이미 있는/.test(String(error?.message))) toast.warning(`‘${name}’을(를) 분류 목록에 저장하지 못했습니다. 이 거래에는 그대로 쓰입니다.`);
+      });
+  };
   const householdSavePreview = previewHouseholdSave(householdSaveRows, householdChecks, householdDecisions);
   const householdAllAlready = householdSavePreview.total > 0 && householdSavePreview.excluded === householdSavePreview.total
     && householdSaveRows.every(row => householdChecks.some(check => check.entry.id === row.entry.id && check.status === 'already'));
@@ -2818,20 +2865,21 @@ ${contentValues}
 
   const handleSaveHouseholdEntries = async () => {
     if (householdSavingRef.current) return;
-    if (householdEntries.length === 0) { toast.warning('거래 내역을 입력해 주세요.'); return; }
-    const emptyAmounts = householdEntries.filter(e => !e.amount.trim()).length;
+    const inputEntries = householdEntries.filter(entry => !isBlankHouseholdEntry(entry));
+    if (inputEntries.length === 0) { toast.warning('거래 내역을 입력해 주세요.'); return; }
+    const emptyAmounts = inputEntries.filter(e => !e.amount.trim()).length;
     // 수입·이체는 사용처가 없어도 됨 — 지출만 체크
-    const emptyVendors = householdEntries.filter(e => e.transactionType === '지출' && !e.vendor.trim()).length;
+    const emptyVendors = inputEntries.filter(e => e.transactionType === '지출' && !e.vendor.trim()).length;
     if (emptyAmounts > 0) { toast.warning(`금액이 비어 있는 거래(${emptyAmounts}건)를 확인해 주세요.`); return; }
     // 숫자로 읽을 수 없는 금액("오천원" 등)은 0원으로 조용히 저장하지 않고 다시 입력받는다
-    const unreadableAmounts = householdEntries.filter(e => e.amount.trim() && parseHouseholdAmountText(e.amount) === null).length;
+    const unreadableAmounts = inputEntries.filter(e => e.amount.trim() && parseHouseholdAmountText(e.amount) === null).length;
     if (unreadableAmounts > 0) { toast.warning(`금액을 숫자로 읽을 수 없는 거래(${unreadableAmounts}건)를 확인해 주세요. (예: 5000, 5천원, 1만5천원)`); return; }
     if (emptyVendors > 0) { toast.warning(`사용처가 비어 있는 지출 거래(${emptyVendors}건)를 확인해 주세요.`); return; }
 
     householdSavingRef.current = true;
     setIsSaving(true);
     try {
-      const result = await saveHouseholdEntriesBatch(householdEntries);
+      const result = await saveHouseholdEntriesBatch(inputEntries);
       toast.success(`추가 ${result.added}건 · 중복 제외 ${result.already + result.skipped}건`);
       closeAfterCommit();
     } catch (error) {
@@ -2928,6 +2976,20 @@ ${contentValues}
         toast.error('거래 내역을 찾지 못했습니다. 카카오뱅크 거래내역 파일인지 확인해 주세요.');
         return;
       }
+      // 사용자가 직접 기억시킨 거래처 분류만, 파서 기본값 위에 첫 중복 확인 전에 제안한다.
+      // 파일을 고른 렌더의 설정이 아니라 지금 계정의 최신 분류 설정과 규칙을 함께 읽어 보관 여부를 확인한다.
+      const uid = user.uid;
+      const revision = householdCategoryRevision.current;
+      const basis = await readHouseholdSuggestionBasis({
+        categories: () => loadHouseholdCategories(getFirestore(), uid),
+        rules: () => loadHouseholdVendorRules(getFirestore(), uid),
+      });
+      if (!ownsHouseholdSession(uid, session)) return;
+      if (basis.settings && revision === householdCategoryRevision.current) keepHouseholdCategories(uid, basis.settings);
+      householdImportRulesRef.current = { ownerUid: uid, rules: basis.rules };
+      const suggestedRows = parseResult.rows.map(row => ({ ...row, entry: suggestHouseholdCategory(row.entry, basis.rules, basis.views) }));
+      parseResult = { ...parseResult, rows: suggestedRows };
+      if (basis.failed) toast.info('분류 설정이나 거래처 분류 기억을 불러오지 못해 기본 분류로 표시합니다. 파일을 다시 선택하면 다시 불러옵니다.');
       const checks = await checkHouseholdDuplicates(parseResult.rows.map(row => row.entry), await loadHouseholdRecords(getFirestore(), user.uid));
       if (session !== photoEditorSessionRef.current) return;
       setHouseholdChecks(checks);
@@ -2971,6 +3033,33 @@ ${contentValues}
         }),
       };
     }));
+  };
+
+  // 분류 변경은 거래 객체를 통째로 바꿔 이전 세부분류가 남지 않게 한다.
+  const replaceKakaoEntry = (month: string, rowId: string, change: (entry: HouseholdEntry) => HouseholdEntry) => {
+    setKakaoXlsxMonthGroups(groups => groups.map(g => g.month !== month ? g : {
+      ...g,
+      rows: g.rows.map(r => {
+        if (r.id !== rowId) return r;
+        const entry = change(r.entry);
+        return { ...r, entry, warning: recomputeKakaoRowWarning(entry) };
+      }),
+    }));
+  };
+  // 사용자가 고른 분류는 'user'로 표시해 거래처 기억·자동 기본값과 구분한다.
+  const updateKakaoCategory = (month: string, rowId: string, category: string, subcategory: string) => {
+    replaceKakaoEntry(month, rowId, ({ subcategory: _previous, ...rest }) => ({ ...rest, category, categorySource: 'user', ...(subcategory ? { subcategory } : {}) }));
+  };
+  const changeKakaoTransactionType = (month: string, rowId: string, transactionType: HouseholdEntry['transactionType']) => {
+    const rules = householdImportRulesRef.current?.ownerUid === user?.uid ? householdImportRulesRef.current!.rules : [];
+    replaceKakaoEntry(month, rowId, ({ subcategory, ...rest }) => {
+      const nextOptions = householdCategoryOptions(householdCategoryViews[transactionType] || []);
+      // 구분을 바꾸면 사용자가 고른 분류가 새 구분에도 있을 때만 유지하고, 아니면 기본 분류와 거래처 기억을 다시 적용한다.
+      const keep = rest.categorySource === 'user' && nextOptions.includes(rest.category);
+      return suggestHouseholdCategory(keep
+        ? { ...rest, transactionType, ...(subcategory ? { subcategory } : {}) }
+        : { ...rest, transactionType, category: nextOptions[0], categorySource: 'import-default' }, rules, householdCategoryViews);
+    });
   };
 
   const toggleKakaoRowSelected = (month: string, rowId: string) => {
@@ -5192,7 +5281,12 @@ ${contentValues.slice(0, 4100)}`,
                     onChoose={chooseHouseholdDuplicate} disabled={householdSaveBusy} />
                 </div>
               )}
-              {isHouseholdFormat && (
+              {isHouseholdFormat && householdBankMode && (
+                <p style={{ margin: 0, fontSize: 13, color: '#1A3C6E', lineHeight: 1.6, fontWeight: 700 }}>
+                  은행 거래내역 파일을 선택해 미리보기에서 분류를 확인한 뒤 저장하세요.
+                </p>
+              )}
+              {isHouseholdFormat && !householdBankMode && (
                 <div style={{ padding: 12, border: '1px solid #d0f0d0', borderRadius: 10, backgroundColor: '#f6fff6' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1A6E1A', marginBottom: 8, fontWeight: 700 }}>
                     <Camera style={{ width: 15, height: 15 }} />
@@ -5334,7 +5428,7 @@ ${contentValues.slice(0, 4100)}`,
                               </button>
                             </div>
                             <div style={{ overflowX: 'auto' }}>
-                              <table style={{ width: '100%', minWidth: 620, borderCollapse: 'collapse', fontSize: 11 }}>
+                              <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse', fontSize: 11 }}>
                                 <thead>
                                   <tr style={{ backgroundColor: '#fafafa', color: '#6b7280', textAlign: 'left' }}>
                                     {['', '날짜', '구분', '거래처', '금액', '카테고리', '결제수단'].map((label) => (
@@ -5344,9 +5438,10 @@ ${contentValues.slice(0, 4100)}`,
                                 </thead>
                                 <tbody>
                                   {group.rows.map((row) => {
-                                    const categoryOptions = row.entry.transactionType === '이체' ? ['이체'] : row.entry.transactionType === '수입' ? INCOME_CATEGORIES : HOUSEHOLD_CATEGORIES;
+                                    const views = householdCategoryViews[row.entry.transactionType] || [];
                                     const duplicate = householdChecks.find(check => check.entry.id === row.id);
                                     const already = duplicate?.status === 'already';
+                                    const rowLocked = isSavingKakaoXlsx || already;
                                     return (
                                       <Fragment key={row.id}>
                                         <tr style={{ backgroundColor: row.warning ? '#fffbeb' : '#fff' }}>
@@ -5356,17 +5451,10 @@ ${contentValues.slice(0, 4100)}`,
                                               aria-label={`${row.entry.vendor || '거래'} 선택`}
                                               style={{ accentColor: '#1A3C6E' }} />
                                           </td>
-                                          <td style={{ padding: '6px 6px', borderBottom: row.warning ? 'none' : '1px solid #f3f4f6', whiteSpace: 'nowrap', color: '#374151' }}>{row.entry.date}<div>{already ? '이미 저장됨' : duplicate?.status === 'suspect' ? '겹침 확인 필요' : ''}</div></td>
+                                          <td style={{ padding: '6px 6px', borderBottom: row.warning ? 'none' : '1px solid #f3f4f6', whiteSpace: 'nowrap', color: '#374151' }}>{row.entry.date}<div>{already ? '이미 저장됨(저장된 분류 유지)' : duplicate?.status === 'suspect' ? '겹침 확인 필요' : row.entry.categorySource === 'rule' ? '기억한 분류' : ''}</div></td>
                                           <td style={{ padding: '6px 6px', borderBottom: row.warning ? 'none' : '1px solid #f3f4f6' }}>
-                                            <select value={row.entry.transactionType} disabled={isSavingKakaoXlsx}
-                                              onChange={(e) => {
-                                                const transactionType = e.target.value as HouseholdEntry['transactionType'];
-                                                const nextCategoryOptions = transactionType === '이체' ? ['이체'] : transactionType === '수입' ? INCOME_CATEGORIES : HOUSEHOLD_CATEGORIES;
-                                                updateKakaoRow(group.month, row.id, {
-                                                  transactionType,
-                                                  category: (nextCategoryOptions as readonly string[]).includes(row.entry.category) ? row.entry.category : nextCategoryOptions[0],
-                                                });
-                                              }}
+                                            <select value={row.entry.transactionType} disabled={rowLocked}
+                                              onChange={(e) => changeKakaoTransactionType(group.month, row.id, e.target.value as HouseholdEntry['transactionType'])}
                                               style={{ padding: '4px 5px', border: '1px solid #e5e5e5', borderRadius: 5, fontSize: 11, backgroundColor: '#fff' }}>
                                               <option value="수입">수입</option>
                                               <option value="지출">지출</option>
@@ -5374,24 +5462,25 @@ ${contentValues.slice(0, 4100)}`,
                                             </select>
                                           </td>
                                           <td style={{ padding: '6px 6px', borderBottom: row.warning ? 'none' : '1px solid #f3f4f6' }}>
-                                            <input type="text" value={row.entry.vendor} disabled={isSavingKakaoXlsx}
+                                            <input type="text" value={row.entry.vendor} disabled={rowLocked}
                                               onChange={(e) => updateKakaoRow(group.month, row.id, { vendor: e.target.value })}
                                               style={{ width: 110, padding: '4px 6px', border: '1px solid #e5e5e5', borderRadius: 5, fontSize: 11, backgroundColor: '#fff', boxSizing: 'border-box' }} />
                                           </td>
                                           <td style={{ padding: '6px 6px', borderBottom: row.warning ? 'none' : '1px solid #f3f4f6' }}>
-                                            <input type="text" inputMode="numeric" value={row.entry.amount} disabled={isSavingKakaoXlsx}
+                                            <input type="text" inputMode="numeric" value={row.entry.amount} disabled={rowLocked}
                                               onChange={(e) => updateKakaoRow(group.month, row.id, { amount: e.target.value })}
                                               style={{ width: 80, padding: '4px 6px', border: '1px solid #e5e5e5', borderRadius: 5, fontSize: 11, backgroundColor: '#fff', textAlign: 'right', boxSizing: 'border-box' }} />
                                           </td>
                                           <td style={{ padding: '6px 6px', borderBottom: row.warning ? 'none' : '1px solid #f3f4f6' }}>
-                                            <select value={row.entry.category} disabled={isSavingKakaoXlsx}
-                                              onChange={(e) => updateKakaoRow(group.month, row.id, { category: e.target.value })}
-                                              style={{ padding: '4px 5px', border: '1px solid #e5e5e5', borderRadius: 5, fontSize: 11, backgroundColor: '#fff' }}>
-                                              {categoryOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                                            </select>
+                                            <HouseholdCategoryPicker compact idPrefix={`hh-import-${row.id.slice(-12)}`} disabled={rowLocked}
+                                              options={householdCategoryOptions(views, row.entry.category)}
+                                              subOptions={category => householdSubcategoryOptions(views, category, category === row.entry.category ? row.entry.subcategory : '')}
+                                              category={row.entry.category} subcategory={row.entry.subcategory || ''}
+                                              onChange={(category, subcategory) => updateKakaoCategory(group.month, row.id, category, subcategory)}
+                                              onCreate={(kind, name, category) => createHouseholdCategory(row.entry.transactionType, kind, name, category)} />
                                           </td>
                                           <td style={{ padding: '6px 6px', borderBottom: row.warning ? 'none' : '1px solid #f3f4f6' }}>
-                                            <select value={row.entry.paymentMethod} disabled={isSavingKakaoXlsx}
+                                            <select value={row.entry.paymentMethod} disabled={rowLocked}
                                               onChange={(e) => updateKakaoRow(group.month, row.id, { paymentMethod: e.target.value })}
                                               style={{ padding: '4px 5px', border: '1px solid #e5e5e5', borderRadius: 5, fontSize: 11, backgroundColor: '#fff' }}>
                                               {HOUSEHOLD_PAYMENT_METHODS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
@@ -5919,6 +6008,12 @@ ${contentValues.slice(0, 4100)}`,
                           세무 신고나 회계 자문을 대체하지 않습니다.
                         </p>}
                       </div>
+                    ) : isHouseholdFormat && householdBankMode && !householdManualOpen ? (
+                      /* 📒 HARU가계부 — 은행 가져오기로 열면 직접 입력 행은 접어 둔다 */
+                      <button type="button" onClick={() => setHouseholdManualOpen(true)}
+                        style={{ width: '100%', padding: '10px', border: '1px dashed #d1d5db', borderRadius: 8, backgroundColor: '#fff', color: '#4b5563', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                        파일 없이 직접 입력하기
+                      </button>
                     ) : isHouseholdFormat ? (
                       /* 📒 HARU가계부 — 다건 거래 입력 카드 */
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -6781,13 +6876,14 @@ ${contentValues.slice(0, 4100)}`,
             ) : isHouseholdFormat ? (
               /* 📒 HARU가계부 전용 저장 버튼 */
               <div style={{ width: '100%' }}>
-                <HouseholdSaveSummary preview={householdSavePreview} allAlready={householdAllAlready} checking={hasHouseholdImport && isCheckingHouseholdImport} failed={hasHouseholdImport && householdImportCheckFailed} onRecheck={hasHouseholdImport ? refreshHouseholdImport : undefined} />
+                {/* 아직 아무것도 입력하지 않았으면 거래 건수·중복 확인 문구를 보여 주지 않는다. */}
+                {(hasHouseholdImport || householdSaveRows.length > 0) && <HouseholdSaveSummary preview={householdSavePreview} allAlready={householdAllAlready} checking={hasHouseholdImport && isCheckingHouseholdImport} failed={hasHouseholdImport && householdImportCheckFailed} onRecheck={hasHouseholdImport ? refreshHouseholdImport : undefined} />}
                 <button
                   onClick={hasHouseholdImport ? handleSaveKakaoXlsxImport : handleSaveHouseholdEntries}
                   disabled={householdSaveBusy || !householdSaveRows.some(row => row.selected)}
                   style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#166534', color: '#fff', cursor: householdSaveBusy ? 'not-allowed' : 'pointer', opacity: householdSaveBusy ? 0.7 : 1, fontWeight: 700 }}
                 >
-                  {isSaving || isSavingKakaoXlsx ? '저장 중...' : hasHouseholdImport && isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : hasHouseholdImport && householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview, householdAllAlready)}
+                  {isSaving || isSavingKakaoXlsx ? '저장 중...' : hasHouseholdImport && isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : hasHouseholdImport && householdImportCheckFailed ? '최신 저장 내역 확인 필요' : !hasHouseholdImport && !householdSaveRows.length ? (householdBankMode ? '파일을 읽으면 미리보기에서 저장할 수 있습니다' : '거래를 입력하면 저장할 수 있습니다') : householdSaveLabel(householdSavePreview, householdAllAlready)}
                 </button>
               </div>
             ) : isVoidingFormat ? (

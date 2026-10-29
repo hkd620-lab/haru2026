@@ -428,7 +428,7 @@ function getRecordSourceText(r: any, prefix: string): string {
   Object.keys(r).forEach((k) => {
     if (!k.startsWith(`${prefix}_`)) return;
     if (isStructuredMeasurementFieldOfFormat(r, prefix, k)) return;
-    if (k.endsWith('_sayu') || k.endsWith('_keywords') || k.endsWith('_ai_title') || k.endsWith('_title') || k.endsWith('_polished') || k.endsWith('_polishedAt') || k.endsWith('_mode') || k.endsWith('_stats') || k.endsWith('_images') || k.endsWith('_imageMeta') || k.endsWith('_rating') || k.endsWith('_tags') || k.endsWith('_space') || k.endsWith('_style')) return;
+    if (k.endsWith('_sayu') || k.endsWith('_keywords') || k.endsWith('_ai_title') || k.endsWith('_title') || k.endsWith('_polished') || k.endsWith('_polishedAt') || k.endsWith('_mode') || k.endsWith('_stats') || k.endsWith('_images') || k.endsWith('_imageMeta') || k.endsWith('_rating') || k.endsWith('_tags') || k.endsWith('_space') || k.endsWith('_style') || k === 'household_categorySource') return;
     const v = r[k];
     if (typeof v === 'string' && v.trim()) parts.push(v);
   });

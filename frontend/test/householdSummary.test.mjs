@@ -13,6 +13,10 @@ import {
   HOUSEHOLD_SUMMARY_NOTE,
   summarizeHouseholdEntries,
 } from "../src/app/utils/householdSummary.ts";
+import * as recordShape from "../src/app/utils/householdRecordShape.ts";
+import * as householdCategories from "../src/app/services/householdCategories.ts";
+import * as householdVendorRules from "../src/app/services/householdVendorRules.ts";
+import * as householdEditService from "../src/app/services/householdEditService.ts";
 
 const require = createRequire(import.meta.url);
 const now = new Date();
@@ -146,7 +150,7 @@ test("실제 SAYU 목록 제목도 같은 수입·지출·차액을 표시한다
   assert.match(title, /지출 -5,000원/);
 });
 
-function loadHouseholdPage(records, tab = "transactions", chartState = {}) {
+function loadHouseholdPage(records, tab = "transactions", chartState = {}, user = { uid: "fixture" }) {
   const source = readFileSync(
     new URL("../src/app/pages/HouseholdPage.tsx", import.meta.url),
     "utf8",
@@ -186,7 +190,7 @@ function loadHouseholdPage(records, tab = "transactions", chartState = {}) {
     "firebase/firestore": {},
     "../../firebase": { db: {} },
     "../contexts/AuthContext": {
-      useAuth: () => ({ user: { uid: "fixture" } }),
+      useAuth: () => ({ user }),
     },
     "../services/firestoreService": { firestoreService: {} },
     "../utils/householdAmount": { parseHouseholdAmountText },
@@ -195,7 +199,24 @@ function loadHouseholdPage(records, tab = "transactions", chartState = {}) {
       HOUSEHOLD_SUMMARY_NOTE,
     },
     "../utils/householdDashboard": dashboard,
+    "../utils/householdRecordShape": recordShape,
+    "../services/householdCategories": householdCategories,
+    "../services/householdVendorRules": householdVendorRules,
+    "../services/householdEditService": householdEditService,
+    // 입력·편집 시트는 열렸을 때만 그려진다. 각 시트는 별도 SSR 테스트로 검증한다.
+    "../components/HouseholdCashEntry": {
+      HouseholdCashEntry: () => null,
+      newHouseholdCashDraft: () => ({}),
+    },
+    "../components/HouseholdEditSheet": {
+      HouseholdEditSheet: () => null,
+      HouseholdBulkSheet: () => null,
+    },
+    "../components/HouseholdCategoryManager": {
+      HouseholdCategoryManager: () => null,
+    },
     "./HouseholdPage.css": {},
+    "../components/HouseholdCategoryPicker.css": {},
   };
   mocks.recharts.BarChart = ({ data, children }) => {
     chartState.monthly = data;
@@ -254,4 +275,15 @@ test("실제 빈 가계부는 0원 합계와 첫 기록 추가를 표시한다",
   assert.equal((markup.match(/<strong>0원<\/strong>/g) || []).length, 3);
   assert.match(markup, /첫 기록 추가/);
   assert.doesNotMatch(markup, /통장잔액/);
+});
+
+test("로그아웃·계정 전환 첫 화면은 빈 편집·선택 상태에 접근하지 않고 이전 계정 거래를 숨긴다", () => {
+  const records = [{ id: "2026-10-01_household", date: `${month}-05`, household_entries: JSON.stringify([entry({ memo: "이전 계정 메모" })]) }];
+  // 로그아웃(user=null): uid와 편집·선택 상태가 모두 비어 있어도 null.entry / null.entries에 접근하지 않는다.
+  const signedOut = renderToStaticMarkup(React.createElement(loadHouseholdPage(records, "transactions", {}, null)));
+  assert.match(signedOut, /로그인 후 내 가계부를 확인할 수 있습니다/);
+  assert.doesNotMatch(signedOut, /이전 계정 메모/);
+  // 다른 계정으로 바뀐 첫 프레임: 불러온 거래의 소유 계정(fixture)과 달라 표시하지 않는다.
+  const switched = renderToStaticMarkup(React.createElement(loadHouseholdPage(records, "transactions", {}, { uid: "other" })));
+  assert.doesNotMatch(switched, /이전 계정 메모/);
 });

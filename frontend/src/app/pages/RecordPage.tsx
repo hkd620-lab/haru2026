@@ -216,6 +216,7 @@ export function RecordPage() {
   const [weather, setWeather] = useState<Weather>('쾌청');
   const [temperature, setTemperature] = useState<Temperature>('쾌적');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>('생활' as Category);
+  const [householdEntryMode, setHouseholdEntryMode] = useState<'bank' | undefined>(undefined);
   const [showOtherEntryMethods, setShowOtherEntryMethods] = useState(() => Boolean((location.state as any)?.category || (location.state as any)?.format));
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
@@ -550,6 +551,7 @@ export function RecordPage() {
     setSavedDateStr(dateStr);
     setSavedFormat(format);
     setSelectedFormats([format]);
+    setHouseholdEntryMode(undefined);
     setFormatModalOpen(true);
   };
 
@@ -560,10 +562,13 @@ export function RecordPage() {
     if (!user) return;
     const incomingFormat = (location.state as any)?.format as string | undefined;
     const incomingFrom = (location.state as any)?.from as string | undefined;
+    // state를 지우기 전에 가계부 진입 방식(은행 파일 가져오기)을 보관한다.
+    const incomingHouseholdEntry = (location.state as any)?.householdEntry === 'bank' ? 'bank' : undefined;
     if (incomingFrom) setFromPath(incomingFrom);
     if (!incomingFormat) return;
     autoOpenedRef.current = true;
     openFormatDirectly(incomingFormat as RecordFormat);
+    if (incomingFormat === 'HARU가계부') setHouseholdEntryMode(incomingHouseholdEntry);
     // state 소비 후 history에서 제거 — 새로고침/뒤로가기 시 재열림 방지
     navigate(location.pathname, { replace: true, state: null });
   }, [user, location.state]);
@@ -1224,6 +1229,7 @@ export function RecordPage() {
         isOpen={formatModalOpen}
         onClose={() => {
           setFormatModalOpen(false);
+          setHouseholdEntryMode(undefined);
           if (draftEditorRecordId) {
             setDraftEditorRecordId(null);
             setDraftEditorData(undefined);
@@ -1237,6 +1243,7 @@ export function RecordPage() {
         initialData={draftEditorData}
         initialPhotos={draftEditorPhotos}
         initialWritingDraft={!!draftEditorRecordId}
+        householdEntryMode={savedFormat === 'HARU가계부' ? householdEntryMode : undefined}
         onSave={(data) => handleSaveFormatData(draftEditorRecordId
           ? applyDraftSaveTarget(data, draftEditorRecordId, savedDateStr)
           : data)}
