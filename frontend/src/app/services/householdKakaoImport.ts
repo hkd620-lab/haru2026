@@ -101,7 +101,8 @@ function mapPaymentMethod(raw: unknown): string {
   return '기타';
 }
 
-function mapCategory(transactionType: HouseholdEntry['transactionType'], vendor: string): string {
+// 은행 미리보기에서 구분·거래처를 고칠 때도 같은 파서 기본값을 다시 쓴다.
+export function mapCategory(transactionType: HouseholdEntry['transactionType'], vendor: string): string {
   if (transactionType === '수입') return '기타수입';
   if (transactionType === '이체') return '이체'; // FormatModal 수동입력의 이체 카테고리 규칙과 동일
   const v = vendor.toLowerCase();

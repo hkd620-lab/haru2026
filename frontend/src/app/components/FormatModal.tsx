@@ -73,6 +73,7 @@ import {
 import {
   parseKakaoBankWorkbook,
   groupKakaoRowsByMonth,
+  mapCategory as kakaoDefaultCategory,
   type KakaoXlsxMonthGroup,
   type KakaoXlsxPreviewRow,
 } from '../services/householdKakaoImport';
@@ -87,7 +88,7 @@ import { HouseholdCategoryPicker } from './HouseholdCategoryPicker';
 import './HouseholdCategoryPicker.css';
 import { emptyHouseholdCategories, householdCategoryOptions, householdSubcategoryOptions, isHouseholdType, loadHouseholdCategories, mergeHouseholdCategories,
   updateHouseholdCategories, type HouseholdCategorySettings } from '../services/householdCategories';
-import { loadHouseholdVendorRules, readHouseholdSuggestionBasis, suggestHouseholdCategory, type HouseholdVendorRule } from '../services/householdVendorRules';
+import { loadHouseholdVendorRules, readHouseholdSuggestionBasis, resuggestHouseholdCategory, suggestHouseholdCategory, type HouseholdVendorRule } from '../services/householdVendorRules';
 import { findSameNameGrowthSubject, growthSubjectOptionLabel } from '../utils/growthSubject';
 
 type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부' | '배뇨일지';
@@ -3050,16 +3051,22 @@ ${contentValues}
   const updateKakaoCategory = (month: string, rowId: string, category: string, subcategory: string) => {
     replaceKakaoEntry(month, rowId, ({ subcategory: _previous, ...rest }) => ({ ...rest, category, categorySource: 'user', ...(subcategory ? { subcategory } : {}) }));
   };
+  const kakaoImportRules = () => householdImportRulesRef.current?.ownerUid === user?.uid ? householdImportRulesRef.current!.rules : [];
   const changeKakaoTransactionType = (month: string, rowId: string, transactionType: HouseholdEntry['transactionType']) => {
-    const rules = householdImportRulesRef.current?.ownerUid === user?.uid ? householdImportRulesRef.current!.rules : [];
+    const rules = kakaoImportRules();
     replaceKakaoEntry(month, rowId, ({ subcategory, ...rest }) => {
       const nextOptions = householdCategoryOptions(householdCategoryViews[transactionType] || []);
-      // 구분을 바꾸면 사용자가 고른 분류가 새 구분에도 있을 때만 유지하고, 아니면 기본 분류와 거래처 기억을 다시 적용한다.
+      // 구분을 바꾸면 사용자가 고른 분류가 새 구분에도 있을 때만 유지하고, 아니면 첫 선택지가 아닌 파서 기본값과 거래처 기억을 다시 적용한다.
       const keep = rest.categorySource === 'user' && nextOptions.includes(rest.category);
       return suggestHouseholdCategory(keep
         ? { ...rest, transactionType, ...(subcategory ? { subcategory } : {}) }
-        : { ...rest, transactionType, category: nextOptions[0], categorySource: 'import-default' }, rules, householdCategoryViews);
+        : { ...rest, transactionType, category: kakaoDefaultCategory(transactionType, rest.vendor), categorySource: 'import-default' }, rules, householdCategoryViews);
     });
+  };
+  // 거래처를 고치면 이전 거래처의 기억 분류·세부분류를 남기지 않는다. 식별자·원본 키·금액·날짜는 그대로다.
+  const changeKakaoVendor = (month: string, rowId: string, vendor: string) => {
+    const rules = kakaoImportRules();
+    replaceKakaoEntry(month, rowId, entry => resuggestHouseholdCategory({ ...entry, vendor }, kakaoDefaultCategory(entry.transactionType, vendor), rules, householdCategoryViews));
   };
 
   const toggleKakaoRowSelected = (month: string, rowId: string) => {
@@ -5463,7 +5470,7 @@ ${contentValues.slice(0, 4100)}`,
                                           </td>
                                           <td style={{ padding: '6px 6px', borderBottom: row.warning ? 'none' : '1px solid #f3f4f6' }}>
                                             <input type="text" value={row.entry.vendor} disabled={rowLocked}
-                                              onChange={(e) => updateKakaoRow(group.month, row.id, { vendor: e.target.value })}
+                                              onChange={(e) => changeKakaoVendor(group.month, row.id, e.target.value)}
                                               style={{ width: 110, padding: '4px 6px', border: '1px solid #e5e5e5', borderRadius: 5, fontSize: 11, backgroundColor: '#fff', boxSizing: 'border-box' }} />
                                           </td>
                                           <td style={{ padding: '6px 6px', borderBottom: row.warning ? 'none' : '1px solid #f3f4f6' }}>

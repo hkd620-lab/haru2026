@@ -51,6 +51,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { parseHouseholdAmountText } from '../utils/householdAmount';
 import { HOUSEHOLD_SUMMARY_NOTE, summarizeHouseholdEntries } from '../utils/householdSummary';
+import { hasTransactionFields, householdRecordShape } from '../utils/householdRecordShape';
 
 const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
 const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
@@ -76,38 +77,40 @@ function parseHouseholdAmount(value: string): number {
   return parseHouseholdAmountText(value) ?? 0;
 }
 
+// 가계부 대시보드·편집과 같은 문서 모양 판정을 쓴다. 배열에 거래가 없으면(없음·'[]') 예전 단건 필드를 최신 거래로 보여 준다.
+// 손상된 배열은 단건 필드로 대신하지 않고 기존 본문 보기를 유지한다. 원본은 읽기만 한다.
 function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdSayuEntry[] {
-  const stored = data?.household_entries;
-  if (!stored) return [];
-  try {
-    const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((entry: any) => ({
-      date: String(entry.date || ''),
-      transactionType: String(entry.transactionType || ''),
-      category: String(entry.category || ''),
-      vendor: String(entry.vendor || ''),
-      amount: String(entry.amount || ''),
-      paymentMethod: String(entry.paymentMethod || ''),
-      memo: String(entry.memo || ''),
-      balanceAfter: entry.balanceAfter ? String(entry.balanceAfter) : undefined,
-      subcategory: entry.subcategory ? String(entry.subcategory) : undefined,
-    }));
-  } catch {
-    return [];
-  }
+  if (!data) return [];
+  const shape = householdRecordShape(data);
+  if (shape.kind === 'corrupt') return [];
+  const raw: any[] = shape.kind === 'array'
+    ? shape.raw.filter((entry: any) => entry && typeof entry === 'object' && hasTransactionFields(entry))
+    : [{
+      date: data.household_date, transactionType: data.household_type, category: data.household_category, subcategory: data.household_subcategory,
+      vendor: data.household_vendor, amount: data.household_amount, paymentMethod: data.household_payment, memo: data.household_memo,
+    }].filter(entry => hasTransactionFields(entry));
+  return raw.map((entry: any) => ({
+    date: String(entry.date || ''),
+    transactionType: String(entry.transactionType || ''),
+    category: String(entry.category || ''),
+    vendor: String(entry.vendor || ''),
+    amount: String(entry.amount || ''),
+    paymentMethod: String(entry.paymentMethod || ''),
+    memo: String(entry.memo || ''),
+    balanceAfter: entry.balanceAfter ? String(entry.balanceAfter) : undefined,
+    subcategory: entry.subcategory ? String(entry.subcategory) : undefined,
+  }));
 }
 
 // 기록 본문이 저장 서비스가 만든 그대로가 아니면 사용자가 쓴 본문이므로 고치지 않고 안내만 한다.
+// 예전 단건 문서는 거래를 고쳐도 본문을 다시 만들지 않으므로, 본문이 있으면 항상 보존된 본문으로 안내한다.
 function householdSayuIsUserText(data?: Record<string, string>) {
   const sayu = data?.household_sayu;
-  if (typeof sayu !== 'string' || !sayu.trim() || typeof data?.household_entries !== 'string') return false;
-  try {
-    const entries = JSON.parse(data.household_entries);
-    return Array.isArray(entries) && entries.every(entry => entry && typeof entry === 'object') && sayu !== householdSayuText(entries);
-  } catch {
-    return false;
-  }
+  if (!data || typeof sayu !== 'string' || !sayu.trim()) return false;
+  const shape = householdRecordShape(data);
+  if (shape.kind === 'legacy') return true;
+  if (shape.kind !== 'array') return false;
+  return shape.raw.every(entry => entry && typeof entry === 'object') && sayu !== householdSayuText(shape.raw as Parameters<typeof householdSayuText>[0]);
 }
 
 function isHeicLikeFile(file: File) {
@@ -240,6 +243,9 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
                   <div style={{ marginTop: 6, fontSize: 13, color: '#374151', lineHeight: 1.5, overflowWrap: 'anywhere' }}>
                     {detailLabel}: {detail} · {meta.replace(entry.date, formatHouseholdDate(entry.date))}
                   </div>
+                  {!isTransfer && entry.memo && (
+                    <div style={{ marginTop: 4, fontSize: 12, color: '#6b7280', lineHeight: 1.5, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>메모: {entry.memo}</div>
+                  )}
                 </div>
               </div>
             </div>

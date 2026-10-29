@@ -1,7 +1,7 @@
 // 운영 Firebase와 연결하지 않는 메모리 저장소. 실제 저장·편집·설정 서비스 코드를 그대로 실행한다.
 // 실패·응답 유실·다른 기기 수정·계정 전환은 화면의 시험 버튼으로 만든다.
 import { useSyncExternalStore } from "react";
-import { demoRecords } from "./fixtures";
+import { demoRecords, legacyArrayRecords } from "./fixtures";
 import { saveHouseholdEntries } from "../../src/app/services/householdSaveService";
 
 let scenario = "normal";
@@ -22,7 +22,9 @@ const authUid = () =>
       ? "other"
       : scenario === "empty"
         ? "empty"
-        : "demo";
+        : scenario === "legacy-array"
+          ? "legacy-array"
+          : "demo";
 export const useAuth = () => {
   const value = useSyncExternalStore(
     (fn) => {
@@ -40,6 +42,10 @@ const store = new Map<string, Record<string, any>>();
 for (const record of demoRecords) {
   const { id, ...data } = record;
   store.set(`users/demo/records/${id}`, data);
+}
+for (const record of legacyArrayRecords) {
+  const { id, ...data } = record;
+  store.set(`users/legacy-array/records/${id}`, data);
 }
 store.set("users/demo/settings/householdBudget", {
   total: 1000000,

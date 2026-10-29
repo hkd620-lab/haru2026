@@ -29,6 +29,20 @@ function useSubmitting() {
   return { saving, error, setError, run };
 }
 
+const lineBreaks = (value: string) => String(value ?? '').replace(/\r\n?/g, '\n');
+
+// 시트에서 바꾼 값만 patch로 만든다. 저장된 메모의 CRLF는 줄바꿈 방식만 다르면 바뀐 것으로 보지 않아,
+// 분류만 고칠 때 메모를 LF로 다시 쓰지 않는다.
+export function householdEditSheetPatch(entry: Pick<DashboardEntry, 'memo'>, initial: { category: string; subcategory: string },
+  current: { category: string; subcategory: string; memo: string }, confirm = false): HouseholdEntryPatch {
+  const patch: HouseholdEntryPatch = {};
+  if (confirm || current.category !== initial.category || current.subcategory !== initial.subcategory) {
+    Object.assign(patch, { category: current.category, subcategory: current.subcategory });
+  }
+  if (lineBreaks(current.memo) !== lineBreaks(entry.memo)) patch.memo = current.memo;
+  return patch;
+}
+
 // 저장된 거래 1건의 분류·세부분류·메모만 고친다. 날짜·금액·거래처는 표시만 한다.
 export function HouseholdEditSheet({ entry, views, onSubmit, onCreate, onClose }: {
   entry: DashboardEntry;
@@ -46,12 +60,9 @@ export function HouseholdEditSheet({ entry, views, onSubmit, onCreate, onClose }
   const { saving, error, setError, run } = useSubmitting();
   const typed = isHouseholdType(entry.transactionType);
   const categoryChanged = category !== initialCategory || subcategory !== initialSubcategory;
-  const memoChanged = memo.replace(/\r\n?/g, '\n') !== entry.memo;
   const canRemember = typed && Boolean(entry.vendor.trim()) && Boolean(category.trim());
   const save = (confirm = false) => run(async () => {
-    const patch: HouseholdEntryPatch = {};
-    if (categoryChanged || confirm) Object.assign(patch, { category, subcategory });
-    if (memoChanged) patch.memo = memo;
+    const patch = householdEditSheetPatch(entry, { category: initialCategory, subcategory: initialSubcategory }, { category, subcategory, memo }, confirm);
     if (!Object.keys(patch).length && !remember) { setError('바뀐 내용이 없습니다.'); return; }
     await onSubmit(Object.keys(patch).length ? patch : null, remember && canRemember, { category, subcategory });
   });
@@ -116,6 +127,7 @@ export function HouseholdBulkSheet({ entries, views, onSubmit, onCreate, onClose
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
   const { saving, error, setError, run } = useSubmitting();
+  const withSubcategory = entries.filter(entry => entry.subcategory).length;
   const counts = [...entries.reduce((map, entry) => map.set(entry.rawCategory || '분류 없음', (map.get(entry.rawCategory || '분류 없음') || 0) + 1), new Map<string, number>())];
   return (
     <div className="hh-modal-backdrop hh-sheet-backdrop" onClick={e => { if (e.target === e.currentTarget && !saving) onClose(); }}>
@@ -135,6 +147,11 @@ export function HouseholdBulkSheet({ entries, views, onSubmit, onCreate, onClose
           category={category} subcategory={subcategory}
           onChange={(nextCategory, nextSubcategory) => { setCategory(nextCategory); setSubcategory(nextSubcategory); }}
           onCreate={(kind, name, parent) => onCreate(type, kind, name, parent)} />
+        <p className="hh-hint" role="note">
+          {subcategory
+            ? `선택한 ${entries.length}건 모두 세부분류가 ‘${subcategory}’(으)로 바뀝니다.`
+            : `세부분류 없음으로 바꾸면 선택한 거래의 기존 세부분류${withSubcategory ? `(${withSubcategory}건)` : ''}가 지워집니다.`}
+        </p>
         {error && <p className="hh-error" role="alert">{error}</p>}
         <button type="button" className="hh-button hh-primary hh-sheet-submit" disabled={saving || !category}
           onClick={() => run(async () => {

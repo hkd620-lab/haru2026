@@ -421,3 +421,46 @@ test('현금 거래: 새 달 문서 생성, 같은 id 재시도는 한 번만, �
   assert.ok(raw.every(e => e.paymentMethod === '현금'));
   assert.equal(raw.filter(e => e.amount === '4500').length, 2);
 });
+
+test('예전 단건(배열 없음·[]) 편집 결과가 실제 SAYU 상세에 보이고, 사용자 본문·다른 필드는 그대로다', async () => {
+  const { renderSayuDetail } = await import('./householdSayuView.helper.mjs');
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const uid = uidFor('sayu-legacy'), db = client(uid);
+  const legacy = { household_type: '지출', household_category: '기타', household_vendor: '예전 가게', household_amount: '3000', household_payment: '현금',
+    household_memo: '예전 메모', household_sayu: '사용자가 쓴 예전 본문', memo_sayu: '다른 형식 본문' };
+  await setDoc(doc(db, 'users', uid, 'records', '2025-12-24'), { date: '2025-12-24', household_date: '2025-12-24', ...legacy });
+  await setDoc(doc(db, 'users', uid, 'records', '2025-11-01_household'), { date: '2025-11-01', household_entries: '[]', household_date: '2025-11-03', ...legacy, household_vendor: '11월 가게' });
+  const before = await snapshotAll(db, uid);
+  const rows = await dashboardOf(db, uid);
+  assert.deepEqual(rows.map(row => row.locator.rawIndex), [-1, -1]);
+  await updateHouseholdEntries(db, uid, rows.map(row => ({ locator: row.locator, patch: { category: '식비', subcategory: '간식', memo: `${row.vendor} 고친 메모` } })));
+  const now = await snapshotAll(db, uid);
+  for (const [id, vendor] of [['2025-12-24', '예전 가게'], ['2025-11-01_household', '11월 가게']]) {
+    const markup = renderToStaticMarkup(renderSayuDetail(now[id]));
+    assert.match(markup, /식비 · 간식 · 현금/, id);
+    assert.match(markup, new RegExp(`메모: ${vendor} 고친 메모`), id);
+    assert.match(markup, /기록 본문은 작성 당시 내용이며 자동으로 고치지 않습니다/, id);
+    assert.doesNotMatch(markup, /예전 메모/, id);
+    // 사용자 본문·배열 값·다른 형식·금액은 그대로다.
+    for (const key of ['household_sayu', 'household_entries', 'memo_sayu', 'household_amount', 'household_vendor', 'household_date']) assert.deepEqual(now[id][key], before[id][key], `${id}.${key}`);
+  }
+});
+
+test('분류만 고치면 저장된 CRLF 메모 문자열은 한 글자도 바뀌지 않는다', async () => {
+  const { householdEditSheetPatch } = await import('../src/app/components/HouseholdEditSheet.tsx');
+  const uid = uidFor('crlf'), db = client(uid);
+  const memo = '첫 줄\r\n둘째 줄';
+  const ref = doc(db, 'users', uid, 'records', '2026-10-01_household');
+  await setDoc(ref, { date: '2026-10-01', household_entries: JSON.stringify([{ id: 'c', date: '2026-10-05', transactionType: '지출', category: '기타', vendor: 'A', amount: '1', paymentMethod: '현금', memo }]),
+    household_sayu: '사용자 본문', household_memo: memo });
+  const [row] = await dashboardOf(db, uid);
+  // textarea가 LF로 돌려준 값을 그대로 넘겨도 분류만 patch한다.
+  const patch = householdEditSheetPatch(row, { category: '기타', subcategory: '' }, { category: '식비', subcategory: '', memo: memo.replace(/\r\n/g, '\n') });
+  assert.deepEqual(patch, { category: '식비', subcategory: '' });
+  await updateHouseholdEntries(db, uid, [{ locator: row.locator, patch }]);
+  const data = (await getDocFromServer(ref)).data();
+  const [saved] = JSON.parse(data.household_entries);
+  assert.equal(saved.memo, memo);
+  assert.equal(saved.category, '식비');
+  assert.equal(data.household_memo, memo);
+});

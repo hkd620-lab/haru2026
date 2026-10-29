@@ -287,3 +287,51 @@ test("로그아웃·계정 전환 첫 화면은 빈 편집·선택 상태에 접
   const switched = renderToStaticMarkup(React.createElement(loadHouseholdPage(records, "transactions", {}, { uid: "other" })));
   assert.doesNotMatch(switched, /이전 계정 메모/);
 });
+
+test("실제 SAYU 상세: 예전 단건(배열 없음·'[]')의 고친 분류·세부분류·메모를 보여 주고 사용자 본문은 그대로 안내한다", async () => {
+  const { sayu, renderSayuDetail } = await import("./householdSayuView.helper.mjs");
+  const legacy = {
+    household_type: "지출", household_category: "식비", household_subcategory: "간식", household_categorySource: "user",
+    household_vendor: "예전 가게", household_amount: "3000", household_payment: "현금", household_memo: "고친 메모\n둘째 줄",
+    household_date: "2025-12-24", household_sayu: "예전 단건 본문",
+  };
+  for (const data of [legacy, { ...legacy, household_entries: "[]" }]) {
+    const entries = sayu.parseHouseholdEntriesForSayu(data);
+    assert.equal(entries.length, 1);
+    assert.deepEqual([entries[0].category, entries[0].subcategory, entries[0].memo, entries[0].vendor, entries[0].amount], ["식비", "간식", "고친 메모\n둘째 줄", "예전 가게", "3000"]);
+    const markup = renderToStaticMarkup(renderSayuDetail(data));
+    assert.match(markup, /식비 · 간식 · 현금/);
+    assert.match(markup, /메모: 고친 메모\n둘째 줄/);
+    assert.match(markup, /3,000원/);
+    // 예전 단건 본문은 덮어쓰지 않으므로 보존된 본문 안내를 표시한다. 원본 객체도 바뀌지 않는다.
+    assert.match(markup, /기록 본문은 작성 당시 내용이며 자동으로 고치지 않습니다/);
+    assert.equal(data.household_sayu, "예전 단건 본문");
+  }
+  // 거래도 단건 필드도 없는 '[]' 문서는 기존처럼 본문 보기를 쓴다.
+  const empty = renderToStaticMarkup(renderSayuDetail({ household_entries: "[]", household_sayu: "빈 문서 본문" }));
+  assert.match(empty, /<textarea[^>]*readonly=""[^>]*>빈 문서 본문<\/textarea>/);
+});
+
+test("실제 SAYU 상세: 손상된 배열은 단건 필드로 바꾸지 않고 기존 본문 보기를 유지한다", async () => {
+  const { sayu, renderSayuDetail } = await import("./householdSayuView.helper.mjs");
+  const data = { household_entries: "{broken", household_vendor: "단건 가게", household_amount: "1000", household_sayu: "손상 문서 본문" };
+  assert.deepEqual(sayu.parseHouseholdEntriesForSayu(data), []);
+  assert.equal(sayu.householdSayuIsUserText(data), false);
+  const markup = renderToStaticMarkup(renderSayuDetail(data));
+  assert.match(markup, /<textarea[^>]*>손상 문서 본문<\/textarea>/);
+  assert.doesNotMatch(markup, /단건 가게/);
+  assert.equal(data.household_entries, "{broken");
+});
+
+test("실제 SAYU 상세: 배열 거래는 자동 본문이면 안내하지 않고 사용자 본문이면 안내하며, 수입·지출 메모를 보여 준다", async () => {
+  const { sayu, renderSayuDetail } = await import("./householdSayuView.helper.mjs");
+  const { householdSayuText } = await import("../src/app/services/householdSaveService.ts");
+  const list = [entry({ memo: "월세 메모" }), entry({ transactionType: "이체", memo: "내 계좌" })];
+  const auto = { household_entries: JSON.stringify(list), household_sayu: householdSayuText(list), household_vendor: "단건 필드는 무시" };
+  const autoMarkup = renderToStaticMarkup(renderSayuDetail(auto));
+  assert.doesNotMatch(autoMarkup, /자동으로 고치지 않습니다/);
+  assert.match(autoMarkup, /메모: 월세 메모/);
+  assert.doesNotMatch(autoMarkup, /단건 필드는 무시/);
+  assert.equal(sayu.parseHouseholdEntriesForSayu(auto).length, 2);
+  assert.match(renderToStaticMarkup(renderSayuDetail({ ...auto, household_sayu: "사용자 본문" })), /자동으로 고치지 않습니다/);
+});

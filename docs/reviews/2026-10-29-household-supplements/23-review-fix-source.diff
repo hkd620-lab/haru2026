@@ -1,0 +1,452 @@
+diff --git a/frontend/src/app/components/FormatModal.tsx b/frontend/src/app/components/FormatModal.tsx
+index 33286eb8..4632c027 100644
+--- a/frontend/src/app/components/FormatModal.tsx
++++ b/frontend/src/app/components/FormatModal.tsx
+@@ -73,6 +73,7 @@ import {
+ import {
+   parseKakaoBankWorkbook,
+   groupKakaoRowsByMonth,
++  mapCategory as kakaoDefaultCategory,
+   type KakaoXlsxMonthGroup,
+   type KakaoXlsxPreviewRow,
+ } from '../services/householdKakaoImport';
+@@ -87,7 +88,7 @@ import { HouseholdCategoryPicker } from './HouseholdCategoryPicker';
+ import './HouseholdCategoryPicker.css';
+ import { emptyHouseholdCategories, householdCategoryOptions, householdSubcategoryOptions, isHouseholdType, loadHouseholdCategories, mergeHouseholdCategories,
+   updateHouseholdCategories, type HouseholdCategorySettings } from '../services/householdCategories';
+-import { loadHouseholdVendorRules, readHouseholdSuggestionBasis, suggestHouseholdCategory, type HouseholdVendorRule } from '../services/householdVendorRules';
++import { loadHouseholdVendorRules, readHouseholdSuggestionBasis, resuggestHouseholdCategory, suggestHouseholdCategory, type HouseholdVendorRule } from '../services/householdVendorRules';
+ import { findSameNameGrowthSubject, growthSubjectOptionLabel } from '../utils/growthSubject';
+ 
+ type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부' | '배뇨일지';
+@@ -3050,17 +3051,23 @@ ${contentValues}
+   const updateKakaoCategory = (month: string, rowId: string, category: string, subcategory: string) => {
+     replaceKakaoEntry(month, rowId, ({ subcategory: _previous, ...rest }) => ({ ...rest, category, categorySource: 'user', ...(subcategory ? { subcategory } : {}) }));
+   };
++  const kakaoImportRules = () => householdImportRulesRef.current?.ownerUid === user?.uid ? householdImportRulesRef.current!.rules : [];
+   const changeKakaoTransactionType = (month: string, rowId: string, transactionType: HouseholdEntry['transactionType']) => {
+-    const rules = householdImportRulesRef.current?.ownerUid === user?.uid ? householdImportRulesRef.current!.rules : [];
++    const rules = kakaoImportRules();
+     replaceKakaoEntry(month, rowId, ({ subcategory, ...rest }) => {
+       const nextOptions = householdCategoryOptions(householdCategoryViews[transactionType] || []);
+-      // 구분을 바꾸면 사용자가 고른 분류가 새 구분에도 있을 때만 유지하고, 아니면 기본 분류와 거래처 기억을 다시 적용한다.
++      // 구분을 바꾸면 사용자가 고른 분류가 새 구분에도 있을 때만 유지하고, 아니면 첫 선택지가 아닌 파서 기본값과 거래처 기억을 다시 적용한다.
+       const keep = rest.categorySource === 'user' && nextOptions.includes(rest.category);
+       return suggestHouseholdCategory(keep
+         ? { ...rest, transactionType, ...(subcategory ? { subcategory } : {}) }
+-        : { ...rest, transactionType, category: nextOptions[0], categorySource: 'import-default' }, rules, householdCategoryViews);
++        : { ...rest, transactionType, category: kakaoDefaultCategory(transactionType, rest.vendor), categorySource: 'import-default' }, rules, householdCategoryViews);
+     });
+   };
++  // 거래처를 고치면 이전 거래처의 기억 분류·세부분류를 남기지 않는다. 식별자·원본 키·금액·날짜는 그대로다.
++  const changeKakaoVendor = (month: string, rowId: string, vendor: string) => {
++    const rules = kakaoImportRules();
++    replaceKakaoEntry(month, rowId, entry => resuggestHouseholdCategory({ ...entry, vendor }, kakaoDefaultCategory(entry.transactionType, vendor), rules, householdCategoryViews));
++  };
+ 
+   const toggleKakaoRowSelected = (month: string, rowId: string) => {
+     if (householdChecks.some(check => check.entry.id === rowId && check.status === 'already')) return;
+@@ -5463,7 +5470,7 @@ ${contentValues.slice(0, 4100)}`,
+                                           </td>
+                                           <td style={{ padding: '6px 6px', borderBottom: row.warning ? 'none' : '1px solid #f3f4f6' }}>
+                                             <input type="text" value={row.entry.vendor} disabled={rowLocked}
+-                                              onChange={(e) => updateKakaoRow(group.month, row.id, { vendor: e.target.value })}
++                                              onChange={(e) => changeKakaoVendor(group.month, row.id, e.target.value)}
+                                               style={{ width: 110, padding: '4px 6px', border: '1px solid #e5e5e5', borderRadius: 5, fontSize: 11, backgroundColor: '#fff', boxSizing: 'border-box' }} />
+                                           </td>
+                                           <td style={{ padding: '6px 6px', borderBottom: row.warning ? 'none' : '1px solid #f3f4f6' }}>
+diff --git a/frontend/src/app/components/HouseholdEditSheet.tsx b/frontend/src/app/components/HouseholdEditSheet.tsx
+index b10b0233..935e976d 100644
+--- a/frontend/src/app/components/HouseholdEditSheet.tsx
++++ b/frontend/src/app/components/HouseholdEditSheet.tsx
+@@ -29,6 +29,20 @@ function useSubmitting() {
+   return { saving, error, setError, run };
+ }
+ 
++const lineBreaks = (value: string) => String(value ?? '').replace(/\r\n?/g, '\n');
++
++// 시트에서 바꾼 값만 patch로 만든다. 저장된 메모의 CRLF는 줄바꿈 방식만 다르면 바뀐 것으로 보지 않아,
++// 분류만 고칠 때 메모를 LF로 다시 쓰지 않는다.
++export function householdEditSheetPatch(entry: Pick<DashboardEntry, 'memo'>, initial: { category: string; subcategory: string },
++  current: { category: string; subcategory: string; memo: string }, confirm = false): HouseholdEntryPatch {
++  const patch: HouseholdEntryPatch = {};
++  if (confirm || current.category !== initial.category || current.subcategory !== initial.subcategory) {
++    Object.assign(patch, { category: current.category, subcategory: current.subcategory });
++  }
++  if (lineBreaks(current.memo) !== lineBreaks(entry.memo)) patch.memo = current.memo;
++  return patch;
++}
++
+ // 저장된 거래 1건의 분류·세부분류·메모만 고친다. 날짜·금액·거래처는 표시만 한다.
+ export function HouseholdEditSheet({ entry, views, onSubmit, onCreate, onClose }: {
+   entry: DashboardEntry;
+@@ -46,12 +60,9 @@ export function HouseholdEditSheet({ entry, views, onSubmit, onCreate, onClose }
+   const { saving, error, setError, run } = useSubmitting();
+   const typed = isHouseholdType(entry.transactionType);
+   const categoryChanged = category !== initialCategory || subcategory !== initialSubcategory;
+-  const memoChanged = memo.replace(/\r\n?/g, '\n') !== entry.memo;
+   const canRemember = typed && Boolean(entry.vendor.trim()) && Boolean(category.trim());
+   const save = (confirm = false) => run(async () => {
+-    const patch: HouseholdEntryPatch = {};
+-    if (categoryChanged || confirm) Object.assign(patch, { category, subcategory });
+-    if (memoChanged) patch.memo = memo;
++    const patch = householdEditSheetPatch(entry, { category: initialCategory, subcategory: initialSubcategory }, { category, subcategory, memo }, confirm);
+     if (!Object.keys(patch).length && !remember) { setError('바뀐 내용이 없습니다.'); return; }
+     await onSubmit(Object.keys(patch).length ? patch : null, remember && canRemember, { category, subcategory });
+   });
+@@ -116,6 +127,7 @@ export function HouseholdBulkSheet({ entries, views, onSubmit, onCreate, onClose
+   const [category, setCategory] = useState('');
+   const [subcategory, setSubcategory] = useState('');
+   const { saving, error, setError, run } = useSubmitting();
++  const withSubcategory = entries.filter(entry => entry.subcategory).length;
+   const counts = [...entries.reduce((map, entry) => map.set(entry.rawCategory || '분류 없음', (map.get(entry.rawCategory || '분류 없음') || 0) + 1), new Map<string, number>())];
+   return (
+     <div className="hh-modal-backdrop hh-sheet-backdrop" onClick={e => { if (e.target === e.currentTarget && !saving) onClose(); }}>
+@@ -135,6 +147,11 @@ export function HouseholdBulkSheet({ entries, views, onSubmit, onCreate, onClose
+           category={category} subcategory={subcategory}
+           onChange={(nextCategory, nextSubcategory) => { setCategory(nextCategory); setSubcategory(nextSubcategory); }}
+           onCreate={(kind, name, parent) => onCreate(type, kind, name, parent)} />
++        <p className="hh-hint" role="note">
++          {subcategory
++            ? `선택한 ${entries.length}건 모두 세부분류가 ‘${subcategory}’(으)로 바뀝니다.`
++            : `세부분류 없음으로 바꾸면 선택한 거래의 기존 세부분류${withSubcategory ? `(${withSubcategory}건)` : ''}가 지워집니다.`}
++        </p>
+         {error && <p className="hh-error" role="alert">{error}</p>}
+         <button type="button" className="hh-button hh-primary hh-sheet-submit" disabled={saving || !category}
+           onClick={() => run(async () => {
+diff --git a/frontend/src/app/components/SayuModal.tsx b/frontend/src/app/components/SayuModal.tsx
+index 1f244121..cc006ef9 100644
+--- a/frontend/src/app/components/SayuModal.tsx
++++ b/frontend/src/app/components/SayuModal.tsx
+@@ -51,6 +51,7 @@ import {
+ import { CSS } from '@dnd-kit/utilities';
+ import { parseHouseholdAmountText } from '../utils/householdAmount';
+ import { HOUSEHOLD_SUMMARY_NOTE, summarizeHouseholdEntries } from '../utils/householdSummary';
++import { hasTransactionFields, householdRecordShape } from '../utils/householdRecordShape';
+ 
+ const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
+ const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
+@@ -76,38 +77,40 @@ function parseHouseholdAmount(value: string): number {
+   return parseHouseholdAmountText(value) ?? 0;
+ }
+ 
++// 가계부 대시보드·편집과 같은 문서 모양 판정을 쓴다. 배열에 거래가 없으면(없음·'[]') 예전 단건 필드를 최신 거래로 보여 준다.
++// 손상된 배열은 단건 필드로 대신하지 않고 기존 본문 보기를 유지한다. 원본은 읽기만 한다.
+ function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdSayuEntry[] {
+-  const stored = data?.household_entries;
+-  if (!stored) return [];
+-  try {
+-    const parsed = JSON.parse(stored);
+-    if (!Array.isArray(parsed)) return [];
+-    return parsed.map((entry: any) => ({
+-      date: String(entry.date || ''),
+-      transactionType: String(entry.transactionType || ''),
+-      category: String(entry.category || ''),
+-      vendor: String(entry.vendor || ''),
+-      amount: String(entry.amount || ''),
+-      paymentMethod: String(entry.paymentMethod || ''),
+-      memo: String(entry.memo || ''),
+-      balanceAfter: entry.balanceAfter ? String(entry.balanceAfter) : undefined,
+-      subcategory: entry.subcategory ? String(entry.subcategory) : undefined,
+-    }));
+-  } catch {
+-    return [];
+-  }
++  if (!data) return [];
++  const shape = householdRecordShape(data);
++  if (shape.kind === 'corrupt') return [];
++  const raw: any[] = shape.kind === 'array'
++    ? shape.raw.filter((entry: any) => entry && typeof entry === 'object' && hasTransactionFields(entry))
++    : [{
++      date: data.household_date, transactionType: data.household_type, category: data.household_category, subcategory: data.household_subcategory,
++      vendor: data.household_vendor, amount: data.household_amount, paymentMethod: data.household_payment, memo: data.household_memo,
++    }].filter(entry => hasTransactionFields(entry));
++  return raw.map((entry: any) => ({
++    date: String(entry.date || ''),
++    transactionType: String(entry.transactionType || ''),
++    category: String(entry.category || ''),
++    vendor: String(entry.vendor || ''),
++    amount: String(entry.amount || ''),
++    paymentMethod: String(entry.paymentMethod || ''),
++    memo: String(entry.memo || ''),
++    balanceAfter: entry.balanceAfter ? String(entry.balanceAfter) : undefined,
++    subcategory: entry.subcategory ? String(entry.subcategory) : undefined,
++  }));
+ }
+ 
+ // 기록 본문이 저장 서비스가 만든 그대로가 아니면 사용자가 쓴 본문이므로 고치지 않고 안내만 한다.
++// 예전 단건 문서는 거래를 고쳐도 본문을 다시 만들지 않으므로, 본문이 있으면 항상 보존된 본문으로 안내한다.
+ function householdSayuIsUserText(data?: Record<string, string>) {
+   const sayu = data?.household_sayu;
+-  if (typeof sayu !== 'string' || !sayu.trim() || typeof data?.household_entries !== 'string') return false;
+-  try {
+-    const entries = JSON.parse(data.household_entries);
+-    return Array.isArray(entries) && entries.every(entry => entry && typeof entry === 'object') && sayu !== householdSayuText(entries);
+-  } catch {
+-    return false;
+-  }
++  if (!data || typeof sayu !== 'string' || !sayu.trim()) return false;
++  const shape = householdRecordShape(data);
++  if (shape.kind === 'legacy') return true;
++  if (shape.kind !== 'array') return false;
++  return shape.raw.every(entry => entry && typeof entry === 'object') && sayu !== householdSayuText(shape.raw as Parameters<typeof householdSayuText>[0]);
+ }
+ 
+ function isHeicLikeFile(file: File) {
+@@ -240,6 +243,9 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
+                   <div style={{ marginTop: 6, fontSize: 13, color: '#374151', lineHeight: 1.5, overflowWrap: 'anywhere' }}>
+                     {detailLabel}: {detail} · {meta.replace(entry.date, formatHouseholdDate(entry.date))}
+                   </div>
++                  {!isTransfer && entry.memo && (
++                    <div style={{ marginTop: 4, fontSize: 12, color: '#6b7280', lineHeight: 1.5, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>메모: {entry.memo}</div>
++                  )}
+                 </div>
+               </div>
+             </div>
+diff --git a/frontend/src/app/pages/HouseholdPage.tsx b/frontend/src/app/pages/HouseholdPage.tsx
+index 363ef8a7..b4270eb7 100644
+--- a/frontend/src/app/pages/HouseholdPage.tsx
++++ b/frontend/src/app/pages/HouseholdPage.tsx
+@@ -83,10 +83,14 @@ import {
+   type HouseholdType,
+ } from "../services/householdCategories";
+ import {
++  emptyHouseholdSettingsState,
++  householdSuggestionRules,
+   loadHouseholdVendorRules,
++  mergeLoadedHouseholdSettings,
+   removeHouseholdVendorRule,
+   updateHouseholdVendorRules,
+   upsertHouseholdVendorRule,
++  type HouseholdSettingsState,
+   type HouseholdVendorRule,
+ } from "../services/householdVendorRules";
+ import "./HouseholdPage.css";
+@@ -158,17 +162,9 @@ export function HouseholdPage() {
+   const [savingBudget, setSavingBudget] = useState(false);
+   const [budgetError, setBudgetError] = useState("");
+   // 아래 작성·편집 상태는 모두 소유 계정을 함께 기록하고, 현재 계정과 같을 때만 표시·저장한다.
+-  const [settings, setSettings] = useState<{
+-    ownerUid: string | null;
+-    categories: HouseholdCategorySettings;
+-    rules: HouseholdVendorRule[];
+-    error: string;
+-  }>(() => ({
+-    ownerUid: null,
+-    categories: emptyHouseholdCategories(),
+-    rules: [],
+-    error: "",
+-  }));
++  const [settings, setSettings] = useState<HouseholdSettingsState>(
++    emptyHouseholdSettingsState,
++  );
+   // 설정 변경 트랜잭션이 결과를 반영할 때마다 올린다. 진행 중인 조회는 시작 때 값과 비교한다.
+   const settingsRevision = useRef({ categories: 0, rules: 0 });
+   const [cashDraft, setCashDraft] = useState<HouseholdCashDraft | null>(null);
+@@ -261,14 +257,7 @@ export function HouseholdPage() {
+   useEffect(() => {
+     let active = true;
+     setSettings((previous) =>
+-      previous.ownerUid === user?.uid
+-        ? previous
+-        : {
+-            ownerUid: null,
+-            categories: emptyHouseholdCategories(),
+-            rules: [],
+-            error: "",
+-          },
++      previous.ownerUid === user?.uid ? previous : emptyHouseholdSettingsState(),
+     );
+     if (user?.uid) {
+       const uid = user.uid;
+@@ -279,31 +268,13 @@ export function HouseholdPage() {
+       ]).then(([categories, rules]) => {
+         if (!active) return;
+         // 조회를 시작한 뒤 변경 트랜잭션 결과가 반영된 설정은, 늦게 도착한 조회 값으로 되돌리지 않는다.
+-        const changedCategories = settingsRevision.current.categories !== started.categories;
+-        const changedRules = settingsRevision.current.rules !== started.rules;
+-        setSettings((previous) => {
+-          const own = previous.ownerUid === uid ? previous : null;
+-          const keepCategories = Boolean(own && changedCategories);
+-          const keepRules = Boolean(own && changedRules);
+-          return {
+-            ownerUid: uid,
+-            categories: keepCategories
+-              ? own!.categories
+-              : categories.status === "fulfilled"
+-                ? categories.value
+-                : own?.categories || emptyHouseholdCategories(),
+-            rules: keepRules
+-              ? own!.rules
+-              : rules.status === "fulfilled"
+-                ? rules.value.rules
+-                : own?.rules || [],
+-            error:
+-              (!keepCategories && categories.status === "rejected") ||
+-              (!keepRules && rules.status === "rejected")
+-                ? "분류 설정이나 거래처 기억을 불러오지 못했습니다. 기본 분류와 기존 거래의 분류로 표시하며, 바꿀 때 최신 설정을 다시 확인합니다."
+-                : "",
+-          };
+-        });
++        const changed = {
++          categories: settingsRevision.current.categories !== started.categories,
++          rules: settingsRevision.current.rules !== started.rules,
++        };
++        setSettings((previous) =>
++          mergeLoadedHouseholdSettings(previous, uid, { categories, rules }, changed),
++        );
+       });
+     }
+     return () => {
+@@ -349,6 +320,8 @@ export function HouseholdPage() {
+     [ownSettings?.categories, allEntries],
+   );
+   const rules = ownSettings?.rules || [];
++  // 분류 설정을 읽지 못해 보관 여부를 모르면 현금 입력에 거래처 기억을 제안하지 않는다.
++  const cashRules = householdSuggestionRules(ownSettings);
+   const ownedCashDraft = uid && cashDraft?.ownerUid === uid ? cashDraft : null;
+   const ownedEdit = uid && editTarget?.ownerUid === uid ? editTarget.entry : null;
+   const selectMode = Boolean(uid && selection?.ownerUid === uid);
+@@ -456,16 +429,12 @@ export function HouseholdPage() {
+     // 트랜잭션이 돌려준 최신 설정. 수정 번호를 올려 진행 중인 조회가 과거 값으로 덮지 않게 한다.
+     if (patch.categories) settingsRevision.current.categories++;
+     if (patch.rules) settingsRevision.current.rules++;
++    // 트랜잭션이 읽고 돌려준 분류 설정은 최신이므로 보관 여부를 아는 상태가 된다.
++    const known = patch.categories ? { categoriesKnown: true } : {};
+     setSettings((previous) =>
+       previous.ownerUid === ownerUid
+-        ? { ...previous, ...patch }
+-        : {
+-            ownerUid,
+-            categories: emptyHouseholdCategories(),
+-            rules: [],
+-            error: "",
+-            ...patch,
+-          },
++        ? { ...previous, ...patch, ...known }
++        : { ...emptyHouseholdSettingsState(), ownerUid, ...patch, ...known },
+     );
+   };
+   async function changeCategories(
+@@ -1576,7 +1545,7 @@ export function HouseholdPage() {
+             )
+           }
+           categories={categoryViews}
+-          rules={rules}
++          rules={cashRules}
+           onSave={(entry, decisions) =>
+             firestoreService.saveHouseholdRecord(
+               ownedCashDraft.ownerUid,
+diff --git a/frontend/src/app/services/householdCategories.ts b/frontend/src/app/services/householdCategories.ts
+index 23fe1ed1..9eb6c854 100644
+--- a/frontend/src/app/services/householdCategories.ts
++++ b/frontend/src/app/services/householdCategories.ts
+@@ -26,7 +26,10 @@ export type HouseholdCategoryAction =
+ 
+ const CONTROL = /[\u0000-\u001f\u007f]/;
+ export const emptyHouseholdCategories = (): HouseholdCategorySettings => ({ version: 1, types: { 지출: [], 수입: [], 이체: [] } });
+-const sameLabel = (a: string, b: string) => a.toLocaleLowerCase('ko-KR') === b.toLocaleLowerCase('ko-KR');
++// 분류 병합·중복 판정과 거래처 기억의 보관 판정이 같은 기준(NFKC·공백·대소문자)을 쓴다.
++const labelKey = (value: string) => String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase('ko-KR');
++export const sameHouseholdLabel = (a: string, b: string) => labelKey(a) === labelKey(b);
++const sameLabel = sameHouseholdLabel;
+ export const isHouseholdType = (value: unknown): value is HouseholdType => HOUSEHOLD_TYPES.includes(value as HouseholdType);
+ 
+ export function normalizeHouseholdLabel(value: string, name = '분류 이름') {
+diff --git a/frontend/src/app/services/householdKakaoImport.ts b/frontend/src/app/services/householdKakaoImport.ts
+index 154ae4e1..b00b8ff8 100644
+--- a/frontend/src/app/services/householdKakaoImport.ts
++++ b/frontend/src/app/services/householdKakaoImport.ts
+@@ -101,7 +101,8 @@ function mapPaymentMethod(raw: unknown): string {
+   return '기타';
+ }
+ 
+-function mapCategory(transactionType: HouseholdEntry['transactionType'], vendor: string): string {
++// 은행 미리보기에서 구분·거래처를 고칠 때도 같은 파서 기본값을 다시 쓴다.
++export function mapCategory(transactionType: HouseholdEntry['transactionType'], vendor: string): string {
+   if (transactionType === '수입') return '기타수입';
+   if (transactionType === '이체') return '이체'; // FormatModal 수동입력의 이체 카테고리 규칙과 동일
+   const v = vendor.toLowerCase();
+diff --git a/frontend/src/app/services/householdVendorRules.ts b/frontend/src/app/services/householdVendorRules.ts
+index cbd8496f..80b4f644 100644
+--- a/frontend/src/app/services/householdVendorRules.ts
++++ b/frontend/src/app/services/householdVendorRules.ts
+@@ -1,6 +1,6 @@
+ import { doc, getDoc, runTransaction, type Firestore } from 'firebase/firestore';
+ import type { HouseholdEntry } from '../components/FormatModal';
+-import { emptyHouseholdCategories, isHouseholdType, mergeHouseholdCategories, normalizeHouseholdLabel,
++import { emptyHouseholdCategories, isHouseholdType, mergeHouseholdCategories, normalizeHouseholdLabel, sameHouseholdLabel,
+   type HouseholdCategorySettings, type HouseholdCategoryView, type HouseholdType } from './householdCategories';
+ 
+ // 사용자가 '다음에도 이 분류 제안'을 직접 체크했을 때만 만드는 규칙.
+@@ -30,10 +30,10 @@ export function findHouseholdVendorRule(rules: readonly HouseholdVendorRule[], t
+ 
+ // 보관한 분류는 새 거래에 제안하지 않는다. 보관한 세부분류만이면 분류만 제안한다. 규칙 자체는 지우지 않는다.
+ export function householdRuleArchived(rule: HouseholdVendorRule, views?: Partial<Record<HouseholdType, readonly HouseholdCategoryView[]>>) {
+-  const view = views?.[rule.type]?.find(item => item.name === rule.category);
++  const view = views?.[rule.type]?.find(item => sameHouseholdLabel(item.name, rule.category));
+   return {
+     category: Boolean(view?.archived),
+-    subcategory: Boolean(rule.subcategory && view?.archivedSubcategories.includes(rule.subcategory)),
++    subcategory: Boolean(rule.subcategory && view?.archivedSubcategories.some(name => sameHouseholdLabel(name, rule.subcategory!))),
+   };
+ }
+ 
+@@ -50,6 +50,15 @@ export function suggestHouseholdCategory<T extends Pick<HouseholdEntry, 'transac
+   return next;
+ }
+ 
++// 저장 전 거래의 거래처·구분을 고쳤을 때. 사용자가 고른 분류는 그대로 두고,
++// 기억·자동 기본값으로 채운 분류는 이전 세부분류를 지운 뒤 파서 기본값으로 되돌려 새 거래처 기준으로 다시 제안한다.
++export function resuggestHouseholdCategory<T extends Pick<HouseholdEntry, 'transactionType' | 'vendor' | 'category' | 'subcategory' | 'categorySource'>>(entry: T, defaultCategory: string, rules: readonly HouseholdVendorRule[], views?: Partial<Record<HouseholdType, readonly HouseholdCategoryView[]>>): T {
++  if (entry.categorySource !== 'rule' && entry.categorySource !== 'import-default') return entry;
++  const next = { ...entry, category: defaultCategory, categorySource: 'import-default' as const };
++  delete next.subcategory;
++  return suggestHouseholdCategory(next, rules, views);
++}
++
+ // 은행 파일 제안 기준. 분류 설정과 규칙을 함께 새로 읽는다.
+ // 분류 설정을 못 읽으면 보관 여부를 모르므로 규칙을 제안하지 않고 기본 분류만 쓴다.
+ export async function readHouseholdSuggestionBasis(load: { categories: () => Promise<HouseholdCategorySettings>; rules: () => Promise<HouseholdVendorRuleSettings> }) {
+@@ -63,6 +72,41 @@ export async function readHouseholdSuggestionBasis(load: { categories: () => Pro
+   };
+ }
+ 
++// 가계부 화면이 들고 있는 설정. categoriesKnown은 이 계정의 분류 설정을 실제로 읽었거나(이전 성공 포함)
++// 변경 트랜잭션 결과를 받았는지다. 모르면 보관 여부를 알 수 없으므로 현금 입력에 거래처 기억을 제안하지 않는다(은행과 같음).
++export interface HouseholdSettingsState {
++  ownerUid: string | null; categories: HouseholdCategorySettings; categoriesKnown: boolean; rules: HouseholdVendorRule[]; error: string;
++}
++export const emptyHouseholdSettingsState = (): HouseholdSettingsState => ({ ownerUid: null, categories: emptyHouseholdCategories(), categoriesKnown: false, rules: [], error: '' });
++export const householdSuggestionRules = (state: HouseholdSettingsState | null) => state?.categoriesKnown ? state.rules : [];
++
++// 늦게 도착한 조회 결과를 합친다. 조회를 시작한 뒤 변경 트랜잭션이 반영된 항목(changed)은 과거 조회 값으로 되돌리지 않는다.
++// 조회가 실패하면 같은 계정의 이전 값(캐시)을 그 상태(categoriesKnown) 그대로 두고, 없으면 기본값 + 모름으로 둔다.
++export function mergeLoadedHouseholdSettings(previous: HouseholdSettingsState, uid: string,
++  loaded: { categories: PromiseSettledResult<HouseholdCategorySettings>; rules: PromiseSettledResult<HouseholdVendorRuleSettings> },
++  changed: { categories: boolean; rules: boolean }): HouseholdSettingsState {
++  const own = previous.ownerUid === uid ? previous : null;
++  const keepCategories = Boolean(own && changed.categories);
++  const keepRules = Boolean(own && changed.rules);
++  const categoriesFailed = !keepCategories && loaded.categories.status === 'rejected';
++  const rulesFailed = !keepRules && loaded.rules.status === 'rejected';
++  const categories = keepCategories ? own!.categories
++    : loaded.categories.status === 'fulfilled' ? loaded.categories.value : own?.categories || emptyHouseholdCategories();
++  const categoriesKnown = keepCategories ? own!.categoriesKnown
++    : loaded.categories.status === 'fulfilled' ? true : Boolean(own?.categoriesKnown);
++  return {
++    ownerUid: uid,
++    categories,
++    categoriesKnown,
++    rules: keepRules ? own!.rules : loaded.rules.status === 'fulfilled' ? loaded.rules.value.rules : own?.rules || [],
++    error: categoriesFailed && !categoriesKnown
++      ? '분류 설정을 불러오지 못했습니다. 보관 여부를 확인할 수 없어 거래처 분류 제안은 쓰지 않고, 기본 분류와 기존 거래의 분류로 표시합니다. 바꿀 때 최신 설정을 다시 확인합니다.'
++      : categoriesFailed || rulesFailed
++        ? '분류 설정이나 거래처 기억을 불러오지 못했습니다. 기본 분류와 기존 거래의 분류로 표시하며, 바꿀 때 최신 설정을 다시 확인합니다.'
++        : '',
++  };
++}
++
+ export function upsertHouseholdVendorRule(settings: HouseholdVendorRuleSettings, input: { type: string; vendor: string; category: string; subcategory?: string }, now = new Date().toISOString()): HouseholdVendorRuleSettings {
+   if (!isHouseholdType(input.type)) throw new Error('거래 구분을 확인해 주세요.');
+   const vendorKey = normalizeHouseholdVendor(input.vendor);

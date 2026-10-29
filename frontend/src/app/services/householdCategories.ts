@@ -26,7 +26,10 @@ export type HouseholdCategoryAction =
 
 const CONTROL = /[\u0000-\u001f\u007f]/;
 export const emptyHouseholdCategories = (): HouseholdCategorySettings => ({ version: 1, types: { 지출: [], 수입: [], 이체: [] } });
-const sameLabel = (a: string, b: string) => a.toLocaleLowerCase('ko-KR') === b.toLocaleLowerCase('ko-KR');
+// 분류 병합·중복 판정과 거래처 기억의 보관 판정이 같은 기준(NFKC·공백·대소문자)을 쓴다.
+const labelKey = (value: string) => String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase('ko-KR');
+export const sameHouseholdLabel = (a: string, b: string) => labelKey(a) === labelKey(b);
+const sameLabel = sameHouseholdLabel;
 export const isHouseholdType = (value: unknown): value is HouseholdType => HOUSEHOLD_TYPES.includes(value as HouseholdType);
 
 export function normalizeHouseholdLabel(value: string, name = '분류 이름') {

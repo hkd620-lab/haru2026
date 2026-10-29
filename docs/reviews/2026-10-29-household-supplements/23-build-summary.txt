@@ -1,0 +1,32 @@
+
+> @figma/my-make-file@0.0.1 prebuild
+> npm run validate:build-env
+
+
+> @figma/my-make-file@0.0.1 validate:build-env
+> node scripts/validate-build-env.mjs
+
+Firebase build environment validation passed.
+
+> @figma/my-make-file@0.0.1 build
+> vite build
+
+(node:6737) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[중간 번들 목록 생략: 원문 /private/tmp/haru-household-review-fix-build.txt]
+dist/assets/xlsx-DeA24uIp.js                500.30 kB │ gzip:   161.69 kB
+dist/assets/pdf-8C7lU80E.js                 546.43 kB │ gzip:   164.75 kB
+dist/assets/index-ClY89zGH.js             5,849.32 kB │ gzip: 1,530.97 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 44.08s
+
+PWA v1.2.0
+mode      generateSW
+precache  791 entries (21299.44 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-aade9d62.js

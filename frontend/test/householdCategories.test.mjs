@@ -7,11 +7,12 @@ import {
   householdCategoryOptions, householdSubcategoryOptions, mergeHouseholdCategories, parseHouseholdCategories,
 } from '../src/app/services/householdCategories.ts';
 import {
-  HOUSEHOLD_VENDOR_RULE_LIMIT, findHouseholdVendorRule, normalizeHouseholdVendor, parseHouseholdVendorRules,
-  readHouseholdSuggestionBasis, removeHouseholdVendorRule, suggestHouseholdCategory, upsertHouseholdVendorRule,
+  HOUSEHOLD_VENDOR_RULE_LIMIT, emptyHouseholdSettingsState, findHouseholdVendorRule, householdRuleArchived, householdSuggestionRules,
+  mergeLoadedHouseholdSettings, normalizeHouseholdVendor, parseHouseholdVendorRules,
+  readHouseholdSuggestionBasis, removeHouseholdVendorRule, resuggestHouseholdCategory, suggestHouseholdCategory, upsertHouseholdVendorRule,
 } from '../src/app/services/householdVendorRules.ts';
 import { readFileSync } from 'node:fs';
-import { parseKakaoBankWorkbook } from '../src/app/services/householdKakaoImport.ts';
+import { mapCategory, parseKakaoBankWorkbook } from '../src/app/services/householdKakaoImport.ts';
 
 const apply = (settings, type, ...actions) => actions.reduce((current, action) => applyHouseholdCategoryAction(current, type, action), settings);
 
@@ -165,4 +166,106 @@ test('은행 화면의 분류 설정은 계정·편집 세션·수정 번호 경
   assert.match(parse, /if \(!ownsHouseholdSession\(uid, session\)\) return;/);
   assert.match(parse, /suggestHouseholdCategory\(row\.entry, basis\.rules, basis\.views\)/);
   assert.doesNotMatch(parse, /householdCategoryViews/);
+});
+
+test('은행 미리보기에서 거래처를 고치면 이전 거래처의 기억 분류·세부분류를 지우고 새 거래처 기준으로 다시 정한다', async () => {
+  const row = (time, vendor) => ['', time, '출금', '4,500', '100000', '체크카드결제', vendor, ''];
+  const parsed = await parseKakaoBankWorkbook({ SheetNames: ['내역'], Sheets: { 내역: [row('2026.10.05 12:00:00', '단골 식당')] } }, { utils: { sheet_to_json: sheet => sheet } }, '합성.xlsx');
+  let rules = upsertHouseholdVendorRule({ version: 1, rules: [] }, { type: '지출', vendor: '단골 식당', category: '식비', subcategory: '외식' }, 't').rules;
+  rules = upsertHouseholdVendorRule({ version: 1, rules }, { type: '지출', vendor: '동네 약국', category: '의료비' }, 't').rules;
+  const views = mergeHouseholdCategories(emptyHouseholdCategories());
+  const original = parsed.rows[0].entry;
+  const remembered = suggestHouseholdCategory(original, rules, views);
+  assert.deepEqual([remembered.category, remembered.subcategory, remembered.categorySource], ['식비', '외식', 'rule']);
+  const change = (entry, vendor) => resuggestHouseholdCategory({ ...entry, vendor }, mapCategory(entry.transactionType, vendor), rules, views);
+  const identity = entry => [entry.id, entry.importSource.key, entry.importSource.fileDigest, entry.amount, entry.date, entry.transactionAt, entry.balanceAfter];
+
+  // 규칙 없는 거래처: 첫 선택지(식비)가 아니라 파서 기본값 '기타' + 확인 필요, 이전 세부분류 없음.
+  const noRule = change(remembered, '처음 가는 가게');
+  assert.deepEqual([noRule.category, noRule.categorySource, 'subcategory' in noRule], ['기타', 'import-default', false]);
+  assert.equal(householdCategoryOptions(views.지출)[0], '식비');
+  // 파서 기본값은 새 거래처로 다시 계산한다(구독 키워드).
+  assert.deepEqual([change(remembered, 'Netflix').category, change(remembered, 'Netflix').categorySource], ['구독료', 'import-default']);
+  // 규칙 있는 다른 거래처: 그 규칙으로 다시 제안하고 세부분류가 없는 규칙이면 이전 세부분류를 남기지 않는다.
+  const otherRule = change(remembered, '동네 약국');
+  assert.deepEqual([otherRule.category, otherRule.categorySource, 'subcategory' in otherRule], ['의료비', 'rule', false]);
+  // 원래 거래처로 되돌리면 다시 원래 기억 분류.
+  const back = change(noRule, '단골 식당');
+  assert.deepEqual([back.category, back.subcategory, back.categorySource], ['식비', '외식', 'rule']);
+  // 사용자가 직접 고른 분류·세부분류는 거래처를 바꿔도 그대로다.
+  const user = { ...remembered, category: '쇼핑', subcategory: '생활', categorySource: 'user' };
+  assert.deepEqual(change(user, '동네 약국'), { ...user, vendor: '동네 약국' });
+  // 출처 키·식별자·금액·날짜·잔액은 어떤 경우에도 바뀌지 않는다.
+  for (const entry of [noRule, otherRule, back, change(user, 'x')]) assert.deepEqual(identity(entry), identity(original));
+  // 원본 객체도 바꾸지 않는다.
+  assert.equal(remembered.vendor, '단골 식당');
+  assert.equal(remembered.subcategory, '외식');
+});
+
+test('은행 미리보기의 거래처·구분 변경은 같은 재제안 경로를 쓰고 이미 저장된 행 잠금을 유지한다', () => {
+  const source = readFileSync(new URL('../src/app/components/FormatModal.tsx', import.meta.url), 'utf8');
+  assert.match(source, /<input type="text" value=\{row\.entry\.vendor\} disabled=\{rowLocked\}\s+onChange=\{\(e\) => changeKakaoVendor\(group\.month, row\.id, e\.target\.value\)\}/);
+  assert.doesNotMatch(source, /updateKakaoRow\([^)]*\{ vendor:/);
+  const handlers = source.slice(source.indexOf('const changeKakaoTransactionType'), source.indexOf('const toggleKakaoRowSelected'));
+  assert.match(handlers, /resuggestHouseholdCategory\(\{ \.\.\.entry, vendor \}, kakaoDefaultCategory\(entry\.transactionType, vendor\), rules, householdCategoryViews\)/);
+  // 구분을 바꿔도 첫 선택지가 아닌 파서 기본값으로 되돌린다.
+  assert.doesNotMatch(handlers, /nextOptions\[0\]/);
+  assert.match(handlers, /category: kakaoDefaultCategory\(transactionType, rest\.vendor\), categorySource: 'import-default'/);
+  // 행 식별자(row.id)·중복 확인 결과(householdChecks)는 그대로 쓰고, 거래 객체만 교체한다.
+  const replace = source.slice(source.indexOf('const replaceKakaoEntry'), source.indexOf('const updateKakaoCategory'));
+  assert.match(replace, /if \(r\.id !== rowId\) return r;\s+const entry = change\(r\.entry\);\s+return \{ \.\.\.r, entry, warning/);
+});
+
+test('규칙의 보관 판정은 분류 목록과 같은 NFKC·공백·대소문자 기준이며 규칙 자체는 지우지 않는다', () => {
+  const settings = apply(emptyHouseholdCategories(), '지출',
+    { kind: 'add', name: 'Cafe' }, { kind: 'addSub', category: 'Cafe', name: 'Takeout' },
+    { kind: 'archiveSub', category: 'Cafe', name: 'Takeout' });
+  const views = mergeHouseholdCategories(settings);
+  // 규칙이 다른 대소문자·전각으로 저장돼 있어도 보관한 세부분류는 다시 제안하지 않는다.
+  const rules = [{ type: '지출', vendorKey: '시험 카페', vendorLabel: '시험 카페', category: 'ＣＡＦＥ', subcategory: ' takeout ', updatedAt: '' }];
+  assert.deepEqual(householdRuleArchived(rules[0], views), { category: false, subcategory: true });
+  const entry = { transactionType: '지출', vendor: '시험 카페', category: '기타', categorySource: 'import-default' };
+  const suggested = suggestHouseholdCategory(entry, rules, views);
+  assert.equal(suggested.category, 'ＣＡＦＥ');
+  assert.equal('subcategory' in suggested, false);
+  // 분류 자체를 보관하면 제안하지 않는다(대소문자 다름).
+  const archivedViews = mergeHouseholdCategories(apply(settings, '지출', { kind: 'archive', name: 'cafe' }));
+  assert.deepEqual(householdRuleArchived(rules[0], archivedViews).category, true);
+  assert.deepEqual(suggestHouseholdCategory(entry, rules, archivedViews), entry);
+  assert.equal(rules.length, 1);
+  // 분류 병합도 같은 기준으로 하나로 합친다.
+  const merged = mergeHouseholdCategories(settings, [{ transactionType: '지출', category: ' ｃａｆｅ ', subcategory: 'TAKEOUT' }]);
+  assert.equal(merged.지출.filter(view => view.name.normalize('NFKC').trim().toLowerCase() === 'cafe').length, 1);
+  assert.deepEqual(householdSubcategoryOptions(merged.지출, 'Cafe'), []);
+});
+
+test('가계부 화면 설정: 분류 조회 실패로 보관 여부를 모르면 현금 입력에 규칙을 쓰지 않고, 캐시·늦은 결과를 구분한다', () => {
+  const rules = upsertHouseholdVendorRule({ version: 1, rules: [] }, { type: '지출', vendor: '단골 식당', category: '쇼핑' }, 't');
+  const ok = value => ({ status: 'fulfilled', value });
+  const fail = { status: 'rejected', reason: new Error('offline') };
+  const categories = apply(emptyHouseholdCategories(), '지출', { kind: 'archive', name: '쇼핑' });
+  const none = { categories: false, rules: false };
+  // 첫 조회에서 분류 설정만 실패: 규칙은 보관하지만 제안에는 쓰지 않는다.
+  const partial = mergeLoadedHouseholdSettings(emptyHouseholdSettingsState(), 'u', { categories: fail, rules: ok(rules) }, none);
+  assert.deepEqual([partial.categoriesKnown, partial.rules.length, householdSuggestionRules(partial)], [false, 1, []]);
+  assert.match(partial.error, /거래처 분류 제안은 쓰지 않고/);
+  // 다른 계정의 이전 상태는 캐시로 쓰지 않는다.
+  const otherOwner = { ...partial, ownerUid: 'other', categories, categoriesKnown: true };
+  assert.equal(mergeLoadedHouseholdSettings(otherOwner, 'u', { categories: fail, rules: ok(rules) }, none).categoriesKnown, false);
+  // 같은 계정에서 이미 읽은 설정(캐시)이 있으면 재조회 실패에도 그 설정과 상태를 유지한다.
+  const loaded = mergeLoadedHouseholdSettings(emptyHouseholdSettingsState(), 'u', { categories: ok(categories), rules: ok(rules) }, none);
+  assert.deepEqual([loaded.categoriesKnown, householdSuggestionRules(loaded).length, loaded.error], [true, 1, '']);
+  const cached = mergeLoadedHouseholdSettings(loaded, 'u', { categories: fail, rules: fail }, none);
+  assert.deepEqual([cached.categoriesKnown, cached.categories, cached.rules], [true, categories, loaded.rules]);
+  assert.match(cached.error, /불러오지 못했습니다/);
+  // 조회 시작 뒤 트랜잭션 결과가 반영된 항목은 늦게 도착한 조회 값으로 덮지 않는다.
+  const fresh = { ...loaded, categories: emptyHouseholdCategories(), rules: [] };
+  const late = mergeLoadedHouseholdSettings(fresh, 'u', { categories: ok(categories), rules: ok(rules) }, { categories: true, rules: true });
+  assert.deepEqual([late.categories, late.rules], [fresh.categories, []]);
+  // 화면은 이 함수 결과만 쓰고, 현금 입력에는 보관 여부를 아는 경우의 규칙만 넘긴다.
+  const page = readFileSync(new URL('../src/app/pages/HouseholdPage.tsx', import.meta.url), 'utf8');
+  assert.match(page, /mergeLoadedHouseholdSettings\(previous, uid, \{ categories, rules \}, changed\)/);
+  assert.match(page, /const cashRules = householdSuggestionRules\(ownSettings\);/);
+  assert.match(page, /<HouseholdCashEntry[\s\S]{0,300}rules=\{cashRules\}/);
+  assert.match(page, /const known = patch\.categories \? \{ categoriesKnown: true \} : \{\};/);
 });

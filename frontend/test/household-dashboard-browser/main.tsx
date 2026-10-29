@@ -14,7 +14,7 @@ function FixtureApp() {
     <MemoryRouter initialEntries={["/household"]}>
       <aside style={{ padding: 8, fontSize: 11, display: "flex", flexWrap: "wrap", gap: 4 }}>
         <span>합성 529건 · 운영 연결 없음 · 쓰기 {writes}회{pending ? ` · 다음 저장: ${pending}` : ""}</span>
-        {["normal", "empty", "error", "slow", "other", "signedout"].map(
+        {["normal", "empty", "error", "slow", "other", "signedout", "legacy-array"].map(
           (value) => (
             <button
               key={value}

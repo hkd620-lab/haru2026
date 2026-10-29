@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { HouseholdCashEntry, buildHouseholdCashEntry, householdTodayKst, newHouseholdCashDraft } from '../src/app/components/HouseholdCashEntry.tsx';
-import { HouseholdBulkSheet, HouseholdEditSheet } from '../src/app/components/HouseholdEditSheet.tsx';
+import { HouseholdBulkSheet, HouseholdEditSheet, householdEditSheetPatch } from '../src/app/components/HouseholdEditSheet.tsx';
 import { HouseholdCategoryManager } from '../src/app/components/HouseholdCategoryManager.tsx';
 import { HouseholdCategoryPicker } from '../src/app/components/HouseholdCategoryPicker.tsx';
 import { applyHouseholdCategoryAction, emptyHouseholdCategories, mergeHouseholdCategories } from '../src/app/services/householdCategories.ts';
@@ -89,6 +89,31 @@ test('여러 거래 분류 화면은 메모를 바꾸지 않는다고 알리고 
   assert.match(visible, /기타 1건 · 분류 없음 1건/);
 });
 
+test('여러 거래 분류에서 세부분류 없음은 기존 세부분류를 지운다고 시트에 알린다', () => {
+  const { entries } = readHouseholdDashboard([{ id: 'r', household_entries: JSON.stringify([
+    { id: 'a', date: '2026-10-05', transactionType: '지출', category: '식비', subcategory: '외식', vendor: 'A', amount: '1', paymentMethod: '', memo: '' },
+    { id: 'b', date: '2026-10-06', transactionType: '지출', category: '식비', vendor: 'B', amount: '2', paymentMethod: '', memo: '' },
+  ]) }]);
+  const visible = text(renderToStaticMarkup(React.createElement(HouseholdBulkSheet, { entries, views: views.지출, onSubmit: async () => {}, onCreate: noop, onClose: noop })));
+  assert.match(visible, /세부분류 없음으로 바꾸면 선택한 거래의 기존 세부분류\(1건\)가 지워집니다/);
+});
+
+test('수정 시트는 분류만 고칠 때 저장된 CRLF 메모를 patch에 넣지 않고, 실제로 고친 메모만 보낸다', () => {
+  const [entry] = readHouseholdDashboard([{ id: 'r', household_entries: JSON.stringify([
+    { id: 'a', date: '2026-10-05', transactionType: '지출', category: '기타', vendor: 'A', amount: '1', paymentMethod: '현금', memo: '첫 줄\r\n둘째 줄' },
+  ]) }]).entries;
+  assert.equal(entry.memo, '첫 줄\r\n둘째 줄');
+  const initial = { category: '기타', subcategory: '' };
+  // textarea는 값을 LF로 돌려줄 수 있다. 줄바꿈 방식만 다르면 메모를 바꾸지 않는다.
+  for (const memo of [entry.memo, '첫 줄\n둘째 줄']) {
+    assert.deepEqual(householdEditSheetPatch(entry, initial, { category: '식비', subcategory: '', memo }), { category: '식비', subcategory: '' });
+    assert.deepEqual(householdEditSheetPatch(entry, initial, { ...initial, memo }), {});
+    assert.deepEqual(householdEditSheetPatch(entry, initial, { ...initial, memo }, true), initial);
+  }
+  assert.deepEqual(householdEditSheetPatch(entry, initial, { ...initial, memo: '첫 줄\n고친 줄' }), { memo: '첫 줄\n고친 줄' });
+  assert.equal(entry.memo, '첫 줄\r\n둘째 줄');
+});
+
 test('분류 관리는 구분별 추가·세부분류·보관 해제와 거래처 기억 탭을 제공한다', () => {
   const visible = text(renderToStaticMarkup(React.createElement(HouseholdCategoryManager, {
     views, rules: [], loadError: '', onAction: async () => {}, onRemoveRule: async () => {}, onShowTransactions: noop, onClose: noop,
@@ -132,7 +157,9 @@ test('분류 관리는 연 계정에만 그리고 계정별 key로 내부 입력
   assert.match(page, /if \(patch\.categories\) settingsRevision\.current\.categories\+\+;/);
   assert.match(page, /if \(patch\.rules\) settingsRevision\.current\.rules\+\+;/);
   assert.match(page, /const started = \{ \.\.\.settingsRevision\.current \};/);
-  assert.match(page, /keepRules\s*\? own!\.rules/);
+  // 합치는 규칙은 householdVendorRules의 mergeLoadedHouseholdSettings로 옮겼다(동작은 householdCategories 테스트).
+  const rules = readFileSync(new URL('../src/app/services/householdVendorRules.ts', import.meta.url), 'utf8');
+  assert.match(rules, /keepRules \? own!\.rules/);
   // 현금 재시도가 이미 저장됨이고 첫 시도와 분류가 다를 수 있으면 거래처 기억을 저장하지 않는다.
   assert.match(page, /result\.already && saved\.rememberMismatch\)[\s\S]{0,400}return;/);
 });

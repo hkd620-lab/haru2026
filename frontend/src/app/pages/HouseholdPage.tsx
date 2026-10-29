@@ -83,10 +83,14 @@ import {
   type HouseholdType,
 } from "../services/householdCategories";
 import {
+  emptyHouseholdSettingsState,
+  householdSuggestionRules,
   loadHouseholdVendorRules,
+  mergeLoadedHouseholdSettings,
   removeHouseholdVendorRule,
   updateHouseholdVendorRules,
   upsertHouseholdVendorRule,
+  type HouseholdSettingsState,
   type HouseholdVendorRule,
 } from "../services/householdVendorRules";
 import "./HouseholdPage.css";
@@ -158,17 +162,9 @@ export function HouseholdPage() {
   const [savingBudget, setSavingBudget] = useState(false);
   const [budgetError, setBudgetError] = useState("");
   // 아래 작성·편집 상태는 모두 소유 계정을 함께 기록하고, 현재 계정과 같을 때만 표시·저장한다.
-  const [settings, setSettings] = useState<{
-    ownerUid: string | null;
-    categories: HouseholdCategorySettings;
-    rules: HouseholdVendorRule[];
-    error: string;
-  }>(() => ({
-    ownerUid: null,
-    categories: emptyHouseholdCategories(),
-    rules: [],
-    error: "",
-  }));
+  const [settings, setSettings] = useState<HouseholdSettingsState>(
+    emptyHouseholdSettingsState,
+  );
   // 설정 변경 트랜잭션이 결과를 반영할 때마다 올린다. 진행 중인 조회는 시작 때 값과 비교한다.
   const settingsRevision = useRef({ categories: 0, rules: 0 });
   const [cashDraft, setCashDraft] = useState<HouseholdCashDraft | null>(null);
@@ -261,14 +257,7 @@ export function HouseholdPage() {
   useEffect(() => {
     let active = true;
     setSettings((previous) =>
-      previous.ownerUid === user?.uid
-        ? previous
-        : {
-            ownerUid: null,
-            categories: emptyHouseholdCategories(),
-            rules: [],
-            error: "",
-          },
+      previous.ownerUid === user?.uid ? previous : emptyHouseholdSettingsState(),
     );
     if (user?.uid) {
       const uid = user.uid;
@@ -279,31 +268,13 @@ export function HouseholdPage() {
       ]).then(([categories, rules]) => {
         if (!active) return;
         // 조회를 시작한 뒤 변경 트랜잭션 결과가 반영된 설정은, 늦게 도착한 조회 값으로 되돌리지 않는다.
-        const changedCategories = settingsRevision.current.categories !== started.categories;
-        const changedRules = settingsRevision.current.rules !== started.rules;
-        setSettings((previous) => {
-          const own = previous.ownerUid === uid ? previous : null;
-          const keepCategories = Boolean(own && changedCategories);
-          const keepRules = Boolean(own && changedRules);
-          return {
-            ownerUid: uid,
-            categories: keepCategories
-              ? own!.categories
-              : categories.status === "fulfilled"
-                ? categories.value
-                : own?.categories || emptyHouseholdCategories(),
-            rules: keepRules
-              ? own!.rules
-              : rules.status === "fulfilled"
-                ? rules.value.rules
-                : own?.rules || [],
-            error:
-              (!keepCategories && categories.status === "rejected") ||
-              (!keepRules && rules.status === "rejected")
-                ? "분류 설정이나 거래처 기억을 불러오지 못했습니다. 기본 분류와 기존 거래의 분류로 표시하며, 바꿀 때 최신 설정을 다시 확인합니다."
-                : "",
-          };
-        });
+        const changed = {
+          categories: settingsRevision.current.categories !== started.categories,
+          rules: settingsRevision.current.rules !== started.rules,
+        };
+        setSettings((previous) =>
+          mergeLoadedHouseholdSettings(previous, uid, { categories, rules }, changed),
+        );
       });
     }
     return () => {
@@ -349,6 +320,8 @@ export function HouseholdPage() {
     [ownSettings?.categories, allEntries],
   );
   const rules = ownSettings?.rules || [];
+  // 분류 설정을 읽지 못해 보관 여부를 모르면 현금 입력에 거래처 기억을 제안하지 않는다.
+  const cashRules = householdSuggestionRules(ownSettings);
   const ownedCashDraft = uid && cashDraft?.ownerUid === uid ? cashDraft : null;
   const ownedEdit = uid && editTarget?.ownerUid === uid ? editTarget.entry : null;
   const selectMode = Boolean(uid && selection?.ownerUid === uid);
@@ -456,16 +429,12 @@ export function HouseholdPage() {
     // 트랜잭션이 돌려준 최신 설정. 수정 번호를 올려 진행 중인 조회가 과거 값으로 덮지 않게 한다.
     if (patch.categories) settingsRevision.current.categories++;
     if (patch.rules) settingsRevision.current.rules++;
+    // 트랜잭션이 읽고 돌려준 분류 설정은 최신이므로 보관 여부를 아는 상태가 된다.
+    const known = patch.categories ? { categoriesKnown: true } : {};
     setSettings((previous) =>
       previous.ownerUid === ownerUid
-        ? { ...previous, ...patch }
-        : {
-            ownerUid,
-            categories: emptyHouseholdCategories(),
-            rules: [],
-            error: "",
-            ...patch,
-          },
+        ? { ...previous, ...patch, ...known }
+        : { ...emptyHouseholdSettingsState(), ownerUid, ...patch, ...known },
     );
   };
   async function changeCategories(
@@ -1576,7 +1545,7 @@ export function HouseholdPage() {
             )
           }
           categories={categoryViews}
-          rules={rules}
+          rules={cashRules}
           onSave={(entry, decisions) =>
             firestoreService.saveHouseholdRecord(
               ownedCashDraft.ownerUid,

@@ -46,3 +46,30 @@ export const demoRecords = Array.from({ length: 12 }, (_, month) => {
     household_entries: JSON.stringify(entries),
   };
 });
+
+// 'legacy-array' 시험 버튼용: id·importSource가 전혀 없던 예전 배열 거래(이번 달). 같은 내용 두 건과 CRLF 메모 포함.
+const legacyMonth = (() => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+})();
+const legacyEntry = (day: string, vendor: string, amount: string, memo = "") => ({
+  date: `${legacyMonth}-${day}`,
+  transactionType: "지출",
+  category: "기타",
+  vendor,
+  amount,
+  paymentMethod: "현금",
+  memo,
+});
+export const legacyArrayRecords = [
+  {
+    id: `${legacyMonth}-01_household`,
+    date: `${legacyMonth}-01`,
+    household_entries: JSON.stringify([
+      legacyEntry("03", "예전 동네 가게", "3000", "예전 메모 첫 줄\r\n예전 메모 둘째 줄"),
+      legacyEntry("03", "예전 동네 가게", "3000"),
+      legacyEntry("04", "예전 시장", "8000"),
+    ]),
+    household_sayu: "사용자가 직접 쓴 예전 본문",
+  },
+];
