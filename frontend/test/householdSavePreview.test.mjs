@@ -38,6 +38,19 @@ test('자동 제외와 미선택을 구분하고 파일 내 정상 반복 결제
     { total: 3, added: 1, excluded: 1, pending: 0, unchecked: 0, unselected: 1 });
   const retry = previewHouseholdSave(entries.map(entry => ({ entry, selected: false })), await checkHouseholdDuplicates(entries, stored(entries)), {});
   assert.equal(retry.added, 0); assert.equal(retry.excluded, 3);
+  assert.equal(householdSaveLabel(retry), '이미 모두 저장됨');
+  const markup = renderToStaticMarkup(React.createElement(HouseholdSaveSummary, { preview: retry }));
+  assert.match(markup, /다시 저장할 필요 없이/);
+  assert.match(markup, /닫아도 됩니다/);
+});
+
+test('최신 내역 확인 중이거나 확인 실패 시 이전 추가 예정 건수를 확정 표시하지 않는다', () => {
+  const preview = { total: 529, added: 387, excluded: 0, pending: 142, unchecked: 0, unselected: 0 };
+  for (const state of [{ checking: true }, { failed: true }]) {
+    const markup = renderToStaticMarkup(React.createElement(HouseholdSaveSummary, { preview, ...state, onRecheck() {} }));
+    assert.doesNotMatch(markup, /추가 예정 387건/);
+    assert.match(markup, /최신 저장 내역/);
+  }
 });
 
 test('입력 내용·비교 토큰 변경과 비교 후보 소멸은 예전 제외 선택을 확정 건수로 쓰지 않는다', async () => {
