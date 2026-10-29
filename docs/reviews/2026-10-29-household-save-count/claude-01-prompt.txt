@@ -1,0 +1,6 @@
+독립 코드·설계·완료 검토 요청입니다. 파일을 수정하거나 명령을 실행하지 마세요. Read 도구만 사용해 아래 코드와 검증 기록을 읽어 검토하세요. 대화 맥락은 제공하지 않습니다.
+저장소 /Users/heogyeongdae/Developer/HARU2026 의 codex/household-save-count 브랜치 최신 커밋 대상.
+요구: 가계부 저장 버튼이 실제 추가 거래 수와 중복 제외 거래 수를 표시해야 합니다. 선택 대기/미확인/미선택은 구분해야 하며 불러온 파일 활성 시 하단 버튼은 그 파일 거래를 저장해야 합니다. 기존 거래는 보존해야 합니다.
+읽을 파일: frontend/src/app/services/householdSavePreview.ts, frontend/src/app/components/HouseholdSaveSummary.tsx, frontend/src/app/components/FormatModal.tsx(상태 565~615, 저장 핸들러 2700~2990, 미리보기 5250~5385, 하단 버튼 6710~6770), frontend/src/app/services/householdSaveService.ts, frontend/test/householdSavePreview.test.mjs, frontend/test/householdSave.emulator.test.mjs, docs/reviews/2026-10-29-household-save-count/validation.md.
+버그·회귀·건수와 저장 동작 불일치를 중점으로 확인하세요. 범위 밖 파일, 숨김 페이지, 금지 파일, 금융 자료는 읽지 마세요.
+판정: 승인 / 수정 후 승인 / 재설계 중 하나를 명시하고, 필수 수정과 비차단 권고를 분리하세요. 작업 규모(소/중/대)와 정책상 멈춤 조건 해당 여부도 판정하세요. 이 건은 기존 표시·핸들러 수정이며 사용자가 검증과 검토 후 이상 없으면 main 병합/Hosting 배포까지 승인했습니다. 테스트는 실행자 기록이며 직접 실행하지 않았음을 구분하세요.

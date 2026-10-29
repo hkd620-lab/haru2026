@@ -80,6 +80,8 @@ import { parseHouseholdAmountText } from '../utils/householdAmount';
 import { checkHouseholdDuplicates, HouseholdDuplicateReviewRequired, type HouseholdDecisions, type HouseholdDuplicateCheck } from '../services/householdDuplicates';
 import { loadHouseholdRecords, type HouseholdSaveResult } from '../services/householdSaveService';
 import { HouseholdDuplicateReview } from './HouseholdDuplicateReview';
+import { householdSaveLabel, mergeHouseholdChecks, previewHouseholdSave } from '../services/householdSavePreview';
+import { HouseholdSaveSummary } from './HouseholdSaveSummary';
 import { parseKakaoBankPdf } from '../services/householdKakaoPdfImport';
 import { findSameNameGrowthSubject, growthSubjectOptionLabel } from '../utils/growthSubject';
 
@@ -587,6 +589,12 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [isDecryptingKakaoXlsx, setIsDecryptingKakaoXlsx] = useState(false);
   const [kakaoXlsxMonthGroups, setKakaoXlsxMonthGroups] = useState<KakaoXlsxMonthGroup[]>([]);
   const [isSavingKakaoXlsx, setIsSavingKakaoXlsx] = useState(false);
+  const hasHouseholdImport = kakaoXlsxMonthGroups.length > 0;
+  const householdSaveRows = hasHouseholdImport
+    ? kakaoXlsxMonthGroups.flatMap(group => group.rows)
+    : fillEmptyHouseholdDates(householdEntries, recordId).map(entry => ({ entry, selected: true }));
+  const householdSavePreview = previewHouseholdSave(householdSaveRows, householdChecks, householdDecisions);
+  const householdSaveBusy = isSaving || isSavingKakaoXlsx;
 
   // 🚿 배뇨일지
   const [voidingEntries, setVoidingEntries] = useState<import('../utils/voidingStats').VoidingEntry[]>([]);
@@ -2767,7 +2775,7 @@ ${contentValues}
     setIsSaving(true);
     try {
       const result = await saveHouseholdEntriesBatch(householdEntries);
-      toast.success(`신규 ${result.added}건 · 이미 저장됨 ${result.already}건 · 기존 거래 사용 ${result.skipped}건`);
+      toast.success(`추가 ${result.added}건 · 중복 제외 ${result.already + result.skipped}건`);
       closeAfterCommit();
     } catch (error) {
       if (error instanceof HouseholdDuplicateReviewRequired) {
@@ -2951,15 +2959,17 @@ ${contentValues}
     setIsSavingKakaoXlsx(true);
     try {
       const entries = validGroups.flatMap(group => group.rows.map(row => row.entry));
+      const autoExcluded = previewHouseholdSave(householdSaveRows.filter(row => !row.selected), householdChecks, householdDecisions).excluded;
       const result = await saveHouseholdEntriesBatch(entries);
-      toast.success(`신규 ${result.added}건 · 이미 저장됨 ${result.already}건 · 기존 거래 사용 ${result.skipped}건`);
+      toast.success(`추가 ${result.added}건 · 중복 제외 ${result.already + result.skipped + autoExcluded}건`);
       // 선택한 모든 달이 함께 저장된 뒤 목록을 정리한다.
       const savedMonths = new Set(validGroups.map((g) => g.month));
       setKakaoXlsxMonthGroups((groups) => groups.filter((g) => !savedMonths.has(g.month)));
       closeAfterCommit();
     } catch (error) {
       if (error instanceof HouseholdDuplicateReviewRequired) {
-        setHouseholdChecks(error.checks);
+        // 선택해서 저장한 행만 재검사되므로, 자동 제외·미선택 행의 결과도 보존한다.
+        setHouseholdChecks(previous => mergeHouseholdChecks(previous, error.checks));
         toast.warning(error.message);
       } else toast.error('저장하지 못했습니다. 반영 여부를 확인한 뒤 다시 시도해 주세요. 이미 반영된 거래는 다시 추가하지 않습니다.');
     } finally {
@@ -5347,13 +5357,14 @@ ${contentValues.slice(0, 4100)}`,
                           </div>
                         );
                       })}
+                      <HouseholdSaveSummary preview={householdSavePreview} />
                       <button
                         type="button"
                         onClick={handleSaveKakaoXlsxImport}
-                        disabled={isSavingKakaoXlsx}
+                        disabled={householdSaveBusy || !householdSaveRows.some(row => row.selected)}
                         style={{ width: '100%', padding: '12px', border: 'none', borderRadius: 10, backgroundColor: '#1A3C6E', color: '#fff', fontSize: 14, fontWeight: 800, cursor: isSavingKakaoXlsx ? 'wait' : 'pointer' }}
                       >
-                        {isSavingKakaoXlsx ? '가계부에 저장 중...' : '가계부에 저장'}
+                        {householdSaveBusy ? '가계부에 저장 중...' : householdSaveLabel(householdSavePreview)}
                       </button>
                     </div>
                   )}
@@ -6711,13 +6722,16 @@ ${contentValues.slice(0, 4100)}`,
               </button>
             ) : isHouseholdFormat ? (
               /* 📒 HARU가계부 전용 저장 버튼 */
-              <button
-                onClick={handleSaveHouseholdEntries}
-                disabled={isSaving}
-                style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#166534', color: '#fff', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1, fontWeight: 700 }}
-              >
-                {isSaving ? '저장 중...' : `거래 저장하기 (${householdEntries.length}건)`}
-              </button>
+              <div style={{ width: '100%' }}>
+                <HouseholdSaveSummary preview={householdSavePreview} />
+                <button
+                  onClick={hasHouseholdImport ? handleSaveKakaoXlsxImport : handleSaveHouseholdEntries}
+                  disabled={householdSaveBusy || !householdSaveRows.some(row => row.selected)}
+                  style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#166534', color: '#fff', cursor: householdSaveBusy ? 'not-allowed' : 'pointer', opacity: householdSaveBusy ? 0.7 : 1, fontWeight: 700 }}
+                >
+                  {householdSaveBusy ? '저장 중...' : householdSaveLabel(householdSavePreview)}
+                </button>
+              </div>
             ) : isVoidingFormat ? (
               /* 🚿 배뇨일지 전용 저장 버튼 */
               <button
