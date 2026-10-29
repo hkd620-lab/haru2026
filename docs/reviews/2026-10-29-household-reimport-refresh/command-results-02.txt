@@ -1,0 +1,34 @@
+단위·SSR·회귀
+✔ 저장된 초안만 종료하고 다음 글의 ID·내용·사진을 새로 시작한다 (4.138166ms)
+ℹ tests 66
+ℹ suites 0
+ℹ pass 66
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2164.96975
+
+기존 Rules 에뮬레이터
+✔ 월별 신규 문서 생성과 기존 문서 추가를 구별하고 날짜별 환경을 월 문서에 붙이지 않는다 (53.868833ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5725.436042
+
+더미 설정 npm run build
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 40.67s
+
+PWA v1.2.0
+mode      generateSW
+precache  791 entries (21180.66 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-aade9d62.js
+
+git diff --check (원문 change.diff 제외): exit 0

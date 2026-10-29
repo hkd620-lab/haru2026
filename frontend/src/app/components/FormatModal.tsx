@@ -601,6 +601,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     ? kakaoXlsxMonthGroups.flatMap(group => group.rows)
     : fillEmptyHouseholdDates(householdEntries, recordId).map(entry => ({ entry, selected: true }));
   const householdSavePreview = previewHouseholdSave(householdSaveRows, householdChecks, householdDecisions);
+  const householdAllAlready = householdSavePreview.total > 0 && householdSavePreview.excluded === householdSavePreview.total
+    && householdSaveRows.every(row => householdChecks.some(check => check.entry.id === row.entry.id && check.status === 'already'));
   const householdSaveBusy = isSaving || isSavingKakaoXlsx || isCheckingHouseholdImport || householdImportCheckFailed;
   const refreshHouseholdImport = async () => {
     if (!isOpen || !user?.uid || !hasHouseholdImport || householdSavingRef.current || isDecryptingKakaoXlsx || householdImportRefreshing.current) return;
@@ -5404,14 +5406,14 @@ ${contentValues.slice(0, 4100)}`,
                           </div>
                         );
                       })}
-                      <HouseholdSaveSummary preview={householdSavePreview} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={refreshHouseholdImport} />
+                      <HouseholdSaveSummary preview={householdSavePreview} allAlready={householdAllAlready} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={refreshHouseholdImport} />
                       <button
                         type="button"
                         onClick={handleSaveKakaoXlsxImport}
                         disabled={householdSaveBusy || !householdSaveRows.some(row => row.selected)}
                         style={{ width: '100%', padding: '12px', border: 'none', borderRadius: 10, backgroundColor: '#1A3C6E', color: '#fff', fontSize: 14, fontWeight: 800, cursor: isSavingKakaoXlsx ? 'wait' : 'pointer' }}
                       >
-                        {isSaving || isSavingKakaoXlsx ? '가계부에 저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview)}
+                        {isSaving || isSavingKakaoXlsx ? '가계부에 저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview, householdAllAlready)}
                       </button>
                     </div>
                   )}
@@ -6770,13 +6772,13 @@ ${contentValues.slice(0, 4100)}`,
             ) : isHouseholdFormat ? (
               /* 📒 HARU가계부 전용 저장 버튼 */
               <div style={{ width: '100%' }}>
-                <HouseholdSaveSummary preview={householdSavePreview} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={hasHouseholdImport ? refreshHouseholdImport : undefined} />
+                <HouseholdSaveSummary preview={householdSavePreview} allAlready={householdAllAlready} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={hasHouseholdImport ? refreshHouseholdImport : undefined} />
                 <button
                   onClick={hasHouseholdImport ? handleSaveKakaoXlsxImport : handleSaveHouseholdEntries}
                   disabled={householdSaveBusy || !householdSaveRows.some(row => row.selected)}
                   style={{ width: '100%', padding: '14px', fontSize: 15, border: 'none', borderRadius: 8, backgroundColor: '#166534', color: '#fff', cursor: householdSaveBusy ? 'not-allowed' : 'pointer', opacity: householdSaveBusy ? 0.7 : 1, fontWeight: 700 }}
                 >
-                  {isSaving || isSavingKakaoXlsx ? '저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview)}
+                  {isSaving || isSavingKakaoXlsx ? '저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview, householdAllAlready)}
                 </button>
               </div>
             ) : isVoidingFormat ? (

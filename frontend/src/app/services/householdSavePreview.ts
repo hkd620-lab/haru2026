@@ -34,8 +34,8 @@ export function previewHouseholdSave(rows: { entry: HouseholdEntry; selected: bo
   return result;
 }
 
-export function householdSaveLabel(preview: HouseholdSavePreview) {
-  if (preview.total > 0 && preview.excluded === preview.total) return '이미 모두 저장됨';
+export function householdSaveLabel(preview: HouseholdSavePreview, allAlready = false) {
+  if (allAlready && preview.total > 0 && preview.excluded === preview.total) return '이미 모두 저장됨';
   if (preview.unselected === preview.total && !preview.excluded) return '선택한 거래 없음';
   if (preview.unchecked) return `중복 확인 후 저장 (${preview.unchecked}건 확인 필요)`;
   if (preview.pending) return `겹침 ${preview.pending}건 선택 후 저장`;

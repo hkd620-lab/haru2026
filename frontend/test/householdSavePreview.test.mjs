@@ -38,10 +38,18 @@ test('자동 제외와 미선택을 구분하고 파일 내 정상 반복 결제
     { total: 3, added: 1, excluded: 1, pending: 0, unchecked: 0, unselected: 1 });
   const retry = previewHouseholdSave(entries.map(entry => ({ entry, selected: false })), await checkHouseholdDuplicates(entries, stored(entries)), {});
   assert.equal(retry.added, 0); assert.equal(retry.excluded, 3);
-  assert.equal(householdSaveLabel(retry), '이미 모두 저장됨');
-  const markup = renderToStaticMarkup(React.createElement(HouseholdSaveSummary, { preview: retry }));
+  assert.equal(householdSaveLabel(retry, true), '이미 모두 저장됨');
+  const markup = renderToStaticMarkup(React.createElement(HouseholdSaveSummary, { preview: retry, allAlready: true }));
   assert.match(markup, /다시 저장할 필요 없이/);
   assert.match(markup, /닫아도 됩니다/);
+});
+
+test('사용자가 모두 제외로 선택했지만 아직 저장 전이면 저장 불필요라고 안내하지 않는다', () => {
+  const preview = { total: 2, added: 0, excluded: 2, pending: 0, unchecked: 0, unselected: 0 };
+  const markup = renderToStaticMarkup(React.createElement(HouseholdSaveSummary, { preview }));
+  assert.doesNotMatch(markup, /닫아도 됩니다/);
+  assert.match(markup, /이번 중복 제외 선택을 기억하려면 저장/);
+  assert.equal(householdSaveLabel(preview), '추가 없이 중복 제외 확인');
 });
 
 test('최신 내역 확인 중이거나 확인 실패 시 이전 추가 예정 건수를 확정 표시하지 않는다', () => {
