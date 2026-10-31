@@ -67,6 +67,7 @@ import {
   validateBibleWordMeaningPayload,
   verseContainsTargetWord,
 } from './englishBibleWordMeaning';
+import { TTS_QUALITY_SETTINGS, buildTtsCachePath, normalizeTtsQuality } from './ttsQuality';
 import * as PortOne from '@portone/server-sdk';
 import {
   getMonthlyAiQuotaStatus as getMonthlyAiQuotaStatusForUser,
@@ -9252,13 +9253,15 @@ export const generateTTS = onCall(
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
 
-    const { text, cacheKey, voice = 'nova' } = request.data;
+    const { text, cacheKey, voice = 'nova', quality } = request.data;
     if (!text || !cacheKey) {
       throw new HttpsError('invalid-argument', '텍스트와 캐시키가 필요합니다.');
     }
     const validVoices = ['nova', 'onyx', 'alloy', 'echo', 'fable', 'shimmer'];
     const safeVoice = validVoices.includes(voice) ? voice : 'nova';
-    const filePath = `ttsCache/${cacheKey}_${safeVoice}.mp3`;
+    const safeQuality = normalizeTtsQuality(quality);
+    const ttsSettings = TTS_QUALITY_SETTINGS[safeQuality];
+    const filePath = buildTtsCachePath({ cacheKey, voice: safeVoice, quality: safeQuality, text });
     const file = bucket().file(filePath);
 
     try {
@@ -9309,11 +9312,11 @@ export const generateTTS = onCall(
           ttsResponse = await axios.post(
             'https://api.openai.com/v1/audio/speech',
             {
-              model: 'tts-1',
+              model: ttsSettings.model,
               input: cleanedText,
               voice: safeVoice,
               response_format: 'mp3',
-              speed: 0.95,
+              speed: ttsSettings.speed,
             },
             {
               headers: {
