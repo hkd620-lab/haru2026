@@ -1,0 +1,133 @@
+{
+ "file_count": [
+  797,
+  799
+ ],
+ "static_only_base": [],
+ "static_only_final": [],
+ "static_changed": [],
+ "generated_changed": [
+  "index.html",
+  "sw.js"
+ ],
+ "manifest_identical": true,
+ "asset_count": [
+  762,
+  764
+ ],
+ "asset_identical_hash_names": 4,
+ "asset_roles_only_base": [],
+ "asset_roles_only_final": [
+  "assets/index.esm-legacy.js",
+  "assets/index.esm.js"
+ ],
+ "sw_base": {
+  "precache": 791,
+  "non_asset_precache": [
+   "brand/haru-pumpkin-logo.png",
+   "card/back.png",
+   "card/front-leaf-left.png",
+   "card/front.png",
+   "card/harulab-pumpkin.png",
+   "card/index.html",
+   "firebase-messaging-sw.js",
+   "icons/apple-touch-icon-v2.png",
+   "icons/badge-v2-96.png",
+   "icons/favicon-v2-16.png",
+   "icons/favicon-v2-32.png",
+   "icons/icon-192.png",
+   "icons/icon-512.png",
+   "icons/icon-v2-192.png",
+   "icons/icon-v2-192.png",
+   "icons/icon-v2-512.png",
+   "icons/icon-v2-512.png",
+   "icons/icon.svg",
+   "index.html",
+   "infographics/01_angina.png",
+   "infographics/02_prostate.png",
+   "infographics/03_diabetes.png",
+   "legal-assistant/e-litigation-integrated-search.png",
+   "manifest.webmanifest",
+   "sw-landing-refresh.js",
+   "tools/blog-neighbor-assistant/app.js",
+   "tools/blog-neighbor-assistant/index.html",
+   "tools/blog-neighbor-assistant/styles.css",
+   "welcome-thumb.png",
+   "welcome/index.html"
+  ],
+  "import_landing": true,
+  "skip_waiting": true,
+  "clients_claim": true,
+  "cleanup": true,
+  "navigation_route": false,
+  "runtime": [
+   [
+    "/^https:\\/\\/fonts\\.googleapis\\.com\\/.*/i",
+    "StaleWhileRevalidate"
+   ],
+   [
+    "/^https:\\/\\/firebasestorage\\.googleapis\\.com\\/.*/i",
+    "NetworkOnly"
+   ]
+  ]
+ },
+ "sw_final": {
+  "precache": 793,
+  "non_asset_precache": [
+   "brand/haru-pumpkin-logo.png",
+   "card/back.png",
+   "card/front-leaf-left.png",
+   "card/front.png",
+   "card/harulab-pumpkin.png",
+   "card/index.html",
+   "firebase-messaging-sw.js",
+   "icons/apple-touch-icon-v2.png",
+   "icons/badge-v2-96.png",
+   "icons/favicon-v2-16.png",
+   "icons/favicon-v2-32.png",
+   "icons/icon-192.png",
+   "icons/icon-512.png",
+   "icons/icon-v2-192.png",
+   "icons/icon-v2-192.png",
+   "icons/icon-v2-512.png",
+   "icons/icon-v2-512.png",
+   "icons/icon.svg",
+   "index.html",
+   "infographics/01_angina.png",
+   "infographics/02_prostate.png",
+   "infographics/03_diabetes.png",
+   "legal-assistant/e-litigation-integrated-search.png",
+   "manifest.webmanifest",
+   "sw-landing-refresh.js",
+   "tools/blog-neighbor-assistant/app.js",
+   "tools/blog-neighbor-assistant/index.html",
+   "tools/blog-neighbor-assistant/styles.css",
+   "welcome-thumb.png",
+   "welcome/index.html"
+  ],
+  "import_landing": true,
+  "skip_waiting": true,
+  "clients_claim": true,
+  "cleanup": true,
+  "navigation_route": false,
+  "runtime": [
+   [
+    "/^https:\\/\\/fonts\\.googleapis\\.com\\/.*/i",
+    "StaleWhileRevalidate"
+   ],
+   [
+    "/^https:\\/\\/firebasestorage\\.googleapis\\.com\\/.*/i",
+    "NetworkOnly"
+   ]
+  ]
+ },
+ "sw_policy_same": {
+  "non_asset_precache": true,
+  "import_landing": true,
+  "skip_waiting": true,
+  "clients_claim": true,
+  "cleanup": true,
+  "navigation_route": true,
+  "runtime": true
+ }
+}

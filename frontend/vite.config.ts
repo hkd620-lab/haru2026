@@ -12,6 +12,8 @@ export default defineConfig({
     // Tailwind is not being actively used – do not remove them
     legacy({
       targets: ['ios >= 13'],
+      // plugin-legacy 기본값(iOS 16.4+)은 레거시 청크에 lookbehind 리터럴을 남겨 iOS 13 파싱을 깨뜨린다
+      modernTargets: 'edge>=79, firefox>=67, chrome>=64, safari>=12, chromeAndroid>=64, iOS>=12',
       additionalLegacyPolyfills: ['regenerator-runtime/runtime']
     }),
     react(),
@@ -110,6 +112,11 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  build: {
+    // Lightning CSS가 chrome61 기준으로 -webkit-backdrop-filter를 지우지 않도록 iOS 13을 명시한다
+    cssTarget: ['chrome61', 'safari13', 'ios13'],
+  },
 
   // Allow external access for mobile testing
   server: {

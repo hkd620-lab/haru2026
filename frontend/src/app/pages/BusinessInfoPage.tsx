@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import type { ReactNode } from 'react';
 import { BUSINESS_INFO } from '../components/BusinessInfoNotice';
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as PortOne from '@portone/browser-sdk/v2';
 import { doc, getDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../config/firebase';
 import { BusinessInfoNotice } from '../components/BusinessInfoNotice';

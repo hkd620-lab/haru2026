@@ -10,7 +10,7 @@ const redirect = deferred();
 export const harness = {
   observers: new Set<any>(), listeners: [] as any[], writes: [] as any[], recoveries: [] as any[],
   mounts: [] as string[], renders: [] as string[], alerts: [] as string[], traces: [] as string[],
-  logoutFails: false, redirect,
+  logoutFails: false, redirect, traceAccount: null as string | null,
   emitAuth(uid: string | null) {
     auth.currentUser = uid ? { uid, email: `${uid}@example.test`, displayName: uid, photoURL: null, providerData: [], emailVerified: true } : null;
     for (const observer of this.observers) observer(auth.currentUser);
@@ -52,6 +52,23 @@ export const httpsCallable = (functions: any, name: string) => () => {
 };
 export const cleanupDuplicateTokens = () => {};
 export const markLoginTrace = (mark: string) => harness.traces.push(mark);
+// Same call relationships as utils/loginPerformance. AuthContext only branches on the binding result.
+export const blockLoginTrace = (reason: string) => harness.traces.push(`blocked:${reason}`);
+export const resumeLoginTrace = (reason: string) => harness.traces.push(`resumed:${reason}`);
+export function markLoginAccessReady() {
+  resumeLoginTrace('required_access_ready');
+  markLoginTrace('T6_required_access_ready');
+}
+export function endLoginTraceForAuthChange() {
+  if (harness.traceAccount !== null) blockLoginTrace('account_switch');
+  harness.traceAccount = null;
+}
+export function bindLoginTraceToAccount(uid: string) {
+  if (harness.traceAccount === null) { harness.traceAccount = uid; return 'bound'; }
+  if (harness.traceAccount === uid) return 'same_account';
+  endLoginTraceForAuthChange();
+  return 'account_changed';
+}
 export const invalidateSnsThumbnailAuthSession = () => {};
 export const setSnsThumbnailAuthUser = () => {};
 export const signInWithEmailAndPassword = async () => { harness.emitAuth('email'); return { user: auth.currentUser }; };

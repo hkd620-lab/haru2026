@@ -1,0 +1,15 @@
+{
+  "command": "node --test tests/auth-user-document-gate.test.cjs",
+  "cwd": "/private/tmp/haru-completion-web-upgrade-20261031",
+  "head": "683bca45349f7eda8c7a540d37b7050713d74913",
+  "startedAt": "2026-10-31T19:32:02.890Z",
+  "endedAt": "2026-10-31T19:32:04.576Z",
+  "exitCode": 1,
+  "signal": null,
+  "spawnError": null,
+  "node": "v22.23.2",
+  "npm": "10.9.8",
+  "platform": "darwin",
+  "arch": "arm64",
+  "osRelease": "27.0.0"
+}

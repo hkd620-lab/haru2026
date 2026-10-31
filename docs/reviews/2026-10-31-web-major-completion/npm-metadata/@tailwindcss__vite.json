@@ -1,0 +1,18 @@
+{
+  "name": "@tailwindcss/vite",
+  "version": "4.3.3",
+  "dist-tags": {
+    "internal": "0.0.0-internal.b2586d4e",
+    "next": "4.0.0",
+    "latest": "4.3.3",
+    "insiders": "0.0.0-insiders.8cc0551"
+  },
+  "peerDependencies": {
+    "vite": "^5.2.0 || ^6 || ^7 || ^8"
+  },
+  "dependencies": {
+    "tailwindcss": "4.3.3",
+    "@tailwindcss/node": "4.3.3",
+    "@tailwindcss/oxide": "4.3.3"
+  }
+}

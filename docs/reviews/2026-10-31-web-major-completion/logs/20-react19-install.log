@@ -1,0 +1,42 @@
+$ (cwd=frontend) npm install --save-peer --save-exact react@19.3.1 react-dom@19.3.1
+# start 2026-10-31T17:27:30+09:00
+npm error code ERESOLVE
+npm error ERESOLVE could not resolve
+npm error
+npm error While resolving: @figma/my-make-file@0.0.1
+npm error Found: react@18.3.1
+npm error node_modules/react
+npm error   peer react@">=16.8.0" from @dnd-kit/accessibility@3.1.1
+npm error   node_modules/@dnd-kit/accessibility
+npm error     @dnd-kit/accessibility@"^3.1.1" from @dnd-kit/core@6.3.1
+npm error     node_modules/@dnd-kit/core
+npm error       peer @dnd-kit/core@"^6.3.0" from @dnd-kit/sortable@10.0.0
+npm error       node_modules/@dnd-kit/sortable
+npm error         @dnd-kit/sortable@"^10.0.0" from the root project
+npm error       1 more (the root project)
+npm error   peer react@">=16.8.0" from @dnd-kit/core@6.3.1
+npm error   node_modules/@dnd-kit/core
+npm error     peer @dnd-kit/core@"^6.3.0" from @dnd-kit/sortable@10.0.0
+npm error     node_modules/@dnd-kit/sortable
+npm error       @dnd-kit/sortable@"^10.0.0" from the root project
+npm error     @dnd-kit/core@"^6.3.1" from the root project
+npm error   92 more (@dnd-kit/sortable, @dnd-kit/utilities, @emotion/react, ...)
+npm error
+npm error Could not resolve dependency:
+npm error peer react@"19.3.1" from the root project
+npm error
+npm error Conflicting peer dependency: react@19.3.1
+npm error node_modules/react
+npm error   peer react@"19.3.1" from the root project
+npm error
+npm error Fix the upstream dependency conflict, or retry
+npm error this command with --force or --legacy-peer-deps
+npm error to accept an incorrect (and potentially broken) dependency resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error /Users/heogyeongdae/.npm/_logs/2026-10-31T08_27_30_588Z-eresolve-report.txt
+npm error A complete log of this run can be found in: /Users/heogyeongdae/.npm/_logs/2026-10-31T08_27_30_588Z-debug-0.log
+
+# end 2026-10-31T17:27:31+09:00 exit=1
+
