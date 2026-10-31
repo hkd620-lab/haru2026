@@ -1,0 +1,25 @@
+{
+  "baseMain": "693af514b30134defe243b3dc6c2ef78922cd380",
+  "revision": "polishcontent-00244-sas",
+  "compared": 47,
+  "different": [
+    {
+      "path": "src/elderBook.ts",
+      "liveSha256": "e8211c48184530f93517d8f8aa013bd26be83a24dc2f546ebf254bda27b89c56",
+      "mainSha256": "91b230fbcb85dd3e6581ca58ee87c33f5b0a8ed08a04ba00cd9167f2287a2781"
+    },
+    {
+      "path": "src/epubExport.ts",
+      "liveSha256": "251c251a3f2f4cf27e2f5387605d143366c5158ec93b2dfa5ece4810726c5e20",
+      "mainSha256": "1daef5b62336782c10c47e4f195052cd93fbb784138fb551901933ad5a60c862"
+    }
+  ],
+  "missingFromZip": [],
+  "extraSourceFiles": [],
+  "compiledBasicRoutePresent": true,
+  "compiledBasicRouteLines": [
+    "sayuPolishBasic: {",
+    "provider: 'openai', model: 'gpt-6-luna', label: 'SAYU 기본 다듬기 본문(BASIC)',",
+    "provider: 'openai', model: 'gpt-6-luna', label: '기록 제목 추출(extractTitle)',"
+  ]
+}

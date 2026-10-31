@@ -1,0 +1,8 @@
+{
+  "checkedAtUtc": "2026-10-26T22:06:25.595328+00:00",
+  "reviewHead": "63d9b25c5ea5e2a01d722dafb71777c0ad17bb3d",
+  "latestMain": "595bafdb1fa57403a20bc0088e33c58f45449675",
+  "latestMainChangesToTargetFiles": [],
+  "result": "OAuth401; review did not execute",
+  "previousAttempt": "docs/reviews/2026-10-23-api-stage-metering/independent-result.txt"
+}

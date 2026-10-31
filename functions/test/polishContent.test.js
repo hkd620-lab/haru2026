@@ -28,9 +28,18 @@ const plain = value => JSON.parse(JSON.stringify(value));
 function fixture(options = {}) {
   const calls = [], usage = [], paid = [], reservations = [], rollbacks = [], rateChecks = [];
   class HttpsError extends Error { constructor(code, message) { super(message); this.code = code; } }
+  const helperModule = { exports: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../lib/polishUsage.js'), 'utf8'), {
+    exports: helperModule.exports,
+    require: () => ({ createRequestAiUsageLogger: () => async value => usage.push(plain(value)) }),
+    Date,
+  });
+  let requestSequence = 0;
   const run = new vm.Script(compiled).runInNewContext({
+    createPolishUsage: helperModule.exports.createPolishUsage,
+    createAiUsageRequestId: () => `synthetic-request-${++requestSequence}`,
     HttpsError, formatPrefixesOf, getAiRoute, DEVELOPER_UIDS: new Set(), AI_USAGE_PLAN: 'beta',
-    console: { log() {}, warn() {}, error() {} }, logger: { warn() {} },
+    console: { log() {}, warn() {}, error() {} }, logger: { warn() { if (options.failWarning) throw new Error('synthetic-warning-failure'); } },
     enforceRateLimit: async (...args) => { rateChecks.push(args); if (options.rateDenied) throw new HttpsError('resource-exhausted', 'synthetic-rate'); },
     reserveMonthlyAiQuota: async (...args) => {
       if (options.quotaDenied) throw new HttpsError('resource-exhausted', 'synthetic-quota');
@@ -39,10 +48,10 @@ function fixture(options = {}) {
     rollbackMonthlyAiQuotaReservation: async value => { if (value) rollbacks.push(value); },
     getAiUsageErrorCode: error => error.code || 'synthetic-error',
     logAiUsage: async value => usage.push(plain(value)),
-    logPaidServiceUsage: async (...args) => paid.push(args),
+    logPaidServiceUsage: async (...args) => { if (options.failPaid) throw new Error('synthetic-paid-log-failure'); paid.push(args); },
     callAi: async request => {
       calls.push(plain(request));
-      if (options.failPurpose === request.purpose) throw new Error('synthetic-provider-failure');
+      if (options.failPurpose === request.purpose) throw Object.assign(new Error('synthetic-provider-failure'), options.errorFields || {});
       const text = request.purpose === 'recordStats' ? options.statsText ?? '{"content_richness":4}'
         : request.purpose === 'sayuPolishComment' ? options.commentText ?? '**합성 한마디**' : '합성 본문';
       return { inputTokens: 11, outputTokens: 7, text: () => { if (options.failTextPurpose === request.purpose) throw new Error('synthetic-text-failure'); return text; } };
@@ -176,7 +185,10 @@ test('BASIC 본문 실패도 quota 를 1회 환원하고 실패 기록을 남기
     const f = fixture(options);
     await assert.rejects(f.request({ mode: 'BASIC' }), error => error.code === 'internal');
     assert.deepEqual(purposes(f), ['sayuPolishBasic']); assert.equal(f.rollbacks.length, 1); assert.equal(f.paid.length, 0);
-    assert.deepEqual(f.usage.at(-1).success, false); assert.equal(f.usage.at(-1).model, null);
+    assert.deepEqual(f.usage.at(-1).success, false);
+    assert.equal(f.usage.at(-1).model, getAiRoute('sayuPolishBasic').model);
+    assert.equal(f.usage.at(-1).purpose, 'sayuPolishBasic');
+    assert.equal(f.usage.length, 1);
   }
 });
 
@@ -206,4 +218,92 @@ test('기본·풍성형 지시문은 원문 말투·경계를 지키고, 균형�
 test('옵션 누락 시 한마디 정리·50자 반환 제한도 기존대로 유지한다', async () => {
   const f = fixture({ commentText: `**${'합성'.repeat(40)}**` }); const result = await f.request();
   assert.equal(result.aiComment, '합성'.repeat(25)); assert.equal(f.calls.length, 3);
+});
+
+test('요청마다 고유 ID이고 한 요청의 세 단계는 같은 ID·purpose·결과 한 행을 남긴다', async () => {
+  const f = fixture(); await f.request(); await f.request();
+  assert.equal(new Set(f.usage.map(row => row.requestId)).size, 2);
+  for (const rows of [f.usage.slice(0, 3), f.usage.slice(3)]) {
+    assert.equal(new Set(rows.map(row => row.requestId)).size, 1);
+    assert.deepEqual(rows.map(row => row.purpose), ['sayuPolish', 'recordStats', 'sayuPolishComment']);
+    for (const row of rows) {
+      assert.equal(row.stage, row.purpose); assert.equal(row.modelInvoked, true);
+      assert.equal(row.providerOutcome, 'returned'); assert.equal(row.processingOutcome, 'success');
+      assert.equal(row.success, true); assert.ok(row.latencyMs >= 0);
+      assert.equal(row.inputTokens, 11); assert.equal(row.outputTokens, 7);
+      assert.ok(!JSON.stringify(row).includes('합성 원문'));
+    }
+  }
+});
+
+for (const purpose of ['sayuPolish', 'recordStats', 'sayuPolishComment']) {
+  for (const failure of ['failPurpose', 'failTextPurpose']) {
+    test(`${purpose}/${failure}: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다`, async () => {
+      const f = fixture({ [failure]: purpose });
+      if (purpose === 'sayuPolish') await assert.rejects(f.request()); else await f.request();
+      const rows = f.usage.filter(row => row.purpose === purpose);
+      assert.equal(rows.length, 1);
+      assert.equal(f.usage.length, f.calls.length);
+      const row = rows[0]; assert.equal(row.success, false);
+      assert.equal(row.processingOutcome, failure === 'failPurpose' ? 'provider_error' : 'response_error');
+      assert.equal(row.providerOutcome, failure === 'failPurpose' ? 'error' : 'returned');
+      assert.equal(row.inputTokens, failure === 'failPurpose' ? null : 11);
+      assert.ok(!JSON.stringify(row).includes('synthetic-provider-failure'));
+    });
+  }
+}
+
+test('통계 JSON 없음/파싱 실패는 한 단계 실패로 기록하고 본문·한마디·quota를 유지한다', async () => {
+  for (const statsText of ['JSON 없음', '{broken JSON}']) {
+    const f = fixture({ statsText }); const result = await f.request();
+    assert.equal(result.stats, null); assert.equal(result.text, '합성 본문');
+    assert.equal(f.usage.length, 3); assert.equal(f.usage[1].processingOutcome, 'processing_error');
+    assert.equal(f.usage[1].providerOutcome, 'returned'); assert.equal(f.usage[1].success, false);
+    assert.equal(f.rollbacks.length, 0);
+  }
+});
+
+test('입력·quota 거부는 모델을 호출하지 않은 요청 실패로만 기록한다', async () => {
+  for (const [options, data] of [[{}, { text: '' }], [{ quotaDenied: true }, {}]]) {
+    const f = fixture(options); await assert.rejects(f.request(data));
+    assert.equal(f.calls.length, 0); assert.equal(f.usage.length, 1);
+    assert.equal(f.usage[0].stage, 'request'); assert.equal(f.usage[0].purpose, 'polishContent'); assert.equal(f.usage[0].modelInvoked, false);
+    assert.equal(f.usage[0].providerOutcome, 'not_called');
+  }
+});
+
+test('인증·rate 거부는 기존처럼 usage 행을 추가하지 않는다', async () => {
+  const f = fixture({ rateDenied: true }); await assert.rejects(f.request());
+  assert.equal(f.usage.length, 0); assert.equal(f.rollbacks.length, 0);
+});
+
+for (const [errorFields, expected] of [
+  [{ code: 429 }, 'http_429'], [{ status: 503 }, 'http_503'],
+  [{ statusCode: 504 }, 'http_504'], [{ code: '429' }, 'http_429'],
+  [{ code: 'deadline-exceeded' }, 'deadline-exceeded'], [{ code: 'ETIMEDOUT' }, 'ETIMEDOUT'],
+  [{ code: 'RESOURCE_EXHAUSTED' }, 'RESOURCE_EXHAUSTED'],
+  [{ code: 'private-user-content' }, 'provider_error'],
+]) {
+  test(`오류 진단 코드 보존·원문 제외: ${expected}`, async () => {
+    const f = fixture({ failPurpose: 'recordStats', errorFields }); await f.request();
+    const row = f.usage.find(row => row.purpose === 'recordStats');
+    assert.equal(row.errorCode, expected); assert.equal(row.processingOutcome, 'provider_error');
+    assert.ok(!JSON.stringify(f.usage).includes('synthetic-provider-failure'));
+    assert.ok(!JSON.stringify(f.usage).includes('private-user-content'));
+  });
+}
+
+test('단계 이후 요청 오류도 모델 호출을 중복 계산하지 않고 기록한다', async () => {
+  for (const failPurpose of [undefined, 'recordStats', 'sayuPolishComment']) {
+    const f = fixture({ failPaid: true, failWarning: true, failPurpose });
+    await assert.rejects(f.request());
+    assert.equal(f.calls.length, 3);
+    assert.equal(f.usage.filter(row => row.modelInvoked).length, 3);
+    const requestRows = f.usage.filter(row => row.stage === 'request');
+    assert.equal(requestRows.length, 1); assert.equal(requestRows[0].modelInvoked, false);
+    assert.equal(requestRows[0].processingOutcome, 'processing_error');
+    assert.equal(requestRows[0].errorCode, 'processing_error');
+    assert.equal(f.rollbacks.length, 1);
+    assert.ok(!JSON.stringify(f.usage).includes('synthetic-warning-failure'));
+  }
 });
