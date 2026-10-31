@@ -1,0 +1,116 @@
+
+> @figma/my-make-file@0.0.1 test:reading-ai
+> node --import tsx --test test/readingAi.test.mjs
+
+TAP version 13
+# Subtest: external questions work without a passage and only include the current book context
+ok 1 - external questions work without a passage and only include the current book context
+  ---
+  duration_ms: 7.658416
+  type: 'test'
+  ...
+# Subtest: external answers retain attribution and existing references without entering the user journal
+ok 2 - external answers retain attribution and existing references without entering the user journal
+  ---
+  duration_ms: 3.952625
+  type: 'test'
+  ...
+# Subtest: external import rejects empty, excessive, duplicate and full references without losing existing content
+ok 3 - external import rejects empty, excessive, duplicate and full references without losing existing content
+  ---
+  duration_ms: 0.858667
+  type: 'test'
+  ...
+# Subtest: applying internal AI notes after an external import preserves external answers and attribution
+ok 4 - applying internal AI notes after an external import preserves external answers and attribution
+  ---
+  duration_ms: 6.285083
+  type: 'test'
+  ...
+# Subtest: combined internal/external limits reject changes without mutating saved references
+ok 5 - combined internal/external limits reject changes without mutating saved references
+  ---
+  duration_ms: 2.396625
+  type: 'test'
+  ...
+# Subtest: only chosen answers and their actual user questions become reference material
+ok 6 - only chosen answers and their actual user questions become reference material
+  ---
+  duration_ms: 0.892167
+  type: 'test'
+  ...
+# Subtest: old records without the field remain readable and cross-book reference is rejected
+ok 7 - old records without the field remain readable and cross-book reference is rejected
+  ---
+  duration_ms: 1.316167
+  type: 'test'
+  ...
+# Subtest: switching books drops old completion flags, OCR and AI fields while preserving unrelated formats
+ok 8 - switching books drops old completion flags, OCR and AI fields while preserving unrelated formats
+  ---
+  duration_ms: 1.057875
+  type: 'test'
+  ...
+# Subtest: 첫 책 선택은 공통 작성창 초안을 보존하고 이후 책 전환은 소감을 비운다
+ok 9 - 첫 책 선택은 공통 작성창 초안을 보존하고 이후 책 전환은 소감을 비운다
+  ---
+  duration_ms: 1.030375
+  type: 'test'
+  ...
+# Subtest: reapplying a selection does not duplicate user questions
+ok 10 - reapplying a selection does not duplicate user questions
+  ---
+  duration_ms: 1.225375
+  type: 'test'
+  ...
+# Subtest: long conversation stays bounded and preserves the latest follow-up pair
+ok 11 - long conversation stays bounded and preserves the latest follow-up pair
+  ---
+  duration_ms: 0.567084
+  type: 'test'
+  ...
+# Subtest: long local sessions drop invisible selections so new answers remain selectable
+ok 12 - long local sessions drop invisible selections so new answers remain selectable
+  ---
+  duration_ms: 0.671833
+  type: 'test'
+  ...
+# Subtest: prior notes favor recent user journals and final snapshot includes new sessions
+ok 13 - prior notes favor recent user journals and final snapshot includes new sessions
+  ---
+  duration_ms: 0.58875
+  type: 'test'
+  ...
+# Subtest: stable book IDs and original canonical/legacy meta remain compatible
+ok 14 - stable book IDs and original canonical/legacy meta remain compatible
+  ---
+  duration_ms: 1.46025
+  type: 'test'
+  ...
+# Subtest: close/refresh recovery retains text without photos, and account/book chats stay isolated
+ok 15 - close/refresh recovery retains text without photos, and account/book chats stay isolated
+  ---
+  duration_ms: 2.111334
+  type: 'test'
+  ...
+# Subtest: expired drafts are purged and unavailable storage reports failure
+ok 16 - expired drafts are purged and unavailable storage reports failure
+  ---
+  duration_ms: 0.799792
+  type: 'test'
+  ...
+# Subtest: monthly quota, login and network errors are understandable and retain drafts
+ok 17 - monthly quota, login and network errors are understandable and retain drafts
+  ---
+  duration_ms: 0.22525
+  type: 'test'
+  ...
+1..17
+# tests 17
+# suites 0
+# pass 17
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1784.778792
