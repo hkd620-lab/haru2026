@@ -1,0 +1,82 @@
+TAP version 13
+# Subtest: Router 8 전제: react-router-dom이 없고 React·Vite 최소 버전을 lock이 지킨다
+ok 1 - Router 8 전제: react-router-dom이 없고 React·Vite 최소 버전을 lock이 지킨다
+  ---
+  duration_ms: 1.428208
+  type: 'test'
+  ...
+# Subtest: 소스는 제거된 react-router-dom을 import하지 않는다
+ok 2 - 소스는 제거된 react-router-dom을 import하지 않는다
+  ---
+  duration_ms: 87.600875
+  type: 'test'
+  ...
+# Subtest: 앱 라우터는 선언형 BrowserRouter를 유지하고 framework·data router를 들이지 않는다
+ok 3 - 앱 라우터는 선언형 BrowserRouter를 유지하고 framework·data router를 들이지 않는다
+  ---
+  duration_ms: 0.409583
+  type: 'test'
+  ...
+# Subtest: 중첩 경로·동적 파라미터·검색 파라미터가 v8 컨텍스트로 전달된다
+ok 4 - 중첩 경로·동적 파라미터·검색 파라미터가 v8 컨텍스트로 전달된다
+  ---
+  duration_ms: 9.474166
+  type: 'test'
+  ...
+# Subtest: Link는 href를 만들고 없는 경로는 catch-all로 간다
+ok 5 - Link는 href를 만들고 없는 경로는 catch-all로 간다
+  ---
+  duration_ms: 2.349541
+  type: 'test'
+  ...
+# Subtest: Navigate replace는 첫 렌더에서 대상 element를 대신 그리지 않는다
+ok 6 - Navigate replace는 첫 렌더에서 대상 element를 대신 그리지 않는다
+  ---
+  duration_ms: 0.9225
+  type: 'test'
+  ...
+# Subtest: 라우터 밖 훅은 조용히 넘어가지 않고 오류를 낸다
+ok 7 - 라우터 밖 훅은 조용히 넘어가지 않고 오류를 낸다
+  ---
+  duration_ms: 0.470292
+  type: 'test'
+  ...
+# Subtest: React.lazy와 Suspense는 lazy 경로의 fallback을 렌더한다
+ok 8 - React.lazy와 Suspense는 lazy 경로의 fallback을 렌더한다
+  ---
+  duration_ms: 3.111
+  type: 'test'
+  ...
+# Subtest: vite 설정은 iOS 13 레거시·모던·CSS 타깃을 명시해 유지한다
+ok 9 - vite 설정은 iOS 13 레거시·모던·CSS 타깃을 명시해 유지한다
+  ---
+  duration_ms: 1.024208
+  type: 'test'
+  ...
+# Subtest: vite가 esbuild를 끌어오지 않으므로 시험이 쓰는 esbuild를 직접 선언한다
+ok 10 - vite가 esbuild를 끌어오지 않으므로 시험이 쓰는 esbuild를 직접 선언한다
+  ---
+  duration_ms: 0.839625
+  type: 'test'
+  ...
+# Subtest: 빌드 산출물은 iOS 13이 파싱 못 하는 lookbehind 리터럴을 남기지 않고 webkit 접두사를 유지한다
+ok 11 - 빌드 산출물은 iOS 13이 파싱 못 하는 lookbehind 리터럴을 남기지 않고 webkit 접두사를 유지한다
+  ---
+  duration_ms: 224.554666
+  type: 'test'
+  ...
+# Subtest: recharts는 React 19 요소를 인식하는 react-is로 Fragment 자식을 그린다
+ok 12 - recharts는 React 19 요소를 인식하는 react-is로 Fragment 자식을 그린다
+  ---
+  duration_ms: 14.418667
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 845.454666

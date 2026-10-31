@@ -1,0 +1,136 @@
+TAP version 13
+# Subtest: initial auth + delayed document block /
+ok 1 - initial auth + delayed document block /
+  ---
+  duration_ms: 690.801292
+  type: 'test'
+  ...
+# Subtest: initial auth + delayed document block /record
+ok 2 - initial auth + delayed document block /record
+  ---
+  duration_ms: 242.691625
+  type: 'test'
+  ...
+# Subtest: signed out auth permits public landing
+ok 3 - signed out auth permits public landing
+  ---
+  duration_ms: 218.414709
+  type: 'test'
+  ...
+# Subtest: lookup error stays closed, retry replaces listener, old events cannot unlock
+ok 4 - lookup error stays closed, retry replaces listener, old events cannot unlock
+  ---
+  duration_ms: 322.108833
+  type: 'test'
+  ...
+# Subtest: offline/cache-only timeout offers retry and logout
+ok 5 - offline/cache-only timeout offers retry and logout
+  ---
+  duration_ms: 279.111417
+  type: 'test'
+  ...
+# Subtest: missing consent (undefined) requires confirmed save
+ok 6 - missing consent (undefined) requires confirmed save
+  ---
+  duration_ms: 520.567
+  type: 'test'
+  ...
+# Subtest: missing consent ({}) requires confirmed save
+ok 7 - missing consent ({}) requires confirmed save
+  ---
+  duration_ms: 549.181541
+  type: 'test'
+  ...
+# Subtest: missing consent ({"consents":null}) requires confirmed save
+ok 8 - missing consent ({"consents":null}) requires confirmed save
+  ---
+  duration_ms: 529.833291
+  type: 'test'
+  ...
+# Subtest: pending deletion wins over missing consent, recovery waits for server
+ok 9 - pending deletion wins over missing consent, recovery waits for server
+  ---
+  duration_ms: 387.901625
+  type: 'test'
+  ...
+# Subtest: account switch invalidates ready state and all late previous callbacks
+ok 10 - account switch invalidates ready state and all late previous callbacks
+  ---
+  duration_ms: 339.801042
+  type: 'test'
+  ...
+# Subtest: same UID relogin never reuses an earlier session
+ok 11 - same UID relogin never reuses an earlier session
+  ---
+  duration_ms: 289.165917
+  type: 'test'
+  ...
+# Subtest: lookup error logout failure keeps gate, later logout succeeds
+ok 12 - lookup error logout failure keeps gate, later logout succeeds
+  ---
+  duration_ms: 292.729459
+  type: 'test'
+  ...
+# Subtest: late redirect result cannot restore previous account
+ok 13 - late redirect result cannot restore previous account
+  ---
+  duration_ms: 246.635
+  type: 'test'
+  ...
+# Subtest: email signup consent continuation survives page unmount
+ok 14 - email signup consent continuation survives page unmount
+  ---
+  duration_ms: 229.125208
+  type: 'test'
+  ...
+# Subtest: failed consent save retains gate and can be retried
+ok 15 - failed consent save retains gate and can be retried
+  ---
+  duration_ms: 432.1565
+  type: 'test'
+  ...
+# Subtest: failed recovery retains pending deletion and can be retried
+ok 16 - failed recovery retains pending deletion and can be retried
+  ---
+  duration_ms: 530.494709
+  type: 'test'
+  ...
+# Subtest: late save after account switch does not update new account gate
+ok 17 - late save after account switch does not update new account gate
+  ---
+  duration_ms: 385.788042
+  type: 'test'
+  ...
+# Subtest: retry during a pending save resets busy state and ignores old completion
+ok 18 - retry during a pending save resets busy state and ignores old completion
+  ---
+  duration_ms: 516.448875
+  type: 'test'
+  ...
+# Subtest: unmount cancels listener and late callbacks
+ok 19 - unmount cancels listener and late callbacks
+  ---
+  duration_ms: 249.847709
+  type: 'test'
+  ...
+# Subtest: consent gate can open /terms without mounting protected app
+ok 20 - consent gate can open /terms without mounting protected app
+  ---
+  duration_ms: 730.771292
+  type: 'test'
+  ...
+# Subtest: consent gate can open /privacy without mounting protected app
+ok 21 - consent gate can open /privacy without mounting protected app
+  ---
+  duration_ms: 694.847583
+  type: 'test'
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 9089.602375

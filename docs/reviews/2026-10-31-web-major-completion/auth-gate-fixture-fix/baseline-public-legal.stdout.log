@@ -1,0 +1,79 @@
+TAP version 13
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at MemoryRouter (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6952:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at TermsPage (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/src/app/components/PublicLegalBoundary.tsx:131:60)
+#     at RenderedRoute (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6218:26)
+#     at Routes (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:7097:3)
+#     at PublicLegalBoundary (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/src/app/components/PublicLegalBoundary.tsx:259:32)
+#     at Router (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:7036:13)
+#     at MemoryRouter (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6952:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at MemoryRouter (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6952:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at PrivacyPage (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/src/app/components/PublicLegalBoundary.tsx:238:61)
+#     at RenderedRoute (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6218:26)
+#     at Routes (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:7097:3)
+#     at PublicLegalBoundary (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/src/app/components/PublicLegalBoundary.tsx:259:32)
+#     at Router (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:7036:13)
+#     at MemoryRouter (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6952:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at MemoryRouter (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6952:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at TermsPage (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/src/app/components/PublicLegalBoundary.tsx:131:60)
+#     at RenderedRoute (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6218:26)
+#     at Routes (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:7097:3)
+#     at PublicLegalBoundary (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/src/app/components/PublicLegalBoundary.tsx:259:32)
+#     at Router (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:7036:13)
+#     at MemoryRouter (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6952:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at MemoryRouter (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6952:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at MemoryRouter (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6952:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at MemoryRouter (file:///private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/react-router/dist/development/chunk-KS7C4IRE.mjs:6952:3)
+# Subtest: /terms displays the real public legal page only
+ok 1 - /terms displays the real public legal page only
+  ---
+  duration_ms: 11.806083
+  type: 'test'
+  ...
+# Subtest: /privacy displays the real public legal page only
+ok 2 - /privacy displays the real public legal page only
+  ---
+  duration_ms: 2.369292
+  type: 'test'
+  ...
+# Subtest: /terms/?from=consent displays the real public legal page only
+ok 3 - /terms/?from=consent displays the real public legal page only
+  ---
+  duration_ms: 1.359542
+  type: 'test'
+  ...
+# Subtest: /record does not bypass the application boundary
+ok 4 - /record does not bypass the application boundary
+  ---
+  duration_ms: 0.261125
+  type: 'test'
+  ...
+# Subtest: /settings does not bypass the application boundary
+ok 5 - /settings does not bypass the application boundary
+  ---
+  duration_ms: 0.321583
+  type: 'test'
+  ...
+# Subtest: /terms-copy does not bypass the application boundary
+ok 6 - /terms-copy does not bypass the application boundary
+  ---
+  duration_ms: 0.523333
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 373.3985
