@@ -1,0 +1,30 @@
+$ (cwd=functions) npm run test:sns-thumbnail-privacy
+# start 2026-10-31T08:35:00.334030+00:00
+# end   2026-10-31T08:35:00.835178+00:00
+# exit  1
+
+
+> test:sns-thumbnail-privacy
+> node test/snsThumbnailPrivacy.policy.test.js
+
+node:fs:440
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/private/tmp/haru-completion-control-20261031/sharp114-node22-work/baseline/storage.rules'
+    at Object.readFileSync (node:fs:440:20)
+    at Object.<anonymous> (/private/tmp/haru-completion-control-20261031/sharp114-node22-work/baseline/functions/test/snsThumbnailPrivacy.policy.test.js:7:25)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Module._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/private/tmp/haru-completion-control-20261031/sharp114-node22-work/baseline/storage.rules'
+}
+
+Node.js v22.23.2

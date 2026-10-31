@@ -1,0 +1,9 @@
+$ (cwd=functions) npm run build
+# start 2026-10-31T08:34:11.823960+00:00
+# end   2026-10-31T08:34:54.988293+00:00
+# exit  0
+
+
+> build
+> tsc && mkdir -p lib/fonts && cp src/fonts/*.ttf lib/fonts/
+

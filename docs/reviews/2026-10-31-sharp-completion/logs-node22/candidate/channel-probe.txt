@@ -1,0 +1,16 @@
+node=v22.23.2 darwin/arm64 sharp=0.35.5 libvips=8.18.7
+5ch timeline: OK jpeg 480x360 ch=3 (input channels=5)
+5ch plant: OK jpeg 16x16 ch=3 (input channels=5)
+5ch sns: OK jpeg 16x16 ch=3 (input channels=5)
+6ch timeline: REJECT Input image exceeds channel limit
+6ch plant: REJECT Input image exceeds channel limit
+6ch sns: REJECT Input image exceeds channel limit
+/private/tmp/haru-completion-control-20261031/sharp114-node22-work/candidate/functions/node_modules/sharp/dist/input.cjs:651
+  const stack = Error();
+                ^
+
+Error: Input buffer contains unsupported image format
+    at Sharp.metadata (/private/tmp/haru-completion-control-20261031/sharp114-node22-work/candidate/functions/node_modules/sharp/dist/input.cjs:651:17)
+    at /private/tmp/haru-completion-control-20261031/sharp114-node22-work/channel_probe.js:46:69
+
+Node.js v22.23.2

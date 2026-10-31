@@ -1,0 +1,27 @@
+--- live-detectPlantAdvanced
++++ main-detectPlantAdvanced
+@@ -1,7 +1,7 @@
+ export const detectPlantAdvanced = onCall(
+   {
+     region: 'asia-northeast3',
+-    secrets: [GEMINI_API_KEY_SECRET, KINDWISE_PLANT_ID_API_KEY_SECRET, PLANTNET_API_KEY_SECRET],
++    secrets: [...aiSecretsFor('plantKoreanName', 'plantCrossVerification'), KINDWISE_PLANT_ID_API_KEY_SECRET, PLANTNET_API_KEY_SECRET],
+     memory: '1GiB',
+     timeoutSeconds: 120,
+   },
+@@ -84,7 +84,6 @@
+         plantIdResult,
+         plantNetResult,
+         images,
+-        GEMINI_API_KEY_SECRET.value(),
+       );
+     } catch (e: any) {
+       geminiError = e?.message || 'Gemini 교차검증 실패';
+@@ -122,7 +121,6 @@
+       const resolution = await resolveKoreanPlantName(
+         plantNetResult.top.scientificName,
+         plantNetResult.top.name || '',
+-        GEMINI_API_KEY_SECRET.value(),
+       ).catch((e: any) => {
+         logger.warn('한국어명 검정 fallback — ' + (e?.message || ''));
+         return { koName: null as string | null, scientificKey: '', cached: false };

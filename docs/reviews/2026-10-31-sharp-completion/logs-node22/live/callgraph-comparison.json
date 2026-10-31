@@ -1,0 +1,76 @@
+{
+  "generateGrowthTimelinePdf": {
+    "reachableDeclarations": 22,
+    "changed": {
+      "getUserPlan": {
+        "liveFound": true,
+        "mainFound": false,
+        "diffLines": 28
+      }
+    },
+    "unchangedCount": 21,
+    "localModules": {
+      "src/sharedHelpers.ts": "live에 없음",
+      "src/utils/rateLimit.ts": "동일"
+    }
+  },
+  "detectPlantAdvanced": {
+    "reachableDeclarations": 16,
+    "changed": {
+      "AI_USAGE_PLAN": {
+        "liveFound": true,
+        "mainFound": false,
+        "diffLines": 4
+      },
+      "callGeminiCrossVerification": {
+        "liveFound": true,
+        "mainFound": true,
+        "diffLines": 12
+      },
+      "detectPlantAdvanced": {
+        "liveFound": true,
+        "mainFound": true,
+        "diffLines": 9
+      },
+      "resolveKoreanPlantName": {
+        "liveFound": true,
+        "mainFound": true,
+        "diffLines": 11
+      }
+    },
+    "unchangedCount": 12,
+    "localModules": {
+      "src/ai/aiGateway.ts": "live에 없음",
+      "src/aiUsageLogger.ts": "변경",
+      "src/internalEntitlements.ts": "동일",
+      "src/sharedHelpers.ts": "live에 없음"
+    }
+  },
+  "analyzeFacebookZip": {
+    "reachableDeclarations": 5,
+    "changed": {
+      "JSZip": {
+        "liveFound": true,
+        "mainFound": false,
+        "diffLines": 5
+      },
+      "analyzeFacebookZip": {
+        "liveFound": true,
+        "mainFound": true,
+        "diffLines": 10
+      },
+      "db": {
+        "liveFound": true,
+        "mainFound": true,
+        "diffLines": 6
+      },
+      "sharp": {
+        "liveFound": true,
+        "mainFound": false,
+        "diffLines": 9
+      }
+    },
+    "unchangedCount": 1,
+    "localModules": {}
+  }
+}

@@ -1,0 +1,6 @@
+--- live-AI_USAGE_PLAN
++++ main-AI_USAGE_PLAN
+@@ -1 +1,2 @@
+-const AI_USAGE_PLAN = 'beta';
++export const AI_USAGE_PLAN = 'beta';
++

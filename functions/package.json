@@ -31,6 +31,7 @@
     "test:sns-story": "node test/snsStory.policy.test.js",
     "test:sns-story-emulator": "node --test test/snsStoryFinal.emulator.test.js",
     "test:law-easy-explain": "node --experimental-strip-types test/lawEasyExplain.test.js",
+    "test:sharp-pipelines": "npm run build && node --test test/sharpImagePipelines.test.js",
     "deploy": "echo '❌ 전체 배포 금지. 함수명을 명시하십시오: firebase deploy --only functions:함수명 --project haru2026-8abb8' && exit 1"
   },
   "engines": {
@@ -60,7 +61,7 @@
     "pdf-lib": "1.17.1",
     "pdfmake": "^0.3.7",
     "puppeteer": "^24.40.0",
-    "sharp": "^0.34.5"
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@types/pdfmake": "^0.3.2",
