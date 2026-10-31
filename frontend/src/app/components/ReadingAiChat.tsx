@@ -69,7 +69,7 @@ export function ReadingAiChat({ uid, bookId, entryId, context, reference, disabl
         </details>
       </div>
       <label style={{ display: 'block', fontSize: 13 }}>자유롭게 질문하기
-        <textarea aria-label="독서 AI 질문" style={{ ...textarea, marginTop: 6 }} value={chat.question} maxLength={1000} rows={2} disabled={locked} onChange={(e) => chat.setQuestion(e.target.value)} placeholder="본문이 없어도 독서 중 궁금한 점을 질문해 주세요." />
+        <textarea aria-label="독서 AI 질문" style={{ ...textarea, marginTop: 6, lineHeight: '21px' }} value={chat.question} maxLength={1000} rows={3} disabled={locked} onChange={(e) => chat.setQuestion(e.target.value)} placeholder="본문이 없어도 독서 중 궁금한 점을 질문해 주세요." />
       </label>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
         <button type="button" style={button} disabled={locked} onClick={() => void chat.send()}>질문 보내기</button>

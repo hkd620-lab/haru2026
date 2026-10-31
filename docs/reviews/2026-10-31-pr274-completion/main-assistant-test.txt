@@ -1,0 +1,43 @@
+✔ future story saves once, views the exact ID, and preserves source/content (8.365417ms)
+✔ future story synchronous lock blocks repeated save, publish and view during saving (1.856459ms)
+✔ future story failed save has no view target and can retry without changing the story (1.446083ms)
+✔ future story publishing locks saving and viewing, and reuses an already saved ID (13.975125ms)
+✔ future story failed publication keeps the newly saved ID usable without resaving (1.003667ms)
+✔ future story missing nickname releases the publication lock without saving (0.231833ms)
+✔ LAW opens the actual returned ID on the selected past date and keeps original fields/attachments (1.556875ms)
+✔ LAW locks repeated save, date changes and close while the initial read is pending (1.196917ms)
+✔ LAW initial read failure does not save or navigate and preserves a retryable error (0.868583ms)
+✔ LAW write failure stays on the result, releases its lock and allows retry (0.748ms)
+✔ LAW invalid date never reads, writes or navigates (0.288167ms)
+✔ LAW does not redirect after the result page was unmounted during saving (6.984958ms)
+✔ timeline viewing closes once and uses the saved ID in the assistants tab (1.947166ms)
+✔ timeline blocks close/view while saving and clears the saved target on close (0.581416ms)
+✔ growth timeline forwards the service ID and locks repeated finalize synchronously (4.172958ms)
+✔ growth timeline failed persistence keeps its draft and never supplies a view ID (1.292542ms)
+✖ SAYU opens the exact future essay among same-date siblings (3.101125ms)
+✔ SAYU opens the exact LAW document among same-date siblings (0.510667ms)
+✔ SAYU opens the exact growth timeline with its existing display-label route (78.332584ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 18
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 992.183541
+
+✖ failing tests:
+
+test at test/assistantSavedResultOpen.test.mjs:271:1
+✖ SAYU opens the exact future essay among same-date siblings (3.101125ms)
+  ReferenceError: isSpecialDayRecord is not defined
+      at openFormatSayu (eval at readSavedRoute (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/assistantSavedResultOpen.test.mjs:267:3), <anonymous>:49:22)
+      at applyRoute (eval at readSavedRoute (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/assistantSavedResultOpen.test.mjs:267:3), <anonymous>:157:5)
+      at eval (eval at readSavedRoute (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/assistantSavedResultOpen.test.mjs:267:3), <anonymous>:162:1)
+      at readSavedRoute (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/assistantSavedResultOpen.test.mjs:267:67)
+      at TestContext.<anonymous> (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/assistantSavedResultOpen.test.mjs:273:18)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
