@@ -1,0 +1,148 @@
+# cmd: npm run test:question-enter
+# cwd: .audit-baseline/candidate/frontend
+# target_sha: 42bc6a4218775fe925cbc88a964377be3ce7ca08
+# start_utc: 2026-10-31T02:57:51Z
+
+
+> @figma/my-make-file@0.0.1 test:question-enter
+> node --import tsx --test test/questionEnterSubmit.test.mjs
+
+TAP version 13
+# Subtest: 보호 시간은 50ms로 고정한다
+ok 1 - 보호 시간은 50ms로 고정한다
+  ---
+  duration_ms: 1.021083
+  type: 'test'
+  ...
+# Subtest: 조합과 무관한 일반 Enter는 전송한다
+ok 2 - 조합과 무관한 일반 Enter는 전송한다
+  ---
+  duration_ms: 0.114958
+  type: 'test'
+  ...
+# Subtest: Shift+Enter와 Enter가 아닌 키는 그대로 둔다
+ok 3 - Shift+Enter와 Enter가 아닌 키는 그대로 둔다
+  ---
+  duration_ms: 0.077583
+  type: 'test'
+  ...
+# Subtest: Chrome 순서: 조합 중 Enter(isComposing, keyCode 229)는 전송하지 않고 기본 동작도 막지 않는다
+ok 4 - Chrome 순서: 조합 중 Enter(isComposing, keyCode 229)는 전송하지 않고 기본 동작도 막지 않는다
+  ---
+  duration_ms: 0.08775
+  type: 'test'
+  ...
+# Subtest: Safari 순서: compositionend 뒤 keydown(isComposing=false, keyCode 229)은 전송하지 않는다
+ok 5 - Safari 순서: compositionend 뒤 keydown(isComposing=false, keyCode 229)은 전송하지 않는다
+  ---
+  duration_ms: 0.153667
+  type: 'test'
+  ...
+# Subtest: keyCode 229를 주지 않는 환경: compositionend 직후 Enter(keyCode 13)는 전송도 줄바꿈도 하지 않는다
+ok 6 - keyCode 229를 주지 않는 환경: compositionend 직후 Enter(keyCode 13)는 전송도 줄바꿈도 하지 않는다
+  ---
+  duration_ms: 0.077125
+  type: 'test'
+  ...
+# Subtest: 보호 시간이 지난 Enter는 전송한다
+ok 7 - 보호 시간이 지난 Enter는 전송한다
+  ---
+  duration_ms: 0.140375
+  type: 'test'
+  ...
+# Subtest: 조합이 끝났다는 신호가 없으면 Enter가 막히고, blur로 풀면 다시 전송된다
+ok 8 - 조합이 끝났다는 신호가 없으면 Enter가 막히고, blur로 풀면 다시 전송된다
+  ---
+  duration_ms: 0.066625
+  type: 'test'
+  ...
+# Subtest: reset은 직전 compositionend 기록도 지운다
+ok 9 - reset은 직전 compositionend 기록도 지운다
+  ---
+  duration_ms: 0.327125
+  type: 'test'
+  ...
+# Subtest: 새 조합이 시작되면 다시 조합 중으로 본다
+ok 10 - 새 조합이 시작되면 다시 조합 중으로 본다
+  ---
+  duration_ms: 0.448792
+  type: 'test'
+  ...
+# Subtest: keydown 시각이 compositionend보다 앞서도(플랫폼 입력 시각) 보호 시간 안이면 전송하지 않는다
+ok 11 - keydown 시각이 compositionend보다 앞서도(플랫폼 입력 시각) 보호 시간 안이면 전송하지 않는다
+  ---
+  duration_ms: 0.079375
+  type: 'test'
+  ...
+# Subtest: keydown이 compositionend보다 보호 시간 이상 앞서면 별개의 Enter로 보고 전송한다
+ok 12 - keydown이 compositionend보다 보호 시간 이상 앞서면 별개의 Enter로 보고 전송한다
+  ---
+  duration_ms: 0.049833
+  type: 'test'
+  ...
+# Subtest: 보호 시간은 생성자로 바꿀 수 있다
+ok 13 - 보호 시간은 생성자로 바꿀 수 있다
+  ---
+  duration_ms: 0.0535
+  type: 'test'
+  ...
+# Subtest: 핸들러: 일반 Enter는 기본 동작(줄바꿈)을 막고 한 번 전송한다
+ok 14 - 핸들러: 일반 Enter는 기본 동작(줄바꿈)을 막고 한 번 전송한다
+  ---
+  duration_ms: 1.06225
+  type: 'test'
+  ...
+# Subtest: 핸들러: Shift+Enter와 다른 키는 막지도 전송하지도 않는다
+ok 15 - 핸들러: Shift+Enter와 다른 키는 막지도 전송하지도 않는다
+  ---
+  duration_ms: 0.086417
+  type: 'test'
+  ...
+# Subtest: 핸들러: 조합 중 Enter(isComposing 또는 keyCode 229)는 막지도 전송하지도 않는다
+ok 16 - 핸들러: 조합 중 Enter(isComposing 또는 keyCode 229)는 막지도 전송하지도 않는다
+  ---
+  duration_ms: 0.088875
+  type: 'test'
+  ...
+# Subtest: 핸들러: compositionstart~end 사이의 Enter는 막지도 전송하지도 않는다
+ok 17 - 핸들러: compositionstart~end 사이의 Enter는 막지도 전송하지도 않는다
+  ---
+  duration_ms: 0.053208
+  type: 'test'
+  ...
+# Subtest: 핸들러: compositionend 직후 Enter는 기본 동작만 막고 전송하지 않는다
+ok 18 - 핸들러: compositionend 직후 Enter는 기본 동작만 막고 전송하지 않는다
+  ---
+  duration_ms: 0.191292
+  type: 'test'
+  ...
+# Subtest: 핸들러: 이벤트의 timeStamp로 보호 시간 안팎을 가른다
+ok 19 - 핸들러: 이벤트의 timeStamp로 보호 시간 안팎을 가른다
+  ---
+  duration_ms: 0.094
+  type: 'test'
+  ...
+# Subtest: 핸들러: blur로 가드를 초기화하면 직전 compositionend와 무관하게 전송한다
+ok 20 - 핸들러: blur로 가드를 초기화하면 직전 compositionend와 무관하게 전송한다
+  ---
+  duration_ms: 0.0485
+  type: 'test'
+  ...
+# Subtest: 핸들러: 전송해도 가드 상태는 바뀌지 않아 이어지는 Enter도 각각 전송한다
+ok 21 - 핸들러: 전송해도 가드 상태는 바뀌지 않아 이어지는 Enter도 각각 전송한다
+  ---
+  duration_ms: 0.057625
+  type: 'test'
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 236.903833
+
+# end_utc: 2026-10-31T02:57:52Z
+# exit_code: 0

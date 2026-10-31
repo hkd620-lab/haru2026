@@ -1,0 +1,13 @@
+# cmd: npm run test:question-inputs
+# cwd: .audit-baseline/candidate/frontend
+# target_sha: 42bc6a4218775fe925cbc88a964377be3ce7ca08
+# start_utc: 2026-10-31T02:57:52Z
+
+
+> @figma/my-make-file@0.0.1 test:question-inputs
+> node test/questionInputs.policy.test.cjs
+
+question input policy checks passed
+
+# end_utc: 2026-10-31T02:57:52Z
+# exit_code: 0

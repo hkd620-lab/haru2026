@@ -1,0 +1,8 @@
+# cmd: npm audit --json
+# cwd: .audit-baseline/candidate/functions
+# target_sha: 42bc6a4218775fe925cbc88a964377be3ce7ca08
+# start_utc: 2026-10-31T02:56:49Z
+
+
+# end_utc: 2026-10-31T02:56:50Z
+# exit_code: 1

@@ -1,0 +1,8 @@
+# cmd: node /private/tmp/haru-completion-dependencies-20261031/docs/reviews/2026-10-31-dependency-completion/reachability.cjs functions ip-address socks socks-proxy-agent proxy-agent puppeteer puppeteer-core @puppeteer/browsers brace-expansion minimatch glob rimraf filelist jake ejs google-gax gaxios
+# cwd: .audit-baseline/candidate
+# target_sha: 42bc6a4218775fe925cbc88a964377be3ce7ca08
+# start_utc: 2026-10-31T02:56:27Z
+
+
+# end_utc: 2026-10-31T02:56:29Z
+# exit_code: 0

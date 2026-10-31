@@ -1,0 +1,3 @@
+HARU2026 의존성 6건 통합 후보의 최초 독립 설계·완료 검토입니다. 읽기전용, 수정/커밋/외부메시지금지. 저장소 /private/tmp/haru-completion-dependencies-20261031, 제품HEAD b6ae8a0b, 증거HEAD7806c62d, 기준main693af514. 관련 기존PR #97 #120 #121 #122 #123 #125. 정책AGENTS및Slack8.1을적용. 이번독립검토기존판정없음.
+읽을근거 docs/reviews/2026-10-31-dependency-completion/README.md와로그,registry-metadata등파일. 제품diff는frontend/package.json,frontend/package-lock.json,functions/package-lock.json 3개. 해당후보가현재main에없는원래6PR의수정을정확히재현하는지,무관한패키지변경없는지,lock무결성,빌드/시험범위와export목록,빌드산출물동일성,Functions배포0개주장의타당성을검토. 정적도달분석의누락은독립적으로판단하고특히ip-address/brace-expansion이런타임에미사용이맞는지. 패키지권고는여전히남아있으므로이후보를전체취약점해소로판정하면안됨.
+#96 Vite8, #116 Router8, #114 sharp0.35는수정대상이아니며별도설계필요기록. 승인/수정후승인/재설계,규모,멈춤조건,검증추가필요여부를답하세요. CI와자동Codex는이후별도진행하므로독립승인과게이트전체충족을구분. 기존공유운영데이터접근금지.

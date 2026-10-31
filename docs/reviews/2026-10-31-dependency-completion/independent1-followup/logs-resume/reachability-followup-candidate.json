@@ -1,0 +1,224 @@
+{
+  "visitedFiles": 3793,
+  "targets": {
+    "ip-address": null,
+    "socks": null,
+    "socks-proxy-agent": null,
+    "proxy-agent": null,
+    "puppeteer": null,
+    "puppeteer-core": null,
+    "@puppeteer/browsers": null,
+    "brace-expansion": null,
+    "minimatch": null,
+    "glob": null,
+    "rimraf": null,
+    "filelist": null,
+    "jake": null,
+    "ejs": [
+      "lib/epubExport.js",
+      "node_modules/epub-gen-memory/dist/lib/index.js",
+      "node_modules/ejs/lib/ejs.js"
+    ],
+    "google-gax": [
+      "lib/accountDeletion.js",
+      "node_modules/firebase-admin/lib/firestore/index.js",
+      "node_modules/@google-cloud/firestore/build/src/index.js",
+      "node_modules/google-gax/build/src/fallback.js"
+    ],
+    "gaxios": [
+      "lib/haruLaw/haruLawAttachments.js",
+      "node_modules/@google/genai/dist/node/index.cjs",
+      "node_modules/google-auth-library/build/src/index.js",
+      "node_modules/google-auth-library/node_modules/gaxios/build/cjs/src/index.js"
+    ]
+  },
+  "visitedFilesContainingDunderRequire": [],
+  "variableRequireCallsByPackage": {
+    "sharp": 1,
+    "protobufjs": 1,
+    "@protobufjs/fetch": 1
+  },
+  "lockGraph": {
+    "ip-address": [
+      {
+        "key": "node_modules/ip-address",
+        "version": "10.5.0",
+        "dev": false,
+        "optional": false,
+        "peer": false,
+        "pathsFromRootUpTo40": [
+          " <- puppeteer <- @puppeteer/browsers <- proxy-agent <- pac-proxy-agent <- socks-proxy-agent <- socks <- ip-address",
+          " <- puppeteer <- puppeteer-core <- @puppeteer/browsers <- proxy-agent <- pac-proxy-agent <- socks-proxy-agent <- socks <- ip-address",
+          " <- puppeteer <- @puppeteer/browsers <- proxy-agent <- socks-proxy-agent <- socks <- ip-address",
+          " <- puppeteer <- puppeteer-core <- @puppeteer/browsers <- proxy-agent <- socks-proxy-agent <- socks <- ip-address"
+        ]
+      }
+    ],
+    "brace-expansion": [
+      {
+        "key": "node_modules/brace-expansion",
+        "version": "2.1.4",
+        "dev": false,
+        "optional": false,
+        "peer": false,
+        "pathsFromRootUpTo40": [
+          " <- epub-gen-memory <- ejs <- jake <- filelist <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- @jest/reporters <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- @jest/reporters <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-config <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-config <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- jest-config <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-runtime <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-runtime <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-config <- jest-circus <- jest-runtime <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-config <- jest-circus <- jest-runtime <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- jest-config <- jest-circus <- jest-runtime <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-runner <- jest-runtime <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-runner <- jest-runtime <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-config <- jest-runner <- jest-runtime <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-config <- jest-runner <- jest-runtime <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- jest-config <- jest-runner <- jest-runtime <- glob <- minimatch <- brace-expansion",
+          " <- @google-cloud/secret-manager <- google-gax <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- google-auth-library <- gcp-metadata <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- @google-cloud/secret-manager <- google-gax <- google-auth-library <- gcp-metadata <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- @google/genai <- google-auth-library <- gcp-metadata <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- firebase-admin <- google-auth-library <- gcp-metadata <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions <- firebase-admin <- google-auth-library <- gcp-metadata <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- firebase-functions <- firebase-admin <- google-auth-library <- gcp-metadata <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- firebase-admin <- google-auth-library <- gcp-metadata <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- googleapis <- google-auth-library <- gcp-metadata <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- googleapis <- googleapis-common <- google-auth-library <- gcp-metadata <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- google-auth-library <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- @google-cloud/secret-manager <- google-gax <- google-auth-library <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- @google/genai <- google-auth-library <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- firebase-admin <- google-auth-library <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions <- firebase-admin <- google-auth-library <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- firebase-functions <- firebase-admin <- google-auth-library <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- firebase-admin <- google-auth-library <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- googleapis <- google-auth-library <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- googleapis <- googleapis-common <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion",
+          " <- googleapis <- googleapis-common <- google-auth-library <- gaxios <- rimraf <- glob <- minimatch <- brace-expansion"
+        ]
+      },
+      {
+        "key": "node_modules/test-exclude/node_modules/brace-expansion",
+        "version": "1.1.18",
+        "dev": true,
+        "optional": false,
+        "peer": true,
+        "pathsFromRootUpTo40": [
+          " <- firebase-functions-test <- jest <- @jest/core <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- @jest/reporters <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- @jest/reporters <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-config <- babel-jest <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-config <- babel-jest <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- jest-config <- babel-jest <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-runner <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-runner <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-config <- jest-runner <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-config <- jest-runner <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- jest-config <- jest-runner <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-runtime <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-runtime <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-config <- jest-circus <- jest-runtime <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-config <- jest-circus <- jest-runtime <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- jest-config <- jest-circus <- jest-runtime <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-runner <- jest-runtime <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-runner <- jest-runtime <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-config <- jest-runner <- jest-runtime <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-config <- jest-runner <- jest-runtime <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- jest-config <- jest-runner <- jest-runtime <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-runtime <- @jest/globals <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-runtime <- @jest/globals <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-config <- jest-circus <- jest-runtime <- @jest/globals <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-config <- jest-circus <- jest-runtime <- @jest/globals <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- jest-config <- jest-circus <- jest-runtime <- @jest/globals <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-runner <- jest-runtime <- @jest/globals <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-runner <- jest-runtime <- @jest/globals <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-config <- jest-runner <- jest-runtime <- @jest/globals <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-config <- jest-runner <- jest-runtime <- @jest/globals <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- jest-config <- jest-runner <- jest-runtime <- @jest/globals <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-config <- jest-circus <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-config <- jest-circus <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- jest-config <- jest-circus <- @jest/expect <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- @jest/core <- jest-config <- jest-circus <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- @jest/core <- jest-config <- jest-circus <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion",
+          " <- firebase-functions-test <- jest <- jest-cli <- jest-config <- jest-circus <- jest-snapshot <- @jest/transform <- babel-plugin-istanbul <- test-exclude <- minimatch <- brace-expansion"
+        ]
+      }
+    ]
+  },
+  "loadSearch": {
+    "gaxios": [
+      {
+        "key": "node_modules/@google-cloud/vertexai/node_modules/@google/genai/node_modules/gaxios",
+        "version": "7.1.5",
+        "declaresRimraf": false,
+        "buildFilesScanned": 24,
+        "distinctLoadsFound": 33,
+        "loadsOfRimrafGlobMinimatch": []
+      },
+      {
+        "key": "node_modules/gaxios",
+        "version": "6.7.1",
+        "declaresRimraf": false,
+        "buildFilesScanned": 6,
+        "distinctLoadsFound": 15,
+        "loadsOfRimrafGlobMinimatch": []
+      },
+      {
+        "key": "node_modules/gcp-metadata/node_modules/gaxios",
+        "version": "7.1.3",
+        "declaresRimraf": true,
+        "buildFilesScanned": 24,
+        "distinctLoadsFound": 33,
+        "loadsOfRimrafGlobMinimatch": []
+      },
+      {
+        "key": "node_modules/google-auth-library/node_modules/gaxios",
+        "version": "7.1.3",
+        "declaresRimraf": true,
+        "buildFilesScanned": 24,
+        "distinctLoadsFound": 33,
+        "loadsOfRimrafGlobMinimatch": []
+      },
+      {
+        "key": "node_modules/googleapis-common/node_modules/gaxios",
+        "version": "7.1.3",
+        "declaresRimraf": true,
+        "buildFilesScanned": 24,
+        "distinctLoadsFound": 33,
+        "loadsOfRimrafGlobMinimatch": []
+      },
+      {
+        "key": "node_modules/gtoken/node_modules/gaxios",
+        "version": "7.1.5",
+        "declaresRimraf": false,
+        "buildFilesScanned": 24,
+        "distinctLoadsFound": 33,
+        "loadsOfRimrafGlobMinimatch": []
+      }
+    ],
+    "google-gax": [
+      {
+        "key": "node_modules/@google-cloud/secret-manager/node_modules/google-gax",
+        "version": "5.0.6",
+        "declaresRimraf": true,
+        "buildFilesScanned": 47,
+        "distinctLoadsFound": 85,
+        "loadsOfRimrafGlobMinimatch": []
+      },
+      {
+        "key": "node_modules/google-gax",
+        "version": "4.6.1",
+        "declaresRimraf": false,
+        "buildFilesScanned": 47,
+        "distinctLoadsFound": 85,
+        "loadsOfRimrafGlobMinimatch": []
+      }
+    ]
+  }
+}
