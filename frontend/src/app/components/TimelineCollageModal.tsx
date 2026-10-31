@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../firebase';
 import { firestoreService } from '../services/firestoreService';
 import type { HaruRecord } from '../services/firestoreService';
+import type { RecordFormat } from '../types/haruTypes';
+import { getFormatKey } from '../records/formatRegistry';
 import { toast } from 'sonner';
 import { GrowthTimelineCreator } from './GrowthTimelineCreator';
 
@@ -29,10 +32,11 @@ interface TimelineCollageModalProps {
   isLoadingRecords?: boolean;
 }
 
-const FORMAT_PREFIXES = [
-  'diary', 'essay', 'mission', 'report', 'work',
-  'travel', 'garden', 'pet', 'child', 'memo', 'reading', 'stock',
-];
+// 사진을 찾을 형식의 저장 필드 접두어(값은 형식 등록부)
+const FORMAT_PREFIXES = ([
+  '일기', '에세이', '선교보고', '일반보고', '업무일지',
+  '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기', '메모', '독서사유', 'HARU주식관리',
+] as RecordFormat[]).map((format) => getFormatKey(format));
 
 function extractPhotos(records: HaruRecord[]): PhotoItem[] {
   const photos: PhotoItem[] = [];
@@ -165,6 +169,7 @@ const CHANGE_RECORD_ASSISTANT_DESCRIPTION = '여러 날짜의 사진 기록을 �
 const CHANGE_RECORD_ASSISTANT_HELP = '흩어진 하루의 사진들을 연결해 식물, 건강, 가족, 프로젝트의 변화를 한눈에 볼 수 있는 기록 자산으로 만듭니다.';
 
 export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingRecords = false }: TimelineCollageModalProps) {
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<PhotoItem[]>([]);
   const [title, setTitle] = useState('');
   const [step, setStep] = useState<'select' | 'generating' | 'done'>('select');
@@ -174,6 +179,18 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
   const [dateTo, setDateTo] = useState('');
   const [growthCreatorOpen, setGrowthCreatorOpen] = useState(true);
   const generatingRef = useRef(false);
+  const [savedTimelineId, setSavedTimelineId] = useState<string | null>(null);
+  const [growthSaving, setGrowthSaving] = useState(false);
+  const growthSavingRef = useRef(false);
+
+  useEffect(() => {
+    if (isOpen) setSavedTimelineId(null);
+  }, [isOpen, uid]);
+
+  const handleGrowthSavingChange = (saving: boolean) => {
+    growthSavingRef.current = saving;
+    setGrowthSaving(saving);
+  };
 
   const allPhotos = isLoadingRecords ? [] : extractPhotos(records);
   const filteredPhotos = allPhotos.filter((photo) => matchesPhotoSearch(photo, searchText, dateFrom, dateTo));
@@ -376,7 +393,7 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
   };
 
   const handleClose = () => {
-    if (step === 'generating' || generatingRef.current) {
+    if (step === 'generating' || generatingRef.current || growthSavingRef.current) {
       toast.info('생성 중입니다. 완료 후 닫을 수 있습니다.');
       return;
     }
@@ -389,7 +406,17 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
     setDateFrom('');
     setDateTo('');
     setGrowthCreatorOpen(false);
+    setSavedTimelineId(null);
     onClose();
+  };
+
+  const handleViewSavedTimeline = () => {
+    if (!savedTimelineId || growthSavingRef.current || generatingRef.current) return;
+    const recordId = savedTimelineId;
+    handleClose();
+    navigate('/sayu', { state: {
+      filterFormat: 'HARU타임라인', tab: 'assistants', openRecordId: recordId,
+    } });
   };
 
   useEffect(() => {
@@ -444,15 +471,27 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
             <p style={{ fontSize: 12, color: '#888', margin: '2px 0 0' }}>
               {CHANGE_RECORD_ASSISTANT_DESCRIPTION}
             </p>
+            {/* 비서 통계는 통계 화면에서 빠져 각 비서 화면에서 연다(2026-10-23 결정 ④) */}
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                navigate('/stats/assistant/timeline');
+              }}
+              disabled={step === 'generating' || growthSaving}
+              style={{ marginTop: 4, padding: 0, border: 'none', background: 'none', color: '#1A3C6E', fontSize: 12, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}
+            >
+              내 타임라인 통계 보기 →
+            </button>
           </div>
           <button
             onClick={handleClose}
-            disabled={step === 'generating'}
-            title={step === 'generating' ? '생성 중입니다' : '닫기'}
+            disabled={step === 'generating' || growthSaving}
+            title={step === 'generating' || growthSaving ? '생성 중입니다' : '닫기'}
             style={{
               background: 'none', border: 'none', fontSize: 20,
-              cursor: step === 'generating' ? 'not-allowed' : 'pointer',
-              color: step === 'generating' ? '#d0d0d0' : '#aaa',
+              cursor: step === 'generating' || growthSaving ? 'not-allowed' : 'pointer',
+              color: step === 'generating' || growthSaving ? '#d0d0d0' : '#aaa',
             }}
           >
             ✕
@@ -463,11 +502,27 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
           {/* 사진 선택 화면 */}
           {step === 'select' && (
             <div style={{ padding: '16px 16px 120px' }}>
+              {savedTimelineId && (
+                <div style={{ marginBottom: 14 }}>
+                  <p role="status" style={{ color: '#1A3C6E', fontWeight: 700 }}>HARU타임라인을 나의 기록에 저장했습니다.</p>
+                  <button
+                    type="button"
+                    onClick={handleViewSavedTimeline}
+                    disabled={growthSaving}
+                    style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 700 }}
+                  >
+                    나의 기록에서 보기
+                  </button>
+                </div>
+              )}
               <div style={{ marginBottom: 14 }}>
                 {!growthCreatorOpen ? (
                   <button
                     type="button"
-                    onClick={() => setGrowthCreatorOpen(true)}
+                    onClick={() => {
+                      setSavedTimelineId(null);
+                      setGrowthCreatorOpen(true);
+                    }}
                     style={{
                       width: '100%',
                       border: 'none',
@@ -508,7 +563,9 @@ export function TimelineCollageModal({ isOpen, onClose, records, uid, isLoadingR
                 ) : (
                   <GrowthTimelineCreator
                     uid={uid}
-                    onDone={() => {
+                    onSavingChange={handleGrowthSavingChange}
+                    onDone={(recordId) => {
+                      setSavedTimelineId(recordId);
                       setGrowthCreatorOpen(false);
                     }}
                   />

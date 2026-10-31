@@ -1,0 +1,21 @@
+{
+  "revision": "polishcontent-00244-sas",
+  "sourceGeneration": "1793053161861758",
+  "files": [
+    {
+      "path": "lib/aiUsageLogger.js",
+      "sha256": "7996925f1422b64111df56fea20005596912b92567a92caea7cfffc1efc9af53",
+      "hasRequestLogger": false,
+      "hasModelInvoked": false,
+      "hasPolishContentPurpose": false
+    },
+    {
+      "path": "src/aiUsageLogger.ts",
+      "sha256": "23f496ead6b6b00caefb43ac6acfe26519757c8f3d983f10d3ad5fa2358f09d4",
+      "hasRequestLogger": false,
+      "hasModelInvoked": false,
+      "hasPolishContentPurpose": false
+    }
+  ],
+  "polishUsagePaths": []
+}

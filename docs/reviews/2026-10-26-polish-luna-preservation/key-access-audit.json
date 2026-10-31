@@ -1,0 +1,11 @@
+{
+  "project": "haru2026-8abb8",
+  "region": "asia-northeast3",
+  "readOnly": true,
+  "functionServiceAccountFound": true,
+  "currentlyBoundSecrets": [
+    "GEMINI_API_KEY"
+  ],
+  "openAiSecretDirectAccessor": true,
+  "conditionalBindingPresent": false
+}

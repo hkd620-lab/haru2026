@@ -5,6 +5,8 @@ import { PageHeaderActions } from '../components/PageHeaderActions';
 import { HaruRamenSection, TodayChargeSection } from '../components/TodayChargeSection';
 import { useAuth } from '../contexts/AuthContext';
 import { exportRecordsToEpub } from '../services/epubExportService';
+import { getEpubReaderHint } from '../utils/epubReaderGuide';
+import { EpubReaderNotice } from '../components/EpubReaderNotice';
 import {
   firestoreService,
   type PublishedBook,
@@ -931,8 +933,10 @@ export function SayuTogetherPage() {
     if (!epubStartDate || !epubEndDate) return;
     setIsExporting(true);
     try {
-      const { count, fileName } = await exportRecordsToEpub(epubStartDate, epubEndDate);
-      alert(`✅ EPUB 생성 완료! ${count}개 기록 → ${fileName}`);
+      const result = await exportRecordsToEpub(epubStartDate, epubEndDate);
+      if (!result) return;
+      const { count, fileName } = result;
+      alert(`✅ EPUB 생성 완료! ${count}개 기록 → ${fileName}\n\n${getEpubReaderHint()}`);
     } catch (e: any) {
       alert(`❌ 오류: ${e.message}`);
     } finally {
@@ -1022,6 +1026,7 @@ export function SayuTogetherPage() {
           <p style={{ fontSize: 13, color: '#6B7280', margin: '0 0 14px' }}>
             날짜 범위를 선택하면 해당 기간 기록을 EPUB 파일로 다운로드합니다.
           </p>
+          <EpubReaderNotice />
           {!user?.uid ? (
             <p style={{ fontSize: 13, color: '#B42318' }}>로그인 후 이용할 수 있습니다.</p>
           ) : (

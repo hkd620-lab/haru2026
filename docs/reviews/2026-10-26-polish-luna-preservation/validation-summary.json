@@ -1,0 +1,79 @@
+{
+  "scope": "PR #301 delta ecb46df5..516abd0a: BASIC polish body -> gpt-6-luna, general FormatModal polish button -> BASIC, preservation prompts for BASIC and rich (rich stays Gemini)",
+  "sourceHead": "516abd0a2ec4db4c7d90531bdc19e7e21801577d",
+  "sourceBase": "ecb46df5d7b2c6a3dc09b8a29618fe5406287789",
+  "sourceFiles": [
+    "frontend/src/app/components/FormatModal.tsx",
+    "frontend/test/formatPolishRequest.test.mjs",
+    "functions/src/ai/aiModels.ts",
+    "functions/src/index.ts",
+    "functions/test/aiGateway.test.js",
+    "functions/test/polishContent.test.js"
+  ],
+  "ccRuns": [
+    {
+      "file": "haru-polish-basic-rich-cc-result.json",
+      "stage": "BASIC route + prompts (before button connection, uncommitted)",
+      "checks": [
+        { "command": "npm run build (functions)", "result": "pass" },
+        { "command": "node --test test/aiGateway.test.js", "pass": 16, "fail": 0 },
+        { "command": "node --test test/polishContent.test.js", "pass": 20, "fail": 0 },
+        { "command": "node --test test/generateTitlesForAll.test.js", "pass": 11, "fail": 0 },
+        { "command": "node --test test/readingAi.test.js (functions)", "pass": 8, "fail": 0 },
+        { "command": "npm run test:monthly-ai-quota", "result": "monthly AI quota policy tests passed" },
+        { "command": "node --test test/formatPolishRequest.test.mjs", "pass": 3, "fail": 0 },
+        { "command": "npm run test:reading-ai (frontend)", "pass": 17, "fail": 0 },
+        { "command": "vite build (synthetic Firebase env in temporary gitignored .env.local, deleted after)", "result": "pass" },
+        { "command": "git diff --check", "result": "pass" }
+      ]
+    },
+    {
+      "file": "haru-polish-connect-basic-result.json",
+      "stage": "general button -> BASIC, committed as 516abd0a",
+      "checks": [
+        { "command": "npm run build (functions)", "result": "pass" },
+        { "command": "node --test test/aiGateway.test.js", "pass": 16, "fail": 0 },
+        { "command": "node --test test/polishContent.test.js", "pass": 20, "fail": 0 },
+        { "command": "node --test test/generateTitlesForAll.test.js", "pass": 11, "fail": 0 },
+        { "command": "node --test test/readingAi.test.js (functions)", "pass": 8, "fail": 0 },
+        { "command": "npm run test:monthly-ai-quota", "result": "monthly AI quota policy tests passed" },
+        { "command": "node --test test/formatPolishRequest.test.mjs", "pass": 6, "fail": 0 },
+        { "command": "npm run test:reading-ai (frontend)", "pass": 17, "fail": 0 },
+        { "command": "vite build (synthetic Firebase env in temporary gitignored .env.local, deleted after)", "result": "pass" },
+        { "command": "git diff --cached --check", "result": "pass" }
+      ]
+    }
+  ],
+  "functionExports": {
+    "before": 114,
+    "after": 114,
+    "sortedListSha256Before": "5bdd7903424f94ef1c7c2fd636ca91d74a01512839055b9b3de997645862a719",
+    "sortedListSha256After": "5bdd7903424f94ef1c7c2fd636ca91d74a01512839055b9b3de997645862a719"
+  },
+  "behaviourCoveredByTests": {
+    "routing": "mode exactly 'BASIC' -> sayuPolishBasic (gpt-6-luna); PREMIUM/undefined/'basic'/'premium' -> sayuPolish (gemini)",
+    "requestBody": "sayuPolishBasic sends reasoning_effort 'none' and max_completion_tokens 8192; sayuPolish/sayuPolishComment/recordStats get no OpenAI fields",
+    "secrets": "polishContent binds GEMINI_API_KEY and OPENAI_API_KEY",
+    "usageLog": "success log records the model of the purpose actually used; failure log model null, success false",
+    "monthlyQuota": "one reservation per request; body call or text read failure rolls back once and writes no paid-usage log",
+    "statsAndComment": "recordStats and sayuPolishComment purposes, partial-success contracts and 50-char comment cleanup unchanged",
+    "keywordsAndTitle": "recordKeywords and recordTitleBackfill stay Gemini; recordTitle stays gpt-6-luna",
+    "prompts": "BASIC and rich include preservation rules; balanced/conservative only say '원문 말투'; voiding summary prompt unchanged",
+    "frontend": "real handlePolishClick -> handleConfirmMonthlyAiPolish -> handlePolishWithMode sends mode BASIC with [원문 시작]/[원문 끝]; missing title blocks modal and requests; confirm while polishing sends one request; empty input and error toasts unchanged"
+  },
+  "parentLiveCalls": {
+    "note": "Run by parent Codex with synthetic inputs, separate from CC tests. Successful model calls do not guarantee output quality or production health.",
+    "comparison": { "calls": 124, "successful": 124, "errors": 0, "nonStopFinish": 0, "source": "results.jsonl / summary.json" },
+    "gatewayLive": { "calls": 1, "purpose": "sayuPolishBasic", "finish": "stop", "nonempty": true, "source": "gateway-live.json" }
+  },
+  "ci": {
+    "head": "516abd0a2ec4db4c7d90531bdc19e7e21801577d",
+    "build_and_preview": "SUCCESS https://github.com/hkd620-lab/haru2026/actions/runs/40246976065/job/121330493314",
+    "deployPreview": "SUCCESS"
+  },
+  "corrections": [
+    "haru-polish-connect-basic-result.json says 독서사유 records go through the general polish button. That is inaccurate: the 독서사유 footer only renders its dedicated buttons (FormatModal.tsx footer branch), so it keeps its PREMIUM paths. The raw CC result is kept unchanged; this is the current description. The PR #301 body does not contain the inaccurate sentence."
+  ],
+  "productionDeployment": false,
+  "mainMerge": false
+}

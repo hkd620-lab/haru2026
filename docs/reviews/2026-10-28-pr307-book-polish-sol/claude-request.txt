@@ -1,0 +1,6 @@
+독립 Claude 설계·완료 검토를 수행하세요. 이전 대화 맥락은 제공하지 않습니다. 파일 수정·명령 실행·외부 전송·서브에이전트 호출은 금지하며 Read 도구로만 확인하세요. 작업 결과를 스스로 승인하지 말고 독립 검토자로 평가하세요.
+저장소: /Users/heogyeongdae/Developer/HARU2026
+PR: https://github.com/hkd620-lab/haru2026/pull/307
+검토 HEAD: bf36b6d2b978a4c98978fc6ad5a1e099039ad4e2
+근거: /private/tmp/haru-book-polish-review-307/pr.json, /private/tmp/haru-book-polish-review-307/diff.patch, /private/tmp/haru-quality-bench-20261028/report.txt. 저장소 AGENTS.md 및 docs/HARU2026_Slack_운영정책.md 8.1절과 해당 소스·테스트를 읽어 판단하세요. 구현자가 선언한 빌드·테스트 결과는 PR 본문에 있으며 독립 실행 결과와 구분하세요.
+요청: 변경 범위와 보존 요구, 테스트 적절성, 비교 근거의 한계, 작업 규모(소/중/대), 멈춤 조건 여부와 별도 승인 필요 범위를 검토하세요. 구체적인 문제만 지적하고 근거 파일·줄을 제시하세요. 코드 개발 승인과 운영 배포 승인을 구분하고, 최종 판정은 승인/수정 후 승인/재설계 중 하나를 원문 그대로 제시하세요. 검토 범위를 명확히 하고 미실행 검증을 완료로 단정하지 마세요. 최초 독립 검토 요청이며 이전 독립 검토 결과는 없습니다.

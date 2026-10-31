@@ -1,0 +1,98 @@
+{
+  "duration_api_ms": 242993,
+  "stop_reason": "end_turn",
+  "session_id": "95a368a2-28bf-4c32-be6e-e69e1b002764",
+  "total_cost_usd": 1.8041226000000004,
+  "usage": {
+    "input_tokens": 44,
+    "cache_creation_input_tokens": 132633,
+    "cache_read_input_tokens": 1901613,
+    "output_tokens": 18128,
+    "output_tokens_details": {
+      "thinking_tokens": 9753
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 132633,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "global",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 4332,
+        "cache_read_input_tokens": 134703,
+        "cache_creation_input_tokens": 935,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 935
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "modelUsage": {
+    "claude-opus-5-5": {
+      "inputTokens": 44,
+      "outputTokens": 18128,
+      "cacheReadInputTokens": 1901613,
+      "cacheCreationInputTokens": 132633,
+      "webSearchRequests": 0,
+      "costUSD": 1.8041226000000004,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "thinkingTokens": 9753,
+      "canonicalModel": "claude-opus-5-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 37,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "# 독립 완료 검토: 가계부 보완 1단위 (HEAD `14b20616`)\n\n## 판정: **승인**\n\n이번 승인은 1단위 코드가 완료됐다는 판정입니다. 다음 다섯 가지는 대신하지 않습니다: Codex 최신 리뷰, 최신 CI, 실제 설정으로 하는 CI 빌드, Hosting 배포, 운영 읽기 확인. 이 건의 독립 판정 이력은 **1회차 수정 후 승인(M1–M7) → 2회차 승인**입니다. 장부의 4–9번 항목(카드 연결, 반복·할부, 배분, 잔액, 목표, 가족 공유, 자동 연동)은 아직 구현하지 않았으므로, 이번 승인을 보완 전체의 완료로 보면 안 됩니다.\n\n검토는 Read·Grep·Glob만으로 했습니다. 파일 변경, 명령 실행, 게시는 하지 않았습니다.\n\n## M1–M7 충족 확인\n\n| 항목 | 판정 | 근거 |\n|---|---|---|\n| M1 위치 식별 | 충족 | 위치는 `recordId + rawIndex`로만 찾습니다. 같은 위치의 identity와 원본 지문을 대조하고, 다른 위치를 찾는 대체 경로는 없습니다(`householdEditService.ts:130-141`). 한 요청 안에서 같은 위치가 두 번 오면 거부합니다(`:85-87`). 대시보드, 편집, 저장이 같은 판정 함수 `householdRecordShape`를 쓰고, 트랜잭션 안에서 다시 판정합니다(`:103,108,125`). id가 없는 거래도 편집할 수 있고, `applyHouseholdPatch`는 분류·세부분류·메모·categorySource만 씁니다(`:46-56`). 기록 id가 없거나 배열이 손상됐으면 편집을 막습니다(`householdDashboard.ts:120-124`). |\n| M1 `[]`와 단건 필드가 함께 있는 문서 | 충족 | 추가 저장할 때 단건 거래를 배열에 포함해 보존합니다. 손상된 배열은 저장을 거부합니다(`householdDuplicates.ts:47-54`). 단건 문서를 편집하면 단건 필드만 고치고, 열어 둔 사이 모양이 바뀌었으면 충돌로 처리합니다(`householdEditService.ts:108`). |\n| M2 은행 진입과 미리보기 | 충족 | RecordPage가 state를 지우기 전에 `householdEntry`를 보관해 넘깁니다(`RecordPage.tsx:566,1246`). 빈 행은 저장 대상에서 뺍니다(`FormatModal.tsx:612`). 규칙은 파싱 직후, 첫 중복 확인 전에 적용합니다(`:2983-2993`). 이미 저장된 행은 잠그고 \"저장된 분류 유지\"로 표시합니다(`:5444,5454`). 직접 입력은 확정할 때만 거래에 반영합니다(`HouseholdCategoryPicker.tsx:24-47`). |\n| M3 본문 조건부 갱신 | 충족 | 본문이 자동 생성 결과와 정확히 같을 때만 다시 만듭니다(`householdEditService.ts:67-72`). 첫 거래를 복사해 둔 상위 필드도 복사본 그대로일 때만 맞춥니다(`:148-153`). 사용자가 쓴 본문에는 안내를 표시합니다(`SayuModal.tsx:204-207`). |\n| M4 분류 관리 | 충족 | 추가, 세부분류 추가, 보관·복원을 지원합니다. 이름 바꾸기는 새 분류 추가와 기존 분류 보관으로 처리하고, 과거 거래는 자동으로 다시 분류하지 않습니다(`householdCategories.ts:116-150`). 설정에 없지만 기존 거래에 쓰인 분류도 계속 보입니다(`:72-78`). |\n| M5 설정 안전성 | 충족 | 분류와 규칙 변경은 모두 트랜잭션으로 합니다. 점 경로 update는 쓰지 않습니다. 손상된 설정은 빈 설정으로 덮어쓰지 않습니다. 소유 계정, 세션, 변경 번호를 확인한 뒤에만 결과를 반영합니다(`HouseholdPage.tsx:275-306,451-470`, `FormatModal.tsx:621-648`). |\n| M6 현금 저장 실패와 재시도 | 충족 | id는 초안을 만들 때 고정됩니다. 기본 날짜는 KST입니다. 금액은 0보다 큰 값만 받습니다. 실패하면 입력값을 그대로 두고, 실패한 시도와 지금 입력이 다르면 그 차이를 판정합니다. 결과가 \"이미 저장됨\"인데 분류가 다르면 거래처 기억을 저장하지 않습니다(`HouseholdCashEntry.tsx:39-73,106-133`, `HouseholdPage.tsx:538-545`). |\n| M7 분류 확인 기준과 규칙 적용 | 충족 | 판정은 원본 값(`rawCategory`)으로 합니다. \"이 분류로 확정\"을 누르면 `categorySource:'user'`만 기록합니다(`HouseholdEditSheet.tsx:84-88`). 파서가 정한 분류에는 `import-default`를 붙이고(`householdKakaoImport.ts:153`, PDF도 같은 파서를 씁니다), 규칙은 그 값이나 빈 분류 위에만 제안합니다(`householdVendorRules.ts:42`). |\n\n사전 지적(06)의 세 가지도 모두 코드에서 확인했습니다: 로그아웃 시 null 접근 방지(`HouseholdPage.tsx:352-356`), mounted ref를 setup에서 되돌리기, 분류 관리의 `managerOwner === uid`와 `key={uid}`. 은행 화면 설정의 계정·세션·변경 번호 경계(13)도 확인했습니다. 검증 원문의 집계는 단위·SSR 170/170, 에뮬레이터 34/34, 성장타임라인은 HEAD 대조에서 같은 6건 실패로 기록과 일치합니다.\n\n## 숨은 필수 결함\n\n**없습니다.** 다음 경로를 따라가 봤지만 데이터 유실이나 덮어쓰기로 이어지는 곳은 찾지 못했습니다.\n- 동시 추가·편집: 트랜잭션 안에서 다시 읽고 지문을 대조합니다.\n- 응답 유실 후 재전송: 이미 반영된 수정은 unchanged로 처리합니다.\n- SayuModal 원본 편집과의 경쟁: `saveHouseholdOriginal`이 `household_entries`와 바꾼 필드를 대조해 충돌로 처리합니다.\n- 계정 경계, 이미 저장된 거래의 재가져오기.\n\n## 권고 (필수 아님)\n\n1. **CRLF 메모 정규화**: 원본 메모에 `\\r\\n`이 있으면 `memoChanged`가 처음부터 참입니다(`HouseholdEditSheet.tsx:49`). 그래서 분류만 바꿔도 메모가 `\\n`으로 다시 저장됩니다. 내용은 같지만 사용자가 의도하지 않은 쓰기입니다. 비교 양쪽을 같은 방식으로 정규화하는 것을 권합니다.\n2. **현금 입력의 보관 분류 기준**: 분류 설정 조회는 실패하고 규칙 조회만 성공하면, 보관한 분류의 규칙이 현금 입력에 제안될 수 있습니다(`HouseholdPage.tsx:294-299`). 은행 경로처럼 설정을 못 읽으면 규칙을 쓰지 않도록 맞추기를 권합니다. 저장 전 제안일 뿐이라 영향은 작습니다.\n3. **일괄 분류의 세부분류 처리**: 세부분류를 고르지 않으면 선택한 거래의 기존 세부분류가 지워집니다. 의도된 동작으로 보이지만 시트 안내에 함께 적기를 권합니다.\n4. **규칙의 보관 판정 대소문자**: `householdRuleArchived`는 이름이 정확히 같을 때만 보관으로 봅니다(`householdVendorRules.ts:33`). 반면 분류 목록 병합은 대소문자를 구분하지 않습니다. 같은 비교 함수로 맞추기를 권합니다.\n5. **전역 저장 차단**: 손상된 월 문서가 하나라도 있으면 `checkHouseholdDuplicates`가 예외를 던져 모든 현금 저장이 막힙니다. 덮어쓰지 않는다는 점에서는 안전하고, 깨진 JSON은 이전에도 그랬습니다. 다만 안내 문구에 원인 문서를 표시하기를 권합니다.\n6. **검증 기록의 한계**:\n   - 브라우저 조작 기록(11)은 09·13 보완 **이전** 코드에서 한 것입니다. 09 §3에 적힌 브라우저 확인 4개는 최종 코드에서 실제 화면으로 다시 확인하지 않았습니다(분류 관리를 연 채 계정 전환, 기억 직후 제안, 보관 분류 제안 제외, id 없는 거래 편집). 단위·SSR과 소스 계약 테스트로만 고정돼 있습니다.\n   - 304px 화면과 375px iframe 확인은 아이폰 PWA E2E를 대신하지 않습니다.\n   - 01 장부의 1–3행이 아직 \"설계 중\"으로 남아 있습니다. 파일을 고치지 말고 후속 기록에 현재 상태를 남기기를 권합니다.\n\n## 작업 규모와 멈춤 조건\n\n- **작업 규모: 대.** 새 서비스·컴포넌트가 여러 개이고, 저장된 거래를 편집하는 경로와 FormatModal·RecordPage 수정이 들어갑니다.\n- **멈춤 조건: 이번 단위는 해당 없음.** 확인한 범위에서 Rules, Functions, AI, 인증, 결제, 데이터 경로는 바뀌지 않았고, 새 데이터는 기존에 허용된 `users/{uid}/settings` 아래 본인 문서 2개만 씁니다. 다만 변경이 없다는 점 자체는 git diff로 확인하지 못했고 14 기록에 의존했습니다.\n- 가족 공유(Rules), 자동 연동(계약·비용), AI가 분류를 읽게 하는 변경(Functions)은 해당 단위에서 멈추는 별도 조건으로 계속 남습니다.\n\n**판정 원문: 승인**",
+  "ttft_ms": 2356,
+  "type": "result",
+  "duration_ms": 245709,
+  "uuid": "3b70e27f-a8f5-4190-96ff-e8049525a005",
+  "ttft_stream_ms": 2170,
+  "time_to_request_ms": 143,
+  "first_content_frame_ms": 2170,
+  "queued_turn_count": 0,
+  "result_index": 0
+}

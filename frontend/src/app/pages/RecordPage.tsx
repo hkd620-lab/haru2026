@@ -1,8 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { Calendar, Check, Paperclip, Pencil, X } from 'lucide-react';
-import { ref as storageRef, uploadBytes } from 'firebase/storage';
+import { Calendar, Camera, Check, Pencil, X } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useLocation, useNavigate } from 'react-router';
 import { firestoreService, buildTimelineMeta } from '../services/firestoreService';
@@ -10,26 +8,16 @@ import { getOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
-import GrapeLoadingMini from '../components/GrapeLoadingMini';
-import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
+import { HaruLawPanel, useHaruLaw } from '../assistants/haruLaw/HaruLawPanel';
 import { PetHealthAlert, detectPetAlertLevel, type PetAlertLevel } from '../components/PetHealthAlert';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
-import {
-  buildRecommendationTextFromFields,
-  getAssistantRecommendations,
-  type AssistantRecommendation,
-} from '../utils/assistantRecommendations';
-import {
-  HARULAW_ATTACH_MAX_TOTAL_BYTES,
-  HARULAW_ATTACH_MAX_PDF_BYTES,
-  getHaruLawUserError,
-  getHaruLawUserErrorByReason,
-  hasReadableHaruLawPdfHeader,
-  type HaruLawUserError,
-} from '../utils/haruLawError';
-import { db, storage } from '../../firebase';
+import { applyDraftSaveTarget, buildDraftEditorData, WRITABLE_FORMATS } from '../records/writeBeforeFormat';
+import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
+import { startSelectedRecordPhotoReads } from '../services/selectedRecordPhoto';
+import { db } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
+import { findSameNameChildSubject } from '../services/growthSubjectLookup';
 import { useSubscription } from '../hooks/useSubscription';
 import {
   DndContext,
@@ -53,42 +41,14 @@ type Weather = '쾌청' | '흐림' | '비' | '눈';
 type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 type GrowthSubjectType = 'child' | 'garden';
 type EnvTagType = 'weather' | 'temperature' | 'mood';
+type DraftPhoto = { id: string; file: File; previewUrl: string };
+
+const COMMON_PHOTO_LIMIT = getRecordPhotoLimit();
+const COMMON_PHOTO_TOTAL_BYTES = 60 * 1024 * 1024;
 
 const DEFAULT_WEATHER = ['쾌청', '흐림', '비', '눈'];
 const DEFAULT_TEMPERATURE = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
 const DEFAULT_MOOD = ['기쁨', '평온', '무미', '울적', '번잡'];
-const HARULAW_ATTACH_MAX_FILES = 5;
-const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-  'application/pdf',
-]);
-const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
-
-type HaruLawAttachmentRef = {
-  storagePath: string;
-  mimeType: string;
-  fileName: string;
-  sizeBytes?: number;
-};
-
-function getLawEasySummary(title?: string, article?: string, description?: string): string {
-  const text = `${title ?? ''} ${article ?? ''} ${description ?? ''}`;
-
-  if (text.includes('불산입') || text.includes('제33조')) {
-    return '❌ 경비로 인정되지 않을 수 있어요';
-  }
-
-  if (text.includes('필요경비') || text.includes('제27조')) {
-    return '✅ 경비로 인정될 가능성이 있어요';
-  }
-
-  return '⚖️ 사실관계에 따라 달라질 수 있어요';
-}
-
 function SortableTagItem({
   id,
   isSelected,
@@ -205,70 +165,6 @@ function SortableTagItem({
 export function RecordPage() {
   const [diaryLearnOpen, setDiaryLearnOpen] = useState(false);
   const [showNovelIntro, setShowNovelIntro] = useState(false);
-  const renderStyledContent = (text: string) => (
-    <div style={{
-      background: 'linear-gradient(135deg, #fdf6ff 0%, #f0f7ff 50%, #f6fff0 100%)',
-      padding: '20px 20px 24px 20px',
-      borderRadius: 8,
-    }}>
-      <div style={{
-        width: 40, height: 3,
-        background: 'linear-gradient(90deg, #8B4789, #4a90d9)',
-        borderRadius: 2, marginBottom: 16,
-      }} />
-      {text.split('\n').map((line, lineIdx) => {
-        const trimmed = line.trim();
-        if (!trimmed) return <div key={lineIdx} style={{ height: 8 }} />;
-        const cleanLine = trimmed.replace(/\*\*/g, '');
-        if (trimmed.startsWith('**') && trimmed.endsWith('**') && trimmed.length > 4) {
-          return (
-            <p key={lineIdx} style={{
-              fontSize: 15, fontWeight: 800, color: '#2d1b4e',
-              marginBottom: 10, marginTop: lineIdx > 0 ? 18 : 0,
-              paddingLeft: 10, borderLeft: '3px solid #8B4789', lineHeight: 1.5,
-            }}>{cleanLine}</p>
-          );
-        }
-        if (/^\*\*\d+\./.test(trimmed) || /^\d+\./.test(trimmed)) {
-          return (
-            <p key={lineIdx} style={{
-              fontSize: 13, fontWeight: 700, color: '#4a2d7a',
-              marginBottom: 6, marginTop: 14, lineHeight: 1.6,
-            }}>{cleanLine}</p>
-          );
-        }
-        if (trimmed.startsWith('🔗')) {
-          const urlMatch = trimmed.match(/(https?:\/\/\S+)/);
-          if (urlMatch) {
-            const url = urlMatch[1];
-            const label = trimmed.replace(url, '').trim();
-            return (
-              <p key={lineIdx} style={{
-                fontSize: 12, marginTop: 6, marginBottom: 4, lineHeight: 1.6,
-              }}>
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: '#4a90d9', textDecoration: 'underline' }}
-                >{label} ↗</a>
-              </p>
-            );
-          }
-        }
-        return (
-          <p key={lineIdx} style={{
-            fontSize: 13, color: '#3a3a4a',
-            lineHeight: 1.85, marginBottom: 4, letterSpacing: '0.01em',
-          }}>{cleanLine}</p>
-        );
-      })}
-      <div style={{
-        marginTop: 20, textAlign: 'center' as const,
-        fontSize: 16, color: '#c9b8e0', letterSpacing: 8,
-      }}>✦ ✦ ✦</div>
-    </div>
-  );
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -277,6 +173,10 @@ export function RecordPage() {
   const isLawPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
   const [fromPath, setFromPath] = useState<string | null>(() => (location.state as any)?.from ?? null);
   const closeToOrigin = () => {
+    if (lawSaveRef.current) {
+      toast.info('저장 중입니다. 완료 후 닫을 수 있습니다.');
+      return;
+    }
     if (fromPath) {
       navigate(fromPath);
       return;
@@ -294,7 +194,8 @@ export function RecordPage() {
     }
   };
   const [currentDate] = useState(new Date());
-  const [mood, setMood] = useState<Mood>('평온');
+  // 기분은 기본값 없이, 사용자가 고를 때만 저장한다(2026-10-23 결정 ①). 같은 기분을 다시 누르면 선택을 해제한다.
+  const [mood, setMood] = useState<Mood | ''>('');
   const [showEnvToast, setShowEnvToast] = useState(false);
   const [weatherTags, setWeatherTags] = useState<string[]>(DEFAULT_WEATHER);
   const [temperatureTags, setTemperatureTags] = useState<string[]>(DEFAULT_TEMPERATURE);
@@ -315,34 +216,31 @@ export function RecordPage() {
   const [weather, setWeather] = useState<Weather>('쾌청');
   const [temperature, setTemperature] = useState<Temperature>('쾌적');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>('생활' as Category);
+  const [householdEntryMode, setHouseholdEntryMode] = useState<'bank' | undefined>(undefined);
+  const [showOtherEntryMethods, setShowOtherEntryMethods] = useState(() => Boolean((location.state as any)?.category || (location.state as any)?.format));
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
+  const [draftContent, setDraftContent] = useState('');
+  const [draftPhotos, setDraftPhotos] = useState<DraftPhoto[]>([]);
+  const draftPhotosRef = useRef<DraftPhoto[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlsRef = useRef<Set<string>>(new Set());
+  const photoReadBusyRef = useRef(false);
+  const [photoReadBusy, setPhotoReadBusy] = useState(false);
+  const [formatPickerOpen, setFormatPickerOpen] = useState(false);
+  const [draftEditorData, setDraftEditorData] = useState<Record<string, string> | undefined>();
+  const [draftEditorPhotos, setDraftEditorPhotos] = useState<File[]>([]);
+  const [draftEditorRecordId, setDraftEditorRecordId] = useState<string | null>(null);
+  const draftRecordIdRef = useRef<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [formatModalOpen, setFormatModalOpen] = useState(false);
   const [petAlertLevel, setPetAlertLevel] = useState<PetAlertLevel>(null);
   const [savedDateStr, setSavedDateStr] = useState('');
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
-  const [savedAssistantRecommendations, setSavedAssistantRecommendations] = useState<AssistantRecommendation[]>([]);
-  const [lawQuery, setLawQuery] = useState('');
-  const [lawGuideConfirmed, setLawGuideConfirmed] = useState(false);
-  const [lawLoading, setLawLoading] = useState(false);
-  const [lawResults, setLawResults] = useState<any[]>([]);
-  const [lawSummary, setLawSummary] = useState('');
-  const [lawError, setLawError] = useState<HaruLawUserError | null>(null);
-  const lawSearchHistory = useRef<{query: string, summary: string, articles: any[]}[]>([]);
-  const [activeLawQuery, setActiveLawQuery] = useState('');
-  const [isSavingLaw, setIsSavingLaw] = useState(false);
-  const [lawSaved, setLawSaved] = useState(false);
-  const [lawAttachments, setLawAttachments] = useState<HaruLawAttachmentRef[]>([]);
-  const [activeLawAttachments, setActiveLawAttachments] = useState<HaruLawAttachmentRef[]>([]);
-  const [uploadingLawFiles, setUploadingLawFiles] = useState(false);
-  const lawFileInputRef = useRef<HTMLInputElement>(null);
-  const [openCard, setOpenCard] = useState<{
-    idx: number;
-    type: 'explain' | 'prec';
-    content: string;
-    loading: boolean;
-  } | null>(null);
+  const lawEntrySectionRef = useRef<HTMLElement>(null);
+  // 하루LAW 상태·처리는 assistants/haruLaw/HaruLawPanel.tsx 의 useHaruLaw 에 있다(탭을 바꿔도 상태가 유지되도록 이 컴포넌트에서 부른다).
+  const haruLaw = useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, temperature, mood });
+  const { setLawGuideConfirmed, lawSaveRef } = haruLaw;
   const petAlertTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -350,6 +248,8 @@ export function RecordPage() {
       if (petAlertTimerRef.current) {
         window.clearTimeout(petAlertTimerRef.current);
       }
+      for (const url of previewUrlsRef.current) URL.revokeObjectURL(url);
+      previewUrlsRef.current.clear();
     };
   }, []);
 
@@ -579,7 +479,7 @@ export function RecordPage() {
                   onClick={() => {
                     if (type === 'weather') setWeather(tag as Weather);
                     else if (type === 'temperature') setTemperature(tag as Temperature);
-                    else setMood(tag as Mood);
+                    else setMood((prev) => (prev === tag ? '' : tag as Mood));
                   }}
                   onStartEdit={() => setEditingTag({ type, original: tag, value: tag })}
                   onEditValueChange={(value) =>
@@ -649,9 +549,9 @@ export function RecordPage() {
     }
     const dateStr = getLocalDateString(currentDate);
     setSavedDateStr(dateStr);
-    setSavedAssistantRecommendations([]);
     setSavedFormat(format);
     setSelectedFormats([format]);
+    setHouseholdEntryMode(undefined);
     setFormatModalOpen(true);
   };
 
@@ -662,10 +562,13 @@ export function RecordPage() {
     if (!user) return;
     const incomingFormat = (location.state as any)?.format as string | undefined;
     const incomingFrom = (location.state as any)?.from as string | undefined;
+    // state를 지우기 전에 가계부 진입 방식(은행 파일 가져오기)을 보관한다.
+    const incomingHouseholdEntry = (location.state as any)?.householdEntry === 'bank' ? 'bank' : undefined;
     if (incomingFrom) setFromPath(incomingFrom);
     if (!incomingFormat) return;
     autoOpenedRef.current = true;
     openFormatDirectly(incomingFormat as RecordFormat);
+    if (incomingFormat === 'HARU가계부') setHouseholdEntryMode(incomingHouseholdEntry);
     // state 소비 후 history에서 제거 — 새로고침/뒤로가기 시 재열림 방지
     navigate(location.pathname, { replace: true, state: null });
   }, [user, location.state]);
@@ -675,6 +578,7 @@ export function RecordPage() {
     const incomingCategory = (location.state as any)?.category as string | undefined;
     if (incomingCategory) {
       setSelectedCategory(incomingCategory as any);
+      setShowOtherEntryMethods(true);
     }
   }, [location.state]);
 
@@ -695,257 +599,117 @@ export function RecordPage() {
     setFormatModalOpen(true);
   };
 
-  const handleLawFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
-    if (!user?.uid) {
-      toast.error('로그인이 필요합니다.');
-      event.target.value = '';
+  const handleDraftPhotosSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const sources = Array.from(event.currentTarget.files || []);
+    if (!sources.length) return;
+    if (photoReadBusyRef.current || formatModalOpen) {
+      event.currentTarget.value = '';
+      toast.warning('사진 준비가 끝난 뒤 다시 선택해 주세요.');
       return;
     }
-    if (!isLawPaidUser) {
-      toast.error('파일 첨부는 베이직·프리미엄 이용권 전용입니다.');
-      event.target.value = '';
+    const remaining = COMMON_PHOTO_LIMIT - draftPhotosRef.current.length;
+    if (remaining <= 0) {
+      event.currentTarget.value = '';
+      toast.warning(`사진은 최대 ${COMMON_PHOTO_LIMIT}장까지 추가할 수 있습니다.`);
       return;
     }
-
-    const remainingSlots = HARULAW_ATTACH_MAX_FILES - lawAttachments.length;
-    if (remainingSlots <= 0) {
-      toast.error('파일은 최대 5개까지 첨부할 수 있습니다.');
-      event.target.value = '';
-      return;
-    }
-
-    const toUpload = files.slice(0, remainingSlots);
-    setUploadingLawFiles(true);
+    // Android 사진 선택기의 원본 스트림은 input을 초기화하거나 await 하기 전에 읽기 시작한다.
+    const pendingReads = startSelectedRecordPhotoReads(sources.slice(0, remaining));
+    event.currentTarget.value = '';
+    photoReadBusyRef.current = true;
+    setPhotoReadBusy(true);
+    const additions: DraftPhoto[] = [];
+    const failures: string[] = [];
+    let totalBytes = draftPhotosRef.current.reduce((sum, photo) => sum + photo.file.size, 0);
     try {
-      for (const file of toUpload) {
-        if (!HARULAW_ATTACH_ALLOWED_TYPES.has(file.type)) {
-          const userError = getHaruLawUserErrorByReason('ATTACHMENT_UNSUPPORTED_TYPE');
-          setLawError(userError);
-          toast.error(userError.title);
-          return;
+      for (const pending of pendingReads) {
+        const selected = await pending;
+        if (selected.ok === false) {
+          failures.push(selected.message);
+          continue;
         }
-        const sizeLimit = file.type === 'application/pdf'
-          ? HARULAW_ATTACH_MAX_PDF_BYTES
-          : HARULAW_ATTACH_MAX_IMAGE_BYTES;
-        if (file.size > sizeLimit) {
-          toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB 이하)`);
-          return;
+        if (totalBytes + selected.file.size > COMMON_PHOTO_TOTAL_BYTES) {
+          failures.push('선택한 사진의 합계는 60MB까지 추가할 수 있습니다.');
+          continue;
         }
-      }
-      const selectedTotalBytes = toUpload.reduce((total, file) => total + file.size, 0);
-      const currentTotalBytes = lawAttachments.reduce(
-        (total, attachment) => total + (attachment.sizeBytes || 0),
-        0,
-      );
-      if (currentTotalBytes + selectedTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES) {
-        const userError = getHaruLawUserErrorByReason('ATTACHMENT_TOTAL_SIZE_EXCEEDED');
-        setLawError(userError);
-        toast.error(userError.title);
-        return;
-      }
-      for (const file of toUpload) {
-        if (file.type === 'application/pdf') {
-          let header: Uint8Array;
-          try {
-            header = new Uint8Array(await file.slice(0, 8).arrayBuffer());
-          } catch {
-            const userError = getHaruLawUserErrorByReason('ATTACHMENT_PDF_UNREADABLE');
-            setLawError(userError);
-            toast.error(userError.title);
-            return;
-          }
-          if (!hasReadableHaruLawPdfHeader(header)) {
-            const userError = getHaruLawUserErrorByReason('ATTACHMENT_PDF_UNREADABLE');
-            setLawError(userError);
-            toast.error(userError.title);
-            return;
-          }
-        }
-      }
-
-      setLawError(null);
-      const uploaded: HaruLawAttachmentRef[] = [];
-      const draftId = `draft_${Date.now()}`;
-      for (let i = 0; i < toUpload.length; i += 1) {
-        const file = toUpload[i];
-        const safeName = `${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-        const path = `users/${user.uid}/haruLawAttachments/${draftId}/${safeName}`;
-        await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
-        uploaded.push({ storagePath: path, mimeType: file.type, fileName: file.name, sizeBytes: file.size });
-      }
-      setLawAttachments((prev) => [...prev, ...uploaded]);
-    } catch {
-      console.error('하루LAW 첨부 업로드 실패');
-      toast.error('파일 업로드에 실패했습니다. 다시 시도해 주세요.');
-    } finally {
-      setUploadingLawFiles(false);
-      event.target.value = '';
-    }
-  };
-
-  const handleLawSearch = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!lawQuery.trim()) return;
-    if (uploadingLawFiles) {
-      toast.info('파일 업로드가 끝난 뒤 전송해 주세요.');
-      return;
-    }
-    setLawLoading(true);
-    setLawResults([]);
-    setLawSummary('');
-    setLawError(null);
-    const attachmentsToSend = [...lawAttachments];
-    try {
-      const functions = getFunctions(undefined, 'asia-northeast3');
-      const lawSearch = httpsCallable(functions, 'lawSearch');
-      const res: any = await lawSearch({
-        query: lawQuery,
-        ...(attachmentsToSend.length > 0 ? { attachments: attachmentsToSend } : {}),
-      });
-      const data = res.data;
-      if (!data.success) {
-        setLawError({
-          reason: 'NO_RESULTS',
-          title: '관련 법령을 찾지 못했습니다',
-          message: data.message || '질문을 조금 더 구체적으로 입력해 주세요.',
-          retryable: false,
+        const previewUrl = URL.createObjectURL(selected.file);
+        previewUrlsRef.current.add(previewUrl);
+        additions.push({
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+          file: selected.file,
+          previewUrl,
         });
-        return;
+        totalBytes += selected.file.size;
       }
-      setLawSaved(false);
-      setActiveLawQuery(lawQuery);
-      setActiveLawAttachments(attachmentsToSend);
-      setLawResults(data.data);
-      setLawSummary(data.aiSummary);
-      // 검색 이력 저장
-      lawSearchHistory.current = [
-        { query: lawQuery, summary: data.aiSummary, articles: data.data },
-        ...lawSearchHistory.current,
-      ].slice(0, 10);
+      if (additions.length) {
+        draftPhotosRef.current = [...draftPhotosRef.current, ...additions];
+        setDraftPhotos(draftPhotosRef.current);
+      }
+      if (sources.length > remaining) failures.push(`사진은 최대 ${COMMON_PHOTO_LIMIT}장까지 추가할 수 있습니다.`);
+      if (failures.length) toast.warning([...new Set(failures)].join(' '));
     } catch (error) {
-      setLawError(getHaruLawUserError(error));
-    } finally {
-      setLawLoading(false);
-    }
-  };
-
-  const handleSaveLawResult = async () => {
-    if (!user || !lawResults.length) return;
-    setIsSavingLaw(true);
-    try {
-      const dateStr = getLocalDateString(currentDate);
-      const articlesText = lawResults
-        .map((a: any) => `[${a.lawName}] ${a.articleStr}(${a.title})\n${a.content}`)
-        .join('\n\n');
-      const recordRef = doc(db, 'users', user.uid, 'records', dateStr);
-      const existingSnap = await getDoc(recordRef);
-      const existingRecord = existingSnap.exists() ? existingSnap.data() : null;
-      const existingFormats = Array.isArray(existingRecord?.formats) ? existingRecord.formats : [];
-      const mergedFormats = Array.from(new Set([...existingFormats, 'HARUraw'])) as RecordFormat[];
-      await firestoreService.saveRecord(user.uid, {
-        id: dateStr,
-        date: dateStr,
-        weather: existingRecord?.weather || weather,
-        temperature: existingRecord?.temperature || temperature,
-        mood: existingRecord?.mood || mood,
-        formats: mergedFormats,
-        content: typeof existingRecord?.content === 'string' ? existingRecord.content : '',
-        sourceAgent: '하루LAW',
-        haruraw_query: activeLawQuery,
-        haruraw_sayu: lawSummary,
-        haruraw_summary: lawSummary,
-        haruraw_articles: articlesText,
-        haruraw_simple: `${activeLawQuery}\n\n${lawSummary}`,
-        ...(activeLawAttachments.length > 0 ? { haruraw_attachments: activeLawAttachments } : {}),
-      });
-      setLawSaved(true);
-      toast.success('하루LAW 분석 결과가 사유-나의 기록에 저장되었습니다.');
-      setTimeout(() => navigate('/sayu', { state: { filterFormat: '하루LAW' } }), 1000);
-    } catch (err) {
-      toast.error('저장에 실패했습니다.');
-    } finally {
-      setIsSavingLaw(false);
-    }
-  };
-
-  const handleAssistantRecommendationSelect = (recommendation: AssistantRecommendation) => {
-    if (recommendation.targetPath) {
-      navigate(recommendation.targetPath);
-      return;
-    }
-
-  };
-
-  const handleEasyExplain = async (article: any, idx: number) => {
-    if (openCard?.idx === idx && openCard?.type === 'explain') {
-      setOpenCard(null);
-      return;
-    }
-    setOpenCard({ idx, type: 'explain', content: '', loading: true });
-
-    try {
-      const fns = getFunctions(undefined, 'asia-northeast3');
-      const fn = httpsCallable(fns, 'lawEasyExplain');
-      const res: any = await fn({
-        lawName: article.lawName,
-        articleStr: article.articleStr,
-        lawText: `${article.articleStr}(${article.title}): ${article.content}`,
-        userQuery: activeLawQuery,
-      });
-      const explanation = res.data.explanation;
-      setOpenCard({ idx, type: 'explain', content: explanation, loading: false });
-    } catch {
-      setOpenCard({ idx, type: 'explain', content: 'AI자문을 불러오지 못했습니다.', loading: false });
-    }
-  };
-
-  const handlePrecedent = async (article: any, idx: number) => {
-    if (openCard?.idx === idx && openCard?.type === 'prec') {
-      setOpenCard(null);
-      return;
-    }
-    setOpenCard({ idx, type: 'prec', content: '', loading: true });
-    try {
-      const fns = getFunctions(undefined, 'asia-northeast3');
-      const fn = httpsCallable(fns, 'lawPrecedent');
-      const res: any = await fn({
-        lawText: `${article.articleStr}(${article.title}): ${article.content}`,
-        userQuery: activeLawQuery,
-      });
-      const precs = res.data.precedents;
-      if (precs.length === 0) {
-        const message = res.data?.message || '관련 판례를 찾을 수 없습니다';
-        const disclaimer = res.data?.disclaimer || '';
-        setOpenCard({
-          idx,
-          type: 'prec',
-          content: `${message}\n\n${disclaimer}`.trim(),
-          loading: false,
-        });
-        return;
+      for (const photo of additions) {
+        URL.revokeObjectURL(photo.previewUrl);
+        previewUrlsRef.current.delete(photo.previewUrl);
       }
-      const body = precs.map((p: any) => {
-        const lines = [
-          `📌 ${p.caseName}`,
-          p.caseNum,
-          p.summary,
-        ];
-        if (p.detailLink) {
-          lines.push(`🔗 법령정보센터에서 전체 판례 보기 ${p.detailLink}`);
-        }
-        return lines.join('\n');
-      }).join('\n\n');
-      setOpenCard({ idx, type: 'prec', content: body, loading: false });
-    } catch {
-      setOpenCard({ idx, type: 'prec', content: '판례를 불러오지 못했습니다.', loading: false });
+      console.error('공통 기록 사진 선택 실패:', error);
+      toast.error('사진을 준비하지 못했습니다. 다시 선택해 주세요.');
+    } finally {
+      photoReadBusyRef.current = false;
+      setPhotoReadBusy(false);
     }
+  };
+
+  const removeDraftPhoto = (photoId: string) => {
+    const photo = draftPhotosRef.current.find((item) => item.id === photoId);
+    if (!photo) return;
+    draftPhotosRef.current = draftPhotosRef.current.filter((item) => item.id !== photoId);
+    setDraftPhotos(draftPhotosRef.current);
+    URL.revokeObjectURL(photo.previewUrl);
+    previewUrlsRef.current.delete(photo.previewUrl);
+  };
+
+  const openDraftEditorForFormat = (format: RecordFormat) => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      navigate('/login');
+      return;
+    }
+    if (photoReadBusyRef.current) {
+      toast.warning('사진 준비가 끝난 뒤 형식을 선택해 주세요.');
+      return;
+    }
+    const content = draftContent.trim();
+    if (!content) {
+      toast.warning('기록할 글을 먼저 작성해 주세요.');
+      return;
+    }
+    const date = getLocalDateString(currentDate);
+    // 편집창에서 저장 결과를 확인하지 못해 돌아온 경우에도 같은 초안 ID로 다시 시도한다.
+    const recordId = draftRecordIdRef.current || `${date}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    draftRecordIdRef.current = recordId;
+    setSavedDateStr(date);
+    setSavedFormat(format);
+    setSelectedFormats([format]);
+    setDraftEditorRecordId(recordId);
+    setDraftEditorData(buildDraftEditorData(format, content, date, recordId));
+    setDraftEditorPhotos(draftPhotosRef.current.map((photo) => photo.file));
+    setFormatPickerOpen(false);
+    setFormatModalOpen(true);
+  };
+
+  const finishDraftAfterSave = (recordId: string) => {
+    if (recordId !== draftRecordIdRef.current) return;
+    draftRecordIdRef.current = null;
+    setDraftContent('');
+    draftPhotosRef.current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+    draftPhotosRef.current = [];
+    setDraftPhotos([]);
   };
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
     if (!user) return;
-    const growthSubjectName =
+    const typedGrowthSubjectName =
       typeof (formatData as any)._growthSubjectName === 'string'
         ? ((formatData as any)._growthSubjectName as string).trim()
         : '';
@@ -953,18 +717,45 @@ export function RecordPage() {
       (formatData as any)._growthSubjectType === 'child' || (formatData as any)._growthSubjectType === 'garden'
         ? ((formatData as any)._growthSubjectType as GrowthSubjectType)
         : undefined;
-    const existingGrowthSubjectId =
+    const formGrowthSubjectId =
       typeof (formatData as any)._growthSubjectId === 'string' && (formatData as any)._growthSubjectId
         ? ((formatData as any)._growthSubjectId as string)
         : undefined;
-    const growthSubjectBirthdate =
+    const typedGrowthSubjectBirthdate =
       typeof (formatData as any)._growthSubjectBirthdate === 'string' && (formatData as any)._growthSubjectBirthdate
         ? ((formatData as any)._growthSubjectBirthdate as string)
         : undefined;
-    const growthSubjectGender =
+    const typedGrowthSubjectGender =
       (formatData as any)._growthSubjectGender === 'M' || (formatData as any)._growthSubjectGender === 'F'
         ? ((formatData as any)._growthSubjectGender as 'M' | 'F')
         : undefined;
+    // 아이를 이름만 써서 새로 추가하는 경우, 저장 직전에 같은 이름의 아이가 이미 있는지 다시 확인한다 —
+    // 대상 목록을 불러오기 전에 저장했거나 다른 기기에서 막 등록한 경우에도 같은 아이가 둘로 갈라지지 않게 한다
+    const sameNameChildLookup =
+      typedGrowthSubjectName && growthSubjectType === 'child' && !formGrowthSubjectId
+        ? await findSameNameChildSubject(user.uid, typedGrowthSubjectName)
+        : undefined;
+    // 확인하지 못했다면(네트워크 오류 등) "같은 이름이 없다"고 보지 않고 저장을 멈춘다 — 그대로 저장하면 같은 아이가 둘로 갈라질 수 있다
+    if (sameNameChildLookup?.status === 'error') {
+      toast.error('같은 이름의 아이가 이미 있는지 확인하지 못했어요. 네트워크를 확인하고 다시 저장해 주세요.');
+      throw new Error('growth subject lookup failed');
+    }
+    const sameNameChild = sameNameChildLookup?.status === 'found' ? sameNameChildLookup.subject : undefined;
+    // 화면에 입력한 생년월일·성별이 이미 등록된 아이의 값과 다르면(대상 목록을 불러오기 전에 저장한 경우 등) 화면의 성장 분석과
+    // 저장 값이 어긋나므로 조용히 바꿔 저장하지 않고 저장을 멈춰 확인을 요청한다
+    if (
+      sameNameChild &&
+      ((typedGrowthSubjectBirthdate && sameNameChild.birthdate && typedGrowthSubjectBirthdate !== sameNameChild.birthdate) ||
+        (typedGrowthSubjectGender && sameNameChild.gender && typedGrowthSubjectGender !== sameNameChild.gender))
+    ) {
+      toast.error(`이미 등록된 "${sameNameChild.name}"의 생년월일·성별과 입력한 값이 달라요. 대상 목록에서 "${sameNameChild.name}"를 선택하거나 입력값을 확인해 주세요.`);
+      throw new Error('growth subject demographics conflict');
+    }
+    const growthSubjectName = sameNameChild?.name || typedGrowthSubjectName;
+    const existingGrowthSubjectId = formGrowthSubjectId || sameNameChild?.id;
+    // 이미 있는 아이에 이어서 기록할 때는 그 아이의 생년월일·성별을 우선한다(위에서 서로 다른 값은 걸러냈으므로 비어 있던 쪽만 채워진다)
+    const growthSubjectBirthdate = sameNameChild?.birthdate || typedGrowthSubjectBirthdate;
+    const growthSubjectGender = sameNameChild?.gender || typedGrowthSubjectGender;
     const shouldSaveGrowthEntry = Boolean(growthSubjectName && growthSubjectType);
     const growthSubjectId = shouldSaveGrowthEntry
       ? existingGrowthSubjectId || doc(collection(db, 'users', user.uid, 'growthSubjects')).id
@@ -979,7 +770,7 @@ export function RecordPage() {
         : undefined;
     const targetRecordDate = customRecordDate || savedDateStr;
     const formatsOverride = Array.isArray((formatData as any).formats)
-      ? ((formatData as any).formats as string[])
+      ? ((formatData as any).formats as RecordFormat[])
       : undefined;
     const updateData: Record<string, any> = {};
     let hasContent = false;
@@ -988,6 +779,9 @@ export function RecordPage() {
       if (typeof value === 'string' && value.trim().length > 0) {
         updateData[key] = value;
         hasContent = true;
+      } else if (key === 'garden_crops' && Array.isArray(value)) {
+        // 텃밭일지에서 고른 작물(문자열 배열). 내용으로 세지는 않는다 — 2026-10-23 결정 ②
+        updateData[key] = value.filter((crop) => typeof crop === 'string' && crop.trim()).map((crop) => crop.trim());
       }
     });
     if (!hasContent) {
@@ -995,12 +789,12 @@ export function RecordPage() {
       return;
     }
     try {
-      const recordId = await firestoreService.saveRecord(user.uid, {
+      const recordData = {
         ...(customRecordId ? { id: customRecordId } : {}),
         date: targetRecordDate,
         weather,
         temperature,
-        mood,
+        ...(mood ? { mood } : {}),
         formats: formatsOverride ?? selectedFormats,
         content: '',
         ...(shouldSaveGrowthEntry && growthSubjectId ? {
@@ -1011,13 +805,21 @@ export function RecordPage() {
           ...(growthSubjectGender ? { growthSubjectGender } : {}),
         } : {}),
         ...updateData,
-      });
-      const recommendationFormats = formatsOverride ?? selectedFormats;
-      const recommendationText = buildRecommendationTextFromFields(updateData);
-      const nextRecommendations = getAssistantRecommendations(
-        recommendationText,
-        recommendationFormats.map((format) => String(format)),
-      );
+      };
+      let recordId: string;
+      if (draftEditorRecordId && customRecordId === draftEditorRecordId) {
+        const quickRecordRef = doc(db, 'users', user.uid, 'records', customRecordId);
+        const existingQuickRecord = await getDoc(quickRecordRef);
+        if (existingQuickRecord.exists()) {
+          await setDoc(quickRecordRef, { ...recordData, updatedAt: new Date().toISOString() }, { merge: true });
+          recordId = customRecordId;
+        } else {
+          recordId = await firestoreService.saveRecord(user.uid, recordData);
+        }
+      } else {
+        recordId = await firestoreService.saveRecord(user.uid, recordData);
+      }
+      const savedFormats = formatsOverride ?? selectedFormats;
       if (shouldSaveGrowthEntry && growthSubjectId && growthSubjectType) {
         const sourceFormat =
           typeof (formatData as any)._sourceFormat === 'string' && (formatData as any)._sourceFormat
@@ -1093,11 +895,7 @@ export function RecordPage() {
           { merge: true },
         );
       }
-      if (
-        savedFormat === '애완동물관찰일지' ||
-        recommendationFormats.map((format) => String(format)).includes('애완동물관찰일지') ||
-        recommendationFormats.map((format) => String(format)).includes('pet')
-      ) {
+      if (savedFormats.includes('애완동물관찰일지') || savedFormats.includes('pet')) {
         const level = detectPetAlertLevel(updateData as Record<string, string>);
         if (level) {
           setPetAlertLevel(level);
@@ -1110,7 +908,7 @@ export function RecordPage() {
           }, 8000);
         }
       }
-      setSavedAssistantRecommendations(nextRecommendations);
+      finishDraftAfterSave(recordId);
       toast.success('내용이 저장되었습니다!');
       return recordId;
     } catch (error) {
@@ -1128,6 +926,76 @@ export function RecordPage() {
         {/* Title Animation */}
         <section className="flex items-center justify-center py-1">
           <RecordTitleAnimation />
+        </section>
+
+        <section className="bg-white rounded-lg p-4 shadow-sm">
+          <h2 className="text-base font-semibold" style={{ color: '#1A3C6E' }}>오늘의 기록</h2>
+          <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 형식을 고르면 작성한 글과 사진으로 AI 도움을 받거나 그대로 저장할 수 있습니다.</p>
+          <textarea
+            aria-label="기록 내용"
+            value={draftContent}
+            onChange={(event) => setDraftContent(event.target.value)}
+            placeholder="오늘 남기고 싶은 이야기를 적어 주세요..."
+            rows={3}
+            className="w-full rounded-lg border p-3 text-base"
+            style={{ resize: 'vertical' }}
+          />
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-sm font-medium" style={{ color: '#1A3C6E' }}>사진 {draftPhotos.length}/{COMMON_PHOTO_LIMIT}</span>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*,.heic,.heif"
+              multiple
+              aria-label="기록 사진 선택"
+              className="hidden"
+              onChange={handleDraftPhotosSelected}
+              disabled={photoReadBusy || draftPhotos.length >= COMMON_PHOTO_LIMIT}
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={photoReadBusy || draftPhotos.length >= COMMON_PHOTO_LIMIT}
+              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
+              style={{ color: '#1A3C6E' }}
+            >
+              <Camera className="h-4 w-4" />
+              {photoReadBusy ? '사진 준비 중...' : '사진 추가'}
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">사진은 최대 5장까지 고를 수 있고, 편집창에서 최종 저장 전에 업로드됩니다.</p>
+          {draftPhotos.length > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label="선택한 사진 미리보기">
+              {draftPhotos.map((photo, index) => (
+                <div key={photo.id} className="relative aspect-square overflow-hidden rounded-lg border bg-gray-50">
+                  <img src={photo.previewUrl} alt={`선택한 사진 ${index + 1}`} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    aria-label={`사진 ${index + 1} 제거`}
+                    onClick={() => removeDraftPhoto(photo.id)}
+                    className="absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white disabled:opacity-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (!draftContent.trim()) {
+                toast.warning('기록할 글을 먼저 작성해 주세요.');
+                return;
+              }
+              setFormatPickerOpen(true);
+            }}
+            disabled={photoReadBusy}
+            className="mt-3 w-full rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-50"
+            style={{ backgroundColor: '#1A3C6E' }}
+          >
+            저장하기
+          </button>
         </section>
 
         {/* Date */}
@@ -1183,14 +1051,24 @@ export function RecordPage() {
           </div>
         </section>
 
-        {/* Format Selection */}
-        <section className="bg-white rounded-lg p-3 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setShowOtherEntryMethods((open) => !open)}
+          className="w-full rounded-lg border bg-white px-3 py-2 text-left text-xs"
+          style={{ color: '#1A3C6E' }}
+        >
+          {showOtherEntryMethods ? '기존 형식 입력창 닫기' : '기존 형식 입력창 · 하루LAW 열기'}
+        </button>
+
+        {/* 기존 형식별 바로 작성과 하루LAW 진입 */}
+        {showOtherEntryMethods && (
+        <section ref={lawEntrySectionRef} className="bg-white rounded-lg p-3 shadow-sm">
           <div className="mb-2">
             <h2 className="text-xs tracking-wider" style={{ color: '#666666' }}>
-              형식 선택
+              형식별 작성
             </h2>
             <p className="text-xs mt-0.5" style={{ color: '#999999' }}>
-              형식을 선택하면 바로 글쓰기
+              기존 형식 입력창으로 바로 작성할 수도 있습니다.
             </p>
           </div>
 
@@ -1292,356 +1170,11 @@ export function RecordPage() {
               </div>
             </div>
           ) : selectedCategory === '하루LAW' ? (
-  !lawGuideConfirmed ? (
-    <div style={{
-      backgroundColor: '#f0f4ff',
-      border: '1px solid #c7d9f8',
-      borderRadius: 12,
-      padding: 20,
-      marginTop: 4,
-    }}>
-      <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', marginBottom: 12 }}>
-        ⚖️ 하루LAW 법률 자문 서비스
-      </p>
-      <div style={{ fontSize: 13, color: '#444', lineHeight: 1.8, marginBottom: 16 }}>
-        <p style={{ marginBottom: 8 }}>
-          📌 국가 법령정보센터 공식 API로 실제 법령을 검색하고, AI가 분석하여 자문을 제공합니다.
-        </p>
-        <p style={{ marginBottom: 8 }}>
-          ✅ 실제 법령 데이터 기반으로 분석하기 때문에 AI가 법령을 임의로 만들어내는 환각(Hallucination) 현상이 없습니다.
-        </p>
-        <p style={{ marginBottom: 8 }}>
-          💡 가해자·피해자 두 가지 관점에서 가상 시나리오로 자문을 드립니다.
-        </p>
-        <p style={{ color: '#cc4444', fontWeight: 600 }}>
-          ⚠️ 본 서비스는 참고용 자문이며, 실제 법적 조치는 반드시 변호사와 상담하시기 바랍니다.
-        </p>
-      </div>
-      <button
-        onClick={() => setLawGuideConfirmed(true)}
-        style={{
-          width: '100%',
-          padding: '12px 0',
-          backgroundColor: '#1A3C6E',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 8,
-          fontWeight: 700,
-          fontSize: 14,
-          cursor: 'pointer',
-        }}
-      >
-        확인했습니다, 자문 받기 →
-      </button>
-    </div>
-  ) : (
-            <div>
-              {/* 검색창 */}
-              <form onSubmit={handleLawSearch} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    type="text"
-                    value={lawQuery}
-                    onChange={(e) => setLawQuery(e.target.value)}
-                    disabled={lawLoading || uploadingLawFiles}
-                    placeholder="예: 내 딸아이가 친구로부터 사이버 괴롭힘을 당하고 있어요 어떻게 하면 좋을까요?"
-                    style={{
-                      flex: 1, padding: '10px 12px', fontSize: 16,
-                      border: '1.5px solid #1A3C6E', borderRadius: 8,
-                      outline: 'none', backgroundColor: '#FEFBE8',
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => lawFileInputRef.current?.click()}
-                    disabled={!isLawPaidUser || lawLoading || uploadingLawFiles || lawAttachments.length >= HARULAW_ATTACH_MAX_FILES}
-                    title={!isLawPaidUser ? '베이직·프리미엄 이용권 전용' : '파일 첨부 (이미지·PDF, 최대 5개)'}
-                    style={{
-                      padding: '10px 12px',
-                      backgroundColor: !isLawPaidUser ? '#E5E7EB' : '#EEF2FF',
-                      color: !isLawPaidUser ? '#9CA3AF' : '#1A3C6E',
-                      border: '1.5px solid',
-                      borderColor: !isLawPaidUser ? '#D1D5DB' : '#1A3C6E',
-                      borderRadius: 8,
-                      cursor: !isLawPaidUser || lawLoading || uploadingLawFiles || lawAttachments.length >= HARULAW_ATTACH_MAX_FILES ? 'not-allowed' : 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      position: 'relative',
-                    }}
-                  >
-                    <Paperclip size={16} />
-                    {lawAttachments.length > 0 && (
-                      <span style={{
-                        position: 'absolute',
-                        top: -6,
-                        right: -6,
-                        backgroundColor: '#1A3C6E',
-                        color: '#FFFFFF',
-                        borderRadius: '50%',
-                        width: 16,
-                        height: 16,
-                        fontSize: 10,
-                        fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                        {lawAttachments.length}
-                      </span>
-                    )}
-                  </button>
-                  <input
-                    ref={lawFileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf"
-                    multiple
-                    style={{ display: 'none' }}
-                    onChange={handleLawFileSelect}
-                  />
-                  <button
-                    type="submit"
-                    disabled={lawLoading || uploadingLawFiles}
-                    style={{
-                      padding: '10px 14px', backgroundColor: lawLoading || uploadingLawFiles ? '#CBD5E1' : '#1A3C6E',
-                      color: '#fff', border: 'none', borderRadius: 8,
-                      fontWeight: 600, fontSize: 13, cursor: lawLoading || uploadingLawFiles ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    법률자문
-                  </button>
-                </div>
-                {lawAttachments.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                    {lawAttachments.map((att, index) => (
-                      <div
-                        key={att.storagePath}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, backgroundColor: '#EEF2FF', borderRadius: 8, padding: '4px 8px', fontSize: 12, color: '#1A3C6E', maxWidth: 180 }}
-                      >
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {att.mimeType === 'application/pdf' ? 'PDF' : '이미지'} · {att.fileName}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setLawAttachments((prev) => prev.filter((_, itemIndex) => itemIndex !== index))}
-                          aria-label="첨부 제거"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#6B7280', padding: 0, lineHeight: 1 }}
-                        >
-                          x
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {uploadingLawFiles && (
-                  <p style={{ fontSize: 12, color: '#6B7280', margin: '6px 0 0' }}>파일 업로드 중...</p>
-                )}
-                {!isLawPaidUser && (
-                  <p style={{ fontSize: 11, color: '#9CA3AF', margin: '6px 0 0' }}>
-                    파일 첨부는 베이직·프리미엄 이용권 전용 기능입니다.
-                  </p>
-                )}
-              </form>
-
-              {/* 로딩 */}
-              {lawLoading && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '16px 0' }}>
-                  <GrapeLoadingMini size={32} />
-                  <span style={{ color: '#1A3C6E', fontSize: 13 }}>⚖️ 법령 분석 중...</span>
-                </div>
-              )}
-
-              {/* 에러 */}
-              {lawError && (
-                <div style={{
-                  padding: 12, backgroundColor: '#fff3f3',
-                  border: '1px solid #ffcccc', borderRadius: 8,
-                  color: '#cc0000', fontSize: 13, marginBottom: 8,
-                }}>
-                  <strong style={{ display: 'block', marginBottom: 4 }}>{lawError.title}</strong>
-                  <span style={{ display: 'block', lineHeight: 1.6 }}>{lawError.message}</span>
-                  {lawError.retryable && lawError.actionLabel && (
-                    <button
-                      type="button"
-                      disabled={lawLoading || uploadingLawFiles}
-                      onClick={() => handleLawSearch()}
-                      style={{
-                        marginTop: 8,
-                        padding: '6px 10px',
-                        border: '1px solid #cc0000',
-                        borderRadius: 7,
-                        backgroundColor: '#FFFFFF',
-                        color: '#A00000',
-                        fontSize: 12,
-                        fontWeight: 800,
-                        cursor: lawLoading || uploadingLawFiles ? 'wait' : 'pointer',
-                      }}
-                    >
-                      {lawError.actionLabel}
-                    </button>
-                  )}
-                </div>
-              )}
-
-
-              {lawResults.length > 0 && (
-                <div style={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #D9E5FF',
-                  borderRadius: 12,
-                  padding: 14,
-                  marginBottom: 10,
-                  boxShadow: '0 1px 2px rgba(26,60,110,0.06)',
-                }}>
-                  <p style={{ fontSize: 12, color: '#6B7280', fontWeight: 800, marginBottom: 6 }}>질문</p>
-                  <p style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 700, lineHeight: 1.6, marginBottom: 12 }}>
-                    {activeLawQuery}
-                  </p>
-                  <p style={{ fontSize: 12, color: '#6B7280', fontWeight: 800, marginBottom: 6 }}>핵심 답변</p>
-                  <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, marginBottom: 12 }}>
-                    {lawSummary || '관련 조문을 바탕으로 검토가 필요합니다. 사례관계에 따라 실제 판단은 달라질 수 있습니다.'}
-                  </p>
-                  <p style={{ fontSize: 12, color: '#6B7280', fontWeight: 800, marginBottom: 6 }}>AI 분석</p>
-                  <p style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.7, marginBottom: 12 }}>
-                    아래 관련 조문을 기준으로 쉬운 해석을 확인할 수 있습니다. 단정적인 결론이 아니라 가능성, 주의점, 추가 확인이 필요한 부분을 중심으로 보세요.
-                  </p>
-                  <p style={{ fontSize: 11, color: '#92400E', lineHeight: 1.6, margin: 0 }}>
-                    본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체하지 않습니다.
-                  </p>
-                </div>
-              )}
-
-              {/* 법령 카드 목록 */}
-              {lawResults.map((article, idx) => (
-                <div key={idx} style={{
-                  backgroundColor: '#fff', border: '1px solid #e0e0e0',
-                  borderRadius: 8, padding: 12, marginBottom: 8,
-                }}>
-                  <p style={{ fontSize: 13, fontWeight: 800, color: '#1A3C6E', marginBottom: 8 }}>
-                    {getLawEasySummary(article.title, `${article.lawName} ${article.articleStr}`, article.content)}
-                  </p>
-
-                  {/* 법령 뱃지 + 법령명 */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                    <span style={{
-                      backgroundColor: '#1A3C6E', color: '#fff',
-                      borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700,
-                    }}>
-                      {article.articleStr}
-                    </span>
-                    <span style={{ fontSize: 11, color: '#777' }}>{article.lawName}</span>
-                  </div>
-
-                  {/* 조문 제목 */}
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#222', marginBottom: 4 }}>
-                    {article.title}
-                  </p>
-
-                  {/* 조문 내용 */}
-                  <p style={{ fontSize: 12, color: '#555', lineHeight: 1.6, marginBottom: 10 }}>
-                    {article.content}
-                  </p>
-
-                  {/* 버튼 */}
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      onClick={() => handleEasyExplain(article, idx)}
-                      style={{
-                        flex: 1, padding: '6px 0', fontSize: 11, fontWeight: 600,
-                        backgroundColor: openCard?.idx === idx && openCard?.type === 'explain'
-                          ? '#1A3C6E' : '#EEF4FF',
-                        color: openCard?.idx === idx && openCard?.type === 'explain'
-                          ? '#fff' : '#1A3C6E',
-                        border: '1px solid #c7d9f8', borderRadius: 6, cursor: 'pointer',
-                      }}
-                    >
-                      💡 AI 해석보기
-                    </button>
-                    {/* 1차 버전에서는 판례 숨김 */}
-                  </div>
-
-                  {/* 인라인 결과 펼침 */}
-                  {openCard?.idx === idx && openCard.type === 'explain' && (
-                    <div style={{ marginTop: 10, borderRadius: 8, overflow: 'hidden' }}>
-                      {openCard.loading ? (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: 16 }}>
-                          <GrapeLoadingMini size={28} />
-                          <span style={{ fontSize: 12, color: '#999' }}>분석 중...</span>
-                        </div>
-                      ) : (
-                        renderStyledContent(openCard.content)
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* 저장 버튼 */}
-              {lawResults.length > 0 && (
-                <div style={{ marginTop: 4, marginBottom: 12 }}>
-                  <button
-                    onClick={handleSaveLawResult}
-                    disabled={isSavingLaw || lawSaved}
-                    style={{
-                      width: '100%',
-                      padding: '10px 0',
-                      backgroundColor: lawSaved ? '#10b981' : '#1A3C6E',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: 8,
-                      fontWeight: 600,
-                      fontSize: 13,
-                      cursor: lawSaved ? 'default' : 'pointer',
-                    }}
-                  >
-                    {lawSaved ? '✅ 저장 완료!' : isSavingLaw ? '저장 중...' : '💾 사유-나의 기록에 저장'}
-                  </button>
-                  <p style={{ marginTop: 8, fontSize: 12, color: '#6B7280', lineHeight: 1.5, textAlign: 'center' }}>
-                    분석 결과는 사유-나의 기록에 저장해 나중에 다시 확인할 수 있습니다.
-                  </p>
-                </div>
-              )}
-
-              {/* 검색 이력 목록 */}
-              {lawSearchHistory.current.length > 0 && lawResults.length === 0 && !lawLoading && (
-                <div>
-                  <p style={{ fontSize: 11, color: '#999', marginBottom: 8 }}>최근 검색 이력</p>
-                  {lawSearchHistory.current.map((item, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => {
-                        setLawQuery(item.query);
-                        setLawResults(item.articles);
-                        setLawSummary(item.summary);
-                      }}
-                      style={{
-                        padding: '8px 12px', backgroundColor: '#fff',
-                        border: '1px solid #e5e5e5', borderRadius: 8,
-                        marginBottom: 6, cursor: 'pointer', fontSize: 13, color: '#333',
-                      }}
-                    >
-                      ⚖️ {item.query}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* 초기 안내 */}
-              {!lawLoading && lawResults.length === 0 && !lawError && lawSearchHistory.current.length === 0 && (
-                <p style={{ textAlign: 'center', color: '#999', fontSize: 13, padding: '16px 0' }}>
-                  일상어로 질문하시면 관련 법령을 찾아드립니다
-                </p>
-              )}
-
-              {/* 면책 문구 */}
-              <p style={{ fontSize: 10, color: '#bbb', textAlign: 'center', marginTop: 12 }}>
-                본 서비스는 법령 정보 제공 목적이며, 법률 자문을 대체하지 않습니다.
-              </p>
-            </div>
-  )
+            <HaruLawPanel law={haruLaw} />
           ) : selectedCategory ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {CATEGORY_FORMATS[selectedCategory]
+                .filter((format) => format !== 'HARU가계부' && format !== 'HARU보조장부')
                 .map((format) => {
                 return (
                   <button
@@ -1668,9 +1201,27 @@ export function RecordPage() {
           )}
 
         </section>
+        )}
 
       </div>
     </div>
+
+    {formatPickerOpen && (
+      <div role="dialog" aria-modal="true" aria-label="저장할 기록 형식 선택" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl bg-white p-5">
+          <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>어떤 형식으로 저장할까요?</h2>
+          <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요. 작성한 글과 사진으로 AI 도움 안내가 이어집니다.</p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {WRITABLE_FORMATS.map((format) => (
+              <button key={format} type="button" onClick={() => openDraftEditorForFormat(format)} className="rounded-lg border p-3 text-left text-sm hover:bg-yellow-50">
+                {format === '애완동물관찰일지' ? '반려동물' : format}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => setFormatPickerOpen(false)} className="mt-4 w-full rounded-lg border py-2 text-sm">돌아가기</button>
+        </div>
+      </div>
+    )}
 
     {diaryLearnOpen && <DiaryLearnModal onClose={() => setDiaryLearnOpen(false)} />}
     {savedFormat && (
@@ -1678,68 +1229,25 @@ export function RecordPage() {
         isOpen={formatModalOpen}
         onClose={() => {
           setFormatModalOpen(false);
+          setHouseholdEntryMode(undefined);
+          if (draftEditorRecordId) {
+            setDraftEditorRecordId(null);
+            setDraftEditorData(undefined);
+            setDraftEditorPhotos([]);
+            return;
+          }
           closeToOrigin();
         }}
         format={savedFormat}
-        recordId={savedDateStr}
-        onSave={handleSaveFormatData}
+        recordId={draftEditorRecordId || savedDateStr}
+        initialData={draftEditorData}
+        initialPhotos={draftEditorPhotos}
+        initialWritingDraft={!!draftEditorRecordId}
+        householdEntryMode={savedFormat === 'HARU가계부' ? householdEntryMode : undefined}
+        onSave={(data) => handleSaveFormatData(draftEditorRecordId
+          ? applyDraftSaveTarget(data, draftEditorRecordId, savedDateStr)
+          : data)}
       />
-    )}
-    {savedAssistantRecommendations.length > 0 && !formatModalOpen && (
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="기록 속 비서 연결"
-        style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.42)',
-          zIndex: 1100,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 16,
-        }}
-      >
-        <div
-          style={{
-            width: '100%',
-            maxWidth: 520,
-            maxHeight: '86vh',
-            overflowY: 'auto',
-            borderRadius: 12,
-            backgroundColor: '#FFFFFF',
-            padding: 16,
-            boxShadow: '0 20px 44px rgba(15, 23, 42, 0.24)',
-          }}
-        >
-          <AssistantRecommendationCards
-            recommendations={savedAssistantRecommendations}
-            title="이 기록에서 도움받을 수 있는 AI 비서를 찾았습니다."
-            description="기록 속 고민 키워드를 바탕으로 필요한 비서와 연결할 수 있습니다."
-            privacyNote="선택한 경우에만 해당 기록 내용을 비서에게 전달합니다."
-            onSelect={handleAssistantRecommendationSelect}
-          />
-          <button
-            type="button"
-            onClick={() => setSavedAssistantRecommendations([])}
-            style={{
-              width: '100%',
-              minHeight: 40,
-              marginTop: 12,
-              borderRadius: 8,
-              border: '1px solid #D7D2E8',
-              backgroundColor: '#FFFFFF',
-              color: '#1A3C6E',
-              fontSize: 13,
-              fontWeight: 800,
-              cursor: 'pointer',
-            }}
-          >
-            닫기
-          </button>
-        </div>
-      </div>
     )}
     <PetHealthAlert
       level={petAlertLevel}

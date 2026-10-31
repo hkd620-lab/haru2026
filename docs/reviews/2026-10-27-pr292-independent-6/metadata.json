@@ -1,0 +1,15 @@
+{
+  "reviewHead": "756cc3b1ad30043109b02ee0439460805a2d99ac",
+  "baselineMain": "0df591459d771e6926d593a44aa5d29b2eab8117",
+  "resultWrittenAtUtc": "2026-10-26T23:08:23.650705+00:00",
+  "actualStartedAtUtc": "확인 불가",
+  "result": "승인",
+  "conditionalApprovalCount": 1,
+  "previousAttempts": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ]
+}

@@ -1,0 +1,12 @@
+auth callback diagnostics tests passed
+✔ test/authCallbackDiagnostics.test.mjs (1056.662292ms)
+sns thumbnail auth cache tests passed
+✔ test/snsThumbnailAuthCache.test.mjs (119.7885ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1064.956084

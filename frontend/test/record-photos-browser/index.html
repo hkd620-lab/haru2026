@@ -1,0 +1,3 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0"><div id="root"></div><script type="module">
+if(new URLSearchParams(location.search).has('mobile')){const params=new URLSearchParams(location.search);params.delete('mobile');params.set('app','');if(!params.has('draft'))params.set('edit','');const frame=document.createElement('iframe');frame.title='390px 휴대폰 검증';frame.src='/?'+params.toString();frame.style='width:390px;height:844px;border:1px solid #aaa';document.getElementById('root').append(frame);}else{import('/main.tsx');}
+</script></body></html>

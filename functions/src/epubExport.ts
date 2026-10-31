@@ -1,15 +1,35 @@
 /**
  * HARU2026 EPUB 내보내기 — Firebase Function
  * Firestore: users/{uid}/records/{date}
- * 요청: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD' }
- * 응답: { success, base64, fileName, count }
+ * 요청: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD', format?, singleRecordId?, recordIds?, filter? }
+ *   recordIds 가 있으면 합본 화면·PDF에 보인 기록만 같은 순서로 담는다(SAYU 글 + 그 형식 사진, 서버에서 조건 재확인).
+ * 응답: { success, downloadUrl, fileName, count, skippedPhotos }
  */
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { hasInternalPremiumAccess } from './internalEntitlements';
+import { buildFormatPrefixMap } from './formats/formatRegistry';
 import Epub from 'epub-gen-memory';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  createTempPhotoFetcher,
+  escapeHtml,
+  preparePhotos,
+  getRecordPhotoUrls,
+  isEligibleMergeRecord,
+  isMergeRecordFormat,
+  mergeRecordToHtml,
+  validateRecordIds,
+} from './epubContent';
 
 const db = admin.firestore();
+
+interface EpubPhoto {
+  url: string;
+  caption?: string;
+}
 
 const EPUB_INCLUDE_FORMATS = [
   '일기', '에세이', '선교보고', '일반보고', '업무일지',
@@ -18,58 +38,52 @@ const EPUB_INCLUDE_FORMATS = [
   '메모', '성장타임라인',
 ];
 
-const FORMAT_PREFIX: Record<string, string> = {
-  '일기': 'diary',
-  '에세이': 'essay',
-  '선교보고': 'mission',
-  '일반보고': 'report',
-  '업무일지': 'work',
-  '여행기록': 'travel',
-  '독서사유': 'reading',
-  '텃밭일지': 'garden',
-  '애완동물관찰일지': 'pet',
-  '육아일기': 'child',
-  '성장기록': 'growth',
-  'HARU주식관리': 'stock',
-  '주식거래일지': 'stock',
-  '메모': 'memo',
-  '성장타임라인': 'growthTimeline',
-};
+// 형식별 저장 필드 접두어(값은 Functions 형식 등록부, 내보내는 15개 형식, 순서 유지)
+const FORMAT_PREFIX: Record<string, string> = buildFormatPrefixMap([
+  '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '독서사유', '텃밭일지',
+  '애완동물관찰일지', '육아일기', '성장기록', 'HARU주식관리', '주식거래일지', '메모', '성장타임라인',
+]);
 
 function dateLabel(date: string): string {
   return date.replace(/-/g, '.');
 }
 
-function recordToHtml(record: Record<string, any>): string {
+function recordTitle(record: Record<string, any>, format?: string): string | undefined {
+  const prefix = format ? FORMAT_PREFIX[format] : undefined;
+  const candidates = [prefix ? record[`${prefix}_title`] : undefined, record.title, record.ai_title];
+  return candidates.find((value): value is string => typeof value === 'string' && value.trim().length > 0)?.trim();
+}
+
+// 본문 HTML(사진 제외). 사진은 내려받기 확인 뒤 호출하는 쪽에서 붙인다.
+// bodyFormat 이 있으면 그 형식의 본문을, 없으면 기록의 첫 번째 포함 형식 본문을 쓴다.
+// 타임라인 사진은 timelinePhotos 로 돌려주고(본문에 원격 주소를 넣지 않음), 다른 사진과 같은 준비 단계를 거친다.
+function recordToHtml(record: Record<string, any>, bodyFormat?: string, timelinePhotos: EpubPhoto[] = []): string {
   const lines: string[] = [];
 
   // 날씨/기분
-  if (record.weather) lines.push(`<p>날씨: ${record.weather}${record.temperature ? ` / ${record.temperature}` : ''}</p>`);
-  if (record.mood) lines.push(`<p>기분: ${record.mood}</p>`);
-
-  // 제목
-  const title = record.title || record.ai_title;
-  if (title) lines.push(`<h2>${String(title)}</h2>`);
+  if (record.weather) lines.push(`<p>날씨: ${escapeHtml(String(record.weather))}${record.temperature ? ` / ${escapeHtml(String(record.temperature))}` : ''}</p>`);
+  if (record.mood) lines.push(`<p>기분: ${escapeHtml(String(record.mood))}</p>`);
 
   // 본문
   const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
   const includedFormats = formats.filter((f) => EPUB_INCLUDE_FORMATS.includes(f));
-  const firstFormat = includedFormats[0] ?? null;
+  const firstFormat = bodyFormat && includedFormats.includes(bodyFormat) ? bodyFormat : (includedFormats[0] ?? null);
   const prefix = firstFormat ? (FORMAT_PREFIX[firstFormat] ?? null) : null;
+  const title = recordTitle(record, firstFormat ?? undefined);
+  if (title) lines.push(`<h2>${escapeHtml(title)}</h2>`);
   let bodyAdded = false;
 
   if (record.recordType === 'growthTimeline') {
     // 성장타임라인: content 필드(buildTimelineSummary 결과) + timelineItems 사진
     if (record.content) {
-      lines.push(`<div>${String(record.content).replace(/\n/g, '<br/>')}</div>`);
+      lines.push(`<div>${escapeHtml(String(record.content)).replace(/\n/g, '<br/>')}</div>`);
       bodyAdded = true;
     }
     const items = Array.isArray(record.timelineItems) ? record.timelineItems : [];
     for (const item of items) {
-      if (item?.url) {
+      if (typeof item?.url === 'string' && /^https?:\/\//.test(item.url)) {
         const cap = [item.takenDate, item.locationLabel, item.memo].filter(Boolean).join(' · ');
-        lines.push(`<img src="${item.url}" style="max-width:100%;margin:8px 0;">`);
-        if (cap) lines.push(`<p style="font-size:0.85em;color:#666;">${cap}</p>`);
+        timelinePhotos.push({ url: item.url, caption: cap || undefined });
         bodyAdded = true;
       }
     }
@@ -77,7 +91,7 @@ function recordToHtml(record: Record<string, any>): string {
     // 성장기록 전용: growth_sayu → growth_note 본문 + child_* 측정값
     const growthBody = record.growth_sayu ?? record.growth_note ?? null;
     if (growthBody) {
-      lines.push(`<div>${String(growthBody).replace(/\n/g, '<br/>')}</div>`);
+      lines.push(`<div>${escapeHtml(String(growthBody)).replace(/\n/g, '<br/>')}</div>`);
       bodyAdded = true;
     }
     const measurements: string[] = [];
@@ -86,21 +100,21 @@ function recordToHtml(record: Record<string, any>): string {
     if (record.child_weight) measurements.push(`몸무게: ${record.child_weight}`);
     if (record.child_headcircum) measurements.push(`머리둘레: ${record.child_headcircum}`);
     if (measurements.length > 0) {
-      lines.push(`<p>${measurements.join('<br/>')}</p>`);
+      lines.push(`<p>${measurements.map(escapeHtml).join('<br/>')}</p>`);
       bodyAdded = true;
     }
   } else if (prefix) {
     // 일반 포맷 — prefix_sayu → prefix_simple → prefix_content 우선
     const bodyText = record[`${prefix}_sayu`] ?? record[`${prefix}_simple`] ?? record[`${prefix}_content`] ?? null;
     if (bodyText) {
-      lines.push(`<div>${String(bodyText).replace(/\n/g, '<br/>')}</div>`);
+      lines.push(`<div>${escapeHtml(String(bodyText)).replace(/\n/g, '<br/>')}</div>`);
       bodyAdded = true;
     }
     if (!bodyAdded) {
       // 블랙리스트 제외 prefix_ 필드 조합
       const SUFFIX_BLACKLIST = new Set([
         '_sayu', '_simple', '_content', '_mode', '_style',
-        '_polishedAt', '_final_sayu', '_imageMeta',
+        '_polishedAt', '_final_sayu', '_imageMeta', '_images',
       ]);
       const bodyParts: string[] = [];
       for (const [key, val] of Object.entries(record)) {
@@ -109,7 +123,7 @@ function recordToHtml(record: Record<string, any>): string {
         bodyParts.push(`${key.slice(prefix.length + 1)}: ${val}`);
       }
       if (bodyParts.length > 0) {
-        lines.push(`<div>${bodyParts.join('<br/>')}</div>`);
+        lines.push(`<div>${bodyParts.map(escapeHtml).join('<br/>')}</div>`);
         bodyAdded = true;
       }
     }
@@ -117,26 +131,6 @@ function recordToHtml(record: Record<string, any>): string {
 
   if (!bodyAdded) {
     lines.push('<p>(내용 없음)</p>');
-  }
-
-  // 이미지 — record.images 배열 우선, 없으면 imageMeta 필드
-  if (Array.isArray(record.images) && record.images.length > 0) {
-    for (const url of record.images) {
-      if (typeof url === 'string' && url) lines.push(`<img src="${url}" style="max-width:100%;margin:8px 0;">`);
-    }
-  } else {
-    for (const [key, val] of Object.entries(record)) {
-      if (!key.endsWith('imageMeta')) continue;
-      let items: any[] = [];
-      if (Array.isArray(val)) {
-        items = val;
-      } else if (typeof val === 'string') {
-        try { const parsed = JSON.parse(val); if (Array.isArray(parsed)) items = parsed; } catch { /* 무시 */ }
-      }
-      for (const item of items) {
-        if (item?.url) lines.push(`<img src="${item.url}" style="max-width:100%;margin:8px 0;">`);
-      }
-    }
   }
 
   return lines.join('\n');
@@ -166,8 +160,10 @@ async function requirePaidSubscription(uid: string): Promise<void> {
 export const exportEpub = onCall(
   {
     region: 'asia-northeast3',
-    timeoutSeconds: 120,
-    memory: '512MiB',
+    // 사진을 포함한 EPUB 생성 여유를 확보하고 한 인스턴스의 생성 작업이 겹치지 않게 한다.
+    timeoutSeconds: 300,
+    memory: '1GiB',
+    concurrency: 1,
   },
   async (request) => {
     if (!request.auth) {
@@ -176,49 +172,129 @@ export const exportEpub = onCall(
     const uid = request.auth.uid;
     await requirePaidSubscription(uid);
 
-    const { startDate, endDate, format } = request.data as { startDate: string; endDate: string; format?: string };
+    const { startDate, endDate, format, filter } = request.data as { startDate: string; endDate: string; format?: string; filter?: string };
     if (!startDate || !endDate || startDate > endDate) {
       throw new HttpsError('invalid-argument', '날짜 범위가 올바르지 않습니다.');
     }
-
-    const recordsRef = db.collection(`users/${uid}/records`);
-    const snapshot = await recordsRef
-      .where('date', '>=', startDate)
-      .where('date', '<=', endDate)
-      .orderBy('date', 'asc')
-      .get();
-
-    if (snapshot.empty) {
-      throw new HttpsError('not-found', '선택한 기간에 기록이 없습니다.');
+    const recordIds = validateRecordIds((request.data as { recordIds?: unknown }).recordIds);
+    const singleRecordId = (request.data as { singleRecordId?: unknown }).singleRecordId;
+    if (singleRecordId !== undefined && (
+      validateRecordIds([singleRecordId])?.length !== 1 || recordIds !== null
+    )) {
+      throw new HttpsError('invalid-argument', '선택한 기록 ID가 올바르지 않습니다.');
+    }
+    if (recordIds !== null && (recordIds.length === 0 || !isMergeRecordFormat(format))) {
+      throw new HttpsError('invalid-argument', '합본 기록 목록이 올바르지 않습니다.');
     }
 
-    const chapters: { title: string; content: string }[] = [];
-    snapshot.forEach((docSnap) => {
+    const chapters: { title: string; content: string; photos: EpubPhoto[]; photoOnly?: boolean }[] = [];
+
+    if (recordIds) {
+      // 합본: 화면·PDF에 보인 기록만 같은 순서로. 본인 기록 경로에서만 읽고 조건을 다시 확인한다.
+      const prefix = FORMAT_PREFIX[format as string];
+      const refs = recordIds.map((id) => db.doc(`users/${uid}/records/${id}`));
+      const snaps = [];
+      for (let i = 0; i < refs.length; i += 100) snaps.push(...await db.getAll(...refs.slice(i, i + 100)));
+      for (const snap of snaps) {
+        if (!snap.exists) continue;
+        const record: Record<string, any> = { id: snap.id, ...snap.data() };
+        if (!isEligibleMergeRecord(record, prefix, { startDate, endDate, filter })) continue;
+        chapters.push({
+          title: dateLabel(String(record.date).slice(0, 10)),
+          content: mergeRecordToHtml(record, prefix, []),
+          photos: getRecordPhotoUrls(record, prefix).map((url) => ({ url })),
+        });
+      }
+      if (chapters.length === 0) {
+        throw new HttpsError('not-found', '조건에 맞는 SAYU 완료 기록이 없습니다.');
+      }
+      return buildAndSave(uid, startDate, endDate, format, chapters);
+    }
+
+    const recordsRef = db.collection(`users/${uid}/records`);
+    // 단건은 인증된 사용자 경로의 해당 문서만 읽는다. 날짜가 같은 다른 기록은 포함하지 않는다.
+    const documents = singleRecordId !== undefined
+      ? [await recordsRef.doc(singleRecordId as string).get()].filter((snap) => snap.exists)
+      : (await recordsRef
+        .where('date', '>=', startDate)
+        .where('date', '<=', endDate)
+        .orderBy('date', 'asc')
+        .get()).docs;
+
+    if (documents.length === 0) {
+      throw new HttpsError('not-found', singleRecordId !== undefined ? '선택한 기록이 없습니다.' : '선택한 기간에 기록이 없습니다.');
+    }
+
+    let bookTitle: string | undefined;
+    documents.forEach((docSnap) => {
       const record: Record<string, any> = { id: docSnap.id, ...docSnap.data() };
       const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
       const includedFormats = formats.filter((f) => EPUB_INCLUDE_FORMATS.includes(f));
       if (includedFormats.length === 0) return;
       if (format && !includedFormats.includes(format)) return;
+      if (singleRecordId !== undefined) bookTitle = recordTitle(record, format || includedFormats[0]);
       const title = `${dateLabel(record.date)} [${includedFormats.join(' · ')}]`;
-      const content = recordToHtml(record);
-      chapters.push({ title, content });
+      const timelinePhotos: EpubPhoto[] = [];
+      const content = recordToHtml(record, format, timelinePhotos);
+      // 사진: 요청 형식이 있으면 그 형식의 사진만, 없으면 포함된 형식마다(형식당 최대 5장, 같은 사진은 한 번). 타임라인 사진도 같이 준비한다.
+      const photoFormats = format ? [format] : includedFormats;
+      const formatPhotos = Array.from(new Set(photoFormats.flatMap((f) => (FORMAT_PREFIX[f] ? getRecordPhotoUrls(record, FORMAT_PREFIX[f]) : []))));
+      // 글 없이 사진만 있는 타임라인 기록은 사진을 하나도 받지 못하면 안내 문구를 넣는다(빈 장 방지).
+      const photoOnly = record.recordType === 'growthTimeline' && !record.content;
+      chapters.push({ title, content, photos: [...timelinePhotos, ...formatPhotos.map((url) => ({ url }))], photoOnly });
     });
 
     if (chapters.length === 0) {
       throw new HttpsError('not-found', '내보낼 기록 형식이 없습니다.');
     }
 
+    return buildAndSave(uid, startDate, endDate, format, chapters, bookTitle);
+  },
+);
+
+async function buildAndSave(
+  uid: string,
+  startDate: string,
+  endDate: string,
+  format: string | undefined,
+  rawChapters: { title: string; content: string; photos: EpubPhoto[]; photoOnly?: boolean }[],
+  bookTitle?: string,
+) {
+  // 사진은 서버가 한 번 내려받아 임시 파일로 넘긴다. 실제로 받은 사진만 넣고 받지 못한 장수를 센다.
+  const photoDir = await mkdtemp(join(tmpdir(), 'epub-'));
+  try {
+    const { srcByChapter, failed, overLimit } = await preparePhotos(
+      rawChapters.map((chapter) => chapter.photos.map((photo) => photo.url)),
+      createTempPhotoFetcher(photoDir),
+    );
+    // 받은 사진만 넣는다. 사진을 받지 못하면 그 캡션도 함께 뺀다.
+    const chapters = rawChapters.map((chapter, index) => {
+      const lines = [chapter.content];
+      chapter.photos.forEach((photo, photoIndex) => {
+        const src = srcByChapter[index][photoIndex];
+        if (!src) return;
+        lines.push(`<img src="${escapeHtml(src)}" style="max-width:100%;margin:8px 0;">`);
+        if (photo.caption) lines.push(`<p style="font-size:0.85em;color:#666;">${escapeHtml(photo.caption)}</p>`);
+      });
+      if (chapter.photoOnly && srcByChapter[index].every((src) => !src)) lines.push('<p>(사진을 불러오지 못했습니다)</p>');
+      return { title: chapter.title, content: lines.join('\n') };
+    });
+
     const epubOptions = {
-      title: format
+      title: bookTitle || (format
         ? `HARU ${format} ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`
-        : `HARU 기록 ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`,
+        : `HARU 기록 ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`),
       author: 'HARU2026',
       lang: 'ko',
       css: 'body,html{column-count:1!important;columns:1!important;column-width:auto!important;}*{column-count:unset!important;}',
+      // 사진은 이미 임시 파일로 받아 두었다(file://). 만일 읽기에 실패해도 전체를 멈추지 않는다.
+      ignoreFailedDownloads: true,
     };
 
     const epubBuffer = await Epub(epubOptions, chapters);
-    const fileName = format
+    // 특수문자 치환·40자 제한으로 한글/이모지도 파일명 바이트 한도 안에 둔다. 메타데이터에는 원래 제목을 보존한다.
+    const safeTitle = bookTitle && Array.from(bookTitle.replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/g, '_')).slice(0, 40).join('');
+    const fileName = safeTitle ? `HARU_${safeTitle}_${startDate}.epub` : format
       ? `HARU_${format}_${startDate}_${endDate}.epub`
       : `HARU_기록_${startDate}_${endDate}.epub`;
 
@@ -236,6 +312,10 @@ export const exportEpub = onCall(
       downloadUrl,
       fileName,
       count: chapters.length,
+      skippedPhotos: failed,
+      limitedPhotos: overLimit,
     };
-  },
-);
+  } finally {
+    await rm(photoDir, { recursive: true, force: true }).catch(() => undefined);
+  }
+}

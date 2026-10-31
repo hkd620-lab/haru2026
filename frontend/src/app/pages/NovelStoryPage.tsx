@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { ChevronLeft, Printer, Copy } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,6 +21,7 @@ export function NovelStoryPage() {
   const [savingToRecord, setSavingToRecord] = useState(false);
   const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
   const [publishingShared, setPublishingShared] = useState(false);
+  const recordWriteRef = useRef(false);
 
   const storyLabel = timeOption ? `${timeOption} 이야기` : '이야기';
   const shareTitle = protagonistName
@@ -84,6 +85,7 @@ export function NovelStoryPage() {
   };
 
   const handleSaveToMyRecord = async () => {
+    if (recordWriteRef.current) return;
     if (!user?.uid) {
       toast.error('로그인 후 나의 기록에 저장할 수 있습니다.');
       return;
@@ -92,6 +94,7 @@ export function NovelStoryPage() {
       toast('이미 나의 기록에 저장되어 있습니다.');
       return;
     }
+    recordWriteRef.current = true;
     setSavingToRecord(true);
     try {
       const id = await firestoreService.saveRecord(user.uid, buildStoryRecord());
@@ -100,11 +103,18 @@ export function NovelStoryPage() {
     } catch {
       toast.error('저장에 실패했습니다.');
     } finally {
+      recordWriteRef.current = false;
       setSavingToRecord(false);
     }
   };
 
+  const handleViewSavedRecord = () => {
+    if (!savedRecordId || recordWriteRef.current) return;
+    navigate('/sayu', { state: { filterFormat: '에세이', openRecordId: savedRecordId } });
+  };
+
   const handlePublishTogether = async () => {
+    if (recordWriteRef.current) return;
     if (!user?.uid) {
       toast.error('로그인 후 SAYU-함께보기에 공개할 수 있습니다.');
       return;
@@ -115,6 +125,7 @@ export function NovelStoryPage() {
     );
     if (!confirmed) return;
 
+    recordWriteRef.current = true;
     setPublishingShared(true);
     try {
       const profile = await firestoreService.getUserProfile(user.uid);
@@ -139,6 +150,7 @@ export function NovelStoryPage() {
         toast.error('SAYU-함께보기 공개에 실패했습니다.');
       }
     } finally {
+      recordWriteRef.current = false;
       setPublishingShared(false);
     }
   };
@@ -280,7 +292,7 @@ export function NovelStoryPage() {
         <div className="no-print" style={{ marginBottom: 8 }}>
           <button
             onClick={handleSaveToMyRecord}
-            disabled={savingToRecord || !!savedRecordId}
+            disabled={savingToRecord || publishingShared || !!savedRecordId}
             style={{
               width: '100%', padding: '13px', borderRadius: 12,
               border: '1.5px solid #1A3C6E',
@@ -294,10 +306,23 @@ export function NovelStoryPage() {
           </button>
         </div>
 
+        {savedRecordId && (
+          <div className="no-print" style={{ marginBottom: 8 }}>
+            <button
+              type="button"
+              onClick={handleViewSavedRecord}
+              disabled={savingToRecord || publishingShared}
+              style={{ width: '100%', padding: 13, borderRadius: 12, border: 'none', background: '#1A3C6E', color: '#fff', fontSize: 14, fontWeight: 700 }}
+            >
+              나의 기록에서 보기
+            </button>
+          </div>
+        )}
+
         <div className="no-print" style={{ marginBottom: 8 }}>
           <button
             onClick={handlePublishTogether}
-            disabled={publishingShared}
+            disabled={publishingShared || savingToRecord}
             style={{
               width: '100%', padding: '13px', borderRadius: 12, border: 'none',
               background: publishingShared ? '#94a3b8' : '#0F766E',

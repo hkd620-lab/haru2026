@@ -17,6 +17,9 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db } from '../../firebase';  // ✅ 수정됨: ../firebase → ../../firebase
+import { saveHouseholdEntries } from './householdSaveService';
+import type { HouseholdEntry } from '../components/FormatModal';
+import type { HouseholdDecisions } from './householdDuplicates';
 import {
   assertAiLibraryDeleteResult,
   validateAiLibraryDeleteRequest,
@@ -34,6 +37,7 @@ import {
   GrowthDiaryStats,
   ratioToStatScore,
 } from '../types/haruTypes';
+import { ALL_REGISTERED_FORMATS, buildFormatKeyMap, getFormatKey } from '../records/formatRegistry';
 
 export type RecordFormat = RecordFormatKorean;
 
@@ -232,27 +236,21 @@ const PUBLIC_ALLOWED_FORMATS: RecordFormat[] = [
 ];
 
 // RecordFormat 18종 전체 prefix — PUBLIC_ALLOWED_FORMATS가 참조하므로 누락 시 조용히 공개 불가 처리됨(성장기록·HARU가계부 보강)
-const PUBLIC_FORMAT_PREFIX: Record<RecordFormat, string> = {
-  '일기': 'diary',
-  '에세이': 'essay',
-  '선교보고': 'mission',
-  '일반보고': 'report',
-  '업무일지': 'work',
-  '여행기록': 'travel',
-  '독서사유': 'reading',
-  '텃밭일지': 'garden',
-  '애완동물관찰일지': 'pet',
-  '육아일기': 'child',
-  '성장기록': 'growth',
-  'HARU주식관리': 'stock',
-  '주식거래일지': 'stock',
-  '메모': 'memo',
-  '성장타임라인': 'growthTimeline',
-  'HARUraw': 'haruraw',
-  'HARU보조장부': 'ledger',
-  '배뇨일지': 'voiding',
-  'HARU가계부': 'household',
-};
+// 값은 형식 등록부(records/formatRegistry.ts)에서 읽는다.
+const PUBLIC_FORMAT_PREFIX: Record<RecordFormat, string> = buildFormatKeyMap(ALL_REGISTERED_FORMATS);
+
+// 형식 통계 대상 12개 형식(형식별 통계 prefixMap·전체 통계 formatPrefixes 가 함께 쓴다)
+const STATISTICS_FORMATS: RecordFormat[] = [
+  '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록',
+  '텃밭일지', '애완동물관찰일지', '육아일기', 'HARU주식관리', '주식거래일지', 'HARU보조장부',
+];
+
+// 내보내기 대상 형식(성장기록·HARU가계부는 원래 목록에 없어 그대로 뺀다)
+const EXPORT_FORMATS: RecordFormat[] = [
+  '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '독서사유', '텃밭일지',
+  '애완동물관찰일지', '육아일기', 'HARU주식관리', '주식거래일지', '메모', '성장타임라인',
+  'HARUraw', 'HARU보조장부', '배뇨일지',
+];
 
 const getCleanText = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 
@@ -448,6 +446,14 @@ class FirestoreService {
   }
 
   // 기존 기록 관련 함수들
+  async saveHouseholdRecord(userId: string, entries: HouseholdEntry[], decisions: HouseholdDecisions) {
+    const result = await saveHouseholdEntries(db, userId, entries, decisions);
+    if (result.added > 0) void this.recordPaidServiceUsage(userId, result.createdRecords ? 'record_created' : 'record_updated', {
+      recordId: result.recordIds[0], date: entries[0].date, formats: 'HARU가계부', source: 'household',
+    });
+    return result;
+  }
+
   async saveRecord(userId: string, recordData: Partial<HaruRecord>): Promise<string> {
     // 수정 7: 같은 날 같은 형식 여러 개 작성 지원 — 고유 ID 생성
     // recordData.id가 명시되면 해당 ID 사용 (주식관리 개별 저장 등)
@@ -816,7 +822,8 @@ class FirestoreService {
    * @param startDate 시작 날짜 (YYYY-MM-DD 형식)
    * @param endDate 종료 날짜 (YYYY-MM-DD 형식)
    */
-  async getRecordsInRange(userId: string, startDate: string, endDate: string): Promise<HaruRecord[]> {
+  // throwOnError: 통계 화면처럼 '기록 없음'과 '불러오기 실패'를 구분해야 하는 곳에서 true 로 쓴다(기본은 기존대로 빈 목록).
+  async getRecordsInRange(userId: string, startDate: string, endDate: string, options: { throwOnError?: boolean } = {}): Promise<HaruRecord[]> {
     try {
       console.log('\n📥 getRecordsInRange 호출');
       console.log('  userId:', userId);
@@ -831,6 +838,11 @@ class FirestoreService {
         orderBy('date', 'desc')
       );
       const querySnapshot = await getDocs(q);
+      // 오프라인이면 getDocs 가 오류 대신 메모리 캐시(비어 있으면 0건)를 돌려준다. 통계처럼 '기록 없음'과
+      // '불러오기 실패'를 구분해야 하는 곳에서는 서버에서 받은 결과가 아니면 실패로 다룬다.
+      if (options.throwOnError && querySnapshot.metadata.fromCache) {
+        throw new Error('RECORDS_IN_RANGE_FROM_CACHE');
+      }
       
       console.log('  Firestore 쿼리 결과:', querySnapshot.docs.length, '개');
       
@@ -844,6 +856,7 @@ class FirestoreService {
       return records;
     } catch (error) {
       console.error('❌ 날짜 범위 기록 불러오기 실패:', error);
+      if (options.throwOnError) throw error;
       return [];
     }
   }
@@ -1258,21 +1271,8 @@ class FirestoreService {
         return null; // 데이터 없음
       }
 
-      // 형식별 prefix
-      const prefixMap: Record<RecordFormat, string> = {
-        '일기': 'diary',
-        '에세이': 'essay',
-        '선교보고': 'mission',
-        '일반보고': 'report',
-        '업무일지': 'work',
-        '여행기록': 'travel',
-        '텃밭일지': 'garden',
-        '애완동물관찰일지': 'pet',
-        '육아일기': 'parenting',
-        'HARU주식관리': 'stock',
-        '주식거래일지': 'stock',
-        'HARU보조장부': 'ledger',
-      };
+      // 형식별 prefix (형식 통계 키: 육아일기는 parenting)
+      const prefixMap: Record<RecordFormat, string> = buildFormatKeyMap(STATISTICS_FORMATS, 'stats');
 
       const prefix = prefixMap[format];
       
@@ -2035,21 +2035,8 @@ class FirestoreService {
       // 형식별 SAYU 완료 카운트 (SAYU 기준)
       const formatSayuCounts: Record<string, number> = {};
       
-      // 9개 형식의 prefix
-      const formatPrefixes = [
-        { name: '일기', prefix: 'diary' },
-        { name: '에세이', prefix: 'essay' },
-        { name: '선교보고', prefix: 'mission' },
-        { name: '일반보고', prefix: 'report' },
-        { name: '업무일지', prefix: 'work' },
-        { name: '여행기록', prefix: 'travel' },
-        { name: '텃밭일지', prefix: 'garden' },
-        { name: '애완동물관찰일지', prefix: 'pet' },
-        { name: '육아일기', prefix: 'child' },
-        { name: 'HARU주식관리', prefix: 'stock' },
-        { name: '주식거래일지', prefix: 'stock' },
-        { name: 'HARU보조장부', prefix: 'ledger' },
-      ];
+      // 형식 통계 대상 형식의 prefix (저장 필드 접두어)
+      const formatPrefixes = STATISTICS_FORMATS.map((name) => ({ name, prefix: getFormatKey(name) }));
       
       records.forEach((record, index) => {
         console.log(`\n--- 기록 ${index + 1} (${record.date}) ---`);
@@ -2131,14 +2118,15 @@ class FirestoreService {
     if (key === 'rating' || key.endsWith('_rating')) return true;
     if (key === 'style' || key.endsWith('_style')) return true;
     if (key === 'mode' || key.endsWith('_mode')) return true;
+    // 통계·특별한 날 표시와 텃밭 고른 작물 배열(본문 아님, garden_crop 문자열이 본문에 남는다)
+    if (key === 'specialDays' || key === 'statsChecks' || key === 'garden_crops') return true;
     return false;
   }
 
-  private readonly EXPORT_FORMAT_PREFIXES = [
-    'diary', 'essay', 'mission', 'report', 'work', 'travel',
-    'reading', 'garden', 'pet', 'child', 'parenting', 'stock',
-    'memo', 'growthTimeline', 'haruraw', 'ledger', 'voiding',
-  ];
+  // 내보내기 대상 형식의 저장 필드 접두어와 형식 통계 키(육아일기 child·parenting)
+  private readonly EXPORT_FORMAT_PREFIXES = Array.from(new Set(
+    EXPORT_FORMATS.flatMap((format) => [getFormatKey(format), getFormatKey(format, 'stats')]),
+  ));
 
   private toExportTimestamp(v: unknown): number {
     if (!v) return 0;

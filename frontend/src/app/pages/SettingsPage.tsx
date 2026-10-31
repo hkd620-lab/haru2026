@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken } from '../services/notificationService';
+import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken, getDeviceTimeZone, backfillNotificationTimeZone } from '../services/notificationService';
 import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -389,6 +389,7 @@ export function SettingsPage() {
         const data = settingsDoc.data();
         setNotificationEnabled(data.notificationEnabled ?? true);
         setNotificationTime(data.notificationTime || '21:00');
+        void backfillNotificationTimeZone(user.uid, data);
       }
     } catch (error) {
       console.error('알림 설정 로딩 실패:', error);
@@ -405,9 +406,11 @@ export function SettingsPage() {
         const success = await requestNotificationPermission(user.uid);
         
         if (success) {
+          const notificationTimeZone = getDeviceTimeZone();
           await updateNotificationSettings(user.uid, {
             notificationEnabled: true,
             notificationTime,
+            ...(notificationTimeZone ? { notificationTimeZone } : {}),
           });
           setNotificationEnabled(true);
           toast.success('알림이 활성화되었습니다!');
@@ -437,8 +440,10 @@ export function SettingsPage() {
     
     if (notificationEnabled) {
       try {
+        const notificationTimeZone = getDeviceTimeZone();
         await updateNotificationSettings(user.uid, {
           notificationTime: newTime,
+          ...(notificationTimeZone ? { notificationTimeZone } : {}),
         });
         toast.success(`알림 시간이 ${newTime}으로 변경되었습니다.`);
       } catch (error) {

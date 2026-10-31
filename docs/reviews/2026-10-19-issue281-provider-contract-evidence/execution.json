@@ -1,0 +1,236 @@
+[
+  {
+    "name": "target",
+    "command": [
+      "node",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "related",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "--test",
+      "test/authCallbackDiagnostics.test.mjs",
+      "test/snsThumbnailAuthCache.test.mjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "callback-policy",
+    "command": [
+      "node",
+      "test/authCallbackAndHomePersonalization.policy.test.cjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "return-origin",
+    "command": [
+      "node",
+      "test/socialLoginReturnOrigin.policy.test.cjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "variant": "uid",
+    "command": [
+      "node",
+      "--require",
+      "/private/tmp/haru-issue281-test-evidence-20261019/mutants.cjs",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 8",
+      "ℹ fail 1",
+      "ℹ cancelled 0",
+      "ℹ skipped 0"
+    ]
+  },
+  {
+    "variant": "priority",
+    "command": [
+      "node",
+      "--require",
+      "/private/tmp/haru-issue281-test-evidence-20261019/mutants.cjs",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 6",
+      "ℹ fail 3",
+      "ℹ cancelled 0",
+      "ℹ skipped 0"
+    ]
+  },
+  {
+    "variant": "fallback",
+    "command": [
+      "node",
+      "--require",
+      "/private/tmp/haru-issue281-test-evidence-20261019/mutants.cjs",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 7",
+      "ℹ fail 2",
+      "ℹ cancelled 0",
+      "ℹ skipped 0"
+    ]
+  },
+  {
+    "variant": "primary",
+    "command": [
+      "node",
+      "--require",
+      "/private/tmp/haru-issue281-test-evidence-20261019/mutants.cjs",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 8",
+      "ℹ fail 1",
+      "ℹ cancelled 0",
+      "ℹ skipped 0"
+    ]
+  },
+  {
+    "variant": "uidGuard",
+    "command": [
+      "node",
+      "--require",
+      "/private/tmp/haru-issue281-test-evidence-20261019/mutants.cjs",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 8",
+      "ℹ fail 1",
+      "ℹ cancelled 0",
+      "ℹ skipped 0"
+    ]
+  },
+  {
+    "variant": "generation",
+    "command": [
+      "node",
+      "--require",
+      "/private/tmp/haru-issue281-test-evidence-20261019/mutants.cjs",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 8",
+      "ℹ fail 1",
+      "ℹ cancelled 0",
+      "ℹ skipped 0"
+    ]
+  },
+  {
+    "variant": "cleanup",
+    "command": [
+      "node",
+      "--require",
+      "/private/tmp/haru-issue281-test-evidence-20261019/mutants.cjs",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 8",
+      "ℹ fail 1",
+      "ℹ cancelled 0",
+      "ℹ skipped 0"
+    ]
+  },
+  {
+    "variant": "cache",
+    "command": [
+      "node",
+      "--require",
+      "/private/tmp/haru-issue281-test-evidence-20261019/mutants.cjs",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 8",
+      "ℹ fail 1",
+      "ℹ cancelled 0",
+      "ℹ skipped 0"
+    ]
+  },
+  {
+    "variant": "pending",
+    "command": [
+      "node",
+      "--require",
+      "/private/tmp/haru-issue281-test-evidence-20261019/mutants.cjs",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 8",
+      "ℹ fail 1",
+      "ℹ cancelled 0",
+      "ℹ skipped 0"
+    ]
+  },
+  {
+    "variant": "setter",
+    "command": [
+      "node",
+      "--require",
+      "/private/tmp/haru-issue281-test-evidence-20261019/mutants.cjs",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 1,
+    "summary": [],
+    "result": "invalid diagnostic anchor (nonunique); not counted as regression detection"
+  },
+  {
+    "variant": "trim",
+    "command": [
+      "node",
+      "--require",
+      "/private/tmp/haru-issue281-test-evidence-20261019/mutants.cjs",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 5",
+      "ℹ fail 4",
+      "ℹ cancelled 0",
+      "ℹ skipped 0"
+    ]
+  },
+  {
+    "variant": "lowercase",
+    "command": [
+      "node",
+      "--require",
+      "/private/tmp/haru-issue281-test-evidence-20261019/mutants.cjs",
+      "test/loginProviderStorage.policy.test.cjs"
+    ],
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 5",
+      "ℹ fail 4",
+      "ℹ cancelled 0",
+      "ℹ skipped 0"
+    ]
+  },
+  {
+    "variant": "setter-corrected",
+    "exitCode": 1,
+    "summary": [
+      "ℹ pass 8",
+      "ℹ fail 1",
+      "ℹ cancelled 0",
+      "ℹ skipped 0"
+    ]
+  }
+]

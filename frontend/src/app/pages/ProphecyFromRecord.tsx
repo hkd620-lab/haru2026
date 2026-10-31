@@ -6,12 +6,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
 import { ChevronLeft } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
+import { buildFormatKeyMap } from '../records/formatRegistry';
+import type { RecordFormat } from '../types/haruTypes';
 
-const FORMAT_PREFIX: Record<string, string> = {
-  '일기': 'diary', '에세이': 'essay', '여행기록': 'travel',
-  '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'parenting',
-  '선교보고': 'mission', '일반보고': 'report', '업무일지': 'work', '메모': 'memo',
-};
+// 미래전망에 쓰는 형식과 키(값은 형식 등록부의 미래전망 키 — 육아일기는 parenting, 순서 유지)
+const FORMAT_PREFIX: Record<string, string> = buildFormatKeyMap([
+  '일기', '에세이', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기',
+  '선교보고', '일반보고', '업무일지', '메모',
+] as RecordFormat[], 'prophecy');
 
 type TrackType = 'single' | 'merge';
 type Step = 'track' | 'list' | 'formatList' | 'preview' | 'analyze' | 'items';

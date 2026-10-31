@@ -124,7 +124,9 @@ export default function LegalAssistantHomePage() {
                   variant="outline"
                   size="sm"
                   className="mt-3 border-blue-200 bg-white text-blue-700"
-                  onClick={() => navigate('/legal-assistant/guide')}
+                  onClick={() => navigate('/legal-assistant/guide', {
+                    state: { resetAssistantScroll: true },
+                  })}
                 >
                   나홀로소송 전체 과정 보기
                   <ChevronRight className="size-4" />
@@ -155,7 +157,9 @@ export default function LegalAssistantHomePage() {
                 variant="ghost"
                 size="sm"
                 className="mt-3 px-0 text-blue-700 hover:bg-transparent hover:text-blue-800"
-                onClick={() => navigate('/legal-assistant/beginner-guide')}
+                onClick={() => navigate('/legal-assistant/beginner-guide', {
+                  state: { resetAssistantScroll: true },
+                })}
               >
                 전자소송포털 처음 안내 다시 보기
                 <ChevronRight className="size-4" />
@@ -168,7 +172,13 @@ export default function LegalAssistantHomePage() {
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-gray-900">오늘 할 일</h2>
             {tasks.length > 3 && (
-              <Button variant="ghost" size="sm" onClick={() => navigate('/legal-cases')}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/legal-cases', {
+                  state: { resetAssistantScroll: true },
+                })}
+              >
                 전체 보기
               </Button>
             )}
@@ -219,7 +229,9 @@ export default function LegalAssistantHomePage() {
                   <Button
                     className="mt-3"
                     size="sm"
-                    onClick={() => navigate(`/legal-cases/${task.caseId}?tab=${task.tab}`)}
+                    onClick={() => navigate(`/legal-cases/${task.caseId}?tab=${task.tab}`, {
+                      state: { resetAssistantScroll: true },
+                    })}
                   >
                     확인하기
                     <ChevronRight className="size-4" />
@@ -238,7 +250,9 @@ export default function LegalAssistantHomePage() {
                 key={card.title}
                 type="button"
                 disabled={!card.enabled}
-                onClick={() => card.enabled && navigate(card.path)}
+                onClick={() => card.enabled && navigate(card.path, {
+                  state: { resetAssistantScroll: true },
+                })}
                 className={`min-h-[116px] rounded-lg border bg-white p-4 text-left shadow-sm ${
                   card.enabled
                     ? 'border-gray-200 hover:border-blue-300'

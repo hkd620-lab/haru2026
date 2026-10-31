@@ -1,0 +1,98 @@
+{
+  "scope": "BASIC route migration + actual frontend/backend preservation prompts; rich model remains Gemini pending separate decision",
+  "totalCalls": 124,
+  "uniqueSyntheticOriginals": 18,
+  "repeats": 2,
+  "errors": 0,
+  "truncated": 0,
+  "pairedCosts": {
+    "old-gemini": {
+      "calls": 24,
+      "estimatedUsd": 0.0094875
+    },
+    "old-openai": {
+      "calls": 24,
+      "estimatedUsd": 0.0025265
+    },
+    "new-gemini": {
+      "calls": 24,
+      "estimatedUsd": 0.0069345
+    },
+    "new-openai": {
+      "calls": 24,
+      "estimatedUsd": 0.002721
+    }
+  },
+  "newPremiumFormalRegisterShiftSignals": {
+    "gemini": [
+      {
+        "id": "travel-negation",
+        "repeat": 2
+      },
+      {
+        "id": "garden-observation",
+        "repeat": 1
+      },
+      {
+        "id": "garden-observation",
+        "repeat": 2
+      },
+      {
+        "id": "pet-subjective",
+        "repeat": 1
+      },
+      {
+        "id": "long-mixed",
+        "repeat": 1
+      }
+    ],
+    "openai": []
+  },
+  "conclusion": "New prompts reduce invented scenes and remove forced register conversion. Luna preserves original register more consistently in this sample. Gemini retains occasional register/nuance drift. Only BASIC is configured to Luna; keywords and rich provider remain Gemini.",
+  "manualExamples": [
+    {
+      "case": "diary-uncertain",
+      "before": "Old Gemini invented stairs, stronger pain and a hot compress. Old Luna kept facts closer but changed 해요체 to 한다체 because the old frontend demanded it.",
+      "after": "Both new models keep uncertain walking plan, no clinic visit, rest, and 해요체."
+    },
+    {
+      "case": "essay-banmal",
+      "after": "Both new models keep 한다체 and the refusal to turn the cup story into a life lesson."
+    },
+    {
+      "case": "travel-negation",
+      "after": "Luna keeps neutral 두 장만 and 해요체 both repetitions. Gemini run2 uses regretful 두 장밖에 and switches to 않았습니다."
+    },
+    {
+      "case": "long-mixed",
+      "after": "Luna preserves source register, negations, 3 entries with 2 remembered/1 unfamiliar, and no advice. Gemini run1 shifts much of the text to 합니다체; both runs add eating the reheated soup."
+    },
+    {
+      "case": "fresh-smell,fresh-quote,fresh-short,fresh-uncertainty",
+      "after": "New unseen inputs retain no smell experienced, quoted speaker vs own belief, neutral short mood, unknown season/weather and no tears; Luna is more conservative in wording."
+    },
+    {
+      "case": "garden-observation,pet-subjective",
+      "after": "Gemini still adds a formal ending or immediate sleep in balanced prompts, which only received the tone-line correction; Luna keeps source wording closer."
+    }
+  ],
+  "basicLive": {
+    "calls": 4,
+    "selectedPurpose": "sayuPolishBasic",
+    "cases": [
+      "diary-uncertain",
+      "essay-banmal",
+      "work-numbers",
+      "long-mixed"
+    ],
+    "observation": "Direct API requests captured from real changed frontend/backend handler preserve source register and numbers."
+  },
+  "limits": [
+    "Qualitative manual review by Codex; not independently blinded scoring.",
+    "Small synthetic sample; no private operational records.",
+    "Main paired test includes both the old and new actual client envelopes and backend system prompts, avoiding the earlier server-only limitation.",
+    "4096-token comparison cap; production BASIC route is configured for 8192 to avoid truncating longer valid input.",
+    "No medical prompt, quota policy, storage path, payment or production deployment changes.",
+    "PDF 2500 non-space character output requirement remains; long-input compression tension is pre-existing."
+  ]
+}

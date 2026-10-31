@@ -92,11 +92,11 @@ export function AssistantStatisticsPage() {
       <div className="mb-6">
         <button
           type="button"
-          onClick={() => navigate('/stats')}
+          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(assistantType === 'plant' ? '/plant-detective' : '/v2'))}
           className="flex items-center gap-1 text-sm mb-3"
           style={{ color: '#666' }}
         >
-          <ArrowLeft className="w-4 h-4" /> 통계로 돌아가기
+          <ArrowLeft className="w-4 h-4" /> 돌아가기
         </button>
         <div className="flex items-center gap-3 mb-2">
           <span style={{ fontSize: 28 }}>{meta.emoji}</span>

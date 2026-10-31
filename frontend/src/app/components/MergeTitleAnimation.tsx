@@ -132,7 +132,7 @@ export function MergeTitleAnimation() {
         }}
         style={{ fontSize: '0.75rem', color: '#888', margin: 0 }}
       >
-        SAYU 별점 기준으로 기록을 합칩니다
+        SAYU를 마친 기록을 한 권으로 합칩니다
       </motion.p>
     </div>
   );

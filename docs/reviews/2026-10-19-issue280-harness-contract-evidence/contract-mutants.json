@@ -1,0 +1,58 @@
+[
+  {
+    "variant": "lock",
+    "exitCode": 1,
+    "counts": {
+      "pass": "11",
+      "fail": "1",
+      "cancelled": "0",
+      "skipped": "1"
+    },
+    "failedTests": [
+      "✖ 저장 진행 중 중복 재시도를 막고 완료 전 성공 표시를 하지 않는다 (1.082291ms)",
+      "✖ 저장 진행 중 중복 재시도를 막고 완료 전 성공 표시를 하지 않는다 (1.082291ms)"
+    ]
+  },
+  {
+    "variant": "saved",
+    "exitCode": 1,
+    "counts": {
+      "pass": "11",
+      "fail": "1",
+      "cancelled": "0",
+      "skipped": "1"
+    },
+    "failedTests": [
+      "✖ 저장 완료 후 재렌더한 콜백은 재진입을 막고 날짜 변경 후에만 다시 저장한다 (0.867125ms)",
+      "✖ 저장 완료 후 재렌더한 콜백은 재진입을 막고 날짜 변경 후에만 다시 저장한다 (0.867125ms)"
+    ]
+  },
+  {
+    "variant": "mounted",
+    "exitCode": 1,
+    "counts": {
+      "pass": "11",
+      "fail": "1",
+      "cancelled": "0",
+      "skipped": "1"
+    },
+    "failedTests": [
+      "✖ 저장 중 언마운트하면 실제 cleanup이 완료 후 이동을 막고 다른 인스턴스는 정상 이동한다 (1.307292ms)",
+      "✖ 저장 중 언마운트하면 실제 cleanup이 완료 후 이동을 막고 다른 인스턴스는 정상 이동한다 (1.307292ms)"
+    ]
+  },
+  {
+    "variant": "cleanup",
+    "exitCode": 1,
+    "counts": {
+      "pass": "11",
+      "fail": "1",
+      "cancelled": "0",
+      "skipped": "1"
+    },
+    "failedTests": [
+      "✖ 저장 중 언마운트하면 실제 cleanup이 완료 후 이동을 막고 다른 인스턴스는 정상 이동한다 (0.836416ms)",
+      "✖ 저장 중 언마운트하면 실제 cleanup이 완료 후 이동을 막고 다른 인스턴스는 정상 이동한다 (0.836416ms)"
+    ]
+  }
+]

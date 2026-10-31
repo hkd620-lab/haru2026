@@ -8,6 +8,7 @@ const component = fs.readFileSync(path.join(root, 'src/app/components/SnsStoryCr
 const requestState = fs.readFileSync(path.join(root, 'src/app/utils/snsStoryRequestState.ts'), 'utf8');
 const routes = fs.readFileSync(path.join(root, 'src/app/App.tsx'), 'utf8');
 const sayu = fs.readFileSync(path.join(root, 'src/app/pages/SayuPage.tsx'), 'utf8');
+const sayuAdapters = fs.readFileSync(path.join(root, 'src/app/assistants/sayuAdapters.ts'), 'utf8');
 const home = fs.readFileSync(path.join(root, 'src/app/pages/HomePageV2.tsx'), 'utf8');
 const recordHub = fs.readFileSync(path.join(root, 'src/app/pages/RecordHubPage.tsx'), 'utf8');
 const sayuModal = fs.readFileSync(path.join(root, 'src/app/components/SayuModal.tsx'), 'utf8');
@@ -52,11 +53,11 @@ assert(component.includes('const visibleContent = expanded || content.length <= 
 assert(component.includes("SNS 갈무리 · 저장된 작품"), 'saved artwork list must use the SNS 갈무리 naming');
 assert(requestState.includes('buildSnsStoryFinalLogicalKey'), 'final idempotency key helper must be present');
 assert(requestState.includes('logicalKeyHash') && !requestState.includes('RAW_SNS_BODY_SECRET'), 'durable operation storage must be hash-based');
-assert(sayu.includes("function isCompletedSnsStoryRecord"), 'SayuPage must identify completed sns_story records explicitly');
-assert(sayu.includes("record.source === 'sns_story' && record.generationStatus === 'completed'"), 'SNS 갈무리 records must be detected by source and completed status');
+assert(sayuAdapters.includes("function isCompletedSnsStoryRecord"), 'SayuPage must identify completed sns_story records explicitly');
+assert(sayuAdapters.includes("record.source === 'sns_story' && record.generationStatus === 'completed'"), 'SNS 갈무리 records must be detected by source and completed status');
 assert(sayu.includes('if (isCompletedSnsStoryRecord(record)) return false;'), 'SNS 갈무리 records must not be hidden as Gemini knowledge warehouse records');
-assert(sayu.includes('label: SNS_GALMURI_LABEL'), 'completed SNS stories must be listed under the SNS 갈무리 assistant group');
-assert(sayu.includes("onOpen: () => openFormatSayu(record.date, 'essay', SNS_GALMURI_LABEL, record.id)"), 'SNS 갈무리 entries must reuse essay detail rendering');
+assert(sayuAdapters.includes('label: SNS_GALMURI_LABEL'), 'completed SNS stories must be listed under the SNS 갈무리 assistant group');
+assert(sayuAdapters.includes("onOpen: () => openFormatSayu(record.date, 'essay', SNS_GALMURI_LABEL, record.id)"), 'SNS 갈무리 entries must reuse essay detail rendering');
 assert(sayu.includes("filterFormat === SNS_GALMURI_LABEL ? 'essay'"), 'SNS 갈무리 route state must map to essay detail fields');
 assert(sayuModal.includes("data.source === 'sns_story' && data.generationStatus === 'completed'"), 'SNS 갈무리 completed artwork deletes must use a dedicated branch');
 assert(sayuModal.includes('await deleteDoc(recordRef);'), 'SNS 갈무리 completed artwork deletes must remove the generated artwork record document');

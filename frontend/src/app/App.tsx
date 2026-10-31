@@ -162,13 +162,16 @@ function AiLibraryRoute() {
   return <AiLibraryPage />;
 }
 
+const assistantEntryScrollResetLocationKeys = new Set<string>();
+
 function AssistantEntryScrollReset() {
   const location = useLocation();
   const shouldReset =
     (location.state as { resetAssistantScroll?: boolean } | null)?.resetAssistantScroll === true;
 
   useLayoutEffect(() => {
-    if (!shouldReset) return;
+    if (!shouldReset || assistantEntryScrollResetLocationKeys.has(location.key)) return;
+    assistantEntryScrollResetLocationKeys.add(location.key);
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [location.key, shouldReset]);
 

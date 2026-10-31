@@ -1,34 +1,70 @@
+import { readSelectedRecordPhoto } from '../services/selectedRecordPhoto';
 import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, Info, Leaf, Briefcase, BookOpen, Scale, Cpu, Volume2, Pause, Search } from 'lucide-react';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
+import {
+  SNS_GALMURI_LABEL,
+  PLANT_SAYU_TYPE_LABEL,
+  PLANT_SAYU_SOURCE_LABEL,
+  isCompletedSnsStoryRecord,
+  getStructuredViewAccess,
+  structuredViewNeedsHealthConsent,
+  isStructuredMeasurementFieldOfFormat,
+  buildSayuAssistantEntries,
+  buildSayuPlantDetectiveEntry,
+  GROWTH_TIMELINE_FORMAT_KEY,
+  GROWTH_TIMELINE_FORMAT_LABEL,
+  GROWTH_TIMELINE_SAYU_LABEL,
+  isGrowthTimelineRecord,
+  growthTimelineFormatOption,
+  growthTimelineSelectedFormat,
+  growthTimelineSourceText,
+  hasGrowthTimelineResultChatSource,
+  isCompletedGrowthTimelineRecord,
+  getGrowthTimelineDisplayTitle,
+  buildGrowthTimelineRecordEntry,
+  buildGrowthTimelineSayuModalState,
+} from '../assistants/sayuAdapters';
+import type {
+  FlatSayuEntry,
+  GrowthTimelineEntryContext,
+  GrowthTimelineRecordItem,
+  PlantReadOnlyDetail,
+  PlantReadOnlyField,
+  PlantSayuEntryType,
+  SayuAssistantEntriesContext,
+} from '../assistants/sayuAdapters';
 import { exportLedgerForMonth, exportLedgerToXlsx } from '../services/ledgerExportService';
 import { buildLedgerSummaryFieldsFromEntries, type LedgerEntry } from '../services/ledgerPeriodImport';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useAuth } from '../contexts/AuthContext';
 import { SayuTitleAnimation } from '../components/SayuTitleAnimation';
 import { toast } from 'sonner';
-import { SayuModal } from '../components/SayuModal';
-import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
+import { SayuModal, type SayuEditMeta } from '../components/SayuModal';
+import { StructuredAssistantRecordModal } from '../components/StructuredAssistantRecordModal';
+import { OriginalAssistantRecords } from '../components/OriginalAssistantRecords';
+import { useRecordReadConsent } from '../hooks/useRecordReadConsent';
+import { buildStructuredAssistantView, hasStructuredAssistantRecord, isStructuredAssistantPrefix, structuredAssistantSourceText, type StructuredAssistantPrefix } from '../utils/structuredAssistantRecords';
 import { ResultChatButton } from '../components/ResultChatButton';
 import { ResultChatModal } from '../components/ResultChatModal';
 import { GrowthTimelineLibrary } from '../components/GrowthTimelineCreator';
 import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
+import { getFormatKey } from '../records/formatRegistry';
 import { getResultChatConfig, getResultChatConfigForFormatKey, type ResultChatConfig } from '../config/resultChatConfig';
-import {
-  buildRecommendationTextFromFields,
-  getAssistantRecommendations,
-  type AssistantRecommendation,
-} from '../utils/assistantRecommendations';
 import { collection, getDocs, getDoc, orderBy, query, deleteDoc, doc, writeBatch, updateDoc, deleteField, limit, setDoc, serverTimestamp, arrayUnion, increment } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db } from '../../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useSubscription } from '../hooks/useSubscription';
-import { compressImage } from '../services/imageService';
-import type { ReverseGeocodeCandidate } from '../services/reverseGeocodeService';
+import { compressUploadPhoto as compressImage } from '../services/photoUploadService';
+import { fingerprintPlantEntry, readPlantDetectiveSelection, PLANT_EDIT_CONFLICT, type PlantDetectiveSelection } from '../utils/plantDetectiveEdit';
+import { parseKoreanUnitAmount } from '../utils/householdAmount';
+import { summarizeHouseholdEntries } from '../utils/householdSummary';
+import { householdSayuEntries, type HouseholdSayuEntry } from '../utils/householdRecordShape';
+import { isSpecialDayRecord } from '../records/recordStats';
 
 // 목록 뷰에서 제목으로 쓸 첫 번째 필드 키
 const FORMAT_FIRST_FIELD: Record<string, string> = {
@@ -54,13 +90,43 @@ const PAGE_SIZE = 10;
 const SAYU_ALL_PAGE_SIZE = 20;
 const PUBLIC_SAYU_REQUIRED_MESSAGE = '먼저 SAYU 다듬기를 완료한 뒤 공개할 수 있습니다.';
 // firestoreService.ts의 PUBLIC_ALLOWED_FORMATS(핵심 10종) + HARU타임라인(별도 분기) — 여기서도 별도 관리되므로 형식 추가 시 항상 함께 대조할 것
-const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(['diary', 'essay', 'travel', 'garden', 'pet', 'memo', 'reading', 'child', 'work', 'household', 'growthTimeline']);
+// 키 값은 형식 등록부(records/formatRegistry.ts)에서 읽는다.
+const PUBLIC_ALLOWED_FORMAT_KEYS = new Set(([
+  '일기', '에세이', '여행기록', '텃밭일지', '애완동물관찰일지', '메모', '독서사유', '육아일기', '업무일지', 'HARU가계부', '성장타임라인',
+] as RecordFormat[]).map((format) => getFormatKey(format)));
+// 형식이 아닌 비서 라벨(직접작성영어일기·SNS 갈무리)은 SAYU_EXTRA_LABEL_KEYS 의 키를 쓰고, 나머지는 등록부의 SAYU 키를 쓴다.
+const SAYU_EXTRA_LABEL_KEYS: Record<string, string> = { '직접작성영어일기': 'english_diary', [SNS_GALMURI_LABEL]: 'essay' };
+// SAYU 화면이 다루는 라벨 목록(순서 유지 — 필드로 형식을 찾을 때 앞의 것이 먼저 맞는다).
+// 한 줄에 하나씩 쓴다: 건강 동의 대기 목록이 SayuPage 에 다시 생기지 않는지 감시하는 테스트(sayuGrowthTimeline.test)가
+// 성장기록·배뇨일지 두 라벨이 따옴표째 한 줄에 나란히 붙은 모양을 찾기 때문이다. 이 목록은 동의 목록이 아니다.
+const SAYU_FORMAT_LABELS: string[] = [
+  '일기',
+  '에세이',
+  '선교보고',
+  '일반보고',
+  '업무일지',
+  '여행기록',
+  '독서사유',
+  '텃밭일지',
+  '애완동물관찰일지',
+  '육아일기',
+  '메모',
+  '성장타임라인',
+  '직접작성영어일기',
+  '성장기록',
+  '배뇨일지',
+  'HARU주식관리',
+  '주식거래일지',
+  'HARU보조장부',
+  'HARU가계부',
+  SNS_GALMURI_LABEL,
+];
+const SAYU_FORMAT_PREFIXES: Record<string, string> = Object.fromEntries(SAYU_FORMAT_LABELS.map((label) => [
+  label,
+  SAYU_EXTRA_LABEL_KEYS[label] ?? getFormatKey(label as RecordFormat, 'sayu'),
+]));
 // 공개 시 별도 확인창을 띄우는 민감 형식 — 가감은 이 배열만 수정
 const SENSITIVE_PUBLIC_FORMATS: RecordFormat[] = ['HARU가계부', '업무일지'];
-const GROWTH_TIMELINE_FORMAT_LABEL = '성장타임라인';
-const GROWTH_TIMELINE_SAYU_LABEL = 'HARU타임라인';
-const SNS_GALMURI_LABEL = 'SNS 갈무리';
-type PlantSayuEntryType = 'detective' | 'diary' | 'library' | 'catalog';
 type PlantSayuFilter = 'all' | PlantSayuEntryType;
 type ResultChatModalState = {
   isOpen: boolean;
@@ -76,6 +142,7 @@ type HaruLawAttachmentRef = {
   fileName: string;
 };
 type SayuNavigationState = {
+  plantDetectiveSelection?: PlantDetectiveSelection;
   filterFormat?: string;
   openRecordId?: string;
   tab?: 'records' | 'assistants';
@@ -87,24 +154,7 @@ const PLANT_SAYU_FILTERS: { key: PlantSayuFilter; label: string }[] = [
   { key: 'library', label: '도감기록' },
   { key: 'catalog', label: '공개기록' },
 ];
-const PLANT_SAYU_TYPE_LABEL: Record<PlantSayuEntryType, string> = {
-  detective: '판독기록',
-  diary: '성장일기',
-  library: '도감기록',
-  catalog: '공개기록',
-};
 const PLANT_SAYU_TYPE_ORDER: PlantSayuEntryType[] = ['detective', 'diary', 'library', 'catalog'];
-const PLANT_SAYU_SOURCE_LABEL: Record<string, string> = {
-  user_confirmed: '사용자 확정',
-  haru_plant_detective: '하루식물탐정',
-  kindwise: 'Plant.id',
-  plantnet: 'PlantNet',
-  gemini: 'AI 분석',
-};
-
-function isCompletedSnsStoryRecord(record: HaruRecord): boolean {
-  return record.source === 'sns_story' && record.generationStatus === 'completed';
-}
 
 type HaruLawArticleView = {
   lawName: string;
@@ -162,42 +212,6 @@ function parseHaruLawArticles(text: string): HaruLawArticleView[] {
     });
 }
 
-type GrowthTimelineRecordItem = {
-  url: string;
-  takenDate: string;
-  memo: string;
-  order: number;
-  locationLabel?: string;
-  locationCandidate?: ReverseGeocodeCandidate;
-  locationStatus?: 'none' | 'loading' | 'found' | 'not_found' | 'error';
-  latitude?: number;
-  longitude?: number;
-};
-
-function isGrowthTimelineRecord(record: any) {
-  return record?.recordType === 'growthTimeline'
-    || record?.format === '성장타임라인'
-    || (Array.isArray(record?.formats) && record.formats.includes('성장타임라인'));
-}
-
-function normalizeTimelineItems(value: unknown): GrowthTimelineRecordItem[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((item: any) => typeof item?.url === 'string' && item.url.startsWith('http'))
-    .map((item: any, index: number) => ({
-      url: item.url,
-      takenDate: typeof item.takenDate === 'string' ? item.takenDate : '',
-      memo: typeof item.memo === 'string' ? item.memo : '',
-      order: typeof item.order === 'number' ? item.order : index,
-      locationLabel: typeof item.locationLabel === 'string' ? item.locationLabel : '',
-      locationCandidate: item.locationCandidate,
-      locationStatus: item.locationStatus,
-      latitude: typeof item.latitude === 'number' ? item.latitude : undefined,
-      longitude: typeof item.longitude === 'number' ? item.longitude : undefined,
-    }))
-    .sort((a, b) => a.takenDate.localeCompare(b.takenDate) || a.order - b.order);
-}
-
 interface AiLog { id: string; title?: string; source?: string; createdAt?: string; [key: string]: any; }
 interface Chapter { id: string; bookId: string; title: string; sourceTitle: string; content: string; order: number; }
 interface Book { id: string; title: string; totalChapters: number; order?: number; chapters: Chapter[]; }
@@ -253,7 +267,6 @@ interface SayuPlantLibraryItem {
   observationCount?: number;
   watermarkText?: string;
 }
-type PlantReadOnlyField = { label: string; value: string };
 type PlantDetectiveAnalysisImage = { imageBase64: string; mimeType: string };
 type PlantDetectiveAdvancedResult = {
   plantId: {
@@ -306,20 +319,6 @@ type PlantDetectiveAdvancedResult = {
     plantIdDisabledReason?: string | null;
   };
 };
-interface PlantReadOnlyDetail {
-  type: PlantSayuEntryType;
-  title: string;
-  date: string;
-  subtitle?: string;
-  imageUrl?: string;
-  summary?: string;
-  coreFields: PlantReadOnlyField[];
-  detailSections: PlantReadOnlyField[];
-  // 판독기록(detective) 항목에 한해 사진 추가가 가능하도록 record/idx 와 추가 사진 목록을 함께 전달한다.
-  recordId?: string;
-  entryIdx?: number;
-  imageUrls?: string[];
-}
 interface SayuPlantDiaryEditKey {
   recordId: string;
   idx: number;
@@ -422,20 +421,15 @@ function extractPreviewKeywords(text: string): string[] {
 // 레코드 본문 필드를 하나의 문자열로 합치는 헬퍼 (AI 추출과 fallback 양쪽에서 재사용)
 function getRecordSourceText(r: any, prefix: string): string {
   if (!r) return '';
-  if (prefix === 'growthTimeline') {
-    const items = normalizeTimelineItems(r.timelineItems);
-    return [
-      typeof r.title === 'string' ? r.title : '',
-      typeof r.content === 'string' ? r.content : '',
-      ...items.map((item) => item.memo),
-    ].filter((value) => value.trim()).join(' ');
-  }
+  if (isStructuredAssistantPrefix(prefix)) return structuredAssistantSourceText(r, prefix);
+  if (prefix === GROWTH_TIMELINE_FORMAT_KEY) return growthTimelineSourceText(r);
   const parts: string[] = [];
   const sayu = r[`${prefix}_sayu`];
   if (typeof sayu === 'string') parts.push(sayu);
   Object.keys(r).forEach((k) => {
     if (!k.startsWith(`${prefix}_`)) return;
-    if (k.endsWith('_sayu') || k.endsWith('_keywords') || k.endsWith('_ai_title') || k.endsWith('_title') || k.endsWith('_polished') || k.endsWith('_polishedAt') || k.endsWith('_mode') || k.endsWith('_stats') || k.endsWith('_images') || k.endsWith('_imageMeta') || k.endsWith('_rating') || k.endsWith('_tags') || k.endsWith('_space') || k.endsWith('_style')) return;
+    if (isStructuredMeasurementFieldOfFormat(r, prefix, k)) return;
+    if (k.endsWith('_sayu') || k.endsWith('_keywords') || k.endsWith('_ai_title') || k.endsWith('_title') || k.endsWith('_polished') || k.endsWith('_polishedAt') || k.endsWith('_mode') || k.endsWith('_stats') || k.endsWith('_images') || k.endsWith('_imageMeta') || k.endsWith('_rating') || k.endsWith('_tags') || k.endsWith('_space') || k.endsWith('_style') || k === 'household_categorySource') return;
     const v = r[k];
     if (typeof v === 'string' && v.trim()) parts.push(v);
   });
@@ -443,7 +437,7 @@ function getRecordSourceText(r: any, prefix: string): string {
 }
 
 function getResultChatSourceKey(formatKey: string, record?: Record<string, any>): string {
-  if (formatKey === 'growthTimeline') return 'growthTimeline';
+  if (formatKey === GROWTH_TIMELINE_FORMAT_KEY) return GROWTH_TIMELINE_FORMAT_KEY;
   if (formatKey === 'reading' && typeof record?.reading_final_sayu === 'string' && record.reading_final_sayu.trim()) {
     return 'reading_final_sayu';
   }
@@ -454,9 +448,7 @@ function hasResultChatSource(record: Record<string, any> | undefined, formatKey:
   if (!record || !formatKey) return false;
   const config = getResultChatConfigForFormatKey(formatKey, record);
   if (!config) return false;
-  if (formatKey === 'growthTimeline') {
-    return String(record.content || '').trim().length > 0 || normalizeTimelineItems(record.timelineItems).length > 0;
-  }
+  if (formatKey === GROWTH_TIMELINE_FORMAT_KEY) return hasGrowthTimelineResultChatSource(record);
   const sourceKey = getResultChatSourceKey(formatKey, record);
   const candidate = String(record[sourceKey] || displayedContent || '').trim();
   return candidate.length > 0 && candidate !== '내용 없음';
@@ -563,11 +555,6 @@ function buildLedgerEntryDisplay(entry: any, record: any) {
   };
 }
 
-function parseHouseholdDisplayAmount(value: unknown): number {
-  const n = parseFloat(String(value || '').replace(/[^0-9.-]/g, ''));
-  return Number.isFinite(n) ? Math.abs(n) : 0;
-}
-
 function formatHouseholdDisplayMoney(value: number, signed = false): string {
   const sign = signed && value > 0 ? '+' : '';
   return `${sign}${value.toLocaleString('ko-KR')}원`;
@@ -581,24 +568,15 @@ function buildHouseholdSummaryTitle(record: any): string {
     const entries = JSON.parse(stored);
     if (!Array.isArray(entries) || entries.length === 0) return '';
 
-    let income = 0;
-    let expense = 0;
-    let transfer = 0;
+    const { income, expense, balance } = summarizeHouseholdEntries(entries);
     const months = new Set<string>();
 
     for (const entry of entries) {
       const date = String(entry?.date || '').replace(/\./g, '-');
       const month = date.slice(0, 7);
       if (/^\d{4}-\d{2}$/.test(month)) months.add(month);
-
-      const amount = parseHouseholdDisplayAmount(entry?.amount);
-      if (entry?.transactionType === '수입') income += amount;
-      if (entry?.transactionType === '이체') transfer += amount;
-      if (entry?.transactionType === '지출') expense += amount;
     }
 
-    const totalIncome = income + transfer;
-    const balance = totalIncome - expense;
     const [monthKey] = Array.from(months);
     const label = months.size === 1
       ? `${Number(monthKey.slice(0, 4))}년 ${Number(monthKey.slice(5, 7))}월 가계부`
@@ -606,13 +584,62 @@ function buildHouseholdSummaryTitle(record: any): string {
 
     return [
       label,
-      `수입 ${formatHouseholdDisplayMoney(totalIncome)}`,
+      `수입 ${formatHouseholdDisplayMoney(income)}`,
       `지출 ${formatHouseholdDisplayMoney(expense)}`,
-      `수입 지출 차액 ${formatHouseholdDisplayMoney(balance, true)}`,
+      `수입−지출 ${formatHouseholdDisplayMoney(balance, true)}`,
     ].join(' · ');
   } catch {
     return '';
   }
+}
+
+// SAYU 상세의 원본 칸 값. 본문·평점·사진 등 메타와 비문자열 값은 원본 칸에 넣지 않는다.
+function buildSayuOriginalData(record: Record<string, any>, formatKey: string): Record<string, string> {
+  const originalData: Record<string, string> = {};
+  Object.keys(record).forEach((key) => {
+    if (
+      key.startsWith(`${formatKey}_`) &&
+      !key.includes('sayu') &&
+      !key.includes('rating') &&
+      !key.includes('polished') &&
+      !key.includes('images') &&
+      !key.includes('imageMeta') &&
+      typeof record[key] === 'string' // 텃밭 고른 작물 배열(garden_crops) 같은 비문자열 값은 원본 칸에 넣지 않는다
+    ) {
+      originalData[key] = record[key];
+    }
+  });
+  return originalData;
+}
+
+// 가계부 상세의 상단 합계에 쓸 전체 거래. undefined면 SayuModal이 열린 기록 자체 거래로 요약한다.
+// 상세 목록과 같은 읽기(householdSayuEntries)를 써서 예전 단건 기록도 합계에 넣고, 손상된 배열 기록은 제외한다.
+function buildSayuHouseholdTotals(records: readonly Record<string, any>[], currentRecordId: string | undefined, scope: 'month' | 'all'): HouseholdSayuEntry[] | undefined {
+  // 월별 가계부 기록은 전체보기 목록에서 열어도 이 기록의 entries만으로 요약한다.
+  const currentRecord = currentRecordId
+    ? records.find((item) => item.id === currentRecordId)
+    : undefined;
+  const currentStored = currentRecord ? currentRecord.household_entries : undefined;
+  if (typeof currentStored === 'string') {
+    try {
+      const parsed = JSON.parse(currentStored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const months = new Set(
+          parsed
+            .map((entry: any) => String(entry?.date || '').replace(/\./g, '-').slice(0, 7))
+            .filter((month: string) => /^\d{4}-\d{2}$/.test(month)),
+        );
+        if (months.size === 1) return undefined;
+      }
+    } catch { /* fall through to scope fallback */ }
+  }
+  // 월별보기에서는 전체 합계를 넘기지 않는다 — SayuModal이 이 기록(그 달) 자체 entries만으로 요약을 집계하도록.
+  if (scope !== 'all') return undefined;
+  const allEntries: HouseholdSayuEntry[] = [];
+  for (const rec of records) {
+    if (!Object.keys(rec).some((key) => key.startsWith('household_'))) continue;    allEntries.push(...householdSayuEntries(rec));
+  }
+  return allEntries.length > 0 ? allEntries : undefined;
 }
 
 // IntersectionObserver 백필 메타
@@ -807,6 +834,9 @@ export function SayuPage() {
   const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [records, setRecords] = useState<HaruRecord[]>([]);
+  const [recordsOwnerUid, setRecordsOwnerUid] = useState<string | undefined>();
+  const currentRecordsUidRef = useRef(user?.uid);
+  currentRecordsUidRef.current = user?.uid;
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDateFormats, setSelectedDateFormats] = useState<{ key: string; label: string; recordId?: string }[]>([]);
@@ -822,6 +852,9 @@ export function SayuPage() {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set(['생활', '업무', '하루충전소', '하루LAW', '하루AI지식창고', 'SNS검색기록', '내가 읽은 책', 'HARU주식관리']));
   const [expandedFormats, setExpandedFormats] = useState<Set<string>>(new Set());
   const [timelineRefreshKey, setTimelineRefreshKey] = useState(0);
+  const healthReadConsent = useRecordReadConsent(user?.uid, 'sensitiveHealth');
+  const [structuredRecord, setStructuredRecord] = useState<{ record: HaruRecord; prefix: StructuredAssistantPrefix; ownerUid: string } | null>(null);
+  useEffect(() => { setStructuredRecord(null); }, [user?.uid]);
   // 📊 통계/합치기 모달
   const [formatStatModal, setFormatStatModal] = useState<{
     isOpen: boolean;
@@ -987,6 +1020,7 @@ export function SayuPage() {
   const [plantDiaryDraft, setPlantDiaryDraft] = useState(emptyPlantDiaryDraft);
   const [plantDiarySaving, setPlantDiarySaving] = useState(false);
   const [plantDetectivePhotoBusy, setPlantDetectivePhotoBusy] = useState(false);
+  const plantDetectivePhotoBusyRef = useRef(false);
   const plantDetectivePhotoInputRef = useRef<HTMLInputElement>(null);
   const allSayuLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const sayuRouteStateLoadingRef = useRef('');
@@ -1209,7 +1243,8 @@ export function SayuPage() {
   };
 
   // 판독기록(plantDetective[idx]) 항목에 사진 1장을 추가 업로드한다. 기존 format_photos 경로 패턴 재사용.
-  const uploadSayuPlantDetectivePhoto = async (recordId: string, idx: number, file: File) => {
+  const uploadSayuPlantDetectivePhoto = async (recordId: string, idx: number, source: File) => {
+    const file = await readSelectedRecordPhoto(source);
     if (!file.type.startsWith('image/')) {
       throw new Error('사진 파일만 추가할 수 있어요.');
     }
@@ -1355,7 +1390,25 @@ export function SayuPage() {
 
   // 해당 record 의 plantDetective 배열을 복사 → idx 원소의 imageUrls 에 새 URL append → 새 사진까지 포함해 재탐색한다.
   // imageUrl 이 없던 항목은 첫 추가 사진을 대표 이미지로도 지정한다. arrayUnion 미사용(객체 배열).
+  const handleEditPlantDetectiveRecord = async () => {
+    if (plantDetectivePhotoBusyRef.current) return;
+    const detail = plantReadOnlyDetail;
+    if (!detail?.recordId || !Number.isSafeInteger(detail.entryIdx) || !detail.editSnapshot) return;
+    try {
+      const fingerprint = await fingerprintPlantEntry(detail.editSnapshot);
+      // A photo operation may have started while the digest was being calculated.
+      if (plantDetectivePhotoBusyRef.current) return;
+      navigate('/plant-detective', { state: {
+        recordId: detail.recordId, idx: detail.entryIdx,
+        fingerprint, from: 'sayu', mode: 'edit',
+      } });
+    } catch {
+      toast.error('편집할 식물 기록을 찾지 못했습니다. 다시 선택해 주세요.');
+    }
+  };
+
   const handleAddPlantDetectivePhoto = async (recordId: string, idx: number, file: File | null) => {
+    if (plantDetectivePhotoBusyRef.current) return;
     if (!file) return;
     if (!user?.uid) { toast.error('로그인이 필요합니다.'); return; }
     if (!recordId) { toast.error('기록을 찾을 수 없습니다.'); return; }
@@ -1364,6 +1417,7 @@ export function SayuPage() {
       ? [...((record as any).plantDetective as any[])]
       : [];
     if (!current[idx]) { toast.error('해당 판독 기록을 찾을 수 없습니다.'); return; }
+    plantDetectivePhotoBusyRef.current = true;
     setPlantDetectivePhotoBusy(true);
     let uploadedUrl = '';
     let uploadedPhotoPersisted = false;
@@ -1389,6 +1443,17 @@ export function SayuPage() {
       next[idx] = target;
       await updateDoc(doc(db, 'users', user.uid, 'records', recordId), { plantDetective: next });
       uploadedPhotoPersisted = true;
+      // Keep the last persisted snapshot even if the subsequent reanalysis save fails.
+      const persistedPhotoEntry = { ...target };
+      const persistedPhotoEntries = [...next];
+      persistedPhotoEntries[idx] = persistedPhotoEntry;
+      setRecords((prev) => prev.map((r) => r.id === recordId
+        ? ({ ...r, plantDetective: persistedPhotoEntries } as HaruRecord)
+        : r));
+      setPlantReadOnlyDetail((prev) => {
+        if (!prev || prev.recordId !== recordId || prev.entryIdx !== idx) return prev;
+        return { ...prev, editSnapshot: persistedPhotoEntry, imageUrl: target.imageUrl, imageUrls: nextImageUrls };
+      });
 
       let reanalysisDone = false;
       let reanalysisImageCount = 1;
@@ -1438,6 +1503,7 @@ export function SayuPage() {
         ].filter((value) => String(value || '').trim()).join(' · ');
         return {
           ...prev,
+          editSnapshot: target,
           title: updatedTitle,
           subtitle: getPlantScientificLine(target),
           imageUrl: String(prev.imageUrl || '').trim() || uploadedUrl,
@@ -1481,11 +1547,13 @@ export function SayuPage() {
         }
       }
     } finally {
+      plantDetectivePhotoBusyRef.current = false;
       setPlantDetectivePhotoBusy(false);
     }
   };
 
   const handleDeletePlantDetectivePhoto = async (recordId: string, idx: number, imageUrl: string) => {
+    if (plantDetectivePhotoBusyRef.current) return;
     if (!user?.uid) { toast.error('로그인이 필요합니다.'); return; }
     if (!window.confirm('이 사진을 삭제할까요?\n삭제하면 현재 식물탐정 기록에서 이 사진이 제외됩니다.')) return;
 
@@ -1514,6 +1582,8 @@ export function SayuPage() {
 
     const next = [...current];
     next[idx] = target;
+    plantDetectivePhotoBusyRef.current = true;
+    setPlantDetectivePhotoBusy(true);
     try {
       await updateDoc(doc(db, 'users', user.uid, 'records', recordId), { plantDetective: next });
       setRecords((prev) =>
@@ -1523,6 +1593,7 @@ export function SayuPage() {
         if (!prev || prev.recordId !== recordId || prev.entryIdx !== idx) return prev;
         return {
           ...prev,
+          editSnapshot: target,
           imageUrl: prev.imageUrl === imageUrl ? nextImageUrls[0] : prev.imageUrl,
           imageUrls: nextImageUrls,
         };
@@ -1531,6 +1602,9 @@ export function SayuPage() {
     } catch (error) {
       console.error('식물 판독 사진 삭제 실패:', error);
       toast.error('사진 삭제에 실패했습니다.');
+    } finally {
+      plantDetectivePhotoBusyRef.current = false;
+      setPlantDetectivePhotoBusy(false);
     }
   };
 
@@ -2102,7 +2176,9 @@ export function SayuPage() {
     setLoading(true);
     try {
       const data = await firestoreService.getRecords(user.uid);
+      if (currentRecordsUidRef.current !== user.uid) return;
       setRecords(data);
+      setRecordsOwnerUid(user.uid);
     } catch (error) {
       console.error('기록 불러오기 실패:', error);
       toast.error('기록을 불러오는데 실패했습니다.');
@@ -2167,19 +2243,9 @@ export function SayuPage() {
     setViewMode(mode);
   };
 
-  // 모든 형식 prefix 매핑
+  // 모든 형식 prefix 매핑(라벨 순서·값은 모듈 상단 SAYU_FORMAT_PREFIXES — 형식 등록부에서 만든다)
   const ALL_FORMAT_PREFIXES: Record<string, string> = {
-    '일기': 'diary', '에세이': 'essay', '선교보고': 'mission',
-    '일반보고': 'report', '업무일지': 'work', '여행기록': 'travel',
-    '독서사유': 'reading',
-    '텃밭일지': 'garden', '애완동물관찰일지': 'pet', '육아일기': 'child',
-    '메모': 'memo',
-    '성장타임라인': 'growthTimeline',
-    'HARU주식관리': 'stock',
-    '주식거래일지': 'stock',
-    'HARU보조장부': 'ledger',
-    'HARU가계부': 'household',
-    [SNS_GALMURI_LABEL]: 'essay',
+    ...SAYU_FORMAT_PREFIXES,
   };
 
   const META_SUFFIXES = ['_sayu', '_final_sayu', '_polished', '_polishedAt', '_mode', '_stats', '_images', '_imageMeta', '_rating', '_status', '_completedAt', '_reflection_questions', '_reflection_answers', '_entries_snapshot'];
@@ -2250,9 +2316,9 @@ export function SayuPage() {
     const seen = new Set<string>();
     const dots: { prefix: string; color: string }[] = [];
     dayRecords.forEach((record) => {
-      if (isGrowthTimelineRecord(record) && !seen.has('growthTimeline')) {
-        seen.add('growthTimeline');
-        dots.push({ prefix: 'growthTimeline', color: FORMAT_COLORS['growthTimeline'] });
+      if (isGrowthTimelineRecord(record) && !seen.has(GROWTH_TIMELINE_FORMAT_KEY)) {
+        seen.add(GROWTH_TIMELINE_FORMAT_KEY);
+        dots.push({ prefix: GROWTH_TIMELINE_FORMAT_KEY, color: FORMAT_COLORS[GROWTH_TIMELINE_FORMAT_KEY] });
       }
       if (record.formats?.includes('HARUraw' as any) && !seen.has('haruraw')) {
         seen.add('haruraw');
@@ -2292,7 +2358,7 @@ export function SayuPage() {
     dayRecords.forEach((record) => {
       const formatsForRecord =
         isGrowthTimelineRecord(record)
-          ? [{ label: GROWTH_TIMELINE_SAYU_LABEL, prefix: 'growthTimeline' }]
+          ? [growthTimelineFormatOption()]
         : Array.isArray(record.formats) && record.formats.length > 0
           ? record.formats
               .map((format) => ({ label: String(format), prefix: ALL_FORMAT_PREFIXES[String(format)] }))
@@ -2330,6 +2396,24 @@ export function SayuPage() {
       : records.find((r) => r.date === dateStr);
     if (!record) return;
 
+    if (isStructuredAssistantPrefix(formatKey)) {
+      const structuredAccess = getStructuredViewAccess(formatKey, recordsOwnerUid === user?.uid, healthReadConsent);
+      if (structuredAccess === 'not_owner') return;
+      if (!hasStructuredAssistantRecord(record, formatKey)) {
+        toast.info('선택한 기록에 해당 형식이 없습니다.');
+        return;
+      }
+      if (structuredAccess === 'needs_health_consent') {
+        toast.info('건강 기록 화면에서 민감정보 열람 동의를 확인해 주세요.');
+        return;
+      }
+      setSayuModalState(prev => ({ ...prev, isOpen: false }));
+      setHarurawModal(prev => ({ ...prev, isOpen: false }));
+      if (user?.uid) setStructuredRecord({ record, prefix: formatKey, ownerUid: user.uid });
+      return;
+    }
+    setStructuredRecord(null);
+
     // HARUraw handling
     if (formatKey === 'haruraw') {
       setHarurawModal({
@@ -2345,33 +2429,10 @@ export function SayuPage() {
       return;
     }
 
-    if (formatKey === 'growthTimeline' || isGrowthTimelineRecord(record)) {
-      const timelineItems = normalizeTimelineItems((record as any).timelineItems);
+    if (formatKey === GROWTH_TIMELINE_FORMAT_KEY || isGrowthTimelineRecord(record)) {
       setSelectedDate(dateStr);
-      setSelectedDateFormats([{ key: 'growthTimeline', label: GROWTH_TIMELINE_SAYU_LABEL, recordId: record.id }]);
-      setSayuModalState({
-        isOpen: true,
-        content: String((record as any).content || ''),
-        originalData: {},
-        format: GROWTH_TIMELINE_SAYU_LABEL,
-        formatKey: 'growthTimeline',
-        firestoreId: record.id,
-        title: String((record as any).title || ''),
-        aiTitle: '',
-        isPublic: (record as any).isPublic === true,
-        sharedRecordId: typeof (record as any).sharedRecordId === 'string' ? (record as any).sharedRecordId : '',
-        dateLabel: new Date(dateStr + 'T00:00:00').toLocaleDateString('ko-KR', {
-          month: 'long',
-          day: 'numeric',
-        }),
-        currentRating: 0,
-        recordDate: dateStr,
-        weather: record.weather,
-        temperature: record.temperature,
-        mood: record.mood,
-        images: timelineItems.slice(0, 3).map((item) => item.url),
-        timelineItems,
-      });
+      setSelectedDateFormats([growthTimelineSelectedFormat(record.id)]);
+      setSayuModalState(buildGrowthTimelineSayuModalState(record, dateStr));
       return;
     }
 
@@ -2379,24 +2440,11 @@ export function SayuPage() {
     setSelectedDateFormats([{ key: formatKey, label: formatLabel, recordId: record.id }]);
 
     const sayuKey = `${formatKey}_sayu`;
-    const ratingKey = `${formatKey}_rating`;
     const imagesKey = `${formatKey}_images`;
 
-    const sayuRating = record[ratingKey] || 0;
+    const sayuRating = isSpecialDayRecord(record, formatKey) ? 1 : 0;
 
-    const originalData: Record<string, string> = {};
-    Object.keys(record).forEach((key) => {
-      if (
-        key.startsWith(`${formatKey}_`) &&
-        !key.includes('sayu') &&
-        !key.includes('rating') &&
-        !key.includes('polished') &&
-        !key.includes('images') &&
-        !key.includes('imageMeta')
-      ) {
-        originalData[key] = record[key];
-      }
-    });
+    const originalData = buildSayuOriginalData(record, formatKey);
 
     const isResultChatMemo = formatKey === 'memo' && (record as any).source === 'result_ai_chat';
     const resultChatSourceLabel = String((record as any).sourceLabel || '').trim()
@@ -2467,14 +2515,66 @@ export function SayuPage() {
     });
   };
 
+  // Plant returns fetch the exact document; unrelated list loads must not restart that read.
+  const sayuRouteRecords = (location.state as SayuNavigationState)?.plantDetectiveSelection !== undefined ? null : records;
   useEffect(() => {
     if (location.pathname !== '/sayu') return;
     if (!user?.uid) return;
 
     const routeState = (location.state ?? null) as SayuNavigationState;
+    if (routeState?.plantDetectiveSelection !== undefined) {
+      const selection = readPlantDetectiveSelection(routeState.plantDetectiveSelection);
+      if (!selection || routeState.openRecordId !== selection.recordId) {
+        toast.error('선택한 식물 기록을 찾을 수 없습니다. SAYU에서 다시 선택해 주세요.');
+        navigate('/sayu', { replace: true, state: null });
+        return;
+      }
+      const routeKey = `plant:${selection.recordId}:${selection.idx}:${selection.fingerprint}`;
+      if (sayuRouteStateLoadingRef.current === routeKey) return;
+      sayuRouteStateLoadingRef.current = routeKey;
+      setSayuTab('assistants');
+      setViewMode('list');
+      setSelectedSayuLabels(prev => ({ ...prev, assistants: '하루식물탐정' }));
+      let cancelled = false;
+      (async () => {
+        try {
+          const snapshot = await getDoc(doc(db, 'users', user.uid, 'records', selection.recordId));
+          if (!snapshot.exists()) throw new Error(PLANT_EDIT_CONFLICT);
+          const record = { ...snapshot.data(), id: snapshot.id } as HaruRecord;
+          const selected = (record as any).plantDetective?.[selection.idx];
+          if (!selected || await fingerprintPlantEntry(selected) !== selection.fingerprint) throw new Error(PLANT_EDIT_CONFLICT);
+          if (cancelled) return;
+          const entry = buildPlantDetectiveEntry(record, selection.idx);
+          if (!entry || isKnowledgeWarehouseRecord(record)) throw new Error(PLANT_EDIT_CONFLICT);
+          const date = new Date(`${record.date}T00:00:00`);
+          if (!Number.isNaN(date.getTime())) setCurrentMonth(date);
+          setSayuScope('month');
+          setSayuTab('assistants');
+          setViewMode('list');
+          setPlantSayuFilter('detective');
+          setSayuSearchInput('');
+          setDebouncedSayuSearch('');
+          setSelectedSayuLabels(prev => ({ ...prev, assistants: '하루식물탐정' }));
+          setRecords(prev => [...prev.filter(item => item.id !== record.id), record]);
+          entry.onOpen();
+        } catch (error) {
+          if (cancelled) return;
+          toast.error(error instanceof Error ? error.message : '선택한 식물 기록을 불러오지 못했습니다.');
+        } finally {
+          if (sayuRouteStateLoadingRef.current === routeKey) sayuRouteStateLoadingRef.current = '';
+          if (!cancelled) navigate('/sayu', { replace: true, state: null });
+        }
+      })();
+      return () => {
+        cancelled = true;
+        if (sayuRouteStateLoadingRef.current === routeKey) sayuRouteStateLoadingRef.current = '';
+      };
+    }
     const filterFormat = typeof routeState?.filterFormat === 'string' ? routeState.filterFormat.trim() : '';
     const openRecordId = typeof routeState?.openRecordId === 'string' ? routeState.openRecordId.trim() : '';
     if (!filterFormat && !openRecordId) return;
+    if (structuredViewNeedsHealthConsent(ALL_FORMAT_PREFIXES[filterFormat] || '') && healthReadConsent === null) return;
+    if (isStructuredAssistantPrefix(ALL_FORMAT_PREFIXES[filterFormat] || '') && recordsOwnerUid !== user?.uid) return;
 
     const routeKey = `${filterFormat}|${openRecordId}`;
     const targetTab = routeState?.tab === 'assistants' || filterFormat === '하루LAW' || filterFormat === SNS_GALMURI_LABEL ? 'assistants' : 'records';
@@ -2503,7 +2603,9 @@ export function SayuPage() {
       (async () => {
         try {
           const data = await firestoreService.getRecords(user.uid);
+          if (currentRecordsUidRef.current !== user.uid) return;
           setRecords(data);
+          setRecordsOwnerUid(user.uid);
           if (!data.some((record) => record.id === openRecordId)) {
             toast.error('저장한 메모를 찾지 못했습니다.');
             navigate('/sayu', { replace: true, state: null });
@@ -2535,7 +2637,7 @@ export function SayuPage() {
     }
     navigate('/sayu', { replace: true, state: null });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.state, user?.uid, records]);
+  }, [location.pathname, location.state, user?.uid, sayuRouteRecords, healthReadConsent, recordsOwnerUid]);
 
   const handleFormatClick = (formatKey: string, formatLabel: string, recordId?: string) => {
     if (!selectedDate) return;
@@ -2554,7 +2656,9 @@ export function SayuPage() {
     setLoading(true);
     try {
       const data = await firestoreService.getRecords(user!.uid);
+      if (currentRecordsUidRef.current !== user!.uid) return;
       setRecords(data);
+      setRecordsOwnerUid(user!.uid);
 
       if (deleted) {
         const dayRecords = data.filter((r) => r.date === currentDate);
@@ -2566,10 +2670,10 @@ export function SayuPage() {
           const availableFormats: { key: string; label: string; recordId?: string }[] = [];
           dayRecords.forEach((record) => {
             if (isGrowthTimelineRecord(record)) {
-              const entryKey = `growthTimeline_${record.id}`;
+              const entryKey = `${GROWTH_TIMELINE_FORMAT_KEY}_${record.id}`;
               if (!seenFormatKeys.has(entryKey)) {
                 seenFormatKeys.add(entryKey);
-                availableFormats.push({ key: 'growthTimeline', label: GROWTH_TIMELINE_SAYU_LABEL, recordId: record.id });
+                availableFormats.push(growthTimelineSelectedFormat(record.id));
               }
               return;
             }
@@ -2595,45 +2699,95 @@ export function SayuPage() {
     }
   };
 
-  const handleSaveSayu = async (editedContent: string, rating: number) => {
-    if (!selectedDate) return false;
+  const handleSaveSayu = async (editedContent: string, rating: number, meta: SayuEditMeta) => {
+    if (!user?.uid) {
+      toast.error('로그인이 필요합니다.');
+      return false;
+    }
+    if (!selectedDate) {
+      toast.error('저장할 기록을 확인하지 못했습니다. 다시 열어 시도해주세요.');
+      return false;
+    }
     const currentFormatInfo = selectedDateFormats[0];
     const record = currentFormatInfo?.recordId
       ? records.find((r) => r.id === currentFormatInfo.recordId)
       : records.find((r) => r.date === selectedDate);
-    if (!record) return false;
 
-    const formatKey = currentFormatInfo?.key || selectedDateFormats.find((f) => record[`${f.key}_sayu`])?.key;
-    if (!formatKey) return false;
+    const formatKey = record
+      ? currentFormatInfo?.key || selectedDateFormats.find((f) => record[`${f.key}_sayu`])?.key
+      : undefined;
+    // 모달이 편집한 기록·형식과 저장 대상이 다르면 다른 기록을 덮어쓰지 않도록 저장하지 않는다.
+    if (!record || !formatKey || record.id !== meta.recordId || formatKey !== meta.formatKey) {
+      toast.error('저장할 기록을 확인하지 못했습니다. 다시 열어 시도해주세요.');
+      return false;
+    }
 
     const sayuKey = `${formatKey}_sayu`;
     const ratingKey = `${formatKey}_rating`;
+    // 특별한 날은 specialDays[형식 키]에 따로 둔다. 업무일지 Rating 칸(work_rating) 문장을 덮어쓰지 않기 위해서다.
+    // (형식_special 은 반려동물 '특별한 일' 입력 칸 pet_special 과 겹쳐 맵으로 둔다.)
+    // 옛 숫자 _rating(0/1)은 그대로 두고 읽을 때 구분한다. 업무일지만 Rating 칸이 숫자로 덮인 값이라 지운다.
+    const isSpecial = rating > 0;
+    const hasLegacyRating = formatKey === 'work' && typeof record[ratingKey] === 'number';
+
+    const titleKey = `${formatKey}_title`;
+    const aiTitleKey = `${formatKey}_ai_title`;
+    const metaUpdate: Record<string, string | null> = {
+      [titleKey]: meta.title,
+      weather: meta.weather,
+      temperature: meta.temperature,
+      ...(meta.mood ? { mood: meta.mood } : {}),
+      // updateRecord는 null을 필드 삭제로 바꾼다.
+      ...(meta.clearAiTitle ? { [aiTitleKey]: null } : {}),
+    };
 
     try {
-      await firestoreService.updateRecord(user!.uid, record.id, {
+      // 제목·날씨·기분과 본문·특별한 날을 한 번의 updateRecord로 저장해 일부만 반영되는 일을 막는다.
+      await firestoreService.updateRecord(user.uid, record.id, {
+        ...metaUpdate,
         [sayuKey]: editedContent,
-        [ratingKey]: rating,
+        [`specialDays.${formatKey}`]: isSpecial,
+        ...(hasLegacyRating ? { [ratingKey]: null } : {}),
       });
-
-      if (record.isPublic === true) {
-        await firestoreService.publishRecordToShared(user!.uid, record.id);
-      }
-
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.id === record.id
-            ? { ...r, [sayuKey]: editedContent, [ratingKey]: rating }
-            : r
-        )
-      );
-
-      toast.success('SAYU-나의기록에 저장되었습니다!');
-      return true;
     } catch (error) {
       console.error('저장 실패:', error);
       toast.error('저장에 실패했습니다.');
       return false;
     }
+
+    setRecords((prev) =>
+      prev.map((r) =>
+        r.id === record.id
+          ? (() => {
+              const next: any = {
+                ...r,
+                [titleKey]: meta.title,
+                weather: meta.weather,
+                temperature: meta.temperature,
+                ...(meta.mood ? { mood: meta.mood } : {}),
+                [sayuKey]: editedContent,
+                specialDays: { ...(r.specialDays || {}), [formatKey]: isSpecial },
+              };
+              if (meta.clearAiTitle) delete next[aiTitleKey];
+              if (hasLegacyRating) delete next[ratingKey];
+              return next;
+            })()
+          : r
+      )
+    );
+
+    // 공개본은 원본 저장이 성공한 뒤에만 갱신하고, 실패해도 원본 저장 실패로 보고하지 않는다.
+    if (record.isPublic === true) {
+      try {
+        await firestoreService.publishRecordToShared(user.uid, record.id);
+      } catch (error) {
+        console.error('함께보기 공개본 갱신 실패:', error);
+        toast.warning('기록은 저장됐지만 함께보기 공개본 갱신에 실패했습니다.');
+      }
+    }
+
+    toast.success('SAYU-나의기록에 저장되었습니다!');
+    return true;
   };
 
   const handleToggleSharedRecord = async (record: HaruRecord) => {
@@ -2877,14 +3031,6 @@ export function SayuPage() {
     } catch {
       toast.error('복사에 실패했습니다.');
     }
-  };
-
-  const handleAssistantRecommendationSelect = (recommendation: AssistantRecommendation) => {
-    if (recommendation.targetPath) {
-      navigate(recommendation.targetPath);
-      return;
-    }
-
   };
 
   const openResultChat = (params: {
@@ -3179,6 +3325,9 @@ export function SayuPage() {
     if (ledgerRecords.length === 0) return null;
 
     const parseAmount = (value: unknown): number => {
+      // "5천원", "1만5천원" 같은 한글 단위 금액은 단위를 계산하고, 그 밖의 입력은 예전 방식 그대로 해석한다
+      const unitAmount = parseKoreanUnitAmount(value);
+      if (unitAmount !== null) return Math.abs(unitAmount);
       const text = String(value || '').replace(/,/g, '').replace(/원/g, '').trim();
       const match = text.match(/-?\d+(?:\.\d+)?/);
       if (!match) return 0;
@@ -3376,26 +3525,6 @@ export function SayuPage() {
       return;
     }
     toggleFormat(formatKey);
-  };
-
-  type FlatSayuEntry = {
-    id: string;
-    recordId?: string;
-    entryIndex?: number;
-    date: string;
-    label: string;
-    title: string;
-    subtitle?: string;
-    color: string;
-    keywords?: string[];
-    searchText?: string;
-    plantType?: PlantSayuEntryType;
-    plantMergeKey?: string;
-    plantTypeBadges?: PlantSayuEntryType[];
-    plantPreviewImageUrl?: string;
-    plantPreviewLines?: string[];
-    onOpen: () => void;
-    extra?: ReactNode;
   };
 
   const compactPlantText = (value: any, max = 90) => {
@@ -3829,7 +3958,7 @@ export function SayuPage() {
 
   const getRecordFormatsForList = (record: HaruRecord) => {
     const formatsFromSpecial = isGrowthTimelineRecord(record)
-      ? [{ label: GROWTH_TIMELINE_SAYU_LABEL, prefix: 'growthTimeline' }]
+      ? [growthTimelineFormatOption()]
       : [];
     const formatsFromRecord = Array.isArray(record.formats)
       ? record.formats
@@ -3890,8 +4019,12 @@ export function SayuPage() {
   const hasCompletedFormatForRecord = (record: HaruRecord, prefix: string) => {
     if (isCompletedSnsStoryRecord(record)) return false;
     if (isKnowledgeWarehouseRecord(record)) return false;
-    if (prefix === 'growthTimeline') {
-      return isGrowthTimelineRecord(record) && normalizeTimelineItems((record as any).timelineItems).length > 0;
+    if (isStructuredAssistantPrefix(prefix)) {
+      if (getStructuredViewAccess(prefix, recordsOwnerUid === user?.uid, healthReadConsent) !== 'allowed') return false;
+      return hasStructuredAssistantRecord(record, prefix);
+    }
+    if (prefix === GROWTH_TIMELINE_FORMAT_KEY) {
+      return isCompletedGrowthTimelineRecord(record);
     }
     if (prefix === 'reading') {
       return isCompletedReadingRecord(record);
@@ -3903,6 +4036,7 @@ export function SayuPage() {
     // 예: 텃밭일지를 기록만 하고 SAYU 저장을 안 한 경우에도 사유 목록에서 보이도록.
     const hasWrittenContent = Object.keys(record).some((key) =>
       key.startsWith(`${prefix}_`) &&
+      !isStructuredMeasurementFieldOfFormat(record, prefix, key) &&
       !META_SUFFIXES.some((suffix) => key.endsWith(suffix)) &&
       typeof record[key] === 'string' &&
       (record[key] as string).trim().length > 0,
@@ -3917,8 +4051,9 @@ export function SayuPage() {
   };
 
   const getRecordDisplayTitle = (record: HaruRecord, prefix: string, label: string) => {
-    if (prefix === 'growthTimeline') {
-      return (String((record as any).title || '').trim() || label).slice(0, 48);
+    if (isStructuredAssistantPrefix(prefix)) return buildStructuredAssistantView(record, prefix).title.slice(0, 48);
+    if (prefix === GROWTH_TIMELINE_FORMAT_KEY) {
+      return getGrowthTimelineDisplayTitle(record, label);
     }
     if (prefix === 'ledger') {
       return buildLedgerDisplay(record).title;
@@ -3962,12 +4097,49 @@ export function SayuPage() {
     .join(' ')
     .toLowerCase();
 
+  const renderGrowthTimelinePreview = (preview: { imageUrl: string; title: string; onOpen: () => void }) => {
+    return (
+      <button
+        type="button"
+        onClick={preview.onOpen}
+        aria-label={`${preview.title || GROWTH_TIMELINE_SAYU_LABEL} 열기`}
+        className="hover:bg-yellow-50 transition-colors"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44,
+          padding: '0 18px 12px 66px', border: 'none', background: 'transparent',
+          textAlign: 'left', cursor: 'pointer',
+        }}
+      >
+        <img
+          src={preview.imageUrl}
+          alt={`${GROWTH_TIMELINE_FORMAT_LABEL} 대표사진`}
+          style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e7eb', flexShrink: 0 }}
+        />
+        <span style={{ borderRadius: 999, backgroundColor: '#edf7f1', color: '#37644a', padding: '4px 9px', fontSize: 11, fontWeight: 800 }}>
+          {GROWTH_TIMELINE_SAYU_LABEL}
+        </span>
+      </button>
+    );
+  };
+
+  const growthTimelineEntryContext: GrowthTimelineEntryContext = {
+    FORMAT_COLORS,
+    getRecordSourceText,
+    getRecordPreviewKeywords,
+    buildSearchText,
+    openFormatSayu,
+    renderGrowthTimelinePreview,
+  };
+
   const allRecordEntries: FlatSayuEntry[] = records
     .filter((record) => isSayuScopeDate(record.date))
     .flatMap((record) =>
       getRecordFormatsForList(record)
         .filter(({ prefix }) => hasCompletedFormatForRecord(record, prefix))
         .flatMap(({ label, prefix }) => {
+          if (prefix === GROWTH_TIMELINE_FORMAT_KEY) {
+            return [buildGrowthTimelineRecordEntry(growthTimelineEntryContext, record, label)];
+          }
           // HARU보조장부: 같은 날짜에 여러 거래가 한 문서(ledger_entries 배열)에 병합 저장되어 있어도,
           // 목록에서는 거래 하나하나를 별도 항목으로 보여주고 삭제도 거래 단위로 할 수 있게 한다.
           if (prefix === 'ledger') {
@@ -4013,16 +4185,9 @@ export function SayuPage() {
             });
           }
 
-          const timelineItems = prefix === 'growthTimeline'
-            ? normalizeTimelineItems((record as any).timelineItems)
-            : [];
-          const periodStart = String((record as any).periodStart || timelineItems[0]?.takenDate || record.date || '');
-          const periodEnd = String((record as any).periodEnd || timelineItems[timelineItems.length - 1]?.takenDate || '');
           const keywords = getRecordPreviewKeywords(record, prefix);
           const title = getRecordDisplayTitle(record, prefix, label);
-          const subtitle = prefix === 'growthTimeline'
-            ? `${periodStart || '-'}${periodEnd && periodEnd !== periodStart ? ` ~ ${periodEnd}` : ''} · ${timelineItems.length || (record as any).itemCount || 0}장`
-            : keywords.slice(0, 4).join(' · ');
+          const subtitle = keywords.slice(0, 4).join(' · ');
           const openEntry = () => openFormatSayu(record.date, prefix, label, record.id);
           return [{
             id: `${record.id}_${prefix}`,
@@ -4035,28 +4200,6 @@ export function SayuPage() {
             keywords,
             searchText: buildSearchText(label, title, subtitle, keywords, getRecordSourceText(record, prefix)),
             onOpen: openEntry,
-            extra: prefix === 'growthTimeline' && timelineItems[0]?.url ? (
-              <button
-                type="button"
-                onClick={openEntry}
-                aria-label={`${title || GROWTH_TIMELINE_SAYU_LABEL} 열기`}
-                className="hover:bg-yellow-50 transition-colors"
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44,
-                  padding: '0 18px 12px 66px', border: 'none', background: 'transparent',
-                  textAlign: 'left', cursor: 'pointer',
-                }}
-              >
-                <img
-                  src={timelineItems[0].url}
-                  alt={`${GROWTH_TIMELINE_FORMAT_LABEL} 대표사진`}
-                  style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e7eb', flexShrink: 0 }}
-                />
-                <span style={{ borderRadius: 999, backgroundColor: '#edf7f1', color: '#37644a', padding: '4px 9px', fontSize: 11, fontWeight: 800 }}>
-                  {GROWTH_TIMELINE_SAYU_LABEL}
-                </span>
-              </button>
-            ) : undefined,
           }];
         }),
     )
@@ -4064,380 +4207,42 @@ export function SayuPage() {
   const growthTimelineEntries = allRecordEntries.filter((entry) => entry.label === GROWTH_TIMELINE_SAYU_LABEL);
   const recordEntries = allRecordEntries.filter((entry) => entry.label !== GROWTH_TIMELINE_SAYU_LABEL);
 
-  const plantDetectiveEntries: FlatSayuEntry[] = records
-    .filter((record) => isSayuScopeDate(record.date) && !isKnowledgeWarehouseRecord(record))
-    .flatMap((record: any) =>
-      (Array.isArray(record.plantDetective) ? record.plantDetective : []).map((entry: any, idx: number) => {
-        const imageUrl = getPlantImageUrl(entry);
-        const title = getPlantDisplayName(entry).slice(0, 48);
-        const subtitle = getPlantScientificLine(entry);
-        const aiSummary = getPlantAiSummary(entry);
-        const memoSummary = getPlantMemoSummary(entry);
-        const confirmedName = String(entry?.userConfirmedName || entry?.humanReportedName || entry?.title || '').trim();
-        const aiName = String(entry?.aiKoName || entry?.aiPrediction || '').trim();
-        const scientificName = String(entry?.scientificName || entry?.latinName || entry?.finalLatinName || '').trim();
-        const locationLabel = String(entry?.locationLabel || entry?.publicLocation || '').trim();
-        const sourceLabel = entry?.source
-          ? (PLANT_SAYU_SOURCE_LABEL[String(entry.source)] || String(entry.source))
-          : '';
-        const sourceSummary = [
-          sourceLabel,
-          entry?.aiPrediction,
-          entry?.englishName,
-          entry?.confidence ? `PlantNet 신뢰도 ${entry.confidence}` : '',
-        ].filter((value) => String(value || '').trim()).join(' · ');
-        const detectiveImageUrls: string[] = (() => {
-          const urls: string[] = [];
-          const add = (value: any) => {
-            const url = typeof value === 'string' ? value.trim() : '';
-            if (url && url.startsWith('http') && !urls.includes(url)) urls.push(url);
-          };
-          add(imageUrl);
-          if (Array.isArray(entry?.imageUrls)) entry.imageUrls.forEach(add);
-          return urls;
-        })();
-        const onOpen = () => openPlantReadOnlyDetail({
-          type: 'detective',
-          title,
-          date: record.date,
-          subtitle,
-          imageUrl,
-          recordId: record.id,
-          entryIdx: idx,
-          imageUrls: detectiveImageUrls,
-          summary: '이 기록은 식물탐정이 판독하고 사용자가 확정한 식물 기록입니다.',
-          coreFields: [
-            { label: '사용자 확정명', value: confirmedName || title },
-            { label: 'PlantNet 판독명', value: aiName },
-            { label: '학명', value: scientificName },
-            { label: '기록일', value: formatKoreanDate(record.date) },
-          ],
-          detailSections: buildPlantDetectiveDetailSections(entry, sourceSummary, [
-            { label: '촬영 지역', value: locationLabel },
-            { label: '사용자 메모', value: memoSummary },
-          ]),
-        });
-        return {
-          id: `${record.id}_plant_detective_${idx}`,
-          date: record.date,
-          label: '하루식물탐정',
-          title,
-          subtitle,
-          color: '#10b981',
-          plantType: 'detective' as const,
-          plantMergeKey: getPlantMergeKey(entry, record.date, `${record.id}_plant_detective_${idx}`),
-          plantPreviewImageUrl: imageUrl,
-          plantPreviewLines: [
-            aiSummary ? `AI 요약: ${aiSummary}` : '',
-            memoSummary ? `메모: ${memoSummary}` : '',
-          ],
-          searchText: buildSearchText('하루식물탐정', title, subtitle, aiSummary, memoSummary, sourceSummary, confirmedName, aiName, scientificName, locationLabel),
-          onOpen,
-          extra: renderPlantReadOnlyPreview({
-            imageUrl,
-            badge: PLANT_SAYU_TYPE_LABEL.detective,
-            lines: [
-              aiSummary ? `AI 요약: ${aiSummary}` : '',
-              memoSummary ? `메모: ${memoSummary}` : '',
-            ],
-            onOpen,
-          }),
-        };
-      }),
-    );
+  const sayuAssistantContext: SayuAssistantEntriesContext = {
+    records,
+    plantLibraryItems,
+    plantCatalogItems,
+    FORMAT_COLORS,
+    isSayuScopeDate,
+    isKnowledgeWarehouseRecord,
+    getRecordSourceText,
+    getRecordPreviewKeywords,
+    buildSearchText,
+    compactPlantText,
+    compactPlantDetailText,
+    formatKoreanDate,
+    formatDaysAfterRecord,
+    getPlantDiaryTrace,
+    getPlantItemDateKey,
+    getPlantImageUrl,
+    getPlantDisplayName,
+    getPlantScientificLine,
+    getPlantAiSummary,
+    getPlantMemoSummary,
+    getPublicPlantLocation,
+    getPlantMergeKey,
+    isPublicPlantItem,
+    isOwnedCatalogItem,
+    buildPlantDetectiveDetailSections,
+    openPlantReadOnlyDetail,
+    openFormatSayu,
+    renderPlantReadOnlyPreview,
+  };
 
-  const plantDiaryEntries: FlatSayuEntry[] = records
-    .filter((record) => !isKnowledgeWarehouseRecord(record))
-    .flatMap((record: any) =>
-      (Array.isArray(record.plantObservation) ? record.plantObservation : []).map((entry: any, idx: number) => {
-        const date = getPlantItemDateKey(entry, record.date);
-        const imageUrl = getPlantImageUrl(entry);
-        const title = getPlantDisplayName(entry).slice(0, 48);
-        const subtitle = [entry?.growthStage || entry?.stage || entry?.condition, getPlantScientificLine(entry)]
-          .filter((value) => String(value || '').trim())
-          .join(' / ');
-        const bodySummary = compactPlantText(entry?.observation || entry?.memo || entry?.content || entry?.note);
-        const stageSummary = compactPlantText(entry?.growthStage || entry?.stage || '');
-        const trace = getPlantDiaryTrace(entry, record.date);
-        const elapsedLabel = typeof entry?.daysAfterRecord === 'number'
-          ? formatDaysAfterRecord(entry.daysAfterRecord)
-          : trace.editedLabel.replace(/^.* · /, '');
-        const onOpen = () => openPlantReadOnlyDetail({
-          type: 'diary',
-          title,
-          date,
-          subtitle,
-          imageUrl,
-          summary: '이 기록은 사용자가 직접 남긴 식물 성장 관찰 기록입니다.',
-          coreFields: [
-            { label: '식물명', value: title },
-            { label: '관찰일', value: formatKoreanDate(date) },
-            { label: '성장 단계', value: stageSummary },
-            { label: '경과일', value: elapsedLabel },
-          ],
-          detailSections: [
-            { label: '본문/메모 요약', value: bodySummary },
-            { label: 'AI 차이/관찰', value: compactPlantDetailText(entry?.aiDifference) },
-            { label: '기록 기준일', value: trace.recordLabel },
-            { label: '수정 이력', value: trace.editedLabel },
-          ],
-        });
-        return {
-          id: `${record.id}_plant_diary_${idx}`,
-          date,
-          label: '하루식물탐정',
-          title,
-          subtitle,
-          color: '#34a853',
-          plantType: 'diary' as const,
-          plantMergeKey: getPlantMergeKey(entry, date, `${record.id}_plant_diary_${idx}`),
-          plantPreviewImageUrl: imageUrl,
-          plantPreviewLines: [
-            bodySummary,
-            stageSummary ? `성장 단계: ${stageSummary}` : '',
-          ],
-          searchText: buildSearchText('하루식물탐정', title, subtitle, bodySummary, stageSummary, entry?.aiDifference, trace.recordLabel, trace.editedLabel),
-          onOpen,
-          extra: renderPlantReadOnlyPreview({
-            imageUrl,
-            badge: PLANT_SAYU_TYPE_LABEL.diary,
-            lines: [
-              bodySummary,
-              stageSummary ? `성장 단계: ${stageSummary}` : '',
-            ],
-            onOpen,
-          }),
-        };
-      }),
-    )
-    .filter((entry) => isSayuScopeDate(entry.date));
+  function buildPlantDetectiveEntry(record: any, idx: number): FlatSayuEntry | null {
+    return buildSayuPlantDetectiveEntry(sayuAssistantContext, record, idx);
+  }
 
-  const plantLibraryEntries: FlatSayuEntry[] = plantLibraryItems
-    .map((item) => {
-      const date = getPlantItemDateKey(item);
-      const imageUrl = getPlantImageUrl(item);
-      const title = getPlantDisplayName(item).slice(0, 48);
-      const subtitle = getPlantScientificLine(item);
-      const featureSummary = compactPlantText(item.characteristics || item.features || item.featureSummary || item.description || item.geminiAnalysis?.analysis);
-      const memoSummary = compactPlantText(item.cultivationMemo || item.careMemo || item.memo || item.note);
-      const publicState = isPublicPlantItem(item) ? '공개 연결 있음' : '비공개/미공개';
-      const onOpen = () => openPlantReadOnlyDetail({
-        type: 'library',
-        title,
-        date,
-        subtitle,
-        imageUrl,
-        summary: '이 기록은 사용자가 확정한 내 식물도감 기록입니다.',
-        coreFields: [
-          { label: '식물명', value: title },
-          { label: '학명', value: String(item.scientificName || item.finalLatinName || '').trim() },
-          { label: '최근 갱신일', value: formatKoreanDate(date) },
-          { label: '공개 여부', value: publicState },
-        ],
-        detailSections: [
-          { label: '학명/영문명', value: subtitle },
-          { label: '특징 설명', value: featureSummary },
-          { label: '재배 메모', value: memoSummary },
-          { label: '도감 출처', value: '내 식물도감' },
-        ],
-      });
-      return {
-        id: `plant_library_${item.id}`,
-        date,
-        label: '하루식물탐정',
-        title,
-        subtitle,
-        color: '#4A5A2C',
-        plantType: 'library' as const,
-        plantMergeKey: getPlantMergeKey(item, date, `plant_library_${item.id}`, true),
-        plantPreviewImageUrl: imageUrl,
-        plantPreviewLines: [
-          featureSummary ? `특징: ${featureSummary}` : '',
-          memoSummary ? `재배 메모: ${memoSummary}` : publicState,
-        ],
-        searchText: buildSearchText('하루식물탐정', title, subtitle, featureSummary, memoSummary, publicState),
-        onOpen,
-        extra: renderPlantReadOnlyPreview({
-          imageUrl,
-          badge: PLANT_SAYU_TYPE_LABEL.library,
-          lines: [
-            featureSummary ? `특징: ${featureSummary}` : '',
-            memoSummary ? `재배 메모: ${memoSummary}` : publicState,
-          ],
-          onOpen,
-        }),
-      };
-    })
-    .filter((entry) => isSayuScopeDate(entry.date));
-
-  const plantPublicEntriesFromLibrary: FlatSayuEntry[] = plantLibraryItems
-    .filter(isPublicPlantItem)
-    .map((item) => {
-      const date = getPlantItemDateKey(item);
-      const imageUrl = getPlantImageUrl(item);
-      const title = getPlantDisplayName(item).slice(0, 48);
-      const subtitle = getPublicPlantLocation(item) || getPlantScientificLine(item);
-      const description = compactPlantText(item.description || item.featureSummary || item.characteristics || item.features || item.geminiAnalysis?.analysis);
-      const publicLocation = getPublicPlantLocation(item);
-      const onOpen = () => openPlantReadOnlyDetail({
-        type: 'catalog',
-        title,
-        date,
-        subtitle,
-        imageUrl,
-        summary: '이 기록은 공개 연결 정보가 확인된 식물 공개기록입니다.',
-        coreFields: [
-          { label: '공개 식물명', value: title },
-          { label: '공개용 지역명', value: publicLocation },
-          { label: '공개 상태', value: '공개 읽기 전용' },
-          { label: '공개일', value: formatKoreanDate(date) },
-        ],
-        detailSections: [
-          { label: '공개 제목/설명', value: description },
-          { label: '학명/영문명', value: getPlantScientificLine(item) },
-        ],
-      });
-      return {
-        id: `plant_public_library_${item.id}`,
-        date,
-        label: '하루식물탐정',
-        title,
-        subtitle,
-        color: '#0f766e',
-        plantType: 'catalog' as const,
-        plantMergeKey: getPlantMergeKey(item, date, `plant_public_library_${item.id}`, true),
-        plantPreviewImageUrl: imageUrl,
-        plantPreviewLines: [
-          description,
-          publicLocation ? `공개 지역: ${publicLocation}` : '공개 지역 미표시',
-        ],
-        searchText: buildSearchText('하루식물탐정', title, subtitle, description, publicLocation),
-        onOpen,
-        extra: renderPlantReadOnlyPreview({
-          imageUrl,
-          badge: PLANT_SAYU_TYPE_LABEL.catalog,
-          lines: [
-            description,
-            publicLocation ? `공개 지역: ${publicLocation}` : '공개 지역 미표시',
-          ],
-          onOpen,
-        }),
-      };
-    })
-    .filter((entry) => isSayuScopeDate(entry.date));
-
-  const plantPublicEntriesFromCatalog: FlatSayuEntry[] = plantCatalogItems
-    .filter(isOwnedCatalogItem)
-    .map((item) => {
-      const date = getPlantItemDateKey(item);
-      const imageUrl = getPlantImageUrl(item);
-      const title = getPlantDisplayName(item).slice(0, 48);
-      const subtitle = getPublicPlantLocation(item) || getPlantScientificLine(item);
-      const description = compactPlantText(item.description || item.featureSummary || item.characteristics || item.features || item.geminiAnalysis?.analysis);
-      const publicLocation = getPublicPlantLocation(item);
-      const onOpen = () => openPlantReadOnlyDetail({
-        type: 'catalog',
-        title,
-        date,
-        subtitle,
-        imageUrl,
-        summary: '이 기록은 공개 연결 정보가 확인된 식물 공개기록입니다.',
-        coreFields: [
-          { label: '공개 식물명', value: title },
-          { label: '공개용 지역명', value: publicLocation },
-          { label: '공개 상태', value: '공개 읽기 전용' },
-          { label: '공개일', value: formatKoreanDate(date) },
-        ],
-        detailSections: [
-          { label: '공개 제목/설명', value: description },
-          { label: '학명/영문명', value: getPlantScientificLine(item) },
-        ],
-      });
-      return {
-        id: `plant_public_catalog_${item.id}`,
-        date,
-        label: '하루식물탐정',
-        title,
-        subtitle,
-        color: '#0f766e',
-        plantType: 'catalog' as const,
-        plantMergeKey: getPlantMergeKey(item, date, `plant_public_catalog_${item.id}`),
-        plantPreviewImageUrl: imageUrl,
-        plantPreviewLines: [
-          description,
-          publicLocation ? `공개 지역: ${publicLocation}` : '공개 지역 미표시',
-        ],
-        searchText: buildSearchText('하루식물탐정', title, subtitle, description, publicLocation),
-        onOpen,
-        extra: renderPlantReadOnlyPreview({
-          imageUrl,
-          badge: PLANT_SAYU_TYPE_LABEL.catalog,
-          lines: [
-            description,
-            publicLocation ? `공개 지역: ${publicLocation}` : '공개 지역 미표시',
-          ],
-          onOpen,
-        }),
-      };
-    })
-    .filter((entry) => isSayuScopeDate(entry.date));
-
-  const plantPublicEntries = [...plantPublicEntriesFromLibrary, ...plantPublicEntriesFromCatalog];
-
-  const assistantEntries: FlatSayuEntry[] = [
-    ...records
-      .filter((record) => isSayuScopeDate(record.date) && isCompletedSnsStoryRecord(record))
-      .map((record) => {
-        const title = String((record as any).essay_title || (record as any).essay_ai_title || 'SNS 갈무리 이야기').slice(0, 48);
-        const content = String((record as any).essay_sayu || (record as any).content || '').trim();
-        const sourceCount = Array.isArray((record as any).sourceRecordIds) ? (record as any).sourceRecordIds.length : 0;
-        const subtitle = [
-          sourceCount > 0 ? `SNS 기록 ${sourceCount}건` : 'SNS 갈무리 작품',
-          compactPlantText(content, 80),
-        ].filter(Boolean).join(' · ');
-        const keywords = getRecordPreviewKeywords(record, 'essay');
-        return {
-          id: `${record.id}_sns_galmuri`,
-          recordId: record.id,
-          date: record.date,
-          label: SNS_GALMURI_LABEL,
-          title,
-          subtitle,
-          color: '#10b981',
-          keywords,
-          searchText: buildSearchText(SNS_GALMURI_LABEL, title, subtitle, keywords, content),
-          onOpen: () => openFormatSayu(record.date, 'essay', SNS_GALMURI_LABEL, record.id),
-        };
-      }),
-    ...records
-      .filter((record) => (
-        isSayuScopeDate(record.date) &&
-        !isKnowledgeWarehouseRecord(record) &&
-        Array.isArray(record.formats) &&
-        record.formats.includes('HARUraw' as any) &&
-        getRecordSourceText(record, 'haruraw').trim().length > 0
-      ))
-      .map((record) => {
-        const keywords = getRecordPreviewKeywords(record, 'haruraw');
-        const title = String((record as any).haruraw_query || '(질문 없음)').slice(0, 48);
-        const subtitle = keywords.slice(0, 4).join(' · ');
-        return {
-          id: `${record.id}_haruraw`,
-          date: record.date,
-          label: '하루LAW',
-          title,
-          subtitle,
-          color: FORMAT_COLORS.haruraw,
-          keywords,
-          searchText: buildSearchText('하루LAW', title, subtitle, keywords, getRecordSourceText(record, 'haruraw'), (record as any).haruraw_summary, (record as any).haruraw_articles),
-          onOpen: () => openFormatSayu(record.date, 'haruraw', 'HARUraw', record.id),
-        };
-      }),
-    ...plantDetectiveEntries,
-    ...plantDiaryEntries,
-    ...plantLibraryEntries,
-    ...plantPublicEntries,
-  ].sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
+  const assistantEntries: FlatSayuEntry[] = buildSayuAssistantEntries(sayuAssistantContext);
 
   const activeEntries = sayuTab === 'records'
     ? recordEntries
@@ -5260,6 +5065,7 @@ export function SayuPage() {
         })}
       </div>
 
+      {sayuTab === 'assistants' && user?.uid && <OriginalAssistantRecords key={user.uid} uid={user.uid} />}
       {renderSayuScopeTabs()}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
@@ -5590,6 +5396,10 @@ export function SayuPage() {
         </div>
       )}
 
+      {structuredRecord
+        && getStructuredViewAccess(structuredRecord.prefix, structuredRecord.ownerUid === user?.uid, healthReadConsent) === 'allowed' && (
+        <StructuredAssistantRecordModal record={structuredRecord.record} prefix={structuredRecord.prefix} onClose={() => setStructuredRecord(null)} />
+      )}
       <SayuModal
         isOpen={sayuModalState.isOpen}
         onClose={(deleted?: boolean) => handleModalClose(deleted)}
@@ -5692,19 +5502,7 @@ export function SayuPage() {
             )
             .sort((a, b) => String((b as any).createdAt || '').localeCompare(String((a as any).createdAt || '')));
 
-          const recommendations = getAssistantRecommendations(
-            [
-              getRecordSourceText(record, formatKey),
-              sayuModalState.content,
-              buildRecommendationTextFromFields(sayuModalState.originalData || {}),
-            ].filter(Boolean).join('\n\n'),
-            [
-              sayuModalState.format || '',
-              ...(Array.isArray(record.formats) ? record.formats.map((format) => String(format)) : []),
-            ],
-          );
-
-          if (!shouldShowResultChat && recommendations.length === 0 && linkedMemos.length === 0) return null;
+          if (!shouldShowResultChat && linkedMemos.length === 0) return null;
 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -5740,14 +5538,6 @@ export function SayuPage() {
                   </div>
                 </section>
               )}
-              {recommendations.length > 0 && (
-                <AssistantRecommendationCards
-                  recommendations={recommendations}
-                  title="이 기록과 연결 가능한 AI 비서"
-                  description="기록에 담긴 고민을 바탕으로 도움받을 수 있는 비서를 추천합니다."
-                  onSelect={handleAssistantRecommendationSelect}
-                />
-              )}
             </div>
           );
         })()}
@@ -5755,49 +5545,13 @@ export function SayuPage() {
           const formatKey = sayuModalState.formatKey || '';
           const isHousehold = formatKey === 'household' || sayuModalState.format === 'HARU가계부';
           if (!isHousehold) return undefined;
-          // 월별 가계부 기록은 전체보기 목록에서 열어도 이 기록의 entries만으로 요약한다.
-          const currentRecord = sayuModalState.firestoreId
-            ? records.find((item) => item.id === sayuModalState.firestoreId)
-            : undefined;
-          const currentStored = currentRecord ? (currentRecord as any).household_entries : undefined;
-          if (typeof currentStored === 'string') {
-            try {
-              const parsed = JSON.parse(currentStored);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                const months = new Set(
-                  parsed
-                    .map((entry: any) => String(entry?.date || '').replace(/\./g, '-').slice(0, 7))
-                    .filter((month: string) => /^\d{4}-\d{2}$/.test(month)),
-                );
-                if (months.size === 1) return undefined;
-              }
-            } catch { /* fall through to scope fallback */ }
-          }
-          // 월별보기에서는 전체 합계를 넘기지 않는다 — SayuModal이 이 기록(그 달) 자체 entries만으로 요약을 집계하도록.
-          if (sayuScope !== 'all') return undefined;
-          const allEntries: { date: string; transactionType: string; category: string; vendor: string; amount: string; paymentMethod: string; memo: string; balanceAfter?: string }[] = [];
-          for (const rec of records) {
-            const stored = (rec as any).household_entries;
-            if (!stored) continue;
-            try {
-              const parsed = JSON.parse(stored);
-              if (Array.isArray(parsed)) {
-                for (const e of parsed) {
-                  allEntries.push({
-                    date: String(e.date || ''),
-                    transactionType: String(e.transactionType || ''),
-                    category: String(e.category || ''),
-                    vendor: String(e.vendor || ''),
-                    amount: String(e.amount || ''),
-                    paymentMethod: String(e.paymentMethod || ''),
-                    memo: String(e.memo || ''),
-                    balanceAfter: e.balanceAfter ? String(e.balanceAfter) : undefined,
-                  });
-                }
-              }
-            } catch { /* skip */ }
-          }
-          return allEntries.length > 0 ? allEntries : undefined;
+          return buildSayuHouseholdTotals(records as Record<string, any>[], sayuModalState.firestoreId, sayuScope);
+        })()}
+        householdRecord={(() => {
+          const formatKey = sayuModalState.formatKey || '';
+          const isHousehold = formatKey === 'household' || sayuModalState.format === 'HARU가계부';
+          if (!isHousehold || !sayuModalState.firestoreId) return undefined;
+          return records.find((item) => item.id === sayuModalState.firestoreId) as Record<string, any> | undefined;
         })()}
       />
 
@@ -5870,6 +5624,18 @@ export function SayuPage() {
               )}
             </section>
 
+            {plantReadOnlyDetail.type === 'detective' && plantReadOnlyDetail.recordId
+              && Number.isSafeInteger(plantReadOnlyDetail.entryIdx) && Boolean(plantReadOnlyDetail.editSnapshot) && (
+              <button
+                type="button"
+                disabled={plantDetectivePhotoBusy}
+                onClick={handleEditPlantDetectiveRecord}
+                style={{ marginTop: 14, padding: '10px 16px', borderRadius: 10, border: '1px solid #4A5A2C', background: '#fffdf4', color: '#4A5A2C', fontWeight: 800 }}
+              >
+                기록 편집
+              </button>
+            )}
+
             {plantReadOnlyDetail.type === 'detective'
               && plantReadOnlyDetail.recordId
               && typeof plantReadOnlyDetail.entryIdx === 'number' && (
@@ -5915,6 +5681,7 @@ export function SayuPage() {
                               {detectiveImages.length > 1 && (
                                 <button
                                   type="button"
+                                  disabled={plantDetectivePhotoBusy}
                                   onClick={() => handleDeletePlantDetectivePhoto(
                                     plantReadOnlyDetail.recordId || '',
                                     plantReadOnlyDetail.entryIdx as number,
@@ -5951,7 +5718,8 @@ export function SayuPage() {
                 <input
                   ref={plantDetectivePhotoInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif"
+                  disabled={plantDetectivePhotoBusy}
                   style={{ display: 'none' }}
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
@@ -5979,7 +5747,7 @@ export function SayuPage() {
                     cursor: plantDetectivePhotoBusy ? 'wait' : 'pointer',
                   }}
                 >
-                  {plantDetectivePhotoBusy ? '다시 판독 중...' : '사진 추가 · 다시 판독'}
+                  {plantDetectivePhotoBusy ? '사진 처리 중...' : '사진 추가 · 다시 판독'}
                 </button>
                 <p style={{ margin: '9px 0 0', fontSize: 11, color: '#6B7280' }}>
                   새 사진은 기존 판독 사진과 함께 다시 분석되어 해당 기록에 반영됩니다.
@@ -6478,7 +6246,15 @@ export function SayuPage() {
                   ))}
                 </div>
               )}
-              {validImages.length >= 3 && (
+              {validImages.length >= 4 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px', backgroundColor: 'white' }}>
+                  {validImages.map((img: string, idx: number) => (
+                    <img key={idx} src={img} alt={`사진 ${idx + 1}`}
+                      style={{ width: '100%', minWidth: 0, maxHeight: '45mm', objectFit: 'contain', borderRadius: '8px', backgroundColor: 'white' }} />
+                  ))}
+                </div>
+              )}
+              {validImages.length === 3 && (
                 <div style={{ backgroundColor: 'white' }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px', backgroundColor: 'white' }}>
                     <img src={validImages[0]} alt="사진 1" style={{ width: 'auto', maxWidth: '84mm', maxHeight: '65mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />

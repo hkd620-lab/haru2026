@@ -132,7 +132,7 @@ assertBefore(handleSubscribeSection, "if (selectedPaymentMethod === 'kakaopay')"
 const completionSection = section(indexSrc, 'async function completeInitialBillingSubscription', 'async function markInitialBillingPaymentPending');
 const requestChargingWriteSection = section(indexSrc, 'tx.set(requestRef, {', 'tx.set(lockRef, {');
 const recurringSection = section(indexSrc, 'export const processRecurringSubscriptions = onSchedule', '// ===== 💳 일반(단건) 1개월 이용권 검증 =====');
-const recurringSettlementSection = section(indexSrc, 'async function settleRecurringBillingPayment', 'type HaruLawSharePreview');
+const recurringSettlementSection = section(indexSrc, 'async function settleRecurringBillingPayment', 'function getSafeOAuthError');
 const webhookSection = section(indexSrc, 'export const portoneWebhook = onRequest', '// ===== 🗑️ 일회성 마이그레이션');
 
 assert(completionSection.includes('const payment = normalizePortOnePaymentResponse(params.payment)'));

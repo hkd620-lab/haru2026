@@ -16,7 +16,7 @@ function section(source, startMarker, endMarker) {
 const removeAllTagsSection = section(
   indexSrc,
   'export const removeAllTags = onRequest',
-  'function isDeveloperUid'
+  '// 하루LAW Functions 는 haruLaw/haruLawFunctions.ts 에 있다.'
 );
 
 assert(removeAllTagsSection.includes("res.status(410).json"));

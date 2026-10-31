@@ -1,3 +1,4 @@
+import { readSelectedPhotoAttachments } from '../services/selectedRecordPhoto';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { collection, doc, getDoc, getDocs, getDocsFromServer, limit, orderBy, query } from 'firebase/firestore';
 import { Paperclip, X } from 'lucide-react';
@@ -35,6 +36,7 @@ import {
   hasReadableHaruLawPdfHeader,
   type HaruLawUserError,
 } from '../utils/haruLawError';
+import { EnterSubmitGuard, handleQuestionEnterKeyDown } from '../utils/questionEnterSubmit';
 
 // functions/src/index.ts 의 WEB_SEARCH_LIMITS 와 동일하게 유지할 것
 const WEB_SEARCH_LIMITS_UI: Record<string, number> = { free: 1, basic: 2, premium: 4, developer: 4 };
@@ -228,6 +230,7 @@ export function ResultChatModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [messages, setMessages] = useState<ResultChatMessage[]>([]);
   const [question, setQuestion] = useState('');
+  const [questionEnterGuard] = useState(() => new EnterSubmitGuard());
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [savedMemoIds, setSavedMemoIds] = useState<Record<number, string>>({});
@@ -465,7 +468,7 @@ export function ResultChatModal({
       return;
     }
 
-    const toUpload = files.slice(0, remainingSlots);
+    const selectedAttachments = readSelectedPhotoAttachments(files.slice(0, remainingSlots));
     const uploaded: HaruLawAttachmentRef[] = [];
     const uploadScopeId = attachmentScopeRef.current;
     activeUploadScopeRef.current = uploadScopeId;
@@ -473,6 +476,7 @@ export function ResultChatModal({
     uploadingFilesRef.current = true;
     setUploadingFiles(true);
     try {
+      const toUpload = await selectedAttachments;
       for (const file of toUpload) {
         if (!HARULAW_ATTACH_ALLOWED_TYPES.has(file.type)) {
           const userError = getHaruLawUserErrorByReason('ATTACHMENT_UNSUPPORTED_TYPE');
@@ -1100,18 +1104,29 @@ export function ResultChatModal({
             </>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <input
+            <textarea
+              rows={3}
+              aria-label="기록·비서 AI 질문"
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
               disabled={loading || uploadingFiles || closingAttachments || isChoicePending}
               placeholder="나의 기록을 바탕으로 자유롭게 질문해 보세요."
+              onCompositionStart={() => questionEnterGuard.compositionStart()}
+              onCompositionEnd={(event) => questionEnterGuard.compositionEnd(event.timeStamp)}
+              onBlur={() => questionEnterGuard.reset()}
+              onKeyDown={(event) => {
+                handleQuestionEnterKeyDown(questionEnterGuard, event, () => { void sendQuestion(question); });
+              }}
               style={{
                 flex: 1,
                 minWidth: 0,
-                height: 42,
                 borderRadius: 10,
                 border: '1px solid #CBD5E1',
-                padding: '0 12px',
+                padding: '12px',
+                boxSizing: 'border-box',
+                resize: 'none',
+                lineHeight: '21px',
+                fontFamily: 'inherit',
                 fontSize: 14,
                 outline: 'none',
                 backgroundColor: '#FFFFFF',

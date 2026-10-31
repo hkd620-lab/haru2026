@@ -31,12 +31,25 @@ const TEMPORARY_ERROR_CODES = new Set([
     'DEADLINE_EXCEEDED',
 ]);
 exports.HARULAW_LAW_API_MAX_ATTEMPTS = 3;
+const LAW_API_TIMEOUT_CODES = new Set(['ECONNABORTED', 'ETIMEDOUT']);
+const LAW_API_CONNECTION_CODES = new Set([
+    'ECONNRESET', 'ECONNREFUSED', 'EAI_AGAIN', 'ENOTFOUND', 'ENETUNREACH',
+    'EHOSTUNREACH', 'EPIPE',
+]);
+const LAW_API_SAFE_ERROR_CODES = new Set([
+    ...LAW_API_TIMEOUT_CODES, ...LAW_API_CONNECTION_CODES,
+    'ERR_NETWORK', 'ERR_BAD_REQUEST', 'ERR_BAD_RESPONSE', 'ERR_CANCELED',
+    'ERR_FR_TOO_MANY_REDIRECTS', 'ERR_INVALID_URL',
+    'CERT_HAS_EXPIRED', 'DEPTH_ZERO_SELF_SIGNED_CERT',
+    'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'ERR_TLS_CERT_ALTNAME_INVALID',
+]);
 class HaruLawApiTemporaryError extends Error {
-    constructor(error) {
+    constructor(error, diagnostics) {
         super('LAW_API_TEMPORARY_UNAVAILABLE');
         this.code = 'LAW_API_TEMPORARY_UNAVAILABLE';
         this.name = 'HaruLawApiTemporaryError';
         this.status = readStatus(error);
+        this.diagnostics = diagnostics;
     }
 }
 exports.HaruLawApiTemporaryError = HaruLawApiTemporaryError;
@@ -118,21 +131,58 @@ function isRetryableLawApiError(error) {
         return true;
     return !(candidate === null || candidate === void 0 ? void 0 : candidate.response);
 }
-async function runHaruLawApiRequestWithRetry(request, options = {}) {
+function getLawApiFailureDiagnostics(error, attempts, apiElapsedMs) {
     var _a, _b;
+    const chain = readErrorChain(error);
+    // Only response.status proves an upstream HTTP response. Never use the
+    // callable's status, raw messages, URLs, request config, or response bodies.
+    const upstreamHttpStatus = (_a = chain.map((candidate) => { var _a; return (_a = candidate.response) === null || _a === void 0 ? void 0 : _a.status; })
+        .find((status) => typeof status === 'number'
+        && Number.isInteger(status) && status >= 100 && status <= 599)) !== null && _a !== void 0 ? _a : null;
+    const codes = chain.map((candidate) => typeof candidate.code === 'string'
+        ? candidate.code.trim().toUpperCase() : '');
+    const causeCode = codes.find((code) => LAW_API_TIMEOUT_CODES.has(code)
+        || LAW_API_CONNECTION_CODES.has(code));
+    const upstreamErrorCode = (_b = causeCode !== null && causeCode !== void 0 ? causeCode : codes.find((code) => LAW_API_SAFE_ERROR_CODES.has(code))) !== null && _b !== void 0 ? _b : null;
+    const failureKind = upstreamHttpStatus !== null && upstreamHttpStatus >= 300
+        ? 'upstream_http'
+        : upstreamHttpStatus !== null ? 'unknown'
+            : causeCode && LAW_API_TIMEOUT_CODES.has(causeCode) ? 'timeout'
+                : causeCode && LAW_API_CONNECTION_CODES.has(causeCode) ? 'connection' : 'unknown';
+    return {
+        failureKind,
+        upstreamErrorCode,
+        hasUpstreamHttpStatus: upstreamHttpStatus !== null,
+        upstreamHttpStatus,
+        attempts,
+        apiElapsedMs: Math.max(0, Math.round(apiElapsedMs)),
+    };
+}
+async function runHaruLawApiRequestWithRetry(request, options = {}) {
+    var _a, _b, _c, _d;
+    const nowMs = (_a = options.nowMs) !== null && _a !== void 0 ? _a : (() => performance.now());
+    const startedAt = nowMs();
     for (let attempt = 1; attempt <= exports.HARULAW_LAW_API_MAX_ATTEMPTS; attempt += 1) {
         try {
             return await request();
         }
         catch (error) {
             const retryable = isRetryableLawApiError(error);
-            if (!retryable) {
-                throw error;
+            const diagnostics = getLawApiFailureDiagnostics(error, attempt, nowMs() - startedAt);
+            if (!retryable || attempt === exports.HARULAW_LAW_API_MAX_ATTEMPTS) {
+                try {
+                    (_b = options.onFailure) === null || _b === void 0 ? void 0 : _b.call(options, diagnostics);
+                }
+                catch { /* Diagnostics must not replace the API error. */ }
+                if (!retryable)
+                    throw error;
+                throw new HaruLawApiTemporaryError(error, diagnostics);
             }
-            if (attempt === exports.HARULAW_LAW_API_MAX_ATTEMPTS)
-                throw new HaruLawApiTemporaryError(error);
-            (_a = options.onRetry) === null || _a === void 0 ? void 0 : _a.call(options, attempt, error);
-            await ((_b = options.wait) !== null && _b !== void 0 ? _b : ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs))))(attempt * 700);
+            try {
+                (_c = options.onRetry) === null || _c === void 0 ? void 0 : _c.call(options, attempt, error, diagnostics);
+            }
+            catch { /* Preserve retry behavior if logging fails. */ }
+            await ((_d = options.wait) !== null && _d !== void 0 ? _d : ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs))))(attempt * 700);
         }
     }
     throw new Error('HARULAW_LAW_API_RETRY_EXHAUSTED');

@@ -1,0 +1,415 @@
+diff --git a/frontend/src/app/components/FormatModal.tsx b/frontend/src/app/components/FormatModal.tsx
+index 67e078c5..68197c58 100644
+--- a/frontend/src/app/components/FormatModal.tsx
++++ b/frontend/src/app/components/FormatModal.tsx
+@@ -174,7 +174,7 @@ export interface HouseholdEntry {
+ 
+ function newHouseholdEntry(overrides?: Partial<HouseholdEntry>): HouseholdEntry {
+   return {
+-    id: Math.random().toString(36).slice(2, 9),
++    id: Array.from(crypto.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join(''),
+     transactionType: '지출',
+     category: '',
+     date: '',
+@@ -514,12 +514,17 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
+       toast.warning('초안 사진을 모두 올리지 못했습니다. 편집창을 닫고 사진을 확인한 뒤 다시 시도해 주세요.');
+       throw new Error('initial record photo upload failed');
+     }
+-    if (formatData.household_saveVersion === 'dedup-v1') householdSaveReceiptRef.current = null;
+-    const result = await onSaveRequest(formatData);
+-    if (result && typeof result === 'object' && result.kind === 'household') {
++    if (formatData.household_saveVersion === 'dedup-v1') {
++      householdSaveReceiptRef.current = null;
++      if (!user?.uid) throw new Error('로그인이 필요합니다.');
++      // 어느 작성 화면에서 열어도 일반 저장 콜백으로 중복 검사를 우회하지 않는다.
++      const { firestoreService } = await import('../services/firestoreService');
++      const result = await firestoreService.saveHouseholdRecord(user.uid, JSON.parse(formatData.household_entries),
++        JSON.parse(formatData.household_saveDecisions || '{}'));
+       householdSaveReceiptRef.current = result;
+       return result.recordIds[0];
+     }
++    const result = await onSaveRequest(formatData);
+     return typeof result === 'string' ? result : undefined;
+   };
+   const [isExtractingBookText, setIsExtractingBookText] = useState(false);
+diff --git a/frontend/src/app/components/HouseholdDuplicateReview.tsx b/frontend/src/app/components/HouseholdDuplicateReview.tsx
+index fe680e36..eab19a5d 100644
+--- a/frontend/src/app/components/HouseholdDuplicateReview.tsx
++++ b/frontend/src/app/components/HouseholdDuplicateReview.tsx
+@@ -11,7 +11,7 @@ export function HouseholdDuplicateReview({ checks, decisions, onChoose, disabled
+   return <section aria-label="겹치는 거래 확인" style={{ padding: 14, border: '1px solid #f59e0b', borderRadius: 10, background: '#fffbeb' }}>
+     <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>겹칠 수 있는 거래 {suspects.length}건</h3>
+     <p style={{ fontSize: 12, lineHeight: 1.6 }}>같은 날짜·금액이라도 별개 거래일 수 있습니다. 기존 거래는 그대로 두며, 선택하기 전에는 저장하지 않습니다.</p>
+-    <button type="button" disabled={disabled} style={{ padding: '8px 10px', border: '1px solid #d97706', borderRadius: 6, background: '#fff' }} onClick={() => suspects.forEach(check => onChoose(check.entry.id, check.token, 'skip'))}>겹친 거래 모두 기존 거래 사용</button>
++    <button type="button" disabled={disabled || !suspects.some(check => check.matches.length)} style={{ padding: '8px 10px', border: '1px solid #d97706', borderRadius: 6, background: '#fff' }} onClick={() => suspects.filter(check => check.matches.length).forEach(check => onChoose(check.entry.id, check.token, 'skip'))}>겹친 거래 모두 기존 거래 사용</button>
+     {suspects.map(check => {
+       const chosen = decisions[check.entry.id]?.token === check.token ? decisions[check.entry.id]?.action : undefined;
+       return <div key={check.entry.id} style={{ padding: '12px 0', borderTop: '1px solid #fde68a', marginTop: 10, fontSize: 12, overflowWrap: 'anywhere' }}>
+@@ -19,7 +19,7 @@ export function HouseholdDuplicateReview({ checks, decisions, onChoose, disabled
+         {!check.matches.length && <p>이전에 비교한 거래가 변경됐습니다. 이번 거래를 추가할지 다시 선택해 주세요.</p>}
+         {check.matches.map(match => <p key={`${match.recordId}:${match.entryId}`} style={{ margin: '6px 0' }}>기존 거래: {match.entry.date} · {match.entry.vendor || match.entry.transactionType} · {match.entry.amount}원 · {match.entry.category || '분류 없음'}{match.entry.memo ? ` · ${match.entry.memo}` : ''}</p>)}
+         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+-          <button type="button" disabled={disabled} style={{ padding: '8px 10px', border: '1px solid #166534', borderRadius: 6, background: chosen === 'skip' ? '#dcfce7' : '#fff' }} aria-pressed={chosen === 'skip'} onClick={() => onChoose(check.entry.id, check.token, 'skip')}>{chosen === 'skip' ? '✓ ' : ''}기존 거래 사용</button>
++          <button type="button" disabled={disabled || !check.matches.length} style={{ padding: '8px 10px', border: '1px solid #166534', borderRadius: 6, background: chosen === 'skip' ? '#dcfce7' : '#fff' }} aria-pressed={chosen === 'skip'} onClick={() => onChoose(check.entry.id, check.token, 'skip')}>{chosen === 'skip' ? '✓ ' : ''}기존 거래 사용</button>
+           <button type="button" disabled={disabled} style={{ padding: '8px 10px', border: '1px solid #1e40af', borderRadius: 6, background: chosen === 'keep' ? '#dbeafe' : '#fff' }} aria-pressed={chosen === 'keep'} onClick={() => onChoose(check.entry.id, check.token, 'keep')}>{chosen === 'keep' ? '✓ ' : ''}별개 거래로 추가</button>
+         </div>
+       </div>;
+diff --git a/frontend/src/app/components/SayuModal.tsx b/frontend/src/app/components/SayuModal.tsx
+index 247ccedf..df829761 100644
+--- a/frontend/src/app/components/SayuModal.tsx
++++ b/frontend/src/app/components/SayuModal.tsx
+@@ -15,6 +15,7 @@ import { httpsCallable, getFunctions } from 'firebase/functions';
+ import { db, storage, functions } from '../../firebase';
+ import { useAuth } from '../contexts/AuthContext';
+ import { firestoreService } from '../services/firestoreService';
++import { saveHouseholdOriginal } from '../services/householdSaveService';
+ import { buildFormatKeyMap, invertFormatKeyMap } from '../records/formatRegistry';
+ import { exportRecordsToEpub } from '../services/epubExportService';
+ import { getEpubReaderHint } from '../utils/epubReaderGuide';
+@@ -620,6 +621,7 @@ export function SayuModal({
+   const [isSpecialDay, setIsSpecialDay] = useState(false);
+   const [viewMode, setViewMode] = useState<'ai' | 'original'>('ai');
+   const [editedOriginalData, setEditedOriginalData] = useState<Record<string, string>>(originalData || {});
++  const openedHouseholdOriginalRef = useRef<Record<string, string>>({});
+   const [isSavingOriginal, setIsSavingOriginal] = useState(false);
+   const [isRefining, setIsRefining] = useState(false);
+   const [localAiComment, setLocalAiComment] = useState(aiComment);
+@@ -1309,6 +1311,7 @@ export function SayuModal({
+       setShowTimelineDocument(false);
+       const baseData = originalData || {};
+       setEditedOriginalData(baseData);
++      openedHouseholdOriginalRef.current = { ...baseData };
+ 
+       // 🌱 텃밭일지: garden_crop 이 비어 있어도 등록 작물 전체로 채우지 않는다.
+       // 기록마다 고른 작물만 저장한다(2026-10-23 결정 ②). 원본 저장 시 등록 목록 전체가 기록되던 문제 방지.
+@@ -1693,11 +1696,17 @@ export function SayuModal({
+     try {
+       const docId = firestoreId || recordDate!;
+       const recordRef = doc(db, 'users', currentUser.uid, 'records', docId);
+-      await updateDoc(recordRef, editedOriginalData);
++      if (isHouseholdSayu) {
++        await saveHouseholdOriginal(db, currentUser.uid, docId, openedHouseholdOriginalRef.current, editedOriginalData);
++        openedHouseholdOriginalRef.current = { ...editedOriginalData };
++      } else await updateDoc(recordRef, editedOriginalData);
+       toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
+     } catch (error) {
+-      console.error('원본 저장 실패:', error);
+-      toast.error('저장 실패. 다시 시도해주세요.');
++      if (isHouseholdSayu) toast.error(error instanceof Error ? error.message : '가계부를 저장하지 못했습니다. 다시 열어 확인해 주세요.');
++      else {
++        console.error('원본 저장 실패:', error);
++        toast.error('저장 실패. 다시 시도해주세요.');
++      }
+     } finally {
+       setIsSavingOriginal(false);
+     }
+diff --git a/frontend/src/app/pages/RecordPage.tsx b/frontend/src/app/pages/RecordPage.tsx
+index 7ed3065e..f1b532aa 100644
+--- a/frontend/src/app/pages/RecordPage.tsx
++++ b/frontend/src/app/pages/RecordPage.tsx
+@@ -704,14 +704,6 @@ export function RecordPage() {
+ 
+   const handleSaveFormatData = async (formatData: Record<string, string>) => {
+     if (!user) return;
+-    if (formatData.household_saveVersion === 'dedup-v1') {
+-      // 가계부 신규 입력·가져오기는 공통 중복 검사 및 원자 저장만 거친다.
+-      // 다른 형식의 저장·기존 SAYU 편집 경로는 변경하지 않는다.
+-      const result = await firestoreService.saveHouseholdRecord(user.uid, JSON.parse(formatData.household_entries),
+-        JSON.parse(formatData.household_saveDecisions || '{}'), { weather, temperature, ...(mood ? { mood } : {}) });
+-      if (draftEditorRecordId) finishDraftAfterSave(draftEditorRecordId);
+-      return result;
+-    }
+     const typedGrowthSubjectName =
+       typeof (formatData as any)._growthSubjectName === 'string'
+         ? ((formatData as any)._growthSubjectName as string).trim()
+diff --git a/frontend/src/app/services/firestoreService.ts b/frontend/src/app/services/firestoreService.ts
+index dad7e263..5d826a8c 100644
+--- a/frontend/src/app/services/firestoreService.ts
++++ b/frontend/src/app/services/firestoreService.ts
+@@ -446,10 +446,9 @@ class FirestoreService {
+   }
+ 
+   // 기존 기록 관련 함수들
+-  async saveHouseholdRecord(userId: string, entries: HouseholdEntry[], decisions: HouseholdDecisions,
+-    environment: { weather?: string; temperature?: string; mood?: string }) {
+-    const result = await saveHouseholdEntries(db, userId, entries, decisions, environment);
+-    if (result.added > 0) void this.recordPaidServiceUsage(userId, 'record_created', {
++  async saveHouseholdRecord(userId: string, entries: HouseholdEntry[], decisions: HouseholdDecisions) {
++    const result = await saveHouseholdEntries(db, userId, entries, decisions);
++    if (result.added > 0) void this.recordPaidServiceUsage(userId, result.createdRecords ? 'record_created' : 'record_updated', {
+       recordId: result.recordIds[0], date: entries[0].date, formats: 'HARU가계부', source: 'household',
+     });
+     return result;
+diff --git a/frontend/src/app/services/householdDuplicates.ts b/frontend/src/app/services/householdDuplicates.ts
+index 85619219..389a73d5 100644
+--- a/frontend/src/app/services/householdDuplicates.ts
++++ b/frontend/src/app/services/householdDuplicates.ts
+@@ -53,7 +53,9 @@ function sameDayAmount(a: HouseholdEntry, b: HouseholdEntry) {
+ 
+ export async function checkHouseholdDuplicates(entries: HouseholdEntry[], records: HouseholdStoredRecord[]): Promise<HouseholdDuplicateCheck[]> {
+   const stored = records.flatMap(record => householdStoredEntries(record).map((entry, index) => ({
+-    recordId: record.id, entryId: entry.id || `index:${index}`, entry,
++    recordId: record.id, entryId: entry.id || `index:${index}`,
++    // 화면 집계처럼 빈 날짜는 문서 날짜로 비교한다. 저장 배열 자체는 바꾸지 않는다.
++    entry: { ...entry, date: entry.date?.trim() ? entry.date : String(record.data.date || record.id).slice(0, 10) },
+   })));
+   const result: HouseholdDuplicateCheck[] = [];
+   for (const entry of entries) {
+diff --git a/frontend/src/app/services/householdKakaoPdfImport.ts b/frontend/src/app/services/householdKakaoPdfImport.ts
+index 15bd757a..3b106fa8 100644
+--- a/frontend/src/app/services/householdKakaoPdfImport.ts
++++ b/frontend/src/app/services/householdKakaoPdfImport.ts
+@@ -38,7 +38,7 @@ export async function parseKakaoBankPdfDocument(pdf: HouseholdPdfDocument, fileN
+       if (pageNumber === 1) {
+         const label = items.find(item => /^(예금주|성명)[:：]?$/.test(compact(item.str)));
+         if (label) owner = items.filter(item => item !== label && item.transform[4] > label.transform[4] + label.width
+-          && Math.abs(item.transform[5] - label.transform[5]) < scale).sort((a,b) => a.transform[4] - b.transform[4]).map(item => item.str).join(' ').trim();
++          && Math.abs(item.transform[5] - label.transform[5]) < scale).sort((a,b) => a.transform[4] - b.transform[4])[0]?.str.trim() || '';
+       }
+       const body = items.filter(item => item.transform[5] < header.transform[5] - scale);
+       const anchors = body.filter(item => column(item) === 0 && dateTime.test(item.str.trim())).sort((a,b) => b.transform[5] - a.transform[5]);
+diff --git a/frontend/src/app/services/householdSaveService.ts b/frontend/src/app/services/householdSaveService.ts
+index fd176a15..bb188edc 100644
+--- a/frontend/src/app/services/householdSaveService.ts
++++ b/frontend/src/app/services/householdSaveService.ts
+@@ -5,7 +5,7 @@ import { checkHouseholdDuplicates, householdDate, householdIdentity, householdSt
+   HouseholdDuplicateReviewRequired, type HouseholdDecisions, type HouseholdStoredRecord } from './householdDuplicates';
+ 
+ export interface HouseholdSaveResult {
+-  kind: 'household'; added: number; skipped: number; already: number; recordIds: string[];
++  kind: 'household'; added: number; skipped: number; already: number; recordIds: string[]; createdRecords: number;
+ }
+ 
+ export async function loadHouseholdRecords(db: Firestore, uid: string): Promise<HouseholdStoredRecord[]> {
+@@ -18,6 +18,22 @@ export async function loadHouseholdRecords(db: Firestore, uid: string): Promise<
+ 
+ export function householdMonthRecordId(date: string) { return `${householdDate(date).slice(0, 7)}-01_household`; }
+ 
++// 원본 편집은 바꾼 필드만 저장한다. 열어 둔 사이 추가된 거래를 낡은 배열로 덮어쓰지 않는다.
++export async function saveHouseholdOriginal(db: Firestore, uid: string, recordId: string,
++  opened: Record<string, string>, edited: Record<string, string>) {
++  const changed = Object.fromEntries(Object.entries(edited).filter(([key, value]) => value !== opened[key]));
++  if (!Object.keys(changed).length) return;
++  const ref = doc(db, 'users', uid, 'records', recordId);
++  await runTransaction(db, async transaction => {
++    const current = await transaction.get(ref);
++    if (!current.exists() || current.data().household_entries !== opened.household_entries
++      || Object.keys(changed).some(key => current.data()?.[key] !== opened[key])) {
++      throw new Error('다른 곳에서 가계부가 바뀌었습니다. 창을 닫고 다시 열어 확인해 주세요. 저장하지 않았습니다.');
++    }
++    transaction.update(ref, changed);
++  });
++}
++
+ function fields(entries: HouseholdEntry[]) {
+   const first = entries[0];
+   return {
+@@ -28,7 +44,7 @@ function fields(entries: HouseholdEntry[]) {
+   };
+ }
+ 
+-export async function saveHouseholdEntries(db: Firestore, uid: string, entries: HouseholdEntry[], decisions: HouseholdDecisions = {}, environment: { weather?: string; temperature?: string; mood?: string } = {}): Promise<HouseholdSaveResult> {
++export async function saveHouseholdEntries(db: Firestore, uid: string, entries: HouseholdEntry[], decisions: HouseholdDecisions = {}): Promise<HouseholdSaveResult> {
+   if (!uid || uid.includes('/')) throw new Error('로그인이 필요합니다.');
+   if (!entries.length) throw new Error('저장할 거래가 없습니다.');
+   const ids = new Set<string>();
+@@ -57,12 +73,13 @@ export async function saveHouseholdEntries(db: Firestore, uid: string, entries:
+     const checks = analyzed.map(check => check.status === 'new' && decisions[check.entry.id]
+       ? { ...check, status: 'suspect' as const } : check);
+     if (checks.some(check => check.status === 'suspect' && (decisions[check.entry.id]?.token !== check.token
+-      || !['skip', 'keep'].includes(decisions[check.entry.id]?.action)))) {
++      || !['skip', 'keep'].includes(decisions[check.entry.id]?.action)
++      || (decisions[check.entry.id]?.action === 'skip' && !check.matches.length)))) {
+       throw new HouseholdDuplicateReviewRequired(checks);
+     }
+     const additions = new Map<string, HouseholdEntry[]>();
+     const receipts = new Map<string, string[]>();
+-    let already = 0, skipped = 0, added = 0;
++    let already = 0, skipped = 0, added = 0, createdRecords = 0;
+     for (const check of checks) {
+       if (check.status === 'already') { already++; continue; }
+       if (check.status === 'suspect' && decisions[check.entry.id]?.action === 'skip') {
+@@ -94,15 +111,13 @@ export async function saveHouseholdEntries(db: Firestore, uid: string, entries:
+         }
+         patch.formats = [...new Set([...(Array.isArray(old?.data.formats) ? old.data.formats : []), 'HARU가계부'])];
+         if (!old) {
++          createdRecords++;
+           Object.assign(patch, { date: id.slice(0,10), createdAt: new Date().toISOString() });
+-          for (const key of ['weather', 'temperature', 'mood'] as const) {
+-            if (environment[key]) patch[key] = environment[key];
+-          }
+         }
+       }
+       if (receipts.has(id)) patch.household_importKeys = [...new Set([...(old?.data.household_importKeys || []), ...receipts.get(id)!])];
+       transaction.set(doc(db, 'users', uid, 'records', id), patch, { merge: true });
+     }
+-    return { kind: 'household', added, skipped, already, recordIds: [...touched] };
++    return { kind: 'household', added, skipped, already, recordIds: [...touched], createdRecords };
+   });
+ }
+diff --git a/frontend/test/household-browser/README.md b/frontend/test/household-browser/README.md
+index bf7487b2..da07d851 100644
+--- a/frontend/test/household-browser/README.md
++++ b/frontend/test/household-browser/README.md
+@@ -14,7 +14,7 @@ FIRESTORE_EMULATOR_HOST=127.0.0.1:18867 node --import tsx --test test/householdS
+ npm run dev -- --config test/household-browser/vite.config.mjs
+ ```
+ 
+-`http://127.0.0.1:18767`에서 실제 FormatModal·중복 분석·Firestore 저장 코드를 사용한다. 인증·AI·암호 해제만 모의 구현이다. 실제 Firestore SDK와 기존 Rules의 로컬 에뮬레이터를 사용한다. PDF와 암호 없는 XLSX는 실제 로컬 파서로 읽는다. 암호 있는 XLSX의 서버 해제는 모의 구현이므로 실제 암호 해제 성공을 증명하는 시험은 아니다.
++`http://127.0.0.1:18767`에서 실제 FormatModal·중복 분석·Firestore 저장 코드를 사용한다. 가계부는 어느 화면에서 열더라도 FormatModal 공통 저장 분기에서 처리하며 일반 호출자 콜백은 실행하지 않는다. fixture의 일반 콜백은 호출되면 실패하도록 구성한다. 인증·AI·암호 해제만 모의 구현이다. 실제 Firestore SDK와 기존 Rules의 로컬 에뮬레이터를 사용한다. PDF와 암호 없는 XLSX는 실제 로컬 파서로 읽는다. 암호 있는 XLSX의 서버 해제는 모의 구현이므로 실제 암호 해제 성공을 증명하는 시험은 아니다.
+ 
+ 1. 가계부 작성 → 날짜는 빈칸(기준일 2026-10-05) → 금액 4500, 사용처 시험 카페 → 저장. 1건·4500원 확인.
+ 2. 같은 날·금액의 합성 은행 XLSX를 선택 → 암호 빈칸 → 파일 읽기. 겹침 비교 표시.
+@@ -28,4 +28,4 @@ npm run dev -- --config test/household-browser/vite.config.mjs
+ 
+ 합성 PDF는 test/fixtures/household-synthetic.pdf이며 실제 계좌와 무관하다. PDF 선택 → 암호 빈칸 → 파일 읽기 → 2개월 2건 확인 → 저장 → 같은 PDF 재가져오기 시 이미 저장 2건·선택 0건을 확인한다. 은행명·필수 표·날짜·금액·행 수 검증 실패 시 부분 가져오지 않는다.
+ 
+-신규 입력은 기존 users/{uid}/records 컬렉션의 YYYY-MM-01_household 문서에 월별로 추가한다. 기존 문서는 이동하지 않는다. 명확한 출처 키는 재저장을 제외하고 같은 날짜·금액의 다른 출처는 사용자의 선택을 요구한다. 월별 대상 및 비교 문서를 한 트랜잭션에서 다시 확인하며 모든 선택 거래를 함께 저장한다. 이전 버전 클라이언트·일반 편집의 동시 변경까지 전역 잠금하지는 않는다. 실제 자료를 이용한 로컬 검증의 원본·변환 파일·거래 정보는 저장소에 보관하지 않는다.
++신규 입력은 기존 users/{uid}/records 컬렉션의 YYYY-MM-01_household 문서에 월별로 추가한다. 기존 문서는 이동하지 않는다. 명확한 출처 키는 재저장을 제외하고 같은 날짜·금액의 다른 출처는 사용자의 선택을 요구한다. 월별 대상 및 비교 문서를 한 트랜잭션에서 다시 확인하며 모든 선택 거래를 함께 저장한다. SAYU 원본 편집은 바꾼 필드만 저장하며 열어 둔 사이 거래가 변경되면 저장을 중단한다. 이전 버전 클라이언트·다른 일반 편집 전체를 전역 잠금하지는 않는다. 실제 자료를 이용한 로컬 검증의 원본·변환 파일·거래 정보는 저장소에 보관하지 않는다.
+diff --git a/frontend/test/household-browser/firestore.ts b/frontend/test/household-browser/firestore.ts
+new file mode 100644
+index 00000000..e3adf9e8
+--- /dev/null
++++ b/frontend/test/household-browser/firestore.ts
+@@ -0,0 +1,5 @@
++import { saveHouseholdEntries } from '../../src/app/services/householdSaveService';
++import { getFirestore } from './firestore-sdk';
++export const firestoreService = {
++  saveHouseholdRecord: (uid: string, entries: any[], decisions: any) => saveHouseholdEntries(getFirestore(), uid, entries, decisions),
++};
+diff --git a/frontend/test/household-browser/main.tsx b/frontend/test/household-browser/main.tsx
+index 2a9cba4a..8cf2cf8e 100644
+--- a/frontend/test/household-browser/main.tsx
++++ b/frontend/test/household-browser/main.tsx
+@@ -1,23 +1,21 @@
+ import '../../src/styles/index.css';
+-import React,{useState} from 'react';
++import React,{useState,useEffect} from 'react';
+ import {createRoot} from 'react-dom/client';
+ import {MemoryRouter} from 'react-router';
+ import {Toaster} from 'sonner';
+ import {FormatModal} from '../../src/app/components/FormatModal';
+-import {saveHouseholdEntries,loadHouseholdRecords} from '../../src/app/services/householdSaveService';
+ import {summarizeHouseholdEntries} from '../../src/app/utils/householdSummary';
+-import {getFirestore} from './firestore-sdk';
++import {getFirestore,onSnapshot,collection} from './firestore-sdk';
+ 
+ function App(){
+  const [open,setOpen]=useState(false),[summary,setSummary]=useState('아직 저장하지 않았습니다.');
++ useEffect(()=>onSnapshot(collection(getFirestore(),'users','household-browser','records'),snapshot=>{
++  const entries=snapshot.docs.flatMap(doc=>JSON.parse(doc.data().household_entries||'[]'));
++  setSummary(`저장된 거래 ${entries.length}건 · 지출 ${summarizeHouseholdEntries(entries).expense}원`);
++ }),[]);
+  return <MemoryRouter><div style={{padding:16}}><h1>가계부 중복 저장 검증</h1><p>합성 자료 · 로컬 Firestore 에뮬레이터만 사용</p><button onClick={()=>setOpen(true)}>가계부 작성</button><p aria-label="저장 결과">{summary}</p></div>
+  <FormatModal isOpen={open} onClose={()=>setOpen(false)} format="HARU가계부" recordId="2026-10-05" onSave={async data=>{
+-  if(data.household_saveVersion!=='dedup-v1')throw new Error('중복 검사 없는 저장은 금지');
+-  const result=await saveHouseholdEntries(getFirestore(),'household-browser',JSON.parse(data.household_entries),JSON.parse(data.household_saveDecisions||'{}'));
+-  const records=await loadHouseholdRecords(getFirestore(),'household-browser');
+-  const entries=records.flatMap(r=>JSON.parse(r.data.household_entries||'[]'));
+-  setSummary(`저장된 거래 ${entries.length}건 · 지출 ${summarizeHouseholdEntries(entries).expense}원 · 신규 ${result.added}건 · 이미 저장 ${result.already}건 · 기존 거래 사용 ${result.skipped}건`);
+-  return result;
++  throw new Error('가계부는 일반 콜백을 거치면 안 됩니다.');
+  }}/><Toaster/></MemoryRouter>;
+ }
+ createRoot(document.getElementById('root')!).render(<App/>);
+diff --git a/frontend/test/household-browser/vite.config.mjs b/frontend/test/household-browser/vite.config.mjs
+index 5287b8ca..9ec2bc08 100644
+--- a/frontend/test/household-browser/vite.config.mjs
++++ b/frontend/test/household-browser/vite.config.mjs
+@@ -12,6 +12,6 @@ export default defineConfig({root,envDir:root,plugins:[{name:'household-isolatio
+   const resolved=path.resolve(path.dirname(importer.split('?')[0]),source);
+   if(/\/firebase(?:\.ts)?$/.test(resolved))return path.join(root,'sdk.ts');
+   if(/\/AuthContext(?:\.tsx?)?$/.test(resolved))return path.join(root,'providers.tsx');
+-  if(/\/firestoreService(?:\.ts)?$/.test(resolved))return path.join(prior,'firestore.ts');
++  if(/\/firestoreService(?:\.ts)?$/.test(resolved))return path.join(root,'firestore.ts');
+   if(/\/(useSubscription|LoadingContext)(?:\.tsx?)?$/.test(resolved))return path.join(prior,'providers.tsx');
+ }},react(),tailwindcss()],resolve:{dedupe:['react','react-dom']},server:{host:'127.0.0.1',port:18767,strictPort:true,fs:{allow:[path.resolve(root,'../..')]}}});
+diff --git a/frontend/test/householdDuplicates.test.mjs b/frontend/test/householdDuplicates.test.mjs
+index 4c9bddfe..df4bf2ce 100644
+--- a/frontend/test/householdDuplicates.test.mjs
++++ b/frontend/test/householdDuplicates.test.mjs
+@@ -56,3 +56,10 @@ test('잘못된 날짜와 손상된 기존 내역은 조용히 저장하지 않
+   for(const date of ['2026.02.30','2026.13.01','날짜없음']) assert.throws(()=>householdDate(date));
+   await assert.rejects(checkHouseholdDuplicates([], [{id:'broken',data:{household_entries:'잘못된 JSON'}}]));
+ });
++
++test('비교 후보가 없어진 거래에서는 기존 거래 사용을 선택할 수 없다',async()=>{
++ const entry=(await parse([bankRow()])).rows[0].entry;
++ const markup=renderToStaticMarkup(React.createElement(HouseholdDuplicateReview,{checks:[{entry,status:'suspect',matches:[],token:'changed'}],decisions:{},onChoose(){}}));
++ assert.match(markup,/<button[^>]*disabled=""[^>]*>기존 거래 사용<\/button>/);
++ assert.match(markup,/이전에 비교한 거래가 변경됐습니다/);
++});
+diff --git a/frontend/test/householdPdf.test.mjs b/frontend/test/householdPdf.test.mjs
+index 6c58ac71..4d46ccce 100644
+--- a/frontend/test/householdPdf.test.mjs
++++ b/frontend/test/householdPdf.test.mjs
+@@ -43,3 +43,9 @@ test('줄바꿈된 거래처를 다음 거래와 섞지 않고 읽는다',async(
+  const result=await parseKakaoBankPdfDocument(doc,'줄바꿈.pdf');
+  assert.equal(result.rows[0].entry.vendor,'시험 카페 두번째줄');assert.equal(result.rows[1].entry.vendor,'시험 카페');
+ });
++
++test('예금주와 같은 줄에 다른 정보가 있어도 이름에 계좌번호를 합치지 않는다',async()=>{
++ const items=page().map(item=>item.str==='출금'?{...item,str:'입금'}:item.str==='-4,500'?{...item,str:'+4,500'}:item.str==='시험 카페'?{...item,str:'시험사용자'}:item);
++ const doc=document([[...items,text('계좌번호 :',250,750),text('0000-00-0000000',350,750)]]);
++ const result=await parseKakaoBankPdfDocument(doc,'합성.pdf');assert.equal(result.rows[0].entry.transactionType,'이체');
++});
+diff --git a/frontend/test/householdSave.emulator.test.mjs b/frontend/test/householdSave.emulator.test.mjs
+index 78b6f0d9..d69c8f70 100644
+--- a/frontend/test/householdSave.emulator.test.mjs
++++ b/frontend/test/householdSave.emulator.test.mjs
+@@ -3,7 +3,7 @@ import test, { after } from 'node:test';
+ import assert from 'node:assert/strict';
+ import { initializeApp, deleteApp } from 'firebase/app';
+ import { getFirestore, connectFirestoreEmulator, doc, setDoc, getDocFromServer, getDocsFromServer, collection } from 'firebase/firestore';
+-import { saveHouseholdEntries, loadHouseholdRecords, householdMonthRecordId } from '../src/app/services/householdSaveService.ts';
++import { saveHouseholdEntries, saveHouseholdOriginal, loadHouseholdRecords, householdMonthRecordId } from '../src/app/services/householdSaveService.ts';
+ import { checkHouseholdDuplicates, HouseholdDuplicateReviewRequired } from '../src/app/services/householdDuplicates.ts';
+ import { summarizeHouseholdEntries } from '../src/app/utils/householdSummary.ts';
+ 
+@@ -150,7 +150,44 @@ test('비교한 거래의 금액이 바뀌어 후보에서 빠져도 낡은 선
+  let current;
+  await assert.rejects(saveHouseholdEntries(db,uid,[incoming],decisions),error=>{current=error.checks?.[0];return error instanceof HouseholdDuplicateReviewRequired;});
+  assert.equal((await allEntries()).length,1);
+- const result=await saveHouseholdEntries(db,uid,[incoming],{[incoming.id]:{token:current.token,action:'skip'}});
+- assert.equal(result.added,0);assert.equal(result.skipped,1);
++ await assert.rejects(saveHouseholdEntries(db,uid,[incoming],{[incoming.id]:{token:current.token,action:'skip'}}),HouseholdDuplicateReviewRequired);
++ assert.equal((await allEntries()).length,1);
++ const result=await saveHouseholdEntries(db,uid,[incoming],{[incoming.id]:{token:current.token,action:'keep'}});
++ assert.equal(result.added,1);assert.equal(result.skipped,0);
+  async function allEntries(){return JSON.parse((await stored(db,uid)).household_entries);}
+ });
++
++test('기존 배열 거래의 빈 날짜는 문서 날짜로 비교하며 저장 원본은 바꾸지 않는다',async()=>{
++ const uid=uidFor('empty-date'),db=client(uid),ref=doc(db,'users',uid,'records','legacy-empty-date');
++ const original=JSON.stringify([entry({id:'legacy',date:''})]);
++ await setDoc(ref,{date:'2026-10-05',formats:['HARU가계부'],household_entries:original});
++ const incoming=bank();await assert.rejects(saveHouseholdEntries(db,uid,[incoming]),HouseholdDuplicateReviewRequired);
++ assert.equal((await saveHouseholdEntries(db,uid,[incoming],await choose(db,uid,[incoming]))).skipped,1);
++ assert.equal((await getDocFromServer(ref)).data().household_entries,original);
++});
++
++test('오래 열어 둔 원본에서 아무것도 바꾸지 않고 저장해도 새로 가져온 거래를 보존한다',async()=>{
++ const uid=uidFor('original-no-change'),db=client(uid);await saveHouseholdEntries(db,uid,[entry({id:'first'})]);
++ const opened=await stored(db,uid),ref=householdMonthRecordId('2026-10-05');
++ await saveHouseholdEntries(db,uid,[bank({amount:'3000'})]);
++ const before=await stored(db,uid);await saveHouseholdOriginal(db,uid,ref,opened,{...opened});
++ assert.deepEqual(await stored(db,uid),before);assert.equal(JSON.parse(before.household_entries).length,2);
++});
++
++test('오래 열린 원본의 편집 저장은 동시 가져오기 후 거부하고 모든 거래를 보존한다',async()=>{
++ const uid=uidFor('original-stale'),db=client(uid);await saveHouseholdEntries(db,uid,[entry({id:'first'})]);
++ const opened=await stored(db,uid),ref=householdMonthRecordId('2026-10-05');
++ await saveHouseholdEntries(db,uid,[bank({amount:'3000'})]);
++ const before=await stored(db,uid);
++ await assert.rejects(saveHouseholdOriginal(db,uid,ref,opened,{...opened,household_sayu:'편집한 원본'}),/다른 곳에서 가계부가 바뀌었습니다/);
++ assert.deepEqual(await stored(db,uid),before);
++ await saveHouseholdOriginal(db,uid,ref,before,{...before,household_sayu:'다시 연 뒤 편집'});
++ const after=await stored(db,uid);assert.equal(after.household_entries,before.household_entries);assert.equal(after.household_sayu,'다시 연 뒤 편집');
++});
++
++test('월별 신규 문서 생성과 기존 문서 추가를 구별하고 날짜별 환경을 월 문서에 붙이지 않는다',async()=>{
++ const uid=uidFor('created'),db=client(uid);
++ assert.equal((await saveHouseholdEntries(db,uid,[entry()])).createdRecords,1);
++ assert.equal((await saveHouseholdEntries(db,uid,[entry({amount:'3000'})])).createdRecords,0);
++ const data=await stored(db,uid);for(const key of ['weather','temperature','mood'])assert.equal(key in data,false);
++});

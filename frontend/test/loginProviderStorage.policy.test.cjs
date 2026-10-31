@@ -1,6 +1,9 @@
-const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { test } = require('node:test');
+const { parse } = require('@babel/parser');
+const { transformSync } = require('esbuild');
 
 const root = path.resolve(__dirname, '..', '..');
 const authContextSrc = fs.readFileSync(path.join(root, 'frontend/src/app/contexts/AuthContext.tsx'), 'utf8');
@@ -8,24 +11,184 @@ const authCallbackSrc = fs.readFileSync(path.join(root, 'frontend/src/app/pages/
 const loginProviderSrc = fs.readFileSync(path.join(root, 'frontend/src/app/utils/loginProvider.ts'), 'utf8');
 const firestoreRules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
 
-assert(loginProviderSrc.includes("const LOGIN_PROVIDER_STORAGE_PREFIX = 'haru.loginProvider.v1:';"));
-assert(loginProviderSrc.includes('export function rememberLoginProviderLocally(uid: string, provider: LoginProvider)'));
-assert(loginProviderSrc.includes('window.localStorage.setItem(getLoginProviderStorageKey(uid), provider);'));
-assert(loginProviderSrc.includes('export function readRememberedLoginProvider(uid: string): LoginProvider | null'));
+// Extract the real effect/function bodies; the harness does not reimplement selection or guards.
+const authAST = parse(authContextSrc, { sourceType: 'module', plugins: ['typescript', 'jsx'] });
+function nodes(rootNode, predicate) {
+  const result = [];
+  function visit(node) {
+    if (!node || typeof node.type !== 'string') return;
+    if (predicate(node)) result.push(node);
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  }
+  visit(rootNode);
+  return result;
+}
+const calls = (name) => (node) => node.type === 'CallExpression' && node.callee.name === name;
+function exactlyOne(matches, label) {
+  assert.equal(matches.length, 1, `expected one ${label}`);
+  return matches[0];
+}
+const effect = exactlyOne(nodes(authAST, (node) => calls('useEffect')(node)
+  && nodes(node.arguments[0], calls('onSnapshot')).length > 0), 'user-document effect').arguments[0];
+const mapUserNode = exactlyOne(nodes(authAST, (node) => node.type === 'VariableDeclarator'
+  && node.id.name === 'mapUser'), 'mapUser').init;
+const rememberNode = exactlyOne(nodes(authAST, (node) => node.type === 'FunctionDeclaration'
+  && node.id.name === 'rememberLoginProvider'), 'rememberLoginProvider');
+const js = (node) => transformSync(`return (${authContextSrc.slice(node.start, node.end)});`, { loader: 'ts' }).code;
 
-assert(authContextSrc.includes('rememberLoginProviderLocally(uid, provider);'));
-assert(authContextSrc.includes('const rememberedProvider = readRememberedLoginProvider(user.uid);'));
-assert(authContextSrc.includes('readRememberedLoginProvider(user.uid) ?? normalizeLoginProvider(data?.loginProvider)'));
-assert(!authContextSrc.includes('loginProviderUpdatedAt'));
+function harness() {
+  const state = { user: { uid: 'fixture-a', providerId: 'custom', providerIds: [] }, updates: 0, documents: [], reads: [], warnings: [], unsubscribed: false };
+  const storage = new Map();
+  let storageDenied = false;
+  const fakeWindow = {
+    localStorage: {
+      getItem: (key) => { state.reads.push(key); if (storageDenied) throw Error('fixture denied'); return storage.get(key) ?? null; },
+      setItem: (key, value) => { if (storageDenied) throw Error('fixture denied'); storage.set(key, value); },
+    },
+    setTimeout: () => 1, clearTimeout: () => {},
+  };
+  const mod = { exports: {} };
+  new Function('module', 'exports', 'window', 'console', transformSync(loginProviderSrc, { loader: 'ts', format: 'cjs' }).code)(
+    mod, mod.exports, fakeWindow, { warn: () => state.warnings.push('storage warning') },
+  );
+  const lib = mod.exports;
+  const sourceUser = { uid: 'fixture-a' };
+  const generationRef = { current: 1 };
+  const auth = { currentUser: { uid: 'fixture-a' } };
+  let nextSnapshot;
+  const dependencies = {
+    ...lib, user: sourceUser, generation: 1, generationRef, auth, window: fakeWindow,
+    db: {}, doc: (_db, ...segments) => segments,
+    onSnapshot: (ref, _options, next) => { state.subscription = ref; nextSnapshot = next; return () => { state.unsubscribed = true; }; },
+    setUser: (update) => { state.updates += 1; state.user = update(state.user); },
+    setUserDocument: (value) => state.documents.push(value),
+    blockLoginTrace: () => {}, markLoginTrace: () => {}, markLoginAccessReady: () => {},
+    Timestamp: class {},
+  };
+  const bind = (node) => new Function(...Object.keys(dependencies), js(node))(...Object.values(dependencies));
+  const cleanup = bind(effect)();
+  assert.equal(typeof nextSnapshot, 'function', 'real effect must subscribe');
+  return {
+    state, storage, sourceUser, generationRef, auth, lib, mapUser: bind(mapUserNode), remember: bind(rememberNode),
+    denyStorage: () => { storageDenied = true; }, cleanup,
+    emit: (data, metadata = {}) => nextSnapshot({ data: () => data, metadata: { fromCache: false, hasPendingWrites: false, ...metadata } }),
+  };
+}
 
-assert(authCallbackSrc.includes('rememberLoginProviderLocally(userCredential.user.uid, provider);'));
-assert(!authCallbackSrc.includes("from 'firebase/firestore'"));
-assert(!authCallbackSrc.includes('loginProviderUpdatedAt'));
+test('로컬 저장·콜백·Rules의 기존 소스 정책 제약을 유지한다', () => {
+  assert(loginProviderSrc.includes("const LOGIN_PROVIDER_STORAGE_PREFIX = 'haru.loginProvider.v1:';"));
+  assert(loginProviderSrc.includes('export function rememberLoginProviderLocally(uid: string, provider: LoginProvider)'));
+  assert(loginProviderSrc.includes('window.localStorage.setItem(getLoginProviderStorageKey(uid), provider);'));
+  assert(loginProviderSrc.includes('export function readRememberedLoginProvider(uid: string): LoginProvider | null'));
+  assert(authContextSrc.includes('rememberLoginProviderLocally(uid, provider);'));
+  assert(authContextSrc.includes('const rememberedProvider = readRememberedLoginProvider(user.uid);'));
+  assert(!authContextSrc.includes('loginProviderUpdatedAt'));
+  assert(authCallbackSrc.includes('rememberLoginProviderLocally(userCredential.user.uid, provider);'));
+  assert(!authCallbackSrc.includes("from 'firebase/firestore'"));
+  assert(!authCallbackSrc.includes('loginProviderUpdatedAt'));
+  const allowedKeys = firestoreRules.match(/function userAttributionAllowedKeys\(\) \{\s+return \[([\s\S]*?)\];\s+\}/);
+  assert(allowedKeys, 'missing userAttributionAllowedKeys function');
+  assert(!allowedKeys[1].includes('"loginProvider"'));
+  assert(!allowedKeys[1].includes('"loginProviderUpdatedAt"'));
+  assert(!firestoreRules.includes('function validUserAttributionPayload()'));
+});
 
-const userAttributionAllowedKeys = firestoreRules.match(/function userAttributionAllowedKeys\(\) \{\s+return \[([\s\S]*?)\];\s+\}/);
-assert(userAttributionAllowedKeys, 'missing userAttributionAllowedKeys function');
-assert(!userAttributionAllowedKeys[1].includes('"loginProvider"'));
-assert(!userAttributionAllowedKeys[1].includes('"loginProviderUpdatedAt"'));
-assert(!firestoreRules.includes('function validUserAttributionPayload()'));
+test('허용 제공자와 별칭은 trim·소문자로 정규화하고 미지원 값은 null이다', () => {
+  const { lib } = harness();
+  for (const [value, expected] of [['naver', 'naver'], [' GOOGLE.com ', 'google'], ['Google', 'google'], [' KAKAO ', 'kakao'], [' PASSWORD ', 'password']]) {
+    assert.equal(lib.normalizeLoginProvider(value), expected);
+  }
+  for (const value of [undefined, null, 0, {}, '', 'unsupported']) assert.equal(lib.normalizeLoginProvider(value), null);
+});
 
-console.log('login provider storage policy tests passed');
+test('실제 기억 함수는 UID별 키로 저장하고 읽을 때 정규화한다', () => {
+  const h = harness();
+  h.remember('fixture-a', 'kakao');
+  h.remember('fixture-b', 'naver');
+  assert.equal(h.storage.get('haru.loginProvider.v1:fixture-a'), 'kakao');
+  assert.equal(h.lib.readRememberedLoginProvider('fixture-a'), 'kakao');
+  assert.equal(h.lib.readRememberedLoginProvider('fixture-b'), 'naver');
+  assert.equal(h.lib.readRememberedLoginProvider('fixture-c'), null);
+  h.storage.set('haru.loginProvider.v1:fixture-a', ' GOOGLE.com ');
+  assert.equal(h.lib.readRememberedLoginProvider('fixture-a'), 'google');
+});
+
+test('초기 mapUser는 Firebase 기본 제공자 우선, custom 사용자는 로컬값으로 폴백한다', () => {
+  const h = harness();
+  h.remember('fixture-a', 'kakao');
+  const user = (providerData) => ({ uid: 'fixture-a', email: null, providerData });
+  const primary = h.mapUser(user([{ providerId: 'google.com' }]));
+  assert.equal(primary.providerId, 'google');
+  assert.deepEqual(primary.providerIds, ['google', 'kakao']);
+  assert.equal(h.mapUser(user([])).providerId, 'kakao');
+  h.remember('fixture-a', 'google');
+  assert.deepEqual(h.mapUser(user([{ providerId: 'google.com' }])).providerIds, ['google']);
+  h.storage.clear();
+  assert.equal(h.mapUser(user([{ providerId: 'unrecognized.example' }])).providerId, 'unrecognized.example');
+  assert.equal(h.mapUser(user([])).providerId, 'custom');
+});
+
+test('실제 스냅샷은 유효 로컬값 우선이며 없거나 무효면 정규화한 서버값을 사용한다', () => {
+  for (const [local, server, expected] of [
+    ['kakao', 'google.com', 'kakao'], [' GOOGLE.com ', 'naver', 'google'],
+    [null, ' NAVER ', 'naver'], ['unsupported', ' PASSWORD ', 'password'],
+    [null, 'unsupported', 'custom'], ['unsupported', undefined, 'custom'], [null, undefined, 'custom'],
+  ]) {
+    const h = harness();
+    if (local !== null) h.storage.set('haru.loginProvider.v1:fixture-a', local);
+    h.emit({ loginProvider: server, consents: {} });
+    assert.equal(h.state.user.providerId, expected, JSON.stringify({ local, server }));
+    assert.equal(h.state.updates, expected === 'custom' ? 0 : 1);
+    assert.deepEqual(h.state.user.providerIds, expected === 'custom' ? [] : [expected]);
+    assert.equal(h.state.documents.at(-1).uid, 'fixture-a');
+  }
+});
+
+test('effect 시작 후 user 객체가 바뀌어도 캡처한 UID의 저장값·문서만 사용한다', () => {
+  const h = harness();
+  h.remember('fixture-a', 'kakao');
+  h.remember('fixture-b', 'naver');
+  h.sourceUser.uid = 'fixture-b';
+  h.emit({ loginProvider: 'password', consents: {} });
+  assert.deepEqual(h.state.subscription, ['users', 'fixture-a']);
+  assert.deepEqual(h.state.reads, ['haru.loginProvider.v1:fixture-a']);
+  assert.equal(h.state.user.uid, 'fixture-a');
+  assert.equal(h.state.user.providerId, 'kakao');
+  assert.equal(h.state.documents.at(-1).uid, 'fixture-a');
+});
+
+test('다른 인증 UID·세대·정리된 구독·캐시·대기 쓰기 스냅샷은 반영하지 않는다', () => {
+  for (const scenario of ['auth-uid', 'signed-out', 'generation', 'cleanup', 'cache', 'pending']) {
+    const h = harness();
+    if (scenario === 'auth-uid') h.auth.currentUser.uid = 'fixture-b';
+    if (scenario === 'signed-out') h.auth.currentUser = null;
+    if (scenario === 'generation') h.generationRef.current += 1;
+    if (scenario === 'cleanup') { h.cleanup(); assert.equal(h.state.unsubscribed, true); }
+    h.emit({ loginProvider: 'naver', consents: {} }, { fromCache: scenario === 'cache', hasPendingWrites: scenario === 'pending' });
+    assert.equal(h.state.updates, 0, scenario);
+    assert.deepEqual(h.state.reads, [], scenario);
+    assert.deepEqual(h.state.documents, [], scenario);
+  }
+});
+
+test('스냅샷 이후 setter가 다른 UID를 받으면 해당 사용자를 덮어쓰지 않는다', () => {
+  const h = harness();
+  const other = { uid: 'fixture-b', providerId: 'password', providerIds: ['password'] };
+  h.state.user = other;
+  h.emit({ loginProvider: 'naver', consents: {} });
+  assert.equal(h.state.user, other);
+});
+
+test('localStorage 접근 거부 시 저장 오류를 흡수하고 읽기는 서버값으로 폴백한다', () => {
+  const h = harness();
+  h.denyStorage();
+  assert.doesNotThrow(() => h.remember('fixture-a', 'kakao'));
+  assert.equal(h.lib.readRememberedLoginProvider('fixture-a'), null);
+  h.emit({ loginProvider: ' GOOGLE.com ', consents: {} });
+  assert.equal(h.state.user.providerId, 'google');
+  assert.equal(h.state.warnings.length, 3);
+  assert.equal(h.storage.size, 0);
+});

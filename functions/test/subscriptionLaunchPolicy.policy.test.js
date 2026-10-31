@@ -4,6 +4,8 @@ const path = require('path');
 
 const root = path.resolve(__dirname, '..', '..');
 const indexSrc = fs.readFileSync(path.join(root, 'functions/src/index.ts'), 'utf8');
+// getUserPlan 은 하루LAW 분리(P3) 때 index.ts 에서 sharedHelpers.ts 로 옮겼다.
+const sharedHelpersSrc = fs.readFileSync(path.join(root, 'functions/src/sharedHelpers.ts'), 'utf8');
 const monthlyAiQuotaSrc = fs.readFileSync(path.join(root, 'functions/src/utils/monthlyAiQuota.ts'), 'utf8');
 const landingPageSrc = fs.readFileSync(path.join(root, 'frontend/src/app/pages/LandingPage.tsx'), 'utf8');
 const assistantOnboardingDetailPageSrc = fs.readFileSync(path.join(root, 'frontend/src/app/pages/AssistantOnboardingDetailPage.tsx'), 'utf8');
@@ -25,7 +27,7 @@ function section(source, startMarker, endMarker) {
 }
 
 const launchPlanSection = section(indexSrc, 'function assertLaunchPurchasablePlan', 'function createPortOneRequestId');
-const userPlanSection = section(indexSrc, 'async function getUserPlan', 'type PaidServiceUsageEvent');
+const userPlanSection = section(sharedHelpersSrc + '\n// END', 'async function getUserPlan', '\n// END');
 const createSingleSection = section(indexSrc, 'export const createSinglePaymentRequest = onCall', 'export const createSubscriptionBillingRequest = onCall');
 const createSubscriptionSection = section(indexSrc, 'export const createSubscriptionBillingRequest = onCall', 'export const recoverSubscriptionBillingRequest = onCall');
 const recoverSubscriptionSection = section(indexSrc, 'export const recoverSubscriptionBillingRequest = onCall', '// ===== 💳 결제 검증 (PortOne V2) =====');

@@ -191,7 +191,8 @@ service cloud.firestore {
       // 일반 기록 목록 호환성을 위해 list는 소유자에게 유지하고,
       // 직접 get은 ai_log만 검증된 개발자 이메일로 제한한다.
       allow get: if request.auth != null && request.auth.uid == userId
-        && (!resource.data.keys().hasAny(['type'])
+        && (!exists(/databases/$(database)/documents/users/$(userId)/records/$(recordId))
+          || !resource.data.keys().hasAny(['type'])
           || resource.data.type != 'ai_log'
           || isAiLibraryDeveloper(userId));
       allow list: if request.auth != null && request.auth.uid == userId;

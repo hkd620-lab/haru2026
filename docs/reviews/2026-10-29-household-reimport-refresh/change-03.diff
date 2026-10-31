@@ -1,0 +1,25 @@
+diff --git a/frontend/src/app/components/FormatModal.tsx b/frontend/src/app/components/FormatModal.tsx
+index 41da46d9..1beda4ec 100644
+--- a/frontend/src/app/components/FormatModal.tsx
++++ b/frontend/src/app/components/FormatModal.tsx
+@@ -606 +606,10 @@
+-  const householdSaveBusy = isSaving || isSavingKakaoXlsx || isCheckingHouseholdImport || householdImportCheckFailed;
++  const householdSaveBusy = isSaving || isSavingKakaoXlsx || (hasHouseholdImport && (isCheckingHouseholdImport || householdImportCheckFailed));
++  const discardHouseholdImport = () => {
++    householdImportRefreshVersion.current++;
++    householdImportRefreshing.current = false;
++    setIsCheckingHouseholdImport(false);
++    setHouseholdImportCheckFailed(false);
++    setHouseholdChecks([]);
++    setHouseholdDecisions({});
++    setKakaoXlsxMonthGroups([]);
++  };
+@@ -5307 +5316 @@
+-                        <button type="button" onClick={() => setKakaoXlsxMonthGroups([])} disabled={isSavingKakaoXlsx}
++                        <button type="button" onClick={discardHouseholdImport} disabled={isSavingKakaoXlsx}
+@@ -6775 +6784 @@
+-                <HouseholdSaveSummary preview={householdSavePreview} allAlready={householdAllAlready} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={hasHouseholdImport ? refreshHouseholdImport : undefined} />
++                <HouseholdSaveSummary preview={householdSavePreview} allAlready={householdAllAlready} checking={hasHouseholdImport && isCheckingHouseholdImport} failed={hasHouseholdImport && householdImportCheckFailed} onRecheck={hasHouseholdImport ? refreshHouseholdImport : undefined} />
+@@ -6781 +6790 @@
+-                  {isSaving || isSavingKakaoXlsx ? '저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview, householdAllAlready)}
++                  {isSaving || isSavingKakaoXlsx ? '저장 중...' : hasHouseholdImport && isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : hasHouseholdImport && householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview, householdAllAlready)}

@@ -56,7 +56,7 @@ const subscribeSection = section(indexSrc, 'export const subscribeWithBillingKey
 const recurringSection = section(indexSrc, 'export const processRecurringSubscriptions = onSchedule', '// ===== 💳 일반(단건) 1개월 이용권 검증 =====');
 const completionSection = section(indexSrc, 'async function completeInitialBillingSubscription', 'async function markInitialBillingPaymentPending');
 const userSubscriptionWriteSection = section(completionSection, 'tx.set(subRef', 'tx.set(billingRef');
-const recurringSettlementSection = section(indexSrc, 'async function settleRecurringBillingPayment', 'type HaruLawSharePreview');
+const recurringSettlementSection = section(indexSrc, 'async function settleRecurringBillingPayment', 'function getSafeOAuthError');
 const failedSection = section(indexSrc, 'async function markInitialBillingPaymentFailed', 'async function markSubscriptionBillingRequestPreflightFailed');
 
 const normalizedCustomer = core.normalizeSubscriptionBillingCustomer({
