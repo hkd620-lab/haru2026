@@ -1,0 +1,42 @@
+{
+  "baseMain": "693af514b30134defe243b3dc6c2ef78922cd380",
+  "revision": "polishcontent-00244-sas",
+  "sourceGeneration": "1793053161861758",
+  "checks": {
+    "src/ai/aiModels.ts": {
+      "equal": true,
+      "liveSha256": "90a6ee221f8fb1a4979051a8c15d3851d0d1d95e11978f7ea51fb3bb566b3331",
+      "mainSha256": "90a6ee221f8fb1a4979051a8c15d3851d0d1d95e11978f7ea51fb3bb566b3331",
+      "chars": 4609
+    },
+    "src/ai/aiGateway.ts": {
+      "equal": true,
+      "liveSha256": "39ad8831b07f48a2acdadd112d4fa4d4607aaa7c7c4efed28780855d8e32c64b",
+      "mainSha256": "39ad8831b07f48a2acdadd112d4fa4d4607aaa7c7c4efed28780855d8e32c64b",
+      "chars": 9285
+    },
+    "src/aiUsageLogger.ts": {
+      "equal": true,
+      "liveSha256": "23f496ead6b6b00caefb43ac6acfe26519757c8f3d983f10d3ad5fa2358f09d4",
+      "mainSha256": "23f496ead6b6b00caefb43ac6acfe26519757c8f3d983f10d3ad5fa2358f09d4",
+      "chars": 2200
+    },
+    "src/index.ts": {
+      "equal": true,
+      "liveSha256": "809298c9ec29ff52d83a5f5e638c3041d3bbb1f01c86731ed4d17fbcdb62e34b",
+      "mainSha256": "809298c9ec29ff52d83a5f5e638c3041d3bbb1f01c86731ed4d17fbcdb62e34b",
+      "chars": 8147
+    }
+  },
+  "liveBasicRoute": [
+    "sayuPolishBasic: {",
+    "provider: 'openai', model: 'gpt-6-luna', label: 'SAYU 기본 다듬기 본문(BASIC)',",
+    "provider: 'openai', model: 'gpt-6-luna', label: '기록 제목 추출(extractTitle)',"
+  ],
+  "liveRoutingLines": [
+    "secrets: aiSecretsFor('sayuPolish', 'sayuPolishBasic', 'sayuPolishComment', 'recordStats')  // 🔐 Secret 연결",
+    "const polishPurpose = mode === 'BASIC' ? 'sayuPolishBasic' : 'sayuPolish';",
+    "const modelName = getAiRoute(polishPurpose).model;",
+    "const result = await callAi({ purpose: polishPurpose, input: text, systemInstruction: systemPrompt });"
+  ]
+}
