@@ -1,0 +1,5 @@
+
+> test:convert-heic-guard
+> node test/convertHeicGuard.policy.test.js
+
+convertHeic guard policy test passed

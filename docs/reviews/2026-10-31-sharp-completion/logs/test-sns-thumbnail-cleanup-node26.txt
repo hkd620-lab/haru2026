@@ -1,0 +1,5 @@
+
+> test:sns-thumbnail-cleanup
+> node test/snsThumbnailCleanup.test.mjs
+
+sns thumbnail cleanup tests passed
