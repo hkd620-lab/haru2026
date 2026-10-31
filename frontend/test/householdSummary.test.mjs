@@ -309,7 +309,7 @@ test("실제 SAYU 상세: 예전 단건(배열 없음·'[]')의 고친 분류·�
   }
   // 거래도 단건 필드도 없는 '[]' 문서는 기존처럼 본문 보기를 쓴다.
   const empty = renderToStaticMarkup(renderSayuDetail({ household_entries: "[]", household_sayu: "빈 문서 본문" }));
-  assert.match(empty, /<textarea[^>]*readonly=""[^>]*>빈 문서 본문<\/textarea>/);
+  assert.match(empty, /<textarea[^>]*readonly=""[^>]*>빈 문서 본문<\/textarea>/i);
 });
 
 test("실제 SAYU 상세: 손상된 배열은 단건 필드로 바꾸지 않고 기존 본문 보기를 유지한다", async () => {
@@ -414,7 +414,7 @@ test("실제 SAYU 합계 범위: 월별보기와 한 달짜리 묶음 기록은 
   assert.deepEqual(topSummary(renderToStaticMarkup(renderSayuPageDetail(records, "multi", "all").element)), { income: "10,000원", expense: "9,900원", balance: "100원" });
   // 손상 기록을 열면 기존 본문 보기를 유지한다.
   const broken = renderToStaticMarkup(renderSayuPageDetail(records, "broken", "month").element);
-  assert.match(broken, /<textarea[^>]*readonly=""[^>]*>손상 본문<\/textarea>/);
+  assert.match(broken, /<textarea[^>]*readonly=""[^>]*>손상 본문<\/textarea>/i);
 });
 
 test("실제 SAYU 상세: 사용자 본문은 기본 닫힌 '작성 당시 본문 보기'로 그대로 읽고, 원본 기록은 바뀌지 않는다", async () => {

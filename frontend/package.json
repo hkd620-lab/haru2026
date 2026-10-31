@@ -77,12 +77,11 @@
     "motion": "12.23.24",
     "next-themes": "0.4.6",
     "pdfjs-dist": "6.4.299",
-    "react-day-picker": "8.10.1",
+    "react-day-picker": "9.14.0",
     "react-dnd": "16.0.1",
     "react-dnd-html5-backend": "16.0.1",
     "react-hook-form": "7.55.0",
     "react-markdown": "^10.1.0",
-    "react-popper": "2.3.0",
     "react-resizable-panels": "2.1.7",
     "react-responsive-masonry": "2.7.1",
     "react-router": "^7.18.1",
@@ -109,8 +108,8 @@
     "workbox-window": "^7.4.0"
   },
   "peerDependencies": {
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -118,6 +117,11 @@
     },
     "react-dom": {
       "optional": true
+    }
+  },
+  "overrides": {
+    "recharts": {
+      "react-is": "19.3.1"
     }
   },
   "pnpm": {
