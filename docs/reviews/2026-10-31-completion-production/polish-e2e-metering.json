@@ -1,0 +1,37 @@
+{
+  "startedAt": "2026-10-31T01:57:55.458Z",
+  "rows": [
+    {
+      "featureName": "sayu_polish",
+      "purpose": "sayuPolishBasic",
+      "modelInvoked": true,
+      "errorCode": null,
+      "inputTokens": "606",
+      "createdAt": "2026-10-31T01:57:59.284Z",
+      "processingOutcome": "success",
+      "stage": "sayuPolishBasic",
+      "requestId": "27a177b8-58b1-46f3-bf5d-e03eab3b912d",
+      "success": true,
+      "model": "gpt-6-luna",
+      "providerOutcome": "returned",
+      "outputTokens": "23",
+      "latencyMs": "2413"
+    },
+    {
+      "featureName": "sayu_polish",
+      "purpose": "recordStats",
+      "modelInvoked": true,
+      "errorCode": null,
+      "inputTokens": "522",
+      "createdAt": "2026-10-31T01:58:00.319Z",
+      "processingOutcome": "success",
+      "stage": "recordStats",
+      "requestId": "27a177b8-58b1-46f3-bf5d-e03eab3b912d",
+      "success": true,
+      "model": "gemini-3.1-flash-lite",
+      "providerOutcome": "returned",
+      "outputTokens": "77",
+      "latencyMs": "987"
+    }
+  ]
+}

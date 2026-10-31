@@ -1,0 +1,9 @@
+{
+  "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishContent",
+  "state": "ACTIVE",
+  "environment": null,
+  "updateTime": "2026-10-31T01:51:50.293322908Z",
+  "runtime": "nodejs22",
+  "revision": "polishcontent-00245-biy",
+  "allTrafficOnLatestRevision": true
+}
