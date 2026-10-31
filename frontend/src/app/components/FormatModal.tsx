@@ -5,6 +5,7 @@ import { ReadingAiChat } from './ReadingAiChat';
 import { ReadingBookFields } from './ReadingBookFields';
 import { useReadingDraft } from '../hooks/useReadingDraft';
 import { applyReadingAiReference, buildPreviousReadingSummary, buildReadingSnapshot, parseReadingAiReference, readingAiReferenceText, resetReadingBookDraft } from '../services/readingAiCore';
+import { mergeReadingBookDates, resolveReadingBookStartDate } from '../services/readingBookDates';
 import { useNavigate } from 'react-router';
 import { getTestData } from '../data/testData';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -787,6 +788,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     bookTitle: string;
     author: string;
     hasFinalReflection: boolean;
+    startedAt: string;
+    firstDate: string;
     lastDate: string;
   };
   type KnownReadingEntry = {
@@ -1046,9 +1049,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                 }
               }
               const existing = byBookId.get(bookId);
+              const recordDates = { startedAt: data.reading_started_at, date };
               if (existing) {
                 existing.hasFinalReflection = existing.hasFinalReflection || isFinal;
-                if (date > existing.lastDate) existing.lastDate = date;
+                Object.assign(existing, mergeReadingBookDates(existing, recordDates));
                 // 더 최근 데이터의 저자/제목으로 갱신
                 if (date === existing.lastDate || !existing.author) {
                   existing.bookTitle = title || existing.bookTitle;
@@ -1060,7 +1064,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                   bookTitle: title,
                   author,
                   hasFinalReflection: isFinal,
-                  lastDate: date,
+                  ...mergeReadingBookDates({ startedAt: '', firstDate: '', lastDate: '' }, recordDates),
                 });
               }
             });
@@ -3457,22 +3461,22 @@ ${contentValues}
   };
 
   // 📚 기존 책 선택 핸들러 — 책 제목/저자 자동 채움 + readonly + 마무리 책 차단
-  const onSelectExistingBook = (bookId: string) => {
-    if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
+  const onSelectExistingBook = (bookId: string): boolean => {
+    if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return false; }
     ocrPhotoSelectionVersionRef.current += 1;
     if (!bookId) {
       setSelectedExistingBookId('');
       setIsReadingBookLocked(false);
       setBlockedBookMessage('');
-      return;
+      return false;
     }
     const book = knownReadingBooks.find((b) => b.readingBookId === bookId);
-    if (!book) return;
+    if (!book) return false;
     if (book.hasFinalReflection) {
       setBlockedBookMessage('이미 마무리한 책입니다. 다시 읽는 기록은 새 독서사유로 시작해 주세요.');
       setSelectedExistingBookId('');
       setIsReadingBookLocked(false);
-      return;
+      return false;
     }
     if (bookId !== selectedExistingBookId) { setSelectedBookOcrFiles([]); setReadingOcrUsedCount(null); }
     setSelectedExistingBookId(bookId);
@@ -3480,11 +3484,33 @@ ${contentValues}
     setEditingReadingEntryDate('');
     setIsReadingBookLocked(true);
     setBlockedBookMessage('');
+    const startedAt = resolveReadingBookStartDate(book) || new Date().toISOString().slice(0, 10);
     if (bookId !== selectedExistingBookId) {
-      resetReadingForBook(book.bookTitle, book.author, book.lastDate || new Date().toISOString().slice(0, 10));
+      resetReadingForBook(book.bookTitle, book.author, startedAt);
     } else {
-      setFormData((prev) => ({ ...prev, reading_book_title: book.bookTitle, reading_author: book.author }));
+      setFormData((prev) => ({
+        ...prev,
+        reading_book_title: book.bookTitle,
+        reading_author: book.author,
+        reading_started_at: prev.reading_started_at || startedAt,
+      }));
     }
+    return true;
+  };
+
+  // 선택 화면의 이어작성 진입점 — 책 선택이 막히면 입력 화면으로 넘어가지 않는다.
+  const continueReadingBook = (bookId: string) => {
+    if (onSelectExistingBook(bookId)) setRecordStep('input');
+  };
+
+  const handleContinueReadingCard = () => {
+    const activeReadingBooks = knownReadingBooks.filter((b) => !b.hasFinalReflection);
+    if (activeReadingBooks.length === 0) {
+      toast.info('아직 작성중인 책이 없어요. "새작성"으로 시작해 보세요.');
+      return;
+    }
+    if (activeReadingBooks.length === 1) continueReadingBook(activeReadingBooks[0].readingBookId);
+    // 여러 권이면 select 단계 유지 — 아래 책 리스트에서 선택
   };
 
   // 📚 "새 책 시작" — 잠금 해제 + 책 제목/저자 비우기
@@ -4018,15 +4044,12 @@ ${contentValues.slice(0, 4100)}`,
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: 24 }}>
                 {/* 이어작성 카드 */}
-                <div
-                  onClick={() => {
-                    if (knownReadingBooks.filter((b) => !b.hasFinalReflection).length === 0) {
-                      toast.info('아직 작성중인 책이 없어요. "새작성"으로 시작해 보세요.');
-                      return;
-                    }
-                    // select 단계 유지 — 아래 책 리스트에서 선택
-                  }}
+                <button
+                  type="button"
+                  onClick={handleContinueReadingCard}
                   style={{
+                    width: '100%',
+                    font: 'inherit',
                     border: '1px solid #1A3C6E',
                     borderRadius: '12px',
                     padding: '20px 14px',
@@ -4035,12 +4058,12 @@ ${contentValues.slice(0, 4100)}`,
                     background: '#EEF3FA',
                   }}
                 >
-                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>📖</div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#1A3C6E', marginBottom: '4px' }}>이어작성</div>
-                  <div style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}>
+                  <span style={{ display: 'block', fontSize: '28px', marginBottom: '8px' }}>📖</span>
+                  <span style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#1A3C6E', marginBottom: '4px' }}>이어작성</span>
+                  <span style={{ display: 'block', fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}>
                     작성중인 책 {knownReadingBooks.filter((b) => !b.hasFinalReflection).length}권
-                  </div>
-                </div>
+                  </span>
+                </button>
                 {/* 새작성 카드 */}
                 <div
                   onClick={() => {
@@ -4081,15 +4104,7 @@ ${contentValues.slice(0, 4100)}`,
                         <button
                           key={b.readingBookId}
                           type="button"
-                          onClick={() => {
-                            onSelectExistingBook(b.readingBookId);
-                            // initialData에 시작일이 없으면 기존 가장 오래된 record 기준 — 단순화로 lastDate 사용
-                            setFormData((prev) => ({
-                              ...prev,
-                              reading_started_at: prev.reading_started_at || b.lastDate || '',
-                            }));
-                            setRecordStep('input');
-                          }}
+                          onClick={() => continueReadingBook(b.readingBookId)}
                           style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                             padding: '12px 14px',

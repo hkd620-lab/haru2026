@@ -1,0 +1,74 @@
+
+> @figma/my-make-file@0.0.1 test:reading-continue
+> node --import tsx --test test/readingContinue.test.mjs
+
+TAP version 13
+# Subtest: 작성중인 책이 한 권이면 이어작성 카드가 바로 그 책의 입력 화면을 연다
+ok 1 - 작성중인 책이 한 권이면 이어작성 카드가 바로 그 책의 입력 화면을 연다
+  ---
+  duration_ms: 10.160584
+  type: 'test'
+  ...
+# Subtest: 완료 책만 있거나 여러 권이면 선택 화면에 머문다
+ok 2 - 완료 책만 있거나 여러 권이면 선택 화면에 머문다
+  ---
+  duration_ms: 3.071
+  type: 'test'
+  ...
+# Subtest: 처리 중이거나 완료된 책은 입력 화면으로 넘어가지 않는다
+ok 3 - 처리 중이거나 완료된 책은 입력 화면으로 넘어가지 않는다
+  ---
+  duration_ms: 5.317167
+  type: 'test'
+  ...
+# Subtest: 원래 시작일이 있으면 마지막 기록일로 덮지 않는다
+ok 4 - 원래 시작일이 있으면 마지막 기록일로 덮지 않는다
+  ---
+  duration_ms: 6.080917
+  type: 'test'
+  ...
+# Subtest: 시작일 기록이 없으면 가장 오래된 기록일을 쓴다
+ok 5 - 시작일 기록이 없으면 가장 오래된 기록일을 쓴다
+  ---
+  duration_ms: 7.49025
+  type: 'test'
+  ...
+# Subtest: 이미 고른 책은 현재 회차와 AI 참고자료, 입력된 시작일을 지우지 않는다
+ok 6 - 이미 고른 책은 현재 회차와 AI 참고자료, 입력된 시작일을 지우지 않는다
+  ---
+  duration_ms: 2.10575
+  type: 'test'
+  ...
+# Subtest: 공통 작성창에서 넘어온 초안은 첫 책 선택에서 독서장으로 유지한다
+ok 7 - 공통 작성창에서 넘어온 초안은 첫 책 선택에서 독서장으로 유지한다
+  ---
+  duration_ms: 2.595375
+  type: 'test'
+  ...
+# Subtest: 이어작성으로 저장한 회차는 원래 시작일·책 ID·AI 참고자료를 함께 저장한다
+ok 8 - 이어작성으로 저장한 회차는 원래 시작일·책 ID·AI 참고자료를 함께 저장한다
+  ---
+  duration_ms: 10.7505
+  type: 'test'
+  ...
+# Subtest: 책 날짜는 기록 순서와 무관하게 가장 이른 시작일·기록일과 마지막 기록일을 고른다
+ok 9 - 책 날짜는 기록 순서와 무관하게 가장 이른 시작일·기록일과 마지막 기록일을 고른다
+  ---
+  duration_ms: 1.35425
+  type: 'test'
+  ...
+# Subtest: 이어작성 카드는 기존 버튼 패턴을 쓰고 책 목록과 같은 진입점을 공유한다
+ok 10 - 이어작성 카드는 기존 버튼 패턴을 쓰고 책 목록과 같은 진입점을 공유한다
+  ---
+  duration_ms: 2.206458
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2312.549459

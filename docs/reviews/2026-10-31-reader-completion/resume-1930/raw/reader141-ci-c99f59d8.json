@@ -1,0 +1,41 @@
+{
+  "headRevision": "c99f59d816abb3790759565aa34ed8b5b82c01c9",
+  "checks": [
+    {
+      "id": 124496381331,
+      "name": "Deploy Preview",
+      "head_sha": "c99f59d816abb3790759565aa34ed8b5b82c01c9",
+      "status": "completed",
+      "conclusion": "success",
+      "details_url": "https://github.com/hkd620-lab/haru2026/runs/124496381331",
+      "output": {
+        "title": "Deploy preview succeeded",
+        "summary": "[https://haru2026-8abb8--pr320-codex-completion-rea-gmazpzej.web.app](https://haru2026-8abb8--pr320-codex-completion-rea-gmazpzej.web.app)",
+        "text": null,
+        "annotations_count": 0
+      }
+    },
+    {
+      "id": 124496036110,
+      "name": "build_and_preview",
+      "head_sha": "c99f59d816abb3790759565aa34ed8b5b82c01c9",
+      "status": "completed",
+      "conclusion": "success",
+      "details_url": "https://github.com/hkd620-lab/haru2026/actions/runs/41187067942/job/124496036110",
+      "output": {
+        "title": null,
+        "summary": null,
+        "text": null,
+        "annotations_count": 2
+      }
+    }
+  ],
+  "statuses": [],
+  "annotations": [],
+  "hasMore": false,
+  "job": null,
+  "jobs": [],
+  "log": null,
+  "logTruncated": false,
+  "providerGuidance": "GitHub guidance for this response only: use checkRunId for output and annotations, runId from a GitHub Actions /runs/<id> link to list jobs, or jobId from a /jobs/<id> link for logs. page paginates checks, jobs or annotations. Keep the supplied account and returned headRevision on follow-up reads. Third-party CI exposes only the output reported to GitHub."
+}
