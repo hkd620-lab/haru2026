@@ -1,0 +1,518 @@
+stats storage policy tests passed
+node:internal/assert/utils:146
+  throw error;
+  ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /useEffect\(\(\) => \{\n\s*photoEditorSessionRef\.current \+= 1;\n[^\n]*\n\s*return \(\) => \{ photoEditorSessionRef\.current \+= 1; \};\n\s*\}, \[isOpen, format, recordId\]\);/. Input:
+
+"import { getRecordPhotoLimit } from '../services/recordPhotoLimit';\n" +
+  "import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText, Pencil } from 'lucide-react';\n" +
+  "import { useState, useEffect, useRef, Fragment } from 'react';\n" +
+  "import { ReadingAiChat } from './ReadingAiChat';\n" +
+  "import { ReadingBookFields } from './ReadingBookFields';\n" +
+  "import { useReadingDraft } from '../hooks/useReadingDraft';\n" +
+  "import { applyReadingAiReference, buildPreviousReadingSummary, buildReadingSnapshot, parseReadingAiReference, readingAiReferenceText, resetReadingBookDraft } from '../services/readingAiCore';\n" +
+  "import { useNavigate } from 'react-router';\n" +
+  "import { getTestData } from '../data/testData';\n" +
+  "import { getFunctions, httpsCallable } from 'firebase/functions';\n" +
+  "import { getStorage, ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject, type StorageReference } from 'firebase/storage';\n" +
+  "import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';\n" +
+  "import { compressImage } from '../services/imageService';\n" +
+  "import { startSelectedRecordPhotoReads, readSelectedRecordPhotos } from '../services/selectedRecordPhoto';\n" +
+  "import { compressUploadPhoto } from '../services/photoUploadService';\n" +
+  "import { compressRecordPhoto } from '../services/recordPhotoCompression';\n" +
+  "import { useAuth } from '../contexts/AuthContext';\n" +
+  "import { toast } from 'sonner';\n" +
+  "import { LoadingOverlay } from './LoadingOverlay';\n" +
+  "import GrapeLoadingMini from './GrapeLoadingMini';\n" +
+  "import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';\n" +
+  'import {\n' +
+  '  cleanupTrackedRecordPhotos,\n' +
+  '  decodeConvertedJpeg,\n' +
+  '  enqueuePendingRecordPhotoCleanup,\n' +
+  '  excludeCommittedRecordPhotoUrls,\n' +
+  '  retryPendingRecordPhotoCleanup,\n' +
+  '  RECORD_PHOTO_UPLOAD_TIMEOUT,\n' +
+  '  withRecordPhotoUploadDeadline,\n' +
+  "} from '../services/recordPhotoUploadCore';\n" +
+  'import {\n' +
+  '  makeReadingBookId,\n' +
+  '  normalizeBookField,\n' +
+  '  buildReadingMetaCombined,\n' +
+  '  READING_ENTRY_TYPES,\n' +
+  '  READING_STATUS,\n' +
+  "} from '../types/haruTypes';\n" +
+  "import { buildFormatKeyMap } from '../records/formatRegistry';\n" +
+  "import { WRITABLE_FORMATS } from '../records/writeBeforeFormat';\n" +
+  "import { findGrowthLMS, type GrowthGender } from '../../data/growthLMS';\n" +
+  "import { calcAgeInMonths, calcPercentile } from '../../utils/growthCalc';\n" +
+  "import { GrowthChart } from '../../components/GrowthChart';\n" +
+  'import {\n' +
+  '  LEDGER_ASSET_TREATMENT_LABELS,\n' +
+  '  LEDGER_EXPENSE_DEDUCTION_LABELS,\n' +
+  '  LEDGER_XLSX_PROOF,\n' +
+  '  LEDGER_HOMETAX_CHECK_LABELS,\n' +
+  '  LEDGER_VAT_DEDUCTION_LABELS,\n' +
+  '  LEDGER_VAT_TAX_TYPE_LABELS,\n' +
+  '  adjustLedgerTaxFieldsForUsage,\n' +
+  '  calculateVatIncludedAmounts,\n' +
+  '  classifyLedgerPreviewRows,\n' +
+  '  createLedgerEntry as newLedgerEntry,\n' +
+  '  defaultLedgerAssetTreatment,\n' +
+  '  defaultLedgerExpenseDeduction,\n' +
+  '  defaultLedgerVatDeduction,\n' +
+  '  hashLedgerImportKey,\n' +
+  '  ledgerEntryAmount,\n' +
+  '  normalizeLedgerAmount,\n' +
+  '  normalizeLedgerDate,\n' +
+  '  parseLedgerWorkbook,\n' +
+  '  type LedgerAssetTreatment,\n' +
+  '  type LedgerExpenseDeduction,\n' +
+  '  type LedgerHometaxCheck,\n' +
+  '  type LedgerEntry,\n' +
+  '  type LedgerPeriodPreviewRow,\n' +
+  '  type LedgerVatDeduction,\n' +
+  '  type LedgerVatTaxType,\n' +
+  "} from '../services/ledgerPeriodImport';\n" +
+  'import {\n' +
+  '  saveLedgerPeriodEntriesBatch,\n' +
+  "} from '../services/ledgerPeriodSaveService';\n" +
+  'import {\n' +
+  '  parseKakaoBankWorkbook,\n' +
+  '  groupKakaoRowsByMonth,\n' +
+  '  mapCategory as kakaoDefaultCategory,\n' +
+  '  type KakaoXlsxMonthGroup,\n' +
+  '  type KakaoXlsxPreviewRow,\n' +
+  "} from '../services/householdKakaoImport';\n" +
+  "import { parseHouseholdAmountText } from '../utils/householdAmount';\n" +
+  "import { checkHouseholdDuplicates, HouseholdDuplicateReviewRequired, type HouseholdDecisions, type HouseholdDuplicateCheck } from '../services/householdDuplicates';\n" +
+  "import { loadHouseholdRecords, type HouseholdSaveResult } from '../services/householdSaveService';\n" +
+  "import { HouseholdDuplicateReview } from './HouseholdDuplicateReview';\n" +
+  "import { householdSaveLabel, isBlankHouseholdEntry, mergeHouseholdChecks, previewHouseholdSave } from '../services/householdSavePreview';\n" +
+  "import { HouseholdSaveSummary } from './HouseholdSaveSummary';\n" +
+  "import { parseKakaoBankPdf } from '../services/householdKakaoPdfImport';\n" +
+  "import { HouseholdImportGuide } from './HouseholdImportGuide';\n" +
+  "import { householdImportKind, type HouseholdGuideSourceId } from '../services/householdImportSources';\n" +
+  "import { readHouseholdCardFile, type CardImportContext, type CardImportReview, type HouseholdCardType } from '../services/householdCardImport';\n" +
+  "import { canSelectCardRow, chooseCardCancellation, validateHouseholdImportSave, isCardPaymentCandidate, cardImportCounts, cardImportCountLabel, cardImportCompletion } from '../services/householdImportReview';\n" +
+  "import { HouseholdCategoryPicker } from './HouseholdCategoryPicker';\n" +
+  "import './HouseholdCategoryPicker.css';\n" +
+  'import { emptyHouseholdCategories, householdCategoryOptions, householdSubcategoryOptions, isHouseholdType, loadHouseholdCategories, mergeHouseholdCategories,\n' +
+  "  updateHouseholdCategories, type HouseholdCategorySettings } from '../services/householdCategories';\n" +
+  "import { loadHouseholdVendorRules, readHouseholdSuggestionBasis, resuggestHouseholdCategory, suggestHouseholdCategory, type HouseholdVendorRule } from '../services/householdVendorRules';\n" +
+  "import { findSameNameGrowthSubject, growthSubjectOptionLabel } from '../utils/growthSubject';\n" +
+  '\n' +
+  "type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부' | '배뇨일지';\n" +
+  "type SayuMode = 'BASIC' | 'PREMIUM';\n" +
+  '\n' +
+  'interface FormatModalProps {\n' +
+  '  isOpen: boolean;\n' +
+  '  onClose: () => void;\n' +
+  '  format: RecordFormat;\n' +
+  '  recordId: string;\n' +
+  '  initialData?: Record<string, string>;\n' +
+  '  initialPhotos?: File[];\n' +
+  '  initialWritingDraft?: boolean;\n' +
+  "  // 가계부 화면의 '은행 내역 가져오기'로 열었을 때만 'bank'. 없으면 기존 화면 그대로다.\n" +
+  "  householdEntryMode?: 'bank';\n" +
+  '  onSave: (formatData: Record<string, string>) => Promise<string | void | HouseholdSaveResult>;\n' +
+  '}\n' +
+  '\n' +
+  'interface PolishResult {\n' +
+  '  text: string;\n' +
+  '}\n' +
+  '\n' +
+  'type MonthlyAiQuotaStatus = {\n' +
+  "  plan: 'free' | 'basic' | 'premium' | 'developer';\n" +
+  '  used: number;\n' +
+  '  limit: number;\n' +
+  '  remaining: number;\n' +
+  '  period: string;\n' +
+  '  freeLimit: number;\n' +
+  '  basicLimit: number;\n' +
+  '  premiumLimit: number;\n' +
+  '  developerLimit?: number;\n' +
+  '};\n' +
+  '\n' +
+  'interface BookOcrResult {\n' +
+  '  text?: string;\n' +
+  '  usedCount?: number | null;\n' +
+  '  limit?: number | null;\n' +
+  '  remainingCount?: number | null;\n' +
+  '  isDeveloper?: boolean;\n' +
+  '}\n' +
+  '\n' +
+  'interface StockOcrResult {\n' +
+  '  text?: string;\n' +
+  '  trade?: Partial<{\n' +
+  '    stock_type: string;\n' +
+  '    stock_name: string;\n' +
+  '    stock_price: string;\n' +
+  '    stock_quantity: string;\n' +
+  '    stock_total: string;\n' +
+  '    stock_date: string;\n' +
+  '  }>;\n' +
+  '}\n' +
+  '\n' +
+  'interface LedgerOcrFields {\n' +
+  '  transactionAt?: string | null;\n' +
+  '  type?: string | null;\n' +
+  '  category?: string | null;\n' +
+  '  partner?: string | null;\n' +
+  '  amount?: string | number | null;\n' +
+  '  paymentMethod?: string | null;\n' +
+  '  proofType?: string | null;\n' +
+  '  memo?: string | null;\n' +
+  '}\n' +
+  '\n' +
+  'interface LedgerOcrResult {\n' +
+  '  rawText?: string;\n' +
+  '  transactions?: LedgerOcrFields[];\n' +
+  '  fields?: LedgerOcrFields;\n' +
+  '  warnings?: string[];\n' +
+  '}\n' +
+  '\n' +
+  '\n' +
+  '// ===== HARU가계부 =====\n' +
+  "const HOUSEHOLD_CATEGORIES = ['식비', '교통비', '통신비', '주거비', '공과금', '의료비', '교육비', '문화생활', '쇼핑', '구독료', '기타'] as const;\n" +
+  "const INCOME_CATEGORIES = ['월급', '부수입', '용돈', '환급', '투자수익', '기타수입'] as const;\n" +
+  "const HOUSEHOLD_PAYMENT_METHODS = ['현금', '체크카드', '신용카드', '계좌이체', '카카오페이', '네이버페이', '기타'] as const;\n" +
+  '\n' +
+  'export interface HouseholdEntry {\n' +
+  '  id: string;\n' +
+  "  transactionType: '수입' | '지출' | '이체';\n" +
+  '  category: string;\n' +
+  '  date: string;\n' +
+  '  vendor: string;\n' +
+  '  amount: string;\n' +
+  '  paymentMethod: string;\n' +
+  '  memo: string;\n' +
+  '  ocrSourceFile?: string;\n' +
+  '  balanceAfter?: string; // 거래 후 잔액(카카오뱅크 임포트 전용) — 손입력 기록엔 없음\n' +
+  '  transactionAt?: string;\n' +
+  "  importSource?: { kind: 'kakao'; fileDigest: string; key: string } | { kind: 'card'; issuer: 'kb'; fileDigest: string; key: string };\n" +
+  '  subcategory?: string;\n' +
+  '  // 새로 저장·수정한 거래에만 붙는다. 기존 거래에는 쓰지 않는다.\n' +
+  "  categorySource?: 'user' | 'rule' | 'import-default';\n" +
+  '}\n' +
+  '\n' +
+  'function newHouseholdEntry(overrides?: Partial<HouseholdEntry>): HouseholdEntry {\n' +
+  '  return {\n' +
+  "    id: Array.from(crypto.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join(''),\n" +
+  "    transactionType: '지출',\n" +
+  "    category: '',\n" +
+  "    date: '',\n" +
+  "    vendor: '',\n" +
+  "    amount: '',\n" +
+  "    paymentMethod: '',\n" +
+  "    memo: '',\n" +
+  '    ...overrides,\n' +
+  '  };\n' +
+  '}\n' +
+  '\n' +
+  'function parseHouseholdAmount(value: string): number {\n' +
+  '  return parseHouseholdAmountText(value) ?? 0;\n' +
+  '}\n' +
+  '\n' +
+  '// 날짜를 비워 둔 거래는 기록 저장일로 채운다. 가계부 화면은 거래 날짜로 월을 나누므로 빈 날짜는 합계·목록에서 빠진다.\n' +
+  '// baseDate가 YYYY-MM-DD(기록 문서 날짜)면 그 날짜를, 아니면 오늘(기기 시각)을 입력칸 표기(2026.06.25)처럼 점으로 적는다.\n' +
+  'function fillEmptyHouseholdDates(entries: HouseholdEntry[], baseDate?: string): HouseholdEntry[] {\n' +
+  '  const now = new Date();\n' +
+  "  const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;\n" +
+  "  const fillDate = (baseDate && /^\\d{4}-\\d{2}-\\d{2}/.test(baseDate) ? baseDate.slice(0, 10) : localToday).replace(/-/g, '.');\n" +
+  "  return entries.map((e) => ((e.date || '').trim() ? e : { ...e, date: fillDate }));\n" +
+  '}\n' +
+  '\n' +
+  "type GrowthSubjectType = 'child' | 'garden';\n" +
+  '\n' +
+  'type GrowthSubject = {\n' +
+  '  id: string;\n' +
+  '  subjectType: GrowthSubjectType;\n' +
+  '  name: string;\n' +
+  '  birthdate?: string;\n' +
+  '  gender?: GrowthGender;\n' +
+  '  latestRecordDate?: string;\n' +
+  '};\n' +
+  '\n' +
+  'const getTodayInputValue = () => new Date().toISOString().slice(0, 10);\n' +
+  '\n' +
+  'const toPositiveNumber = (value?: string) => {\n' +
+  '  const parsed = Number(value);\n' +
+  '  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;\n' +
+  '};\n' +
+  '\n' +
+  '// 형식별 입력 필드 정의\n' +
+  'const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placeholder: string; rows?: number }[]> = {\n' +
+  '  일기: [\n' +
+  "    { key: 'diary_오늘한일', label: '오늘한일', placeholder: '뒷산 산책로 끝까지 완주했음', rows: 2 },\n" +
+  "    { key: 'diary_좋았던일', label: '좋았던일', placeholder: '낙엽소리가 기분전환에 도움이 되었음', rows: 3 },\n" +
+  "    { key: 'diary_아쉬웠던일', label: '아쉬웠던일', placeholder: '이웃에게 인사 못 건넨 점이 아쉬웠음', rows: 3 },\n" +
+  "    { key: 'diary_여백', label: '여백', placeholder: '내일은 천천히 걷고 싶음', rows: 2 },\n" +
+  '  ],\n' +
+  '  에세이: [\n' +
+  "    { key: 'essay_observation', label: '관찰', placeholder: '보도블록 틈새에 피어 있는 노란 민들레를 관찰했습니다.', rows: 2 },\n" +
+  "    { key: 'essay_impression', label:"... 374411 more characters
+
+    at Object.<anonymous> (/Users/heogyeongdae/Developer/HARU2026/frontend/test/statsStorage.policy.test.cjs:74:8)
+    at Module._compile (node:internal/modules/cjs/loader:1934:14)
+    at Object..js (node:internal/modules/cjs/loader:2074:10)
+    at Module.load (node:internal/modules/cjs/loader:1656:32)
+    at Module._load (node:internal/modules/cjs/loader:1448:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: "import { getRecordPhotoLimit } from '../services/recordPhotoLimit';\n" +
+    "import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText, Pencil } from 'lucide-react';\n" +
+    "import { useState, useEffect, useRef, Fragment } from 'react';\n" +
+    "import { ReadingAiChat } from './ReadingAiChat';\n" +
+    "import { ReadingBookFields } from './ReadingBookFields';\n" +
+    "import { useReadingDraft } from '../hooks/useReadingDraft';\n" +
+    "import { applyReadingAiReference, buildPreviousReadingSummary, buildReadingSnapshot, parseReadingAiReference, readingAiReferenceText, resetReadingBookDraft } from '../services/readingAiCore';\n" +
+    "import { useNavigate } from 'react-router';\n" +
+    "import { getTestData } from '../data/testData';\n" +
+    "import { getFunctions, httpsCallable } from 'firebase/functions';\n" +
+    "import { getStorage, ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject, type StorageReference } from 'firebase/storage';\n" +
+    "import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';\n" +
+    "import { compressImage } from '../services/imageService';\n" +
+    "import { startSelectedRecordPhotoReads, readSelectedRecordPhotos } from '../services/selectedRecordPhoto';\n" +
+    "import { compressUploadPhoto } from '../services/photoUploadService';\n" +
+    "import { compressRecordPhoto } from '../services/recordPhotoCompression';\n" +
+    "import { useAuth } from '../contexts/AuthContext';\n" +
+    "import { toast } from 'sonner';\n" +
+    "import { LoadingOverlay } from './LoadingOverlay';\n" +
+    "import GrapeLoadingMini from './GrapeLoadingMini';\n" +
+    "import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';\n" +
+    'import {\n' +
+    '  cleanupTrackedRecordPhotos,\n' +
+    '  decodeConvertedJpeg,\n' +
+    '  enqueuePendingRecordPhotoCleanup,\n' +
+    '  excludeCommittedRecordPhotoUrls,\n' +
+    '  retryPendingRecordPhotoCleanup,\n' +
+    '  RECORD_PHOTO_UPLOAD_TIMEOUT,\n' +
+    '  withRecordPhotoUploadDeadline,\n' +
+    "} from '../services/recordPhotoUploadCore';\n" +
+    'import {\n' +
+    '  makeReadingBookId,\n' +
+    '  normalizeBookField,\n' +
+    '  buildReadingMetaCombined,\n' +
+    '  READING_ENTRY_TYPES,\n' +
+    '  READING_STATUS,\n' +
+    "} from '../types/haruTypes';\n" +
+    "import { buildFormatKeyMap } from '../records/formatRegistry';\n" +
+    "import { WRITABLE_FORMATS } from '../records/writeBeforeFormat';\n" +
+    "import { findGrowthLMS, type GrowthGender } from '../../data/growthLMS';\n" +
+    "import { calcAgeInMonths, calcPercentile } from '../../utils/growthCalc';\n" +
+    "import { GrowthChart } from '../../components/GrowthChart';\n" +
+    'import {\n' +
+    '  LEDGER_ASSET_TREATMENT_LABELS,\n' +
+    '  LEDGER_EXPENSE_DEDUCTION_LABELS,\n' +
+    '  LEDGER_XLSX_PROOF,\n' +
+    '  LEDGER_HOMETAX_CHECK_LABELS,\n' +
+    '  LEDGER_VAT_DEDUCTION_LABELS,\n' +
+    '  LEDGER_VAT_TAX_TYPE_LABELS,\n' +
+    '  adjustLedgerTaxFieldsForUsage,\n' +
+    '  calculateVatIncludedAmounts,\n' +
+    '  classifyLedgerPreviewRows,\n' +
+    '  createLedgerEntry as newLedgerEntry,\n' +
+    '  defaultLedgerAssetTreatment,\n' +
+    '  defaultLedgerExpenseDeduction,\n' +
+    '  defaultLedgerVatDeduction,\n' +
+    '  hashLedgerImportKey,\n' +
+    '  ledgerEntryAmount,\n' +
+    '  normalizeLedgerAmount,\n' +
+    '  normalizeLedgerDate,\n' +
+    '  parseLedgerWorkbook,\n' +
+    '  type LedgerAssetTreatment,\n' +
+    '  type LedgerExpenseDeduction,\n' +
+    '  type LedgerHometaxCheck,\n' +
+    '  type LedgerEntry,\n' +
+    '  type LedgerPeriodPreviewRow,\n' +
+    '  type LedgerVatDeduction,\n' +
+    '  type LedgerVatTaxType,\n' +
+    "} from '../services/ledgerPeriodImport';\n" +
+    'import {\n' +
+    '  saveLedgerPeriodEntriesBatch,\n' +
+    "} from '../services/ledgerPeriodSaveService';\n" +
+    'import {\n' +
+    '  parseKakaoBankWorkbook,\n' +
+    '  groupKakaoRowsByMonth,\n' +
+    '  mapCategory as kakaoDefaultCategory,\n' +
+    '  type KakaoXlsxMonthGroup,\n' +
+    '  type KakaoXlsxPreviewRow,\n' +
+    "} from '../services/householdKakaoImport';\n" +
+    "import { parseHouseholdAmountText } from '../utils/householdAmount';\n" +
+    "import { checkHouseholdDuplicates, HouseholdDuplicateReviewRequired, type HouseholdDecisions, type HouseholdDuplicateCheck } from '../services/householdDuplicates';\n" +
+    "import { loadHouseholdRecords, type HouseholdSaveResult } from '../services/householdSaveService';\n" +
+    "import { HouseholdDuplicateReview } from './HouseholdDuplicateReview';\n" +
+    "import { householdSaveLabel, isBlankHouseholdEntry, mergeHouseholdChecks, previewHouseholdSave } from '../services/householdSavePreview';\n" +
+    "import { HouseholdSaveSummary } from './HouseholdSaveSummary';\n" +
+    "import { parseKakaoBankPdf } from '../services/householdKakaoPdfImport';\n" +
+    "import { HouseholdImportGuide } from './HouseholdImportGuide';\n" +
+    "import { householdImportKind, type HouseholdGuideSourceId } from '../services/householdImportSources';\n" +
+    "import { readHouseholdCardFile, type CardImportContext, type CardImportReview, type HouseholdCardType } from '../services/householdCardImport';\n" +
+    "import { canSelectCardRow, chooseCardCancellation, validateHouseholdImportSave, isCardPaymentCandidate, cardImportCounts, cardImportCountLabel, cardImportCompletion } from '../services/householdImportReview';\n" +
+    "import { HouseholdCategoryPicker } from './HouseholdCategoryPicker';\n" +
+    "import './HouseholdCategoryPicker.css';\n" +
+    'import { emptyHouseholdCategories, householdCategoryOptions, householdSubcategoryOptions, isHouseholdType, loadHouseholdCategories, mergeHouseholdCategories,\n' +
+    "  updateHouseholdCategories, type HouseholdCategorySettings } from '../services/householdCategories';\n" +
+    "import { loadHouseholdVendorRules, readHouseholdSuggestionBasis, resuggestHouseholdCategory, suggestHouseholdCategory, type HouseholdVendorRule } from '../services/householdVendorRules';\n" +
+    "import { findSameNameGrowthSubject, growthSubjectOptionLabel } from '../utils/growthSubject';\n" +
+    '\n' +
+    "type RecordFormat = '일기' | '에세이' | '선교보고' | '일반보고' | '업무일지' | '여행기록' | '독서사유' | '텃밭일지' | '애완동물관찰일지' | '육아일기' | '성장기록' | 'HARU주식관리' | '주식거래일지' | '메모' | 'HARU보조장부' | 'HARU가계부' | '배뇨일지';\n" +
+    "type SayuMode = 'BASIC' | 'PREMIUM';\n" +
+    '\n' +
+    'interface FormatModalProps {\n' +
+    '  isOpen: boolean;\n' +
+    '  onClose: () => void;\n' +
+    '  format: RecordFormat;\n' +
+    '  recordId: string;\n' +
+    '  initialData?: Record<string, string>;\n' +
+    '  initialPhotos?: File[];\n' +
+    '  initialWritingDraft?: boolean;\n' +
+    "  // 가계부 화면의 '은행 내역 가져오기'로 열었을 때만 'bank'. 없으면 기존 화면 그대로다.\n" +
+    "  householdEntryMode?: 'bank';\n" +
+    '  onSave: (formatData: Record<string, string>) => Promise<string | void | HouseholdSaveResult>;\n' +
+    '}\n' +
+    '\n' +
+    'interface PolishResult {\n' +
+    '  text: string;\n' +
+    '}\n' +
+    '\n' +
+    'type MonthlyAiQuotaStatus = {\n' +
+    "  plan: 'free' | 'basic' | 'premium' | 'developer';\n" +
+    '  used: number;\n' +
+    '  limit: number;\n' +
+    '  remaining: number;\n' +
+    '  period: string;\n' +
+    '  freeLimit: number;\n' +
+    '  basicLimit: number;\n' +
+    '  premiumLimit: number;\n' +
+    '  developerLimit?: number;\n' +
+    '};\n' +
+    '\n' +
+    'interface BookOcrResult {\n' +
+    '  text?: string;\n' +
+    '  usedCount?: number | null;\n' +
+    '  limit?: number | null;\n' +
+    '  remainingCount?: number | null;\n' +
+    '  isDeveloper?: boolean;\n' +
+    '}\n' +
+    '\n' +
+    'interface StockOcrResult {\n' +
+    '  text?: string;\n' +
+    '  trade?: Partial<{\n' +
+    '    stock_type: string;\n' +
+    '    stock_name: string;\n' +
+    '    stock_price: string;\n' +
+    '    stock_quantity: string;\n' +
+    '    stock_total: string;\n' +
+    '    stock_date: string;\n' +
+    '  }>;\n' +
+    '}\n' +
+    '\n' +
+    'interface LedgerOcrFields {\n' +
+    '  transactionAt?: string | null;\n' +
+    '  type?: string | null;\n' +
+    '  category?: string | null;\n' +
+    '  partner?: string | null;\n' +
+    '  amount?: string | number | null;\n' +
+    '  paymentMethod?: string | null;\n' +
+    '  proofType?: string | null;\n' +
+    '  memo?: string | null;\n' +
+    '}\n' +
+    '\n' +
+    'interface LedgerOcrResult {\n' +
+    '  rawText?: string;\n' +
+    '  transactions?: LedgerOcrFields[];\n' +
+    '  fields?: LedgerOcrFields;\n' +
+    '  warnings?: string[];\n' +
+    '}\n' +
+    '\n' +
+    '\n' +
+    '// ===== HARU가계부 =====\n' +
+    "const HOUSEHOLD_CATEGORIES = ['식비', '교통비', '통신비', '주거비', '공과금', '의료비', '교육비', '문화생활', '쇼핑', '구독료', '기타'] as const;\n" +
+    "const INCOME_CATEGORIES = ['월급', '부수입', '용돈', '환급', '투자수익', '기타수입'] as const;\n" +
+    "const HOUSEHOLD_PAYMENT_METHODS = ['현금', '체크카드', '신용카드', '계좌이체', '카카오페이', '네이버페이', '기타'] as const;\n" +
+    '\n' +
+    'export interface HouseholdEntry {\n' +
+    '  id: string;\n' +
+    "  transactionType: '수입' | '지출' | '이체';\n" +
+    '  category: string;\n' +
+    '  date: string;\n' +
+    '  vendor: string;\n' +
+    '  amount: string;\n' +
+    '  paymentMethod: string;\n' +
+    '  memo: string;\n' +
+    '  ocrSourceFile?: string;\n' +
+    '  balanceAfter?: string; // 거래 후 잔액(카카오뱅크 임포트 전용) — 손입력 기록엔 없음\n' +
+    '  transactionAt?: string;\n' +
+    "  importSource?: { kind: 'kakao'; fileDigest: string; key: string } | { kind: 'card'; issuer: 'kb'; fileDigest: string; key: string };\n" +
+    '  subcategory?: string;\n' +
+    '  // 새로 저장·수정한 거래에만 붙는다. 기존 거래에는 쓰지 않는다.\n' +
+    "  categorySource?: 'user' | 'rule' | 'import-default';\n" +
+    '}\n' +
+    '\n' +
+    'function newHouseholdEntry(overrides?: Partial<HouseholdEntry>): HouseholdEntry {\n' +
+    '  return {\n' +
+    "    id: Array.from(crypto.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join(''),\n" +
+    "    transactionType: '지출',\n" +
+    "    category: '',\n" +
+    "    date: '',\n" +
+    "    vendor: '',\n" +
+    "    amount: '',\n" +
+    "    paymentMethod: '',\n" +
+    "    memo: '',\n" +
+    '    ...overrides,\n' +
+    '  };\n' +
+    '}\n' +
+    '\n' +
+    'function parseHouseholdAmount(value: string): number {\n' +
+    '  return parseHouseholdAmountText(value) ?? 0;\n' +
+    '}\n' +
+    '\n' +
+    '// 날짜를 비워 둔 거래는 기록 저장일로 채운다. 가계부 화면은 거래 날짜로 월을 나누므로 빈 날짜는 합계·목록에서 빠진다.\n' +
+    '// baseDate가 YYYY-MM-DD(기록 문서 날짜)면 그 날짜를, 아니면 오늘(기기 시각)을 입력칸 표기(2026.06.25)처럼 점으로 적는다.\n' +
+    'function fillEmptyHouseholdDates(entries: HouseholdEntry[], baseDate?: string): HouseholdEntry[] {\n' +
+    '  const now = new Date();\n' +
+    "  const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;\n" +
+    "  const fillDate = (baseDate && /^\\d{4}-\\d{2}-\\d{2}/.test(baseDate) ? baseDate.slice(0, 10) : localToday).replace(/-/g, '.');\n" +
+    "  return entries.map((e) => ((e.date || '').trim() ? e : { ...e, date: fillDate }));\n" +
+    '}\n' +
+    '\n' +
+    "type GrowthSubjectType = 'child' | 'garden';\n" +
+    '\n' +
+    'type GrowthSubject = {\n' +
+    '  id: string;\n' +
+    '  subjectType: GrowthSubjectType;\n' +
+    '  name: string;\n' +
+    '  birthdate?: string;\n' +
+    '  gender?: GrowthGender;\n' +
+    '  latestRecordDate?: string;\n' +
+    '};\n' +
+    '\n' +
+    'const getTodayInputValue = () => new Date().toISOString().slice(0, 10);\n' +
+    '\n' +
+    'const toPositiveNumber = (value?: string) => {\n' +
+    '  const parsed = Number(value);\n' +
+    '  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;\n' +
+    '};\n' +
+    '\n' +
+    '// 형식별 입력 필드 정의\n' +
+    'const FORMAT_FIELDS: Record<RecordFormat, { key: string; label: string; placeholder: string; rows?: number }[]> = {\n' +
+    '  일기: [\n' +
+    "    { key: 'diary_오늘한일', label: '오늘한일', placeholder: '뒷산 산책로 끝까지 완주했음', rows: 2 },\n" +
+    "    { key: 'diary_좋았던일', label: '좋았던일', placeholder: '낙엽소리가 기분전환에 도움이 되었음', rows: 3 },\n" +
+    "    { key: 'diary_아쉬웠던일', label: '아쉬웠던일', placeholder: '이웃에게 인사 못 건넨 점이 아쉬웠음', rows: 3 },\n" +
+    "    { key: 'diary_여백', label: '여백', placeholder: '내일은 천천히 걷고 싶음', rows: 2 },\n" +
+    '  ],\n' +
+    '  에세이: [\n' +
+    "    { key: 'essay_observation', label: '관찰', placeholder: '보도블록 틈새에 피어 있는 노란 민들레를 관찰했습니다.', rows: 2 },\n" +
+    "    { key: 'essay_impression', label:"... 374411 more characters,
+  expected: /useEffect\(\(\) => \{\n\s*photoEditorSessionRef\.current \+= 1;\n[^\n]*\n\s*return \(\) => \{ photoEditorSessionRef\.current \+= 1; \};\n\s*\}, \[isOpen, format, recordId\]\);/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v26.8.2
