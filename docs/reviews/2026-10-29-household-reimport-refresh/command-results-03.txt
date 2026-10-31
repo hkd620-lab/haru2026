@@ -1,0 +1,24 @@
+단위·SSR·회귀
+✔ 저장된 초안만 종료하고 다음 글의 ID·내용·사진을 새로 시작한다 (3.82675ms)
+ℹ tests 66
+ℹ suites 0
+ℹ pass 66
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1551.300541
+
+더미 설정 npm run build
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 41.24s
+
+PWA v1.2.0
+mode      generateSW
+precache  791 entries (21180.82 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-aade9d62.js
+
+브라우저 회귀: blockedDuringFailure=true; 목록 지우기 후 manualSaveEnabled=true; remainingRecheckButtons=0.
+git diff --check (원문 change.diff 제외): exit 0

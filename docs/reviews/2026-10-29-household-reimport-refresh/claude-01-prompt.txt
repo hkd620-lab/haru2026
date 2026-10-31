@@ -1,0 +1,7 @@
+독립 코드·설계·완료 검토 요청. 파일 수정·명령 실행 금지, Read만 사용하세요.
+저장소 /Users/heogyeongdae/Developer/HARU2026, codex-household-reimport-fix 최신 기능 커밋.
+요구와 한계는 docs/reviews/2026-10-29-household-reimport-refresh/validation.md를 먼저 읽으세요. 실제 원 사건의 정확한 재현은 못했고, 원본 파일을 새로 읽으면 현재 정상입니다. 이미 열린 비교 결과가 다른 저장 후 갱신되지 않는 경로를 합성 UI로 재현해 보완했습니다. 저장본·원본 키를 바꾸지 않습니다.
+읽을 코드: frontend/src/app/components/FormatModal.tsx (상태 565~665, 초기화 790근처, 파일 읽기/저장 2850~3060, 요약/버튼 변경 구간은 최신 git diff 대신 아래 change.diff 참조), frontend/src/app/components/HouseholdSaveSummary.tsx, frontend/src/app/services/householdSavePreview.ts, frontend/test/householdSavePreview.test.mjs, frontend/test/householdSave.emulator.test.mjs. 새 리뷰 폴더 change.diff, command-results.txt와 validation.md를 읽으세요. 금지/숨김 파일, 금융 자료와 /private/tmp 원본·진단 파일은 읽지 마세요.
+기존 같은 기능의 검토 전체 원문 색인은 docs/reviews/2026-10-29-household-save-count/claude-index.md 및 codex-03-index.md에 있고 기존 최종 승인을 그대로 덮어쓰지 않습니다. 이번은 별도 재가져오기 상태 갱신 보완의 첫 검토입니다.
+사용자는 이 대화에서 검증·코드 검토 후 이상 없으면 PR·main 병합·Hosting 배포까지 지시했고, 이번 재가져오기 오류 수정도 이어서 요청했습니다. 정책 관점에서도 규모·멈춤 조건을 판정하세요. 재확인 추가 조회 비용은 validation.md에 명시했습니다.
+비동기 경쟁, 오래된 결과·선택, 실패 시 수치/저장, 원 사건과 검증 사실 구분을 중점 검토하고 판정(승인/수정 후 승인/재설계), 필수 수정과 비차단 권고를 구분해 주세요. 테스트는 검토자가 실행하지 않은 실행자 기록임을 명시하세요.

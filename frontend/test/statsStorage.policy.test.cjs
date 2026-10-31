@@ -20,7 +20,8 @@ assert.doesNotMatch(formatModal, /format === '텃밭일지' && selectedCrops\.le
 
 // ① 기분은 고른 경우에만 저장
 assert.match(recordPage, /\.\.\.\(mood \? \{ mood \} : \{\}\)/);
-assert.match(sayuModal, /if \(editedMood\) titleUpdate\.mood = editedMood;/);
+assert.match(sayuModal, /\.\.\.\(editedMood \? \{ mood: editedMood \} : \{\}\)/);
+assert.match(sayuPage, /\.\.\.\(meta\.mood \? \{ mood: meta\.mood \} : \{\}\)/);
 
 // ⑤ 특별한 날은 specialDays 맵에 저장하고, 옛 숫자 _rating 은 업무일지만 지운다
 assert.match(sayuPage, /\[`specialDays\.\$\{formatKey\}`\]: isSpecial/);

@@ -1,0 +1,140 @@
+TAP version 13
+# Subtest: future story saves once, views the exact ID, and preserves source/content
+ok 1 - future story saves once, views the exact ID, and preserves source/content
+  ---
+  duration_ms: 4.417084
+  type: 'test'
+  ...
+# Subtest: future story synchronous lock blocks repeated save, publish and view during saving
+ok 2 - future story synchronous lock blocks repeated save, publish and view during saving
+  ---
+  duration_ms: 1.080709
+  type: 'test'
+  ...
+# Subtest: future story failed save has no view target and can retry without changing the story
+ok 3 - future story failed save has no view target and can retry without changing the story
+  ---
+  duration_ms: 0.390292
+  type: 'test'
+  ...
+# Subtest: future story publishing locks saving and viewing, and reuses an already saved ID
+ok 4 - future story publishing locks saving and viewing, and reuses an already saved ID
+  ---
+  duration_ms: 7.147333
+  type: 'test'
+  ...
+# Subtest: future story failed publication keeps the newly saved ID usable without resaving
+ok 5 - future story failed publication keeps the newly saved ID usable without resaving
+  ---
+  duration_ms: 0.382542
+  type: 'test'
+  ...
+# Subtest: future story missing nickname releases the publication lock without saving
+ok 6 - future story missing nickname releases the publication lock without saving
+  ---
+  duration_ms: 0.124125
+  type: 'test'
+  ...
+# Subtest: LAW opens the actual returned ID on the selected past date and keeps original fields/attachments
+ok 7 - LAW opens the actual returned ID on the selected past date and keeps original fields/attachments
+  ---
+  duration_ms: 1.268167
+  type: 'test'
+  ...
+# Subtest: LAW locks repeated save, date changes and close while the initial read is pending
+ok 8 - LAW locks repeated save, date changes and close while the initial read is pending
+  ---
+  duration_ms: 0.524084
+  type: 'test'
+  ...
+# Subtest: LAW initial read failure does not save or navigate and preserves a retryable error
+ok 9 - LAW initial read failure does not save or navigate and preserves a retryable error
+  ---
+  duration_ms: 0.238417
+  type: 'test'
+  ...
+# Subtest: LAW write failure stays on the result, releases its lock and allows retry
+ok 10 - LAW write failure stays on the result, releases its lock and allows retry
+  ---
+  duration_ms: 0.480667
+  type: 'test'
+  ...
+# Subtest: LAW invalid date never reads, writes or navigates
+ok 11 - LAW invalid date never reads, writes or navigates
+  ---
+  duration_ms: 0.18375
+  type: 'test'
+  ...
+# Subtest: LAW does not redirect after the result page was unmounted during saving
+ok 12 - LAW does not redirect after the result page was unmounted during saving
+  ---
+  duration_ms: 1.905834
+  type: 'test'
+  ...
+# Subtest: timeline viewing closes once and uses the saved ID in the assistants tab
+ok 13 - timeline viewing closes once and uses the saved ID in the assistants tab
+  ---
+  duration_ms: 0.464625
+  type: 'test'
+  ...
+# Subtest: timeline blocks close/view while saving and clears the saved target on close
+ok 14 - timeline blocks close/view while saving and clears the saved target on close
+  ---
+  duration_ms: 0.1765
+  type: 'test'
+  ...
+# Subtest: growth timeline forwards the service ID and locks repeated finalize synchronously
+ok 15 - growth timeline forwards the service ID and locks repeated finalize synchronously
+  ---
+  duration_ms: 1.334417
+  type: 'test'
+  ...
+# Subtest: growth timeline failed persistence keeps its draft and never supplies a view ID
+ok 16 - growth timeline failed persistence keeps its draft and never supplies a view ID
+  ---
+  duration_ms: 0.279459
+  type: 'test'
+  ...
+# Subtest: SAYU opens the exact future essay among same-date siblings
+not ok 17 - SAYU opens the exact future essay among same-date siblings
+  ---
+  duration_ms: 1.106584
+  type: 'test'
+  location: '/Users/heogyeongdae/Developer/HARU2026/frontend/test/assistantSavedResultOpen.test.mjs:271:1'
+  failureType: 'testCodeFailure'
+  error: 'isSpecialDayRecord is not defined'
+  code: 'ERR_TEST_FAILURE'
+  name: 'ReferenceError'
+  stack: |-
+    openFormatSayu (eval at readSavedRoute (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/assistantSavedResultOpen.test.mjs:267:3), <anonymous>:49:22)
+    applyRoute (eval at readSavedRoute (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/assistantSavedResultOpen.test.mjs:267:3), <anonymous>:162:5)
+    eval (eval at readSavedRoute (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/assistantSavedResultOpen.test.mjs:267:3), <anonymous>:167:1)
+    readSavedRoute (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/assistantSavedResultOpen.test.mjs:267:67)
+    TestContext.<anonymous> (file:///Users/heogyeongdae/Developer/HARU2026/frontend/test/assistantSavedResultOpen.test.mjs:273:18)
+    Test.runInAsyncScope (node:async_hooks:226:14)
+    Test.run (node:internal/test_runner/test:1402:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+    Test.postRun (node:internal/test_runner/test:1542:19)
+    Test.run (node:internal/test_runner/test:1467:12)
+  ...
+# Subtest: SAYU opens the exact LAW document among same-date siblings
+ok 18 - SAYU opens the exact LAW document among same-date siblings
+  ---
+  duration_ms: 0.158708
+  type: 'test'
+  ...
+# Subtest: SAYU opens the exact growth timeline with its existing display-label route
+ok 19 - SAYU opens the exact growth timeline with its existing display-label route
+  ---
+  duration_ms: 41.277334
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 18
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 324.087708

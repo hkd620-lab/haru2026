@@ -422,7 +422,9 @@ export function RecordBookPage() {
     if (!epubStartDate || !epubEndDate) return;
     setIsExporting(true);
     try {
-      const { count, fileName } = await exportRecordsToEpub(epubStartDate, epubEndDate);
+      const result = await exportRecordsToEpub(epubStartDate, epubEndDate);
+      if (!result) return;
+      const { count, fileName } = result;
       alert(`✅ EPUB 생성 완료! ${count}개 기록 → ${fileName}\n\n${getEpubReaderHint()}`);
     } catch (e: any) {
       alert(`❌ 오류: ${e.message}`);

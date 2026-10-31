@@ -1,0 +1,129 @@
+diff --git a/frontend/src/app/components/SayuModal.tsx b/frontend/src/app/components/SayuModal.tsx
+index df829761..f242f6e5 100644
+--- a/frontend/src/app/components/SayuModal.tsx
++++ b/frontend/src/app/components/SayuModal.tsx
+@@ -15,7 +15,7 @@ import { httpsCallable, getFunctions } from 'firebase/functions';
+ import { db, storage, functions } from '../../firebase';
+ import { useAuth } from '../contexts/AuthContext';
+ import { firestoreService } from '../services/firestoreService';
+-import { saveHouseholdOriginal } from '../services/householdSaveService';
++import { saveHouseholdOriginal, HouseholdOriginalConflict } from '../services/householdSaveService';
+ import { buildFormatKeyMap, invertFormatKeyMap } from '../records/formatRegistry';
+ import { exportRecordsToEpub } from '../services/epubExportService';
+ import { getEpubReaderHint } from '../utils/epubReaderGuide';
+@@ -1702,7 +1702,7 @@ export function SayuModal({
+       } else await updateDoc(recordRef, editedOriginalData);
+       toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
+     } catch (error) {
+-      if (isHouseholdSayu) toast.error(error instanceof Error ? error.message : '가계부를 저장하지 못했습니다. 다시 열어 확인해 주세요.');
++      if (isHouseholdSayu) toast.error(error instanceof HouseholdOriginalConflict ? error.message : '가계부를 저장하지 못했습니다. 인터넷 연결과 접근 권한을 확인한 뒤 다시 시도해 주세요.');
+       else {
+         console.error('원본 저장 실패:', error);
+         toast.error('저장 실패. 다시 시도해주세요.');
+diff --git a/frontend/src/app/services/householdKakaoPdfImport.ts b/frontend/src/app/services/householdKakaoPdfImport.ts
+index 3b106fa8..3695a1fa 100644
+--- a/frontend/src/app/services/householdKakaoPdfImport.ts
++++ b/frontend/src/app/services/householdKakaoPdfImport.ts
+@@ -1,5 +1,5 @@
+ import { parseKakaoBankWorkbook, type KakaoXlsxParseResult } from './householdKakaoImport';
+-import { householdDate } from './householdDuplicates';
++import { householdDate, householdDigest } from './householdDuplicates';
+ 
+ interface PdfTextItem { str: string; transform: number[]; width: number; height: number }
+ interface PdfPage { getTextContent(): Promise<{ items: unknown[] }>; cleanup(): unknown }
+@@ -13,7 +13,7 @@ const money = /^[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?$/;
+ export async function parseKakaoBankPdfDocument(pdf: HouseholdPdfDocument, fileName: string): Promise<KakaoXlsxParseResult> {
+   if (pdf.numPages > 200) throw new Error('PDF는 한 번에 200쪽까지 읽을 수 있습니다. 조회 기간을 나눠 주세요.');
+   const rows: unknown[][] = [];
+-  let owner = '', bankFound = false;
++  let owner = '', metadataDigest = '', bankFound = false;
+   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+     const page = await pdf.getPage(pageNumber);
+     try {
+@@ -36,9 +36,18 @@ export async function parseKakaoBankPdfDocument(pdf: HouseholdPdfDocument, fileN
+         return index < 0 ? 5 : index;
+       };
+       if (pageNumber === 1) {
++        // 같은 명의의 서로 다른 계좌 내역을 같은 파일로 보지 않는다.
++        // 계좌·조회 정보 원문은 저장하지 않고 표 위 메타정보를 해시에만 포함한다.
++        metadataDigest = await householdDigest(items.filter(item => item.transform[5] > header.transform[5] + scale)
++          .sort((a,b) => b.transform[5] - a.transform[5] || a.transform[4] - b.transform[4])
++          .map(item => item.str.normalize('NFKC').trim()));
+         const label = items.find(item => /^(예금주|성명)[:：]?$/.test(compact(item.str)));
+-        if (label) owner = items.filter(item => item !== label && item.transform[4] > label.transform[4] + label.width
+-          && Math.abs(item.transform[5] - label.transform[5]) < scale).sort((a,b) => a.transform[4] - b.transform[4])[0]?.str.trim() || '';
++        if (label) {
++          const right = items.filter(item => item !== label && item.transform[4] > label.transform[4] + label.width
++            && Math.abs(item.transform[5] - label.transform[5]) < scale).sort((a,b) => a.transform[4] - b.transform[4]);
++          const stop = right.findIndex(item => /[:：]/.test(item.str) || /^(계좌번호|조회기간|예금종류)/.test(compact(item.str)));
++          owner = right.slice(0, stop < 0 ? right.length : stop).map(item => item.str.trim()).join('');
++        }
+       }
+       const body = items.filter(item => item.transform[5] < header.transform[5] - scale);
+       const anchors = body.filter(item => column(item) === 0 && dateTime.test(item.str.trim())).sort((a,b) => b.transform[5] - a.transform[5]);
+@@ -62,7 +71,7 @@ export async function parseKakaoBankPdfDocument(pdf: HouseholdPdfDocument, fileN
+     } finally { page.cleanup(); }
+   }
+   if (!bankFound) throw new Error('카카오뱅크 거래내역서인지 확인해 주세요.');
+-  const raw = [['성명', owner], ...rows];
++  const raw = [['_pdf_metadata', metadataDigest], ['성명', owner], ...rows];
+   return parseKakaoBankWorkbook({ SheetNames: ['거래내역'], Sheets: { 거래내역: raw } }, {
+     utils: { sheet_to_json: <T,>() => raw as T[] },
+   }, fileName);
+diff --git a/frontend/src/app/services/householdSaveService.ts b/frontend/src/app/services/householdSaveService.ts
+index bb188edc..b943a85f 100644
+--- a/frontend/src/app/services/householdSaveService.ts
++++ b/frontend/src/app/services/householdSaveService.ts
+@@ -8,6 +8,13 @@ export interface HouseholdSaveResult {
+   kind: 'household'; added: number; skipped: number; already: number; recordIds: string[]; createdRecords: number;
+ }
+ 
++export class HouseholdOriginalConflict extends Error {
++  constructor() {
++    super('다른 곳에서 가계부가 바뀌었습니다. 창을 닫고 다시 열어 확인해 주세요. 저장하지 않았습니다.');
++    this.name = 'HouseholdOriginalConflict';
++  }
++}
++
+ export async function loadHouseholdRecords(db: Firestore, uid: string): Promise<HouseholdStoredRecord[]> {
+   if (!uid || uid.includes('/')) throw new Error('로그인이 필요합니다.');
+   // 캐시/오프라인의 빈 결과로 중복 검사를 우회하지 않는다.
+@@ -28,7 +35,7 @@ export async function saveHouseholdOriginal(db: Firestore, uid: string, recordId
+     const current = await transaction.get(ref);
+     if (!current.exists() || current.data().household_entries !== opened.household_entries
+       || Object.keys(changed).some(key => current.data()?.[key] !== opened[key])) {
+-      throw new Error('다른 곳에서 가계부가 바뀌었습니다. 창을 닫고 다시 열어 확인해 주세요. 저장하지 않았습니다.');
++      throw new HouseholdOriginalConflict();
+     }
+     transaction.update(ref, changed);
+   });
+diff --git a/frontend/test/householdPdf.test.mjs b/frontend/test/householdPdf.test.mjs
+index 4d46ccce..6cae8e30 100644
+--- a/frontend/test/householdPdf.test.mjs
++++ b/frontend/test/householdPdf.test.mjs
+@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
+ import fs from 'node:fs';
+ import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+ import { parseKakaoBankPdfDocument } from '../src/app/services/householdKakaoPdfImport.ts';
++import { checkHouseholdDuplicates } from '../src/app/services/householdDuplicates.ts';
+ 
+ const text=(str,x,y,width=30)=>({str,transform:[1,0,0,1,x,y],width,height:8});
+ const headers=()=>['거래일시','구분','거래금액','거래 후 잔액','거래내용(메모)','거래구분'].map((s,i)=>text(s,[60,132,192,285,397,512][i],700));
+@@ -49,3 +50,17 @@ test('예금주와 같은 줄에 다른 정보가 있어도 이름에 계좌번
+  const doc=document([[...items,text('계좌번호 :',250,750),text('0000-00-0000000',350,750)]]);
+  const result=await parseKakaoBankPdfDocument(doc,'합성.pdf');assert.equal(result.rows[0].entry.transactionType,'이체');
+ });
++
++test('PDF 예금주 이름이 여러 조각이어도 다음 라벨 앞까지만 이어서 본인 이체를 판별한다',async()=>{
++ const items=page().filter(item=>!(item.str==='시험사용자'&&item.transform[5]===750)).map(item=>item.str==='출금'?{...item,str:'입금'}:item.str==='-4,500'?{...item,str:'+4,500'}:item.str==='시험 카페'?{...item,str:'시험사용자'}:item);
++ const result=await parseKakaoBankPdfDocument(document([[...items,text('시험',80,750),text('사용자',115,750),text('계좌번호 :',250,750),text('0000-00-0000000',350,750)]]),'조각이름.pdf');
++ assert.equal(result.rows[0].entry.transactionType,'이체');
++});
++
++test('명의·거래가 같아도 서로 다른 계좌의 PDF는 확정 중복으로 합치지 않는다',async()=>{
++ const a=await parseKakaoBankPdfDocument(document([[...page(),text('계좌번호 :',250,750),text('0000-00-0000001',350,750)]]),'같은이름.pdf');
++ const b=await parseKakaoBankPdfDocument(document([[...page(),text('계좌번호 :',250,750),text('0000-00-0000002',350,750)]]),'같은이름.pdf');
++ assert.notEqual(a.rows[0].id,b.rows[0].id);
++ const checks=await checkHouseholdDuplicates(b.rows.map(r=>r.entry),[{id:'a',data:{household_entries:JSON.stringify(a.rows.map(r=>r.entry))}}]);
++ assert.equal(checks[0].status,'suspect');
++});

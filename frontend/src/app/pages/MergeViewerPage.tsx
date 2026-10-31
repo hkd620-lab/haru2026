@@ -151,7 +151,9 @@ export function MergeViewerPage() {
         toast.warning(`EPUB은 한 번에 ${MAX_EPUB_RECORDS}개 기록까지 만들 수 있습니다. 기간을 나눠 주세요.`);
         return;
       }
-      const { count, fileName, skippedPhotos, limitedPhotos } = await exportRecordsToEpub(startDate, endDate, format as string, records.map((record) => String(record.id)), state.filter);
+      const result = await exportRecordsToEpub(startDate, endDate, format as string, records.map((record) => String(record.id)), state.filter);
+      if (!result) return;
+      const { count, fileName, skippedPhotos, limitedPhotos } = result;
       toast.success(`EPUB 저장 완료 — ${count}개 기록 · ${fileName}`, { description: getEpubReaderHint(), duration: 8000 });
       if (skippedPhotos > 0) toast.warning(`사진 ${skippedPhotos}장을 내려받지 못해 EPUB에서 뺐습니다.`);
       if (limitedPhotos > 0) toast.warning(`EPUB 한 파일에는 사진을 200장까지 넣습니다. 사진 ${limitedPhotos}장은 넣지 않았습니다.`);

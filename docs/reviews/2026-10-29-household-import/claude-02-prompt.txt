@@ -1,0 +1,12 @@
+독립 재검토를 수행하십시오. 파일 수정·추가 에이전트·Bash 사용 금지, Read/Grep/Glob만 사용하십시오.
+저장소: /Users/heogyeongdae/Developer/HARU2026
+PR: https://github.com/hkd620-lab/haru2026/pull/312
+대상 HEAD: be70fa7bddbe14b087d32be8c29b7114a069b66f
+기준 1차 HEAD: 15db3808c035421cb5abe3d58a75931ae6d54ecb
+반드시 먼저 읽을 원문: /private/tmp/haru-household-review/claude-01-result.raw.json
+반영 내역과 유지한 결정: /private/tmp/haru-household-review/claude-02-response.md
+정확한 수정 diff: /private/tmp/haru-household-review/claude-02-change.diff
+근거: /private/tmp/haru-household-review/validation.md 및 저장소의 변경 코드·테스트.
+1차의 수정 후 승인 판정과 발견 사항을 모두 포함하여 재검토하십시오. P3-2·P3-3을 유지한 근거 수용 여부도 명시하십시오. 새 코드의 회귀를 점검하고 승인/수정 후 승인/재설계 중 판정, 규모, 멈춤 조건을 명시하십시오. 병합·운영 배포는 요청 범위가 아닙니다.
+금지: Downloads, 실제 사용자 자료, /private/tmp/haru-household-real-statement, node_modules/.cache의 실전 자료를 읽지 마십시오. 숨김 LibraryPage.tsx는 사용자 지침상 점검 금지이므로 열거나 검색하지 마십시오. 1차 원문에 해당 파일 언급이 있어도 원문 증거로만 취급하고 해당 코드를 추가 확인하지 마십시오. 일반 호출자 콜백이 실행되지 않는 공통 FormatModal 분기와 격리 fixture로 안전성을 검토하십시오. 금지 파일·페이지의 복구/점검/수정을 요구하지 마십시오.
+실행하지 않은 테스트·운영 확인을 실행했다고 하지 마십시오.

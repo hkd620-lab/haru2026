@@ -1,5 +1,4 @@
-// EPUB 파일을 여는 방법 안내 — 안드로이드(갤럭시 등)에는 EPUB 을 여는 앱이 기본으로 없어
-// 내려받은 파일이 "열 수 없음"으로 나온다(2026-10-24 허대표님 갤럭시 실기기 확인).
+// EPUB 파일을 여는 방법 안내 — EPUB 지원 앱이 없는 기기에서는 내려받은 파일이 열리지 않을 수 있다.
 // 기기별로 무료 전자책 앱과 여는 방법을 알려 준다.
 
 export type EpubReaderPlatform = 'android' | 'ios' | 'desktop';
@@ -25,12 +24,12 @@ export function getEpubReaderGuide(platform: EpubReaderPlatform): EpubReaderGuid
   if (platform === 'android') {
     return {
       platform,
-      title: '휴대폰에서 EPUB이 열리지 않나요?',
+      title: '안드로이드에서 EPUB 여는 방법',
       steps: [
-        '안드로이드 휴대폰(갤럭시 등)에는 EPUB을 여는 앱이 기본으로 없습니다.',
-        '무료 앱 ‘Google Play 북’을 설치하세요.',
+        '안드로이드 휴대폰(갤럭시 등)에 EPUB 지원 앱이 없다면 별도 리더 앱이 필요합니다.',
+        '지원 앱이 없으면 ‘Google Play 북’을 설치할 수 있습니다.',
         '설치 후 ‘내 파일 → 다운로드’에서 EPUB을 누르고 Play 북으로 여세요.',
-        '바로 열리지 않으면 Play 북 → 라이브러리 → 점 세 개(⋮) → ‘PDF 또는 EPUB 업로드’에서 파일을 고르세요.',
+        '바로 열리지 않으면 ‘다운로드’ 또는 ‘파일’ 앱에서 EPUB의 ‘연결 프로그램 → Play 북’ 또는 ‘Play 북에 업로드’를 선택하세요. 업로드한 파일은 Play 북 → 라이브러리 → 업로드에서 찾을 수 있습니다.',
       ],
       linkLabel: 'Google Play 북 설치하기',
       linkUrl: GOOGLE_PLAY_BOOKS_URL,

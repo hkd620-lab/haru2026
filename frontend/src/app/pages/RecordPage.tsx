@@ -216,6 +216,7 @@ export function RecordPage() {
   const [weather, setWeather] = useState<Weather>('쾌청');
   const [temperature, setTemperature] = useState<Temperature>('쾌적');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>('생활' as Category);
+  const [householdEntryMode, setHouseholdEntryMode] = useState<'bank' | undefined>(undefined);
   const [showOtherEntryMethods, setShowOtherEntryMethods] = useState(() => Boolean((location.state as any)?.category || (location.state as any)?.format));
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
@@ -550,6 +551,7 @@ export function RecordPage() {
     setSavedDateStr(dateStr);
     setSavedFormat(format);
     setSelectedFormats([format]);
+    setHouseholdEntryMode(undefined);
     setFormatModalOpen(true);
   };
 
@@ -560,10 +562,13 @@ export function RecordPage() {
     if (!user) return;
     const incomingFormat = (location.state as any)?.format as string | undefined;
     const incomingFrom = (location.state as any)?.from as string | undefined;
+    // state를 지우기 전에 가계부 진입 방식(은행 파일 가져오기)을 보관한다.
+    const incomingHouseholdEntry = (location.state as any)?.householdEntry === 'bank' ? 'bank' : undefined;
     if (incomingFrom) setFromPath(incomingFrom);
     if (!incomingFormat) return;
     autoOpenedRef.current = true;
     openFormatDirectly(incomingFormat as RecordFormat);
+    if (incomingFormat === 'HARU가계부') setHouseholdEntryMode(incomingHouseholdEntry);
     // state 소비 후 history에서 제거 — 새로고침/뒤로가기 시 재열림 방지
     navigate(location.pathname, { replace: true, state: null });
   }, [user, location.state]);
@@ -925,7 +930,7 @@ export function RecordPage() {
 
         <section className="bg-white rounded-lg p-4 shadow-sm">
           <h2 className="text-base font-semibold" style={{ color: '#1A3C6E' }}>오늘의 기록</h2>
-          <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 형식을 고른 뒤 기존 편집창에서 기록 방식을 선택하고 저장합니다.</p>
+          <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 형식을 고르면 작성한 글과 사진으로 AI 도움을 받거나 그대로 저장할 수 있습니다.</p>
           <textarea
             aria-label="기록 내용"
             value={draftContent}
@@ -1205,7 +1210,7 @@ export function RecordPage() {
       <div role="dialog" aria-modal="true" aria-label="저장할 기록 형식 선택" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl bg-white p-5">
           <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>어떤 형식으로 저장할까요?</h2>
-          <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요. 이어서 간편·프리미엄 방식을 고릅니다.</p>
+          <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요. 작성한 글과 사진으로 AI 도움 안내가 이어집니다.</p>
           <div className="mt-4 grid grid-cols-2 gap-2">
             {WRITABLE_FORMATS.map((format) => (
               <button key={format} type="button" onClick={() => openDraftEditorForFormat(format)} className="rounded-lg border p-3 text-left text-sm hover:bg-yellow-50">
@@ -1224,6 +1229,7 @@ export function RecordPage() {
         isOpen={formatModalOpen}
         onClose={() => {
           setFormatModalOpen(false);
+          setHouseholdEntryMode(undefined);
           if (draftEditorRecordId) {
             setDraftEditorRecordId(null);
             setDraftEditorData(undefined);
@@ -1237,6 +1243,7 @@ export function RecordPage() {
         initialData={draftEditorData}
         initialPhotos={draftEditorPhotos}
         initialWritingDraft={!!draftEditorRecordId}
+        householdEntryMode={savedFormat === 'HARU가계부' ? householdEntryMode : undefined}
         onSave={(data) => handleSaveFormatData(draftEditorRecordId
           ? applyDraftSaveTarget(data, draftEditorRecordId, savedDateStr)
           : data)}

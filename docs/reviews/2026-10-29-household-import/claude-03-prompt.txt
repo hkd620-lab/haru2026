@@ -1,0 +1,12 @@
+독립 최종 코드 검토를 수행하십시오. 파일 수정·추가 에이전트·Bash 금지, Read/Grep/Glob만 사용하십시오.
+저장소: /Users/heogyeongdae/Developer/HARU2026
+PR: https://github.com/hkd620-lab/haru2026/pull/312
+대상 HEAD: b777c3be80a00ee669dbe5a780e3038627a722d3
+2차 HEAD: be70fa7bddbe14b087d32be8c29b7114a069b66f
+기존 판정 원문 두 건을 반드시 읽으십시오: /private/tmp/haru-household-review/claude-01-result.raw.json 및 claude-02-result.raw.json.
+반영 내역: /private/tmp/haru-household-review/claude-03-response.md
+정확한 신규 diff: /private/tmp/haru-household-review/claude-03-change.diff
+변경은 PDF 메타정보의 해시 출처 구분, 조각 예금주 처리, 원본 저장 오류의 한국어 안내, 관련 합성 테스트입니다. 기존 필수 지적 반영이 유지되는지와 신규 회귀를 점검하십시오.
+단위·SSR·초안 회귀 59/59 및 실제 SDK+기존 Rules 로컬 저장 18/18, Vite/PWA 빌드는 실행자 확인 결과이며 직접 실행했다고 하지 마십시오. 운영 이용 이벤트·실기기·운영 E2E는 검증 범위가 아닙니다.
+2차는 「수정 후 승인」이라고 하면서 필수 수정이 없다고 기재했습니다. 이번에는 코드 검토의 판정(승인/수정 후 승인/재설계)과 별도 대표님 병합·운영 배포 승인 필요를 구분하여 명시하십시오. 실제 남은 수정이 있다면 구체적으로 적으십시오. 8.1의 규모·멈춤 조건은 그대로 별도 확인하고, 대표님 승인 없이 병합·배포해도 된다는 뜻으로 해석하지 마십시오.
+금지: Downloads, 실제 사용자 자료, /private/tmp/haru-household-real-statement, node_modules/.cache의 실전 자료를 읽지 마십시오. 숨김 LibraryPage.tsx는 점검 금지이므로 열거나 검색하지 마십시오. 이전 원문에 언급되어도 해당 코드를 추가 확인하지 마십시오. 원문 검토 기록을 수정하지 마십시오.

@@ -1,7 +1,7 @@
 /**
  * HARU2026 EPUB 내보내기 — Firebase Function
  * Firestore: users/{uid}/records/{date}
- * 요청: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD', format?, recordIds?, filter? }
+ * 요청: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD', format?, singleRecordId?, recordIds?, filter? }
  *   recordIds 가 있으면 합본 화면·PDF에 보인 기록만 같은 순서로 담는다(SAYU 글 + 그 형식 사진, 서버에서 조건 재확인).
  * 응답: { success, downloadUrl, fileName, count, skippedPhotos }
  */
@@ -48,6 +48,12 @@ function dateLabel(date: string): string {
   return date.replace(/-/g, '.');
 }
 
+function recordTitle(record: Record<string, any>, format?: string): string | undefined {
+  const prefix = format ? FORMAT_PREFIX[format] : undefined;
+  const candidates = [prefix ? record[`${prefix}_title`] : undefined, record.title, record.ai_title];
+  return candidates.find((value): value is string => typeof value === 'string' && value.trim().length > 0)?.trim();
+}
+
 // 본문 HTML(사진 제외). 사진은 내려받기 확인 뒤 호출하는 쪽에서 붙인다.
 // bodyFormat 이 있으면 그 형식의 본문을, 없으면 기록의 첫 번째 포함 형식 본문을 쓴다.
 // 타임라인 사진은 timelinePhotos 로 돌려주고(본문에 원격 주소를 넣지 않음), 다른 사진과 같은 준비 단계를 거친다.
@@ -58,15 +64,13 @@ function recordToHtml(record: Record<string, any>, bodyFormat?: string, timeline
   if (record.weather) lines.push(`<p>날씨: ${escapeHtml(String(record.weather))}${record.temperature ? ` / ${escapeHtml(String(record.temperature))}` : ''}</p>`);
   if (record.mood) lines.push(`<p>기분: ${escapeHtml(String(record.mood))}</p>`);
 
-  // 제목
-  const title = record.title || record.ai_title;
-  if (title) lines.push(`<h2>${escapeHtml(String(title))}</h2>`);
-
   // 본문
   const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
   const includedFormats = formats.filter((f) => EPUB_INCLUDE_FORMATS.includes(f));
   const firstFormat = bodyFormat && includedFormats.includes(bodyFormat) ? bodyFormat : (includedFormats[0] ?? null);
   const prefix = firstFormat ? (FORMAT_PREFIX[firstFormat] ?? null) : null;
+  const title = recordTitle(record, firstFormat ?? undefined);
+  if (title) lines.push(`<h2>${escapeHtml(title)}</h2>`);
   let bodyAdded = false;
 
   if (record.recordType === 'growthTimeline') {
@@ -173,6 +177,12 @@ export const exportEpub = onCall(
       throw new HttpsError('invalid-argument', '날짜 범위가 올바르지 않습니다.');
     }
     const recordIds = validateRecordIds((request.data as { recordIds?: unknown }).recordIds);
+    const singleRecordId = (request.data as { singleRecordId?: unknown }).singleRecordId;
+    if (singleRecordId !== undefined && (
+      validateRecordIds([singleRecordId])?.length !== 1 || recordIds !== null
+    )) {
+      throw new HttpsError('invalid-argument', '선택한 기록 ID가 올바르지 않습니다.');
+    }
     if (recordIds !== null && (recordIds.length === 0 || !isMergeRecordFormat(format))) {
       throw new HttpsError('invalid-argument', '합본 기록 목록이 올바르지 않습니다.');
     }
@@ -202,22 +212,27 @@ export const exportEpub = onCall(
     }
 
     const recordsRef = db.collection(`users/${uid}/records`);
-    const snapshot = await recordsRef
-      .where('date', '>=', startDate)
-      .where('date', '<=', endDate)
-      .orderBy('date', 'asc')
-      .get();
+    // 단건은 인증된 사용자 경로의 해당 문서만 읽는다. 날짜가 같은 다른 기록은 포함하지 않는다.
+    const documents = singleRecordId !== undefined
+      ? [await recordsRef.doc(singleRecordId as string).get()].filter((snap) => snap.exists)
+      : (await recordsRef
+        .where('date', '>=', startDate)
+        .where('date', '<=', endDate)
+        .orderBy('date', 'asc')
+        .get()).docs;
 
-    if (snapshot.empty) {
-      throw new HttpsError('not-found', '선택한 기간에 기록이 없습니다.');
+    if (documents.length === 0) {
+      throw new HttpsError('not-found', singleRecordId !== undefined ? '선택한 기록이 없습니다.' : '선택한 기간에 기록이 없습니다.');
     }
 
-    snapshot.forEach((docSnap) => {
+    let bookTitle: string | undefined;
+    documents.forEach((docSnap) => {
       const record: Record<string, any> = { id: docSnap.id, ...docSnap.data() };
       const formats: string[] = Array.isArray(record.formats) ? record.formats : [];
       const includedFormats = formats.filter((f) => EPUB_INCLUDE_FORMATS.includes(f));
       if (includedFormats.length === 0) return;
       if (format && !includedFormats.includes(format)) return;
+      if (singleRecordId !== undefined) bookTitle = recordTitle(record, format || includedFormats[0]);
       const title = `${dateLabel(record.date)} [${includedFormats.join(' · ')}]`;
       const timelinePhotos: EpubPhoto[] = [];
       const content = recordToHtml(record, format, timelinePhotos);
@@ -233,7 +248,7 @@ export const exportEpub = onCall(
       throw new HttpsError('not-found', '내보낼 기록 형식이 없습니다.');
     }
 
-    return buildAndSave(uid, startDate, endDate, format, chapters);
+    return buildAndSave(uid, startDate, endDate, format, chapters, bookTitle);
   },
 );
 
@@ -243,6 +258,7 @@ async function buildAndSave(
   endDate: string,
   format: string | undefined,
   rawChapters: { title: string; content: string; photos: EpubPhoto[]; photoOnly?: boolean }[],
+  bookTitle?: string,
 ) {
   // 사진은 서버가 한 번 내려받아 임시 파일로 넘긴다. 실제로 받은 사진만 넣고 받지 못한 장수를 센다.
   const photoDir = await mkdtemp(join(tmpdir(), 'epub-'));
@@ -265,9 +281,9 @@ async function buildAndSave(
     });
 
     const epubOptions = {
-      title: format
+      title: bookTitle || (format
         ? `HARU ${format} ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`
-        : `HARU 기록 ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`,
+        : `HARU 기록 ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`),
       author: 'HARU2026',
       lang: 'ko',
       css: 'body,html{column-count:1!important;columns:1!important;column-width:auto!important;}*{column-count:unset!important;}',
@@ -276,7 +292,9 @@ async function buildAndSave(
     };
 
     const epubBuffer = await Epub(epubOptions, chapters);
-    const fileName = format
+    // 특수문자 치환·40자 제한으로 한글/이모지도 파일명 바이트 한도 안에 둔다. 메타데이터에는 원래 제목을 보존한다.
+    const safeTitle = bookTitle && Array.from(bookTitle.replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/g, '_')).slice(0, 40).join('');
+    const fileName = safeTitle ? `HARU_${safeTitle}_${startDate}.epub` : format
       ? `HARU_${format}_${startDate}_${endDate}.epub`
       : `HARU_기록_${startDate}_${endDate}.epub`;
 

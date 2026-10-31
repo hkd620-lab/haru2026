@@ -15,6 +15,7 @@ import { httpsCallable, getFunctions } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService } from '../services/firestoreService';
+import { saveHouseholdOriginal, HouseholdOriginalConflict, householdSayuText } from '../services/householdSaveService';
 import { buildFormatKeyMap, invertFormatKeyMap } from '../records/formatRegistry';
 import { exportRecordsToEpub } from '../services/epubExportService';
 import { getEpubReaderHint } from '../utils/epubReaderGuide';
@@ -49,6 +50,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { parseHouseholdAmountText } from '../utils/householdAmount';
+import { HOUSEHOLD_SUMMARY_NOTE, summarizeHouseholdEntries } from '../utils/householdSummary';
+import { householdRecordShape, householdSayuEntries, type HouseholdSayuEntry } from '../utils/householdRecordShape';
 
 const WEATHER_OPTIONS = ['쾌청', '흐림', '비', '눈'];
 const TEMPERATURE_OPTIONS = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
@@ -58,40 +61,32 @@ const TIMELINE_IMAGE_QUALITY = 0.82;
 const RECORD_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
 type EnvTagType = 'weather' | 'temperature' | 'mood';
 
-type HouseholdSayuEntry = {
-  date: string;
-  transactionType: string;
-  category: string;
-  vendor: string;
-  amount: string;
-  paymentMethod: string;
-  memo: string;
-  balanceAfter?: string;
-};
-
 function parseHouseholdAmount(value: string): number {
   return parseHouseholdAmountText(value) ?? 0;
 }
 
-function parseHouseholdEntriesForSayu(data?: Record<string, string>): HouseholdSayuEntry[] {
-  const stored = data?.household_entries;
-  if (!stored) return [];
-  try {
-    const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((entry: any) => ({
-      date: String(entry.date || ''),
-      transactionType: String(entry.transactionType || ''),
-      category: String(entry.category || ''),
-      vendor: String(entry.vendor || ''),
-      amount: String(entry.amount || ''),
-      paymentMethod: String(entry.paymentMethod || ''),
-      memo: String(entry.memo || ''),
-      balanceAfter: entry.balanceAfter ? String(entry.balanceAfter) : undefined,
-    }));
-  } catch {
-    return [];
-  }
+// 가계부 대시보드·편집과 같은 문서 모양 판정을 쓴다. SAYU 전체 합계(SayuPage)도 같은 읽기를 쓴다.
+// 손상된 배열은 단건 필드로 대신하지 않고 기존 본문 보기를 유지한다. 원본은 읽기만 한다.
+function parseHouseholdEntriesForSayu(data?: Record<string, any>): HouseholdSayuEntry[] {
+  if (!data) return [];
+  return householdSayuEntries(data);
+}
+
+// 원본 칸(originalData)에는 본문(household_sayu)·숫자 금액·기록 날짜가 빠져 있으므로 열린 기록 원본을 바탕에 두고 원본 칸 값을 위에 얹는다.
+// 표시용 복사본만 만들며 원본 기록과 원본 칸은 바꾸지 않는다.
+function householdSayuViewData(record: Record<string, any> | undefined, originalData: Record<string, string>): Record<string, any> {
+  return { ...(record || {}), ...originalData };
+}
+
+// 기록 본문이 저장 서비스가 만든 그대로가 아니면 사용자가 쓴 본문이므로 고치지 않고 안내만 한다.
+// 예전 단건 문서는 거래를 고쳐도 본문을 다시 만들지 않으므로, 본문이 있으면 항상 보존된 본문으로 안내한다.
+function householdSayuIsUserText(data?: Record<string, any>) {
+  const sayu = data?.household_sayu;
+  if (!data || typeof sayu !== 'string' || !sayu.trim()) return false;
+  const shape = householdRecordShape(data);
+  if (shape.kind === 'legacy') return true;
+  if (shape.kind !== 'array') return false;
+  return shape.raw.every(entry => entry && typeof entry === 'object') && sayu !== householdSayuText(shape.raw as Parameters<typeof householdSayuText>[0]);
 }
 
 function isHeicLikeFile(file: File) {
@@ -124,7 +119,7 @@ function formatHouseholdDate(date: string): string {
   return date.match(/^\d{4}\.(\d{2})\.(\d{2})/)?.slice(1).join('/') || date;
 }
 
-function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: string, totalEntries?: HouseholdSayuEntry[]) {
+function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: string, totalEntries?: HouseholdSayuEntry[], userText = false) {
   if (entries.length === 0) {
     return (
       <textarea
@@ -157,42 +152,23 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
   });
 
   const summaryEntries = totalEntries && totalEntries.length > 0 ? totalEntries : entries;
-  const income = summaryEntries.reduce((sum, entry) => entry.transactionType === '수입' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
-  const expense = summaryEntries.reduce((sum, entry) => entry.transactionType === '지출' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
-  const transfer = summaryEntries.reduce((sum, entry) => entry.transactionType === '이체' ? sum + parseHouseholdAmount(entry.amount) : sum, 0);
-  const totalIncome = income + transfer;
-  const balance = totalIncome - expense;
+  const { income, expense, balance } = summarizeHouseholdEntries(summaryEntries);
   const money = (value: number) => `${value.toLocaleString()}원`;
-
-  // 통장잔액 — summaryEntries 범위 안에서 날짜상 가장 마지막 거래의 거래후잔액 (동일 날짜면 배열상 뒤쪽을 채택)
-  let bankBalance = 0;
-  let hasBankBalance = false;
-  let lastBalanceDate = '';
-  for (const entry of summaryEntries) {
-    if (!entry.balanceAfter || !entry.date) continue;
-    if (entry.date >= lastBalanceDate) {
-      lastBalanceDate = entry.date;
-      bankBalance = parseHouseholdAmount(entry.balanceAfter);
-      hasBankBalance = true;
-    }
-  }
 
   const summaryItems: { label: string; value: string; color: string; note?: string }[] = [
     {
-      label: '전체수입',
-      value: `+${money(totalIncome)}`,
+      label: '수입',
+      value: money(income),
       color: '#059669',
-      note: `순수입 ${income.toLocaleString()} + 충전 ${transfer.toLocaleString()}`,
     },
-    { label: '지출', value: `-${money(expense)}`, color: '#dc2626' },
-    { label: '수입 지출 차액', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
-    ...(hasBankBalance ? [{ label: '통장잔액', value: money(bankBalance), color: '#059669' }] : []),
+    { label: '지출', value: money(expense), color: '#dc2626' },
+    { label: '수입−지출', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
   ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: hasBankBalance ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
           {summaryItems.map((item) => (
             <div key={item.label} style={{ minWidth: 0 }}>
               <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 700 }}>{item.label}</div>
@@ -203,6 +179,18 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
             </div>
           ))}
         </div>
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>{HOUSEHOLD_SUMMARY_NOTE}</p>
+        {userText && (
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: '#83642d', lineHeight: 1.6 }}>
+            아래 거래 목록이 최신 분류·메모 기준입니다. 기록 본문은 작성 당시 내용이며 자동으로 고치지 않습니다.
+          </p>
+        )}
+        {userText && fallbackText && (
+          <details style={{ marginTop: 8 }}>
+            <summary style={{ fontSize: 12, color: '#83642d', fontWeight: 700, cursor: 'pointer' }}>작성 당시 본문 보기</summary>
+            <div style={{ marginTop: 8, padding: 12, border: '1px solid #e5e5e5', borderRadius: 8, fontSize: 14, color: '#333', lineHeight: 1.8, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{fallbackText}</div>
+          </details>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -220,7 +208,7 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
               : entry.vendor || entry.category || '지출';
           const detailLabel = isTransfer ? '메모' : isIncome ? '출처' : '사용처';
           const detail = isTransfer ? entry.memo || '이체' : title;
-          const meta = [entry.category || entry.transactionType, entry.paymentMethod, entry.date].filter(Boolean).join(' · ');
+          const meta = [entry.category || entry.transactionType, entry.subcategory, entry.paymentMethod, entry.date].filter(Boolean).join(' · ');
           return (
             <div key={`${entry.date}_${entry.amount}_${index}`} style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -237,6 +225,9 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
                   <div style={{ marginTop: 6, fontSize: 13, color: '#374151', lineHeight: 1.5, overflowWrap: 'anywhere' }}>
                     {detailLabel}: {detail} · {meta.replace(entry.date, formatHouseholdDate(entry.date))}
                   </div>
+                  {!isTransfer && entry.memo && (
+                    <div style={{ marginTop: 4, fontSize: 12, color: '#6b7280', lineHeight: 1.5, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>메모: {entry.memo}</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -545,6 +536,19 @@ async function recoverTimelineLocationFromImage(item: GrowthTimelineEditItem): P
   }
 }
 
+/** 일반 편집 저장 시 본문과 같은 문서에 한 번에 저장할 편집 메타데이터. */
+export interface SayuEditMeta {
+  recordId: string;
+  formatKey: string;
+  title: string;
+  /** 직접 고친 제목이 있으면 과거 AI 제목을 해제한다. */
+  clearAiTitle: boolean;
+  weather: string;
+  temperature: string;
+  /** 고른 경우에만 저장한다(빈 값 저장 금지). */
+  mood?: string;
+}
+
 export interface SayuModalProps {
   isOpen: boolean;
   onClose: (deleted?: boolean) => void;
@@ -553,7 +557,7 @@ export interface SayuModalProps {
   format?: string;
   dateLabel: string;
   currentRating?: number;
-  onSave: (content: string, rating: number) => Promise<boolean>;
+  onSave: (content: string, rating: number, meta: SayuEditMeta) => Promise<boolean>;
   recordDate?: string;
   weather?: string;
   temperature?: string;
@@ -568,6 +572,8 @@ export interface SayuModalProps {
   publicControl?: ReactNode;
   assistantContent?: ReactNode;
   allHouseholdEntries?: HouseholdSayuEntry[];
+  // 가계부 상세 표시용 열린 기록 원본(읽기 전용). 원본 칸에서 빠지는 본문·숫자 금액을 상세에서도 같은 기준으로 읽는다.
+  householdRecord?: Record<string, any>;
 }
 
 export function formatDateToKorean(dateStr: string): string {
@@ -608,6 +614,7 @@ export function SayuModal({
   publicControl,
   assistantContent,
   allHouseholdEntries,
+  householdRecord,
 }: SayuModalProps) {
   const recordPhotoLimit = getRecordPhotoLimit(formatKey || format);
   const { subscription } = useSubscription();
@@ -624,6 +631,7 @@ export function SayuModal({
   const [isSpecialDay, setIsSpecialDay] = useState(false);
   const [viewMode, setViewMode] = useState<'ai' | 'original'>('ai');
   const [editedOriginalData, setEditedOriginalData] = useState<Record<string, string>>(originalData || {});
+  const openedHouseholdOriginalRef = useRef<Record<string, string>>({});
   const [isSavingOriginal, setIsSavingOriginal] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [localAiComment, setLocalAiComment] = useState(aiComment);
@@ -656,7 +664,10 @@ export function SayuModal({
   });
   const isGrowthTimeline = formatKey === 'growthTimeline';
   const isHouseholdSayu = formatKey === 'household' || format === 'HARU가계부' || Boolean(editedOriginalData.household_entries);
-  const householdSayuEntries = isHouseholdSayu ? parseHouseholdEntriesForSayu(editedOriginalData) : [];
+  const householdViewData = householdSayuViewData(householdRecord, editedOriginalData);
+  const householdDetailEntries = isHouseholdSayu ? parseHouseholdEntriesForSayu(householdViewData) : [];
+  const householdUserText = isHouseholdSayu && householdSayuIsUserText(householdViewData);
+  const householdBodyText = (typeof householdViewData.household_sayu === 'string' && householdViewData.household_sayu) || editedContent;
   const timelineLocationRecoveryKeyRef = useRef('');
   const editedTimelineItemsRef = useRef<GrowthTimelineEditItem[]>([]);
   const openedTimelineSummaryRef = useRef('');
@@ -1021,8 +1032,11 @@ export function SayuModal({
     }
     setIsExportingEpub(true);
     try {
-      const date = firestoreId;
-      const { fileName } = await exportRecordsToEpub(date, date, format);
+      // 날짜와 문서 ID는 다를 수 있다. 같은 날짜의 다른 기록이 섞이지 않게 ID도 별도로 보낸다.
+      const date = recordDate || firestoreId.slice(0, 10);
+      const result = await exportRecordsToEpub(date, date, format, undefined, undefined, firestoreId);
+      if (!result) return;
+      const { fileName } = result;
       toast.success(`📖 EPUB 생성 완료! ${fileName}`, { description: getEpubReaderHint(), duration: 8000 });
     } catch (e: any) {
       toast.error(`EPUB 생성 실패: ${e.message}`);
@@ -1310,6 +1324,7 @@ export function SayuModal({
       setShowTimelineDocument(false);
       const baseData = originalData || {};
       setEditedOriginalData(baseData);
+      openedHouseholdOriginalRef.current = { ...baseData };
 
       // 🌱 텃밭일지: garden_crop 이 비어 있어도 등록 작물 전체로 채우지 않는다.
       // 기록마다 고른 작물만 저장한다(2026-10-23 결정 ②). 원본 저장 시 등록 목록 전체가 기록되던 문제 방지.
@@ -1407,21 +1422,32 @@ export function SayuModal({
         return;
       }
 
-      if (currentUser && firestoreId) {
-        const recordRef = doc(db, 'users', currentUser.uid, 'records', firestoreId);
-        const titleUpdate: Record<string, string> = {
-          weather: editedWeather,
-          temperature: editedTemperature,
-        };
-        // 기분은 고른 경우에만 저장한다(빈 값 저장 금지) — 2026-10-23 결정 ①
-        if (editedMood) titleUpdate.mood = editedMood;
-        if (formatKey) {
-          titleUpdate[`${formatKey}_title`] = editedTitle.trim();
-        }
-        await updateDoc(recordRef, titleUpdate);
+      const titleChanged = editedTitle.trim() !== savedDraftRef.current.title.trim();
+      if (!currentUser || !firestoreId || !formatKey) {
+        toast.error('❌ 저장할 기록을 확인하지 못했습니다. 다시 열어 시도해주세요.');
+        return;
       }
-      const saved = await onSave(editedContent, isSpecialDay ? 1 : 0);
+      // 제목·날씨·기분과 본문·특별한 날은 부모가 같은 문서에 한 번에 저장한다(부분 저장 방지).
+      const saved = await onSave(editedContent, isSpecialDay ? 1 : 0, {
+        recordId: firestoreId,
+        formatKey,
+        title: editedTitle.trim(),
+        // 목록·검색·공개본은 ai_title을 먼저 읽으므로, 직접 고친 제목이 있으면 과거 AI 제목을 해제한다.
+        clearAiTitle: titleChanged,
+        weather: editedWeather,
+        temperature: editedTemperature,
+        // 기분은 고른 경우에만 저장한다(빈 값 저장 금지) — 2026-10-23 결정 ①
+        ...(editedMood ? { mood: editedMood } : {}),
+      });
       if (!saved) return;
+      if (titleChanged) {
+        try {
+          await onRefresh?.();
+        } catch (refreshError) {
+          console.error('저장 후 목록 갱신 실패:', refreshError);
+          toast.warning('기록은 저장됐지만 목록을 갱신하지 못했습니다. 다시 열어 확인해주세요.');
+        }
+      }
       rememberSavedEdit(editedContent);
       toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
       setIsEditing(false);
@@ -1683,11 +1709,17 @@ export function SayuModal({
     try {
       const docId = firestoreId || recordDate!;
       const recordRef = doc(db, 'users', currentUser.uid, 'records', docId);
-      await updateDoc(recordRef, editedOriginalData);
+      if (isHouseholdSayu) {
+        await saveHouseholdOriginal(db, currentUser.uid, docId, openedHouseholdOriginalRef.current, editedOriginalData);
+        openedHouseholdOriginalRef.current = { ...editedOriginalData };
+      } else await updateDoc(recordRef, editedOriginalData);
       toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
     } catch (error) {
-      console.error('원본 저장 실패:', error);
-      toast.error('저장 실패. 다시 시도해주세요.');
+      if (isHouseholdSayu) toast.error(error instanceof HouseholdOriginalConflict ? error.message : '가계부를 저장하지 못했습니다. 인터넷 연결과 접근 권한을 확인한 뒤 다시 시도해 주세요.');
+      else {
+        console.error('원본 저장 실패:', error);
+        toast.error('저장 실패. 다시 시도해주세요.');
+      }
     } finally {
       setIsSavingOriginal(false);
     }
@@ -2555,7 +2587,7 @@ export function SayuModal({
               </div>
 
               {isHouseholdSayu ? (
-                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent, allHouseholdEntries)
+                renderHouseholdSayuView(householdDetailEntries, householdBodyText, allHouseholdEntries, householdUserText)
               ) : (
               <>
               {/* 환경 정보 */}
@@ -3154,7 +3186,7 @@ export function SayuModal({
                 </header>
 
               {isHouseholdSayu ? (
-                renderHouseholdSayuView(householdSayuEntries, editedOriginalData.household_sayu || editedContent, allHouseholdEntries)
+                renderHouseholdSayuView(householdDetailEntries, householdBodyText, allHouseholdEntries, householdUserText)
               ) : (
               <>
                 {isGrowthTimeline && editedTimelineItems.length > 0 && (

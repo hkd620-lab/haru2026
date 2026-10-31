@@ -1,7 +1,8 @@
 // HARU가계부 — 카카오뱅크 거래내역 XLSX(암호 해제 후) 파싱·매핑·월별 그룹핑
 // 잠금 해제는 Functions(decryptKakaoXlsx)에서 처리하고, 이 파일은 순수 파싱/매핑만 담당한다.
-// household_* 스키마·HouseholdEntry 타입은 변경하지 않고 그대로 채워 넣는다.
+// 기존 거래 필드는 보존하고 재가져오기 식별용 해시·원본 거래 시각을 함께 채운다.
 import type { HouseholdEntry } from '../components/FormatModal';
+import { householdDigest } from './householdDuplicates';
 
 export interface KakaoXlsxPreviewRow {
   id: string;
@@ -35,10 +36,6 @@ interface WorkbookLike {
 const SUBSCRIPTION_KEYWORDS = [
   'anthropic', 'claude', 'google', '구글', 'openai', 'chatgpt', 'microsoft', 'netflix', '구독', '유튜브', 'youtube',
 ];
-
-function newId(): string {
-  return Math.random().toString(36).slice(2, 9);
-}
 
 function parseKakaoDate(raw: unknown): string {
   const m = String(raw ?? '').trim().match(/^(\d{4})\.(\d{2})\.(\d{2})/);
@@ -104,7 +101,8 @@ function mapPaymentMethod(raw: unknown): string {
   return '기타';
 }
 
-function mapCategory(transactionType: HouseholdEntry['transactionType'], vendor: string): string {
+// 은행 미리보기에서 구분·거래처를 고칠 때도 같은 파서 기본값을 다시 쓴다.
+export function mapCategory(transactionType: HouseholdEntry['transactionType'], vendor: string): string {
   if (transactionType === '수입') return '기타수입';
   if (transactionType === '이체') return '이체'; // FormatModal 수동입력의 이체 카테고리 규칙과 동일
   const v = vendor.toLowerCase();
@@ -115,11 +113,11 @@ function mapCategory(transactionType: HouseholdEntry['transactionType'], vendor:
 // 열(0-index, A열은 비어있음): [1]거래일시 [2]구분 [3]거래금액 [4]거래후잔액 [5]거래구분 [6]내용 [7]메모
 // 유효 거래 판별: [1]거래일시가 'YYYY.MM.DD ...' 형식인 행만 취급 (메타정보/헤더 행은 자동 제외됨)
 // 본인이체 판별: 구분==='입금' && 내용===메타영역 '성명' 값이면 '이체'로 분류(본인 계좌간 충전, 수입 아님)
-export function parseKakaoBankWorkbook(
+export async function parseKakaoBankWorkbook(
   workbook: WorkbookLike,
   XLSX: SheetJsLike,
   sourceFileName: string,
-): KakaoXlsxParseResult {
+): Promise<KakaoXlsxParseResult> {
   const rows: KakaoXlsxPreviewRow[] = [];
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) return { rows, scannedRowCount: 0 };
@@ -127,8 +125,10 @@ export function parseKakaoBankWorkbook(
   const sheet = workbook.Sheets[sheetName];
   const rawRows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '' });
   const accountHolderName = findAccountHolderName(rawRows);
+  // 파일명·암호와 무관한 복호화 자료의 해시. 메타영역 원문은 저장하지 않는다.
+  const fileDigest = await householdDigest(rawRows.map(row => row.map(cell => String(cell ?? '').normalize('NFKC').trim())));
 
-  for (const rawRow of rawRows) {
+  for (const [sourceRow, rawRow] of rawRows.entries()) {
     const cells = Array.isArray(rawRow) ? rawRow : [];
     const date = parseKakaoDate(cells[1]);
     if (!date) continue; // 메타정보/헤더/빈 행 — 유효 거래 아님
@@ -139,6 +139,7 @@ export function parseKakaoBankWorkbook(
     const vendor = normalizeVendor(cells[6]);
     const paymentMethod = mapPaymentMethod(cells[5]);
     const category = mapCategory(transactionType, vendor);
+    const key = `kakao:${await householdDigest([fileDigest, sourceRow])}`;
 
     const warnings: string[] = [];
     if (!recognized) warnings.push(`구분 값을 확인해 주세요("${String(cells[2] ?? '').trim()}")`);
@@ -146,9 +147,11 @@ export function parseKakaoBankWorkbook(
     if (transactionType === '지출' && !vendor) warnings.push('사용처를 확인해 주세요');
 
     const entry: HouseholdEntry = {
-      id: newId(),
+      id: key,
       transactionType,
       category,
+      // 파서가 정한 분류는 사용자가 고른 값과 구분한다. 거래처 기억은 이 값 위에만 제안한다.
+      categorySource: 'import-default',
       date,
       vendor,
       amount,
@@ -156,6 +159,8 @@ export function parseKakaoBankWorkbook(
       memo: '',
       ocrSourceFile: sourceFileName,
       balanceAfter,
+      transactionAt: String(cells[1] ?? '').trim().replace(/\./g, '-'),
+      importSource: { kind: 'kakao', fileDigest, key },
     };
 
     rows.push({

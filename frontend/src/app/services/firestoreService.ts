@@ -17,6 +17,9 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db } from '../../firebase';  // ✅ 수정됨: ../firebase → ../../firebase
+import { saveHouseholdEntries } from './householdSaveService';
+import type { HouseholdEntry } from '../components/FormatModal';
+import type { HouseholdDecisions } from './householdDuplicates';
 import {
   assertAiLibraryDeleteResult,
   validateAiLibraryDeleteRequest,
@@ -443,6 +446,14 @@ class FirestoreService {
   }
 
   // 기존 기록 관련 함수들
+  async saveHouseholdRecord(userId: string, entries: HouseholdEntry[], decisions: HouseholdDecisions) {
+    const result = await saveHouseholdEntries(db, userId, entries, decisions);
+    if (result.added > 0) void this.recordPaidServiceUsage(userId, result.createdRecords ? 'record_created' : 'record_updated', {
+      recordId: result.recordIds[0], date: entries[0].date, formats: 'HARU가계부', source: 'household',
+    });
+    return result;
+  }
+
   async saveRecord(userId: string, recordData: Partial<HaruRecord>): Promise<string> {
     // 수정 7: 같은 날 같은 형식 여러 개 작성 지원 — 고유 ID 생성
     // recordData.id가 명시되면 해당 ID 사용 (주식관리 개별 저장 등)

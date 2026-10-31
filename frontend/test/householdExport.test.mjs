@@ -1,5 +1,4 @@
-// HARU가계부 XLSX 내보내기 — 이체를 가계부 화면·SAYU와 같이 "충전"(수입 쪽)으로 집계하는지 확인한다.
-// 화면의 전체수입 = 순수입 + 충전, 수지 = 수입 + 충전 − 지출 이므로 엑셀 집계도 같은 방향이어야 한다.
+// 이체는 거래상세에 보존하되 수입·지출·차액에서 제외한다.
 // 실행: node --import tsx --test test/householdExport.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,6 +10,7 @@ globalThis.URL.revokeObjectURL = () => {};
 globalThis.document = { createElement: () => ({ click() {} }), body: { appendChild() {}, removeChild() {} } };
 
 const { exportHouseholdToXlsx } = await import('../src/app/services/householdExportService.ts');
+const { HOUSEHOLD_SUMMARY_NOTE, summarizeHouseholdEntries } = await import('../src/app/utils/householdSummary.ts');
 
 // 이 서비스가 만드는 zip 은 압축하지 않고(stored) 저장하므로 로컬 헤더만 순서대로 읽으면 된다.
 function unzip(bytes) {
@@ -38,10 +38,10 @@ function readSheet(xml) {
 
 const entry = (o) => ({ id: 'e', transactionType: '지출', category: '', date: '', vendor: '', amount: '', paymentMethod: '', memo: '', ...o });
 
-async function exportOf(entries) {
+async function exportOf(entries, records = [{ id: '2026-10-05_1', date: '2026-10-05', formats: ['HARU가계부'], household_entries: JSON.stringify(entries) }]) {
   capturedBlob = null;
   const result = exportHouseholdToXlsx(
-    [{ id: '2026-10-05_1', date: '2026-10-05', formats: ['HARU가계부'], household_entries: JSON.stringify(entries) }],
+    records,
     2026,
     10,
   );
@@ -57,20 +57,22 @@ const ENTRIES = [
   entry({ transactionType: '이체', category: '이체', date: '2026.10.05', amount: '600000', paymentMethod: '계좌이체', memo: '급여통장 → 월세통장' }),
 ];
 
-test('이체는 "이체(충전)" 행으로 수입 쪽에 집계된다 (화면의 전체수입 = 순수입 + 충전)', async () => {
+test('이체는 분류별 수입·지출 집계에서 제외한다', async () => {
   const { summary } = await exportOf(ENTRIES);
   const byCategory = Object.fromEntries(summary.slice(1).map(([cat, income, expense, net]) => [cat, { income, expense, net }]));
-  assert.deepEqual(byCategory['이체(충전)'], { income: 600000, expense: 0, net: 600000 });
+  assert.equal(byCategory['이체(충전)'], undefined);
   assert.deepEqual(byCategory['월급'], { income: 2800000, expense: 0, net: 2800000 });
   assert.deepEqual(byCategory['식비'], { income: 0, expense: 9500, net: -9500 });
   assert.deepEqual(byCategory['교통비'], { income: 0, expense: 1550, net: -1550 });
   assert.equal(byCategory['이체'], undefined, '이체가 예전 카테고리명("이체") 지출 행으로 남아 있으면 안 된다');
 });
 
-test('합계 행: 수입합계 = 순수입 + 충전, 순액 = 화면의 수지와 같다', async () => {
+test('합계 행: 이체를 제외한 수입−지출이며 공통 화면 계산과 일치한다', async () => {
   const { summary } = await exportOf(ENTRIES);
   const total = summary[summary.length - 1];
-  assert.deepEqual(total, ['합  계', 3400000, 11050, 3388950]); // 2,800,000 + 600,000 / 9,500 + 1,550 / 3,400,000 − 11,050
+  assert.deepEqual(total, ['합  계', 2800000, 11050, 2788950]);
+  assert.deepEqual(total.slice(1), Object.values(summarizeHouseholdEntries(ENTRIES)));
+  assert.deepEqual(summary[summary.length - 2], [HOUSEHOLD_SUMMARY_NOTE]);
 });
 
 test('거래상세내역은 그대로다 (이체 거래도 유형 "이체"로 한 줄씩 나온다)', async () => {
@@ -86,12 +88,39 @@ test('수입·지출만 있는 가계부의 집계는 달라지지 않는다', a
   assert.equal(summary.some(([cat]) => cat === '이체(충전)'), false);
 });
 
-test('카테고리가 비어 있는 이체도 "이체(충전)"으로 모이고 기타 수입에 섞이지 않는다', async () => {
+test('카테고리가 비어 있는 이체도 기타 수입에 섞이지 않는다', async () => {
   const { summary } = await exportOf([
     entry({ transactionType: '수입', category: '', date: '2026.10.01', amount: '1000' }),
     entry({ transactionType: '이체', category: '', date: '2026.10.02', amount: '5천원' }),
   ]);
   const byCategory = Object.fromEntries(summary.slice(1).map(([cat, income, expense]) => [cat, { income, expense }]));
   assert.deepEqual(byCategory['기타'], { income: 1000, expense: 0 });
-  assert.deepEqual(byCategory['이체(충전)'], { income: 5000, expense: 0 });
+  assert.equal(byCategory['이체(충전)'], undefined);
+  assert.deepEqual(summary[summary.length - 1], ['합  계', 1000, 0, 1000]);
+});
+
+test('이체만 있으면 상세에 남고 집계는 모두 0원이다', async () => {
+  const { summary, detail, result } = await exportOf(ENTRIES.filter(e => e.transactionType === '이체'));
+  assert.equal(result.count, 1);
+  assert.equal(detail[1][2], '이체');
+  assert.deepEqual(summary.at(-1), ['합  계', 0, 0, 0]);
+});
+
+test('음수 정정 금액과 미지정 유형도 공통 계산 기준을 따른다', async () => {
+  const entries = [
+    ...ENTRIES,
+    entry({ transactionType: '지출', category: '식비', amount: '-5천원', paymentMethod: '계좌이체' }),
+    entry({ transactionType: '미확인', amount: '999999' }),
+  ];
+  const { summary, detail } = await exportOf(entries);
+  assert.deepEqual(summary.at(-1), ['합  계', 2800000, 6050, 2793950]);
+  assert.deepEqual(summary.at(-1).slice(1), Object.values(summarizeHouseholdEntries(entries)));
+  assert.equal(detail.length, entries.length + 1);
+});
+
+test('빈 기록은 0원 합계와 집계 범위 안내로 내보낸다', async () => {
+  const { summary, result } = await exportOf([], []);
+  assert.equal(result.count, 0);
+  assert.deepEqual(summary.at(-1), ['합  계', 0, 0, 0]);
+  assert.deepEqual(summary.at(-2), [HOUSEHOLD_SUMMARY_NOTE]);
 });
