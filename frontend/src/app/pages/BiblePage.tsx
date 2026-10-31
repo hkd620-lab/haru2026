@@ -1256,8 +1256,8 @@ export function BiblePage() {
         };
 
         // ④ play 실패 시 재시도 1회
+        const audio = audioRef.current;
         try {
-          const audio = audioRef.current;
           await audio.play();
           // play 대기 중 정지·팝업 닫기가 들어오면 이미 시작된 소리도 끈다.
           if (requestId !== ttsRequestRef.current) {
@@ -1294,16 +1294,24 @@ export function BiblePage() {
           console.warn('TTS play 재시도:', playErr);
           // 재시도가 끝날 때까지 로딩을 유지해 그사이의 정지·팝업 닫기가 재시도를 취소할 수 있게 한다.
           playRetryPending = true;
+          // 전체 장 재생 등은 요청 번호를 올리지 않고 오디오만 바꾸므로 둘 다 확인한다.
+          const isRetryStale = () => requestId !== ttsRequestRef.current || audioRef.current !== audio;
           setTimeout(async () => {
-            if (requestId !== ttsRequestRef.current) return;
+            if (isRetryStale()) return;
             try {
-              await audioRef.current?.play();
+              await audio.play();
+              // 두 번째 play 대기 중 취소됐다면 이 요청의 오디오만 끈다.
+              if (isRetryStale()) {
+                audio.pause();
+                return;
+              }
               setTtsPlaying(key);
             } catch(e) {
+              if (isRetryStale()) return;
               console.error('TTS play 최종 실패:', e);
               setTtsPlaying(null);
             } finally {
-              if (requestId === ttsRequestRef.current) setTtsLoading(null);
+              if (!isRetryStale()) setTtsLoading(null);
             }
           }, 300);
         }

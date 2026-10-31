@@ -25,10 +25,11 @@ const handlers = [
   slice('  const closeWordPopup = useCallback', '  useEffect(() => {\n    if (!wordPopup) return;'),
   slice('  const handleWordClick = useCallback', '  const renderVerseWithWords ='),
   slice('  const renderGrammarWords =', '  const handleFullChapterTTS ='),
+  slice('  const handleFullChapterTTS =', '  const handleFullChapterKoreanTTS ='),
 ].join('\n').replaceAll('await import(\'firebase/functions\')', 'firebaseFunctions');
 
 const { code } = await transform(
-  `${handlers}\nObject.assign(globalThis, { handleGrammarClick, handleWordClick, closeWordPopup, closeGrammarPopup, handleTTS, renderGrammarWords, renderNativeListenButton, stopAllTTS });`,
+  `${handlers}\nObject.assign(globalThis, { handleGrammarClick, handleWordClick, closeWordPopup, closeGrammarPopup, handleTTS, handleFullChapterTTS, renderGrammarWords, renderNativeListenButton, stopAllTTS });`,
   { loader: 'tsx', jsx: 'transform', jsxFactory: 'createElement' },
 );
 
@@ -40,17 +41,28 @@ function deferred() {
 
 function fixture() {
   const calls = [];
-  const state = { grammar: null, word: null, ttsLoading: null, ttsPlaying: null, ttsPaused: null, played: [], paused: [], alerts: [], playFailures: 0, playGate: null };
+  const state = { grammar: null, word: null, ttsLoading: null, ttsPlaying: null, ttsPaused: null, played: [], paused: [], audios: [], alerts: [], playFailures: 0, playGate: null };
   const apply = (value, previous) => (typeof value === 'function' ? value(previous) : value);
   class FakeAudio {
-    constructor(src) { this.src = src; }
+    constructor(src) {
+      this.src = src;
+      this.playing = false;
+      this.pauseCount = 0;
+      if (!src.startsWith('data:')) state.audios.push(this);
+    }
     async play() {
       if (this.src.startsWith('data:')) return;
       if (state.playFailures > 0) { state.playFailures -= 1; throw new Error('NotAllowedError'); }
       state.played.push(this.src);
       if (state.playGate) await state.playGate;
+      this.playing = true;
     }
-    pause() { state.paused.push(this.src); }
+    pause() {
+      this.playing = false;
+      this.pauseCount += 1;
+      state.paused.push(this.src);
+    }
+    addEventListener() {}
   }
   const httpsCallable = (_fns, name) => (payload) => {
     const pending = deferred();
@@ -67,6 +79,7 @@ function fixture() {
     grammarRequestRef: { current: 0 }, wordRequestRef: { current: 0 }, ttsRequestRef: { current: 0 },
     highlightTimerRef: { current: null }, audioRef: { current: null }, audioCtxRef: { current: null },
     currentBook: { prefix: 'genesis' }, currentChapter: 1,
+    genesisData: { verses: [{ verse: 1, text: 'In the beginning' }] },
     koVoice: 'nova', enVoice: 'onyx', ttsSpeed: 1,
     get ttsPaused() { return state.ttsPaused; },
     get ttsPlaying() { return state.ttsPlaying; },
@@ -90,6 +103,25 @@ function fixture() {
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 const verse = (n, text = `Verse ${n}`) => ({ verse: n, text });
+const waitForRetry = () => new Promise((resolve) => setTimeout(resolve, 350));
+
+// 첫 play가 거부된 뒤 300ms 재시도의 두 번째 play가 대기 중인 상태까지 진행한다.
+async function enterRetryPlay(key = 'grammar_verse_genesis_1_1') {
+  const harness = fixture();
+  const { context, calls, state } = harness;
+  const gate = deferred();
+  state.playFailures = 1;
+  state.playGate = gate.promise;
+  context.handleTTS('one', key, 'native');
+  await flush();
+  await flush();
+  calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+  await waitForRetry();
+  assert.deepEqual(state.played, ['https://audio.test/one'], '두 번째 play가 대기 중이어야 한다');
+  assert.equal(state.ttsLoading, key);
+  state.playGate = null;
+  return { ...harness, gate, audio: state.audios[0] };
+}
 
 test('늦게 도착한 이전 절 응답과 실패는 새 절 팝업을 덮지 않는다', async () => {
   const { context, state, calls } = fixture();
@@ -318,6 +350,101 @@ test('자동재생 재시도 전에 팝업을 닫으면 다시 재생하지 않�
   assert.deepEqual(state.played, []);
   assert.equal(state.ttsPlaying, null);
   assert.equal(state.ttsLoading, null);
+});
+
+test('재시도의 두 번째 play 대기 중 팝업을 닫거나 정지하면 소리와 재생 표시가 남지 않는다', async () => {
+  for (const cancel of ['closeGrammarPopup', 'stopAllTTS']) {
+    const { context, state, gate, audio } = await enterRetryPlay();
+    context[cancel]();
+    gate.resolve();
+    await flush();
+    await flush();
+    assert.equal(audio.playing, false, `${cancel} 뒤 소리가 남으면 안 된다`);
+    assert.equal(state.ttsPlaying, null);
+    assert.equal(state.ttsLoading, null);
+  }
+});
+
+test('이전 재시도가 늦게 끝나도 새 요청의 오디오와 표시를 건드리지 않는다', async () => {
+  const newKey = 'grammar_verb_genesis_1_1';
+  for (const settle of ['resolve', 'reject']) {
+    const { context, calls, state, gate, audio } = await enterRetryPlay();
+    context.handleTTS('two', newKey, 'native');
+    await flush();
+    await flush();
+    calls[1].resolve({ data: { audioUrl: 'https://audio.test/two' } });
+    await flush();
+    await flush();
+    const newAudio = state.audios[1];
+    assert.equal(newAudio.playing, true);
+
+    gate[settle](new Error('AbortError'));
+    await flush();
+    await flush();
+    assert.equal(audio.playing, false);
+    assert.equal(newAudio.playing, true, '이전 요청이 새 오디오를 멈추면 안 된다');
+    assert.equal(newAudio.pauseCount, 0);
+    assert.equal(state.ttsPlaying, newKey);
+    assert.equal(state.ttsLoading, null);
+  }
+});
+
+test('이전 재시도가 끝나도 새 요청의 로딩 표시를 지우지 않는다', async () => {
+  const newKey = 'grammar_verb_genesis_1_1';
+  for (const settle of ['resolve', 'reject']) {
+    const { context, state, gate } = await enterRetryPlay();
+    context.handleTTS('two', newKey, 'native');
+    await flush();
+    await flush();
+    gate[settle](new Error('AbortError'));
+    await flush();
+    await flush();
+    assert.equal(state.ttsLoading, newKey);
+    assert.equal(state.ttsPlaying, null);
+  }
+});
+
+test('재시도 대기 중 전체 장 재생이 오디오를 바꾸면 재시도가 끼어들지 않는다', async () => {
+  // 전체 장 재생은 요청 번호를 올리지 않고 오디오만 교체한다.
+  const fullChapterTakesOver = async ({ context, calls, state }) => {
+    context.handleFullChapterTTS();
+    await flush();
+    calls.at(-1).resolve({ data: { audioUrl: 'https://audio.test/full' } });
+    await flush();
+    await flush();
+    return state.audios.at(-1);
+  };
+
+  // 두 번째 play 대기 중
+  for (const settle of ['resolve', 'reject']) {
+    const harness = await enterRetryPlay();
+    const fullAudio = await fullChapterTakesOver(harness);
+    harness.gate[settle](new Error('AbortError'));
+    await flush();
+    await flush();
+    assert.equal(harness.audio.playing, false);
+    assert.equal(fullAudio.playing, true);
+    assert.equal(fullAudio.pauseCount, 0);
+    assert.equal(harness.state.ttsPlaying, 'full_chapter');
+  }
+
+  // 300ms 대기 중
+  const harness = fixture();
+  const { context, calls, state } = harness;
+  state.playFailures = 1;
+  context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+  await flush();
+  await flush();
+  calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+  await flush();
+  await flush();
+  const fullAudio = await fullChapterTakesOver(harness);
+  await waitForRetry();
+  assert.equal(state.audios[0].playing, false);
+  assert.ok(!state.played.includes('https://audio.test/one'), '교체된 오디오를 다시 재생하지 않는다');
+  assert.equal(state.played.filter((src) => src === 'https://audio.test/full').length, 1);
+  assert.equal(fullAudio.pauseCount, 0);
+  assert.equal(state.ttsPlaying, 'full_chapter');
 });
 
 test('자동재생 재시도가 성공하거나 끝내 실패해도 로딩이 풀리고 컨트롤이 정리된다', async () => {
