@@ -29,7 +29,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { db, storage } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import './VaultPage.css';

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { CheckCircle2, KeyRound, UserRound } from 'lucide-react';
 import { EcourtPracticeShell } from '../components/ecourt-practice/EcourtPracticeShell';
 

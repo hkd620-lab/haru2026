@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, CheckCircle2, HelpCircle, Loader2, Scale, ShieldAlert } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { LegalTermHelp } from '../components/LegalTermHelp';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';

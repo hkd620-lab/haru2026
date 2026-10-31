@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 import { BarChart3, ChevronRight } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { StatsPeriodPicker, getStatsTier, resolveStatsPeriod, statsQuery } from '../components/StatsPeriodPicker';

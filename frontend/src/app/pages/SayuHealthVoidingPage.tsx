@@ -1,7 +1,7 @@
 import { useRecordReadConsent } from '../hooks/useRecordReadConsent';
 import { auth } from '../../firebase';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';

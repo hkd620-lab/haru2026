@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, Expand, FileWarning, Search, ShieldAlert, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 

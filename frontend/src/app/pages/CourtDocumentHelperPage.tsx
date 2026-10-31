@@ -1,6 +1,6 @@
 import { FormEvent, type Dispatch, type SetStateAction, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, FileText, Loader2, Plus, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';

@@ -2,7 +2,7 @@ import { readSelectedRecordPhoto, readSelectedRecordPhotos } from '../services/s
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { ArrowLeft, Camera, Leaf, Loader2, Search, X, Save, AlertTriangle, ChevronDown, ChevronUp, BookOpen, CheckCircle2 } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router';
 import { httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, getDocs, query, where, limit, serverTimestamp, increment, orderBy, addDoc, onSnapshot, deleteDoc, runTransaction } from 'firebase/firestore';

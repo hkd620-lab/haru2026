@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ChevronRight, FileText, HelpCircle, Loader2, Scale, ShieldAlert } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { InlineHelpPopover, LegalTermHelp } from '../components/LegalTermHelp';
 import { Badge } from '../components/ui/badge';

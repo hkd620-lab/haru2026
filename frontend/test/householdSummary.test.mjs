@@ -178,7 +178,7 @@ function loadHouseholdPage(records, tab = "transactions", chartState = {}, user 
       useEffect: () => {},
       useMemo: (fn) => fn(),
     },
-    "react-router-dom": { useNavigate: () => () => {} },
+    "react-router": { useNavigate: () => () => {} },
     recharts: Object.fromEntries(
       ["ResponsiveContainer", "Tooltip", "Legend", "XAxis", "YAxis"].map(
         (name) => [

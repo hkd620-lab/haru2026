@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { MailCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
