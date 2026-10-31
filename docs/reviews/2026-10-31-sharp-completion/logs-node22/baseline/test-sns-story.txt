@@ -1,0 +1,10 @@
+$ (cwd=functions) npm run test:sns-story
+# start 2026-10-31T08:35:01.337495+00:00
+# end   2026-10-31T08:35:02.188808+00:00
+# exit  0
+
+
+> test:sns-story
+> node test/snsStory.policy.test.js
+
+sns story policy tests passed

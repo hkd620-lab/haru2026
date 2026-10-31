@@ -1,0 +1,23 @@
+--- live-resolveKoreanPlantName
++++ main-resolveKoreanPlantName
+@@ -1,7 +1,6 @@
+ async function resolveKoreanPlantName(
+   scientificName: string,
+   englishName: string,
+-  geminiApiKey: string,
+ ): Promise<{ koName: string | null; scientificKey: string; cached: boolean }> {
+   const scientificKey = normalizeScientificKey(scientificName);
+   if (!scientificKey) return { koName: null, scientificKey: '', cached: false };
+@@ -50,10 +49,8 @@
+ - note: 짧은 한국어 설명 (없으면 빈 문자열)
+ - JSON 하나만 출력, 마크다운/코드펜스 금지`;
+ 
+-    const genAI = new GoogleGenerativeAI(geminiApiKey);
+-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+-    const result = await model.generateContent(prompt);
+-    const text = result.response.text();
++    const result = await callAi({ purpose: 'plantKoreanName', input: prompt });
++    const text = result.text();
+     const cleaned = text.replace(/```json|```/g, '').trim();
+     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+     if (!jsonMatch) {

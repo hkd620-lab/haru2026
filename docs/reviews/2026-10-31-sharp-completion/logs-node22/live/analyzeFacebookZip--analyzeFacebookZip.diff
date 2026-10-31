@@ -1,0 +1,25 @@
+--- live-analyzeFacebookZip
++++ main-analyzeFacebookZip
+@@ -37,6 +37,8 @@
+ 
+     let zip: any;
+     try {
++      // eslint-disable-next-line @typescript-eslint/no-var-requires
++      const JSZip = require('jszip');
+       zip = await JSZip.loadAsync(zipBuffer);
+     } catch (e: any) {
+       logger.error('ZIP 파싱 실패:', e);
+@@ -124,6 +126,8 @@
+         const m = photosToProcess[i];
+         if (!m.uri) continue;
+         try {
++          // eslint-disable-next-line @typescript-eslint/no-var-requires
++          const sharp = require('sharp');
+           const photoFile = zip.file(m.uri);
+           if (!photoFile) continue;
+           const photoBuf: Buffer = await photoFile.async('nodebuffer');
+@@ -165,3 +169,4 @@
+     return { success: true, count: saved };
+   }
+ );
++

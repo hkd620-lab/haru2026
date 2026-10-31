@@ -1,0 +1,112 @@
+$ (cwd=functions) node --test test/sharpImagePipelines.test.js
+# start 2026-10-31T08:36:06.157081+00:00
+# end   2026-10-31T08:36:09.664045+00:00
+# exit  0
+
+TAP version 13
+# Subtest: 런타임 버전 기록
+ok 1 - 런타임 버전 기록
+  ---
+  duration_ms: 2.055125
+  type: 'test'
+  ...
+# node=v22.23.2 darwin/arm64 sharp=0.35.5 libvips=8.18.7
+# Subtest: 복제한 체인이 실제 함수 소스와 일치한다
+ok 2 - 복제한 체인이 실제 함수 소스와 일치한다
+  ---
+  duration_ms: 2.278625
+  type: 'test'
+  ...
+# Subtest: 타임라인 PDF: EXIF 방향을 적용해 cover로 자르고 메타데이터를 지운다
+ok 3 - 타임라인 PDF: EXIF 방향을 적용해 cover로 자르고 메타데이터를 지운다
+  ---
+  duration_ms: 34.434916
+  type: 'test'
+  ...
+# timeline bytes=2279
+# Subtest: 타임라인 PDF: 작은 치수는 최소 320x240을 유지한다
+ok 4 - 타임라인 PDF: 작은 치수는 최소 320x240을 유지한다
+  ---
+  duration_ms: 12.988041
+  type: 'test'
+  ...
+# Subtest: 타임라인 PDF: 처리한 JPEG가 pdfkit PDF에 들어가고 다시 열린다
+ok 5 - 타임라인 PDF: 처리한 JPEG가 pdfkit PDF에 들어가고 다시 열린다
+  ---
+  duration_ms: 37.531792
+  type: 'test'
+  ...
+# pdf bytes=3578
+# Subtest: 식물 감식: 크기를 유지한 채 방향만 적용한 JPEG로 정규화한다
+ok 6 - 식물 감식: 크기를 유지한 채 방향만 적용한 JPEG로 정규화한다
+  ---
+  duration_ms: 9.629417
+  type: 'test'
+  ...
+# Subtest: SNS 썸네일: 400px로 줄이고 작은 원본은 키우지 않는다
+ok 7 - SNS 썸네일: 400px로 줄이고 작은 원본은 키우지 않는다
+  ---
+  duration_ms: 15.260709
+  type: 'test'
+  ...
+# Subtest: SNS 썸네일: rotate가 없는 현재 동작을 유지하고 메타데이터는 지운다
+ok 8 - SNS 썸네일: rotate가 없는 현재 동작을 유지하고 메타데이터는 지운다
+  ---
+  duration_ms: 12.730417
+  type: 'test'
+  ...
+# Subtest: 투명 PNG는 세 경로 모두 검정 배경의 JPEG가 된다
+ok 9 - 투명 PNG는 세 경로 모두 검정 배경의 JPEG가 된다
+  ---
+  duration_ms: 26.248333
+  type: 'test'
+  ...
+# Subtest: 색공간·비트 깊이가 다른 입력도 8비트 sRGB JPEG로 정규화한다
+ok 10 - 색공간·비트 깊이가 다른 입력도 8비트 sRGB JPEG로 정규화한다
+  ---
+  duration_ms: 211.780625
+  type: 'test'
+  ...
+# timeline/cmykJpeg left=232,0,0 right=28,59,139
+# plant/cmykJpeg left=232,0,0 right=28,59,139
+# sns/cmykJpeg left=232,0,0 right=28,59,139
+# timeline/displayP3Jpeg left=255,1,3 right=1,0,254
+# plant/displayP3Jpeg left=255,1,3 right=1,0,254
+# sns/displayP3Jpeg left=255,1,3 right=1,0,254
+# timeline/rgb16Png left=254,0,0 right=0,0,254
+# plant/rgb16Png left=254,0,0 right=0,0,254
+# sns/rgb16Png left=254,0,0 right=0,0,254
+# Subtest: 0.35 기본 limitInputChannels: 5채널은 처리하고 6채널은 거부한다
+ok 11 - 0.35 기본 limitInputChannels: 5채널은 처리하고 6채널은 거부한다
+  ---
+  duration_ms: 163.291666
+  type: 'test'
+  ...
+# Subtest: WebP·GIF·TIFF·AVIF 입력을 세 경로가 모두 처리한다
+ok 12 - WebP·GIF·TIFF·AVIF 입력을 세 경로가 모두 처리한다
+  ---
+  duration_ms: 77.462916
+  type: 'test'
+  ...
+# Subtest: 해독할 수 없는 HEIC·손상 입력은 거부되어 각 함수의 catch 경로로 간다
+ok 13 - 해독할 수 없는 HEIC·손상 입력은 거부되어 각 함수의 catch 경로로 간다
+  ---
+  duration_ms: 5.504417
+  type: 'test'
+  ...
+# Subtest: 컴파일된 Functions 전체가 cold load되고 대상 함수 3개를 내보낸다
+ok 14 - 컴파일된 Functions 전체가 cold load되고 대상 함수 3개를 내보낸다
+  ---
+  duration_ms: 1525.820792
+  type: 'test'
+  ...
+# exports=114
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3311.60375

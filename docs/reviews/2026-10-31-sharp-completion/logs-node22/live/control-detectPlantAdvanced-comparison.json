@@ -1,0 +1,43 @@
+{
+  "function": "detectPlantAdvanced",
+  "main": "a8a8a6b8b0e38464bbadbd683cb3a9319166eeae",
+  "revision": "detectplantadvanced-00041-tiw",
+  "sourceGeneration": "1789217153761853",
+  "zipSha256": "353daf2e5433c772bcff5d4d5b177bb43264db41988d07df762f31b229fca1b8",
+  "sameFiles": [
+    "src/bookReview.ts",
+    "src/broadcastNotification.ts",
+    "src/englishBibleWordMeaning.ts",
+    "src/grammar/bibleSource.ts",
+    "src/grammar/grammarV2.ts",
+    "src/grammar/grammarV2Prompt.ts",
+    "src/grammar/grammarV2Types.ts",
+    "src/grammar/grammarV2Validator.ts",
+    "src/internalEntitlements.ts",
+    "src/subscriptionBillingCore.ts",
+    "src/subscriptionHelpers.ts",
+    "src/subscriptionRefunds.ts",
+    "src/subscriptionRefundsCore.ts",
+    "src/utils/monthlyAiQuota.ts",
+    "src/utils/rateLimit.ts"
+  ],
+  "changedFiles": [
+    "package-lock.json",
+    "package.json",
+    "src/accountDeletion.ts",
+    "src/aiUsageLogger.ts",
+    "src/bookMaterial.ts",
+    "src/bookStudio.ts",
+    "src/elderBook.ts",
+    "src/epubExport.ts",
+    "src/generateLawsuitClaimReason.ts",
+    "src/index.ts",
+    "src/oauthStateCore.ts",
+    "src/scheduledNotification.ts",
+    "src/snsAnalyzer.ts",
+    "src/snsToDiary.ts"
+  ],
+  "missingInMain": [],
+  "functionBlockIdentical": false,
+  "functionDiffLines": 27
+}
