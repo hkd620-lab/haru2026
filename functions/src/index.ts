@@ -13,6 +13,7 @@ const sharp = require('sharp');
 import * as fs from 'fs';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
+import { createPolishUsage, type PolishUsage } from './polishUsage';
 import { aiSecretsFor, callAi } from './ai/aiGateway';
 import { buildFormatPrefixMap, formatPrefixesOf } from './formats/formatRegistry';
 import { getAiRoute } from './ai/aiModels';
@@ -2340,6 +2341,10 @@ export const polishContent = onCall(
     }
     const uid = request.auth.uid;
     await enforceRateLimit(uid, 'polishContent', 10, 60);
+    const usage = createPolishUsage({
+      uid, plan: AI_USAGE_PLAN, isDev: DEVELOPER_UIDS.has(uid),
+      requestId: createAiUsageRequestId(),
+    });
     let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
     try {
       const { text, mode = 'premium', format, includeAiComment } = request.data;
@@ -2444,36 +2449,17 @@ ${SOURCE_PRESERVATION_RULES}`;
 본문만 자연스럽게 이어지는 문단으로 작성하세요.`;
       }
 
-      // 기본(BASIC) 본문만 별도 용도(Luna)로 보내고, 그 밖의 모드는 기존 sayuPolish 를 쓴다. 사용량 기록도 실제 용도의 모델로 남긴다.
+      // Preserve main's BASIC routing; meter the actual purpose/model selected there.
       const polishPurpose = mode === 'BASIC' ? 'sayuPolishBasic' : 'sayuPolish';
       const modelName = getAiRoute(polishPurpose).model;
-      const result = await callAi({ purpose: polishPurpose, input: text, systemInstruction: systemPrompt });
-      await logAiUsage({
-        uid: request.auth.uid,
-        featureName: 'sayu_polish',
-        plan: AI_USAGE_PLAN,
-        model: modelName,
-        inputTokens: result.inputTokens,
-        outputTokens: result.outputTokens,
-        imageCount: 0,
-        externalApiProvider: null,
-        externalApiCalled: false,
-        groundingUsed: false,
-        requestId: null,
-        success: true,
-        errorCode: null,
-        isDev: DEVELOPER_UIDS.has(request.auth.uid),
-      });
-      const polishedText = result.text();
+      const polishedText = await usage.stage(polishPurpose, modelName,
+        () => callAi({ purpose: polishPurpose, input: text, systemInstruction: systemPrompt }),
+        (responseText) => responseText);
 
       // ===== 통계 분석 (모든 형식) =====
       let stats = null;
       if (format) {
-        stats = await analyzeStats(text, format, {
-          uid: request.auth.uid,
-          featureName: 'sayu_polish',
-          isDev: DEVELOPER_UIDS.has(request.auth.uid),
-        });
+        stats = await analyzeStats(text, format, usage);
       }
 
       // 옵션 누락 시 기존 한마디 생성을 유지하고, 명시적 false에서만 생략한다.
@@ -2482,24 +2468,9 @@ ${SOURCE_PRESERVATION_RULES}`;
         try {
           const commentModelName = getAiRoute('sayuPolishComment').model;
           const commentPrompt = buildAiCommentPrompt(polishedText, formatGroup);
-          const commentResult = await callAi({ purpose: 'sayuPolishComment', input: commentPrompt });
-          await logAiUsage({
-            uid: request.auth.uid,
-            featureName: 'sayu_polish',
-            plan: AI_USAGE_PLAN,
-            model: commentModelName,
-            inputTokens: commentResult.inputTokens,
-            outputTokens: commentResult.outputTokens,
-            imageCount: 0,
-            externalApiProvider: null,
-            externalApiCalled: false,
-            groundingUsed: false,
-            requestId: null,
-            success: true,
-            errorCode: null,
-            isDev: DEVELOPER_UIDS.has(request.auth.uid),
-          });
-          const rawComment = (commentResult.text() || '').trim();
+          const rawComment = await usage.stage('sayuPolishComment', commentModelName,
+            () => callAi({ purpose: 'sayuPolishComment', input: commentPrompt }),
+            (responseText) => (responseText || '').trim());
           aiComment = rawComment
             .replace(/^["'`*#\-•·]+|["'`*#\-•·]+$/g, '')
             .replace(/\*\*|__/g, '')
@@ -2527,24 +2498,7 @@ ${SOURCE_PRESERVATION_RULES}`;
     } catch (error: any) {
       console.error('AI 처리 실패:', error);
       await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
-      if (request.auth?.uid) {
-        await logAiUsage({
-          uid: request.auth.uid,
-          featureName: 'sayu_polish',
-          plan: AI_USAGE_PLAN,
-          model: null,
-          inputTokens: null,
-          outputTokens: null,
-          imageCount: 0,
-          externalApiProvider: null,
-          externalApiCalled: false,
-          groundingUsed: false,
-          requestId: null,
-          success: false,
-          errorCode: getAiUsageErrorCode(error),
-          isDev: DEVELOPER_UIDS.has(request.auth.uid),
-        });
-      }
+      await usage.rejected(error);
       if (error instanceof HttpsError) {
         throw error;
       }
@@ -4996,7 +4950,7 @@ JSON만 출력:
 async function analyzeStats(
   text: string,
   format: string,
-  usageContext?: { uid: string; featureName: string; isDev: boolean }
+  usage?: PolishUsage
 ) {
   try {
     const prompt = STATS_PROMPTS[format];
@@ -5004,65 +4958,23 @@ async function analyzeStats(
       console.log(`No stats prompt for format: ${format}`);
       return null;
     }
-
     const analysisPrompt = `${prompt}
 
 기록 내용:
 ${text}`;
-
-    const modelName = getAiRoute('recordStats').model;
-    const result = await callAi({ purpose: 'recordStats', input: analysisPrompt });
-    if (usageContext) {
-      await logAiUsage({
-        uid: usageContext.uid,
-        featureName: usageContext.featureName,
-        plan: AI_USAGE_PLAN,
-        model: modelName,
-        inputTokens: result.inputTokens,
-        outputTokens: result.outputTokens,
-        imageCount: 0,
-        externalApiProvider: null,
-        externalApiCalled: false,
-        groundingUsed: false,
-        requestId: null,
-        success: true,
-        errorCode: null,
-        isDev: usageContext.isDev,
-      });
-    }
-    const responseText = result.text();
-    
-    // JSON 파싱
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
+    const generate = () => callAi({ purpose: 'recordStats', input: analysisPrompt });
+    const parse = (responseText: string) => {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('stats_json_missing');
       const stats = JSON.parse(jsonMatch[0]);
       stats.analyzed_at = new Date().toISOString();
       return stats;
-    }
-
-    console.error('JSON 파싱 실패:', responseText);
-    return null;
-
+    };
+    return usage
+      ? await usage.stage('recordStats', getAiRoute('recordStats').model, generate, parse)
+      : parse((await generate()).text());
   } catch (error) {
     console.error('통계 분석 실패:', error);
-    if (usageContext) {
-      await logAiUsage({
-        uid: usageContext.uid,
-        featureName: usageContext.featureName,
-        plan: AI_USAGE_PLAN,
-        model: null,
-        inputTokens: null,
-        outputTokens: null,
-        imageCount: 0,
-        externalApiProvider: null,
-        externalApiCalled: false,
-        groundingUsed: false,
-        requestId: null,
-        success: false,
-        errorCode: getAiUsageErrorCode(error),
-        isDev: usageContext.isDev,
-      });
-    }
     return null;
   }
 }

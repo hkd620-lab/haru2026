@@ -192,10 +192,9 @@ test('옮긴 호출부는 SDK 를 직접 만들지 않고 창구를 쓴다', () 
   const stats = block('async function analyzeStats(', '\n}\n');
   assert.match(stats, /callAi\(\{ purpose: 'recordStats'/);
   assert.doesNotMatch(stats, /new GoogleGenerativeAI|getGenerativeModel/);
-  const polish = block("featureName: 'sayu_polish',", "await logPaidServiceUsage(uid, 'ai_polish'");
-  const polishStart = src.lastIndexOf('export const polishContent =', src.indexOf("featureName: 'sayu_polish',"));
+  const polishStart = src.indexOf('export const polishContent =');
   const polishBlock = src.slice(polishStart, src.indexOf("await logPaidServiceUsage(uid, 'ai_polish'", polishStart));
-  assert.ok(polishStart > 0 && polish.length > 0);
+  assert.ok(polishStart > 0 && polishBlock.length > 0);
   assert.match(polishBlock, /const polishPurpose = mode === 'BASIC' \? 'sayuPolishBasic' : 'sayuPolish';/);
   assert.match(polishBlock, /getAiRoute\(polishPurpose\)\.model/);
   assert.match(polishBlock, /callAi\(\{ purpose: polishPurpose,/);

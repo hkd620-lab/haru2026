@@ -1,0 +1,104 @@
+# PR #292 독립 재검토: 실행6 결과
+
+## 전제
+- 대상 HEAD는 `756cc3b1`입니다. main `0df59145`(#301)를 작업 브랜치에만 병합한 통합본입니다.
+- 근거는 첨부된 자료뿐입니다. 첨부 자료는 main 대비 diff, 전체 파일 2개, `polishContent`·`analyzeStats` 전문, 69개 시험 결과, 통합 내역, 실행4·5 판정 원문입니다.
+- 저장소 열람, 셸, MCP, 수정은 하지 않았습니다.
+- 누적 판정은 실행4 **수정 후 승인** 1회와 실행5 **승인**입니다. 이번 검토 범위는 통합으로 새로 생긴 차이와 실행5의 C 항목 처리입니다.
+
+## 판정: **승인**
+- **작업 규모: 소~중규모.** 변경은 Functions 계측 코드와 시험뿐입니다. main 대비 모델, 호출 수, 프롬프트, Secret, quota, 인증, Rules, Firestore 경로(`aiUsageLogs` 쓰기, `users/{uid}/subscription/info` 읽기), 리전 `asia-northeast3`가 바뀌지 않았습니다.
+- **멈춤조건: 해당 없음.**
+  - BASIC을 Luna로 보내는 모델 변경은 #301에서 이미 main에 병합된 결정입니다. 이 PR의 diff에는 없습니다.
+  - 커밋 메시지 "최신 main 다듬기 경로와 API 계측 통합"은 실제 변경과 일치합니다.
+- 판정① 기록용입니다. **main 병합과 운영 배포는 미승인**이며 별도 승인이 필요합니다.
+
+## 통합 확인
+
+### 1. main의 라우팅을 그대로 두고 실제 용도와 모델을 계측함: 정상
+
+```ts
+const polishPurpose = mode === 'BASIC' ? 'sayuPolishBasic' : 'sayuPolish';
+const modelName = getAiRoute(polishPurpose).model;
+const polishedText = await usage.stage(polishPurpose, modelName,
+  () => callAi({ purpose: polishPurpose, input: text, systemInstruction: systemPrompt }),
+  (responseText) => responseText);
+```
+
+- 두 줄의 선택식은 main과 같습니다.
+- `callAi`의 인자(purpose, input, systemInstruction)도 같습니다.
+- `secrets: aiSecretsFor('sayuPolish', 'sayuPolishBasic', ...)` 줄은 diff에 없습니다. 즉 main 그대로입니다.
+- 원문 보존 프롬프트(`SOURCE_PRESERVATION_RULES`)도 diff 밖이므로 그대로입니다.
+- `Purpose` 타입에 `'sayuPolishBasic'`을 추가한 것은 위 호출이 타입 검사를 통과하는 데 필요한 최소 변경입니다.
+
+### 2. BASIC 실패 시험의 기대값 변경: 정당함
+
+```diff
+-    assert.deepEqual(f.usage.at(-1).success, false); assert.equal(f.usage.at(-1).model, null);
++    assert.equal(f.usage.at(-1).model, getAiRoute('sayuPolishBasic').model);
++    assert.equal(f.usage.at(-1).purpose, 'sayuPolishBasic');
++    assert.equal(f.usage.length, 1);
+```
+
+- main의 기대값 `model: null`은 기존 요청 실패 행(`model: null`)을 기록한 특성 시험이었습니다.
+- 이 PR은 실행4에서 승인한 계약에 따라 단계 실패 행에 실제 모델을 남깁니다. 기대값을 바꾸지 않으면 두 계약이 서로 충돌합니다.
+- 함께 지켜지는 조건은 다음과 같습니다.
+  - quota 환원 1회
+  - paid 기록 0건
+  - 다른 AI 호출로 넘어가지 않음
+- `length === 1`이 추가되어 공급자 실패와 `text()` 실패 두 경우 모두 중복 행이 없음이 고정되었습니다. 기존보다 강한 단언입니다.
+
+### 3. aiGateway 시험의 구간 기준 변경: 정상
+
+```diff
+-  const polish = block("featureName: 'sayu_polish',", ...);
+-  const polishStart = src.lastIndexOf('export const polishContent =', src.indexOf("featureName: 'sayu_polish',"));
++  const polishStart = src.indexOf('export const polishContent =');
+```
+
+- `featureName: 'sayu_polish'` 문자열은 `polishUsage.ts`로 옮겨져 `index.ts`에 더 이상 없습니다. 따라서 기준을 바꾸는 것이 필수였습니다.
+- main이 추가한 라우팅 단언 3개(`polishPurpose` 선택식, `getAiRoute(polishPurpose)`, `callAi({ purpose: polishPurpose,`)는 모두 유지됩니다.
+- 새 기준은 함수 시작점이라 이전 기준보다 덜 취약합니다.
+
+### 4. 실행5 C 항목(요청 행 purpose): **해소**
+- 문서: PR 본문에 "요청 행 purpose=`polishContent`, stage=`request`, modelInvoked=false"를 적었다고 전달받았습니다.
+- 시험: 입력·quota 거부 시험에 `assert.equal(f.usage[0].purpose, 'polishContent')`가 추가된 것을 diff에서 확인했습니다.
+- 조건부 차단 해제
+  - 배포 소스 revision 244에 신규 계측 필드가 없음을 읽기 전용으로 확인했다고 전달받았습니다.
+  - main의 `AiUsageLogInput`에도 `purpose`가 없습니다(diff에서 확인).
+  - 따라서 운영에 `purpose='sayuPolish'` 요청 행이 쌓였을 가능성이 없습니다. 차단 사유가 사라졌습니다.
+
+### 5. 기존 A·B 동작: 회귀 없음
+- `polishUsage.ts` 전문은 실행5의 내용과 비교해 `Purpose` 타입 한 줄만 다릅니다.
+- A 관련 오류 코드 시험 8건과 B 관련 단계 이후 실패 시험이 모두 통과했습니다.
+
+## 비차단 참고
+- **main 주석 교체:** 아래 main 주석이 영어 주석으로 바뀌었습니다.
+
+  ```diff
+  -      // 기본(BASIC) 본문만 별도 용도(Luna)로 보내고, 그 밖의 모드는 기존 sayuPolish 를 쓴다. 사용량 기록도 실제 용도의 모델로 남긴다.
+  +      // Preserve main's BASIC routing; meter the actual purpose/model selected there.
+  ```
+
+  - 원래 주석은 지금도 정확합니다.
+  - 주변 코드는 한국어 주석을 씁니다.
+  - "기존 코드 건드리지 말 것" 원칙에 비추어 원래 주석을 되돌리기를 권장합니다. 동작 영향은 없습니다.
+- **추적 중인 `lib` 생성물:** 커밋된 `lib`는 merge index의 내용이라 `src`와 일치한다는 보장이 없습니다.
+  - 시험은 `../lib/*.js`를 읽습니다. 따라서 CI가 빌드한 뒤 시험을 실행하는지가 중요합니다.
+  - 배포는 predeploy build가 확인되었으므로 문제없습니다.
+- **통합 HEAD 검증:** 통합 HEAD에 대한 CI와 Codex 자동 리뷰 결과는 아직 받지 못했습니다. 병합 전에 두 결과가 모두 SUCCESS여야 합니다.
+- **main 상속 공백 1건:** 수정하지 않는 판단에 동의합니다. 범위 밖입니다.
+- **이전 사소한 사항:** `known` Set을 모듈 상수로 올리는 것, 시험 이름 `http_429` 중복은 그대로 남아 있습니다. 비차단입니다.
+
+## 미확인
+- 통합 HEAD의 CI 결과, Codex 리뷰 결과
+- 운영 환경, 실제 AI 호출, 청구 데이터
+- `purpose`·`model`·행 수 기준으로 집계하는 관리자·외부 소비처
+
+---
+
+**Slack 기록용 확정 요약** (Slack 접근 불가로 게시하지 않음, `#haru2026-감사` 게시용)
+
+> PR #292 독립 재검토 실행6 (통합 HEAD `756cc3b1`, main `0df59145` 병합본) — **판정: 승인**. 규모 소~중, 멈춤조건 없음(BASIC→Luna는 #301 기병합 결정, 본 PR diff 밖).
+> main 라우팅·프롬프트·Secret 무변경 확인, `Purpose`에 `sayuPolishBasic` 추가로 실제 용도/모델 계측. BASIC 실패 시험 기대값(model null→실제 모델·단일행)은 승인된 계약에 따른 정당한 조정. 실행5 C(요청 행 purpose=`polishContent`) PR 본문·시험 반영, revision 244에 신규 필드 없음으로 조건부 차단 해제. 69시험 통과는 전달받은 결과 기준.
+> 병합 전 조건: 통합 HEAD CI·Codex 리뷰 통과. 권장: main 한국어 주석 원복. main 병합·운영 배포는 미승인이며 별도 승인 필요.
