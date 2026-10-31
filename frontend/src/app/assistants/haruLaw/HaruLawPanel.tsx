@@ -628,7 +628,7 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
                   placeholder="예: 내 딸아이가 친구로부터 사이버 괴롭힘을 당하고 있어요 어떻게 하면 좋을까요?"
                   style={{
                     width: '100%',
-                    boxSizing: 'border-box', resize: 'none',
+                    boxSizing: 'border-box', resize: 'vertical',
                     padding: '10px 12px', fontSize: 16, lineHeight: '24px',
                     border: '1.5px solid #1A3C6E', borderRadius: 8,
                     outline: 'none', backgroundColor: '#FEFBE8',

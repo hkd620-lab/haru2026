@@ -15,6 +15,10 @@ const enter = (overrides = {}) => ({
   ...overrides,
 });
 
+test('보호 시간은 50ms로 고정한다', () => {
+  assert.equal(ENTER_AFTER_COMPOSITION_GUARD_MS, 50);
+});
+
 test('조합과 무관한 일반 Enter는 전송한다', () => {
   assert.equal(new EnterSubmitGuard().decide(enter()), 'send');
 });

@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 // 질문 입력칸·기록 작성 입력칸의 3줄 통일(PR #274) 정책을 소스에서 확인한다.
-// - 질문칸: 처음부터 3줄, 세로 크기 조절 없음
+// - 질문칸: 처음부터 3줄, 크기 조절은 변경 전 상태 유지(독서 AI·하루LAW는 세로 허용, 공통 AI·전망은 없음)
 // - 장문 작성칸: 처음은 3줄, 사용자가 세로로 키울 수 있음
 // - 생성 결과 편집기 등 큰 편집기는 3줄로 줄이지 않는다
 const read = (rel) => fs.readFileSync(path.resolve(__dirname, '../src/app', rel), 'utf8');
@@ -42,6 +42,10 @@ assert(
   resultChat.includes('handleQuestionEnterKeyDown(questionEnterGuard, event, () => { void sendQuestion(question); })'),
   'Enter 전송은 기존 sendQuestion 가드를 그대로 써서 한 곳(handleQuestionEnterKeyDown)에서 처리해야 합니다',
 );
+assert(
+  /onKeyDown=\{\(event\) => \{\s*handleQuestionEnterKeyDown\(questionEnterGuard, event,/.test(resultChat),
+  'Enter 처리는 keydown 핸들러에 연결돼야 합니다(onKeyUp·onKeyPress 금지)',
+);
 assert(!resultChat.includes('questionEnterGuard.decide('), '키 판단은 컴포넌트가 아니라 유틸(handleQuestionEnterKeyDown)에 있어야 합니다');
 assert(
   resultChat.includes('const [questionEnterGuard] = useState(() => new EnterSubmitGuard());'),
@@ -61,17 +65,26 @@ assert(
   'Enter 판단에 isComposing·keyCode(229)·timeStamp가 전달되고 보호 시간은 시각 차이의 절댓값으로 비교해야 합니다',
 );
 
-// ── 질문칸: rows=3, resize 없음 ──
+// ── 질문칸: rows=3, 크기 조절은 변경 전 상태 유지 ──
 const questionInputs = [
   ['공통 AI 질문', textareaWhere(resultChat, (e) => e.includes('aria-label="기록·비서 AI 질문"'), '공통 AI 질문')],
   ['독서 AI 질문', textareaWhere(readingAiChat, (e) => e.includes('aria-label="독서 AI 질문"'), '독서 AI 질문')],
   ['하루LAW 질문', textareaWhere(haruLawPanel, (e) => e.includes('aria-label="하루LAW 질문"'), '하루LAW 질문')],
   ['전망 직접 질문', textareaWhere(novelStudio, (e) => e.includes('motiveCustom'), '전망 직접 질문')],
 ];
-for (const [label, element] of questionInputs) {
-  assertRows3(element, label);
-  assert(/resize:\s*'none'/.test(element), `${label}: 질문칸은 resize:none이어야 합니다`);
+for (const [label, element] of questionInputs) assertRows3(element, label);
+// 공통 AI는 한 줄 input이었고 전망은 원래 resize:none이라 크기 조절을 새로 넣지 않는다.
+for (const [label, element] of [questionInputs[0], questionInputs[3]]) {
+  assert(/resize:\s*'none'/.test(element), `${label}: 원래 크기 조절이 없던 질문칸은 resize:none이어야 합니다`);
 }
+// 독서 AI는 공통 textarea 스타일의 resize:vertical을 물려받는다.
+assert(
+  /const textarea: CSSProperties = \{[^}]*resize: 'vertical'/.test(readingAiChat)
+    && questionInputs[1][1].includes('...textarea')
+    && !/resize:/.test(questionInputs[1][1]),
+  '독서 AI 질문: 세로 크기 조절을 유지해야 합니다',
+);
+assert(/resize:\s*'vertical'/.test(questionInputs[2][1]), '하루LAW 질문: 세로 크기 조절을 유지해야 합니다');
 
 // ── 장문 작성칸: rows=3, resize 세로 허용 ──
 const writingInputs = [
