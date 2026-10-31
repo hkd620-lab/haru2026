@@ -1,0 +1,44 @@
+실행자: Claude Code (CC), phase review-fixes-resume0035
+시작: 2026-11-01T01:02:41.636296+09:00
+node -v: v22.23.2
+npm -v: 10.9.8
+HEAD: 9b15e0d06567b5350d0d07c7c3f75bdebb6c5926
+코드 상태: 수정 후 BiblePage.tsx와 임시 사본 BiblePage.baseline-9b15.tsx(수정 전 HEAD)를 함께 검사, 임시 사본은 커밋하지 않음. tsc는 functions의 TypeScript 5.9.3, frontend에는 typescript 미설치
+git status --short:
+M frontend/src/app/pages/BiblePage.tsx
+ M frontend/test/bibleGrammarPopup.test.mjs
+?? docs/reviews/2026-10-31-reader-completion/review-fixes-resume0035/
+?? frontend/src/app/pages/BiblePage.baseline-9b15.tsx
+명령: functions/node_modules/.bin/tsc -p /private/tmp/haru-completion-control-20261031/reader141-resume0035-tsconfig.json --pretty false
+---
+frontend/src/app/pages/BiblePage.baseline-9b15.tsx(2760,23): error TS2322: Type '((startVerse?: number | undefined) => Promise<void>) | ((startVerse?: number | undefined) => Promise<void>) | ((startVerse?: number | undefined) => Promise<void>) | (() => Promise<...>) | (() => Promise<...>) | (() => Promise<...>)' is not assignable to type 'MouseEventHandler<HTMLButtonElement> | undefined'.
+  Type '(startVerse?: number) => Promise<void>' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+    Types of parameters 'startVerse' and 'event' are incompatible.
+      Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'number'.
+frontend/src/app/pages/BiblePage.baseline-9b15.tsx(2783,19): error TS2322: Type '((startVerse?: number | undefined) => Promise<void>) | ((startVerse?: number | undefined) => Promise<void>) | ((startVerse?: number | undefined) => Promise<void>) | (() => Promise<...>) | (() => Promise<...>) | (() => Promise<...>)' is not assignable to type 'MouseEventHandler<HTMLButtonElement> | undefined'.
+  Type '(startVerse?: number) => Promise<void>' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+    Types of parameters 'startVerse' and 'event' are incompatible.
+      Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'number'.
+frontend/src/app/pages/BiblePage.tsx(2791,23): error TS2322: Type '((startVerse?: number | undefined) => Promise<void>) | ((startVerse?: number | undefined) => Promise<void>) | ((startVerse?: number | undefined) => Promise<void>) | (() => Promise<...>) | (() => Promise<...>) | (() => Promise<...>)' is not assignable to type 'MouseEventHandler<HTMLButtonElement> | undefined'.
+  Type '(startVerse?: number) => Promise<void>' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+    Types of parameters 'startVerse' and 'event' are incompatible.
+      Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'number'.
+frontend/src/app/pages/BiblePage.tsx(2814,19): error TS2322: Type '((startVerse?: number | undefined) => Promise<void>) | ((startVerse?: number | undefined) => Promise<void>) | ((startVerse?: number | undefined) => Promise<void>) | (() => Promise<...>) | (() => Promise<...>) | (() => Promise<...>)' is not assignable to type 'MouseEventHandler<HTMLButtonElement> | undefined'.
+  Type '(startVerse?: number) => Promise<void>' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+    Types of parameters 'startVerse' and 'event' are incompatible.
+      Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'number'.
+frontend/src/firebase.ts(10,23): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+frontend/src/firebase.ts(11,27): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+frontend/src/firebase.ts(12,26): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+frontend/src/firebase.ts(13,30): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+frontend/src/firebase.ts(14,34): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+frontend/src/firebase.ts(15,22): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+frontend/src/firebase.ts(38,23): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+frontend/src/firebase.ts(39,27): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+frontend/src/firebase.ts(40,26): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+frontend/src/firebase.ts(41,30): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+frontend/src/firebase.ts(42,34): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+frontend/src/firebase.ts(43,22): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+---
+종료 코드: 2
+끝: 2026-11-01T01:02:44.798349+09:00

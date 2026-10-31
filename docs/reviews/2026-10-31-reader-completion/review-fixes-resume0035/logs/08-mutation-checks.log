@@ -1,0 +1,86 @@
+실행자: Claude Code (CC), phase review-fixes-resume0035
+node -v: v22.23.2
+HEAD: 58ac7a0a0023ff2ea28e008febbfd97e903c23c9
+방법: HEAD의 파일에서 수정 하나만 임시로 되돌려 npm --prefix frontend run test:bible-grammar 실행. 커밋하지 않음.
+cleanup 검사 문구 제거가 표시된 항목은 cleanup이 없을 때의 실제 동작을 보려고 시험의 존재 검사도 임시로 뺐다.
+
+## F2 cleanup 제거 (cleanup 검사 문구 제거)
+종료 코드: 1
+not ok 25 - 취소한 고음질의 늦은 실패와 빈 응답은 안내하지 않는다
+not ok 27 - 페이지를 벗어나면 대기 중인 음성은 어느 단계에서도 소리와 안내를 남기지 않는다
+not ok 29 - 이어 듣기의 play 대기 중 취소하면 소리·재생 표시·안내가 남지 않는다
+  오류: unmountPage 뒤 재시도 실패
+  오류: Expected values to be strictly equal:
+  오류: unmountPage/resolve 뒤 소리가 남으면 안 된다
+
+## 무음 재생 뒤 취소 확인 제거
+종료 코드: 1
+not ok 27 - 페이지를 벗어나면 대기 중인 음성은 어느 단계에서도 소리와 안내를 남기지 않는다
+  오류: Expected values to be strictly equal:
+
+## AudioContext 뒤 취소 확인 제거
+종료 코드: 1
+not ok 27 - 페이지를 벗어나면 대기 중인 음성은 어느 단계에서도 소리와 안내를 남기지 않는다
+  오류: Expected values to be strictly deep-equal:
+
+## 첫 play 뒤 오디오 일치 확인 제거
+종료 코드: 1
+not ok 32 - 첫 play 대기 중 전체 장 재생이 오디오를 바꾸면 옛 요청이 표시를 덮지 않는다
+  오류: Expected values to be strictly equal:
+
+## F1 재시도 최종 실패 안내 제거
+종료 코드: 1
+not ok 23 - 고음질 재시도까지 끝내 재생하지 못하면 안내를 한 번만 보여 주고 표준 음성은 알리지 않는다
+  오류: Expected values to be strictly deep-equal:
+
+## F1 재시도 표준까지 안내
+종료 코드: 1
+not ok 23 - 고음질 재시도까지 끝내 재생하지 못하면 안내를 한 번만 보여 주고 표준 음성은 알리지 않는다
+  오류: Expected values to be strictly deep-equal:
+
+## F1 재시도 실패의 취소 확인 제거
+종료 코드: 1
+not ok 16 - 이전 재시도가 늦게 끝나도 새 요청의 오디오와 표시를 건드리지 않는다
+not ok 18 - 재시도 대기 중 전체 장 재생이 오디오를 바꾸면 재시도가 끼어들지 않는다
+not ok 25 - 취소한 고음질의 늦은 실패와 빈 응답은 안내하지 않는다
+not ok 26 - 이전 재시도의 늦은 실패는 새 요청을 방해하지 않고 안내하지 않는다
+  오류: Expected values to be strictly equal:
+  오류: Expected values to be strictly equal:
+  오류: closeGrammarPopup 뒤 재시도 실패
+  오류: Expected values to be strictly deep-equal:
+
+## F1 빈 응답 안내 제거
+종료 코드: 1
+not ok 24 - 재생할 음성이 없는 응답은 고음질만 안내하고 표준 음성은 기존처럼 조용히 끝난다
+  오류: Expected values to be strictly deep-equal:
+
+## Codex3 재개 성공 뒤 취소 확인 제거
+종료 코드: 1
+not ok 29 - 이어 듣기의 play 대기 중 취소하면 소리·재생 표시·안내가 남지 않는다
+not ok 30 - 이전 이어 듣기가 늦게 끝나도 새 요청의 오디오와 표시를 건드리지 않는다
+not ok 31 - 이어 듣기 대기 중 전체 장 재생이 오디오를 바꾸면 끼어들지 않는다
+  오류: closeGrammarPopup/resolve 뒤 소리가 남으면 안 된다
+  오류: Expected values to be strictly equal:
+  오류: Expected values to be strictly equal:
+
+## Codex3 재개 대상 오디오 일치 확인 제거
+종료 코드: 1
+not ok 31 - 이어 듣기 대기 중 전체 장 재생이 오디오를 바꾸면 끼어들지 않는다
+  오류: Expected values to be strictly equal:
+
+## Codex3 재개 실패의 취소 확인 제거
+종료 코드: 1
+not ok 29 - 이어 듣기의 play 대기 중 취소하면 소리·재생 표시·안내가 남지 않는다
+not ok 30 - 이전 이어 듣기가 늦게 끝나도 새 요청의 오디오와 표시를 건드리지 않는다
+not ok 31 - 이어 듣기 대기 중 전체 장 재생이 오디오를 바꾸면 끼어들지 않는다
+  오류: Expected values to be strictly deep-equal:
+  오류: Expected values to be strictly deep-equal:
+  오류: Expected values to be strictly deep-equal:
+
+## Codex3 재개 실패 표준까지 안내
+종료 코드: 1
+not ok 33 - 취소되지 않은 이어 듣기 성공은 표시를 잇고, 실패는 고음질만 안내하고 다시 누를 수 있다
+  오류: Expected values to be strictly deep-equal:
+
+잡히지 않은 변형: []
+복원 해시 일치: True
