@@ -26,6 +26,8 @@ const handlers = [
   slice('  const handleWordClick = useCallback', '  const renderVerseWithWords ='),
   slice('  const renderGrammarWords =', '  const handleFullChapterTTS ='),
   slice('  const handleFullChapterTTS =', '  const handleFullChapterKoreanTTS ='),
+  // 페이지 이탈 cleanup이 없으면 빈 문자열이 되어 cleanup 시험이 실패한다.
+  /  useEffect\(\(\) => \(\) => \{\n\s+ttsRequestRef\.current \+= 1;\n\s+\}, \[\]\);\n/.exec(source)?.[0] ?? '',
 ].join('\n').replaceAll('await import(\'firebase/functions\')', 'firebaseFunctions');
 
 const { code } = await transform(
@@ -41,7 +43,7 @@ function deferred() {
 
 function fixture() {
   const calls = [];
-  const state = { grammar: null, word: null, ttsLoading: null, ttsPlaying: null, ttsPaused: null, played: [], paused: [], audios: [], alerts: [], playFailures: 0, playGate: null };
+  const state = { grammar: null, word: null, ttsLoading: null, ttsPlaying: null, ttsPaused: null, played: [], paused: [], audios: [], alerts: [], playFailures: 0, playGate: null, silentGate: null, cleanups: [] };
   const apply = (value, previous) => (typeof value === 'function' ? value(previous) : value);
   class FakeAudio {
     constructor(src) {
@@ -51,7 +53,10 @@ function fixture() {
       if (!src.startsWith('data:')) state.audios.push(this);
     }
     async play() {
-      if (this.src.startsWith('data:')) return;
+      if (this.src.startsWith('data:')) {
+        if (state.silentGate) await state.silentGate;
+        return;
+      }
       if (state.playFailures > 0) { state.playFailures -= 1; throw new Error('NotAllowedError'); }
       state.played.push(this.src);
       if (state.playGate) await state.playGate;
@@ -76,6 +81,7 @@ function fixture() {
     Audio: FakeAudio,
     alert: (message) => { state.alerts.push(message); },
     useCallback: (fn) => fn,
+    useEffect: (effect) => { state.cleanups.push(effect()); },
     grammarRequestRef: { current: 0 }, wordRequestRef: { current: 0 }, ttsRequestRef: { current: 0 },
     highlightTimerRef: { current: null }, audioRef: { current: null }, audioCtxRef: { current: null },
     currentBook: { prefix: 'genesis' }, currentChapter: 1,
@@ -98,6 +104,10 @@ function fixture() {
     firebaseFunctions: { getFunctions: () => ({}), httpsCallable },
   };
   vm.runInNewContext(code, context);
+  context.unmountPage = () => {
+    assert.ok(state.cleanups.some(Boolean), '페이지 이탈 cleanup이 있어야 한다');
+    state.cleanups.forEach((cleanup) => cleanup?.());
+  };
   return { context, state, calls };
 }
 
@@ -122,6 +132,32 @@ async function enterRetryPlay(key = 'grammar_verse_genesis_1_1') {
   state.playGate = null;
   return { ...harness, gate, audio: state.audios[0] };
 }
+
+// 재생을 시작해 일시정지한 뒤, 이어 듣기의 play가 대기 중인 상태까지 진행한다.
+async function enterPausedResume(key = 'grammar_verse_genesis_1_1', quality = key.startsWith('grammar_') ? 'native' : undefined) {
+  const harness = fixture();
+  const { context, calls, state } = harness;
+  context.handleTTS('one', key, quality);
+  await flush();
+  await flush();
+  calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+  await flush();
+  await flush();
+  await context.handleTTS('one', key, quality);
+  assert.equal(state.ttsPaused, key);
+  const gate = deferred();
+  state.playGate = gate.promise;
+  const resumed = context.handleTTS('one', key, quality);
+  await flush();
+  state.playGate = null;
+  return { ...harness, gate, resumed, key, audio: state.audios[0] };
+}
+
+const cancelResponses = {
+  closeGrammarPopup: ({ context }) => context.closeGrammarPopup(),
+  stopAllTTS: ({ context }) => context.stopAllTTS(),
+  unmountPage: ({ context }) => context.unmountPage(),
+};
 
 test('늦게 도착한 이전 절 응답과 실패는 새 절 팝업을 덮지 않는다', async () => {
   const { context, state, calls } = fixture();
@@ -528,6 +564,315 @@ test('고음질 한도 초과는 한도 안내만 한 번 보여 준다', async 
   await flush();
   assert.equal(state.alerts.length, 1);
   assert.match(state.alerts[0], /사용 한도/);
+});
+
+const NATIVE_FAILURE = 'AI 고음질 음성을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
+
+test('고음질 재시도까지 끝내 재생하지 못하면 안내를 한 번만 보여 주고 표준 음성은 알리지 않는다', async () => {
+  for (const [quality, key, alerts] of [['native', 'grammar_verse_genesis_1_1', [NATIVE_FAILURE]], [undefined, 'verse_1', []]]) {
+    const { context, calls, state } = fixture();
+    state.playFailures = 2;
+    context.handleTTS('one', key, quality);
+    await flush();
+    await flush();
+    calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+    await waitForRetry();
+    assert.deepEqual(state.alerts, alerts);
+    assert.equal(state.ttsLoading, null);
+    assert.equal(state.ttsPlaying, null);
+  }
+});
+
+test('재생할 음성이 없는 응답은 고음질만 안내하고 표준 음성은 기존처럼 조용히 끝난다', async () => {
+  for (const [quality, key, alerts] of [['native', 'grammar_verse_genesis_1_1', [NATIVE_FAILURE]], [undefined, 'verse_1', []]]) {
+    const { context, calls, state } = fixture();
+    context.handleTTS('one', key, quality);
+    await flush();
+    await flush();
+    calls[0].resolve({ data: {} });
+    await flush();
+    await flush();
+    assert.deepEqual(state.alerts, alerts);
+    assert.deepEqual(state.audios, []);
+    assert.equal(state.ttsLoading, null);
+    assert.equal(state.ttsPlaying, null);
+  }
+});
+
+test('취소한 고음질의 늦은 실패와 빈 응답은 안내하지 않는다', async () => {
+  for (const [name, cancel] of Object.entries(cancelResponses)) {
+    // 두 번째 play 대기 중 취소
+    const retry = await enterRetryPlay();
+    cancel(retry);
+    retry.gate.reject(new Error('AbortError'));
+    await flush();
+    await flush();
+    assert.deepEqual(retry.state.alerts, [], `${name} 뒤 재시도 실패`);
+
+    // 재시도 타이머 대기 중 취소
+    const timer = fixture();
+    timer.state.playFailures = 2;
+    timer.context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+    await flush();
+    await flush();
+    timer.calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+    await flush();
+    await flush();
+    cancel(timer);
+    await waitForRetry();
+    assert.deepEqual(timer.state.alerts, [], `${name} 뒤 재시도 타이머`);
+
+    // 서버 응답 대기 중 취소
+    for (const settle of [(call) => call.resolve({ data: {} }), (call) => call.reject(new Error('fail'))]) {
+      const loading = fixture();
+      loading.context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+      await flush();
+      await flush();
+      cancel(loading);
+      settle(loading.calls[0]);
+      await flush();
+      await flush();
+      assert.deepEqual(loading.state.alerts, [], `${name} 뒤 늦은 응답`);
+    }
+  }
+});
+
+test('이전 재시도의 늦은 실패는 새 요청을 방해하지 않고 안내하지 않는다', async () => {
+  const { context, calls, state, gate } = await enterRetryPlay();
+  context.handleTTS('two', 'grammar_verb_genesis_1_1', 'native');
+  await flush();
+  await flush();
+  calls[1].resolve({ data: { audioUrl: 'https://audio.test/two' } });
+  await flush();
+  await flush();
+  gate.reject(new Error('AbortError'));
+  await flush();
+  await flush();
+  assert.deepEqual(state.alerts, []);
+  assert.equal(state.audios[1].playing, true);
+  assert.equal(state.ttsPlaying, 'grammar_verb_genesis_1_1');
+});
+
+test('페이지를 벗어나면 대기 중인 음성은 어느 단계에서도 소리와 안내를 남기지 않는다', async () => {
+  // 무음 잠금해제 대기 중: 비용이 드는 서버 호출도 하지 않는다.
+  {
+    const { context, calls, state } = fixture();
+    const silent = deferred();
+    state.silentGate = silent.promise;
+    context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+    await flush();
+    context.unmountPage();
+    silent.resolve();
+    await flush();
+    await flush();
+    assert.equal(calls.length, 0);
+  }
+
+  // 서버 응답 대기 중
+  {
+    const { context, calls, state } = fixture();
+    context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+    await flush();
+    await flush();
+    context.unmountPage();
+    calls[0].resolve({ data: { audioUrl: 'https://audio.test/late' } });
+    await flush();
+    await flush();
+    assert.deepEqual(state.audios, []);
+    assert.deepEqual(state.alerts, []);
+  }
+
+  // AudioContext resume 대기 중
+  {
+    const { context, calls, state } = fixture();
+    const resume = deferred();
+    context.window.AudioContext = class { state = 'suspended'; resume() { return resume.promise; } };
+    context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+    await flush();
+    await flush();
+    calls[0].resolve({ data: { audioUrl: 'https://audio.test/late' } });
+    await flush();
+    await flush();
+    context.unmountPage();
+    resume.resolve();
+    await flush();
+    await flush();
+    assert.deepEqual(state.audios, []);
+    assert.deepEqual(state.alerts, []);
+  }
+
+  // 첫 play 대기 중
+  {
+    const { context, calls, state } = fixture();
+    const gate = deferred();
+    state.playGate = gate.promise;
+    context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+    await flush();
+    await flush();
+    calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+    await flush();
+    await flush();
+    context.unmountPage();
+    gate.resolve();
+    await flush();
+    await flush();
+    assert.equal(state.audios[0].playing, false);
+    assert.equal(state.ttsPlaying, null);
+    assert.deepEqual(state.alerts, []);
+  }
+
+  // 재시도 타이머 대기 중
+  {
+    const { context, calls, state } = fixture();
+    state.playFailures = 1;
+    context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+    await flush();
+    await flush();
+    calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+    await flush();
+    await flush();
+    context.unmountPage();
+    await waitForRetry();
+    assert.deepEqual(state.played, []);
+    assert.deepEqual(state.alerts, []);
+  }
+
+  // 두 번째 play 대기 중
+  {
+    const { context, state, gate, audio } = await enterRetryPlay();
+    context.unmountPage();
+    gate.resolve();
+    await flush();
+    await flush();
+    assert.equal(audio.playing, false);
+    assert.equal(state.ttsPlaying, null);
+    assert.deepEqual(state.alerts, []);
+  }
+});
+
+test('페이지 이탈은 이미 재생 중인 음성의 기존 동작을 바꾸지 않는다', async () => {
+  const { context, calls, state } = fixture();
+  context.handleTTS('one', 'verse_1');
+  await flush();
+  await flush();
+  calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+  await flush();
+  await flush();
+  context.unmountPage();
+  assert.equal(state.audios[0].playing, true);
+  assert.equal(state.audios[0].pauseCount, 0);
+});
+
+test('이어 듣기의 play 대기 중 취소하면 소리·재생 표시·안내가 남지 않는다', async () => {
+  for (const [name, cancel] of Object.entries(cancelResponses)) {
+    for (const settle of ['resolve', 'reject']) {
+      const harness = await enterPausedResume();
+      const { state, gate, resumed, audio } = harness;
+      cancel(harness);
+      gate[settle](new Error('AbortError'));
+      await resumed;
+      assert.equal(audio.playing, false, `${name}/${settle} 뒤 소리가 남으면 안 된다`);
+      assert.equal(state.ttsPlaying, null, `${name}/${settle} 뒤 재생 표시가 남으면 안 된다`);
+      assert.deepEqual(state.alerts, []);
+    }
+  }
+});
+
+test('이전 이어 듣기가 늦게 끝나도 새 요청의 오디오와 표시를 건드리지 않는다', async () => {
+  const newKey = 'grammar_verb_genesis_1_1';
+  for (const settle of ['resolve', 'reject']) {
+    // 새 요청이 재생 중
+    const playing = await enterPausedResume();
+    playing.context.handleTTS('two', newKey, 'native');
+    await flush();
+    await flush();
+    playing.calls[1].resolve({ data: { audioUrl: 'https://audio.test/two' } });
+    await flush();
+    await flush();
+    const newAudio = playing.state.audios[1];
+    playing.gate[settle](new Error('AbortError'));
+    await playing.resumed;
+    assert.equal(playing.audio.playing, false);
+    assert.equal(newAudio.playing, true);
+    assert.equal(newAudio.pauseCount, 0);
+    assert.equal(playing.state.ttsPlaying, newKey);
+    assert.equal(playing.state.ttsPaused, null);
+    assert.deepEqual(playing.state.alerts, []);
+
+    // 새 요청이 로딩 중
+    const loading = await enterPausedResume();
+    loading.context.handleTTS('two', newKey, 'native');
+    await flush();
+    await flush();
+    loading.gate[settle](new Error('AbortError'));
+    await loading.resumed;
+    assert.equal(loading.state.ttsLoading, newKey);
+    assert.equal(loading.state.ttsPlaying, null);
+    assert.deepEqual(loading.state.alerts, []);
+  }
+});
+
+test('이어 듣기 대기 중 전체 장 재생이 오디오를 바꾸면 끼어들지 않는다', async () => {
+  for (const settle of ['resolve', 'reject']) {
+    const { context, calls, state, gate, resumed, audio } = await enterPausedResume();
+    context.handleFullChapterTTS();
+    await flush();
+    calls.at(-1).resolve({ data: { audioUrl: 'https://audio.test/full' } });
+    await flush();
+    await flush();
+    const fullAudio = state.audios.at(-1);
+    gate[settle](new Error('AbortError'));
+    await resumed;
+    assert.equal(audio.playing, false);
+    assert.equal(fullAudio.playing, true);
+    assert.equal(fullAudio.pauseCount, 0);
+    assert.equal(state.ttsPlaying, 'full_chapter');
+    assert.deepEqual(state.alerts, []);
+  }
+});
+
+test('첫 play 대기 중 전체 장 재생이 오디오를 바꾸면 옛 요청이 표시를 덮지 않는다', async () => {
+  const { context, calls, state } = fixture();
+  const gate = deferred();
+  state.playGate = gate.promise;
+  context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+  await flush();
+  await flush();
+  calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+  await flush();
+  await flush();
+  state.playGate = null;
+  context.handleFullChapterTTS();
+  await flush();
+  calls.at(-1).resolve({ data: { audioUrl: 'https://audio.test/full' } });
+  await flush();
+  await flush();
+  const fullAudio = state.audios.at(-1);
+  gate.resolve();
+  await flush();
+  await flush();
+  assert.equal(state.audios[0].playing, false);
+  assert.equal(fullAudio.playing, true);
+  assert.equal(fullAudio.pauseCount, 0);
+  assert.equal(state.ttsPlaying, 'full_chapter');
+});
+
+test('취소되지 않은 이어 듣기 성공은 표시를 잇고, 실패는 고음질만 안내하고 다시 누를 수 있다', async () => {
+  const success = await enterPausedResume();
+  success.gate.resolve();
+  await success.resumed;
+  assert.equal(success.audio.playing, true);
+  assert.equal(success.state.ttsPlaying, success.key);
+  assert.equal(success.state.ttsPaused, null);
+
+  for (const [quality, key, alerts] of [['native', 'grammar_verse_genesis_1_1', [NATIVE_FAILURE]], [undefined, 'verse_1', []]]) {
+    const { state, gate, resumed } = await enterPausedResume(key, quality);
+    gate.reject(new Error('NotAllowedError'));
+    await resumed;
+    assert.deepEqual(state.alerts, alerts);
+    assert.equal(state.ttsPaused, key, '실패하면 일시정지 상태를 유지한다');
+    assert.equal(state.ttsPlaying, null);
+  }
 });
 
 test('장이나 책이 바뀌면 불러오는 중인 음성 요청을 무효로 만든다', () => {

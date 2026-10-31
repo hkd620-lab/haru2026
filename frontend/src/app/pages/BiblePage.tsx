@@ -44,6 +44,10 @@ const showTTSLimitAlert = (err: any) => {
   }
 };
 
+const showNativeTTSFailureAlert = () => {
+  alert('AI 고음질 음성을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+};
+
 export function BiblePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -218,6 +222,11 @@ export function BiblePage() {
     if (audioRef.current) audioRef.current.pause();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChapter]);
+
+  // 페이지를 벗어난 뒤 대기 중이던 음성이 재생되거나 안내가 뜨지 않게 한다.
+  useEffect(() => () => {
+    ttsRequestRef.current += 1;
+  }, []);
 
   // 현재 책의 모든 장 진도 불러오기 — 새로고침 시 auth 비동기 복원 대응
   useEffect(() => {
@@ -1179,7 +1188,22 @@ export function BiblePage() {
     }
     // 일시정지 중 → 이어서 재생
     if (ttsPaused === key) {
-      await audioRef.current?.play();
+      const resumeRequestId = ttsRequestRef.current;
+      const resumeAudio = audioRef.current;
+      const isResumeStale = () => resumeRequestId !== ttsRequestRef.current || audioRef.current !== resumeAudio;
+      try {
+        await resumeAudio?.play();
+      } catch (err) {
+        if (isResumeStale()) return;
+        console.error('TTS 이어 듣기 실패:', err);
+        if (quality === 'native') showNativeTTSFailureAlert();
+        return;
+      }
+      // 재개 대기 중 취소됐다면 이 오디오만 끄고 새 요청의 표시는 건드리지 않는다.
+      if (isResumeStale()) {
+        resumeAudio?.pause();
+        return;
+      }
       setTtsPaused(null);
       setTtsPlaying(key);
       return;
@@ -1190,6 +1214,10 @@ export function BiblePage() {
 
     const requestId = ++ttsRequestRef.current;
     let playRetryPending = false;
+    let requestAudio: HTMLAudioElement | null = null;
+    // 전체 장 재생 등은 요청 번호를 올리지 않고 오디오만 바꾸므로 둘 다 확인한다.
+    const isStale = () =>
+      requestId !== ttsRequestRef.current || (requestAudio !== null && audioRef.current !== requestAudio);
     setTtsLoading(key);
 
     try {
@@ -1199,6 +1227,7 @@ export function BiblePage() {
       );
       silentAudio.volume = 0.01;
       try { await silentAudio.play(); } catch(_) {}
+      if (isStale()) return;
 
       // ② Firebase Function 호출
       const fns = getFunctions(undefined, 'asia-northeast3');
@@ -1212,7 +1241,7 @@ export function BiblePage() {
         text,
         quality,
       }));
-      if (requestId !== ttsRequestRef.current) return;
+      if (isStale()) return;
 
       if (audioRef.current) audioRef.current.pause();
 
@@ -1240,7 +1269,7 @@ export function BiblePage() {
             }
           }
         } catch(_) {}
-        if (requestId !== ttsRequestRef.current) return;
+        if (isStale()) return;
 
         audioRef.current = new Audio(audioSrc);
         audioRef.current.playbackRate = ttsSpeed;
@@ -1257,10 +1286,11 @@ export function BiblePage() {
 
         // ④ play 실패 시 재시도 1회
         const audio = audioRef.current;
+        requestAudio = audio;
         try {
           await audio.play();
           // play 대기 중 정지·팝업 닫기가 들어오면 이미 시작된 소리도 끈다.
-          if (requestId !== ttsRequestRef.current) {
+          if (isStale()) {
             audio.pause();
             return;
           }
@@ -1294,38 +1324,39 @@ export function BiblePage() {
           console.warn('TTS play 재시도:', playErr);
           // 재시도가 끝날 때까지 로딩을 유지해 그사이의 정지·팝업 닫기가 재시도를 취소할 수 있게 한다.
           playRetryPending = true;
-          // 전체 장 재생 등은 요청 번호를 올리지 않고 오디오만 바꾸므로 둘 다 확인한다.
-          const isRetryStale = () => requestId !== ttsRequestRef.current || audioRef.current !== audio;
           setTimeout(async () => {
-            if (isRetryStale()) return;
+            if (isStale()) return;
             try {
               await audio.play();
               // 두 번째 play 대기 중 취소됐다면 이 요청의 오디오만 끈다.
-              if (isRetryStale()) {
+              if (isStale()) {
                 audio.pause();
                 return;
               }
               setTtsPlaying(key);
             } catch(e) {
-              if (isRetryStale()) return;
+              if (isStale()) return;
               console.error('TTS play 최종 실패:', e);
               setTtsPlaying(null);
+              if (quality === 'native') showNativeTTSFailureAlert();
             } finally {
-              if (!isRetryStale()) setTtsLoading(null);
+              if (!isStale()) setTtsLoading(null);
             }
           }, 300);
         }
+      } else if (quality === 'native') {
+        throw new Error('재생할 고음질 음성이 응답에 없습니다.');
       }
     } catch (err: any) {
       console.error('TTS 오류:', err);
-      if (requestId !== ttsRequestRef.current) return;
+      if (isStale()) return;
       showTTSLimitAlert(err);
       setTtsPlaying(null);
       if (quality === 'native' && !isTTSLimitError(err)) {
-        alert('AI 고음질 음성을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+        showNativeTTSFailureAlert();
       }
     } finally {
-      if (!playRetryPending && requestId === ttsRequestRef.current) setTtsLoading(null);
+      if (!playRetryPending && !isStale()) setTtsLoading(null);
     }
   };
 
