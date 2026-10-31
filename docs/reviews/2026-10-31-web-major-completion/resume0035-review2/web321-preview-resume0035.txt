@@ -1,0 +1,2 @@
+PR321 preview read-only browser attempt: https://haru2026-8abb8--pr321-codex-completion-web-mub2phr8.web.app/terms
+Cua Chrome browser1 tab1270487414: net::ERR_BLOCKED_BY_CLIENT. No page visible; no security bypass or form interaction. This is not E2E success.
