@@ -1,0 +1,420 @@
+diff --git a/frontend/src/app/components/FormatModal.tsx b/frontend/src/app/components/FormatModal.tsx
+index f9c526a0..c3c166c2 100644
+--- a/frontend/src/app/components/FormatModal.tsx
++++ b/frontend/src/app/components/FormatModal.tsx
+@@ -1,3 +1,4 @@
++import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
+ import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText, Pencil } from 'lucide-react';
+ import { useState, useEffect, useRef, Fragment } from 'react';
+ import { ReadingAiChat } from './ReadingAiChat';
+@@ -981,6 +982,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
+   const existingSayu = initialData[sayuKey];
+   const isStockFormat = format === 'HARU주식관리' || format === '주식거래일지';
+   const isLedgerFormat = format === 'HARU보조장부';
++  const recordPhotoLimit = getRecordPhotoLimit(format);
+   const isHouseholdFormat = format === 'HARU가계부';
+   const isVoidingFormat = format === '배뇨일지';
+   const selectedGrowthSubject = growthSubjects.find((subject) => subject.id === selectedGrowthSubjectId);
+@@ -1861,7 +1863,7 @@ ${contentValues}`,
+       ? ledgerXlsxPreviewRows.find((row) => row.id === expandedLedgerXlsxRowId)
+       : undefined;
+     const currentImageUrls = periodRow?.entry.imageUrls || uploadedImages;
+-    const maxPhotos = format === 'HARU보조장부' ? 10 : 3;
++    const maxPhotos = getRecordPhotoLimit(format);
+     const remainingSlots = maxPhotos - currentImageUrls.length;
+     if (remainingSlots <= 0) {
+       toast.warning(`최대 ${maxPhotos}장까지만 업로드할 수 있습니다.`);
+@@ -6062,7 +6064,7 @@ ${contentValues.slice(0, 4100)}`,
+                 <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8, marginTop: 0 }}>
+                   {isLedgerFormat
+                     ? '사진 없이도 저장할 수 있습니다 · 최대 10장 · PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다'
+-                    : '사진 없이도 저장할 수 있습니다 · 최대 3장 · PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다'}
++                    : '사진 없이도 저장할 수 있습니다 · 최대 5장 · PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다'}
+                 </p>
+                 <input
+                   ref={fileInputRef}
+@@ -6075,18 +6077,18 @@ ${contentValues.slice(0, 4100)}`,
+                 {format === '일기' ? (
+                   <button
+                     onClick={() => fileInputRef.current?.click()}
+-                    disabled={isUploading || isCleaningSessionUploads || activeUploadedImages.length >= 3}
++                    disabled={isUploading || isCleaningSessionUploads || activeUploadedImages.length >= recordPhotoLimit}
+                     style={{
+                       width: '100%',
+                       padding: '17px',
+                       border: '1px solid #e4e4e4',
+                       borderRadius: '20px',
+                       backgroundColor: '#f7f7f7',
+-                      cursor: isUploading || activeUploadedImages.length >= 3 ? 'not-allowed' : 'pointer',
++                      cursor: isUploading || activeUploadedImages.length >= recordPhotoLimit ? 'not-allowed' : 'pointer',
+                       display: 'flex',
+                       alignItems: 'center',
+                       justifyContent: 'center',
+-                      opacity: isUploading || activeUploadedImages.length >= 3 ? 0.5 : 1,
++                      opacity: isUploading || activeUploadedImages.length >= recordPhotoLimit ? 0.5 : 1,
+                     }}
+                   >
+                     {isUploading
+@@ -6097,7 +6099,7 @@ ${contentValues.slice(0, 4100)}`,
+                 ) : (
+                   <button
+                     onClick={() => fileInputRef.current?.click()}
+-                    disabled={isUploading || isCleaningSessionUploads || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3)}
++                    disabled={isUploading || isCleaningSessionUploads || activeUploadedImages.length >= recordPhotoLimit}
+                     style={{
+                       width: '100%',
+                       padding: '10px 16px',
+@@ -6106,31 +6108,31 @@ ${contentValues.slice(0, 4100)}`,
+                       borderRadius: 8,
+                       backgroundColor: '#f9fafb',
+                       color: '#6b7280',
+-                      cursor: isUploading || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3) ? 'not-allowed' : 'pointer',
++                      cursor: isUploading || activeUploadedImages.length >= recordPhotoLimit ? 'not-allowed' : 'pointer',
+                       display: 'flex',
+                       alignItems: 'center',
+                       justifyContent: 'center',
+                       gap: 8,
+-                      opacity: isUploading || activeUploadedImages.length >= (isLedgerFormat ? 10 : 3) ? 0.5 : 1,
++                      opacity: isUploading || activeUploadedImages.length >= recordPhotoLimit ? 0.5 : 1,
+                     }}
+                   >
+                     <Upload style={{ width: 16, height: 16 }} />
+                     {isUploading ? '업로드 중...' : isLedgerFormat
+                       ? `증빙사진 선택 (${activeUploadedImages.length}/10)`
+-                      : `사진 추가 (${activeUploadedImages.length}/3)`}
++                      : `사진 추가 (${activeUploadedImages.length}/${recordPhotoLimit})`}
+                   </button>
+                 )}
+ 
+                 {activeUploadedImages.length > 0 && (
+                   <div style={{ marginTop: 12 }}>
+-                    {/* 4장 이상: 보조장부 전용 — 3열 그리드 */}
++                    {/* 4장 이상: 3열 그리드 */}
+                     {activeUploadedImages.length >= 4 && (
+                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                         {activeUploadedImages.map((url, index) => (
+                           <div key={index} style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
+                             <img
+                               src={url}
+-                              alt={`증빙사진 ${index + 1}`}
++                              alt={`${isLedgerFormat ? '증빙사진' : '사진'} ${index + 1}`}
+                               style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e5e5' }}
+                             />
+                             <button
+diff --git a/frontend/src/app/components/SayuModal.tsx b/frontend/src/app/components/SayuModal.tsx
+index 2f83ec1c..f5f36920 100644
+--- a/frontend/src/app/components/SayuModal.tsx
++++ b/frontend/src/app/components/SayuModal.tsx
+@@ -1,3 +1,4 @@
++import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
+ import { readSelectedRecordPhoto } from '../services/selectedRecordPhoto';
+ import { compressUploadPhoto } from '../services/photoUploadService';
+ import { compressRecordPhoto } from '../services/recordPhotoCompression';
+@@ -607,6 +608,7 @@ export function SayuModal({
+   assistantContent,
+   allHouseholdEntries,
+ }: SayuModalProps) {
++  const recordPhotoLimit = getRecordPhotoLimit(formatKey || format);
+   const { subscription } = useSubscription();
+   const isPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
+   const { user: currentUser } = useAuth();
+@@ -1493,8 +1495,8 @@ export function SayuModal({
+   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+     const source = e.target.files?.[0];
+     if (!source || !currentUser || !firestoreId || !formatKey || isUploadingImage) return;
+-    if (localImages.length >= 3) {
+-      toast.error('사진은 최대 3장까지 추가할 수 있습니다.');
++    if (localImages.length >= recordPhotoLimit) {
++      toast.error(`사진은 최대 ${recordPhotoLimit}장까지 추가할 수 있습니다.`);
+       e.target.value = '';
+       return;
+     }
+@@ -2854,8 +2856,25 @@ export function SayuModal({
+                       </div>
+                     )}
+ 
+-                    {/* 3장 이상 */}
+-                    {validImages.length >= 3 && (
++                    {/* 4장 이상: 모든 사진을 휴대폰에서도 두 열로 표시 */}
++                    {validImages.length >= 4 && (
++                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
++                        {validImages.map((img, idx) => (
++                          <div key={img} style={{ position: 'relative', minWidth: 0, aspectRatio: '1/1' }}>
++                            <img src={img} alt={`사진 ${idx + 1}`} onError={hideOnError}
++                              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e5e5' }} />
++                            <button onClick={() => handleDeleteImage(img, idx)} title="사진 삭제" aria-label={`사진 ${idx + 1} 삭제`}
++                              disabled={isUploadingImage}
++                              style={{ position: 'absolute', top: 6, right: 6, width: 28, height: 28, borderRadius: '50%', border: 'none', background: '#000', color: '#fff', boxShadow: '0 0 0 2px #fff', cursor: 'pointer' }}>
++                              ✕
++                            </button>
++                          </div>
++                        ))}
++                      </div>
++                    )}
++
++                    {/* 3장: 기존 대표 사진 배치 */}
++                    {validImages.length === 3 && (
+                       <div>
+                         <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                           <img
+@@ -2993,7 +3012,7 @@ export function SayuModal({
+                 }}
+                 onChange={handleImageUpload}
+               />
+-              {!isGrowthTimeline && localImages.length < 3 && (
++              {!isGrowthTimeline && localImages.length < recordPhotoLimit && (
+                 <div style={{ marginBottom: '16px' }}>
+                   <button
+                     onClick={() => document.getElementById('sayu-image-upload')?.click()}
+@@ -3012,7 +3031,7 @@ export function SayuModal({
+                       gap: 6,
+                     }}
+                   >
+-                    {isUploadingImage ? '⏳ 업로드 중...' : `📷 사진 추가 (${localImages.length}/3)`}
++                    {isUploadingImage ? '⏳ 업로드 중...' : `📷 사진 추가 (${localImages.length}/${recordPhotoLimit})`}
+                   </button>
+                   <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9ca3af' }}>
+                     PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다
+diff --git a/frontend/src/app/services/recordPhotoLimit.ts b/frontend/src/app/services/recordPhotoLimit.ts
+new file mode 100644
+index 00000000..ac96815f
+--- /dev/null
++++ b/frontend/src/app/services/recordPhotoLimit.ts
+@@ -0,0 +1,4 @@
++// 보조장부의 기존 증빙 한도는 유지한다. 구독 등급과 관계없이 적용한다.
++export function getRecordPhotoLimit(format?: string): number {
++  return format === 'HARU보조장부' || format === 'ledger' ? 10 : 5;
++}
+diff --git a/frontend/test/formatPhotoUploadResult.test.mjs b/frontend/test/formatPhotoUploadResult.test.mjs
+index 7e02285a..5c933006 100644
+--- a/frontend/test/formatPhotoUploadResult.test.mjs
++++ b/frontend/test/formatPhotoUploadResult.test.mjs
+@@ -1,3 +1,4 @@
++import { getRecordPhotoLimit } from '../src/app/services/recordPhotoLimit.ts';
+ import assert from 'node:assert/strict';
+ import { readFileSync } from 'node:fs';
+ import vm from 'node:vm';
+@@ -14,7 +15,7 @@ function fixture(outcomes) {
+   let attempt = 0;
+   const toast = Object.fromEntries(['warning', 'error', 'success', 'info'].map(level => [level, (...args) => notices.push({ level, message: args[0] })]));
+   const context = {
+-    toast, console: { error() {} }, File, Date, Math, Error, Uint8Array, btoa, startSelectedRecordPhotoReads, compressRecordPhoto,
++    getRecordPhotoLimit, toast, console: { error() {} }, File, Date, Math, Error, Uint8Array, btoa, startSelectedRecordPhotoReads, compressRecordPhoto,
+     isCleaningSessionUploadsRef: { current: false }, ledgerInputMode: 'single',
+     uploadedImages: [], format: '일기', user: { uid: 'fixture' }, recordId: 'record', prefix: 'diary',
+     setIsUploading: value => busy.push(value), getStorage: () => ({}), getFunctions: () => ({}),
+@@ -52,9 +53,9 @@ test('an upload failure does not discard another successfully uploaded photo', a
+   assert.match(f.notices.at(-1).message, /1장은 실패/);
+ });
+ test('successful uploads preserve the notice about excluded extra selections', async () => {
+-  const f = fixture(['ok', 'ok', 'ok']);
+-  await f.run(5);
+-  assert.equal(f.images.length, 3);
++  const f = fixture(Array(5).fill('ok'));
++  await f.run(7);
++  assert.equal(f.images.length, 5);
+   assert.equal(f.notices.at(-1).level, 'success');
+   assert.match(f.notices.at(-1).message, /초과한 2장/);
+ });
+@@ -152,3 +153,18 @@ test('unsupported local HEIC falls back to server conversion before uploading an
+   assert.equal(metadata[0].takenDate, '2020-01-02');
+   assert.equal(f.notices.at(-1).level, 'success');
+ });
++
++for (const format of ['일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기', '성장기록', '메모', 'HARU가계부']) {
++  test(`${format}: existing three photos accept only two more from a larger selection`, async () => {
++    const f = fixture(['ok', 'ok']);
++    f.context.format = format;
++    f.context.uploadedImages = ['old1', 'old2', 'old3'];
++    await f.run(4);
++    assert.equal(f.images.length, 2);
++    assert.match(f.notices.at(-1).message, /초과한 2장/);
++    f.context.uploadedImages = ['1', '2', '3', '4', '5'];
++    await f.run(1);
++    assert.match(f.notices.at(-1).message, /최대 5장/);
++    assert.equal(f.images.length, 2);
++  });
++}
+diff --git a/frontend/test/record-photos-browser/README.md b/frontend/test/record-photos-browser/README.md
+new file mode 100644
+index 00000000..2b49aa9a
+--- /dev/null
++++ b/frontend/test/record-photos-browser/README.md
+@@ -0,0 +1,15 @@
++# 기록 사진 격리 브라우저 검증
++
++frontend에서 `npm run dev -- --config test/record-photos-browser/vite.config.mjs` 실행 후 http://127.0.0.1:18762 를 연다.
++
++실제 FormatModal·SayuModal·사진 읽기·EXIF·압축 코드를 사용한다. Firebase SDK·인증·구독·로딩·firestoreService는 Vite 테스트 resolver가 모의 구현으로 교체한다. 운영 Firebase·Storage·AI에는 연결하지 않는다. 모의 사진 URL에는 합성 SVG를 표시하며 실제 업로드 이미지 내용은 저장하지 않는다. 저장 데이터는 해당 origin의 localStorage `record-photos-qa`에만 남는다.
++
++- 에세이/일기 → 신규 기록 → 간편 또는 프리미엄 → 제목/본문 입력 → 시험용 사진 7장 선택 → 5장 표시·초과 2장 안내·첨부 버튼 비활성 확인.
++- 저장 후 ‘저장 기록 열기’에서 5장 재표시 확인.
++- 수정하기 → 다섯 번째 사진 삭제 → 4/5 추가 버튼 → 1장 재첨부 → 5장 확인.
++- `/?mobile`은 390×844 iframe으로 같은 컴포넌트의 실제 휴대폰 너비 viewport를 제공한다. 프레임 안에서 동일한 저장 기록을 열고 수정한다.
++- `/?app&edit&plan=premium`으로 프리미엄 구독 mock, 기본은 basic. 사진 한도는 구독값을 참조하지 않는다.
++
++2026-10-22 검증: 간편 에세이에서 7장 중 5장 첨부·저장·재열기·다섯 번째 삭제·재첨부를 브라우저로 확인. 390px 표시 및 수정 화면의 5장 그리드·삭제 버튼 확인. 실제 기기·운영 Firebase 영속 저장은 별도 E2E 대상이다.
++
++사진 첨부가 없던 독서사유·주식 OCR·배뇨일지에는 새 저장 사진 기능을 추가하지 않는다. 보조장부는 기존 10장 한도를 유지한다. 숨김 형식·Flutter 앱은 수정하지 않는다.
+diff --git a/frontend/test/record-photos-browser/firestore.ts b/frontend/test/record-photos-browser/firestore.ts
+new file mode 100644
+index 00000000..7c0051b0
+--- /dev/null
++++ b/frontend/test/record-photos-browser/firestore.ts
+@@ -0,0 +1 @@
++export const firestoreService = new Proxy({}, {get:()=>async()=>[]});
+diff --git a/frontend/test/record-photos-browser/index.html b/frontend/test/record-photos-browser/index.html
+new file mode 100644
+index 00000000..cc54de9a
+--- /dev/null
++++ b/frontend/test/record-photos-browser/index.html
+@@ -0,0 +1,3 @@
++<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0"><div id="root"></div><script type="module">
++if(new URLSearchParams(location.search).has('mobile')){document.getElementById('root').innerHTML='<iframe title="390px 휴대폰 검증" src="/?app&edit" style="width:390px;height:844px;border:1px solid #aaa"></iframe>';}else{import('/main.tsx');}
++</script></body></html>
+\ No newline at end of file
+diff --git a/frontend/test/record-photos-browser/main.tsx b/frontend/test/record-photos-browser/main.tsx
+new file mode 100644
+index 00000000..039a36b1
+--- /dev/null
++++ b/frontend/test/record-photos-browser/main.tsx
+@@ -0,0 +1,21 @@
++import '../../src/styles/index.css';
++import React,{useState} from 'react';
++import {createRoot} from 'react-dom/client';
++import {MemoryRouter} from 'react-router';
++import {Toaster} from 'sonner';
++import {FormatModal} from '../../src/app/components/FormatModal';
++import {SayuModal} from '../../src/app/components/SayuModal';
++import {read,write} from './sdk';
++const emptyTimeline:any[]=[];
++function App(){
++const [mode,setMode]=useState(new URLSearchParams(location.search).has('edit')?'edit':''), [format,setFormat]=useState<any>('에세이');
++const data=read(), key=format==='일기'?'diary':'essay';
++return <MemoryRouter><div style={{padding:12,fontFamily:'sans-serif'}}><h2>사진 5장 격리 검증</h2><p>합성 사진·로컬 모의 저장, 운영 연결 없음</p>
++<select aria-label="기록형식" value={format} onChange={e=>setFormat(e.target.value)}><option>에세이</option><option>일기</option></select>
++<button onClick={()=>setMode('new')}>신규 기록</button><button onClick={()=>setMode('edit')}>저장 기록 열기</button>
++<p>저장된 사진: {JSON.parse(data[key+'_images']||'[]').length}장</p></div>
++<FormatModal isOpen={mode==='new'} onClose={()=>setMode('')} format={format} recordId="photo-qa" initialData={data} onSave={async fields=>{write(fields);setMode('');}}/>
++<SayuModal timelineItems={emptyTimeline} isOpen={mode==='edit'} onClose={()=>setMode('')} content={data[key+'_sayu']||'합성 시험 본문'} originalData={data} format={format} formatKey={key} dateLabel="2026-10-22" recordDate="2026-10-22" firestoreId="photo-qa" images={JSON.parse(data[key+'_images']||'[]')} onSave={async()=>true}/><Toaster/>
++</MemoryRouter>;
++}
++createRoot(document.getElementById('root')!).render(<App/>);
+diff --git a/frontend/test/record-photos-browser/photo.svg b/frontend/test/record-photos-browser/photo.svg
+new file mode 100644
+index 00000000..1633805e
+--- /dev/null
++++ b/frontend/test/record-photos-browser/photo.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" width="300" height="240"><rect width="300" height="240" fill="#dcebd6"/><circle cx="150" cy="100" r="55" fill="#e7ae62"/><text x="65" y="205" font-size="24">QA test photo</text></svg>
+\ No newline at end of file
+diff --git a/frontend/test/record-photos-browser/providers.tsx b/frontend/test/record-photos-browser/providers.tsx
+new file mode 100644
+index 00000000..5978b4d4
+--- /dev/null
++++ b/frontend/test/record-photos-browser/providers.tsx
+@@ -0,0 +1,3 @@
++export { useAuth } from '../reading-ai-browser/providers';
++export const useSubscription = () => ({subscription:{status:'active', plan: new URLSearchParams(location.search).get('plan') || 'basic'}});
++export const useLoading = () => ({showLoading(){},showLoadingWithProgress(){},updateProgress(){},hideLoading(){}});
+diff --git a/frontend/test/record-photos-browser/sdk.ts b/frontend/test/record-photos-browser/sdk.ts
+new file mode 100644
+index 00000000..5ca6cc9e
+--- /dev/null
++++ b/frontend/test/record-photos-browser/sdk.ts
+@@ -0,0 +1,15 @@
++export * from '../reading-ai-browser/sdk';
++const key='record-photos-qa';
++export const read = () => JSON.parse(localStorage.getItem(key) || '{}');
++export const write = (data: any) => localStorage.setItem(key,JSON.stringify({...read(),...data}));
++export const getDoc = async () => ({exists:()=>true,data:read});
++export const setDoc = async (_ref:any,data:any) => write(data);
++export const updateDoc = setDoc;
++export const deleteDoc = async () => {};
++export const deleteField = () => undefined;
++export const arrayRemove = (...args:any[]) => args;
++export const listAll = async () => ({items:[],prefixes:[]});
++export const uploadBytes = async () => {};
++export const getDownloadURL = async (ref:any) => `${location.origin}/photo.svg?id=${encodeURIComponent(String(ref))}`;
++
++export const functions = {};
+diff --git a/frontend/test/record-photos-browser/vite.config.mjs b/frontend/test/record-photos-browser/vite.config.mjs
+new file mode 100644
+index 00000000..2ef352c5
+--- /dev/null
++++ b/frontend/test/record-photos-browser/vite.config.mjs
+@@ -0,0 +1,20 @@
++import { defineConfig } from 'vite';
++import react from '@vitejs/plugin-react';
++import tailwindcss from '@tailwindcss/vite';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++const root = path.dirname(fileURLToPath(import.meta.url));
++export default defineConfig({
++  root, envDir: root, publicDir: path.resolve(root, '../../public'),
++  plugins: [{ name: 'photo-fixture-isolation', enforce: 'pre', resolveId(source, importer) {
++    if (source.startsWith('firebase/')) return path.join(root, 'sdk.ts');
++    if (!importer || !source.startsWith('.')) return;
++    const resolved = path.resolve(path.dirname(importer.split('?')[0]), source);
++    if (/\/firebase(?:\.ts)?$/.test(resolved)) return path.join(root, 'sdk.ts');
++    if (/\/AuthContext(?:\.tsx?)?$/.test(resolved)) return path.join(root, 'providers.tsx');
++    if (/\/firestoreService(?:\.ts)?$/.test(resolved)) return path.join(root, 'firestore.ts');
++    if (/\/(useSubscription|LoadingContext)(?:\.tsx?)?$/.test(resolved)) return path.join(root, 'providers.tsx');
++  } }, react(), tailwindcss()],
++  resolve: { dedupe: ['react', 'react-dom'] },
++  server: { host: '127.0.0.1', port: 18762, strictPort: true, watch: { usePolling: true, interval: 1000 }, fs: { allow: [path.resolve(root, '../..')] } },
++});
+diff --git a/frontend/test/sayuPhotoUpload.test.mjs b/frontend/test/sayuPhotoUpload.test.mjs
+index 0b74128d..2eab668b 100644
+--- a/frontend/test/sayuPhotoUpload.test.mjs
++++ b/frontend/test/sayuPhotoUpload.test.mjs
+@@ -1,3 +1,4 @@
++import { getRecordPhotoLimit } from '../src/app/services/recordPhotoLimit.ts';
+ import assert from 'node:assert/strict';
+ import { test } from 'node:test';
+ import { readFileSync } from 'node:fs';
+@@ -9,10 +10,10 @@ import { persistRecordPhoto } from '../src/app/services/recordPhotoUploadCore.ts
+ const source=readFileSync(new URL('../src/app/components/SayuModal.tsx',import.meta.url),'utf8');
+ const handler=source.slice(source.indexOf('  const handleImageUpload = async'),source.indexOf('  const removeTimelineItem'));
+ const code=transformSync(`${handler}\nglobalThis.run=handleImageUpload;`,{loader:'ts'}).code;
+-function fixture(){
++function fixture(images=['old-photo'], formatKey='diary'){
+  const state={reads:0,uploads:0,conversions:0,deletes:0,stored:null,committed:null,busy:[],notices:[]};
+  const ctx={File,Date,Math,Error,readSelectedRecordPhoto,compressRecordPhoto,persistRecordPhoto,
+- currentUser:{uid:'fixture'},firestoreId:'record',formatKey:'diary',recordDate:'2026-10-17',isUploadingImage:false,TIMELINE_IMAGE_MAX_WIDTH:1600,TIMELINE_IMAGE_QUALITY:0.82,localImages:['old-photo'],RECORD_IMAGE_MAX_BYTES:20*1024*1024,
++ currentUser:{uid:'fixture'},firestoreId:'record',formatKey,recordPhotoLimit:getRecordPhotoLimit(formatKey),recordDate:'2026-10-17',isUploadingImage:false,TIMELINE_IMAGE_MAX_WIDTH:1600,TIMELINE_IMAGE_QUALITY:0.82,localImages:images,RECORD_IMAGE_MAX_BYTES:20*1024*1024,
+  setIsUploadingImage:v=>state.busy.push(v),storage:{},db:{},isHeicLikeFile:f=>/heic|heif/.test(f.type),isSupportedRecordImage:f=>f.type.startsWith('image/'),
+  readOriginalImageMeta:async f=>{assert.equal(await f.text(),'photo');return{takenDate:'2020-01-02'};},
+  compressImage:async (f,width,quality)=>{assert.equal(width,1600);assert.equal(quality,0.82);if(state.failLocal&&f.type==='image/heic')throw new Error('unsupported');return new Blob(['jpeg']);},
+@@ -23,7 +24,7 @@ function fixture(){
+  toast:Object.fromEntries(['error','warning','success','info'].map(k=>[k,v=>state.notices.push([k,v])]))};
+  vm.runInNewContext(code,ctx);
+  const picker=(type,name)=>({type,name,get size(){throw new Error('provider metadata queried');},get lastModified(){throw new Error('provider timestamp queried');},stream(){state.reads++;if(state.failRead)throw new Error('NotReadableError');return new Blob(['photo']).stream();}});
+- return{state,picker,run:f=>ctx.run({target:{files:[f],value:'selected'}})};
++ return{state,picker,ctx,run:f=>ctx.run({target:{files:[f],value:'selected'}})};
+ }
+ for(const[type,name]of[['image/jpeg','iphone.jpg'],['','android.heic']])test(`edit snapshots ${name} once and commits old/new photos and EXIF`,async()=>{
+  const f=fixture();await f.run(f.picker(type,name));assert.equal(f.state.reads,1);assert.equal(f.state.uploads,1);assert.equal(f.state.conversions,0);
+@@ -32,3 +33,22 @@ for(const[type,name]of[['image/jpeg','iphone.jpg'],['','android.heic']])test(`ed
+ test('edit HEIC failure falls back to server exactly once',async()=>{const f=fixture();f.state.failLocal=true;await f.run(f.picker('image/heic','photo.heic'));assert.equal(f.state.conversions,1);assert.equal(f.state.uploads,1);assert.ok(f.state.stored);});
+ test('read failure uploads nothing and permits retry',async()=>{const f=fixture();f.state.failRead=true;await f.run(f.picker('image/jpeg','photo.jpg'));assert.equal(f.state.uploads,0);assert.equal(f.state.committed,null);assert.deepEqual(f.state.busy,[true,false]);assert.match(f.state.notices.at(-1)[1],/원본을 읽지 못했습니다/);f.state.failRead=false;await f.run(f.picker('image/jpeg','photo.jpg'));assert.equal(f.state.uploads,1);});
+ test('save failure rolls back only the new object without changing old photos',async()=>{const f=fixture();f.state.failSave=true;await f.run(f.picker('image/jpeg','photo.jpg'));assert.equal(f.state.deletes,1);assert.equal(f.state.committed,null);assert.equal(f.state.notices.some(([k])=>k==='success'),false);});
++
++for (const plan of ['basic', 'premium']) test(`${plan}: edit persists fifth photo, reopens all five and blocks sixth`, async () => {
++ const f=fixture(['1','2','3','4']); f.ctx.subscription={plan};
++ await f.run(f.picker('image/jpeg','fifth.jpg'));
++ const saved=JSON.parse(f.state.stored.diary_images);
++ assert.deepEqual(saved,['1','2','3','4','new-photo']);
++ const reopened=fixture(saved);
++ await reopened.run(reopened.picker('image/jpeg','sixth.jpg'));
++ assert.equal(reopened.state.uploads,0);
++ assert.match(reopened.state.notices.at(-1)[1],/최대 5장/);
++ reopened.ctx.localImages=saved.filter(url=>url!=='3');
++ await reopened.run(reopened.picker('image/jpeg','replacement.jpg'));
++ assert.equal(JSON.parse(reopened.state.stored.diary_images).length,5);
++});
++test('existing ledger records retain their ten-photo allowance in edit',async()=>{
++ const f=fixture(Array.from({length:9},(_,i)=>String(i)),'ledger');
++ await f.run(f.picker('image/jpeg','tenth.jpg'));
++ assert.equal(JSON.parse(f.state.stored.ledger_images).length,10);
++});

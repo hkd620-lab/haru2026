@@ -55,3 +55,7 @@ test('polishContent SAYU 그룹·generateTitlesForAll·epubExport 의 값이 기
     assert.doesNotMatch(source, prefixArray, `${name}: 접두어 리터럴 배열이 다시 생김`);
   }
 });
+
+test('통계·합본·EPUB 대상 기록형식이 프런트 등록부와 같다(2026-10-23 결정)', () => {
+  assert.deepEqual([...functionsRegistry.STATS_MERGE_RECORD_FORMATS], [...frontendRegistry.STATS_MERGE_RECORD_FORMATS]);
+});

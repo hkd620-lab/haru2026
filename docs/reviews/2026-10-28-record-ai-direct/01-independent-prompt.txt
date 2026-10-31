@@ -1,0 +1,9 @@
+독립 설계·완료 검토 요청. 실행자 대화 맥락은 제공하지 않습니다. 파일 수정·추가 에이전트·Git 변경·Slack 게시 금지. Read/Grep/Glob만 사용하세요.
+저장소: /Users/heogyeongdae/Developer/HARU2026
+PR: https://github.com/hkd620-lab/haru2026/pull/306
+검토 HEAD: a5ebca1438df664bf5ac4c80f153a48931b1703d. 기준 main: d14ead17c370aa462a55cc88e11312748253185a.
+AGENTS.md와 docs/HARU2026_Slack_운영정책.md 8.1을 읽고 규모와 멈춤 조건을 판정하세요. 숨김 LibraryPage 등 금지 대상 점검 금지.
+변경 diff 근거: /private/tmp/haru-record-ai-review.diff
+사용자 요구 원문: 기록 방식 선택은 없애고 작성한 글과 사진을 그대로 이어받아 AI 도움 사용 안내로 연결해. 요금제 보기는 보조로 두고 확인 중에는 포도송이가 보이게 해줘.
+검증 근거: /private/tmp/haru-record-direct-tests.log, /private/tmp/haru-record-direct-build.log. CI: https://github.com/hkd620-lab/haru2026/actions/runs/40619631652
+필요한 변경 파일과 관련 코드만 읽어 실행 경로, 초기화·재시도·사진 보존·기존 기록 호환성·요금제/AI 호출 계약·접근성·검증 충분성을 검토하세요. 승인 / 수정 후 승인 / 재설계 중 하나로 판정하고 구체적 파일·행·재현 조건을 남겨주세요. 최초 검토이며 이전 판정은 없습니다. 병합·배포 승인으로 해석하지 마세요.

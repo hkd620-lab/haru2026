@@ -1,0 +1,139 @@
+diff --git a/frontend/src/app/components/FormatModal.tsx b/frontend/src/app/components/FormatModal.tsx
+index ba3c2c47..eb137cac 100644
+--- a/frontend/src/app/components/FormatModal.tsx
++++ b/frontend/src/app/components/FormatModal.tsx
+@@ -591,0 +592,4 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
++  const [isCheckingHouseholdImport, setIsCheckingHouseholdImport] = useState(false);
++  const [householdImportCheckFailed, setHouseholdImportCheckFailed] = useState(false);
++  const householdImportRefreshVersion = useRef(0);
++  const householdImportRefreshing = useRef(false);
+@@ -592,0 +597,3 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
++  const householdImportSignature = JSON.stringify([user?.uid, kakaoXlsxMonthGroups.flatMap(group => group.rows.map(row => row.entry))]);
++  const householdImportSignatureRef = useRef(householdImportSignature);
++  householdImportSignatureRef.current = householdImportSignature;
+@@ -597 +604,40 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
+-  const householdSaveBusy = isSaving || isSavingKakaoXlsx;
++  const householdSaveBusy = isSaving || isSavingKakaoXlsx || isCheckingHouseholdImport || householdImportCheckFailed;
++  const refreshHouseholdImport = async () => {
++    if (!isOpen || !user?.uid || !hasHouseholdImport || householdSavingRef.current || isDecryptingKakaoXlsx || householdImportRefreshing.current) return;
++    const version = ++householdImportRefreshVersion.current;
++    const signature = householdImportSignature;
++    householdImportRefreshing.current = true;
++    setIsCheckingHouseholdImport(true);
++    setHouseholdImportCheckFailed(false);
++    try {
++      const entries = kakaoXlsxMonthGroups.flatMap(group => group.rows.map(row => row.entry));
++      const checked = await checkHouseholdDuplicates(entries, await loadHouseholdRecords(getFirestore(), user.uid));
++      if (version !== householdImportRefreshVersion.current || signature !== householdImportSignatureRef.current) return;
++      // 이전 선택이 남은 행은 저장 서비스와 동일하게 다시 확인한다.
++      const checks = checked.map(check => check.status === 'new' && householdDecisions[check.entry.id]
++        ? { ...check, status: 'suspect' as const } : check);
++      setHouseholdChecks(checks);
++      const already = new Set(checks.filter(check => check.status === 'already').map(check => check.entry.id));
++      setKakaoXlsxMonthGroups(groups => groups.map(group => ({ ...group, rows: group.rows.map(row => ({ ...row, selected: row.selected && !already.has(row.entry.id) })) })));
++    } catch {
++      if (version === householdImportRefreshVersion.current) setHouseholdImportCheckFailed(true);
++    } finally {
++      if (version === householdImportRefreshVersion.current) {
++        householdImportRefreshing.current = false;
++        setIsCheckingHouseholdImport(false);
++      }
++    }
++  };
++  useEffect(() => {
++    householdImportRefreshVersion.current++;
++    householdImportRefreshing.current = false;
++    setIsCheckingHouseholdImport(false);
++    setHouseholdImportCheckFailed(false);
++    return () => { householdImportRefreshVersion.current++; };
++  }, [isOpen, format, user?.uid]);
++  useEffect(() => {
++    if (!isOpen || !hasHouseholdImport) return;
++    const onFocus = () => { void refreshHouseholdImport(); };
++    window.addEventListener('focus', onFocus);
++    return () => window.removeEventListener('focus', onFocus);
++  }, [isOpen, hasHouseholdImport, householdImportSignature, householdDecisions, isSavingKakaoXlsx, isDecryptingKakaoXlsx]);
+@@ -2876,0 +2923 @@ ${contentValues}
++      setHouseholdImportCheckFailed(false);
+@@ -5134 +5181 @@ ${contentValues.slice(0, 4100)}`,
+-                    onChoose={chooseHouseholdDuplicate} disabled={isSaving || isSavingKakaoXlsx} />
++                    onChoose={chooseHouseholdDuplicate} disabled={householdSaveBusy} />
+@@ -5360 +5407 @@ ${contentValues.slice(0, 4100)}`,
+-                      <HouseholdSaveSummary preview={householdSavePreview} />
++                      <HouseholdSaveSummary preview={householdSavePreview} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={refreshHouseholdImport} />
+@@ -5367 +5414 @@ ${contentValues.slice(0, 4100)}`,
+-                        {householdSaveBusy ? '가계부에 저장 중...' : householdSaveLabel(householdSavePreview)}
++                        {isSaving || isSavingKakaoXlsx ? '가계부에 저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview)}
+@@ -6726 +6773 @@ ${contentValues.slice(0, 4100)}`,
+-                <HouseholdSaveSummary preview={householdSavePreview} />
++                <HouseholdSaveSummary preview={householdSavePreview} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={hasHouseholdImport ? refreshHouseholdImport : undefined} />
+@@ -6732 +6779 @@ ${contentValues.slice(0, 4100)}`,
+-                  {householdSaveBusy ? '저장 중...' : householdSaveLabel(householdSavePreview)}
++                  {isSaving || isSavingKakaoXlsx ? '저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview)}
+diff --git a/frontend/src/app/components/HouseholdSaveSummary.tsx b/frontend/src/app/components/HouseholdSaveSummary.tsx
+index ebeeb6c5..e26406cd 100644
+--- a/frontend/src/app/components/HouseholdSaveSummary.tsx
++++ b/frontend/src/app/components/HouseholdSaveSummary.tsx
+@@ -3 +3,3 @@ import type { HouseholdSavePreview } from '../services/householdSavePreview';
+-export function HouseholdSaveSummary({ preview }: { preview: HouseholdSavePreview }) {
++export function HouseholdSaveSummary({ preview, checking = false, failed = false, onRecheck }: {
++  preview: HouseholdSavePreview; checking?: boolean; failed?: boolean; onRecheck?: () => void;
++}) {
+@@ -4,0 +7 @@ export function HouseholdSaveSummary({ preview }: { preview: HouseholdSavePrevie
++    {checking ? <div>최신 저장 내역으로 다시 확인하고 있습니다.</div> : failed ? <div>최신 저장 내역을 확인하지 못했습니다. 다시 확인한 뒤 저장해 주세요.</div> : <>
+@@ -5,0 +9 @@ export function HouseholdSaveSummary({ preview }: { preview: HouseholdSavePrevie
++    {preview.total > 0 && preview.excluded === preview.total && <div>이미 모두 저장된 거래입니다. 다시 저장할 필요 없이 오른쪽 위 ×를 눌러 닫아도 됩니다.</div>}
+@@ -9,0 +14,2 @@ export function HouseholdSaveSummary({ preview }: { preview: HouseholdSavePrevie
++    </>}
++    {onRecheck && <button type="button" disabled={checking} onClick={onRecheck} style={{ marginTop: 6, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff' }}>최신 저장 내역 다시 확인</button>}
+diff --git a/frontend/src/app/services/householdSavePreview.ts b/frontend/src/app/services/householdSavePreview.ts
+index b9622058..d0e5ba9d 100644
+--- a/frontend/src/app/services/householdSavePreview.ts
++++ b/frontend/src/app/services/householdSavePreview.ts
+@@ -37,0 +38 @@ export function householdSaveLabel(preview: HouseholdSavePreview) {
++  if (preview.total > 0 && preview.excluded === preview.total) return '이미 모두 저장됨';
+diff --git a/frontend/test/householdSave.emulator.test.mjs b/frontend/test/householdSave.emulator.test.mjs
+index e2dbd76b..9b3f1c6e 100644
+--- a/frontend/test/householdSave.emulator.test.mjs
++++ b/frontend/test/householdSave.emulator.test.mjs
+@@ -41,0 +42,22 @@ test('표시한 추가·중복 제외 건수가 실제 트랜잭션 결과와 
++test('529건 중 142건 기존 거래 사용 후 최신 재가져오기는 529건 모두 제외하고 저장본을 보존한다',async()=>{
++ const uid=uidFor('529-reimport'),db=client(uid);
++ const entries=Array.from({length:529},(_,i)=>bank({id:`row-${i}`,amount:String(1000+i),importSource:{kind:'kakao',fileDigest:'fixture-529',key:`fixture-key-${i}`}}));
++ const legacy=entries.slice(0,142).map((e,i)=>({...e,id:`legacy-${i}`,importSource:undefined,transactionAt:undefined}));
++ const ref=doc(db,'users',uid,'records','legacy');
++ await setDoc(ref,{date:'2026-10-05',household_entries:JSON.stringify(legacy)});
++ const before=await checkHouseholdDuplicates(entries,await loadHouseholdRecords(db,uid));
++ const stalePreview=previewHouseholdSave(entries.map(entry=>({entry,selected:true})),before,{});
++ assert.equal(stalePreview.added,387);assert.equal(stalePreview.pending,142);
++ const decisions=Object.fromEntries(before.filter(c=>c.status==='suspect').map(c=>[c.entry.id,{token:c.token,action:'skip'}]));
++ const first=await saveHouseholdEntries(db,uid,entries,decisions);
++ assert.equal(first.added,387);assert.equal(first.skipped,142);
++ const records=await loadHouseholdRecords(db,uid);
++ assert.equal(records.reduce((n,r)=>n+JSON.parse(r.data.household_entries).length,0),529);
++ const checks=await checkHouseholdDuplicates(entries,records);
++ const refreshed=previewHouseholdSave(entries.map(entry=>({entry,selected:false})),checks,decisions);
++ assert.equal(refreshed.added,0);assert.equal(refreshed.excluded,529);assert.equal(refreshed.pending,0);
++ const retry=await saveHouseholdEntries(db,uid,entries,decisions);
++ assert.equal(retry.added,0);assert.equal(retry.already,529);
++ assert.deepEqual(await loadHouseholdRecords(db,uid),records);
++});
++
+diff --git a/frontend/test/householdSavePreview.test.mjs b/frontend/test/householdSavePreview.test.mjs
+index bb21e65c..23898e73 100644
+--- a/frontend/test/householdSavePreview.test.mjs
++++ b/frontend/test/householdSavePreview.test.mjs
+@@ -40,0 +41,13 @@ test('자동 제외와 미선택을 구분하고 파일 내 정상 반복 결제
++  assert.equal(householdSaveLabel(retry), '이미 모두 저장됨');
++  const markup = renderToStaticMarkup(React.createElement(HouseholdSaveSummary, { preview: retry }));
++  assert.match(markup, /다시 저장할 필요 없이/);
++  assert.match(markup, /닫아도 됩니다/);
++});
++
++test('최신 내역 확인 중이거나 확인 실패 시 이전 추가 예정 건수를 확정 표시하지 않는다', () => {
++  const preview = { total: 529, added: 387, excluded: 0, pending: 142, unchecked: 0, unselected: 0 };
++  for (const state of [{ checking: true }, { failed: true }]) {
++    const markup = renderToStaticMarkup(React.createElement(HouseholdSaveSummary, { preview, ...state, onRecheck() {} }));
++    assert.doesNotMatch(markup, /추가 예정 387건/);
++    assert.match(markup, /최신 저장 내역/);
++  }

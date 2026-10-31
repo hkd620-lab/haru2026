@@ -1,0 +1,15 @@
+{
+  "purpose": "sayuPolishBasic",
+  "provider": "openai",
+  "model": "gpt-6-luna",
+  "requestShape": {
+    "model": "gpt-6-luna",
+    "reasoningEffort": "none",
+    "maxCompletionTokens": 8192
+  },
+  "inputTokens": 654,
+  "outputTokens": 71,
+  "text": "오늘 친구가 다음 주에 같이 걸을 수 있겠냐고 물었어요. 저는 아직 모르겠다고 했어요. 무릎이 조금 불편해서요. 병원에 다녀온 건 아니에요. 나을 거라고 큰소리치고 싶진 않고, 일단 오늘은 쉬었어요.",
+  "nonempty": true,
+  "finish": "stop"
+}

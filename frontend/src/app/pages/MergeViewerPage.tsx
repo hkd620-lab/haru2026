@@ -6,11 +6,16 @@ import { getOrigin } from '../services/v2Origin';
 import { toast } from 'sonner';
 import { exportRecordsToEpub } from '../services/epubExportService';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
+import { EpubReaderNotice } from '../components/EpubReaderNotice';
+import { getEpubReaderHint } from '../utils/epubReaderGuide';
 import { buildFormatKeyMap } from '../records/formatRegistry';
+import { getRecordPhotoUrls, isSpecialDayRecord } from '../records/recordStats';
 
 // 합본 보기에서 사진을 찾을 형식(그 밖의 형식은 일기 접두어로 찾는다)
+const MAX_EPUB_RECORDS = 500;
+
 const MERGE_VIEWER_FORMATS: RecordFormat[] = [
-  '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기', '메모',
+  '일기', '에세이', '선교보고', '일반보고', '업무일지', '여행기록', '텃밭일지', '애완동물관찰일지', '육아일기', '메모', '독서사유',
 ];
 
 
@@ -19,7 +24,6 @@ interface ViewerRecord {
   weather?: string;
   temperature?: string;
   mood?: string;
-  mergeRating?: number;
   [key: string]: any;
 }
 
@@ -28,7 +32,7 @@ interface LocationState {
   format: RecordFormat;
   startDate: string;
   endDate: string;
-  threshold: number;
+  filter?: 'all' | 'special';
 }
 
 export function MergeViewerPage() {
@@ -60,30 +64,16 @@ export function MergeViewerPage() {
     );
   }
 
-  const { records, format, startDate, endDate, threshold } = state;
+  const { records, format, startDate, endDate } = state;
   const totalPages = records.length + 2;
 
   // 형식별 prefix (값은 형식 등록부, 범위는 MERGE_VIEWER_FORMATS)
   const formatPrefix = buildFormatKeyMap(MERGE_VIEWER_FORMATS)[format as RecordFormat] || 'diary';
+  const filterLabel = state.filter === 'special' ? '특별한 날로 표시한 SAYU 기록' : 'SAYU 완료 기록';
+  const specialDayCount = records.filter((record) => isSpecialDayRecord(record, formatPrefix)).length;
 
-  // 사진 파싱 함수
-  const getImages = (record: ViewerRecord): string[] => {
-    const imagesKey = `${formatPrefix}_images`;
-    const imagesData = record[imagesKey];
-    
-    if (!imagesData) return [];
-    
-    try {
-      const parsed = JSON.parse(imagesData);
-      if (Array.isArray(parsed)) {
-        return parsed.filter((url: any) => typeof url === 'string' && url.startsWith('http'));
-      }
-    } catch {
-      return [];
-    }
-    
-    return [];
-  };
+  // 사진: 그 형식의 _images(없으면 _imageMeta), 기록당 최대 5장 — EPUB(functions/src/epubExport.ts)과 같은 규칙
+  const getImages = (record: ViewerRecord): string[] => getRecordPhotoUrls(record, formatPrefix);
 
   // 대표 사진 후보 목록 (records 순서대로 각 레코드 첫 번째 이미지)
   const getCoverCandidates = (): string[] => {
@@ -156,8 +146,17 @@ export function MergeViewerPage() {
   const handleSaveEPUB = async () => {
     setEpubLoading(true);
     try {
-      const { count, fileName } = await exportRecordsToEpub(startDate, endDate, format as string);
-      toast.success(`EPUB 저장 완료 — ${count}개 기록 · ${fileName}`);
+      // 화면·PDF와 같은 기록(같은 순서)을 EPUB에 담도록 기록 ID를 넘긴다. 서버는 한 번에 500개까지 받는다.
+      if (records.length > MAX_EPUB_RECORDS) {
+        toast.warning(`EPUB은 한 번에 ${MAX_EPUB_RECORDS}개 기록까지 만들 수 있습니다. 기간을 나눠 주세요.`);
+        return;
+      }
+      const result = await exportRecordsToEpub(startDate, endDate, format as string, records.map((record) => String(record.id)), state.filter);
+      if (!result) return;
+      const { count, fileName, skippedPhotos, limitedPhotos } = result;
+      toast.success(`EPUB 저장 완료 — ${count}개 기록 · ${fileName}`, { description: getEpubReaderHint(), duration: 8000 });
+      if (skippedPhotos > 0) toast.warning(`사진 ${skippedPhotos}장을 내려받지 못해 EPUB에서 뺐습니다.`);
+      if (limitedPhotos > 0) toast.warning(`EPUB 한 파일에는 사진을 200장까지 넣습니다. 사진 ${limitedPhotos}장은 넣지 않았습니다.`);
     } catch (err) {
       console.error('EPUB 저장 실패:', err);
       toast.error('EPUB 저장에 실패했습니다. 다시 시도해 주세요.');
@@ -169,6 +168,20 @@ export function MergeViewerPage() {
   // 사진 레이아웃 렌더링 (인쇄용)
   const renderPhotosForPrint = (images: string[]) => {
     if (images.length === 0) return null;
+
+    // 4장 이상도 모두 표시한다. 기존 1~3장 배치는 유지한다.
+    if (images.length >= 4) {
+      return (
+        <div className="print-photos mb-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+          {images.map((img, idx) => (
+            <img key={idx} src={img} alt={`기록 사진 ${idx + 1}`}
+              className="w-full rounded-lg object-contain"
+              style={{ width: '100%', minWidth: 0, height: 120, maxHeight: 120, backgroundColor: '#f5f5f5' }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          ))}
+        </div>
+      );
+    }
 
     // 1장
     if (images.length === 1) {
@@ -239,6 +252,20 @@ export function MergeViewerPage() {
   const renderPhotosForScreen = (images: string[]) => {
     if (images.length === 0) return null;
 
+    // 4장 이상도 모두 표시한다. 기존 1~3장 배치는 유지한다.
+    if (images.length >= 4) {
+      return (
+        <div className="mb-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+          {images.map((img, idx) => (
+            <img key={idx} src={img} alt={`기록 사진 ${idx + 1}`}
+              className="w-full rounded-lg object-contain"
+              style={{ width: '100%', minWidth: 0, height: 200, backgroundColor: '#f5f5f5' }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          ))}
+        </div>
+      );
+    }
+
     // 1장
     if (images.length === 1) {
       return (
@@ -308,14 +335,13 @@ export function MergeViewerPage() {
     if (currentPage === 0) {
       return {
         title: `${format} 합본`,
-        preview: `${startDate} ~ ${endDate}\n총 ${records.length}개의 기록 · 별점 ${threshold}점 이상`,
+        preview: `${startDate} ~ ${endDate}\n총 ${records.length}개의 기록 · ${filterLabel}`,
       };
     }
     if (currentPage === totalPages - 1) {
-      const avg = (records.reduce((sum, r) => sum + (r.mergeRating || 0), 0) / records.length).toFixed(1);
       return {
         title: '기록 요약',
-        preview: `총 ${records.length}개 · 평균 별점 ${avg}점`,
+        preview: `총 ${records.length}개 · 특별한 날 ${specialDayCount}건`,
       };
     }
     const record = records[currentPage - 1];
@@ -345,7 +371,7 @@ export function MergeViewerPage() {
               총 {records.length}개의 기록
             </p>
             <p className="text-sm" style={{ color: '#999' }}>
-              별점 {threshold}점 이상
+              {filterLabel}
             </p>
           </div>
           
@@ -395,10 +421,10 @@ export function MergeViewerPage() {
             </div>
             <div className="bg-white rounded-lg p-6 shadow-md text-center">
               <p className="text-sm mb-2" style={{ color: '#999' }}>
-                평균 별점
+                특별한 날
               </p>
               <p className="text-4xl font-bold" style={{ color: '#1A3C6E' }}>
-                {(records.reduce((sum, r) => sum + (r.mergeRating || 0), 0) / records.length).toFixed(1)}
+                {specialDayCount}
               </p>
             </div>
           </div>
@@ -427,12 +453,12 @@ export function MergeViewerPage() {
           </h2>
           {/* 환경 정보 */}
           <div className="flex gap-2 flex-wrap mb-6">
-            {record.mergeRating && (
+            {isSpecialDayRecord(record, formatPrefix) && (
               <span
                 className="px-4 py-2 rounded-full text-sm font-medium"
                 style={{ backgroundColor: '#FFF8F0', color: '#F59E0B' }}
               >
-                {'⭐'.repeat(record.mergeRating)}
+                ✨ 특별한 날
               </span>
             )}
             {record.weather && (
@@ -523,7 +549,7 @@ export function MergeViewerPage() {
             background-color: white !important;
           }
 
-          /* 환경 태그(날씨/기분/별점 뱃지) 인쇄 시 흰색 처리 */
+          /* 환경 태그(날씨/기분/특별한 날 뱃지) 인쇄 시 흰색 처리 */
           .env-tag {
             background: white !important;
             background-color: white !important;
@@ -837,6 +863,7 @@ export function MergeViewerPage() {
                   ? <><GrapeLoadingMini size={18} color="#FEFBE8" /> EPUB 생성 중...</>
                   : '📚 EPUB 저장'}
               </button>
+              <div className="mb-3"><EpubReaderNotice /></div>
               {/* 취소 버튼 */}
               <button
                 onClick={() => setShowPreviewModal(false)}
@@ -862,7 +889,7 @@ export function MergeViewerPage() {
             총 {records.length}개의 기록
           </p>
           <p style={{ fontSize: '12pt', color: '#999' }}>
-            별점 {threshold}점 이상
+            {filterLabel}
           </p>
           {coverImage && (
             <img src={coverImage} alt="대표 사진" />
@@ -887,7 +914,7 @@ export function MergeViewerPage() {
                   })}
                 </h2>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
-                  {record.mergeRating && (
+                  {isSpecialDayRecord(record, formatPrefix) && (
                     <span className="env-tag" style={{
                       fontSize: '10pt',
                       padding: '4px 12px',
@@ -895,7 +922,7 @@ export function MergeViewerPage() {
                       backgroundColor: '#FFF8F0',
                       color: '#F59E0B'
                     }}>
-                      {'⭐'.repeat(record.mergeRating)}
+                      ✨ 특별한 날
                     </span>
                   )}
                   {record.weather && (
@@ -965,9 +992,9 @@ export function MergeViewerPage() {
               borderRadius: '8px',
               border: '1px solid #e5e5e5'
             }}>
-              <p style={{ fontSize: '10pt', color: '#999', marginBottom: '10px' }}>평균 별점</p>
+              <p style={{ fontSize: '10pt', color: '#999', marginBottom: '10px' }}>특별한 날</p>
               <p style={{ fontSize: '28pt', fontWeight: 'bold', color: '#1A3C6E' }}>
-                {(records.reduce((sum, r) => sum + (r.mergeRating || 0), 0) / records.length).toFixed(1)}점
+                {specialDayCount}건
               </p>
             </div>
           </div>

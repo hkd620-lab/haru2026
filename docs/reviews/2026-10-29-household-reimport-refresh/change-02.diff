@@ -1,0 +1,60 @@
+diff --git a/frontend/src/app/components/FormatModal.tsx b/frontend/src/app/components/FormatModal.tsx
+index eb137cac..41da46d9 100644
+--- a/frontend/src/app/components/FormatModal.tsx
++++ b/frontend/src/app/components/FormatModal.tsx
+@@ -603,0 +604,2 @@
++  const householdAllAlready = householdSavePreview.total > 0 && householdSavePreview.excluded === householdSavePreview.total
++    && householdSaveRows.every(row => householdChecks.some(check => check.entry.id === row.entry.id && check.status === 'already'));
+@@ -5407 +5409 @@
+-                      <HouseholdSaveSummary preview={householdSavePreview} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={refreshHouseholdImport} />
++                      <HouseholdSaveSummary preview={householdSavePreview} allAlready={householdAllAlready} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={refreshHouseholdImport} />
+@@ -5414 +5416 @@
+-                        {isSaving || isSavingKakaoXlsx ? '가계부에 저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview)}
++                        {isSaving || isSavingKakaoXlsx ? '가계부에 저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview, householdAllAlready)}
+@@ -6773 +6775 @@
+-                <HouseholdSaveSummary preview={householdSavePreview} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={hasHouseholdImport ? refreshHouseholdImport : undefined} />
++                <HouseholdSaveSummary preview={householdSavePreview} allAlready={householdAllAlready} checking={isCheckingHouseholdImport} failed={householdImportCheckFailed} onRecheck={hasHouseholdImport ? refreshHouseholdImport : undefined} />
+@@ -6779 +6781 @@
+-                  {isSaving || isSavingKakaoXlsx ? '저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview)}
++                  {isSaving || isSavingKakaoXlsx ? '저장 중...' : isCheckingHouseholdImport ? '최신 저장 내역 확인 중...' : householdImportCheckFailed ? '최신 저장 내역 확인 필요' : householdSaveLabel(householdSavePreview, householdAllAlready)}
+diff --git a/frontend/src/app/components/HouseholdSaveSummary.tsx b/frontend/src/app/components/HouseholdSaveSummary.tsx
+index e26406cd..819e457c 100644
+--- a/frontend/src/app/components/HouseholdSaveSummary.tsx
++++ b/frontend/src/app/components/HouseholdSaveSummary.tsx
+@@ -3,2 +3,2 @@
+-export function HouseholdSaveSummary({ preview, checking = false, failed = false, onRecheck }: {
+-  preview: HouseholdSavePreview; checking?: boolean; failed?: boolean; onRecheck?: () => void;
++export function HouseholdSaveSummary({ preview, checking = false, failed = false, allAlready = false, onRecheck }: {
++  preview: HouseholdSavePreview; checking?: boolean; failed?: boolean; allAlready?: boolean; onRecheck?: () => void;
+@@ -9 +9,3 @@
+-    {preview.total > 0 && preview.excluded === preview.total && <div>이미 모두 저장된 거래입니다. 다시 저장할 필요 없이 오른쪽 위 ×를 눌러 닫아도 됩니다.</div>}
++    {preview.total > 0 && preview.excluded === preview.total && (allAlready
++      ? <div>이미 모두 저장된 거래입니다. 다시 저장할 필요 없이 오른쪽 위 ×를 눌러 닫아도 됩니다.</div>
++      : <div>추가할 거래는 없습니다. 이번 중복 제외 선택을 기억하려면 저장해 주세요.</div>)}
+diff --git a/frontend/src/app/services/householdSavePreview.ts b/frontend/src/app/services/householdSavePreview.ts
+index d0e5ba9d..99111f9c 100644
+--- a/frontend/src/app/services/householdSavePreview.ts
++++ b/frontend/src/app/services/householdSavePreview.ts
+@@ -37,2 +37,2 @@
+-export function householdSaveLabel(preview: HouseholdSavePreview) {
+-  if (preview.total > 0 && preview.excluded === preview.total) return '이미 모두 저장됨';
++export function householdSaveLabel(preview: HouseholdSavePreview, allAlready = false) {
++  if (allAlready && preview.total > 0 && preview.excluded === preview.total) return '이미 모두 저장됨';
+diff --git a/frontend/test/householdSavePreview.test.mjs b/frontend/test/householdSavePreview.test.mjs
+index 23898e73..5ff7f518 100644
+--- a/frontend/test/householdSavePreview.test.mjs
++++ b/frontend/test/householdSavePreview.test.mjs
+@@ -41,2 +41,2 @@
+-  assert.equal(householdSaveLabel(retry), '이미 모두 저장됨');
+-  const markup = renderToStaticMarkup(React.createElement(HouseholdSaveSummary, { preview: retry }));
++  assert.equal(householdSaveLabel(retry, true), '이미 모두 저장됨');
++  const markup = renderToStaticMarkup(React.createElement(HouseholdSaveSummary, { preview: retry, allAlready: true }));
+@@ -46,0 +47,8 @@
++test('사용자가 모두 제외로 선택했지만 아직 저장 전이면 저장 불필요라고 안내하지 않는다', () => {
++  const preview = { total: 2, added: 0, excluded: 2, pending: 0, unchecked: 0, unselected: 0 };
++  const markup = renderToStaticMarkup(React.createElement(HouseholdSaveSummary, { preview }));
++  assert.doesNotMatch(markup, /닫아도 됩니다/);
++  assert.match(markup, /이번 중복 제외 선택을 기억하려면 저장/);
++  assert.equal(householdSaveLabel(preview), '추가 없이 중복 제외 확인');
++});
++

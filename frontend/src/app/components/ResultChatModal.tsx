@@ -1,3 +1,4 @@
+import { readSelectedPhotoAttachments } from '../services/selectedRecordPhoto';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { collection, doc, getDoc, getDocs, getDocsFromServer, limit, orderBy, query } from 'firebase/firestore';
 import { Paperclip, X } from 'lucide-react';
@@ -467,7 +468,7 @@ export function ResultChatModal({
       return;
     }
 
-    const toUpload = files.slice(0, remainingSlots);
+    const selectedAttachments = readSelectedPhotoAttachments(files.slice(0, remainingSlots));
     const uploaded: HaruLawAttachmentRef[] = [];
     const uploadScopeId = attachmentScopeRef.current;
     activeUploadScopeRef.current = uploadScopeId;
@@ -475,6 +476,7 @@ export function ResultChatModal({
     uploadingFilesRef.current = true;
     setUploadingFiles(true);
     try {
+      const toUpload = await selectedAttachments;
       for (const file of toUpload) {
         if (!HARULAW_ATTACH_ALLOWED_TYPES.has(file.type)) {
           const userError = getHaruLawUserErrorByReason('ATTACHMENT_UNSUPPORTED_TYPE');

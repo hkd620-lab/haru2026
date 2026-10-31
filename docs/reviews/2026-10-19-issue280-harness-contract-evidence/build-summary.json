@@ -1,0 +1,12 @@
+{
+  "command": "cd frontend && npm run build",
+  "exitCode": 0,
+  "buildResult": [
+    "\u2713 built in 34.98s"
+  ],
+  "firebaseEnv": "12 dummy VITE_FIREBASE_* and VITE_AI_LIBRARY_FIREBASE_* values",
+  "deployed": false,
+  "runtime": "v26.8.2",
+  "baseline": "a4d55436fee851f2b66f1ae86a62dcdeb21dcadf",
+  "testCommit": "92a7e4fcd58f030e265759613e0197e1d02f0f23"
+}

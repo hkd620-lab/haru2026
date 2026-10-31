@@ -1,0 +1,5 @@
+title: Firebase Hosting API State Reader
+description: Read API state for Hosting CI preflight. No API enable, disable, use, IAM or deployment permission.
+stage: GA
+includedPermissions:
+  - serviceusage.services.get

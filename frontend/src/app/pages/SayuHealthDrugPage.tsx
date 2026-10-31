@@ -1,10 +1,11 @@
+import { readSelectedRecordPhotos } from '../services/selectedRecordPhoto';
 import { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
-import { compressImage } from '../services/imageService';
+import { compressUploadPhoto as compressImage } from '../services/photoUploadService';
 import GrapeLoadingMini from '../components/GrapeLoadingMini';
 
 type DrugItem = {
@@ -337,10 +338,11 @@ export function SayuHealthDrugPage() {
     if (!files || files.length === 0) return;
 
     const remaining = MAX_PHOTOS - photos.length;
-    const toProcess = Array.from(files).slice(0, remaining);
+    const selectedPhotos = readSelectedRecordPhotos(Array.from(files).slice(0, remaining), message => toast.error(message));
 
     setPhotoProcessing(true);
     try {
+      const toProcess = await selectedPhotos;
       const newSlots: PhotoSlot[] = [];
       for (const file of toProcess) {
         if (file.size > 20 * 1024 * 1024) {
@@ -696,7 +698,7 @@ export function SayuHealthDrugPage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           multiple
           capture="environment"
           onChange={onPhotoChange}

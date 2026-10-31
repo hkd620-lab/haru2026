@@ -1,0 +1,22 @@
+[
+  {
+    "name": "related-tests",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "--test",
+      "test/haruLawError.test.mjs",
+      "test/haruLawAttachmentCleanup.test.mjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "law-easy-explain",
+    "command": [
+      "node",
+      "test/lawEasyExplain.policy.test.cjs"
+    ],
+    "exitCode": 0
+  }
+]

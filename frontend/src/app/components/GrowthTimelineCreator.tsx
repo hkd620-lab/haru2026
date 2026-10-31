@@ -1,3 +1,4 @@
+import { readSelectedRecordPhotos } from '../services/selectedRecordPhoto';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -5,7 +6,7 @@ import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage
 import { toast } from 'sonner';
 import { db, storage } from '../../firebase';
 import { firestoreService } from '../services/firestoreService';
-import { compressImage } from '../services/imageService';
+import { compressUploadPhoto as compressImage } from '../services/photoUploadService';
 import { readOriginalImageMeta } from '../services/photoMetadataService';
 import {
   getLocationCandidateFromGps,
@@ -328,63 +329,72 @@ export function GrowthTimelineCreator({ uid, onDone, onSavingChange }: GrowthTim
   }, []);
 
   const handleFiles = async (event: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []).filter(file => file.type.startsWith('image/'));
-    if (files.length === 0) return;
+    const sources = Array.from(event.target.files || []);
+    if (sources.length === 0) return;
+    const selectedPhotos = readSelectedRecordPhotos(sources, message => toast.error(message));
 
     setIsReading(true);
     try {
+      const files = await selectedPhotos;
+      if (!files.length) return;
       const nextItems: DraftTimelineItem[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const meta = await readOriginalImageMeta(file);
-        const hasExifDate = typeof meta.takenDate === 'string' && meta.takenDate.trim().length > 0;
-        const latitude = typeof meta.latitude === 'number' ? meta.latitude : undefined;
-        const longitude = typeof meta.longitude === 'number' ? meta.longitude : undefined;
-        const hasGps = typeof latitude === 'number' && typeof longitude === 'number';
-        let locationCandidate: ReverseGeocodeCandidate | undefined;
-        let locationLabel = '';
-        let locationStatus: DraftTimelineItem['locationStatus'] = hasGps ? 'loading' : 'none';
+        try {
+          const meta = await readOriginalImageMeta(file);
+          const hasExifDate = typeof meta.takenDate === 'string' && meta.takenDate.trim().length > 0;
+          const latitude = typeof meta.latitude === 'number' ? meta.latitude : undefined;
+          const longitude = typeof meta.longitude === 'number' ? meta.longitude : undefined;
+          const hasGps = typeof latitude === 'number' && typeof longitude === 'number';
+          let locationCandidate: ReverseGeocodeCandidate | undefined;
+          let locationLabel = '';
+          let locationStatus: DraftTimelineItem['locationStatus'] = hasGps ? 'loading' : 'none';
 
-        if (hasGps) {
-          try {
-            const candidate = await getLocationCandidateFromGps(latitude, longitude);
-            if (candidate) {
-              locationCandidate = candidate;
-              // 자동 인식한 장소명을 기본값으로 (사용자가 그대로 두거나 수정 가능)
-              locationLabel = candidate.placeName
-                || candidate.regionLabel
-                || candidate.roadAddress
-                || candidate.jibunAddress
-                || '';
-              locationStatus = 'found';
-            } else {
-              locationStatus = 'not_found';
+          if (hasGps) {
+            try {
+              const candidate = await getLocationCandidateFromGps(latitude, longitude);
+              if (candidate) {
+                locationCandidate = candidate;
+                // 자동 인식한 장소명을 기본값으로 (사용자가 그대로 두거나 수정 가능)
+                locationLabel = candidate.placeName
+                  || candidate.regionLabel
+                  || candidate.roadAddress
+                  || candidate.jibunAddress
+                  || '';
+                locationStatus = 'found';
+              } else {
+                locationStatus = 'not_found';
+              }
+            } catch (error) {
+              console.warn('성장타임라인 촬영장소 후보 확인 실패');
+              locationStatus = 'error';
             }
-          } catch (error) {
-            console.warn('성장타임라인 촬영장소 후보 확인 실패');
-            locationStatus = 'error';
           }
-        }
 
-        nextItems.push({
-          id: `${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}`,
-          file,
-          previewUrl: URL.createObjectURL(file),
-          originalName: file.name,
-          url: '',
-          takenDate: hasExifDate ? meta.takenDate! : today,
-          metadataSource: hasExifDate ? 'exif' : 'manualRequired',
-          memo: '',
-          order: items.length + i,
-          latitude,
-          longitude,
-          locationCandidate,
-          locationLabel,
-          locationStatus,
-        });
+          const compressed = await compressImage(file, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
+          const uploadFile = new File([compressed], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+          nextItems.push({
+            id: `${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}`,
+            file: uploadFile,
+            previewUrl: URL.createObjectURL(uploadFile),
+            originalName: file.name,
+            url: '',
+            takenDate: hasExifDate ? meta.takenDate! : today,
+            metadataSource: hasExifDate ? 'exif' : 'manualRequired',
+            memo: '',
+            order: items.length + i,
+            latitude,
+            longitude,
+            locationCandidate,
+            locationLabel,
+            locationStatus,
+          });
+        } catch {
+          toast.error('변환하지 못한 사진은 제외했습니다. 다른 사진은 유지됩니다.');
+        }
       }
       setItems(prev => sortDraftItems([...prev, ...nextItems]).map((item, index) => ({ ...item, order: index })));
-      toast.success(`${nextItems.length}장의 사진을 불러왔습니다.`);
+      if (nextItems.length) toast.success(`${nextItems.length}장의 사진을 불러왔습니다.`);
     } catch (error) {
       console.error('성장타임라인 사진 읽기 실패:', error);
       toast.error('사진 정보를 읽지 못했습니다.');
@@ -449,7 +459,7 @@ export function GrowthTimelineCreator({ uid, onDone, onSavingChange }: GrowthTim
         const safeName = sanitizeFileName(removeFileExtension(item.originalName));
         const fileName = `${timelineId}_${String(index + 1).padStart(2, '0')}_${safeName}.jpg`;
         const imageRef = ref(storage, `users/${uid}/format_photos/${fileName}`);
-        const compressed = await compressImage(item.file, TIMELINE_IMAGE_MAX_WIDTH, TIMELINE_IMAGE_QUALITY);
+        const compressed = item.file;
         await uploadBytes(imageRef, compressed, { contentType: 'image/jpeg' });
         const url = await getDownloadURL(imageRef);
         savedItems.push(serializeTimelineRecordItem(item, url, index));
@@ -542,7 +552,7 @@ export function GrowthTimelineCreator({ uid, onDone, onSavingChange }: GrowthTim
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         multiple
         onChange={handleFiles}
         style={{ display: 'none' }}

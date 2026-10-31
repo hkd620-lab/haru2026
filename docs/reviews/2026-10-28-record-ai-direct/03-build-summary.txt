@@ -1,0 +1,4 @@
+Firebase build environment validation passed.
+✓ 3533 modules transformed.
+✓ built in 34.72s
+precache  787 entries (20063.21 KiB)

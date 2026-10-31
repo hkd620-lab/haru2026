@@ -415,8 +415,35 @@ ${sourceBlock}
   }
 );
 
+// Preserve every delimited quotation conservatively, including nested quotes and whitespace.
+// Ambiguous/unclosed quotation marks fail closed; never include manuscript text in errors.
+function polishQuotations(text: string): string[] {
+  const pairs: Record<string, string> = { '"': '"', "'": "'", "“": "”", "‘": "’", "「": "」", "『": "』" };
+  const closing = new Set(Object.values(pairs));
+  const stack: string[] = [];
+  const quotes: string[] = [];
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (!pairs[char] && !closing.has(char)) continue;
+    // English contractions/possessives inside words are not quotation delimiters.
+    if ((char === "'" || char === "’") && /[a-zA-Z0-9]/.test(text[i - 1] || "") && /[a-zA-Z0-9]/.test(text[i + 1] || "")) continue;
+    if (stack.length && char === stack[stack.length - 1]) {
+      stack.pop();
+      if (!stack.length) quotes.push(text.slice(start, i + 1));
+    } else if (pairs[char]) {
+      if (!stack.length) start = i;
+      stack.push(pairs[char]);
+    } else {
+      throw new Error("Unbalanced quotation marks");
+    }
+  }
+  if (stack.length) throw new Error("Unbalanced quotation marks");
+  return quotes;
+}
+
 // ───────────────────────────────────────────────────────────
-// 4-1단계 — AI 윤문 (초고 다듬기, gpt-5.5). 사실·내용 불변, 흐름·가독성만.
+// 4-1단계 — AI 윤문 (초고 다듬기, gpt-6.1-sol, low). 사실·내용 불변, 흐름·가독성만.
 // ───────────────────────────────────────────────────────────
 export const polishElderBookChapters = onCall(
   { region: "asia-northeast3", memory: "512MiB", secrets: [OPENAI_API_KEY], timeoutSeconds: 540 },
@@ -431,7 +458,14 @@ export const polishElderBookChapters = onCall(
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     if (drafted.length === 0) throw new HttpsError("failed-precondition", "먼저 가편을 작성해주세요 (4단계).");
 
+    // Validate all drafts before spending any AI calls or changing stored results.
+    const originalQuotes = drafted.map((c) => {
+      try { return polishQuotations(c.draft); } catch {
+        throw new HttpsError("failed-precondition", "초고의 따옴표 짝을 확인해주세요. 기존 윤문은 변경하지 않았습니다.");
+      }
+    });
     const client = new OpenAI({ apiKey: OPENAI_API_KEY.value() });
+    const pending: { chapter: typeof drafted[number]; content: string }[] = [];
     const polished: { chapterId: string; title: string; wordCount: number }[] = [];
 
     for (const c of drafted) {
@@ -440,17 +474,33 @@ export const polishElderBookChapters = onCall(
 [엄격한 규칙]
 - 사실·사건·내용을 바꾸거나 새로 추가하지 말 것 (윤문만)
 - 원문 화자의 톤 유지, 과장·미사여구 금지
+- 따옴표로 둘러싼 인용문은 따옴표와 내부 문구·어미·문장부호·띄어쓰기·줄바꿈까지 원문 그대로 유지. 삭제·추가·중복·순서 변경 금지
 - 문장 흐름·연결·가독성만 개선
 - 마크다운 없이 본문 산문만 출력
 
 [초고]
 ${c.draft}`;
       const res = await client.chat.completions.create({
-        model: OPENAI_MODEL,
+        model: "gpt-6.1-sol",
+        reasoning_effort: "low",
         max_completion_tokens: 6000,
         messages: [{ role: "user", content: prompt }],
       });
       const content = (res.choices[0]?.message?.content || "").trim();
+      let quotes: string[];
+      try { quotes = polishQuotations(content); } catch {
+        throw new HttpsError("failed-precondition", "윤문 결과의 인용문을 확인할 수 없어 저장하지 않았습니다. 기존 윤문은 유지됩니다.");
+      }
+      const expected = originalQuotes[pending.length];
+      if (!content || res.choices[0]?.finish_reason !== "stop" ||
+          quotes.length !== expected.length || quotes.some((quote, i) => quote !== expected[i])) {
+        throw new HttpsError("failed-precondition", "윤문 결과가 불완전하거나 인용문이 변경되어 저장하지 않았습니다. 기존 윤문은 유지됩니다.");
+      }
+      pending.push({ chapter: c, content });
+    }
+
+    // Only write after every chapter passed: a later quote failure must not partially overwrite earlier results.
+    for (const { chapter: c, content } of pending) {
       await db.collection("books").doc(ELDER_BOOK_ID).collection("chapters").doc(c.id).set(
         { polished: content, status: "polished", polishedWordCount: content.length, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
         { merge: true }

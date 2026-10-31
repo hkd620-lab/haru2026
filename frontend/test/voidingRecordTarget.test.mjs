@@ -8,25 +8,26 @@ const source = readFileSync(new URL('../src/app/pages/SayuHealthVoidingPage.tsx'
 const names = ['handleQuickRecord', 'handleGenerateSayu'];
 const functions = names.map(name => source.match(new RegExp(`  const ${name} = [\\s\\S]*?\\n  };`))[0]);
 const parser = source.match(/function parseVoidingRecord[\s\S]*?\n}/)[0];
-const code = transformSync(`${parser}\n${functions.join('\n')}`, { loader: 'ts' }).code;
+const safety = source.match(/function isSayuSafe[\s\S]*?\n}/)[0];
+const code = transformSync(`${parser}\n${safety}\n${functions.join('\n')}`, { loader: 'ts' }).code;
 const today = '2026-10-06';
 const deferred = () => { let resolve; const promise = new Promise(res => { resolve = res; }); return { promise, resolve }; };
 function fixture(initial = []) {
-  const state = { records: structuredClone(initial), updates: [], creates: [], calls: 0, input: '120', loading: false, errors: [] };
+  const state = { records: structuredClone(initial), updates: [], creates: [], calls: 0, requests: [], input: '120', loading: false, errors: [] };
   const busy = { current: false };
   const handlers = () => {
     const todayRecord = state.records.find(r => r.date === today) ?? null;
     const env = {
       user: { uid: 'fixture-user' }, hasConsent: 'hasConsent' in state ? state.hasConsent : true, isCurrentSession: () => state.sessionActive !== false, loading: state.loading, writeRef: busy, amountInput: state.input, todayRecord,
       todayEntries: todayRecord ? JSON.parse(todayRecord.voiding_entries) : [], todayBedtime: '22:30', todayWaketime: '06:30',
-      stats: {}, getTodayStr: () => today, isSayuSafe: text => text === '합성 해석',
+      stats: state.stats ?? { totalDrinkMl: 120, totalVoidMl: 50, dayVoidMl: 50, nightVoidMl: 0, nightRatioPercent: 0, totalVoidCount: 1, dayVoidCount: 1, nightVoidCount: 0 }, getTodayStr: () => today,
       setIsSavingEntry() {}, setIsGeneratingSayu() {}, setVoidingSayuText() {},
       setRecords: updater => { state.records = updater(state.records); }, setAmountInput: value => { state.input = value; },
       firestoreService: {
         saveRecord: async (uid, data) => { state.creates.push(structuredClone(data)); if (state.pendingCreate) await state.pendingCreate; if (state.createFailure) throw new Error('fixture'); return `${today}_actual-created-id`; },
         updateRecord: async (uid, id, data) => { state.updates.push({ id, data }); if (state.pending) await state.pending; if (state.writeFailure) throw new Error('fixture'); },
       },
-      getFunctions: () => ({}), httpsCallable: () => async () => { state.calls++; if (state.pendingCallable) await state.pendingCallable; return { data: { result: state.result ?? '합성 해석' } }; },
+      getFunctions: () => ({}), httpsCallable: () => async request => { state.calls++; state.requests.push(request); if (state.pendingCallable) await state.pendingCallable; return { data: 'response' in state ? state.response : { text: state.echoRequest ? request.text : '합성 해석' } }; },
       toast: { success() {}, error: text => state.errors.push(text) }, console: { error() {} },
     };
     return new Function(...Object.keys(env), `${code}\nreturn { ${names.join(',')} };`)(...Object.values(env));
@@ -83,7 +84,7 @@ test('failed creation does not add a phantom view target or clear the input', as
 });
 
 test('failed interpretation validation does not write or replace the stored interpretation', async () => {
-  const f = fixture([{ ...original, voiding_sayu: '기존 해석' }]); f.state.result = 'invalid';
+  const f = fixture([{ ...original, voiding_sayu: '기존 해석' }]); f.state.response = { text: '총 배뇨량 999ml' };
   await f.handlers().handleGenerateSayu(); assert.equal(f.state.updates.length, 0);
   assert.equal(f.state.records[0].voiding_sayu, '기존 해석'); assert.equal(f.busy.current, false);
 });
@@ -115,4 +116,61 @@ test('departed account range response cannot replace records or complete a new s
   const cleanup = new Function(...Object.keys(env), body)(...Object.values(env));
   cleanup(); pending.resolve([original]); await new Promise(done => setImmediate(done));
   assert.deepEqual(updates, []); assert.deepEqual(loading, [true]);
+});
+
+test('text response passes the actual numeric safety check and saves to the selected record', async () => {
+  const f = fixture([original]);
+  f.state.response = { text: '총 음료 섭취량 120ml, 총 배뇨량 50ml', result: '잘못된 필드 999ml' };
+  await f.handlers().handleGenerateSayu();
+  assert.deepEqual(f.state.updates, [{ id: original.id, data: { voiding_sayu: f.state.response.text } }]);
+  assert.equal(f.state.records[0].voiding_sayu, f.state.response.text);
+  assert.deepEqual(f.state.errors, []); assert.equal(f.busy.current, false);
+});
+
+test('empty, missing, result-only and nonstring text responses preserve the previous interpretation', async () => {
+  for (const response of [{ text: '' }, {}, { result: '합성 해석' }, { text: null }, { text: 120 }, { text: {} }, null]) {
+    const saved = { ...original, voiding_sayu: '기존 해석' };
+    const f = fixture([saved]); f.state.response = response;
+    await f.handlers().handleGenerateSayu();
+    assert.equal(f.state.calls, 1); assert.deepEqual(f.state.updates, []);
+    assert.deepEqual(f.state.records, [saved]);
+    assert.deepEqual(f.state.errors, ['AI 해석 검증 실패: 계산값과 불일치합니다.']);
+    assert.equal(f.busy.current, false);
+  }
+});
+
+test('interpretation lock prevents duplicate calls while awaiting the response and permits retry after rejection', async () => {
+  const f = fixture([original]), pending = deferred();
+  f.state.pendingCallable = pending.promise; f.state.response = { text: '배뇨량 999ml' };
+  const generating = f.handlers().handleGenerateSayu();
+  await f.handlers().handleGenerateSayu(); await f.handlers().handleQuickRecord();
+  assert.equal(f.state.calls, 1); assert.deepEqual(f.state.updates, []);
+  pending.resolve(); await generating;
+  assert.equal(f.busy.current, false);
+  f.state.response = { text: '배뇨량 50ml' };
+  await f.handlers().handleGenerateSayu();
+  assert.equal(f.state.calls, 2); assert.equal(f.state.updates.length, 1);
+});
+
+test('summary input omits clock times while a statistics-only echo passes the unchanged safety check', async () => {
+  const f = fixture([original]); f.state.echoRequest = true;
+  await f.handlers().handleGenerateSayu();
+  assert.equal(f.state.calls, 1);
+  assert.equal(f.state.requests[0].format, 'voiding');
+  assert.doesNotMatch(f.state.requests[0].text, /취침|기상|\d{1,2}:\d{2}/);
+  assert.match(f.state.requests[0].text, /총 배뇨량 50ml/);
+  assert.equal(f.state.updates.length, 1);
+  assert.equal(f.state.records[0].voiding_sayu, f.state.requests[0].text);
+  assert.deepEqual(f.state.errors, []);
+});
+
+test('captured synthetic operating response with clock numbers remains rejected without weakening safety', async () => {
+  const f = fixture([{ ...original, voiding_sayu: '기존 해석' }]);
+  f.state.stats = { totalDrinkMl: 0, totalVoidMl: 120, dayVoidMl: 120, nightVoidMl: 0, nightRatioPercent: 0, totalVoidCount: 1, dayVoidCount: 1, nightVoidCount: 0 };
+  f.state.response = { text: '하루 동안 총 120ml의 배뇨가 주간에 1회 확인되었으며 야간 배뇨는 0회였습니다. 22시 30분에 취침하여 06시 30분에 기상하는 동안 총 120ml의 배뇨가 이루어졌으며, 이 수치는 참고용 지표이며 진단이 아닙니다.' };
+  await f.handlers().handleGenerateSayu();
+  assert.deepEqual(f.state.updates, []);
+  assert.equal(f.state.records[0].voiding_sayu, '기존 해석');
+  assert.deepEqual(f.state.errors, ['AI 해석 검증 실패: 계산값과 불일치합니다.']);
+  assert.equal(f.busy.current, false);
 });

@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
-import { Calendar, Check, Pencil, X } from 'lucide-react';
+import { Calendar, Camera, Check, Pencil, X } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useLocation, useNavigate } from 'react-router';
 import { firestoreService, buildTimelineMeta } from '../services/firestoreService';
@@ -8,16 +8,13 @@ import { getOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
 import { RecordTitleAnimation } from '../components/RecordTitleAnimation';
 import { FormatModal } from '../components/FormatModal';
-import { AssistantRecommendationCards } from '../components/AssistantRecommendationCards';
 import { HaruLawPanel, useHaruLaw } from '../assistants/haruLaw/HaruLawPanel';
 import { PetHealthAlert, detectPetAlertLevel, type PetAlertLevel } from '../components/PetHealthAlert';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
-import {
-  buildRecommendationTextFromFields,
-  getAssistantRecommendations,
-  type AssistantRecommendation,
-} from '../utils/assistantRecommendations';
+import { applyDraftSaveTarget, buildDraftEditorData, WRITABLE_FORMATS } from '../records/writeBeforeFormat';
+import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
+import { startSelectedRecordPhotoReads } from '../services/selectedRecordPhoto';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
 import { findSameNameChildSubject } from '../services/growthSubjectLookup';
@@ -44,6 +41,10 @@ type Weather = '쾌청' | '흐림' | '비' | '눈';
 type Temperature = '폭염' | '온난' | '쾌적' | '쌀쌀' | '혹한';
 type GrowthSubjectType = 'child' | 'garden';
 type EnvTagType = 'weather' | 'temperature' | 'mood';
+type DraftPhoto = { id: string; file: File; previewUrl: string };
+
+const COMMON_PHOTO_LIMIT = getRecordPhotoLimit();
+const COMMON_PHOTO_TOTAL_BYTES = 60 * 1024 * 1024;
 
 const DEFAULT_WEATHER = ['쾌청', '흐림', '비', '눈'];
 const DEFAULT_TEMPERATURE = ['폭염', '온난', '쾌적', '쌀쌀', '혹한'];
@@ -193,7 +194,8 @@ export function RecordPage() {
     }
   };
   const [currentDate] = useState(new Date());
-  const [mood, setMood] = useState<Mood>('평온');
+  // 기분은 기본값 없이, 사용자가 고를 때만 저장한다(2026-10-23 결정 ①). 같은 기분을 다시 누르면 선택을 해제한다.
+  const [mood, setMood] = useState<Mood | ''>('');
   const [showEnvToast, setShowEnvToast] = useState(false);
   const [weatherTags, setWeatherTags] = useState<string[]>(DEFAULT_WEATHER);
   const [temperatureTags, setTemperatureTags] = useState<string[]>(DEFAULT_TEMPERATURE);
@@ -214,14 +216,27 @@ export function RecordPage() {
   const [weather, setWeather] = useState<Weather>('쾌청');
   const [temperature, setTemperature] = useState<Temperature>('쾌적');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>('생활' as Category);
+  const [householdEntryMode, setHouseholdEntryMode] = useState<'bank' | undefined>(undefined);
+  const [showOtherEntryMethods, setShowOtherEntryMethods] = useState(() => Boolean((location.state as any)?.category || (location.state as any)?.format));
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
+  const [draftContent, setDraftContent] = useState('');
+  const [draftPhotos, setDraftPhotos] = useState<DraftPhoto[]>([]);
+  const draftPhotosRef = useRef<DraftPhoto[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlsRef = useRef<Set<string>>(new Set());
+  const photoReadBusyRef = useRef(false);
+  const [photoReadBusy, setPhotoReadBusy] = useState(false);
+  const [formatPickerOpen, setFormatPickerOpen] = useState(false);
+  const [draftEditorData, setDraftEditorData] = useState<Record<string, string> | undefined>();
+  const [draftEditorPhotos, setDraftEditorPhotos] = useState<File[]>([]);
+  const [draftEditorRecordId, setDraftEditorRecordId] = useState<string | null>(null);
+  const draftRecordIdRef = useRef<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [formatModalOpen, setFormatModalOpen] = useState(false);
   const [petAlertLevel, setPetAlertLevel] = useState<PetAlertLevel>(null);
   const [savedDateStr, setSavedDateStr] = useState('');
   const [savedFormat, setSavedFormat] = useState<RecordFormat | null>(null);
-  const [savedAssistantRecommendations, setSavedAssistantRecommendations] = useState<AssistantRecommendation[]>([]);
   const lawEntrySectionRef = useRef<HTMLElement>(null);
   // 하루LAW 상태·처리는 assistants/haruLaw/HaruLawPanel.tsx 의 useHaruLaw 에 있다(탭을 바꿔도 상태가 유지되도록 이 컴포넌트에서 부른다).
   const haruLaw = useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, temperature, mood });
@@ -233,6 +248,8 @@ export function RecordPage() {
       if (petAlertTimerRef.current) {
         window.clearTimeout(petAlertTimerRef.current);
       }
+      for (const url of previewUrlsRef.current) URL.revokeObjectURL(url);
+      previewUrlsRef.current.clear();
     };
   }, []);
 
@@ -462,7 +479,7 @@ export function RecordPage() {
                   onClick={() => {
                     if (type === 'weather') setWeather(tag as Weather);
                     else if (type === 'temperature') setTemperature(tag as Temperature);
-                    else setMood(tag as Mood);
+                    else setMood((prev) => (prev === tag ? '' : tag as Mood));
                   }}
                   onStartEdit={() => setEditingTag({ type, original: tag, value: tag })}
                   onEditValueChange={(value) =>
@@ -532,9 +549,9 @@ export function RecordPage() {
     }
     const dateStr = getLocalDateString(currentDate);
     setSavedDateStr(dateStr);
-    setSavedAssistantRecommendations([]);
     setSavedFormat(format);
     setSelectedFormats([format]);
+    setHouseholdEntryMode(undefined);
     setFormatModalOpen(true);
   };
 
@@ -545,10 +562,13 @@ export function RecordPage() {
     if (!user) return;
     const incomingFormat = (location.state as any)?.format as string | undefined;
     const incomingFrom = (location.state as any)?.from as string | undefined;
+    // state를 지우기 전에 가계부 진입 방식(은행 파일 가져오기)을 보관한다.
+    const incomingHouseholdEntry = (location.state as any)?.householdEntry === 'bank' ? 'bank' : undefined;
     if (incomingFrom) setFromPath(incomingFrom);
     if (!incomingFormat) return;
     autoOpenedRef.current = true;
     openFormatDirectly(incomingFormat as RecordFormat);
+    if (incomingFormat === 'HARU가계부') setHouseholdEntryMode(incomingHouseholdEntry);
     // state 소비 후 history에서 제거 — 새로고침/뒤로가기 시 재열림 방지
     navigate(location.pathname, { replace: true, state: null });
   }, [user, location.state]);
@@ -558,6 +578,7 @@ export function RecordPage() {
     const incomingCategory = (location.state as any)?.category as string | undefined;
     if (incomingCategory) {
       setSelectedCategory(incomingCategory as any);
+      setShowOtherEntryMethods(true);
     }
   }, [location.state]);
 
@@ -578,12 +599,112 @@ export function RecordPage() {
     setFormatModalOpen(true);
   };
 
-  const handleAssistantRecommendationSelect = (recommendation: AssistantRecommendation) => {
-    if (recommendation.targetPath) {
-      navigate(recommendation.targetPath);
+  const handleDraftPhotosSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const sources = Array.from(event.currentTarget.files || []);
+    if (!sources.length) return;
+    if (photoReadBusyRef.current || formatModalOpen) {
+      event.currentTarget.value = '';
+      toast.warning('사진 준비가 끝난 뒤 다시 선택해 주세요.');
       return;
     }
+    const remaining = COMMON_PHOTO_LIMIT - draftPhotosRef.current.length;
+    if (remaining <= 0) {
+      event.currentTarget.value = '';
+      toast.warning(`사진은 최대 ${COMMON_PHOTO_LIMIT}장까지 추가할 수 있습니다.`);
+      return;
+    }
+    // Android 사진 선택기의 원본 스트림은 input을 초기화하거나 await 하기 전에 읽기 시작한다.
+    const pendingReads = startSelectedRecordPhotoReads(sources.slice(0, remaining));
+    event.currentTarget.value = '';
+    photoReadBusyRef.current = true;
+    setPhotoReadBusy(true);
+    const additions: DraftPhoto[] = [];
+    const failures: string[] = [];
+    let totalBytes = draftPhotosRef.current.reduce((sum, photo) => sum + photo.file.size, 0);
+    try {
+      for (const pending of pendingReads) {
+        const selected = await pending;
+        if (selected.ok === false) {
+          failures.push(selected.message);
+          continue;
+        }
+        if (totalBytes + selected.file.size > COMMON_PHOTO_TOTAL_BYTES) {
+          failures.push('선택한 사진의 합계는 60MB까지 추가할 수 있습니다.');
+          continue;
+        }
+        const previewUrl = URL.createObjectURL(selected.file);
+        previewUrlsRef.current.add(previewUrl);
+        additions.push({
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+          file: selected.file,
+          previewUrl,
+        });
+        totalBytes += selected.file.size;
+      }
+      if (additions.length) {
+        draftPhotosRef.current = [...draftPhotosRef.current, ...additions];
+        setDraftPhotos(draftPhotosRef.current);
+      }
+      if (sources.length > remaining) failures.push(`사진은 최대 ${COMMON_PHOTO_LIMIT}장까지 추가할 수 있습니다.`);
+      if (failures.length) toast.warning([...new Set(failures)].join(' '));
+    } catch (error) {
+      for (const photo of additions) {
+        URL.revokeObjectURL(photo.previewUrl);
+        previewUrlsRef.current.delete(photo.previewUrl);
+      }
+      console.error('공통 기록 사진 선택 실패:', error);
+      toast.error('사진을 준비하지 못했습니다. 다시 선택해 주세요.');
+    } finally {
+      photoReadBusyRef.current = false;
+      setPhotoReadBusy(false);
+    }
+  };
 
+  const removeDraftPhoto = (photoId: string) => {
+    const photo = draftPhotosRef.current.find((item) => item.id === photoId);
+    if (!photo) return;
+    draftPhotosRef.current = draftPhotosRef.current.filter((item) => item.id !== photoId);
+    setDraftPhotos(draftPhotosRef.current);
+    URL.revokeObjectURL(photo.previewUrl);
+    previewUrlsRef.current.delete(photo.previewUrl);
+  };
+
+  const openDraftEditorForFormat = (format: RecordFormat) => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      navigate('/login');
+      return;
+    }
+    if (photoReadBusyRef.current) {
+      toast.warning('사진 준비가 끝난 뒤 형식을 선택해 주세요.');
+      return;
+    }
+    const content = draftContent.trim();
+    if (!content) {
+      toast.warning('기록할 글을 먼저 작성해 주세요.');
+      return;
+    }
+    const date = getLocalDateString(currentDate);
+    // 편집창에서 저장 결과를 확인하지 못해 돌아온 경우에도 같은 초안 ID로 다시 시도한다.
+    const recordId = draftRecordIdRef.current || `${date}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    draftRecordIdRef.current = recordId;
+    setSavedDateStr(date);
+    setSavedFormat(format);
+    setSelectedFormats([format]);
+    setDraftEditorRecordId(recordId);
+    setDraftEditorData(buildDraftEditorData(format, content, date, recordId));
+    setDraftEditorPhotos(draftPhotosRef.current.map((photo) => photo.file));
+    setFormatPickerOpen(false);
+    setFormatModalOpen(true);
+  };
+
+  const finishDraftAfterSave = (recordId: string) => {
+    if (recordId !== draftRecordIdRef.current) return;
+    draftRecordIdRef.current = null;
+    setDraftContent('');
+    draftPhotosRef.current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+    draftPhotosRef.current = [];
+    setDraftPhotos([]);
   };
 
   const handleSaveFormatData = async (formatData: Record<string, string>) => {
@@ -649,7 +770,7 @@ export function RecordPage() {
         : undefined;
     const targetRecordDate = customRecordDate || savedDateStr;
     const formatsOverride = Array.isArray((formatData as any).formats)
-      ? ((formatData as any).formats as string[])
+      ? ((formatData as any).formats as RecordFormat[])
       : undefined;
     const updateData: Record<string, any> = {};
     let hasContent = false;
@@ -658,6 +779,9 @@ export function RecordPage() {
       if (typeof value === 'string' && value.trim().length > 0) {
         updateData[key] = value;
         hasContent = true;
+      } else if (key === 'garden_crops' && Array.isArray(value)) {
+        // 텃밭일지에서 고른 작물(문자열 배열). 내용으로 세지는 않는다 — 2026-10-23 결정 ②
+        updateData[key] = value.filter((crop) => typeof crop === 'string' && crop.trim()).map((crop) => crop.trim());
       }
     });
     if (!hasContent) {
@@ -665,12 +789,12 @@ export function RecordPage() {
       return;
     }
     try {
-      const recordId = await firestoreService.saveRecord(user.uid, {
+      const recordData = {
         ...(customRecordId ? { id: customRecordId } : {}),
         date: targetRecordDate,
         weather,
         temperature,
-        mood,
+        ...(mood ? { mood } : {}),
         formats: formatsOverride ?? selectedFormats,
         content: '',
         ...(shouldSaveGrowthEntry && growthSubjectId ? {
@@ -681,13 +805,21 @@ export function RecordPage() {
           ...(growthSubjectGender ? { growthSubjectGender } : {}),
         } : {}),
         ...updateData,
-      });
-      const recommendationFormats = formatsOverride ?? selectedFormats;
-      const recommendationText = buildRecommendationTextFromFields(updateData);
-      const nextRecommendations = getAssistantRecommendations(
-        recommendationText,
-        recommendationFormats.map((format) => String(format)),
-      );
+      };
+      let recordId: string;
+      if (draftEditorRecordId && customRecordId === draftEditorRecordId) {
+        const quickRecordRef = doc(db, 'users', user.uid, 'records', customRecordId);
+        const existingQuickRecord = await getDoc(quickRecordRef);
+        if (existingQuickRecord.exists()) {
+          await setDoc(quickRecordRef, { ...recordData, updatedAt: new Date().toISOString() }, { merge: true });
+          recordId = customRecordId;
+        } else {
+          recordId = await firestoreService.saveRecord(user.uid, recordData);
+        }
+      } else {
+        recordId = await firestoreService.saveRecord(user.uid, recordData);
+      }
+      const savedFormats = formatsOverride ?? selectedFormats;
       if (shouldSaveGrowthEntry && growthSubjectId && growthSubjectType) {
         const sourceFormat =
           typeof (formatData as any)._sourceFormat === 'string' && (formatData as any)._sourceFormat
@@ -763,11 +895,7 @@ export function RecordPage() {
           { merge: true },
         );
       }
-      if (
-        savedFormat === '애완동물관찰일지' ||
-        recommendationFormats.map((format) => String(format)).includes('애완동물관찰일지') ||
-        recommendationFormats.map((format) => String(format)).includes('pet')
-      ) {
+      if (savedFormats.includes('애완동물관찰일지') || savedFormats.includes('pet')) {
         const level = detectPetAlertLevel(updateData as Record<string, string>);
         if (level) {
           setPetAlertLevel(level);
@@ -780,7 +908,7 @@ export function RecordPage() {
           }, 8000);
         }
       }
-      setSavedAssistantRecommendations(nextRecommendations);
+      finishDraftAfterSave(recordId);
       toast.success('내용이 저장되었습니다!');
       return recordId;
     } catch (error) {
@@ -798,6 +926,76 @@ export function RecordPage() {
         {/* Title Animation */}
         <section className="flex items-center justify-center py-1">
           <RecordTitleAnimation />
+        </section>
+
+        <section className="bg-white rounded-lg p-4 shadow-sm">
+          <h2 className="text-base font-semibold" style={{ color: '#1A3C6E' }}>오늘의 기록</h2>
+          <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 형식을 고르면 작성한 글과 사진으로 AI 도움을 받거나 그대로 저장할 수 있습니다.</p>
+          <textarea
+            aria-label="기록 내용"
+            value={draftContent}
+            onChange={(event) => setDraftContent(event.target.value)}
+            placeholder="오늘 남기고 싶은 이야기를 적어 주세요..."
+            rows={9}
+            className="w-full rounded-lg border p-3 text-base"
+            style={{ resize: 'vertical' }}
+          />
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-sm font-medium" style={{ color: '#1A3C6E' }}>사진 {draftPhotos.length}/{COMMON_PHOTO_LIMIT}</span>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*,.heic,.heif"
+              multiple
+              aria-label="기록 사진 선택"
+              className="hidden"
+              onChange={handleDraftPhotosSelected}
+              disabled={photoReadBusy || draftPhotos.length >= COMMON_PHOTO_LIMIT}
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={photoReadBusy || draftPhotos.length >= COMMON_PHOTO_LIMIT}
+              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
+              style={{ color: '#1A3C6E' }}
+            >
+              <Camera className="h-4 w-4" />
+              {photoReadBusy ? '사진 준비 중...' : '사진 추가'}
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">사진은 최대 5장까지 고를 수 있고, 편집창에서 최종 저장 전에 업로드됩니다.</p>
+          {draftPhotos.length > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label="선택한 사진 미리보기">
+              {draftPhotos.map((photo, index) => (
+                <div key={photo.id} className="relative aspect-square overflow-hidden rounded-lg border bg-gray-50">
+                  <img src={photo.previewUrl} alt={`선택한 사진 ${index + 1}`} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    aria-label={`사진 ${index + 1} 제거`}
+                    onClick={() => removeDraftPhoto(photo.id)}
+                    className="absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white disabled:opacity-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (!draftContent.trim()) {
+                toast.warning('기록할 글을 먼저 작성해 주세요.');
+                return;
+              }
+              setFormatPickerOpen(true);
+            }}
+            disabled={photoReadBusy}
+            className="mt-3 w-full rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-50"
+            style={{ backgroundColor: '#1A3C6E' }}
+          >
+            저장하기
+          </button>
         </section>
 
         {/* Date */}
@@ -853,14 +1051,24 @@ export function RecordPage() {
           </div>
         </section>
 
-        {/* Format Selection */}
+        <button
+          type="button"
+          onClick={() => setShowOtherEntryMethods((open) => !open)}
+          className="w-full rounded-lg border bg-white px-3 py-2 text-left text-xs"
+          style={{ color: '#1A3C6E' }}
+        >
+          {showOtherEntryMethods ? '기존 형식 입력창 닫기' : '기존 형식 입력창 · 하루LAW 열기'}
+        </button>
+
+        {/* 기존 형식별 바로 작성과 하루LAW 진입 */}
+        {showOtherEntryMethods && (
         <section ref={lawEntrySectionRef} className="bg-white rounded-lg p-3 shadow-sm">
           <div className="mb-2">
             <h2 className="text-xs tracking-wider" style={{ color: '#666666' }}>
-              형식 선택
+              형식별 작성
             </h2>
             <p className="text-xs mt-0.5" style={{ color: '#999999' }}>
-              형식을 선택하면 바로 글쓰기
+              기존 형식 입력창으로 바로 작성할 수도 있습니다.
             </p>
           </div>
 
@@ -966,6 +1174,7 @@ export function RecordPage() {
           ) : selectedCategory ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {CATEGORY_FORMATS[selectedCategory]
+                .filter((format) => format !== 'HARU가계부' && format !== 'HARU보조장부')
                 .map((format) => {
                 return (
                   <button
@@ -992,9 +1201,27 @@ export function RecordPage() {
           )}
 
         </section>
+        )}
 
       </div>
     </div>
+
+    {formatPickerOpen && (
+      <div role="dialog" aria-modal="true" aria-label="저장할 기록 형식 선택" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl bg-white p-5">
+          <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>어떤 형식으로 저장할까요?</h2>
+          <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요. 작성한 글과 사진으로 AI 도움 안내가 이어집니다.</p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {WRITABLE_FORMATS.map((format) => (
+              <button key={format} type="button" onClick={() => openDraftEditorForFormat(format)} className="rounded-lg border p-3 text-left text-sm hover:bg-yellow-50">
+                {format === '애완동물관찰일지' ? '반려동물' : format}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => setFormatPickerOpen(false)} className="mt-4 w-full rounded-lg border py-2 text-sm">돌아가기</button>
+        </div>
+      </div>
+    )}
 
     {diaryLearnOpen && <DiaryLearnModal onClose={() => setDiaryLearnOpen(false)} />}
     {savedFormat && (
@@ -1002,68 +1229,25 @@ export function RecordPage() {
         isOpen={formatModalOpen}
         onClose={() => {
           setFormatModalOpen(false);
+          setHouseholdEntryMode(undefined);
+          if (draftEditorRecordId) {
+            setDraftEditorRecordId(null);
+            setDraftEditorData(undefined);
+            setDraftEditorPhotos([]);
+            return;
+          }
           closeToOrigin();
         }}
         format={savedFormat}
-        recordId={savedDateStr}
-        onSave={handleSaveFormatData}
+        recordId={draftEditorRecordId || savedDateStr}
+        initialData={draftEditorData}
+        initialPhotos={draftEditorPhotos}
+        initialWritingDraft={!!draftEditorRecordId}
+        householdEntryMode={savedFormat === 'HARU가계부' ? householdEntryMode : undefined}
+        onSave={(data) => handleSaveFormatData(draftEditorRecordId
+          ? applyDraftSaveTarget(data, draftEditorRecordId, savedDateStr)
+          : data)}
       />
-    )}
-    {savedAssistantRecommendations.length > 0 && !formatModalOpen && (
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="기록 속 비서 연결"
-        style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.42)',
-          zIndex: 1100,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 16,
-        }}
-      >
-        <div
-          style={{
-            width: '100%',
-            maxWidth: 520,
-            maxHeight: '86vh',
-            overflowY: 'auto',
-            borderRadius: 12,
-            backgroundColor: '#FFFFFF',
-            padding: 16,
-            boxShadow: '0 20px 44px rgba(15, 23, 42, 0.24)',
-          }}
-        >
-          <AssistantRecommendationCards
-            recommendations={savedAssistantRecommendations}
-            title="이 기록에서 도움받을 수 있는 AI 비서를 찾았습니다."
-            description="기록 속 고민 키워드를 바탕으로 필요한 비서와 연결할 수 있습니다."
-            privacyNote="선택한 경우에만 해당 기록 내용을 비서에게 전달합니다."
-            onSelect={handleAssistantRecommendationSelect}
-          />
-          <button
-            type="button"
-            onClick={() => setSavedAssistantRecommendations([])}
-            style={{
-              width: '100%',
-              minHeight: 40,
-              marginTop: 12,
-              borderRadius: 8,
-              border: '1px solid #D7D2E8',
-              backgroundColor: '#FFFFFF',
-              color: '#1A3C6E',
-              fontSize: 13,
-              fontWeight: 800,
-              cursor: 'pointer',
-            }}
-          >
-            닫기
-          </button>
-        </div>
-      </div>
     )}
     <PetHealthAlert
       level={petAlertLevel}

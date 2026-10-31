@@ -33,9 +33,10 @@ test('가져오기 저장은 권한을 검증하는 Callable을 통해 실행한
   assert.match(service, /const result = await callable\(payload\)/);
 });
 
-test('Slack 출처 라벨과 필터를 기록 유무와 관계없이 표시한다', () => {
+test('Slack·김비서 출처 라벨과 필터를 기록 유무와 관계없이 표시한다', () => {
   assert.match(library, /'slack': 'Slack'/);
-  assert.match(library, /PRIMARY_SOURCES = \['chatgpt\.com', 'claude\.ai', 'gemini\.google\.com', 'slack'\]/);
+  assert.match(library, /'chatgpt\.com\/dots': '김비서'/);
+  assert.match(library, /PRIMARY_SOURCES = \['chatgpt\.com', 'chatgpt\.com\/dots', 'claude\.ai', 'gemini\.google\.com', 'slack'\]/);
   assert.match(library, /\.\.\.PRIMARY_SOURCES\.map/);
 });
 

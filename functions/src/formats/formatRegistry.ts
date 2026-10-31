@@ -26,6 +26,12 @@ export const FORMAT_FIELD_PREFIX = {
 
 export type FunctionsRecordFormat = keyof typeof FORMAT_FIELD_PREFIX;
 
+// 통계·합본·EPUB 대상 기록형식 — 프런트 STATS_MERGE_RECORD_FORMATS 복사본(같은지는 parity 테스트가 확인한다).
+export const STATS_MERGE_RECORD_FORMATS: readonly FunctionsRecordFormat[] = [
+  '일기', '에세이', '여행기록', '독서사유', '텃밭일지', '애완동물관찰일지', '육아일기',
+  '업무일지', '메모', '선교보고', '일반보고',
+];
+
 // 주어진 형식 목록(순서 유지)의 형식 → 저장 필드 접두어 맵
 export function buildFormatPrefixMap(formats: readonly FunctionsRecordFormat[]): Record<string, string> {
   const map: Record<string, string> = {};

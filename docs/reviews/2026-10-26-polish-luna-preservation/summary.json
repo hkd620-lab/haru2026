@@ -1,0 +1,38 @@
+{
+  "calls": 124,
+  "planned": 124,
+  "groups": [
+    {
+      "version": "old",
+      "provider": "gemini",
+      "count": 24,
+      "successful": 24,
+      "costUsd": 0.009487500000000001,
+      "truncated": 0
+    },
+    {
+      "version": "old",
+      "provider": "openai",
+      "count": 24,
+      "successful": 24,
+      "costUsd": 0.0025265,
+      "truncated": 0
+    },
+    {
+      "version": "new",
+      "provider": "gemini",
+      "count": 36,
+      "successful": 36,
+      "costUsd": 0.0101155,
+      "truncated": 0
+    },
+    {
+      "version": "new",
+      "provider": "openai",
+      "count": 40,
+      "successful": 40,
+      "costUsd": 0.0045314000000000005,
+      "truncated": 0
+    }
+  ]
+}

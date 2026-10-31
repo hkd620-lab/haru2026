@@ -1,3 +1,4 @@
+import { readSelectedPhotoAttachments } from '../../services/selectedRecordPhoto';
 // 하루LAW 비서 — 법령 검색·첨부·AI 자문·판례·기록 저장.
 // RecordPage 「하루LAW」 탭에 있던 코드를 그대로 옮겼다(동작 같음).
 // - useHaruLaw: 상태와 처리. RecordPage 가 부르므로 다른 탭에 다녀와도 상태가 유지된다(옮기기 전과 같음).
@@ -125,9 +126,10 @@ export function useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, tempera
       return;
     }
 
-    const toUpload = files.slice(0, remainingSlots);
+    const selectedAttachments = readSelectedPhotoAttachments(files.slice(0, remainingSlots));
     setUploadingLawFiles(true);
     try {
+      const toUpload = await selectedAttachments;
       for (const file of toUpload) {
         if (!HARULAW_ATTACH_ALLOWED_TYPES.has(file.type)) {
           const userError = getHaruLawUserErrorByReason('ATTACHMENT_UNSUPPORTED_TYPE');
@@ -306,7 +308,7 @@ export function useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, tempera
         date: dateStr,
         weather: existingRecord?.weather || weather,
         temperature: existingRecord?.temperature || temperature,
-        mood: existingRecord?.mood || mood,
+        ...((existingRecord?.mood || mood) ? { mood: existingRecord?.mood || mood } : {}),
         formats: mergedFormats,
         content: typeof existingRecord?.content === 'string' ? existingRecord.content : '',
         sourceAgent: '하루LAW',

@@ -1,0 +1,40 @@
+{
+  "baseCommit": "8a2bbfd8cb24fd9d381ed75d9e3e5ce31d68fce9",
+  "branch": "codex-polish-comment-opt-out",
+  "environment": { "node": "v26.8.2", "typescript": "5.9.3", "functionsRuntimeUnchanged": "nodejs22" },
+  "beforeProductEdits": {
+    "functionsNewTests": { "total": 17, "passed": 11, "failed": 6 },
+    "frontendNewTests": { "total": 8, "passed": 4, "failed": 4 },
+    "note": "Expected failures: false was ignored by old server and missing from FormatModal requests; SayuModal controls passed"
+  },
+  "afterProductEdits": {
+    "functionsBuild": { "command": "cd functions && npm run build", "exitCode": 0 },
+    "functionsTests": {
+      "command": "cd functions && node --test --test-reporter=tap test/polishContent.test.js test/aiGateway.test.js test/monthlyAiQuota.policy.test.js",
+      "exitCode": 0, "total": 32, "passed": 32, "failed": 0
+    },
+    "frontendTests": {
+      "command": "cd frontend && node --import tsx --test --test-reporter=tap test/polishCommentOptOut.test.mjs test/readingAi.test.mjs test/voidingRecordTarget.test.mjs",
+      "exitCode": 0, "total": 36, "passed": 36, "failed": 0
+    },
+    "frontendBuild": {
+      "command": "cd frontend && npm run build",
+      "environment": "CI-style dummy Firebase configuration for build verification only; no production credentials",
+      "exitCode": 0,
+      "buildTimeSeconds": 40.06,
+      "warnings": ["large chunks", "mixed static/dynamic imports"]
+    },
+    "functionsExports": { "before": 114, "after": 114, "added": [], "removed": [], "outsidePolishCompiledIndexIdentical": true },
+    "diffCheck": "passed"
+  },
+  "limits": {
+    "newTestsUseFakeAiAndMemoryWrites": true,
+    "productionAiCalls": 0,
+    "productionUserRecordReadsOrWrites": 0,
+    "browserE2E": false,
+    "pullRequestCreated": false,
+    "merged": false,
+    "deployed": false,
+    "officialAutomaticReviewVerdict": false
+  }
+}

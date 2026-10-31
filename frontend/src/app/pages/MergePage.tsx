@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Layers, X, FileSpreadsheet } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { MergeTitleAnimation } from '../components/MergeTitleAnimation';
 import { useAuth } from '../contexts/AuthContext';
 import { firestoreService, type LibraryEntry } from '../services/firestoreService';
 import { toast } from 'sonner';
-import { RecordFormat, Category, CATEGORY_FORMATS, FORMAT_PREFIX } from '../types/haruTypes';
+import { RecordFormat, FORMAT_EMOJI } from '../types/haruTypes';
+import { getFormatKey, STATS_MERGE_RECORD_FORMATS } from '../records/formatRegistry';
+import {
+  canUseStatsPeriod,
+  getStatsPeriodRange,
+  getStatsPeriodTierLabel,
+  hasSayu,
+  isAssistantRecord,
+  isSpecialDayRecord,
+  type StatsPeriodKey,
+} from '../records/recordStats';
+import { getStatsTier } from '../components/StatsPeriodPicker';
 import { useSubscription } from '../hooks/useSubscription';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
@@ -26,6 +37,18 @@ type MergeFilter = 'special' | 'all';
 type MergePeriod = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
 type LedgerVatPreset = 'custom' | 'firstPreliminary' | 'firstFinal' | 'secondPreliminary' | 'secondFinal';
 
+// 합본 화면에서 비서 합본(타임라인·식물탐정 library 인쇄)은 내리고 코드는 남긴다 — 2026-10-23 허대표님 결정 ④
+const SHOW_ASSISTANT_LIBRARY_MERGE = false;
+
+// 합본 기간은 통계와 같은 등급 규칙을 쓴다(결정 ⑥).
+const MERGE_PERIOD_KEY: Record<MergePeriod, StatsPeriodKey> = {
+  weekly: 'week',
+  monthly: 'month',
+  quarterly: 'quarter',
+  yearly: 'year',
+  custom: 'custom',
+};
+
 interface PeriodOption {
   id: MergePeriod;
   title: string;
@@ -34,12 +57,14 @@ interface PeriodOption {
 
 export function MergePage() {
   const { user } = useAuth();
-  const { isPremium, subscription } = useSubscription();
+  const { subscription } = useSubscription();
   const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [searchParams] = useSearchParams();
+  // 보조장부 엑셀·신고 준비는 비서(보조장부) 화면에서 /merge?mode=ledger 로 연다. 일반 합본 형식 목록에는 넣지 않는다.
+  const isLedgerMode = searchParams.get('mode') === 'ledger';
   const [selectedFormat, setSelectedFormat] = useState<RecordFormat | null>(null);
   const [mergeFilter, setMergeFilter] = useState<MergeFilter>('all');
-  const [selectedPeriod, setSelectedPeriod] = useState<MergePeriod | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<MergePeriod>('monthly');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -62,25 +87,15 @@ export function MergePage() {
   const [selectedLibraryIds, setSelectedLibraryIds] = useState<Set<string>>(new Set());
 
   const periodOptions: PeriodOption[] = [
-    { id: 'weekly', title: '주간', description: '최근 7일 기준' },
-    { id: 'monthly', title: '월간', description: '최근 30일 기준' },
-    { id: 'quarterly', title: '분기', description: '3개월 기준' },
-    { id: 'yearly', title: '연간', description: '12개월 기준' },
+    { id: 'weekly', title: '이번 주', description: '월요일부터' },
+    { id: 'monthly', title: '이번 달', description: '1일부터' },
+    { id: 'quarterly', title: '3개월', description: '최근 3개월' },
+    { id: 'yearly', title: '올해', description: '1월 1일부터' },
     { id: 'custom', title: '직접선택', description: '기간 직접 입력' },
   ];
-  const isBasic = subscription.plan === 'basic' && subscription.status === 'active';
-  const canUseMonthly = isBasic || isPremium;
-  const canUseLongRange = isPremium;
-  const getPeriodAccessLabel = (period: MergePeriod) => {
-    if (period === 'monthly') return 'Basic+';
-    if (period === 'quarterly' || period === 'yearly' || period === 'custom') return 'Premium';
-    return '';
-  };
-  const canUsePeriod = (period: MergePeriod) => {
-    if (period === 'monthly') return canUseMonthly;
-    if (period === 'quarterly' || period === 'yearly' || period === 'custom') return canUseLongRange;
-    return true;
-  };
+  const statsTier = getStatsTier(subscription);
+  const getPeriodAccessLabel = (period: MergePeriod) => getStatsPeriodTierLabel(MERGE_PERIOD_KEY[period]);
+  const canUsePeriod = (period: MergePeriod) => canUseStatsPeriod(MERGE_PERIOD_KEY[period], statsTier);
 
   const getLocalDateString = (date: Date): string => {
     const y = date.getFullYear();
@@ -95,12 +110,12 @@ export function MergePage() {
     setLedgerVatEnd(today);
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    setStartDate(getLocalDateString(thirtyDaysAgo));
+    setStartDate(getStatsPeriodRange('month', new Date()).start);
     setLedgerVatStart(getLocalDateString(thirtyDaysAgo));
   }, []);
 
   useEffect(() => {
-    if (!user?.uid) {
+    if (!user?.uid || !SHOW_ASSISTANT_LIBRARY_MERGE) {
       setAssistantLibrary([]);
       setSelectedLibraryIds(new Set());
       return;
@@ -125,25 +140,9 @@ export function MergePage() {
     
     // custom이 아닌 경우에만 날짜 자동 설정
     if (period !== 'custom') {
-      const end = getLocalDateString(new Date());
-      setEndDate(end);
-
-      let start = new Date();
-      switch (period) {
-        case 'weekly':
-          start.setDate(start.getDate() - 7);
-          break;
-        case 'monthly':
-          start.setDate(start.getDate() - 30);
-          break;
-        case 'quarterly':
-          start.setMonth(start.getMonth() - 3);
-          break;
-        case 'yearly':
-          start.setFullYear(start.getFullYear() - 1);
-          break;
-      }
-      setStartDate(getLocalDateString(start));
+      const range = getStatsPeriodRange(MERGE_PERIOD_KEY[period], new Date());
+      setStartDate(range.start);
+      setEndDate(range.end);
     }
   };
 
@@ -354,6 +353,11 @@ export function MergePage() {
       return;
     }
 
+    if (!canUsePeriod(selectedPeriod)) {
+      toast.warning('선택한 합본 기간을 이용할 수 없습니다. 다른 기간을 선택해 주세요.');
+      return;
+    }
+
     if (!startDate || !endDate) {
       toast.warning('시작일과 종료일을 선택해주세요.');
       return;
@@ -379,24 +383,18 @@ export function MergePage() {
       console.log('2. 날짜 필터링 후:', dateFiltered.length, '개');
       console.log('   날짜 범위:', startDate, '~', endDate);
 
-      const formatPrefix = FORMAT_PREFIX[selectedFormat];
+      const formatPrefix = getFormatKey(selectedFormat);
       
-      // ✅ 수정: formats 배열 대신 실제 SAYU 존재 여부로 필터링
-      const formatFiltered = dateFiltered.filter(record => {
-        const sayuKey = `${formatPrefix}_sayu`;
-        return record[sayuKey] && record[sayuKey].trim().length > 0;
-      });
+      // ✅ 수정: formats 배열 대신 실제 SAYU 존재 여부로 필터링(비서가 만든 기록은 뺀다)
+      const formatFiltered = dateFiltered.filter(record => !isAssistantRecord(record) && hasSayu(record, formatPrefix));
       
       console.log('3. 형식 필터링 후 (SAYU 존재):', formatFiltered.length, '개');
       console.log('   선택 형식:', selectedFormat);
 
-      const ratingKey = `${formatPrefix}_rating`;
-      const starFiltered = formatFiltered.filter(record => {
-        if (mergeFilter === 'all') return true;
-        // 'special': rating > 0 인 기록만 (특별한 날 체크된 것)
-        const rating = record[ratingKey];
-        return rating !== undefined && rating !== null && rating > 0;
-      });
+      // 'special': 특별한 날로 표시한 기록만(specialDays, 옛 숫자 _rating 포함). 화면·PDF·EPUB가 같은 순서(날짜순)를 쓴다.
+      const starFiltered = formatFiltered
+        .filter(record => mergeFilter === 'all' || isSpecialDayRecord(record, formatPrefix))
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.id).localeCompare(String(b.id)));
       
       console.log('4. 최종 병합 대상:', starFiltered.length, '개');
       console.log('================');
@@ -446,7 +444,7 @@ export function MergePage() {
           }
         }
       `}</style>
-      <div className="library-print-area">
+      {SHOW_ASSISTANT_LIBRARY_MERGE && <div className="library-print-area">
         <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>비서 합본</h1>
         <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 20 }}>
           비서 library 인덱스 기준
@@ -466,14 +464,21 @@ export function MergePage() {
             )}
           </article>
         ))}
-      </div>
+      </div>}
       <div className="merge-screen-area">
       <PageHeaderActions onClose={() => navigate(getOrigin() || '/sayu')} />
       <div className="flex items-center">
         <MergeTitleAnimation />
       </div>
 
-      {showNotice && (
+      {isLedgerMode && (
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A3C6E', margin: 0 }}>🧾 HARU보조장부 엑셀·신고 준비</h1>
+          <p className="text-xs mt-1" style={{ color: '#666' }}>보조장부 기록을 기간별 엑셀 파일로 내려받습니다.</p>
+        </div>
+      )}
+
+      {showNotice && !isLedgerMode && (
         <div
           className="rounded-lg p-4 shadow-sm"
           style={{ backgroundColor: '#FFF8F0', border: '2px solid #F59E0B' }}
@@ -494,14 +499,14 @@ export function MergePage() {
           </div>
           
           <ul className="space-y-1 pl-4" style={{ color: '#92400E', fontSize: '12px' }}>
-            <li>• 합본 결과는 서버에 저장되지 않습니다</li>
+            <li>• 합본 화면 결과는 서버에 저장되지 않습니다(EPUB 파일은 내려받기를 위해 잠시 만들어집니다)</li>
             <li>• 앱 내부 뷰어에서 바로 확인하세요</li>
             <li>• PDF로 저장하려면 뷰어에서 저장 버튼을 누르세요</li>
           </ul>
         </div>
       )}
 
-      <section className="bg-white rounded-lg shadow-sm overflow-hidden">
+      {SHOW_ASSISTANT_LIBRARY_MERGE && <section className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="px-4 pt-3 pb-2 flex items-center justify-between gap-3">
           <div>
             <span style={{ fontSize: '13px', color: '#1A3C6E', fontWeight: 600 }}>
@@ -574,7 +579,9 @@ export function MergePage() {
             선택한 비서 합본 인쇄
           </button>
         </div>
-      </section>
+      </section>}
+
+      {!isLedgerMode && (<>
 
       <section className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="px-4 pt-3 pb-2 flex items-center gap-2">
@@ -582,55 +589,36 @@ export function MergePage() {
             📝 형식 선택
           </span>
           <span className="text-xs" style={{ color: '#999' }}>
-            — 카테고리를 선택한 후 형식을 선택하세요
+            — 합칠 기록형식을 고르세요
           </span>
         </div>
 
-        {/* 카테고리 선택 */}
-        <div className="px-3 pb-2">
-          <div className="flex gap-2">
-            {(['생활', '업무'] as Category[]).map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className="flex-1 p-3 rounded-lg text-center transition-all text-sm font-medium"
-                style={{
-                  backgroundColor: selectedCategory === category ? '#1A3C6E' : '#FEFBE8',
-                  border: selectedCategory === category ? 'none' : '1px solid #e5e5e5',
-                  color: selectedCategory === category ? '#FAF9F6' : '#333',
-                }}
-              >
-                {category}
-              </button>
-            ))}
+        <div className="px-3 pb-3">
+          <div className="grid grid-cols-3 gap-2">
+            {STATS_MERGE_RECORD_FORMATS.map((format) => {
+              const isSelected = selectedFormat === format;
+              return (
+                <button
+                  key={format}
+                  onClick={() => setSelectedFormat(format)}
+                  className="py-2 px-2 rounded-lg text-sm transition-all"
+                  style={{
+                    backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
+                    color: isSelected ? '#FAF9F6' : '#333',
+                    border: isSelected ? 'none' : '1px solid #e5e5e5',
+                    fontWeight: isSelected ? 600 : 400,
+                    wordBreak: 'keep-all',
+                  }}
+                >
+                  {FORMAT_EMOJI[format]} {format === '애완동물관찰일지' ? '반려동물' : format}
+                </button>
+              );
+            })}
           </div>
+          <p className="text-xs mt-2" style={{ color: '#888' }}>
+            합본에는 SAYU를 마친 기록의 SAYU 글과 그 형식의 사진(기록당 최대 5장)이 들어갑니다. 입력 칸 원문과 첨부파일은 넣지 않습니다.
+          </p>
         </div>
-
-        {/* 형식 선택 - 카테고리 선택 후 표시 */}
-        {selectedCategory && (
-          <div className="px-3 pb-3">
-            <div className="grid grid-cols-3 gap-2">
-              {CATEGORY_FORMATS[selectedCategory].map((format) => {
-                const isSelected = selectedFormat === format;
-                return (
-                  <button
-                    key={format}
-                    onClick={() => setSelectedFormat(format)}
-                    className="py-2 px-3 rounded-lg text-sm transition-all"
-                    style={{
-                      backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
-                      color: isSelected ? '#FAF9F6' : '#333',
-                      border: isSelected ? 'none' : '1px solid #e5e5e5',
-                      fontWeight: isSelected ? 600 : 400,
-                    }}
-                  >
-                    {format}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </section>
 
       <section className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -644,8 +632,8 @@ export function MergePage() {
         </div>
         <div className="grid grid-cols-2 gap-0 px-3 pb-3">
           {([
-            { id: 'all', label: '📄 전체 기록', desc: '모든 기록 포함' },
-            { id: 'special', label: '✨ 특별한 날만', desc: '특별한 날 체크된 기록만' },
+            { id: 'all', label: '📄 SAYU 완료 기록', desc: 'SAYU를 마친 기록 전체' },
+            { id: 'special', label: '✨ 특별한 날만', desc: '특별한 날로 표시한 SAYU 기록만' },
           ] as { id: MergeFilter; label: string; desc: string }[]).map((opt, index) => {
             const isSelected = mergeFilter === opt.id;
             return (
@@ -690,9 +678,7 @@ export function MergePage() {
                 key={option.id}
                 onClick={() => {
                   if (isLocked) {
-                    const message = option.id === 'monthly'
-                      ? '월간 합본은 베이직 또는 프리미엄 구독에서 이용할 수 있습니다.'
-                      : '분기·연간·사용자정의 장기간 합본은 프리미엄 구독에서 이용할 수 있습니다.';
+                    const message = `${option.title} 합본은 ${accessLabel} 이용할 수 있습니다.`;
                     alert(message);
                     window.location.href = '/subscription';
                     return;
@@ -797,9 +783,10 @@ export function MergePage() {
         <Layers className="w-4 h-4" />
         <span>{isRunning ? '합치는 중...' : '📥 합치기 실행'}</span>
       </button>
+      </>)}
 
-      {/* 📒 HARU보조장부 전용 — 엑셀 저장 (보조장부 선택 시에만 노출) */}
-      {selectedFormat === 'HARU보조장부' && (
+      {/* 📒 HARU보조장부 전용 — 엑셀 저장 (보조장부 비서 화면에서 /merge?mode=ledger 로 열 때만 노출) */}
+      {isLedgerMode && (
         <section
           className="bg-white rounded-lg shadow-sm overflow-hidden"
           style={{ border: '1px solid #e5e5e5' }}

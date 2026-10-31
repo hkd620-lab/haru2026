@@ -24,8 +24,8 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification?.title || 'HARU2026';
   const notificationOptions = {
     body: payload.notification?.body || '오늘의 이야기를 남겨주세요 📖',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/icons/icon-v2-192.png',
+    badge: '/icons/badge-v2-96.png',
     tag: 'haru-notification',
     requireInteraction: false,
   };

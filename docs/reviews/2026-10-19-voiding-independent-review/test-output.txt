@@ -1,0 +1,23 @@
+✔ quick entry updates the selected suffixed document and preserves unrelated records/fields (19.949292ms)
+✔ first creation caches the actual service ID, then later entry and interpretation reuse it (0.580709ms)
+✔ loading blocks writes and analysis; missing today record blocks analysis before callable (0.152916ms)
+✔ missing health consent blocks record writes and interpretation calls (0.132708ms)
+✔ synchronous lock blocks double entry and concurrent analysis while persistence is pending (0.253875ms)
+✔ failed update keeps the draft and records, releases the lock and permits retry (0.2045ms)
+✔ failed creation does not add a phantom view target or clear the input (0.122542ms)
+✔ failed interpretation validation does not write or replace the stored interpretation (0.138417ms)
+✔ pending and nonboolean health consent block both quick writes and interpretation calls (0.171667ms)
+✔ departed account cannot start writes or calls, and a late entry does not update the old UI (0.364666ms)
+✔ late interpretation from a departed account cannot start a persistence update (0.195041ms)
+✔ departed account range response cannot replace records or complete a new session loading state (4.811666ms)
+✔ text response passes the actual numeric safety check and saves to the selected record (0.220292ms)
+✔ empty, missing, result-only and nonstring text responses preserve the previous interpretation (0.279292ms)
+✔ interpretation lock prevents duplicate calls while awaiting the response and permits retry after rejection (0.136ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 216.100542

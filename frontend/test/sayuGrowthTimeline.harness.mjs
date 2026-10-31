@@ -13,6 +13,8 @@ const TOP_LEVEL = [
   'getRecordSourceText', 'getResultChatSourceKey', 'hasResultChatSource', 'getRecordPreviewKeywords',
   // P3.5b: ALL_FORMAT_PREFIXES 의 값은 모듈 상단 SAYU_FORMAT_PREFIXES(형식 등록부)에서 온다.
   'SAYU_EXTRA_LABEL_KEYS', 'SAYU_FORMAT_LABELS', 'SAYU_FORMAT_PREFIXES',
+  // openFormatSayu가 원본 칸을 이 최상위 함수로 만든다.
+  'buildSayuOriginalData',
 ];
 const COMPONENT = [
   'formatDateString', 'ALL_FORMAT_PREFIXES', 'META_SUFFIXES', 'hasSayu', 'FORMAT_COLORS', 'getFormatDotsForDay', 'handleDateClick',
