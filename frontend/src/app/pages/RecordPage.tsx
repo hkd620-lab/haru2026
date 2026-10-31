@@ -936,7 +936,7 @@ export function RecordPage() {
             value={draftContent}
             onChange={(event) => setDraftContent(event.target.value)}
             placeholder="오늘 남기고 싶은 이야기를 적어 주세요..."
-            rows={9}
+            rows={3}
             className="w-full rounded-lg border p-3 text-base"
             style={{ resize: 'vertical' }}
           />

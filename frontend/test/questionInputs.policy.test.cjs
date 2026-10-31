@@ -15,6 +15,7 @@ const haruLawPanel = read('assistants/haruLaw/HaruLawPanel.tsx');
 const diaryLearn = read('pages/DiaryLearnPage.tsx');
 const novelStudio = read('pages/NovelStudio.tsx');
 const plantDetective = read('pages/PlantDetectivePage.tsx');
+const recordPage = read('pages/RecordPage.tsx');
 const enterSubmit = read('utils/questionEnterSubmit.ts');
 
 // <textarea ...> 한 요소의 원문을 잘라 낸다. 조건에 맞는 첫 요소를 쓴다.
@@ -97,6 +98,7 @@ const writingInputs = [
   ['외국어일기 작성', textareaWhere(diaryLearn, (e) => e.includes('setKoreanInput'), '외국어일기 작성')],
   // 식물탐정 "오늘의 관찰": 같은 폼의 두 입력칸이 이미 3줄이라 자유 메모만 2줄이던 것을 맞췄다.
   ['식물탐정 자유 메모', textareaWhere(plantDetective, (e) => e.includes('setObsMemo'), '식물탐정 자유 메모')],
+  ['일반 글쓰기 첫 입력칸', textareaWhere(recordPage, (e) => e.includes('aria-label="기록 내용"'), '일반 글쓰기 첫 입력칸')],
 ];
 for (const [label, element] of writingInputs) {
   assertRows3(element, label);
