@@ -1,0 +1,10 @@
+{
+  "name": "tailwindcss",
+  "version": "4.3.3",
+  "dist-tags": {
+    "next": "4.0.0",
+    "v3-lts": "3.4.19",
+    "latest": "4.3.3",
+    "insiders": "0.0.0-insiders.8cc0551"
+  }
+}

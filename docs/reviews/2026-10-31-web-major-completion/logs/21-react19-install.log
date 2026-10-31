@@ -1,0 +1,529 @@
+$ (cwd=frontend) npm install --no-audit --no-fund
+# start 2026-10-31T17:27:59+09:00
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: @figma/my-make-file@0.0.1
+npm warn Found: react@18.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   93 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^18.3.1" from react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   54 more (@dnd-kit/core, @floating-ui/react-dom, @mui/material, ...)
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: react-popper@2.3.0
+npm warn Found: react@19.3.1
+npm warn node_modules/react
+npm warn   peerOptional react@"19.3.1" from the root project
+npm warn   91 more (@dnd-kit/accessibility, @dnd-kit/core, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react@"^16.8.0 || ^17 || ^18" from react-popper@2.3.0
+npm warn node_modules/react-popper
+npm warn
+npm warn Conflicting peer dependency: react@18.3.1
+npm warn node_modules/react
+npm warn   peer react@"^16.8.0 || ^17 || ^18" from react-popper@2.3.0
+npm warn   node_modules/react-popper
+npm warn ERESOLVE overriding peer dependency
+npm warn While resolving: react-popper@2.3.0
+npm warn Found: react-dom@19.3.1
+npm warn node_modules/react-dom
+npm warn   peerOptional react-dom@"19.3.1" from the root project
+npm warn   52 more (@dnd-kit/core, @mui/material, ...)
+npm warn
+npm warn Could not resolve dependency:
+npm warn peer react-dom@"^16.8.0 || ^17 || ^18" from react-popper@2.3.0
+npm warn node_modules/react-popper
+npm warn
+npm warn Conflicting peer dependency: react-dom@18.3.1
+npm warn node_modules/react-dom
+npm warn   peer react-dom@"^16.8.0 || ^17 || ^18" from react-popper@2.3.0
+npm warn   node_modules/react-popper
+
+added 5 packages, removed 3 packages, and changed 15 packages in 7s
+
+# end 2026-10-31T17:28:07+09:00 exit=0
+

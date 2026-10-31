@@ -1,0 +1,741 @@
+{
+ "label": "final-complete-rerun",
+ "excluded": [
+  "test/aiLibraryAccess.emulator.test.mjs",
+  "test/householdCardSave.emulator.test.mjs",
+  "test/householdEdit.emulator.test.mjs",
+  "test/householdSave.emulator.test.mjs",
+  "test/snsTrash.emulator.test.mjs"
+ ],
+ "files": {
+  "test/aiImport.policy.test.cjs": {
+   "exit": 0,
+   "tests": 7,
+   "pass": 7,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/aiImportReturn.test.mjs": {
+   "exit": 0,
+   "tests": 2,
+   "pass": 2,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/aiLibraryDeletion.test.mjs": {
+   "exit": 0,
+   "tests": 2,
+   "pass": 2,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/aiLibraryPagination.test.mjs": {
+   "exit": 0,
+   "tests": 5,
+   "pass": 5,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/aiLibrarySource.test.mjs": {
+   "exit": 0,
+   "tests": 2,
+   "pass": 2,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/assistantEntryScroll.policy.test.cjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/assistantRecommendations.test.mjs": {
+   "exit": 0,
+   "tests": 40,
+   "pass": 40,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/assistantSavedResultOpen.test.mjs": {
+   "exit": 1,
+   "tests": 19,
+   "pass": 18,
+   "fail": 1,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/authCallbackAndHomePersonalization.policy.test.cjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/authCallbackDiagnostics.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/childVaccineSchedule.test.mjs": {
+   "exit": 0,
+   "tests": 4,
+   "pass": 4,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/epubExportGuide.test.mjs": {
+   "exit": 0,
+   "tests": 3,
+   "pass": 3,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/epubReaderGuide.test.mjs": {
+   "exit": 0,
+   "tests": 4,
+   "pass": 4,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/epubSingleRecord.test.mjs": {
+   "exit": 0,
+   "tests": 2,
+   "pass": 2,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/formatPhotoUploadResult.test.mjs": {
+   "exit": 0,
+   "tests": 23,
+   "pass": 23,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/formatPolishRequest.test.mjs": {
+   "exit": 0,
+   "tests": 10,
+   "pass": 10,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/formatRegistry.test.mjs": {
+   "exit": 0,
+   "tests": 7,
+   "pass": 7,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/growthSubject.test.mjs": {
+   "exit": 0,
+   "tests": 12,
+   "pass": 12,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/haruLawAttachmentCleanup.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/haruLawError.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/haruLawSave.test.cjs": {
+   "exit": 0,
+   "tests": 13,
+   "pass": 12,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 1,
+   "failed": []
+  },
+  "test/householdAmount.test.mjs": {
+   "exit": 0,
+   "tests": 7,
+   "pass": 7,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/householdCardImport.test.mjs": {
+   "exit": 0,
+   "tests": 46,
+   "pass": 46,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/householdCashEntry.test.mjs": {
+   "exit": 0,
+   "tests": 12,
+   "pass": 12,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/householdCategories.test.mjs": {
+   "exit": 0,
+   "tests": 14,
+   "pass": 14,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/householdDashboard.test.mjs": {
+   "exit": 0,
+   "tests": 13,
+   "pass": 13,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/householdDuplicates.test.mjs": {
+   "exit": 0,
+   "tests": 7,
+   "pass": 7,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/householdEdit.test.mjs": {
+   "exit": 0,
+   "tests": 12,
+   "pass": 12,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/householdExport.test.mjs": {
+   "exit": 0,
+   "tests": 8,
+   "pass": 8,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/householdPdf.test.mjs": {
+   "exit": 0,
+   "tests": 8,
+   "pass": 8,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/householdSavePreview.test.mjs": {
+   "exit": 0,
+   "tests": 7,
+   "pass": 7,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/householdSummary.test.mjs": {
+   "exit": 0,
+   "tests": 15,
+   "pass": 15,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/lawEasyExplain.policy.test.cjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/ledgerAmount.test.mjs": {
+   "exit": 0,
+   "tests": 4,
+   "pass": 4,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/ledgerEmptyExport.test.mjs": {
+   "exit": 0,
+   "tests": 17,
+   "pass": 17,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/ledgerExportConsistency.test.mjs": {
+   "exit": 0,
+   "tests": 8,
+   "pass": 8,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/loginPerformanceCallsites.policy.test.cjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/loginPerformanceTrace.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/loginProviderStorage.policy.test.cjs": {
+   "exit": 0,
+   "tests": 9,
+   "pass": 9,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/mergePeriodAccess.test.mjs": {
+   "exit": 0,
+   "tests": 4,
+   "pass": 4,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/notificationTimeZone.policy.test.cjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/originalAssistantRecords.test.mjs": {
+   "exit": 0,
+   "tests": 11,
+   "pass": 11,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/originalSaveAutoTitle.test.mjs": {
+   "exit": 0,
+   "tests": 16,
+   "pass": 16,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/photoSelectionRoutes.test.mjs": {
+   "exit": 0,
+   "tests": 13,
+   "pass": 13,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/plantDetectiveEdit.test.mjs": {
+   "exit": 0,
+   "tests": 8,
+   "pass": 8,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/plantDetectivePhotoEdit.test.mjs": {
+   "exit": 0,
+   "tests": 8,
+   "pass": 8,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/polishCommentOptOut.test.mjs": {
+   "exit": 0,
+   "tests": 8,
+   "pass": 8,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/questionEnterSubmit.test.mjs": {
+   "exit": 0,
+   "tests": 21,
+   "pass": 21,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/questionInputs.policy.test.cjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/readingAi.test.mjs": {
+   "exit": 0,
+   "tests": 17,
+   "pass": 17,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/recordPhotoCompression.test.mjs": {
+   "exit": 0,
+   "tests": 4,
+   "pass": 4,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/recordPhotoLayouts.test.mjs": {
+   "exit": 0,
+   "tests": 21,
+   "pass": 21,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/recordPhotoPolicy.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/recordPhotoUploadCore.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/recordPhotoUploadDeadline.test.mjs": {
+   "exit": 0,
+   "tests": 4,
+   "pass": 4,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/recordStats.test.mjs": {
+   "exit": 0,
+   "tests": 16,
+   "pass": 16,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/sayuAssistantAdapters.test.mjs": {
+   "exit": 0,
+   "tests": 6,
+   "pass": 6,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/sayuEditedTitle.test.mjs": {
+   "exit": 0,
+   "tests": 13,
+   "pass": 13,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/sayuGrowthTimeline.test.mjs": {
+   "exit": 1,
+   "tests": 11,
+   "pass": 5,
+   "fail": 6,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/sayuMobileReadingUx.policy.test.cjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/sayuPhotoUpload.test.mjs": {
+   "exit": 0,
+   "tests": 8,
+   "pass": 8,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/selectedRecordPhoto.test.mjs": {
+   "exit": 0,
+   "tests": 11,
+   "pass": 11,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/snsPrivateThumbnails.policy.test.cjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/snsRecordsMerge.policy.test.cjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/snsStoryCreator.policy.test.cjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/snsStoryRequestState.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/snsThumbnailAuthCache.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/snsThumbnailPersistentCache.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/snsThumbnailRequestQueue.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/snsThumbnailTieredLoad.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/socialLoginReturnOrigin.policy.test.cjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/statsPeriodUrl.test.mjs": {
+   "exit": 0,
+   "tests": 3,
+   "pass": 3,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/statsStorage.policy.test.cjs": {
+   "exit": 1,
+   "tests": 1,
+   "pass": 0,
+   "fail": 1,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/structuredAssistantRecords.test.mjs": {
+   "exit": 0,
+   "tests": 37,
+   "pass": 37,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/subscriptionDisplay.policy.test.cjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/validateBuildEnv.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/voidingRecordTarget.test.mjs": {
+   "exit": 0,
+   "tests": 17,
+   "pass": 17,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/webMajorUpgrade.test.mjs": {
+   "exit": 0,
+   "tests": 12,
+   "pass": 12,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/writeBeforeFormat.test.mjs": {
+   "exit": 0,
+   "tests": 5,
+   "pass": 5,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "test/writingDraftLifecycle.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  },
+  "tests/ledgerPeriodImport.test.mjs": {
+   "exit": 0,
+   "tests": 1,
+   "pass": 1,
+   "fail": 0,
+   "cancelled": 0,
+   "skipped": 0,
+   "failed": []
+  }
+ }
+}
