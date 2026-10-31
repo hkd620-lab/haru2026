@@ -19,7 +19,8 @@ function slice(startMark, endMark) {
 }
 
 const handlers = [
-  slice('const toGrammarText =', 'const showTTSLimitAlert ='),
+  slice('const toGrammarText =', 'export function BiblePage()'),
+  slice('  const stopAllTTS = () => {', '  // 한국어 TTS 듣기'),
   slice('  const handleGrammarClick = useCallback', '  const handleTranslationClick ='),
   slice('  const closeWordPopup = useCallback', '  useEffect(() => {\n    if (!wordPopup) return;'),
   slice('  const handleWordClick = useCallback', '  const renderVerseWithWords ='),
@@ -27,7 +28,7 @@ const handlers = [
 ].join('\n').replaceAll('await import(\'firebase/functions\')', 'firebaseFunctions');
 
 const { code } = await transform(
-  `${handlers}\nObject.assign(globalThis, { handleGrammarClick, handleWordClick, closeWordPopup, closeGrammarPopup, handleTTS, renderGrammarWords, renderNativeListenButton });`,
+  `${handlers}\nObject.assign(globalThis, { handleGrammarClick, handleWordClick, closeWordPopup, closeGrammarPopup, handleTTS, renderGrammarWords, renderNativeListenButton, stopAllTTS });`,
   { loader: 'tsx', jsx: 'transform', jsxFactory: 'createElement' },
 );
 
@@ -39,12 +40,17 @@ function deferred() {
 
 function fixture() {
   const calls = [];
-  const state = { grammar: null, word: null, ttsLoading: null, ttsPlaying: null, played: [] };
+  const state = { grammar: null, word: null, ttsLoading: null, ttsPlaying: null, ttsPaused: null, played: [], paused: [], alerts: [], playFailures: 0, playGate: null };
   const apply = (value, previous) => (typeof value === 'function' ? value(previous) : value);
   class FakeAudio {
     constructor(src) { this.src = src; }
-    play() { state.played.push(this.src); return Promise.resolve(); }
-    pause() {}
+    async play() {
+      if (this.src.startsWith('data:')) return;
+      if (state.playFailures > 0) { state.playFailures -= 1; throw new Error('NotAllowedError'); }
+      state.played.push(this.src);
+      if (state.playGate) await state.playGate;
+    }
+    pause() { state.paused.push(this.src); }
   }
   const httpsCallable = (_fns, name) => (payload) => {
     const pending = deferred();
@@ -56,13 +62,13 @@ function fixture() {
     URL, Uint8Array, Blob, atob,
     window: {},
     Audio: FakeAudio,
-    alert() {},
+    alert: (message) => { state.alerts.push(message); },
     useCallback: (fn) => fn,
     grammarRequestRef: { current: 0 }, wordRequestRef: { current: 0 }, ttsRequestRef: { current: 0 },
     highlightTimerRef: { current: null }, audioRef: { current: null }, audioCtxRef: { current: null },
     currentBook: { prefix: 'genesis' }, currentChapter: 1,
     koVoice: 'nova', enVoice: 'onyx', ttsSpeed: 1,
-    ttsPaused: null,
+    get ttsPaused() { return state.ttsPaused; },
     get ttsPlaying() { return state.ttsPlaying; },
     get ttsLoading() { return state.ttsLoading; },
     GrapeLoadingMini: () => null,
@@ -71,8 +77,10 @@ function fixture() {
     setVocabMemo() {}, setVocabExample() {}, setVocabSaved() {},
     setTtsLoading: (value) => { state.ttsLoading = value; },
     setTtsPlaying: (value) => { state.ttsPlaying = value; },
-    setTtsPaused() {}, setHighlightedWord() {},
-    showTTSLimitAlert() {}, saveProgress() {}, buildBibleTtsRequest,
+    setTtsPaused: (value) => { state.ttsPaused = value; }, setHighlightedWord() {},
+    setHighlightedEnWords() {}, setSelectedVerse() {}, setIsFullPlaying() {}, setIsSequentialPlaying() {},
+    setIsBookPlaying() {}, setBookPlayingChapter() {},
+    saveProgress() {}, buildBibleTtsRequest,
     getFunctions: () => ({}), httpsCallable,
     firebaseFunctions: { getFunctions: () => ({}), httpsCallable },
   };
@@ -194,7 +202,6 @@ test('단어 뜻 팝업은 문법 팝업보다 위에 표시한다', () => {
 test('고음질 버튼만 native 요청을 보내고 일반 음성 요청은 기존 모양을 유지한다', async () => {
   const { context, calls, state } = fixture();
   const button = context.renderNativeListenButton('Let there be light', 'grammar_verse_genesis_1_3');
-  assert.match(renderToStaticMarkup(button), /type="button"[^>]*aria-label="원어민 발음 듣기"/);
   button.props.onClick();
   await flush();
   await flush();
@@ -240,6 +247,171 @@ test('문법 팝업을 닫거나 다른 음성을 누르면 늦은 음성이 재
   await flush();
   assert.equal(state.played.at(-1), 'https://audio.test/three');
   assert.ok(!state.played.includes('https://audio.test/two'));
+});
+
+test('고음질 버튼은 보이는 글자와 접근성 이름 모두 AI 음성임을 알린다', () => {
+  const { context } = fixture();
+  const markup = renderToStaticMarkup(context.renderNativeListenButton('Let there be light', 'grammar_verse_genesis_1_3'));
+  assert.match(markup, /type="button"[^>]*aria-label="AI 고음질 듣기"/);
+  assert.match(markup, /title="[^"]*AI가 만든 음성/);
+  assert.match(markup, />🔊 AI 고음질 듣기<\/button>/);
+  assert.equal(source.includes('원어민'), false, '사람 목소리로 오해할 표현을 남기지 않는다');
+});
+
+test('불러오는 중 같은 고음질 버튼을 다시 눌러도 요청은 한 번이다', async () => {
+  const { context, calls } = fixture();
+  const key = 'grammar_verse_genesis_1_3';
+  context.handleTTS('one', key, 'native');
+  await flush();
+  await flush();
+  context.handleTTS('one', key, 'native');
+  await flush();
+  await flush();
+  assert.equal(calls.length, 1);
+});
+
+test('전체 정지는 불러오는 중인 음성을 취소하고 로딩 표시를 지운다', async () => {
+  const { context, calls, state } = fixture();
+  context.handleTTS('one', 'verse_1');
+  await flush();
+  await flush();
+  context.stopAllTTS();
+  assert.equal(state.ttsLoading, null);
+  calls[0].resolve({ data: { audioUrl: 'https://audio.test/late' } });
+  await flush();
+  await flush();
+  assert.deepEqual(state.played, []);
+  assert.equal(state.ttsPlaying, null);
+});
+
+test('재생을 시작하는 사이 정지하면 이미 시작된 소리도 끈다', async () => {
+  const { context, calls, state } = fixture();
+  let releasePlay;
+  state.playGate = new Promise((resolve) => { releasePlay = resolve; });
+  context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+  await flush();
+  await flush();
+  calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+  await flush();
+  await flush();
+  assert.deepEqual(state.played, ['https://audio.test/one']);
+  context.closeGrammarPopup();
+  releasePlay();
+  await flush();
+  await flush();
+  assert.ok(state.paused.includes('https://audio.test/one'));
+  assert.equal(state.ttsPlaying, null);
+});
+
+test('자동재생 재시도 전에 팝업을 닫으면 다시 재생하지 않는다', async () => {
+  const { context, calls, state } = fixture();
+  state.playFailures = 1;
+  context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+  await flush();
+  await flush();
+  calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+  await flush();
+  await flush();
+  assert.equal(state.ttsLoading, 'grammar_verse_genesis_1_1', '재시도 전에는 취소할 수 있게 로딩을 유지한다');
+  context.closeGrammarPopup();
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  assert.deepEqual(state.played, []);
+  assert.equal(state.ttsPlaying, null);
+  assert.equal(state.ttsLoading, null);
+});
+
+test('자동재생 재시도가 성공하거나 끝내 실패해도 로딩이 풀리고 컨트롤이 정리된다', async () => {
+  for (const [failures, playing] of [[1, 'grammar_verse_genesis_1_1'], [2, null]]) {
+    const { context, calls, state } = fixture();
+    state.playFailures = failures;
+    context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+    await flush();
+    await flush();
+    calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    assert.equal(state.ttsLoading, null);
+    assert.equal(state.ttsPlaying, playing);
+  }
+});
+
+test('듣던 문장은 일시정지·재개되고 팝업을 닫으면 함께 끝난다', async () => {
+  const { context, calls, state } = fixture();
+  const key = 'grammar_verse_genesis_1_1';
+  context.handleTTS('one', key, 'native');
+  await flush();
+  await flush();
+  calls[0].resolve({ data: { audioUrl: 'https://audio.test/one' } });
+  await flush();
+  await flush();
+  assert.equal(state.ttsPlaying, key);
+
+  await context.handleTTS('one', key, 'native');
+  assert.equal(state.ttsPaused, key);
+  assert.equal(state.ttsPlaying, null);
+  await context.handleTTS('one', key, 'native');
+  assert.equal(state.ttsPlaying, key);
+  assert.equal(calls.length, 1, '일시정지와 재개는 다시 요청하지 않는다');
+
+  const pausedBefore = state.paused.length;
+  context.closeGrammarPopup();
+  assert.equal(state.paused.length, pausedBefore + 1);
+  assert.equal(state.ttsPlaying, null);
+  assert.equal(state.ttsPaused, null);
+});
+
+test('고음질 실패는 안내 후 버튼을 다시 쓸 수 있게 하고, 늦은 실패와 표준 음성은 알리지 않는다', async () => {
+  const { context, calls, state } = fixture();
+  const key = 'grammar_verse_genesis_1_1';
+  context.handleTTS('one', key, 'native');
+  await flush();
+  await flush();
+  calls[0].reject(new Error('fail'));
+  await flush();
+  await flush();
+  assert.equal(state.ttsLoading, null);
+  assert.equal(state.ttsPlaying, null);
+  assert.match(state.alerts[0], /AI 고음질 음성을 불러오지 못했습니다/);
+
+  context.handleTTS('one', key, 'native');
+  await flush();
+  await flush();
+  assert.equal(calls.length, 2, '실패 뒤 같은 버튼으로 다시 시도할 수 있다');
+  context.closeGrammarPopup();
+  calls[1].reject(new Error('fail'));
+  await flush();
+  await flush();
+  assert.equal(state.alerts.length, 1);
+
+  context.handleTTS('two', 'verse_2');
+  await flush();
+  await flush();
+  calls[2].reject(new Error('fail'));
+  await flush();
+  await flush();
+  assert.equal(state.alerts.length, 1, '표준 음성의 기존 실패 표시는 바꾸지 않는다');
+});
+
+test('고음질 한도 초과는 한도 안내만 한 번 보여 준다', async () => {
+  const { context, calls, state } = fixture();
+  context.handleTTS('one', 'grammar_verse_genesis_1_1', 'native');
+  await flush();
+  await flush();
+  calls[0].reject(Object.assign(new Error('한도'), { code: 'functions/resource-exhausted' }));
+  await flush();
+  await flush();
+  assert.equal(state.alerts.length, 1);
+  assert.match(state.alerts[0], /사용 한도/);
+});
+
+test('장이나 책이 바뀌면 불러오는 중인 음성 요청을 무효로 만든다', () => {
+  const effect = (dependency) => {
+    const end = source.indexOf(`}, [${dependency}]);`);
+    const start = source.lastIndexOf('useEffect(', end);
+    return source.slice(start, end);
+  };
+  for (const dependency of ['currentBook', 'currentChapter']) {
+    assert.match(effect(dependency), /ttsRequestRef\.current \+= 1;\n\s+setTtsLoading\(null\);/);
+  }
 });
 
 test('표준 cacheKey는 기존 규칙과 같고 고음질 표시는 80자에서 잘리지 않는다', () => {

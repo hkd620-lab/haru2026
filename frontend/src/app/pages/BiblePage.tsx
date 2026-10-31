@@ -32,10 +32,14 @@ const toGrammarText = (v: unknown): string => {
   return v == null ? '' : String(v);
 };
 
-const showTTSLimitAlert = (err: any) => {
+const isTTSLimitError = (err: any) => {
   const msg = err?.message || '';
   const code = err?.code || '';
-  if (msg.includes('한도') || code === 'functions/resource-exhausted' || code === 'resource-exhausted') {
+  return msg.includes('한도') || code === 'functions/resource-exhausted' || code === 'resource-exhausted';
+};
+
+const showTTSLimitAlert = (err: any) => {
+  if (isTTSLimitError(err)) {
     alert('오늘 TTS 사용 한도(500회)를 초과했습니다. 내일 다시 이용해주세요 😊');
   }
 };
@@ -186,6 +190,8 @@ export function BiblePage() {
   }, [currentBook, currentChapter]);
 
   useEffect(() => {
+    ttsRequestRef.current += 1;
+    setTtsLoading(null);
     setSelectedVerse(null);
     setTtsPlaying(null);
     setIsFullPlaying(false);
@@ -204,6 +210,8 @@ export function BiblePage() {
 
   useEffect(() => {
     if (isBookPlaying) return;
+    ttsRequestRef.current += 1;
+    setTtsLoading(null);
     setSelectedVerse(null);
     setTtsPlaying(null);
     setIsFullPlaying(false);
@@ -374,6 +382,8 @@ export function BiblePage() {
 
   // 모든 TTS 완전 정지 헬퍼
   const stopAllTTS = () => {
+    ttsRequestRef.current += 1;
+    setTtsLoading(null);
     audioRef.current?.pause();
     if (audioRef.current) audioRef.current.currentTime = 0;
     if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
@@ -1158,6 +1168,8 @@ export function BiblePage() {
   };
 
   const handleTTS = async (text: string, key: string, quality?: BibleTtsQuality) => {
+    // 고음질은 비용이 들므로 불러오는 중 같은 버튼을 다시 눌러도 중복 요청하지 않는다.
+    if (quality === 'native' && ttsLoading === key) return;
     // 현재 재생 중 → 일시정지
     if (ttsPlaying === key && ttsPaused !== key) {
       audioRef.current?.pause();
@@ -1177,6 +1189,7 @@ export function BiblePage() {
     if (audioRef.current) audioRef.current.pause();
 
     const requestId = ++ttsRequestRef.current;
+    let playRetryPending = false;
     setTtsLoading(key);
 
     try {
@@ -1227,6 +1240,7 @@ export function BiblePage() {
             }
           }
         } catch(_) {}
+        if (requestId !== ttsRequestRef.current) return;
 
         audioRef.current = new Audio(audioSrc);
         audioRef.current.playbackRate = ttsSpeed;
@@ -1243,7 +1257,13 @@ export function BiblePage() {
 
         // ④ play 실패 시 재시도 1회
         try {
-          await audioRef.current.play();
+          const audio = audioRef.current;
+          await audio.play();
+          // play 대기 중 정지·팝업 닫기가 들어오면 이미 시작된 소리도 끈다.
+          if (requestId !== ttsRequestRef.current) {
+            audio.pause();
+            return;
+          }
           setTtsPlaying(key);
 
           // 단어 하이라이트 (절별만, 전체 듣기 제외)
@@ -1251,7 +1271,6 @@ export function BiblePage() {
             const words = text.trim().split(/\s+/);
             let wordIndex = 0;
             if (highlightTimerRef.current) clearInterval(highlightTimerRef.current);
-            const audio = audioRef.current!;
             const startLoop = () => {
               const duration = audio.duration || words.length * 0.45;
               const interval = (duration * 1000) / words.length;
@@ -1273,23 +1292,32 @@ export function BiblePage() {
           }
         } catch (playErr) {
           console.warn('TTS play 재시도:', playErr);
+          // 재시도가 끝날 때까지 로딩을 유지해 그사이의 정지·팝업 닫기가 재시도를 취소할 수 있게 한다.
+          playRetryPending = true;
           setTimeout(async () => {
+            if (requestId !== ttsRequestRef.current) return;
             try {
               await audioRef.current?.play();
               setTtsPlaying(key);
             } catch(e) {
               console.error('TTS play 최종 실패:', e);
               setTtsPlaying(null);
+            } finally {
+              if (requestId === ttsRequestRef.current) setTtsLoading(null);
             }
           }, 300);
         }
       }
     } catch (err: any) {
-      showTTSLimitAlert(err);
       console.error('TTS 오류:', err);
-      if (requestId === ttsRequestRef.current) setTtsPlaying(null);
+      if (requestId !== ttsRequestRef.current) return;
+      showTTSLimitAlert(err);
+      setTtsPlaying(null);
+      if (quality === 'native' && !isTTSLimitError(err)) {
+        alert('AI 고음질 음성을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+      }
     } finally {
-      if (requestId === ttsRequestRef.current) setTtsLoading(null);
+      if (!playRetryPending && requestId === ttsRequestRef.current) setTtsLoading(null);
     }
   };
 
@@ -1297,23 +1325,28 @@ export function BiblePage() {
     <button
       type="button"
       onClick={() => handleTTS(text, key, 'native')}
-      title="원어민 발음 듣기"
-      aria-label="원어민 발음 듣기"
+      title="AI 고음질 듣기 - 실제 사람이 아닌 AI가 만든 음성입니다"
+      aria-label="AI 고음질 듣기"
+      aria-pressed={ttsPlaying === key}
       style={{
-        width: 30,
-        height: 30,
+        minHeight: 30,
+        padding: '0 10px',
         borderRadius: 999,
         border: '1px solid #BFDBFE',
         backgroundColor: ttsPlaying === key ? '#DBEAFE' : '#fff',
         color: '#1A3C6E',
+        fontSize: 11,
+        fontWeight: 600,
         cursor: 'pointer',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
+        gap: 4,
         flexShrink: 0,
+        whiteSpace: 'nowrap',
       }}
     >
-      {ttsLoading === key ? <GrapeLoadingMini size={16} /> : '🔊'}
+      {ttsLoading === key ? <GrapeLoadingMini size={16} /> : '🔊'} AI 고음질 듣기
     </button>
   );
 
@@ -1323,6 +1356,13 @@ export function BiblePage() {
     if (ttsLoading?.startsWith('grammar_')) {
       ttsRequestRef.current += 1;
       setTtsLoading(null);
+    }
+    // 팝업의 재생 버튼이 사라지므로 듣던 문장도 함께 끝낸다.
+    if (ttsPlaying?.startsWith('grammar_') || ttsPaused?.startsWith('grammar_')) {
+      ttsRequestRef.current += 1;
+      audioRef.current?.pause();
+      setTtsPlaying(null);
+      setTtsPaused(null);
     }
     setGrammarPopup(null);
   };
@@ -3548,9 +3588,9 @@ export function BiblePage() {
               padding: '10px 14px', backgroundColor: '#f8faff',
               borderRadius: 8, marginBottom: 16, fontSize: 12,
               color: '#555', lineHeight: 1.6,
-              display: 'flex', alignItems: 'flex-start', gap: 8,
+              display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 8,
             }}>
-              {renderGrammarWords(grammarPopup.verseText, grammarPopup.verseKey, { flex: 1 })}
+              {renderGrammarWords(grammarPopup.verseText, grammarPopup.verseKey, { flex: '1 1 180px' })}
               {renderNativeListenButton(grammarPopup.verseText, `grammar_verse_${grammarPopup.verseKey}`)}
             </div>
 
@@ -3596,8 +3636,8 @@ export function BiblePage() {
                           <p style={{ fontSize: 12, fontWeight: 600, color: text, margin: '0 0 2px' }}>
                             📝 예문
                           </p>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                            {renderGrammarWords(exEn, grammarPopup.verseKey, { fontSize: 12, color: '#1A3C6E', fontWeight: 600, flex: 1 })}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            {renderGrammarWords(exEn, grammarPopup.verseKey, { fontSize: 12, color: '#1A3C6E', fontWeight: 600, flex: '1 1 180px' })}
                             {renderNativeListenButton(exEn, `grammar_${key}_${grammarPopup.verseKey}`)}
                           </div>
                           {exKo && (
@@ -3621,8 +3661,8 @@ export function BiblePage() {
                     <p style={{ fontSize: 12, fontWeight: 700, color: '#065F46', marginBottom: 4 }}>
                       ✏️ 나도 써볼게요
                     </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                      {renderGrammarWords(grammarPopup.mysentence, grammarPopup.verseKey, { fontSize: 14, fontWeight: 700, color: '#333', flex: 1 })}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      {renderGrammarWords(grammarPopup.mysentence, grammarPopup.verseKey, { fontSize: 14, fontWeight: 700, color: '#333', flex: '1 1 180px' })}
                       {renderNativeListenButton(grammarPopup.mysentence, `grammar_mysentence_${grammarPopup.verseKey}`)}
                     </div>
                     {grammarPopup.korean && (
