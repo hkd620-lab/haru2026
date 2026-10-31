@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as PortOne from '@portone/browser-sdk/v2';
 import { httpsCallable } from 'firebase/functions';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { functions } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { BusinessInfoNotice } from '../components/BusinessInfoNotice';

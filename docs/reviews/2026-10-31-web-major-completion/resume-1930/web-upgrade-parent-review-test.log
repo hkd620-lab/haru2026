@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: Router 8 전제: react-router-dom이 없고 React·Vite 최소 버전을 lock이 지킨다
+ok 1 - Router 8 전제: react-router-dom이 없고 React·Vite 최소 버전을 lock이 지킨다
+  ---
+  duration_ms: 1.224125
+  type: 'test'
+  ...
+# Subtest: 소스는 제거된 react-router-dom을 import하지 않는다
+ok 2 - 소스는 제거된 react-router-dom을 import하지 않는다
+  ---
+  duration_ms: 95.965875
+  type: 'test'
+  ...
+# Subtest: 앱 라우터는 선언형 BrowserRouter를 유지하고 framework·data router를 들이지 않는다
+ok 3 - 앱 라우터는 선언형 BrowserRouter를 유지하고 framework·data router를 들이지 않는다
+  ---
+  duration_ms: 0.414541
+  type: 'test'
+  ...
+# Subtest: 중첩 경로·동적 파라미터·검색 파라미터가 v8 컨텍스트로 전달된다
+ok 4 - 중첩 경로·동적 파라미터·검색 파라미터가 v8 컨텍스트로 전달된다
+  ---
+  duration_ms: 9.197959
+  type: 'test'
+  ...
+# Subtest: Link는 href를 만들고 없는 경로는 catch-all로 간다
+ok 5 - Link는 href를 만들고 없는 경로는 catch-all로 간다
+  ---
+  duration_ms: 2.032708
+  type: 'test'
+  ...
+# Subtest: Navigate replace는 첫 렌더에서 대상 element를 대신 그리지 않는다
+ok 6 - Navigate replace는 첫 렌더에서 대상 element를 대신 그리지 않는다
+  ---
+  duration_ms: 0.859083
+  type: 'test'
+  ...
+# Subtest: 라우터 밖 훅은 조용히 넘어가지 않고 오류를 낸다
+ok 7 - 라우터 밖 훅은 조용히 넘어가지 않고 오류를 낸다
+  ---
+  duration_ms: 0.469667
+  type: 'test'
+  ...
+# Subtest: React.lazy와 Suspense는 lazy 경로의 fallback을 렌더한다
+ok 8 - React.lazy와 Suspense는 lazy 경로의 fallback을 렌더한다
+  ---
+  duration_ms: 4.033584
+  type: 'test'
+  ...
+# Subtest: recharts는 React 19 요소를 인식하는 react-is로 Fragment 자식을 그린다
+ok 9 - recharts는 React 19 요소를 인식하는 react-is로 Fragment 자식을 그린다
+  ---
+  duration_ms: 15.034084
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 908.457084

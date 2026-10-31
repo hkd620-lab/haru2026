@@ -1,0 +1,32 @@
+[
+  {
+    "name": "web-upgrade-independent1-prompt.txt",
+    "bytes": 3944,
+    "sha256": "d4da599c1856360f42766c4000bfdc9842ba4d44e386f39e70b9e8d2c8b9c6dc"
+  },
+  {
+    "name": "web-upgrade-independent1-result.json",
+    "bytes": 3357,
+    "sha256": "9abd5b3e65c61064628f2f8280247b6a94b0f3b19d2811b763d042c636e4346e"
+  },
+  {
+    "name": "web-upgrade-independent1-stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "web-upgrade-codex-review1-comments.json",
+    "bytes": 15213,
+    "sha256": "c682cb9d2edb1bc976f9e2564e2e884c1c32434e671add4be202d4725b45b241"
+  },
+  {
+    "name": "web-upgrade-ci-7537-final.json",
+    "bytes": 1581,
+    "sha256": "79b1ad2f39483a192b6b3f49a827a6494d5d3b1db4d3b84d6ddda6e8fa096033"
+  },
+  {
+    "name": "web-major-parent-public-legal-failure.log",
+    "bytes": 1586,
+    "sha256": "d1cddcd2771ca2d4ba1149b1c5a92ef479f0486525edf4825bf4efd5a861e59b"
+  }
+]

@@ -1,0 +1,23 @@
+{
+  "name": "react-router-dom",
+  "version": "7.18.5",
+  "dist-tags": {
+    "classic": "5.3.4",
+    "pre-v6": "6.30.3-pre-v6.0",
+    "pre": "7.14.0-pre.0",
+    "nightly": "0.0.0-nightly-4547c8015-20260410",
+    "experimental": "0.0.0-experimental-d07149147",
+    "version-6": "6.30.6",
+    "latest": "7.18.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "dependencies": {
+    "react-router": "7.18.5"
+  }
+}

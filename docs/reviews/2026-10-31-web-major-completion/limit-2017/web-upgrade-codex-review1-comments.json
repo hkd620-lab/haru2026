@@ -1,0 +1,118 @@
+{
+  "comments": [
+    {
+      "url": "https://github.com/hkd620-lab/haru2026/pull/321#issuecomment-6542562557",
+      "body": "@codex review\n검토 대상 HEAD: 7537214430989ffbc508603047f9d18ae6d4fc6e.\n#96·#116을 현재 main 기준으로 대체하는 React19/Router8/Vite8 이행입니다. BrowserRouter 선언형과 기존 URL·로그아웃 화면을 유지하고 필수 peer 충돌 및 iOS 레거시 번들 lookbehind·Safari 블러 회귀를 수정했습니다. Node22 npmci/build·81개 시험 파일의 기준선 대조(기존3파일8실패 동일)·tsc108동일·정적assets/SW·로컬 현대/레거시12경로 대조 근거를 docs/reviews/2026-10-31-web-major-completion/resume-1930/에 보존했습니다. 필요 최소 의존성 변경인지, 실제 라우팅·클라이언트/구형브라우저 호환성을 검토해 주세요. 실제 iOS 및 로그인 후·운영 E2E는 아직 확인하지 않았습니다. 독립 Claude 검토 중이며 운영 병합·배포 전입니다.",
+      "user": {
+        "login": "hkd620-lab",
+        "name": "hkd620-lab",
+        "email": null,
+        "avatar_url": "https://avatars.githubusercontent.com/u/233199315?v=4",
+        "id": 233199315
+      },
+      "id": 6542562557,
+      "pull_request_review_id": null,
+      "in_reply_to_id": null,
+      "created_at": "2026-10-31T11:04:12Z",
+      "updated_at": "2026-10-31T11:04:12Z",
+      "review": null,
+      "side": null,
+      "line": null,
+      "start_line": null,
+      "path": null,
+      "body_html": "<p dir=\"auto\"><a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> review<br>\n검토 대상 HEAD: <a class=\"commit-link\" data-hovercard-type=\"commit\" data-hovercard-url=\"https://github.com/hkd620-lab/haru2026/commit/7537214430989ffbc508603047f9d18ae6d4fc6e/hovercard\" href=\"https://github.com/hkd620-lab/haru2026/commit/7537214430989ffbc508603047f9d18ae6d4fc6e\"><tt>7537214</tt></a>.<br>\n<a class=\"issue-link js-issue-link\" data-error-text=\"Failed to load title\" data-id=\"4658776275\" data-permission-text=\"Title is private\" data-url=\"https://github.com/hkd620-lab/haru2026/issues/96\" data-hovercard-type=\"pull_request\" data-hovercard-url=\"/hkd620-lab/haru2026/pull/96/hovercard\" href=\"https://github.com/hkd620-lab/haru2026/pull/96\">#96</a>·#116을 현재 main 기준으로 대체하는 React19/Router8/Vite8 이행입니다. BrowserRouter 선언형과 기존 URL·로그아웃 화면을 유지하고 필수 peer 충돌 및 iOS 레거시 번들 lookbehind·Safari 블러 회귀를 수정했습니다. Node22 npmci/build·81개 시험 파일의 기준선 대조(기존3파일8실패 동일)·tsc108동일·정적assets/SW·로컬 현대/레거시12경로 대조 근거를 docs/reviews/2026-10-31-web-major-completion/resume-1930/에 보존했습니다. 필요 최소 의존성 변경인지, 실제 라우팅·클라이언트/구형브라우저 호환성을 검토해 주세요. 실제 iOS 및 로그인 후·운영 E2E는 아직 확인하지 않았습니다. 독립 Claude 검토 중이며 운영 병합·배포 전입니다.</p>"
+    },
+    {
+      "url": "https://github.com/hkd620-lab/haru2026/pull/321#issuecomment-6542565216",
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"7537214430989ffbc508603047f9d18ae6d4fc6e\",\"has_any_findings\":true,\"has_unresolved_findings\":true,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-10-31T11:05:55.713901Z\">2026-10-31T11:05:55.713901Z</relative-time> | `7537214` | Manual request |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>",
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "name": "chatgpt-codex-connector[bot]",
+        "email": null,
+        "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+        "id": 199175422
+      },
+      "id": 6542565216,
+      "pull_request_review_id": null,
+      "in_reply_to_id": null,
+      "created_at": "2026-10-31T11:04:29Z",
+      "updated_at": "2026-10-31T11:05:56Z",
+      "review": null,
+      "side": null,
+      "line": null,
+      "start_line": null,
+      "path": null,
+      "body_html": "\n\n<h2 dir=\"auto\">Codex Review Summary</h2>\n<p dir=\"auto\">This comment shows the latest Codex review activity on this pull request.</p>\n<markdown-accessiblity-table><table role=\"table\">\n<thead>\n<tr>\n<th>Review</th>\n<th>Status</th>\n<th>Commit</th>\n<th>Review trigger</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>📝 <strong>Code Review</strong></td>\n<td>✅ <strong>Completed</strong> <relative-time datetime=\"2026-10-31T11:05:55.713901Z\">2026-10-31T11:05:55.713901Z</relative-time></td>\n<td><code class=\"notranslate\">7537214</code></td>\n<td>Manual request</td>\n</tr>\n</tbody>\n</table></markdown-accessiblity-table>\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br>\n<p dir=\"auto\"><a href=\"https://chatgpt.com/codex/cloud/settings/general\" rel=\"nofollow\">Your team has set up Codex to review pull requests in this repo</a>. Reviews are triggered when you</p>\n<ul dir=\"auto\">\n<li>Open a pull request for review</li>\n<li>Mark a draft as ready</li>\n<li>Comment \"<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> review\" or \"<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> security review\".</li>\n</ul>\n<p dir=\"auto\">Codex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.</p>\n</details>"
+    },
+    {
+      "url": "https://github.com/hkd620-lab/haru2026/pull/321#issuecomment-6542571172",
+      "body": "Visit the preview URL for this PR (updated for commit 7537214):\n\n[https://haru2026-8abb8--pr321-codex-completion-web-mub2phr8.web.app](https://haru2026-8abb8--pr321-codex-completion-web-mub2phr8.web.app)\n\n<sub>(expires Sat, 07 Nov 2026 11:04:58 GMT)</sub>\n\n<sub>🔥 via [Firebase Hosting GitHub Action](https://github.com/marketplace/actions/deploy-to-firebase-hosting) 🌎</sub>\n\n<sub>Sign: ae7b4a9a9f3f54971034c7b5880fb9b08c295f07</sub>",
+      "user": {
+        "login": "github-actions[bot]",
+        "name": "github-actions[bot]",
+        "email": null,
+        "avatar_url": "https://avatars.githubusercontent.com/in/15368?v=4",
+        "id": 41898282
+      },
+      "id": 6542571172,
+      "pull_request_review_id": null,
+      "in_reply_to_id": null,
+      "created_at": "2026-10-31T11:05:06Z",
+      "updated_at": "2026-10-31T11:05:06Z",
+      "review": null,
+      "side": null,
+      "line": null,
+      "start_line": null,
+      "path": null,
+      "body_html": "<p dir=\"auto\">Visit the preview URL for this PR (updated for commit <a class=\"commit-link\" data-hovercard-type=\"commit\" data-hovercard-url=\"https://github.com/hkd620-lab/haru2026/commit/7537214430989ffbc508603047f9d18ae6d4fc6e/hovercard\" href=\"https://github.com/hkd620-lab/haru2026/commit/7537214430989ffbc508603047f9d18ae6d4fc6e\"><tt>7537214</tt></a>):</p>\n<p dir=\"auto\"><a href=\"https://haru2026-8abb8--pr321-codex-completion-web-mub2phr8.web.app\" rel=\"nofollow\">https://haru2026-8abb8--pr321-codex-completion-web-mub2phr8.web.app</a></p>\n<p dir=\"auto\"><sub>(expires Sat, 07 Nov 2026 11:04:58 GMT)</sub></p>\n<p dir=\"auto\"><sub>🔥 via <a href=\"https://github.com/marketplace/actions/deploy-to-firebase-hosting\">Firebase Hosting GitHub Action</a> 🌎</sub></p>\n<p dir=\"auto\"><sub>Sign: ae7b4a9a9f3f54971034c7b5880fb9b08c295f07</sub></p>"
+    },
+    {
+      "url": "https://github.com/hkd620-lab/haru2026/pull/321#discussion_r4431491488",
+      "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  루트의 공개 법률 페이지 테스트도 react-router로 전환하세요**\n\n깨끗한 환경에서 `npm ci`를 실행하면 `tests/public-legal-boundary.test.cjs:10`에 남아 있는 `frontendRequire('react-router-dom')`이 `MODULE_NOT_FOUND`를 발생시켜 해당 파일의 테스트 6개가 실행되지 않습니다. 저장소 전체 검색에서 이 참조를 확인했으며, 루트와 frontend의 새 lockfile 모두 해당 패키지를 포함하지 않습니다. 현재 설치된 이전 의존성에서는 이 테스트가 통과하므로 기존 실패가 아니라 이번 패키지 제거로 생기는 회귀입니다. 앱 소스뿐 아니라 이 테스트의 `MemoryRouter` 로딩도 `react-router`로 전환해야 공개 약관·개인정보 페이지와 앱 경계 검증을 유지할 수 있습니다.\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "name": "chatgpt-codex-connector[bot]",
+        "email": null,
+        "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+        "id": 199175422
+      },
+      "id": 4431491488,
+      "pull_request_review_id": 5722461518,
+      "in_reply_to_id": null,
+      "created_at": "2026-10-31T11:05:53Z",
+      "updated_at": "2026-10-31T11:05:53Z",
+      "review": null,
+      "side": "RIGHT",
+      "line": 87,
+      "start_line": null,
+      "path": "frontend/package.json",
+      "body_html": "<p dir=\"auto\"><strong><sub><sub><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://camo.githubusercontent.com/f2c1aacb361ddd3a0e9f9cacdb84fab050de434017f6747bb916e31e29bdf03d/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f50322d79656c6c6f773f7374796c653d666c6174\"><img src=\"https://camo.githubusercontent.com/f2c1aacb361ddd3a0e9f9cacdb84fab050de434017f6747bb916e31e29bdf03d/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f50322d79656c6c6f773f7374796c653d666c6174\" alt=\"P2 Badge\" data-canonical-src=\"https://img.shields.io/badge/P2-yellow?style=flat\" style=\"max-width: 100%;\"></a></sub></sub>  루트의 공개 법률 페이지 테스트도 react-router로 전환하세요</strong></p>\n<p dir=\"auto\">깨끗한 환경에서 <code class=\"notranslate\">npm ci</code>를 실행하면 <code class=\"notranslate\">tests/public-legal-boundary.test.cjs:10</code>에 남아 있는 <code class=\"notranslate\">frontendRequire('react-router-dom')</code>이 <code class=\"notranslate\">MODULE_NOT_FOUND</code>를 발생시켜 해당 파일의 테스트 6개가 실행되지 않습니다. 저장소 전체 검색에서 이 참조를 확인했으며, 루트와 frontend의 새 lockfile 모두 해당 패키지를 포함하지 않습니다. 현재 설치된 이전 의존성에서는 이 테스트가 통과하므로 기존 실패가 아니라 이번 패키지 제거로 생기는 회귀입니다. 앱 소스뿐 아니라 이 테스트의 <code class=\"notranslate\">MemoryRouter</code> 로딩도 <code class=\"notranslate\">react-router</code>로 전환해야 공개 약관·개인정보 페이지와 앱 경계 검증을 유지할 수 있습니다.</p>\n<p dir=\"auto\">Useful? React with 👍 / 👎.</p>\n"
+    },
+    {
+      "url": "https://github.com/hkd620-lab/haru2026/pull/321#pullrequestreview-5722461518",
+      "body": "<!-- codex-review-receipt:v1 -->\n\n\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `7537214430`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nCodex can also answer questions or update the PR. Try commenting \"@codex address that feedback\".\n            \n</details>",
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "name": "chatgpt-codex-connector[bot]",
+        "email": null,
+        "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+        "id": 199175422
+      },
+      "id": 5722461518,
+      "pull_request_review_id": null,
+      "in_reply_to_id": null,
+      "created_at": "2026-10-31T11:05:53Z",
+      "updated_at": null,
+      "review": "COMMENTED",
+      "side": null,
+      "line": null,
+      "start_line": null,
+      "path": null,
+      "body_html": "\n<h3 dir=\"auto\">💡 Codex Review</h3>\n<p dir=\"auto\">Here are some automated review suggestions for this pull request.</p>\n<p dir=\"auto\"><strong>Reviewed commit:</strong> <code class=\"notranslate\">7537214430</code></p>\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br>\n<p dir=\"auto\"><a href=\"https://chatgpt.com/codex/cloud/settings/general\" rel=\"nofollow\">Your team has set up Codex to review pull requests in this repo</a>. Reviews are triggered when you</p>\n<ul dir=\"auto\">\n<li>Open a pull request for review</li>\n<li>Mark a draft as ready</li>\n<li>Comment \"<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> review\".</li>\n</ul>\n<p dir=\"auto\">If Codex has suggestions, it will comment; otherwise it will react with 👍.</p>\n<p dir=\"auto\">Codex can also answer questions or update the PR. Try commenting \"<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> address that feedback\".</p>\n</details>"
+    }
+  ],
+  "url": "https://github.com/hkd620-lab/haru2026/pull/321",
+  "title": "hkd620-lab/haru2026 PR #321 comments",
+  "display_url": "https://github.com/hkd620-lab/haru2026/pull/321",
+  "display_title": "hkd620-lab/haru2026 PR #321 comments"
+}

@@ -1,0 +1,94 @@
+{
+ "dist": "frontend/dist",
+ "modern": {
+  "count": 379,
+  "byEcma": {
+   "2015": 375,
+   "2020": 4
+  },
+  "total": {
+   "optionalChaining": 2606,
+   "nullish": 609,
+   "regexLookbehind": 2,
+   "regexUnicodeProperty": 10,
+   "dynamicImport": 1871,
+   "importMeta": 6
+  },
+  "sample": {
+   "optionalChaining": [
+    "index-DgEiNOir.js:2008",
+    "index.esm-C7qgFNJn.js:14",
+    "pdf-B1SGOyIA.js:515",
+    "xlsx-D-R0F-ey.js:69"
+   ],
+   "nullish": [
+    "index-DgEiNOir.js:467",
+    "index.esm-C7qgFNJn.js:5",
+    "pdf-B1SGOyIA.js:81",
+    "xlsx-D-R0F-ey.js:56"
+   ],
+   "regexLookbehind": [
+    "index-DgEiNOir.js:2"
+   ],
+   "regexUnicodeProperty": [
+    "index-DgEiNOir.js:8",
+    "pdf-B1SGOyIA.js:2"
+   ],
+   "dynamicImport": [
+    "index-DgEiNOir.js:1870",
+    "pdf-B1SGOyIA.js:1"
+   ],
+   "importMeta": [
+    "index-DgEiNOir.js:4",
+    "pdf-B1SGOyIA.js:2"
+   ]
+  },
+  "errors": []
+ },
+ "legacy": {
+  "count": 380,
+  "byEcma": {
+   "2015": 377,
+   "2019": 3
+  },
+  "total": {
+   "regexUnicodeProperty": 10,
+   "regexLookbehind": 2
+  },
+  "sample": {
+   "regexUnicodeProperty": [
+    "index-legacy-loqSrP9F.js:8",
+    "pdf-legacy-BYwjAtbC.js:2"
+   ],
+   "regexLookbehind": [
+    "index-legacy-loqSrP9F.js:2"
+   ]
+  },
+  "errors": []
+ },
+ "css": [
+  {
+   "name": "index-DJEcriOE.css",
+   "bytes": 165170,
+   "layer": 5,
+   "property": 88,
+   "supports": 60,
+   "media": 30,
+   "oklch": 0,
+   "oklab": 0,
+   "colorMix": 108,
+   "hexColor": 492,
+   "rgb": 61,
+   "isPseudo": 113,
+   "wherePseudo": 86,
+   "hasPseudo": 17,
+   "nesting": 0,
+   "logicalInset": 1,
+   "marginInline": 29,
+   "webkitBackdrop": 0,
+   "backdrop": 3,
+   "fontFace": 0,
+   "keyframes": 7
+  }
+ ]
+}

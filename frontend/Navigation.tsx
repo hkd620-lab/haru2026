@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router';
 import { BookOpen, Library, BarChart3, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 

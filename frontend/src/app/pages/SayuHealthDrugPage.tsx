@@ -1,6 +1,6 @@
 import { readSelectedRecordPhotos } from '../services/selectedRecordPhoto';
 import { useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { getOrigin } from '../services/v2Origin';

@@ -1,0 +1,852 @@
+$ (cwd=frontend) npm run build
+# start 2026-10-31T19:36:40+09:00
+
+> @figma/my-make-file@0.0.1 prebuild
+> npm run validate:build-env
+
+
+> @figma/my-make-file@0.0.1 validate:build-env
+> node scripts/validate-build-env.mjs
+
+Firebase build environment validation passed.
+
+> @figma/my-make-file@0.0.1 build
+> vite build
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.ts:28:47). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 3581 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/manifest.webmanifest                            0.71 kB
+dist/assets/pdf.worker.min-legacy-Cybx0agL.js        0.14 kB │ gzip:     0.13 kB
+dist/assets/leviticus_12-legacy-DAWOXwk7.js          1.73 kB │ gzip:     0.80 kB
+dist/assets/deuteronomy_34 4-legacy-BWrw5boL.js      2.03 kB │ gzip:     0.97 kB
+dist/assets/deuteronomy_34-legacy-BWrw5boL.js        2.03 kB │ gzip:     0.97 kB
+dist/assets/exodus_11-legacy-DPIMqVBU.js             2.09 kB │ gzip:     0.96 kB
+dist/assets/numbers_17 4-legacy-D6G7hyRl.js          2.25 kB │ gzip:     0.95 kB
+dist/assets/numbers_17-legacy-D6G7hyRl.js            2.25 kB │ gzip:     0.95 kB
+dist/assets/numbers_12 4-legacy-PFmKkZKe.js          2.52 kB │ gzip:     1.16 kB
+dist/assets/numbers_12-legacy-PFmKkZKe.js            2.52 kB │ gzip:     1.16 kB
+dist/assets/matthew_3-legacy-CbSQbjCl.js             2.56 kB │ gzip:     1.26 kB
+dist/assets/genesis_16-legacy-DY3ZEOA3.js            2.64 kB │ gzip:     1.18 kB
+dist/assets/matthew_28-legacy-CQiD1PQh.js            2.79 kB │ gzip:     1.30 kB
+dist/assets/exodus_31-legacy-BOP-t9oB.js             2.86 kB │ gzip:     1.23 kB
+dist/assets/genesis_13-legacy-CL5qGBHA.js            2.87 kB │ gzip:     1.25 kB
+dist/assets/numbers_25 4-legacy-Bs9M_wsh.js          2.91 kB │ gzip:     1.20 kB
+dist/assets/numbers_25-legacy-Bs9M_wsh.js            2.91 kB │ gzip:     1.20 kB
+dist/assets/exodus_17-legacy-BGkw7CZk.js             2.92 kB │ gzip:     1.27 kB
+dist/assets/numbers_36-legacy-auGwrixI.js            2.92 kB │ gzip:     1.05 kB
+dist/assets/mark_16-legacy-MVNT8Lfo.js               2.96 kB │ gzip:     1.33 kB
+dist/assets/exodus_24-legacy-vGZ4W0MR.js             3.01 kB │ gzip:     1.21 kB
+dist/assets/genesis_15-legacy-DtY69FGI.js            3.02 kB │ gzip:     1.32 kB
+dist/assets/leviticus_2-legacy-vEcmqryq.js           3.02 kB │ gzip:     1.01 kB
+dist/assets/exodus_1-legacy-CDVhCjqM.js              3.09 kB │ gzip:     1.33 kB
+dist/assets/numbers_30-legacy-BKsKV5Jz.js            3.10 kB │ gzip:     1.10 kB
+dist/assets/leviticus_3-legacy-Dti6WW7F.js           3.13 kB │ gzip:     0.89 kB
+dist/assets/genesis_20-legacy-BwplFDfP.js            3.15 kB │ gzip:     1.38 kB
+dist/assets/leviticus_1-legacy-X8qcgMXH.js           3.18 kB │ gzip:     1.09 kB
+dist/assets/genesis_33-legacy-EE9t55ak.js            3.21 kB │ gzip:     1.38 kB
+dist/assets/matthew_1-legacy-DyZ-sR6S.js             3.31 kB │ gzip:     1.36 kB
+dist/assets/genesis_12-legacy-C572vatc.js            3.32 kB │ gzip:     1.40 kB
+dist/assets/genesis_23-legacy-CDqf-Do5.js            3.32 kB │ gzip:     1.27 kB
+dist/assets/john_2 4-legacy-Bf7ecqC4.js              3.37 kB │ gzip:     1.45 kB
+dist/assets/john_2-legacy-Bf7ecqC4.js                3.37 kB │ gzip:     1.45 kB
+dist/assets/leviticus_17-legacy-CpSfuWKT.js          3.39 kB │ gzip:     1.26 kB
+dist/assets/deuteronomy_25 4-legacy-BlrhnTQr.js      3.46 kB │ gzip:     1.46 kB
+dist/assets/deuteronomy_25-legacy-BlrhnTQr.js        3.46 kB │ gzip:     1.46 kB
+dist/assets/leviticus_24-legacy-CbM2uheD.js          3.50 kB │ gzip:     1.42 kB
+dist/assets/genesis_5-legacy-D90uVc1R.js             3.54 kB │ gzip:     1.01 kB
+dist/assets/genesis_6-legacy-yhfy5Tia.js             3.54 kB │ gzip:     1.46 kB
+dist/assets/deuteronomy_8 4-legacy-BRqGL99g.js       3.55 kB │ gzip:     1.48 kB
+dist/assets/deuteronomy_8-legacy-BRqGL99g.js         3.55 kB │ gzip:     1.48 kB
+dist/assets/genesis_10-legacy-C1QGjz6c.js            3.57 kB │ gzip:     1.41 kB
+dist/assets/exodus_20-legacy-DBq5Iz9-.js             3.59 kB │ gzip:     1.50 kB
+dist/assets/exodus_27-legacy-DszYFKse.js             3.60 kB │ gzip:     1.24 kB
+dist/assets/genesis_8-legacy-D80-dh-D.js             3.62 kB │ gzip:     1.40 kB
+dist/assets/leviticus_21-legacy--D90BBng.js          3.62 kB │ gzip:     1.41 kB
+dist/assets/genesis_7-legacy-Bc78d8uo.js             3.66 kB │ gzip:     1.36 kB
+dist/assets/matthew_4-legacy-yguVI307.js             3.66 kB │ gzip:     1.59 kB
+dist/assets/genesis_40-legacy-CbZ-kNZV.js            3.68 kB │ gzip:     1.47 kB
+dist/assets/deuteronomy_10 4-legacy-Db1xCJ8U.js      3.71 kB │ gzip:     1.57 kB
+dist/assets/deuteronomy_10-legacy-Db1xCJ8U.js        3.71 kB │ gzip:     1.57 kB
+dist/assets/john_15 4-legacy-B3YaO6kk.js             3.74 kB │ gzip:     1.52 kB
+dist/assets/john_15-legacy-B3YaO6kk.js               3.74 kB │ gzip:     1.52 kB
+dist/assets/genesis_28-legacy-YvYQcYOk.js            3.74 kB │ gzip:     1.54 kB
+dist/assets/deuteronomy_18 4-legacy-CgVY5MaY.js      3.75 kB │ gzip:     1.54 kB
+dist/assets/deuteronomy_18-legacy-CgVY5MaY.js        3.75 kB │ gzip:     1.54 kB
+dist/assets/deuteronomy_13 4-legacy-Bj3_uzfM.js      3.76 kB │ gzip:     1.51 kB
+dist/assets/deuteronomy_13-legacy-Bj3_uzfM.js        3.76 kB │ gzip:     1.51 kB
+dist/assets/genesis_2-legacy-BcpLYJ40.js             3.76 kB │ gzip:     1.47 kB
+dist/assets/exodus_5-legacy-VpBLNkMy.js              3.77 kB │ gzip:     1.57 kB
+dist/assets/deuteronomy_19 4-legacy-C_szE8mn.js      3.78 kB │ gzip:     1.53 kB
+dist/assets/deuteronomy_19-legacy-C_szE8mn.js        3.78 kB │ gzip:     1.53 kB
+dist/assets/john_17 4-legacy-B7qbu9dG.js             3.81 kB │ gzip:     1.41 kB
+dist/assets/john_17-legacy-B7qbu9dG.js               3.81 kB │ gzip:     1.41 kB
+dist/assets/genesis_22-legacy-DAMl5BRg.js            3.86 kB │ gzip:     1.54 kB
+dist/assets/deuteronomy_27 4-legacy--Sbc2807.js      3.87 kB │ gzip:     1.35 kB
+dist/assets/deuteronomy_27-legacy--Sbc2807.js        3.87 kB │ gzip:     1.35 kB
+dist/assets/numbers_27 4-legacy-JI5_8t4S.js          3.88 kB │ gzip:     1.45 kB
+dist/assets/numbers_27-legacy-JI5_8t4S.js            3.88 kB │ gzip:     1.45 kB
+dist/assets/leviticus_10-legacy-D-oFlRPj.js          3.89 kB │ gzip:     1.54 kB
+dist/assets/genesis_14-legacy-DGZj6zem.js            3.89 kB │ gzip:     1.55 kB
+dist/assets/genesis_4-legacy-k8V4sUBs.js             3.90 kB │ gzip:     1.61 kB
+dist/assets/matthew_2-legacy-BnwQ33LX.js             3.92 kB │ gzip:     1.59 kB
+dist/assets/genesis_39-legacy-B7GIiwbu.js            3.92 kB │ gzip:     1.47 kB
+dist/assets/deuteronomy_20 4-legacy-1qu_fbFv.js      3.94 kB │ gzip:     1.53 kB
+dist/assets/deuteronomy_20-legacy-1qu_fbFv.js        3.94 kB │ gzip:     1.53 kB
+dist/assets/deuteronomy_30 4-legacy-BfbTdfRd.js      3.94 kB │ gzip:     1.44 kB
+dist/assets/deuteronomy_30-legacy-BfbTdfRd.js        3.94 kB │ gzip:     1.44 kB
+dist/assets/matthew_7-legacy-092oWaMs.js             3.95 kB │ gzip:     1.62 kB
+dist/assets/genesis_48-legacy-D8q9szrD.js            3.96 kB │ gzip:     1.60 kB
+dist/assets/leviticus_9-legacy-vYADLogr.js           3.97 kB │ gzip:     1.37 kB
+dist/assets/matthew_17-legacy-Bzw6ohnF.js            3.98 kB │ gzip:     1.76 kB
+dist/assets/deuteronomy_6-legacy-BEWwfsQO.js         4.00 kB │ gzip:     1.55 kB
+dist/assets/exodus_2-legacy-BkDCVIfH.js              4.00 kB │ gzip:     1.68 kB
+dist/assets/genesis_11-legacy-pflfCchN.js            4.03 kB │ gzip:     1.35 kB
+dist/assets/deuteronomy_26 4-legacy-DYcnjAn7.js      4.05 kB │ gzip:     1.58 kB
+dist/assets/deuteronomy_26-legacy-DYcnjAn7.js        4.05 kB │ gzip:     1.58 kB
+dist/assets/numbers_34 4-legacy-DUQ3E3EC.js          4.05 kB │ gzip:     1.38 kB
+dist/assets/numbers_34-legacy-DUQ3E3EC.js            4.05 kB │ gzip:     1.38 kB
+dist/assets/genesis_3-legacy-BilHcW1m.js             4.06 kB │ gzip:     1.59 kB
+dist/assets/exodus_13-legacy-CVniSQsU.js             4.08 kB │ gzip:     1.58 kB
+dist/assets/deuteronomy_24 4-legacy-CBIhB-Nw.js      4.08 kB │ gzip:     1.61 kB
+dist/assets/deuteronomy_24-legacy-CBIhB-Nw.js        4.08 kB │ gzip:     1.61 kB
+dist/assets/genesis_9-legacy-BpOufSw4.js             4.10 kB │ gzip:     1.55 kB
+dist/assets/numbers_24 4-legacy-CSM3Om8k.js          4.11 kB │ gzip:     1.70 kB
+dist/assets/numbers_24-legacy-CSM3Om8k.js            4.11 kB │ gzip:     1.70 kB
+dist/assets/exodus_33-legacy-BuprAU-H.js             4.18 kB │ gzip:     1.68 kB
+dist/assets/genesis_35-legacy-Ciy5vFZp.js            4.19 kB │ gzip:     1.70 kB
+dist/assets/numbers_19 4-legacy-CGlJh0QY.js          4.20 kB │ gzip:     1.45 kB
+dist/assets/numbers_19-legacy-CGlJh0QY.js            4.20 kB │ gzip:     1.45 kB
+dist/assets/matthew_11-legacy-B3I4RgVS.js            4.22 kB │ gzip:     1.85 kB
+dist/assets/leviticus_5-legacy-CQIUdjTE.js           4.23 kB │ gzip:     1.46 kB
+dist/assets/genesis_17-legacy-DOBDDiPq.js            4.25 kB │ gzip:     1.53 kB
+dist/assets/deuteronomy_23 4-legacy-DYC0D6sR.js      4.26 kB │ gzip:     1.67 kB
+dist/assets/deuteronomy_23-legacy-DYC0D6sR.js        4.26 kB │ gzip:     1.67 kB
+dist/assets/deuteronomy_15 4-legacy-DTdJFgek.js      4.27 kB │ gzip:     1.66 kB
+dist/assets/deuteronomy_15-legacy-DTdJFgek.js        4.27 kB │ gzip:     1.66 kB
+dist/assets/matthew_16-legacy-BzA7-K1b.js            4.27 kB │ gzip:     1.80 kB
+dist/assets/deuteronomy_17 4-legacy-GIBOQmLd.js      4.28 kB │ gzip:     1.69 kB
+dist/assets/deuteronomy_17-legacy-GIBOQmLd.js        4.28 kB │ gzip:     1.69 kB
+dist/assets/exodus_7-legacy-MrGSaKdI.js              4.30 kB │ gzip:     1.54 kB
+dist/assets/exodus_19-legacy-BkP9A0cd.js             4.31 kB │ gzip:     1.69 kB
+dist/assets/john_14 4-legacy-bro4npb-.js             4.33 kB │ gzip:     1.71 kB
+dist/assets/john_14-legacy-bro4npb-.js               4.33 kB │ gzip:     1.71 kB
+dist/assets/genesis_50-legacy-GN0NLy8M.js            4.33 kB │ gzip:     1.74 kB
+dist/assets/john_21 4-legacy-B9pblHsj.js             4.33 kB │ gzip:     1.74 kB
+dist/assets/john_21-legacy-B9pblHsj.js               4.33 kB │ gzip:     1.74 kB
+dist/assets/deuteronomy_21 4-legacy-CywfvEAG.js      4.34 kB │ gzip:     1.77 kB
+dist/assets/deuteronomy_21-legacy-CywfvEAG.js        4.34 kB │ gzip:     1.77 kB
+dist/assets/deuteronomy_14 4-legacy-CyBmsMHW.js      4.34 kB │ gzip:     1.66 kB
+dist/assets/deuteronomy_14-legacy-CyBmsMHW.js        4.34 kB │ gzip:     1.66 kB
+dist/assets/deuteronomy_16 4-legacy-D5Ab70LH.js      4.37 kB │ gzip:     1.49 kB
+dist/assets/deuteronomy_16-legacy-D5Ab70LH.js        4.37 kB │ gzip:     1.49 kB
+dist/assets/mark_3-legacy-COiEI5Wo.js                4.43 kB │ gzip:     1.84 kB
+dist/assets/mark_2-legacy-CeYBvvqa.js                4.43 kB │ gzip:     1.82 kB
+dist/assets/numbers_9 4-legacy-C7to6RD_.js           4.44 kB │ gzip:     1.49 kB
+dist/assets/numbers_9-legacy-C7to6RD_.js             4.44 kB │ gzip:     1.49 kB
+dist/assets/exodus_37-legacy-BFHQS-NR.js             4.46 kB │ gzip:     1.35 kB
+dist/assets/genesis_45-legacy-BhaGIj-P.js            4.46 kB │ gzip:     1.80 kB
+dist/assets/exodus_15-legacy-Cz1WomjJ.js             4.47 kB │ gzip:     1.85 kB
+dist/assets/numbers_8-legacy-Di77YPB-.js             4.48 kB │ gzip:     1.47 kB
+dist/assets/luke_15 4-legacy-BYn5Wzkl.js             4.48 kB │ gzip:     1.84 kB
+dist/assets/luke_15-legacy-BYn5Wzkl.js               4.48 kB │ gzip:     1.84 kB
+dist/assets/leviticus_18-legacy-C4j_hTxi.js          4.49 kB │ gzip:     1.48 kB
+dist/assets/numbers_23 4-legacy-b0ppJjmG.js          4.55 kB │ gzip:     1.75 kB
+dist/assets/numbers_23-legacy-b0ppJjmG.js            4.55 kB │ gzip:     1.75 kB
+dist/assets/exodus_3-legacy-BNjLK2Fp.js              4.57 kB │ gzip:     1.75 kB
+dist/assets/matthew_19-legacy-BIjjhvFZ.js            4.59 kB │ gzip:     1.93 kB
+dist/assets/numbers_13 4-legacy-CiU-T_Bf.js          4.59 kB │ gzip:     1.80 kB
+dist/assets/numbers_13-legacy-CiU-T_Bf.js            4.59 kB │ gzip:     1.80 kB
+dist/assets/numbers_6 4-legacy-BcpK9XGd.js           4.63 kB │ gzip:     1.60 kB
+dist/assets/numbers_6-legacy-BcpK9XGd.js             4.63 kB │ gzip:     1.60 kB
+dist/assets/genesis_25-legacy-DCUFPVTZ.js            4.63 kB │ gzip:     1.90 kB
+dist/assets/exodus_18-legacy-D3AUwfFh.js             4.63 kB │ gzip:     1.79 kB
+dist/assets/matthew_14-legacy-BQ0YjRTf.js            4.66 kB │ gzip:     1.96 kB
+dist/assets/exodus_22-legacy-Cupn3DnM.js             4.71 kB │ gzip:     1.86 kB
+dist/assets/exodus_6-legacy-O4E_9Lvt.js              4.71 kB │ gzip:     1.71 kB
+dist/assets/john_20 4-legacy-oczvZnI5.js             4.72 kB │ gzip:     1.81 kB
+dist/assets/john_20-legacy-oczvZnI5.js               4.72 kB │ gzip:     1.81 kB
+dist/assets/luke_16 4-legacy-CtzuxiWo.js             4.77 kB │ gzip:     2.02 kB
+dist/assets/luke_16-legacy-CtzuxiWo.js               4.77 kB │ gzip:     2.02 kB
+dist/assets/john_16 4-legacy-BMSRKkNI.js             4.78 kB │ gzip:     1.81 kB
+dist/assets/john_16-legacy-BMSRKkNI.js               4.78 kB │ gzip:     1.81 kB
+dist/assets/genesis_21-legacy-AnsWuEAj.js            4.80 kB │ gzip:     1.85 kB
+dist/assets/matthew_20-legacy-C2zVR9Bc.js            4.84 kB │ gzip:     1.97 kB
+dist/assets/genesis_49-legacy-BpyC2JHU.js            4.86 kB │ gzip:     2.11 kB
+dist/assets/genesis_1-legacy-KzwCoEzF.js             4.86 kB │ gzip:     1.42 kB
+dist/assets/genesis_34-legacy-Bg9h9wSO.js            4.87 kB │ gzip:     1.86 kB
+dist/assets/mark_11-legacy-Cf6HXOo9.js               4.87 kB │ gzip:     1.96 kB
+dist/assets/john_3 4-legacy-D5k3r_NK.js              4.87 kB │ gzip:     1.92 kB
+dist/assets/john_3-legacy-D5k3r_NK.js                4.87 kB │ gzip:     1.92 kB
+dist/assets/numbers_28-legacy-DrF-GqTS.js            4.88 kB │ gzip:     1.38 kB
+dist/assets/matthew_8-legacy-D10o1giN.js             4.88 kB │ gzip:     2.03 kB
+dist/assets/genesis_32-legacy-CKxIF1FZ.js            4.90 kB │ gzip:     1.98 kB
+dist/assets/genesis_38-legacy-ByA3vNvQ.js            4.90 kB │ gzip:     1.90 kB
+dist/assets/genesis_46-legacy-DuOVZH-F.js            4.90 kB │ gzip:     1.91 kB
+dist/assets/numbers_20 4-legacy-BbrnniCP.js          4.92 kB │ gzip:     1.88 kB
+dist/assets/numbers_20-legacy-BbrnniCP.js            4.92 kB │ gzip:     1.88 kB
+dist/assets/deuteronomy_33 4-legacy-BG5Fz07M.js      4.94 kB │ gzip:     2.07 kB
+dist/assets/deuteronomy_33-legacy-BG5Fz07M.js        4.94 kB │ gzip:     2.07 kB
+dist/assets/deuteronomy_3 4-legacy-CqjSq41Z.js       4.98 kB │ gzip:     1.99 kB
+dist/assets/deuteronomy_3-legacy-CqjSq41Z.js         4.98 kB │ gzip:     1.99 kB
+dist/assets/luke_14 4-legacy-cBvEblZO.js             5.01 kB │ gzip:     2.08 kB
+dist/assets/luke_14-legacy-cBvEblZO.js               5.01 kB │ gzip:     2.08 kB
+dist/assets/matthew_6-legacy-C7Xdw2FX.js             5.02 kB │ gzip:     1.92 kB
+dist/assets/luke_17-legacy-D-XFUslJ.js               5.02 kB │ gzip:     2.10 kB
+dist/assets/john_10 4-legacy-BwZ8hWv0.js             5.07 kB │ gzip:     2.04 kB
+dist/assets/john_10-legacy-BwZ8hWv0.js               5.07 kB │ gzip:     2.04 kB
+dist/assets/john_13 4-legacy-De2-Ymgb.js             5.09 kB │ gzip:     2.06 kB
+dist/assets/john_13-legacy-De2-Ymgb.js               5.09 kB │ gzip:     2.06 kB
+dist/assets/deuteronomy_29 4-legacy-Cst7oKgZ.js      5.10 kB │ gzip:     2.07 kB
+dist/assets/deuteronomy_29-legacy-Cst7oKgZ.js        5.10 kB │ gzip:     2.07 kB
+dist/assets/leviticus_20-legacy-BLWCDwgI.js          5.12 kB │ gzip:     1.77 kB
+dist/assets/exodus_23-legacy-COQ1aVcG.js             5.13 kB │ gzip:     2.07 kB
+dist/assets/genesis_29-legacy-W8Ur3u0V.js            5.13 kB │ gzip:     1.88 kB
+dist/assets/deuteronomy_7 4-legacy-DVWPYv5A.js       5.15 kB │ gzip:     1.99 kB
+dist/assets/deuteronomy_7-legacy-DVWPYv5A.js         5.15 kB │ gzip:     1.99 kB
+dist/assets/luke_21-legacy-BfIpXTek.js               5.15 kB │ gzip:     2.12 kB
+dist/assets/matthew_15-legacy-TZeMSmhj.js            5.16 kB │ gzip:     2.12 kB
+dist/assets/exodus_4-legacy-Qw1tUPbo.js              5.17 kB │ gzip:     1.97 kB
+dist/assets/genesis_44-legacy-EOcCWraU.js            5.18 kB │ gzip:     2.04 kB
+dist/assets/mark_7-legacy--i4K8Cl0.js                5.19 kB │ gzip:     2.17 kB
+dist/assets/mark_13-legacy-WF5UMI6h.js               5.20 kB │ gzip:     2.18 kB
+dist/assets/genesis_18-legacy-COtDD5Zz.js            5.23 kB │ gzip:     1.99 kB
+dist/assets/exodus_21-legacy-Cnl-nWhI.js             5.24 kB │ gzip:     2.00 kB
+dist/assets/mark_8-legacy-CEOuflJw.js                5.24 kB │ gzip:     2.13 kB
+dist/assets/exodus_40-legacy--AYCMeUC.js             5.26 kB │ gzip:     1.61 kB
+dist/assets/exodus_35-legacy-BFY8YqAH.js             5.26 kB │ gzip:     1.88 kB
+dist/assets/deuteronomy_22 4-legacy-DLCcKoun.js      5.27 kB │ gzip:     1.95 kB
+dist/assets/deuteronomy_22-legacy-DLCcKoun.js        5.27 kB │ gzip:     1.95 kB
+dist/assets/exodus_38-legacy-BDvJLEY8.js             5.29 kB │ gzip:     1.68 kB
+dist/assets/exodus_10-legacy-CIOduEnv.js             5.30 kB │ gzip:     2.02 kB
+dist/assets/matthew_18-legacy-2B1tIrIU.js            5.32 kB │ gzip:     2.10 kB
+dist/assets/john_9 4-legacy-C3N2Qq_p.js              5.33 kB │ gzip:     2.06 kB
+dist/assets/john_9-legacy-C3N2Qq_p.js                5.33 kB │ gzip:     2.06 kB
+dist/assets/matthew_9-legacy-szpSKEet.js             5.35 kB │ gzip:     2.21 kB
+dist/assets/leviticus_22-legacy-DvoKdmQV.js          5.35 kB │ gzip:     1.98 kB
+dist/assets/luke_13 4-legacy-DWH6-H2O.js             5.35 kB │ gzip:     2.25 kB
+dist/assets/luke_13-legacy-DWH6-H2O.js               5.35 kB │ gzip:     2.25 kB
+dist/assets/numbers_2 4-legacy-Bkycv1SI.js           5.36 kB │ gzip:     1.40 kB
+dist/assets/numbers_2-legacy-Bkycv1SI.js             5.36 kB │ gzip:     1.40 kB
+dist/assets/leviticus_6-legacy-q1GkLDsr.js           5.39 kB │ gzip:     1.91 kB
+dist/assets/deuteronomy_5 4-legacy-CbLkH-Za.js       5.44 kB │ gzip:     2.07 kB
+dist/assets/deuteronomy_5-legacy-CbLkH-Za.js         5.44 kB │ gzip:     2.07 kB
+dist/assets/genesis_26-legacy-DVMpB79V.js            5.47 kB │ gzip:     2.11 kB
+dist/assets/matthew_22-legacy-Dh_cHzNw.js            5.48 kB │ gzip:     2.22 kB
+dist/assets/numbers_5 4-legacy-DtK6BaN7.js           5.49 kB │ gzip:     1.84 kB
+dist/assets/numbers_5-legacy-DtK6BaN7.js             5.49 kB │ gzip:     1.84 kB
+dist/assets/numbers_10 4-legacy-Cb-9dL0Y.js          5.50 kB │ gzip:     1.93 kB
+dist/assets/numbers_10-legacy-Cb-9dL0Y.js            5.50 kB │ gzip:     1.93 kB
+dist/assets/matthew_23-legacy-imtLdunu.js            5.52 kB │ gzip:     2.13 kB
+dist/assets/luke_18-legacy-CZt3QPvA.js               5.55 kB │ gzip:     2.34 kB
+dist/assets/leviticus_19-legacy-D5uy26g_.js          5.55 kB │ gzip:     2.11 kB
+dist/assets/genesis_36-legacy-cXjq8inR.js            5.57 kB │ gzip:     1.78 kB
+dist/assets/deuteronomy_11 4-legacy-Bzv78NzH.js      5.63 kB │ gzip:     2.11 kB
+dist/assets/deuteronomy_11-legacy-Bzv78NzH.js        5.63 kB │ gzip:     2.11 kB
+dist/assets/exodus_8-legacy-CZpf-_cn.js              5.63 kB │ gzip:     1.89 kB
+dist/assets/genesis_43-legacy-4EkU-oO5.js            5.64 kB │ gzip:     2.24 kB
+dist/assets/leviticus_15-legacy-CUBPpeja.js          5.64 kB │ gzip:     1.56 kB
+dist/assets/mark_4-legacy-CvCwmVBY.js                5.65 kB │ gzip:     2.23 kB
+dist/assets/exodus_14-legacy-DuW_9845.js             5.67 kB │ gzip:     2.02 kB
+dist/assets/leviticus_27-legacy-BTlOA2aH.js          5.72 kB │ gzip:     1.78 kB
+dist/assets/exodus_36-legacy-hMsPFacb.js             5.72 kB │ gzip:     1.89 kB
+dist/assets/matthew_10-legacy-DGiAPmz8.js            5.73 kB │ gzip:     2.30 kB
+dist/assets/genesis_37-legacy-CvPScLy4.js            5.73 kB │ gzip:     2.22 kB
+dist/assets/numbers_21 4-legacy-C8LM8Wip.js          5.73 kB │ gzip:     2.21 kB
+dist/assets/numbers_21-legacy-C8LM8Wip.js            5.73 kB │ gzip:     2.21 kB
+dist/assets/exodus_25-legacy-Ds_oCD6Y.js             5.75 kB │ gzip:     1.83 kB
+dist/assets/genesis_47-legacy-BeQbSAKi.js            5.78 kB │ gzip:     2.14 kB
+dist/assets/deuteronomy_9-legacy-CxC7C5TY.js         5.80 kB │ gzip:     2.19 kB
+dist/assets/exodus_9-legacy-DDYDf4QL.js              5.85 kB │ gzip:     2.07 kB
+dist/assets/genesis_42-legacy-M0kZ52eO.js            5.87 kB │ gzip:     2.22 kB
+dist/assets/numbers_35-legacy-BWiAKTWL.js            5.88 kB │ gzip:     1.93 kB
+dist/assets/luke_5 4-legacy-q9TEIxSg.js              5.88 kB │ gzip:     2.46 kB
+dist/assets/luke_5-legacy-q9TEIxSg.js                5.88 kB │ gzip:     2.46 kB
+dist/assets/exodus_26-legacy-ko7Jvnu9.js             5.92 kB │ gzip:     1.74 kB
+dist/assets/mark_5-legacy-Bbjm10_1.js                5.93 kB │ gzip:     2.38 kB
+dist/assets/john_18 4-legacy-CgDxZ_7A.js             5.93 kB │ gzip:     2.30 kB
+dist/assets/john_18-legacy-CgDxZ_7A.js               5.93 kB │ gzip:     2.30 kB
+dist/assets/mark_15-legacy-CIlr0YsF.js               5.99 kB │ gzip:     2.40 kB
+dist/assets/mark_1-legacy-BsvstRoo.js                5.99 kB │ gzip:     2.44 kB
+dist/assets/leviticus_8-legacy-ByomSWQ4.js           6.03 kB │ gzip:     1.82 kB
+dist/assets/luke_3-legacy-DhmvvgwA.js                6.07 kB │ gzip:     2.13 kB
+dist/assets/deuteronomy_31 4-legacy-D0drFmGx.js      6.07 kB │ gzip:     2.20 kB
+dist/assets/deuteronomy_31-legacy-D0drFmGx.js        6.07 kB │ gzip:     2.20 kB
+dist/assets/exodus_34-legacy-DqUe1vX9.js             6.11 kB │ gzip:     2.34 kB
+dist/assets/luke_20 4-legacy-DQBFf8pU.js             6.15 kB │ gzip:     2.46 kB
+dist/assets/luke_20-legacy-DQBFf8pU.js               6.15 kB │ gzip:     2.46 kB
+dist/assets/luke_10 4-legacy-CZ_T3JPl.js             6.16 kB │ gzip:     2.56 kB
+dist/assets/luke_10-legacy-CZ_T3JPl.js               6.16 kB │ gzip:     2.56 kB
+dist/assets/exodus_30-legacy-CxJBa1cJ.js             6.17 kB │ gzip:     2.08 kB
+dist/assets/deuteronomy_2 4-legacy-C5MqKFw1.js       6.18 kB │ gzip:     2.27 kB
+dist/assets/deuteronomy_2-legacy-C5MqKFw1.js         6.18 kB │ gzip:     2.27 kB
+dist/assets/john_5 4-legacy-C7t90Gb6.js              6.18 kB │ gzip:     2.41 kB
+dist/assets/john_5-legacy-C7t90Gb6.js                6.18 kB │ gzip:     2.41 kB
+dist/assets/matthew_25-legacy-cb4HZeVR.js            6.22 kB │ gzip:     2.23 kB
+dist/assets/numbers_29 4-legacy-CJCVmW8R.js          6.23 kB │ gzip:     1.27 kB
+dist/assets/numbers_29-legacy-CJCVmW8R.js            6.23 kB │ gzip:     1.27 kB
+dist/assets/luke_4 4-legacy-Dhx2Tbms.js              6.25 kB │ gzip:     2.55 kB
+dist/assets/luke_4-legacy-Dhx2Tbms.js                6.25 kB │ gzip:     2.55 kB
+dist/assets/exodus_16-legacy-CdUVF5_N.js             6.26 kB │ gzip:     2.23 kB
+dist/assets/deuteronomy_12 4-legacy-C6XqCvlL.js      6.28 kB │ gzip:     2.11 kB
+dist/assets/deuteronomy_12-legacy-C6XqCvlL.js        6.28 kB │ gzip:     2.11 kB
+dist/assets/numbers_11 4-legacy-CtpxvaGw.js          6.30 kB │ gzip:     2.43 kB
+dist/assets/numbers_11-legacy-CtpxvaGw.js            6.30 kB │ gzip:     2.43 kB
+dist/assets/john_7 4-legacy-DDcdHAm9.js              6.31 kB │ gzip:     2.46 kB
+dist/assets/john_7-legacy-DDcdHAm9.js                6.31 kB │ gzip:     2.46 kB
+dist/assets/john_1 4-legacy-DiATS4z6.js              6.33 kB │ gzip:     2.41 kB
+dist/assets/john_1-legacy-DiATS4z6.js                6.33 kB │ gzip:     2.41 kB
+dist/assets/genesis_30-legacy-lTITQa6E.js            6.35 kB │ gzip:     2.37 kB
+dist/assets/john_19 4-legacy-zFG77TQF.js             6.39 kB │ gzip:     2.49 kB
+dist/assets/john_19-legacy-zFG77TQF.js               6.39 kB │ gzip:     2.49 kB
+dist/assets/exodus_32-legacy-DEtG7tX3.js             6.40 kB │ gzip:     2.44 kB
+dist/assets/numbers_32 4-legacy-MoFOue0D.js          6.41 kB │ gzip:     2.32 kB
+dist/assets/numbers_32-legacy-MoFOue0D.js            6.41 kB │ gzip:     2.32 kB
+dist/assets/exodus_39-legacy-D7vI58ln.js             6.44 kB │ gzip:     2.06 kB
+dist/assets/luke_19 4-legacy-Ba6EmZiA.js             6.46 kB │ gzip:     2.60 kB
+dist/assets/luke_19-legacy-Ba6EmZiA.js               6.46 kB │ gzip:     2.60 kB
+dist/assets/leviticus_7-legacy-C0CJG480.js           6.48 kB │ gzip:     2.03 kB
+dist/assets/genesis_19-legacy-ZORBKVaR.js            6.50 kB │ gzip:     2.47 kB
+dist/assets/numbers_33 4-legacy-C0hE7WRl.js          6.51 kB │ gzip:     1.98 kB
+dist/assets/numbers_33-legacy-C0hE7WRl.js            6.51 kB │ gzip:     1.98 kB
+dist/assets/numbers_15 4-legacy-Bx4dcMf3.js          6.55 kB │ gzip:     2.08 kB
+dist/assets/numbers_15-legacy-Bx4dcMf3.js            6.55 kB │ gzip:     2.08 kB
+dist/assets/matthew_24-legacy-Q2Hpxf-L.js            6.56 kB │ gzip:     2.58 kB
+dist/assets/mark_12-legacy-C6iXs5sw.js               6.59 kB │ gzip:     2.66 kB
+dist/assets/john_12 4-legacy-CzmzEUgV.js             6.68 kB │ gzip:     2.72 kB
+dist/assets/john_12-legacy-CzmzEUgV.js               6.68 kB │ gzip:     2.72 kB
+dist/assets/numbers_18 4-legacy-BAH6jqZ7.js          6.70 kB │ gzip:     2.14 kB
+dist/assets/numbers_18-legacy-BAH6jqZ7.js            6.70 kB │ gzip:     2.14 kB
+dist/assets/matthew_5-legacy-DOInnzzT.js             6.71 kB │ gzip:     2.45 kB
+dist/assets/luke_24 4-legacy-Dw618M9G.js             6.73 kB │ gzip:     2.64 kB
+dist/assets/luke_24-legacy-Dw618M9G.js               6.73 kB │ gzip:     2.64 kB
+dist/assets/leviticus_16-legacy-ChXNrfPO.js          6.84 kB │ gzip:     2.11 kB
+dist/assets/leviticus_4-legacy-CPPrCf8A.js           6.85 kB │ gzip:     1.77 kB
+dist/assets/john_4 4-legacy-D490WBB9.js              6.93 kB │ gzip:     2.67 kB
+dist/assets/john_4-legacy-D490WBB9.js                6.93 kB │ gzip:     2.67 kB
+dist/assets/luke_2-legacy-hpJ30ZkS.js                6.93 kB │ gzip:     2.77 kB
+dist/assets/matthew_21-legacy-BEdTC9Ks.js            6.95 kB │ gzip:     2.75 kB
+dist/assets/numbers_22-legacy-Bd9To7p-.js            6.96 kB │ gzip:     2.51 kB
+dist/assets/leviticus_11-legacy-Bz20SJBv.js          7.01 kB │ gzip:     2.11 kB
+dist/assets/mark_9-legacy-BSKddKqS.js                7.12 kB │ gzip:     2.69 kB
+dist/assets/luke_23 4-legacy-d93alcwE.js             7.20 kB │ gzip:     2.92 kB
+dist/assets/luke_23-legacy-d93alcwE.js               7.20 kB │ gzip:     2.92 kB
+dist/assets/matthew_12-legacy-DSHm_F5_.js            7.24 kB │ gzip:     2.82 kB
+dist/assets/numbers_14-legacy-Rlay-4Ni.js            7.28 kB │ gzip:     2.73 kB
+dist/assets/john_11 4-legacy-Cizxsydk.js             7.30 kB │ gzip:     2.87 kB
+dist/assets/john_11-legacy-Cizxsydk.js               7.30 kB │ gzip:     2.87 kB
+dist/assets/genesis_27-legacy-DgaouH-N.js            7.34 kB │ gzip:     2.65 kB
+dist/assets/luke_6 4-legacy-Dy_OCelr.js              7.37 kB │ gzip:     2.89 kB
+dist/assets/luke_6-legacy-Dy_OCelr.js                7.37 kB │ gzip:     2.89 kB
+dist/assets/luke_7 4-legacy-CkE3QYE2.js              7.38 kB │ gzip:     2.93 kB
+dist/assets/luke_7-legacy-CkE3QYE2.js                7.38 kB │ gzip:     2.93 kB
+dist/assets/leviticus_23-legacy-C7wawTIy.js          7.42 kB │ gzip:     2.14 kB
+dist/assets/mark_10-legacy-Oz7x9ilK.js               7.49 kB │ gzip:     2.89 kB
+dist/assets/deuteronomy_1 4-legacy-BcdVgPVm.js       7.49 kB │ gzip:     2.86 kB
+dist/assets/deuteronomy_1-legacy-BcdVgPVm.js         7.49 kB │ gzip:     2.86 kB
+dist/assets/exodus_28-legacy-BtrZtDtP.js             7.49 kB │ gzip:     2.32 kB
+dist/assets/leviticus_26-legacy-iItAhwer.js          7.50 kB │ gzip:     2.58 kB
+dist/assets/john_8 4-legacy-Ibg_Gy7E.js              7.76 kB │ gzip:     2.87 kB
+dist/assets/john_8-legacy-Ibg_Gy7E.js                7.76 kB │ gzip:     2.87 kB
+dist/assets/numbers_31-legacy-Cnvu8fmM.js            7.79 kB │ gzip:     2.50 kB
+dist/assets/deuteronomy_32 4-legacy-ylKJdZuO.js      7.97 kB │ gzip:     3.30 kB
+dist/assets/deuteronomy_32-legacy-ylKJdZuO.js        7.97 kB │ gzip:     3.30 kB
+dist/assets/exodus_29-legacy-7nzefzw6.js             7.99 kB │ gzip:     2.36 kB
+dist/assets/luke_11-legacy-CFR32KoK.js               8.04 kB │ gzip:     3.19 kB
+dist/assets/mark_6-legacy-B4LPIymY.js                8.09 kB │ gzip:     3.18 kB
+dist/assets/numbers_3-legacy-DM3zE518.js             8.21 kB │ gzip:     2.27 kB
+dist/assets/numbers_16 4-legacy--iunmdde.js          8.22 kB │ gzip:     2.77 kB
+dist/assets/numbers_16-legacy--iunmdde.js            8.22 kB │ gzip:     2.77 kB
+dist/assets/genesis_41-legacy-BidXCHVz.js            8.48 kB │ gzip:     2.85 kB
+dist/assets/matthew_13-legacy-DJraQKnu.js            8.49 kB │ gzip:     3.10 kB
+dist/assets/numbers_1 4-legacy-D2uEcJEg.js           8.53 kB │ gzip:     1.89 kB
+dist/assets/numbers_1-legacy-D2uEcJEg.js             8.53 kB │ gzip:     1.89 kB
+dist/assets/luke_12 4-legacy-C42KsqE4.js             8.56 kB │ gzip:     3.40 kB
+dist/assets/luke_12-legacy-C42KsqE4.js               8.56 kB │ gzip:     3.40 kB
+dist/assets/genesis_31-legacy-CjG8ZSEn.js            8.59 kB │ gzip:     3.15 kB
+dist/assets/matthew_27-legacy-CMfHn8sA.js            8.64 kB │ gzip:     3.36 kB
+dist/assets/luke_8-legacy-DyVI7Uns.js                8.67 kB │ gzip:     3.41 kB
+dist/assets/luke_22-legacy-BafBZf3j.js               8.69 kB │ gzip:     3.33 kB
+dist/assets/exodus_12-legacy-DN_pes52.js             8.83 kB │ gzip:     3.06 kB
+dist/assets/luke_9 4-legacy-DCwePG6A.js              8.84 kB │ gzip:     3.44 kB
+dist/assets/luke_9-legacy-DCwePG6A.js                8.84 kB │ gzip:     3.44 kB
+dist/assets/numbers_4-legacy-NlkMLP1-.js             8.84 kB │ gzip:     2.19 kB
+dist/assets/deuteronomy_4 4-legacy-DotnBdZP.js       8.92 kB │ gzip:     3.28 kB
+dist/assets/deuteronomy_4-legacy-DotnBdZP.js         8.92 kB │ gzip:     3.28 kB
+dist/assets/leviticus_25-legacy-BRvgNJPU.js          9.04 kB │ gzip:     2.94 kB
+dist/assets/john_6-legacy-CMWMK81F.js                9.23 kB │ gzip:     3.29 kB
+dist/assets/numbers_26-legacy-npH6a6In.js            9.52 kB │ gzip:     2.55 kB
+dist/assets/mark_14-legacy-CKCfRAGj.js               9.68 kB │ gzip:     3.68 kB
+dist/assets/leviticus_14-legacy-BnJ6LpFS.js          9.80 kB │ gzip:     2.65 kB
+dist/assets/matthew_26-legacy-DCNq2NT5.js            9.94 kB │ gzip:     3.78 kB
+dist/assets/luke_1 4-legacy--O5LIYoE.js              9.99 kB │ gzip:     3.76 kB
+dist/assets/luke_1-legacy--O5LIYoE.js                9.99 kB │ gzip:     3.76 kB
+dist/assets/leviticus_13-legacy-DKl7GPdW.js         10.54 kB │ gzip:     2.65 kB
+dist/assets/genesis_24-legacy-CgvDPWYP.js           10.64 kB │ gzip:     3.59 kB
+dist/assets/numbers_7 4-legacy-Bg08A4K_.js          12.30 kB │ gzip:     2.15 kB
+dist/assets/numbers_7-legacy-Bg08A4K_.js            12.30 kB │ gzip:     2.15 kB
+dist/assets/deuteronomy_28 4-legacy-B6RTYAKR.js     12.32 kB │ gzip:     3.83 kB
+dist/assets/deuteronomy_28-legacy-B6RTYAKR.js       12.32 kB │ gzip:     3.83 kB
+dist/assets/index.esm-legacy-BRLTA76x.js            28.60 kB │ gzip:     9.59 kB
+dist/assets/quotes 4-legacy-EVPZqtqS.js             77.65 kB │ gzip:    22.43 kB
+dist/assets/quotes 5-legacy-EVPZqtqS.js             77.65 kB │ gzip:    22.43 kB
+dist/assets/quotes_verified-legacy-hBQRZUzO.js      86.43 kB │ gzip:    26.55 kB
+dist/assets/bible_quotes 4-legacy-vIsrTCuO.js      116.85 kB │ gzip:    21.89 kB
+dist/assets/bible_quotes 5-legacy-vIsrTCuO.js      116.85 kB │ gzip:    21.89 kB
+dist/assets/polyfills-legacy-B_Fkb3AJ.js           136.23 kB │ gzip:    49.23 kB
+dist/assets/xlsx-legacy-kBrBLGzQ.js                495.10 kB │ gzip:   161.46 kB
+dist/assets/pdf-legacy-BYwjAtbC.js                 534.98 kB │ gzip:   163.79 kB
+dist/assets/index-legacy-loqSrP9F.js             5,761.63 kB │ gzip: 1,541.05 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0mnode_modules/firebase/firestore/dist/esm/index.esm.js is dynamically imported by src/app/pages/AdminChecklistPage.tsx, src/app/pages/BiblePage.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0mnode_modules/firebase/functions/dist/esm/index.esm.js is dynamically imported by src/app/pages/BiblePage.tsx, src/app/services/firestoreService.ts but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, src/app/components/SayuModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/firebase.ts is dynamically imported by src/app/contexts/AuthContext.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/app/services/firestoreService.ts is dynamically imported by src/app/components/FormatModal.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/ResultChatModal.tsx, src/app/components/SayuModal.tsx, src/app/components/TimelineCollageModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/data/quotes.json is dynamically imported by src/app/pages/GrammarDashboard.tsx but also statically imported by src/app/components/TodayQuote.tsx, dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/data/bible_quotes.json is dynamically imported by src/app/pages/BiblePage.tsx, src/app/pages/GrammarDashboard.tsx but also statically imported by src/app/components/TodayQuote.tsx, dynamic import will not move module into another chunk.
+
+transforming...
+✓ 3581 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/manifest.webmanifest                     0.71 kB
+dist/assets/005에세이-BJ44_T9C.png               5.20 kB
+dist/assets/001메모-DDW2_6Sd.png                5.45 kB
+dist/assets/006-nUdkMhJ6.png                  6.09 kB
+dist/index.html                               6.62 kB │ gzip:     2.21 kB
+dist/assets/pdf.worker.min-Dkey6ZUl.mjs   1,321.30 kB
+dist/assets/index-DJEcriOE.css              165.17 kB │ gzip:    28.95 kB
+dist/assets/pdf.worker.min-WWY7VKxM.js        0.06 kB │ gzip:     0.08 kB
+dist/assets/leviticus_12-BkZZbmWp.js          1.65 kB │ gzip:     0.74 kB
+dist/assets/deuteronomy_34 4-D3mBlu46.js      1.95 kB │ gzip:     0.92 kB
+dist/assets/deuteronomy_34-D3mBlu46.js        1.95 kB │ gzip:     0.92 kB
+dist/assets/exodus_11-BnBTxOb0.js             2.00 kB │ gzip:     0.90 kB
+dist/assets/numbers_17 4-D8dvQklP.js          2.16 kB │ gzip:     0.89 kB
+dist/assets/numbers_17-D8dvQklP.js            2.16 kB │ gzip:     0.89 kB
+dist/assets/numbers_12 4-DsQr8OLz.js          2.43 kB │ gzip:     1.10 kB
+dist/assets/numbers_12-DsQr8OLz.js            2.43 kB │ gzip:     1.10 kB
+dist/assets/matthew_3-CgmKd9sE.js             2.47 kB │ gzip:     1.20 kB
+dist/assets/genesis_16-C6PJnYg4.js            2.56 kB │ gzip:     1.12 kB
+dist/assets/matthew_28-BOG5xIxl.js            2.71 kB │ gzip:     1.24 kB
+dist/assets/exodus_31-BDQqrfdH.js             2.78 kB │ gzip:     1.17 kB
+dist/assets/genesis_13-BzcNvT8i.js            2.78 kB │ gzip:     1.19 kB
+dist/assets/numbers_25 4-DyMUBymL.js          2.83 kB │ gzip:     1.15 kB
+dist/assets/numbers_25-DyMUBymL.js            2.83 kB │ gzip:     1.15 kB
+dist/assets/exodus_17-uo8UiAmC.js             2.83 kB │ gzip:     1.21 kB
+dist/assets/numbers_36-BuZmY6Sc.js            2.83 kB │ gzip:     0.99 kB
+dist/assets/mark_16-Bbv3d1J7.js               2.87 kB │ gzip:     1.27 kB
+dist/assets/exodus_24-BfFe7bU9.js             2.93 kB │ gzip:     1.15 kB
+dist/assets/genesis_15-DTRrgvuL.js            2.93 kB │ gzip:     1.26 kB
+dist/assets/leviticus_2-qc2XzFi_.js           2.94 kB │ gzip:     0.96 kB
+dist/assets/exodus_1-CQHi-CVn.js              3.01 kB │ gzip:     1.27 kB
+dist/assets/numbers_30-DsdsD3aR.js            3.01 kB │ gzip:     1.05 kB
+dist/assets/leviticus_3-BDmnxx0m.js           3.05 kB │ gzip:     0.83 kB
+dist/assets/genesis_20-hiOoGSzg.js            3.07 kB │ gzip:     1.32 kB
+dist/assets/leviticus_1-BUzqYu7O.js           3.09 kB │ gzip:     1.04 kB
+dist/assets/genesis_33-DA3Anwsb.js            3.12 kB │ gzip:     1.32 kB
+dist/assets/matthew_1-CbQ-2eJR.js             3.22 kB │ gzip:     1.30 kB
+dist/assets/genesis_12-DWOtqm33.js            3.23 kB │ gzip:     1.35 kB
+dist/assets/genesis_23-DLKStVm8.js            3.23 kB │ gzip:     1.21 kB
+dist/assets/john_2 4-CTjOFog8.js              3.28 kB │ gzip:     1.39 kB
+dist/assets/john_2-CTjOFog8.js                3.28 kB │ gzip:     1.39 kB
+dist/assets/leviticus_17-8Qi7LbXo.js          3.31 kB │ gzip:     1.20 kB
+dist/assets/deuteronomy_25 4-BCdnkTkE.js      3.37 kB │ gzip:     1.40 kB
+dist/assets/deuteronomy_25-BCdnkTkE.js        3.37 kB │ gzip:     1.40 kB
+dist/assets/leviticus_24-Ct8uyduX.js          3.42 kB │ gzip:     1.36 kB
+dist/assets/genesis_5-CgG4dHu4.js             3.46 kB │ gzip:     0.95 kB
+dist/assets/genesis_6-BqiEgDwC.js             3.46 kB │ gzip:     1.40 kB
+dist/assets/deuteronomy_8 4-CzMShe8r.js       3.47 kB │ gzip:     1.42 kB
+dist/assets/deuteronomy_8-CzMShe8r.js         3.47 kB │ gzip:     1.42 kB
+dist/assets/genesis_10-B_T_KYNL.js            3.48 kB │ gzip:     1.35 kB
+dist/assets/exodus_20-BXJdTUMO.js             3.51 kB │ gzip:     1.44 kB
+dist/assets/exodus_27-BDvVmQ5g.js             3.51 kB │ gzip:     1.19 kB
+dist/assets/genesis_8-CiIJVhc2.js             3.54 kB │ gzip:     1.35 kB
+dist/assets/leviticus_21-B-IqJLsK.js          3.54 kB │ gzip:     1.35 kB
+dist/assets/genesis_7-FAaSL-nU.js             3.57 kB │ gzip:     1.30 kB
+dist/assets/matthew_4-Cp2bGuH5.js             3.58 kB │ gzip:     1.53 kB
+dist/assets/genesis_40-CnhqyakA.js            3.59 kB │ gzip:     1.41 kB
+dist/assets/deuteronomy_10 4-DiVau4Zs.js      3.63 kB │ gzip:     1.51 kB
+dist/assets/deuteronomy_10-DiVau4Zs.js        3.63 kB │ gzip:     1.51 kB
+dist/assets/john_15 4-Bo2N5kpZ.js             3.65 kB │ gzip:     1.46 kB
+dist/assets/john_15-Bo2N5kpZ.js               3.65 kB │ gzip:     1.46 kB
+dist/assets/genesis_28-CTQNfCJp.js            3.65 kB │ gzip:     1.48 kB
+dist/assets/deuteronomy_18 4-BYketnup.js      3.67 kB │ gzip:     1.49 kB
+dist/assets/deuteronomy_18-BYketnup.js        3.67 kB │ gzip:     1.49 kB
+dist/assets/deuteronomy_13 4-BNLageBt.js      3.67 kB │ gzip:     1.45 kB
+dist/assets/deuteronomy_13-BNLageBt.js        3.67 kB │ gzip:     1.45 kB
+dist/assets/genesis_2-B9QDlBnr.js             3.68 kB │ gzip:     1.41 kB
+dist/assets/exodus_5-D-v76WE1.js              3.68 kB │ gzip:     1.51 kB
+dist/assets/deuteronomy_19 4-G_iZCbV7.js      3.69 kB │ gzip:     1.47 kB
+dist/assets/deuteronomy_19-G_iZCbV7.js        3.69 kB │ gzip:     1.47 kB
+dist/assets/john_17 4-CsS08_pb.js             3.73 kB │ gzip:     1.35 kB
+dist/assets/john_17-CsS08_pb.js               3.73 kB │ gzip:     1.35 kB
+dist/assets/genesis_22-D7K7X6t4.js            3.78 kB │ gzip:     1.49 kB
+dist/assets/deuteronomy_27 4-bfYUFtKZ.js      3.79 kB │ gzip:     1.29 kB
+dist/assets/deuteronomy_27-bfYUFtKZ.js        3.79 kB │ gzip:     1.29 kB
+dist/assets/numbers_27 4-Bqkv_0WQ.js          3.80 kB │ gzip:     1.39 kB
+dist/assets/numbers_27-Bqkv_0WQ.js            3.80 kB │ gzip:     1.39 kB
+dist/assets/leviticus_10-WgnSIXBn.js          3.80 kB │ gzip:     1.47 kB
+dist/assets/genesis_14-BWIE14qN.js            3.81 kB │ gzip:     1.50 kB
+dist/assets/genesis_4-DaHS1dRq.js             3.82 kB │ gzip:     1.55 kB
+dist/assets/matthew_2-BDMdsoKp.js             3.83 kB │ gzip:     1.53 kB
+dist/assets/genesis_39-DZgTid2S.js            3.83 kB │ gzip:     1.41 kB
+dist/assets/deuteronomy_20 4-B22pq1gy.js      3.85 kB │ gzip:     1.48 kB
+dist/assets/deuteronomy_20-B22pq1gy.js        3.85 kB │ gzip:     1.48 kB
+dist/assets/deuteronomy_30 4-DIqKyjow.js      3.86 kB │ gzip:     1.38 kB
+dist/assets/deuteronomy_30-DIqKyjow.js        3.86 kB │ gzip:     1.38 kB
+dist/assets/matthew_7-Bt7skBPa.js             3.87 kB │ gzip:     1.56 kB
+dist/assets/genesis_48-DHTS_j1y.js            3.87 kB │ gzip:     1.54 kB
+dist/assets/leviticus_9-gkhRqVK4.js           3.89 kB │ gzip:     1.31 kB
+dist/assets/matthew_17-HGNnwu4R.js            3.89 kB │ gzip:     1.70 kB
+dist/assets/deuteronomy_6-BNAu-w5K.js         3.92 kB │ gzip:     1.50 kB
+dist/assets/exodus_2-C0JYlxbI.js              3.92 kB │ gzip:     1.62 kB
+dist/assets/genesis_11-BdeKdXp7.js            3.95 kB │ gzip:     1.30 kB
+dist/assets/deuteronomy_26 4-Bhw-lfNM.js      3.96 kB │ gzip:     1.52 kB
+dist/assets/deuteronomy_26-Bhw-lfNM.js        3.96 kB │ gzip:     1.52 kB
+dist/assets/numbers_34 4-Dmfw77SK.js          3.96 kB │ gzip:     1.32 kB
+dist/assets/numbers_34-Dmfw77SK.js            3.96 kB │ gzip:     1.32 kB
+dist/assets/genesis_3-3eK3ML9N.js             3.98 kB │ gzip:     1.53 kB
+dist/assets/exodus_13-CW-7YRxo.js             3.99 kB │ gzip:     1.52 kB
+dist/assets/deuteronomy_24 4-BtTi3i6B.js      4.00 kB │ gzip:     1.56 kB
+dist/assets/deuteronomy_24-BtTi3i6B.js        4.00 kB │ gzip:     1.56 kB
+dist/assets/genesis_9-Dd9oym4s.js             4.01 kB │ gzip:     1.49 kB
+dist/assets/numbers_24 4-CDBogQbh.js          4.02 kB │ gzip:     1.64 kB
+dist/assets/numbers_24-CDBogQbh.js            4.02 kB │ gzip:     1.64 kB
+dist/assets/exodus_33-CAQQTug6.js             4.09 kB │ gzip:     1.61 kB
+dist/assets/genesis_35-rmOtxXt0.js            4.11 kB │ gzip:     1.64 kB
+dist/assets/numbers_19 4-DuIIBBn8.js          4.12 kB │ gzip:     1.39 kB
+dist/assets/numbers_19-DuIIBBn8.js            4.12 kB │ gzip:     1.39 kB
+dist/assets/matthew_11-BqKhABjI.js            4.14 kB │ gzip:     1.79 kB
+dist/assets/leviticus_5-CQKtk6GE.js           4.15 kB │ gzip:     1.40 kB
+dist/assets/genesis_17-BQk2PqP6.js            4.17 kB │ gzip:     1.47 kB
+dist/assets/deuteronomy_23 4-4zFvzkm2.js      4.17 kB │ gzip:     1.61 kB
+dist/assets/deuteronomy_23-4zFvzkm2.js        4.17 kB │ gzip:     1.61 kB
+dist/assets/deuteronomy_15 4-B9a4oawB.js      4.18 kB │ gzip:     1.60 kB
+dist/assets/deuteronomy_15-B9a4oawB.js        4.18 kB │ gzip:     1.60 kB
+dist/assets/matthew_16-CyF2hdEq.js            4.19 kB │ gzip:     1.74 kB
+dist/assets/deuteronomy_17 4-DZiVy5CN.js      4.20 kB │ gzip:     1.63 kB
+dist/assets/deuteronomy_17-DZiVy5CN.js        4.20 kB │ gzip:     1.63 kB
+dist/assets/exodus_7-Bd3QUmJb.js              4.22 kB │ gzip:     1.48 kB
+dist/assets/exodus_19-BrS5D_nz.js             4.22 kB │ gzip:     1.63 kB
+dist/assets/john_14 4-ftlbg813.js             4.24 kB │ gzip:     1.65 kB
+dist/assets/john_14-ftlbg813.js               4.24 kB │ gzip:     1.65 kB
+dist/assets/genesis_50-40cqgLlk.js            4.25 kB │ gzip:     1.67 kB
+dist/assets/john_21 4-CE5-52AG.js             4.25 kB │ gzip:     1.68 kB
+dist/assets/john_21-CE5-52AG.js               4.25 kB │ gzip:     1.68 kB
+dist/assets/deuteronomy_21 4-BlycgVgR.js      4.25 kB │ gzip:     1.71 kB
+dist/assets/deuteronomy_21-BlycgVgR.js        4.25 kB │ gzip:     1.71 kB
+dist/assets/deuteronomy_14 4-BIwHp0hc.js      4.26 kB │ gzip:     1.60 kB
+dist/assets/deuteronomy_14-BIwHp0hc.js        4.26 kB │ gzip:     1.60 kB
+dist/assets/deuteronomy_16 4-DLIjHpc1.js      4.28 kB │ gzip:     1.44 kB
+dist/assets/deuteronomy_16-DLIjHpc1.js        4.28 kB │ gzip:     1.44 kB
+dist/assets/mark_3-DDett3e7.js                4.34 kB │ gzip:     1.78 kB
+dist/assets/mark_2-I7pTbH8D.js                4.35 kB │ gzip:     1.76 kB
+dist/assets/numbers_9 4-0pPO3Ekm.js           4.36 kB │ gzip:     1.43 kB
+dist/assets/numbers_9-0pPO3Ekm.js             4.36 kB │ gzip:     1.43 kB
+dist/assets/exodus_37-gHrlyVoI.js             4.38 kB │ gzip:     1.29 kB
+dist/assets/genesis_45-f-NjtKgn.js            4.38 kB │ gzip:     1.74 kB
+dist/assets/exodus_15-CHy7UcY4.js             4.39 kB │ gzip:     1.79 kB
+dist/assets/numbers_8-CCVdyAt9.js             4.39 kB │ gzip:     1.41 kB
+dist/assets/luke_15 4-Aa_V1NqQ.js             4.40 kB │ gzip:     1.78 kB
+dist/assets/luke_15-Aa_V1NqQ.js               4.40 kB │ gzip:     1.78 kB
+dist/assets/leviticus_18-D_bkTetC.js          4.41 kB │ gzip:     1.42 kB
+dist/assets/numbers_23 4-DPca9ESV.js          4.46 kB │ gzip:     1.68 kB
+dist/assets/numbers_23-DPca9ESV.js            4.46 kB │ gzip:     1.68 kB
+dist/assets/exodus_3-DeythLZl.js              4.49 kB │ gzip:     1.69 kB
+dist/assets/matthew_19-CsprsHdZ.js            4.50 kB │ gzip:     1.87 kB
+dist/assets/numbers_13 4-CAulwRX0.js          4.51 kB │ gzip:     1.74 kB
+dist/assets/numbers_13-CAulwRX0.js            4.51 kB │ gzip:     1.74 kB
+dist/assets/numbers_6 4-Dte-eoEd.js           4.55 kB │ gzip:     1.54 kB
+dist/assets/numbers_6-Dte-eoEd.js             4.55 kB │ gzip:     1.54 kB
+dist/assets/genesis_25-BVAJakT4.js            4.55 kB │ gzip:     1.84 kB
+dist/assets/exodus_18-D5rv3ADy.js             4.55 kB │ gzip:     1.73 kB
+dist/assets/matthew_14-tM3W-eIk.js            4.57 kB │ gzip:     1.89 kB
+dist/assets/exodus_22-DuLw7P_s.js             4.62 kB │ gzip:     1.80 kB
+dist/assets/exodus_6-C2WK8Dgj.js              4.62 kB │ gzip:     1.65 kB
+dist/assets/john_20 4-BSIKG_bk.js             4.64 kB │ gzip:     1.75 kB
+dist/assets/john_20-BSIKG_bk.js               4.64 kB │ gzip:     1.75 kB
+dist/assets/luke_16 4-CgVlIxsP.js             4.69 kB │ gzip:     1.96 kB
+dist/assets/luke_16-CgVlIxsP.js               4.69 kB │ gzip:     1.96 kB
+dist/assets/john_16 4-Y_zIE0i4.js             4.69 kB │ gzip:     1.74 kB
+dist/assets/john_16-Y_zIE0i4.js               4.69 kB │ gzip:     1.74 kB
+dist/assets/genesis_21-jeFMXi2R.js            4.72 kB │ gzip:     1.80 kB
+dist/assets/matthew_20-qdRsLYdg.js            4.76 kB │ gzip:     1.91 kB
+dist/assets/genesis_49-C3wo9_8j.js            4.77 kB │ gzip:     2.05 kB
+dist/assets/genesis_1-CkcfRoxX.js             4.78 kB │ gzip:     1.36 kB
+dist/assets/genesis_34-CFGQBxl_.js            4.79 kB │ gzip:     1.79 kB
+dist/assets/mark_11-BAzcb6Vj.js               4.79 kB │ gzip:     1.90 kB
+dist/assets/john_3 4-DaSs45Gi.js              4.79 kB │ gzip:     1.86 kB
+dist/assets/john_3-DaSs45Gi.js                4.79 kB │ gzip:     1.86 kB
+dist/assets/numbers_28-6DQExVH2.js            4.79 kB │ gzip:     1.32 kB
+dist/assets/matthew_8-BTc5dpvH.js             4.80 kB │ gzip:     1.97 kB
+dist/assets/genesis_32-D-khpfyR.js            4.81 kB │ gzip:     1.92 kB
+dist/assets/genesis_38-CKsbShJ3.js            4.81 kB │ gzip:     1.84 kB
+dist/assets/genesis_46-BIXaPZY6.js            4.82 kB │ gzip:     1.85 kB
+dist/assets/numbers_20 4-CeuddgoO.js          4.83 kB │ gzip:     1.82 kB
+dist/assets/numbers_20-CeuddgoO.js            4.83 kB │ gzip:     1.82 kB
+dist/assets/deuteronomy_33 4-DqGE-RKh.js      4.86 kB │ gzip:     2.01 kB
+dist/assets/deuteronomy_33-DqGE-RKh.js        4.86 kB │ gzip:     2.01 kB
+dist/assets/deuteronomy_3 4-BHU-Dw7M.js       4.90 kB │ gzip:     1.93 kB
+dist/assets/deuteronomy_3-BHU-Dw7M.js         4.90 kB │ gzip:     1.93 kB
+dist/assets/luke_14 4-Cqa9k1Ab.js             4.92 kB │ gzip:     2.02 kB
+dist/assets/luke_14-Cqa9k1Ab.js               4.92 kB │ gzip:     2.02 kB
+dist/assets/matthew_6-CxZNoLvk.js             4.93 kB │ gzip:     1.87 kB
+dist/assets/luke_17-DjL2YQ8a.js               4.94 kB │ gzip:     2.04 kB
+dist/assets/john_10 4-C85C1Y2g.js             4.99 kB │ gzip:     1.97 kB
+dist/assets/john_10-C85C1Y2g.js               4.99 kB │ gzip:     1.97 kB
+dist/assets/john_13 4-CsCyOah7.js             5.00 kB │ gzip:     2.00 kB
+dist/assets/john_13-CsCyOah7.js               5.00 kB │ gzip:     2.00 kB
+dist/assets/deuteronomy_29 4-DCr4CEkN.js      5.02 kB │ gzip:     2.02 kB
+dist/assets/deuteronomy_29-DCr4CEkN.js        5.02 kB │ gzip:     2.02 kB
+dist/assets/leviticus_20-BjDOMhZ9.js          5.03 kB │ gzip:     1.72 kB
+dist/assets/exodus_23-gSadAsQZ.js             5.04 kB │ gzip:     2.01 kB
+dist/assets/genesis_29-B8lx8H6c.js            5.05 kB │ gzip:     1.82 kB
+dist/assets/deuteronomy_7 4-DOTAwrgA.js       5.07 kB │ gzip:     1.93 kB
+dist/assets/deuteronomy_7-DOTAwrgA.js         5.07 kB │ gzip:     1.93 kB
+dist/assets/luke_21-ChfBpTau.js               5.07 kB │ gzip:     2.06 kB
+dist/assets/matthew_15-CQ6cjKWs.js            5.08 kB │ gzip:     2.06 kB
+dist/assets/exodus_4-CsbZ08k_.js              5.08 kB │ gzip:     1.91 kB
+dist/assets/genesis_44-hv1MpSLk.js            5.10 kB │ gzip:     1.98 kB
+dist/assets/mark_7-CuTYASOH.js                5.11 kB │ gzip:     2.11 kB
+dist/assets/mark_13-DNFKzQS5.js               5.11 kB │ gzip:     2.12 kB
+dist/assets/genesis_18-DZ8Dz60-.js            5.14 kB │ gzip:     1.93 kB
+dist/assets/exodus_21-BUjGrVqj.js             5.16 kB │ gzip:     1.94 kB
+dist/assets/mark_8-DtfCE7ic.js                5.16 kB │ gzip:     2.08 kB
+dist/assets/exodus_40-BieO6FEz.js             5.17 kB │ gzip:     1.55 kB
+dist/assets/exodus_35-xG9B8rga.js             5.18 kB │ gzip:     1.82 kB
+dist/assets/deuteronomy_22 4-DMge8gA8.js      5.19 kB │ gzip:     1.89 kB
+dist/assets/deuteronomy_22-DMge8gA8.js        5.19 kB │ gzip:     1.89 kB
+dist/assets/exodus_38-CpwsqVLr.js             5.21 kB │ gzip:     1.63 kB
+dist/assets/exodus_10-BHfaZNvY.js             5.22 kB │ gzip:     1.97 kB
+dist/assets/matthew_18-CeRbZE6Z.js            5.23 kB │ gzip:     2.04 kB
+dist/assets/john_9 4-CfFm65kp.js              5.25 kB │ gzip:     2.00 kB
+dist/assets/john_9-CfFm65kp.js                5.25 kB │ gzip:     2.00 kB
+dist/assets/matthew_9-SEbyxH8b.js             5.26 kB │ gzip:     2.16 kB
+dist/assets/leviticus_22-By40dtGo.js          5.27 kB │ gzip:     1.92 kB
+dist/assets/luke_13 4-DGR-J5sM.js             5.27 kB │ gzip:     2.19 kB
+dist/assets/luke_13-DGR-J5sM.js               5.27 kB │ gzip:     2.19 kB
+dist/assets/numbers_2 4-BjCYQxtH.js           5.27 kB │ gzip:     1.34 kB
+dist/assets/numbers_2-BjCYQxtH.js             5.27 kB │ gzip:     1.34 kB
+dist/assets/leviticus_6-CVj8myQk.js           5.30 kB │ gzip:     1.85 kB
+dist/assets/deuteronomy_5 4-DumW8luv.js       5.36 kB │ gzip:     2.01 kB
+dist/assets/deuteronomy_5-DumW8luv.js         5.36 kB │ gzip:     2.01 kB
+dist/assets/genesis_26-CW4BOyAT.js            5.39 kB │ gzip:     2.05 kB
+dist/assets/matthew_22-CMv7d38q.js            5.40 kB │ gzip:     2.16 kB
+dist/assets/numbers_5 4-DsUeSJw2.js           5.41 kB │ gzip:     1.78 kB
+dist/assets/numbers_5-DsUeSJw2.js             5.41 kB │ gzip:     1.78 kB
+dist/assets/numbers_10 4-DPq3rNHM.js          5.42 kB │ gzip:     1.87 kB
+dist/assets/numbers_10-DPq3rNHM.js            5.42 kB │ gzip:     1.87 kB
+dist/assets/matthew_23-DyRLXNYi.js            5.44 kB │ gzip:     2.07 kB
+dist/assets/luke_18-Dl0MNRgf.js               5.46 kB │ gzip:     2.28 kB
+dist/assets/leviticus_19-C5C1BdOt.js          5.47 kB │ gzip:     2.05 kB
+dist/assets/genesis_36-DJUiWXva.js            5.48 kB │ gzip:     1.72 kB
+dist/assets/deuteronomy_11 4-DtsdNvsr.js      5.55 kB │ gzip:     2.05 kB
+dist/assets/deuteronomy_11-DtsdNvsr.js        5.55 kB │ gzip:     2.05 kB
+dist/assets/exodus_8-C5lHZkpb.js              5.55 kB │ gzip:     1.83 kB
+dist/assets/genesis_43-DJ56T7TS.js            5.55 kB │ gzip:     2.19 kB
+dist/assets/leviticus_15-Dk79wJhf.js          5.56 kB │ gzip:     1.51 kB
+dist/assets/mark_4-Brag2jhp.js                5.56 kB │ gzip:     2.17 kB
+dist/assets/exodus_14-D5Pa9ldb.js             5.59 kB │ gzip:     1.96 kB
+dist/assets/leviticus_27-CWaCdmUe.js          5.63 kB │ gzip:     1.72 kB
+dist/assets/exodus_36-DpYfb4QO.js             5.63 kB │ gzip:     1.83 kB
+dist/assets/matthew_10-DSg7pRZG.js            5.64 kB │ gzip:     2.24 kB
+dist/assets/genesis_37-fNavJS_g.js            5.64 kB │ gzip:     2.16 kB
+dist/assets/numbers_21 4-BbkT3kT-.js          5.65 kB │ gzip:     2.15 kB
+dist/assets/numbers_21-BbkT3kT-.js            5.65 kB │ gzip:     2.15 kB
+dist/assets/exodus_25-J4PMHIiT.js             5.66 kB │ gzip:     1.77 kB
+dist/assets/genesis_47-CL6wGT81.js            5.70 kB │ gzip:     2.07 kB
+dist/assets/deuteronomy_9-CcdU2AvI.js         5.72 kB │ gzip:     2.13 kB
+dist/assets/exodus_9-D-DJdQL7.js              5.76 kB │ gzip:     2.01 kB
+dist/assets/genesis_42-BEKbNCOD.js            5.78 kB │ gzip:     2.16 kB
+dist/assets/numbers_35-CWExbWXt.js            5.79 kB │ gzip:     1.87 kB
+dist/assets/luke_5 4-BcLNSvwp.js              5.79 kB │ gzip:     2.40 kB
+dist/assets/luke_5-BcLNSvwp.js                5.79 kB │ gzip:     2.40 kB
+dist/assets/exodus_26-BybB9aef.js             5.84 kB │ gzip:     1.68 kB
+dist/assets/mark_5-B1tLKU4R.js                5.84 kB │ gzip:     2.32 kB
+dist/assets/john_18 4-BcrGh_K3.js             5.85 kB │ gzip:     2.24 kB
+dist/assets/john_18-BcrGh_K3.js               5.85 kB │ gzip:     2.24 kB
+dist/assets/mark_15-mXRC1fnc.js               5.90 kB │ gzip:     2.34 kB
+dist/assets/mark_1-DR_gRG57.js                5.90 kB │ gzip:     2.38 kB
+dist/assets/leviticus_8-CF5161Ao.js           5.94 kB │ gzip:     1.77 kB
+dist/assets/luke_3-DWgqLa9K.js                5.98 kB │ gzip:     2.07 kB
+dist/assets/deuteronomy_31 4-DMjyUuVF.js      5.99 kB │ gzip:     2.14 kB
+dist/assets/deuteronomy_31-DMjyUuVF.js        5.99 kB │ gzip:     2.14 kB
+dist/assets/exodus_34-x45v7hNd.js             6.02 kB │ gzip:     2.28 kB
+dist/assets/luke_20 4-SwBNsAk-.js             6.06 kB │ gzip:     2.40 kB
+dist/assets/luke_20-SwBNsAk-.js               6.06 kB │ gzip:     2.40 kB
+dist/assets/luke_10 4-CPYgdiFf.js             6.08 kB │ gzip:     2.49 kB
+dist/assets/luke_10-CPYgdiFf.js               6.08 kB │ gzip:     2.49 kB
+dist/assets/exodus_30-DSLXkCci.js             6.08 kB │ gzip:     2.02 kB
+dist/assets/deuteronomy_2 4-8SIY5Tqa.js       6.10 kB │ gzip:     2.22 kB
+dist/assets/deuteronomy_2-8SIY5Tqa.js         6.10 kB │ gzip:     2.22 kB
+dist/assets/john_5 4-CkkzcHns.js              6.10 kB │ gzip:     2.36 kB
+dist/assets/john_5-CkkzcHns.js                6.10 kB │ gzip:     2.36 kB
+dist/assets/matthew_25-J03gTfCz.js            6.14 kB │ gzip:     2.16 kB
+dist/assets/numbers_29 4-B-plpNVv.js          6.14 kB │ gzip:     1.21 kB
+dist/assets/numbers_29-B-plpNVv.js            6.14 kB │ gzip:     1.21 kB
+dist/assets/luke_4 4-Cnyo2vKE.js              6.16 kB │ gzip:     2.49 kB
+dist/assets/luke_4-Cnyo2vKE.js                6.16 kB │ gzip:     2.49 kB
+dist/assets/exodus_16-iSO2UoLz.js             6.18 kB │ gzip:     2.17 kB
+dist/assets/deuteronomy_12 4-DUW_5FsO.js      6.19 kB │ gzip:     2.05 kB
+dist/assets/deuteronomy_12-DUW_5FsO.js        6.19 kB │ gzip:     2.05 kB
+dist/assets/numbers_11 4-UEIPLD4X.js          6.21 kB │ gzip:     2.37 kB
+dist/assets/numbers_11-UEIPLD4X.js            6.21 kB │ gzip:     2.37 kB
+dist/assets/john_7 4-B0IiKoqp.js              6.23 kB │ gzip:     2.40 kB
+dist/assets/john_7-B0IiKoqp.js                6.23 kB │ gzip:     2.40 kB
+dist/assets/john_1 4-DDU0DDsb.js              6.25 kB │ gzip:     2.35 kB
+dist/assets/john_1-DDU0DDsb.js                6.25 kB │ gzip:     2.35 kB
+dist/assets/genesis_30-gXt0dIx2.js            6.27 kB │ gzip:     2.31 kB
+dist/assets/john_19 4-B5u9Zxq3.js             6.31 kB │ gzip:     2.42 kB
+dist/assets/john_19-B5u9Zxq3.js               6.31 kB │ gzip:     2.42 kB
+dist/assets/exodus_32-CMkmr7eQ.js             6.32 kB │ gzip:     2.38 kB
+dist/assets/numbers_32 4-C0DXHouN.js          6.32 kB │ gzip:     2.26 kB
+dist/assets/numbers_32-C0DXHouN.js            6.32 kB │ gzip:     2.26 kB
+dist/assets/exodus_39-CuBX2XaN.js             6.36 kB │ gzip:     2.00 kB
+dist/assets/luke_19 4-BZdWTbPB.js             6.38 kB │ gzip:     2.54 kB
+dist/assets/luke_19-BZdWTbPB.js               6.38 kB │ gzip:     2.54 kB
+dist/assets/leviticus_7-DtTu-Rpx.js           6.40 kB │ gzip:     1.97 kB
+dist/assets/genesis_19-BS06NAFA.js            6.41 kB │ gzip:     2.41 kB
+dist/assets/numbers_33 4-CE2rl6G9.js          6.43 kB │ gzip:     1.92 kB
+dist/assets/numbers_33-CE2rl6G9.js            6.43 kB │ gzip:     1.92 kB
+dist/assets/numbers_15 4-DkMdFnYL.js          6.46 kB │ gzip:     2.02 kB
+dist/assets/numbers_15-DkMdFnYL.js            6.46 kB │ gzip:     2.02 kB
+dist/assets/matthew_24-BpV5D_-l.js            6.47 kB │ gzip:     2.52 kB
+dist/assets/mark_12-BDYyP9In.js               6.50 kB │ gzip:     2.60 kB
+dist/assets/john_12 4-Ctz2wayf.js             6.60 kB │ gzip:     2.66 kB
+dist/assets/john_12-Ctz2wayf.js               6.60 kB │ gzip:     2.66 kB
+dist/assets/numbers_18 4-CYT1fukL.js          6.62 kB │ gzip:     2.07 kB
+dist/assets/numbers_18-CYT1fukL.js            6.62 kB │ gzip:     2.07 kB
+dist/assets/matthew_5-3oqbLApP.js             6.63 kB │ gzip:     2.39 kB
+dist/assets/luke_24 4-DZfPEE2w.js             6.65 kB │ gzip:     2.58 kB
+dist/assets/luke_24-DZfPEE2w.js               6.65 kB │ gzip:     2.58 kB
+dist/assets/leviticus_16-CMO1kTAf.js          6.75 kB │ gzip:     2.05 kB
+dist/assets/leviticus_4-GTeQktxy.js           6.77 kB │ gzip:     1.71 kB
+dist/assets/john_4 4-IJf1WVIF.js              6.84 kB │ gzip:     2.61 kB
+dist/assets/john_4-IJf1WVIF.js                6.84 kB │ gzip:     2.61 kB
+dist/assets/luke_2-BsJo_XrD.js                6.85 kB │ gzip:     2.71 kB
+dist/assets/matthew_21-DlUfzVOz.js            6.86 kB │ gzip:     2.69 kB
+dist/assets/numbers_22-B_N0_obi.js            6.88 kB │ gzip:     2.45 kB
+dist/assets/leviticus_11-BMMQroU8.js          6.92 kB │ gzip:     2.04 kB
+dist/assets/mark_9-C_VksMOo.js                7.04 kB │ gzip:     2.63 kB
+dist/assets/luke_23 4-BYA11u_5.js             7.12 kB │ gzip:     2.86 kB
+dist/assets/luke_23-BYA11u_5.js               7.12 kB │ gzip:     2.86 kB
+dist/assets/matthew_12-8gpn1rr-.js            7.16 kB │ gzip:     2.75 kB
+dist/assets/numbers_14-DOfDIJUI.js            7.20 kB │ gzip:     2.67 kB
+dist/assets/john_11 4-DwVReDUl.js             7.21 kB │ gzip:     2.81 kB
+dist/assets/john_11-DwVReDUl.js               7.21 kB │ gzip:     2.81 kB
+dist/assets/genesis_27-B9p4C1oO.js            7.26 kB │ gzip:     2.58 kB
+dist/assets/luke_6 4-GFbB564H.js              7.29 kB │ gzip:     2.83 kB
+dist/assets/luke_6-GFbB564H.js                7.29 kB │ gzip:     2.83 kB
+dist/assets/luke_7 4-zzQXdpWq.js              7.30 kB │ gzip:     2.87 kB
+dist/assets/luke_7-zzQXdpWq.js                7.30 kB │ gzip:     2.87 kB
+dist/assets/leviticus_23-BVjTPYgP.js          7.33 kB │ gzip:     2.08 kB
+dist/assets/mark_10-Ben0naz4.js               7.40 kB │ gzip:     2.83 kB
+dist/assets/deuteronomy_1 4-qhS6QaLR.js       7.40 kB │ gzip:     2.80 kB
+dist/assets/deuteronomy_1-qhS6QaLR.js         7.40 kB │ gzip:     2.80 kB
+dist/assets/exodus_28-Bs7lmBT3.js             7.41 kB │ gzip:     2.26 kB
+dist/assets/leviticus_26-BTcBjMKg.js          7.41 kB │ gzip:     2.51 kB
+dist/assets/john_8 4-DrCOY4xh.js              7.68 kB │ gzip:     2.81 kB
+dist/assets/john_8-DrCOY4xh.js                7.68 kB │ gzip:     2.81 kB
+dist/assets/numbers_31-BFiNT_B_.js            7.71 kB │ gzip:     2.44 kB
+dist/assets/deuteronomy_32 4-8X0xULHD.js      7.89 kB │ gzip:     3.24 kB
+dist/assets/deuteronomy_32-8X0xULHD.js        7.89 kB │ gzip:     3.24 kB
+dist/assets/exodus_29-CooeW4eD.js             7.91 kB │ gzip:     2.30 kB
+dist/assets/luke_11-D75faSOl.js               7.95 kB │ gzip:     3.13 kB
+dist/assets/mark_6-CbD0sYeQ.js                8.01 kB │ gzip:     3.12 kB
+dist/assets/numbers_3-D4sPmdbD.js             8.12 kB │ gzip:     2.21 kB
+dist/assets/numbers_16 4-8g-xkk6e.js          8.14 kB │ gzip:     2.72 kB
+dist/assets/numbers_16-8g-xkk6e.js            8.14 kB │ gzip:     2.72 kB
+dist/assets/genesis_41-xw470zqr.js            8.39 kB │ gzip:     2.79 kB
+dist/assets/matthew_13-DuvzjGnq.js            8.41 kB │ gzip:     3.03 kB
+dist/assets/numbers_1 4-BQU1nF-C.js           8.45 kB │ gzip:     1.83 kB
+dist/assets/numbers_1-BQU1nF-C.js             8.45 kB │ gzip:     1.83 kB
+dist/assets/luke_12 4-Do_3--yC.js             8.48 kB │ gzip:     3.33 kB
+dist/assets/luke_12-Do_3--yC.js               8.48 kB │ gzip:     3.33 kB
+dist/assets/genesis_31-CgSaInxO.js            8.50 kB │ gzip:     3.08 kB
+dist/assets/matthew_27-hvIDQb5h.js            8.56 kB │ gzip:     3.29 kB
+dist/assets/luke_8-C6BGFFr6.js                8.58 kB │ gzip:     3.35 kB
+dist/assets/luke_22-Bagn37xn.js               8.60 kB │ gzip:     3.26 kB
+dist/assets/exodus_12-BMNgLVdA.js             8.75 kB │ gzip:     2.99 kB
+dist/assets/luke_9 4-Bcww2M1m.js              8.75 kB │ gzip:     3.37 kB
+dist/assets/luke_9-Bcww2M1m.js                8.75 kB │ gzip:     3.37 kB
+dist/assets/numbers_4-De8gUtzx.js             8.76 kB │ gzip:     2.13 kB
+dist/assets/deuteronomy_4 4-n9l2UkH4.js       8.84 kB │ gzip:     3.21 kB
+dist/assets/deuteronomy_4-n9l2UkH4.js         8.84 kB │ gzip:     3.21 kB
+dist/assets/leviticus_25-BW6MaMND.js          8.95 kB │ gzip:     2.88 kB
+dist/assets/john_6-ChKVhEA8.js                9.15 kB │ gzip:     3.23 kB
+dist/assets/numbers_26-CbT9CacA.js            9.44 kB │ gzip:     2.49 kB
+dist/assets/mark_14-HqZeKFq0.js               9.59 kB │ gzip:     3.63 kB
+dist/assets/leviticus_14-BGtweITi.js          9.72 kB │ gzip:     2.59 kB
+dist/assets/matthew_26-ioAItSnf.js            9.86 kB │ gzip:     3.71 kB
+dist/assets/luke_1 4-p-QtGn-c.js              9.91 kB │ gzip:     3.70 kB
+dist/assets/luke_1-p-QtGn-c.js                9.91 kB │ gzip:     3.70 kB
+dist/assets/leviticus_13--7y44CcT.js         10.45 kB │ gzip:     2.59 kB
+dist/assets/genesis_24-lbjq9GcY.js           10.56 kB │ gzip:     3.52 kB
+dist/assets/numbers_7 4-C6XM5eyw.js          12.22 kB │ gzip:     2.09 kB
+dist/assets/numbers_7-C6XM5eyw.js            12.22 kB │ gzip:     2.09 kB
+dist/assets/deuteronomy_28 4-Ca4vK0Gj.js     12.23 kB │ gzip:     3.77 kB
+dist/assets/deuteronomy_28-Ca4vK0Gj.js       12.23 kB │ gzip:     3.77 kB
+dist/assets/index.esm-C7qgFNJn.js            28.00 kB │ gzip:     9.34 kB
+dist/assets/quotes 4-ZtB-_NFj.js             77.57 kB │ gzip:    22.37 kB
+dist/assets/quotes 5-ZtB-_NFj.js             77.57 kB │ gzip:    22.37 kB
+dist/assets/quotes_verified-fGbFB0BI.js      86.35 kB │ gzip:    26.49 kB
+dist/assets/bible_quotes 4-1IMuNAwx.js      116.77 kB │ gzip:    21.82 kB
+dist/assets/bible_quotes 5-1IMuNAwx.js      116.77 kB │ gzip:    21.82 kB
+dist/assets/xlsx-D-R0F-ey.js                492.68 kB │ gzip:   160.54 kB
+dist/assets/pdf-B1SGOyIA.js                 521.77 kB │ gzip:   156.29 kB
+dist/assets/index-DgEiNOir.js             5,506.92 kB │ gzip: 1,480.32 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0mnode_modules/firebase/firestore/dist/esm/index.esm.js is dynamically imported by src/app/pages/AdminChecklistPage.tsx, src/app/pages/BiblePage.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0mnode_modules/firebase/functions/dist/esm/index.esm.js is dynamically imported by src/app/pages/BiblePage.tsx, src/app/services/firestoreService.ts but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, src/app/components/SayuModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/firebase.ts is dynamically imported by src/app/contexts/AuthContext.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/app/services/firestoreService.ts is dynamically imported by src/app/components/FormatModal.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/ResultChatModal.tsx, src/app/components/SayuModal.tsx, src/app/components/TimelineCollageModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/data/quotes.json is dynamically imported by src/app/pages/GrammarDashboard.tsx but also statically imported by src/app/components/TodayQuote.tsx, dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/data/bible_quotes.json is dynamically imported by src/app/pages/BiblePage.tsx, src/app/pages/GrammarDashboard.tsx but also statically imported by src/app/components/TodayQuote.tsx, dynamic import will not move module into another chunk.
+
+✓ built in 2m 20s
+
+PWA v1.3.0
+mode      generateSW
+precache  793 entries (20787.16 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-aade9d62.js
+[33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 138.3s of this 139.7s build (99%).
+The slowest callbacks, timed inside each callback (the wait before a callback starts is excluded, the time it awaits is included):
+  - plugin vite:legacy-post-process renderChunk (94%, 131.5s, 758 calls)
+  - plugin vite-plugin-pwa:build closeBundle (2%, 2.8s, 1 call)
+Additional callback time came from the callbacks below and from callbacks under 1s.
+3 callbacks are listed without a time. Their calls overlapped, so the time inside one call includes work from other calls. To find their cost, profile the build with `node --cpu-prof`:
+  - plugin vite:asset load (22 calls)
+  - plugin vite:css transform (10 calls)
+  - plugin @tailwindcss/vite:generate:build transform (10 calls)
+See https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.
+
+
+# end 2026-10-31T19:39:11+09:00 exit=0
+

@@ -1,6 +1,6 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { LegalTermHelp } from '../components/LegalTermHelp';
 import { createPracticeDraftLegalCase } from '../services/legalCasesService';

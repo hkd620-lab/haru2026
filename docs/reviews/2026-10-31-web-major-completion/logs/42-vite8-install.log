@@ -1,0 +1,7 @@
+$ (cwd=frontend) npm install --no-audit --no-fund
+# start 2026-10-31T17:40:53+09:00
+
+added 7 packages, removed 10 packages, and changed 109 packages in 42s
+
+# end 2026-10-31T17:41:35+09:00 exit=0
+

@@ -15,7 +15,7 @@ import {
   Sprout,
   Video,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 const FONT_KR =
   "'Pretendard', 'Pretendard Variable', system-ui, sans-serif";

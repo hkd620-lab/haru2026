@@ -1,0 +1,19 @@
+{
+  "name": "react-dom",
+  "version": "19.3.1",
+  "dist-tags": {
+    "beta": "19.0.0-beta-26f2496093-20240514",
+    "rc": "19.0.0-rc.1",
+    "next": "19.3.0-canary-d5736f09-20260507",
+    "latest": "19.3.1",
+    "backport": "19.1.10",
+    "experimental": "0.0.0-experimental-a703ca64-20261030",
+    "canary": "19.3.0-canary-a703ca64-20261030"
+  },
+  "peerDependencies": {
+    "react": "^19.3.1"
+  },
+  "dependencies": {
+    "scheduler": "^0.28.0"
+  }
+}

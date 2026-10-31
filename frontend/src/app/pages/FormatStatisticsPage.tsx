@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import { toast } from 'sonner';

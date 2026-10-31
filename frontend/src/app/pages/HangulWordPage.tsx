@@ -1,6 +1,6 @@
 import { type ChangeEvent, type DragEvent, useEffect, useRef, useState } from 'react';
 import { AlertCircle, ExternalLink, FileText, UploadCloud } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 

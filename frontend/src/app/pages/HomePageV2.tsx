@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router';
 import { setOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
 import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';

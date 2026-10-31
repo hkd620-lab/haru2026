@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';

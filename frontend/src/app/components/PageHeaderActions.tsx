@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { ChevronLeft, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { getOrigin } from '../services/v2Origin';
 
 // 모든 v2 진입 가능 페이지 우상단에 배치하는 ← 뒤로가기 + X 닫기 버튼.
