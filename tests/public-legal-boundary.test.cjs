@@ -7,7 +7,7 @@ const { createRequire } = Module;
 const frontendPath = path.resolve(__dirname, '../frontend');
 const frontendRequire = createRequire(path.join(frontendPath, 'package.json'));
 const React = frontendRequire('react');
-const { MemoryRouter } = frontendRequire('react-router-dom');
+const { MemoryRouter } = frontendRequire('react-router');
 const { renderToString } = frontendRequire('react-dom/server');
 const { buildSync } = frontendRequire('esbuild');
 
