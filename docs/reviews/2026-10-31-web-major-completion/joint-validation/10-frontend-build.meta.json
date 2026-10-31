@@ -1,0 +1,17 @@
+{
+  "actor": "CC executor (Claude Code)",
+  "label": "10-frontend-build",
+  "command": "env VITE_FIREBASE_API_KEY=haru-completion-dummy VITE_FIREBASE_AUTH_DOMAIN=haru-completion-dummy.localhost VITE_FIREBASE_PROJECT_ID=haru-completion-dummy VITE_FIREBASE_STORAGE_BUCKET=haru-completion-dummy.localhost VITE_FIREBASE_MESSAGING_SENDER_ID=000000000000 VITE_FIREBASE_APP_ID=1:000000000000:web:haru-completion-dummy npm --prefix frontend run build",
+  "cwd": "/private/tmp/haru-completion-joint-20261101",
+  "head": "b935b8988eb6a9d7ccd560c4a5e7a7f913800813",
+  "startedAt": "2026-10-31T20:40:27.147Z",
+  "endedAt": "2026-10-31T20:41:16.446Z",
+  "exitCode": 0,
+  "signal": null,
+  "spawnError": null,
+  "node": "v22.23.2",
+  "npm": "10.9.8",
+  "platform": "darwin",
+  "arch": "arm64",
+  "osRelease": "27.0.0"
+}

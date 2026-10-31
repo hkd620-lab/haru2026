@@ -1,0 +1,17 @@
+{
+  "actor": "CC executor (Claude Code)",
+  "label": "25-sharp-tts-load",
+  "command": "node -e const sharp=require('sharp');const i=require('./lib/index.js');const t=require('./lib/ttsQuality.js');console.log(JSON.stringify({sharp:sharp.versions.sharp,libvips:sharp.versions.vips,generateTTSType:typeof i.generateTTS,generateTTSHasRun:typeof i.generateTTS?.run,generateTTSEndpointKeys:Object.keys(i.generateTTS?.__endpoint??{}).sort(),generateTTSRegion:i.generateTTS?.__endpoint?.region,ttsQualityExports:Object.keys(t).sort()},null,2))",
+  "cwd": "/private/tmp/haru-completion-joint-20261101/functions",
+  "head": "b935b8988eb6a9d7ccd560c4a5e7a7f913800813",
+  "startedAt": "2026-10-31T20:42:11.217Z",
+  "endedAt": "2026-10-31T20:42:11.880Z",
+  "exitCode": 0,
+  "signal": null,
+  "spawnError": null,
+  "node": "v22.23.2",
+  "npm": "10.9.8",
+  "platform": "darwin",
+  "arch": "arm64",
+  "osRelease": "27.0.0"
+}

@@ -1,0 +1,7 @@
+@figma/my-make-file@0.0.1 /private/tmp/haru-completion-joint-20261101/frontend
+├── esbuild@0.28.2
+├── react-dom@19.3.1
+├── react-router@8.5.1
+├── react@19.3.1
+└── vite@8.3.5
+

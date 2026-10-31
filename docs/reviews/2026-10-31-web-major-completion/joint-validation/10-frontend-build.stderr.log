@@ -1,0 +1,48 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.ts:30:47). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+plugin-legacy 'modernTargets' option overrode the builtin targets of modern chunks. Some versions of browsers between legacy and modern may not be supported.
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0mnode_modules/firebase/firestore/dist/esm/index.esm.js is dynamically imported by src/app/pages/AdminChecklistPage.tsx, src/app/pages/BiblePage.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0mnode_modules/firebase/functions/dist/esm/index.esm.js is dynamically imported by src/app/pages/BiblePage.tsx, src/app/services/firestoreService.ts but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, src/app/components/SayuModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/firebase.ts is dynamically imported by src/app/contexts/AuthContext.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/app/services/firestoreService.ts is dynamically imported by src/app/components/FormatModal.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/ResultChatModal.tsx, src/app/components/SayuModal.tsx, src/app/components/TimelineCollageModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/data/quotes.json is dynamically imported by src/app/pages/GrammarDashboard.tsx but also statically imported by src/app/components/TodayQuote.tsx, dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/data/bible_quotes.json is dynamically imported by src/app/pages/BiblePage.tsx, src/app/pages/GrammarDashboard.tsx but also statically imported by src/app/components/TodayQuote.tsx, dynamic import will not move module into another chunk.
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0mnode_modules/firebase/firestore/dist/esm/index.esm.js is dynamically imported by src/app/pages/AdminChecklistPage.tsx, src/app/pages/BiblePage.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0mnode_modules/firebase/functions/dist/esm/index.esm.js is dynamically imported by src/app/pages/BiblePage.tsx, src/app/services/firestoreService.ts but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, src/app/components/SayuModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/firebase.ts is dynamically imported by src/app/contexts/AuthContext.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/app/services/firestoreService.ts is dynamically imported by src/app/components/FormatModal.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/ResultChatModal.tsx, src/app/components/SayuModal.tsx, src/app/components/TimelineCollageModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/data/quotes.json is dynamically imported by src/app/pages/GrammarDashboard.tsx but also statically imported by src/app/components/TodayQuote.tsx, dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/data/bible_quotes.json is dynamically imported by src/app/pages/BiblePage.tsx, src/app/pages/GrammarDashboard.tsx but also statically imported by src/app/components/TodayQuote.tsx, dynamic import will not move module into another chunk.
+
+[33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 41.7s of this 42.7s build (98%).
+The slowest callbacks, timed inside each callback (the wait before a callback starts is excluded, the time it awaits is included):
+  - plugin vite:legacy-post-process renderChunk (88%, 37.5s, 758 calls)
+  - plugin vite-plugin-pwa:build closeBundle (5%, 2.1s, 1 call)
+Additional callback time came from the callbacks below and from callbacks under 1s.
+2 callbacks are listed without a time. Their calls overlapped, so the time inside one call includes work from other calls. To find their cost, profile the build with `node --cpu-prof`:
+  - plugin vite:asset load (22 calls)
+  - plugin @tailwindcss/vite:generate:build transform (10 calls)
+See https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.
+

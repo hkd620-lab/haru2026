@@ -1,0 +1,29 @@
+{
+  "sharp": "0.35.5",
+  "libvips": "8.18.7",
+  "generateTTSType": "function",
+  "generateTTSHasRun": "function",
+  "generateTTSEndpointKeys": [
+    "availableMemoryMb",
+    "callableTrigger",
+    "concurrency",
+    "ingressSettings",
+    "labels",
+    "maxInstances",
+    "minInstances",
+    "platform",
+    "region",
+    "secretEnvironmentVariables",
+    "serviceAccountEmail",
+    "timeoutSeconds",
+    "vpc"
+  ],
+  "generateTTSRegion": [
+    "asia-northeast3"
+  ],
+  "ttsQualityExports": [
+    "TTS_QUALITY_SETTINGS",
+    "buildTtsCachePath",
+    "normalizeTtsQuality"
+  ]
+}
