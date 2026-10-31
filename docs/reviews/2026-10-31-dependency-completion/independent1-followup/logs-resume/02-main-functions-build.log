@@ -1,0 +1,12 @@
+# cmd: npm run build
+# cwd: .audit-baseline/main/functions
+# target_sha: 5972c5cf93381ea48ba8e31381a4ed883fe1f6bc
+# start_utc: 2026-10-31T02:54:32Z
+
+
+> build
+> tsc && mkdir -p lib/fonts && cp src/fonts/*.ttf lib/fonts/
+
+
+# end_utc: 2026-10-31T02:54:41Z
+# exit_code: 0

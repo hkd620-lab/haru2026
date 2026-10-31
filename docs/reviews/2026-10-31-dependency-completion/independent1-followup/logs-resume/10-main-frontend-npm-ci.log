@@ -1,0 +1,22 @@
+# cmd: npm ci --ignore-scripts
+# cwd: .audit-baseline/main/frontend
+# target_sha: 5972c5cf93381ea48ba8e31381a4ed883fe1f6bc
+# start_utc: 2026-10-31T02:55:06Z
+
+npm warn deprecated source-map@0.8.0-beta.0: The work that was done in this beta branch won't be included in future versions
+npm warn deprecated glob@11.1.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+added 834 packages, and audited 835 packages in 15s
+
+26 vulnerabilities (3 low, 9 moderate, 13 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+# end_utc: 2026-10-31T02:55:21Z
+# exit_code: 0

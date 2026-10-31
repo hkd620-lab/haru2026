@@ -1,0 +1,6 @@
+{
+  "name": "dompurify",
+  "version": "3.4.13",
+  "dist.integrity": "sha512-2vmYIoqjze2d+kakP8S/nS5shfsl587kzwEjcGlTdiksUVgFHnFCsLYDVj/JNqJVOQZGSYBTmuycv0PodwmnMQ==",
+  "dist.tarball": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.13.tgz"
+}

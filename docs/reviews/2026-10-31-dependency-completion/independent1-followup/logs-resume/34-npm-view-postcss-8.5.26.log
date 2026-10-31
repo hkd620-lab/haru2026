@@ -1,0 +1,8 @@
+# cmd: npm view postcss@8.5.26 name version dist.integrity dist.tarball dependencies --json
+# cwd: .
+# target_sha: 42bc6a4218775fe925cbc88a964377be3ce7ca08
+# start_utc: 2026-10-31T02:57:55Z
+
+
+# end_utc: 2026-10-31T02:57:56Z
+# exit_code: 0

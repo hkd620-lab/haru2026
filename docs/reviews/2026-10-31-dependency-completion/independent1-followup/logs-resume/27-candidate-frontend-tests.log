@@ -1,0 +1,594 @@
+# cmd: node --import tsx --test test/householdSummary.test.mjs test/structuredAssistantRecords.test.mjs test/originalAssistantRecords.test.mjs test/recordStats.test.mjs test/readingAi.test.mjs
+# cwd: .audit-baseline/candidate/frontend
+# target_sha: 42bc6a4218775fe925cbc88a964377be3ce7ca08
+# start_utc: 2026-10-31T02:57:49Z
+
+TAP version 13
+# Subtest: 본인 이체 양쪽을 제외하고 계좌이체로 지급한 월세는 지출로 계산한다
+ok 1 - 본인 이체 양쪽을 제외하고 계좌이체로 지급한 월세는 지출로 계산한다
+  ---
+  duration_ms: 2.252167
+  type: 'test'
+  ...
+# Subtest: 이체만 있거나 빈 내역이면 합계 0, 적자는 음수 차액으로 유지한다
+ok 2 - 이체만 있거나 빈 내역이면 합계 0, 적자는 음수 차액으로 유지한다
+  ---
+  duration_ms: 0.205583
+  type: 'test'
+  ...
+# Subtest: 음수 금액의 부호를 유지하고 알 수 없는 유형은 수입·지출로 확정하지 않는다
+ok 3 - 음수 금액의 부호를 유지하고 알 수 없는 유형은 수입·지출로 확정하지 않는다
+  ---
+  duration_ms: 0.090791
+  type: 'test'
+  ...
+# Subtest: 실제 상세 화면: 이체·잔액이 있어도 3개 합계만 표시하고 거래는 보존한다
+ok 4 - 실제 상세 화면: 이체·잔액이 있어도 3개 합계만 표시하고 거래는 보존한다
+  ---
+  duration_ms: 20.708083
+  type: 'test'
+  ...
+# Subtest: 실제 SAYU 목록 제목도 같은 수입·지출·차액을 표시한다
+ok 5 - 실제 SAYU 목록 제목도 같은 수입·지출·차액을 표시한다
+  ---
+  duration_ms: 0.396375
+  type: 'test'
+  ...
+# Subtest: 실제 가계부 화면: 이체 보존, 음수 지출 원부호 표시, 현재월 예산에 이체 제외
+ok 6 - 실제 가계부 화면: 이체 보존, 음수 지출 원부호 표시, 현재월 예산에 이체 제외
+  ---
+  duration_ms: 85.193416
+  type: 'test'
+  ...
+# Subtest: 실제 통계 화면: 선택 기간의 수입·지출과 월별 숫자 표, 이체 차트 제외
+ok 7 - 실제 통계 화면: 선택 기간의 수입·지출과 월별 숫자 표, 이체 차트 제외
+  ---
+  duration_ms: 11.492375
+  type: 'test'
+  ...
+# Subtest: 실제 빈 가계부는 0원 합계와 첫 기록 추가를 표시한다
+ok 8 - 실제 빈 가계부는 0원 합계와 첫 기록 추가를 표시한다
+  ---
+  duration_ms: 7.662958
+  type: 'test'
+  ...
+# Subtest: 로그아웃·계정 전환 첫 화면은 빈 편집·선택 상태에 접근하지 않고 이전 계정 거래를 숨긴다
+ok 9 - 로그아웃·계정 전환 첫 화면은 빈 편집·선택 상태에 접근하지 않고 이전 계정 거래를 숨긴다
+  ---
+  duration_ms: 13.048291
+  type: 'test'
+  ...
+# Subtest: 실제 SAYU 상세: 예전 단건(배열 없음·'[]')의 고친 분류·세부분류·메모를 보여 주고 사용자 본문은 그대로 안내한다
+ok 10 - 실제 SAYU 상세: 예전 단건(배열 없음·'[]')의 고친 분류·세부분류·메모를 보여 주고 사용자 본문은 그대로 안내한다
+  ---
+  duration_ms: 64.418
+  type: 'test'
+  ...
+# Subtest: 실제 SAYU 상세: 손상된 배열은 단건 필드로 바꾸지 않고 기존 본문 보기를 유지한다
+ok 11 - 실제 SAYU 상세: 손상된 배열은 단건 필드로 바꾸지 않고 기존 본문 보기를 유지한다
+  ---
+  duration_ms: 0.397
+  type: 'test'
+  ...
+# Subtest: 실제 SAYU 상세: 배열 거래는 자동 본문이면 안내하지 않고 사용자 본문이면 안내하며, 수입·지출 메모를 보여 준다
+ok 12 - 실제 SAYU 상세: 배열 거래는 자동 본문이면 안내하지 않고 사용자 본문이면 안내하며, 수입·지출 메모를 보여 준다
+  ---
+  duration_ms: 1.317416
+  type: 'test'
+  ...
+# Subtest: 실제 SAYU 전체보기 합계: SayuPage가 넘기는 합계에 예전 단건(배열 없음·'[]')을 같은 읽기로 포함하고 손상·다른 형식 기록은 제외한다
+ok 13 - 실제 SAYU 전체보기 합계: SayuPage가 넘기는 합계에 예전 단건(배열 없음·'[]')을 같은 읽기로 포함하고 손상·다른 형식 기록은 제외한다
+  ---
+  duration_ms: 1.672666
+  type: 'test'
+  ...
+# Subtest: 실제 SAYU 합계 범위: 월별보기와 한 달짜리 묶음 기록은 기존처럼 자체 합계, 여러 달 묶음은 전체보기에서 전체 합계를 쓴다
+ok 14 - 실제 SAYU 합계 범위: 월별보기와 한 달짜리 묶음 기록은 기존처럼 자체 합계, 여러 달 묶음은 전체보기에서 전체 합계를 쓴다
+  ---
+  duration_ms: 1.934542
+  type: 'test'
+  ...
+# Subtest: 실제 SAYU 상세: 사용자 본문은 기본 닫힌 '작성 당시 본문 보기'로 그대로 읽고, 원본 기록은 바뀌지 않는다
+ok 15 - 실제 SAYU 상세: 사용자 본문은 기본 닫힌 '작성 당시 본문 보기'로 그대로 읽고, 원본 기록은 바뀌지 않는다
+  ---
+  duration_ms: 1.520125
+  type: 'test'
+  ...
+# Subtest: pet records read only the current owner collection and use document IDs
+ok 16 - pet records read only the current owner collection and use document IDs
+  ---
+  duration_ms: 72.71375
+  type: 'test'
+  ...
+# Subtest: legal records preserve the source status and return to the exact case ID
+ok 17 - legal records preserve the source status and return to the exact case ID
+  ---
+  duration_ms: 1.762208
+  type: 'test'
+  ...
+# Subtest: invalid owner or kind is rejected before any read
+ok 18 - invalid owner or kind is rejected before any read
+  ---
+  duration_ms: 1.310708
+  type: 'test'
+  ...
+# Subtest: an account change during the read cannot return the previous owner records
+ok 19 - an account change during the read cannot return the previous owner records
+  ---
+  duration_ms: 1.002458
+  type: 'test'
+  ...
+# Subtest: read permission failure is propagated and never reported as an empty collection
+ok 20 - read permission failure is propagated and never reported as an empty collection
+  ---
+  duration_ms: 1.352083
+  type: 'test'
+  ...
+# Subtest: actual source list renders escaped saved content and no input, save or AI controls
+ok 21 - actual source list renders escaped saved content and no input, save or AI controls
+  ---
+  duration_ms: 11.256542
+  type: 'test'
+  ...
+# Subtest: legal consent denies list rendering and offers only the original consent screen
+ok 22 - legal consent denies list rendering and offers only the original consent screen
+  ---
+  duration_ms: 1.846208
+  type: 'test'
+  ...
+# Subtest: pending legal consent does not expose a list
+ok 23 - pending legal consent does not expose a list
+  ---
+  duration_ms: 1.587417
+  type: 'test'
+  ...
+# Subtest: actual source list distinguishes error and empty states
+ok 24 - actual source list distinguishes error and empty states
+  ---
+  duration_ms: 4.003333
+  type: 'test'
+  ...
+# Subtest: opening the source panel initially does not read collections and provides existing query destinations
+ok 25 - opening the source panel initially does not read collections and provides existing query destinations
+  ---
+  duration_ms: 2.101166
+  type: 'test'
+  ...
+# Subtest: actual lifecycle cancels a delayed list result after unmount
+ok 26 - actual lifecycle cancels a delayed list result after unmount
+  ---
+  duration_ms: 6.9315
+  type: 'test'
+  ...
+# Subtest: external questions work without a passage and only include the current book context
+ok 27 - external questions work without a passage and only include the current book context
+  ---
+  duration_ms: 1.3715
+  type: 'test'
+  ...
+# Subtest: external answers retain attribution and existing references without entering the user journal
+ok 28 - external answers retain attribution and existing references without entering the user journal
+  ---
+  duration_ms: 1.379666
+  type: 'test'
+  ...
+# Subtest: external import rejects empty, excessive, duplicate and full references without losing existing content
+ok 29 - external import rejects empty, excessive, duplicate and full references without losing existing content
+  ---
+  duration_ms: 0.240625
+  type: 'test'
+  ...
+# Subtest: applying internal AI notes after an external import preserves external answers and attribution
+ok 30 - applying internal AI notes after an external import preserves external answers and attribution
+  ---
+  duration_ms: 0.424416
+  type: 'test'
+  ...
+# Subtest: combined internal/external limits reject changes without mutating saved references
+ok 31 - combined internal/external limits reject changes without mutating saved references
+  ---
+  duration_ms: 0.233208
+  type: 'test'
+  ...
+# Subtest: only chosen answers and their actual user questions become reference material
+ok 32 - only chosen answers and their actual user questions become reference material
+  ---
+  duration_ms: 0.139458
+  type: 'test'
+  ...
+# Subtest: old records without the field remain readable and cross-book reference is rejected
+ok 33 - old records without the field remain readable and cross-book reference is rejected
+  ---
+  duration_ms: 0.1555
+  type: 'test'
+  ...
+# Subtest: switching books drops old completion flags, OCR and AI fields while preserving unrelated formats
+ok 34 - switching books drops old completion flags, OCR and AI fields while preserving unrelated formats
+  ---
+  duration_ms: 0.141333
+  type: 'test'
+  ...
+# Subtest: 첫 책 선택은 공통 작성창 초안을 보존하고 이후 책 전환은 소감을 비운다
+ok 35 - 첫 책 선택은 공통 작성창 초안을 보존하고 이후 책 전환은 소감을 비운다
+  ---
+  duration_ms: 0.362333
+  type: 'test'
+  ...
+# Subtest: reapplying a selection does not duplicate user questions
+ok 36 - reapplying a selection does not duplicate user questions
+  ---
+  duration_ms: 0.434125
+  type: 'test'
+  ...
+# Subtest: long conversation stays bounded and preserves the latest follow-up pair
+ok 37 - long conversation stays bounded and preserves the latest follow-up pair
+  ---
+  duration_ms: 0.226459
+  type: 'test'
+  ...
+# Subtest: long local sessions drop invisible selections so new answers remain selectable
+ok 38 - long local sessions drop invisible selections so new answers remain selectable
+  ---
+  duration_ms: 0.148041
+  type: 'test'
+  ...
+# Subtest: prior notes favor recent user journals and final snapshot includes new sessions
+ok 39 - prior notes favor recent user journals and final snapshot includes new sessions
+  ---
+  duration_ms: 0.176375
+  type: 'test'
+  ...
+# Subtest: stable book IDs and original canonical/legacy meta remain compatible
+ok 40 - stable book IDs and original canonical/legacy meta remain compatible
+  ---
+  duration_ms: 0.336667
+  type: 'test'
+  ...
+# Subtest: close/refresh recovery retains text without photos, and account/book chats stay isolated
+ok 41 - close/refresh recovery retains text without photos, and account/book chats stay isolated
+  ---
+  duration_ms: 0.310208
+  type: 'test'
+  ...
+# Subtest: expired drafts are purged and unavailable storage reports failure
+ok 42 - expired drafts are purged and unavailable storage reports failure
+  ---
+  duration_ms: 0.094834
+  type: 'test'
+  ...
+# Subtest: monthly quota, login and network errors are understandable and retain drafts
+ok 43 - monthly quota, login and network errors are understandable and retain drafts
+  ---
+  duration_ms: 0.077041
+  type: 'test'
+  ...
+# Subtest: 대상 기록형식: 선교·일반보고 포함, 비서(가계부·보조장부·주식·성장) 제외
+ok 44 - 대상 기록형식: 선교·일반보고 포함, 비서(가계부·보조장부·주식·성장) 제외
+  ---
+  duration_ms: 1.296625
+  type: 'test'
+  ...
+# Subtest: 원문: 새 글쓰기처럼 _simple과 프리미엄 칸에 같은 본문이 있어도 한 번만 읽고 _style을 따른다
+ok 45 - 원문: 새 글쓰기처럼 _simple과 프리미엄 칸에 같은 본문이 있어도 한 번만 읽고 _style을 따른다
+  ---
+  duration_ms: 0.202042
+  type: 'test'
+  ...
+# Subtest: 기록 고르기: 비서 기록·다른 형식·기간 밖·같은 문서 중복을 뺀다
+ok 46 - 기록 고르기: 비서 기록·다른 형식·기간 밖·같은 문서 중복을 뺀다
+  ---
+  duration_ms: 10.991083
+  type: 'test'
+  ...
+# Subtest: 공통 지표: 기록 공백이 있으면 연속일이 끊기고, 사진·SAYU·특별한 날을 센다
+ok 47 - 공통 지표: 기록 공백이 있으면 연속일이 끊기고, 사진·SAYU·특별한 날을 센다
+  ---
+  duration_ms: 1.279625
+  type: 'test'
+  ...
+# Subtest: 특별한 날: specialDays 우선, 옛 숫자 _rating만 인정하고 업무일지 별점 문장은 특별한 날이 아니다
+ok 48 - 특별한 날: specialDays 우선, 옛 숫자 _rating만 인정하고 업무일지 별점 문장은 특별한 날이 아니다
+  ---
+  duration_ms: 0.09525
+  type: 'test'
+  ...
+# Subtest: 사진: 그 형식 _images 우선, 없으면 _imageMeta, 중복 제거, 최대 5장
+ok 49 - 사진: 그 형식 _images 우선, 없으면 _imageMeta, 중복 제거, 최대 5장
+  ---
+  duration_ms: 1.201875
+  type: 'test'
+  ...
+# Subtest: 일기 예시: 좋았던 일·아쉬웠던 일·다음 할 일 후보, 부정형은 뺀다
+ok 50 - 일기 예시: 좋았던 일·아쉬웠던 일·다음 할 일 후보, 부정형은 뺀다
+  ---
+  duration_ms: 1.912291
+  type: 'test'
+  ...
+# Subtest: 후보 확인: 맞아요는 사용자 확인으로, 아니에요는 목록에서 뺀다
+ok 51 - 후보 확인: 맞아요는 사용자 확인으로, 아니에요는 목록에서 뺀다
+  ---
+  duration_ms: 0.338417
+  type: 'test'
+  ...
+# Subtest: 여행 예시: 기록이 이어진 기간(묶음 후보), 들른 곳 후보, 중복 금액은 합산하지 않고 표기 목록만
+ok 52 - 여행 예시: 기록이 이어진 기간(묶음 후보), 들른 곳 후보, 중복 금액은 합산하지 않고 표기 목록만
+  ---
+  duration_ms: 1.555875
+  type: 'test'
+  ...
+# Subtest: 텃밭 예시: 고른 작물(사실)·등록 작물 본문 언급(후보)·작업 낱말·문제 표현, 기록 부재 문구
+ok 53 - 텃밭 예시: 고른 작물(사실)·등록 작물 본문 언급(후보)·작업 낱말·문제 표현, 기록 부재 문구
+  ---
+  duration_ms: 1.343917
+  type: 'test'
+  ...
+# Subtest: 반려동물·육아 예시: 수치는 대상·단위·원문 문장과 함께, 한 기록에 수치가 여럿이면 모두
+ok 54 - 반려동물·육아 예시: 수치는 대상·단위·원문 문장과 함께, 한 기록에 수치가 여럿이면 모두
+  ---
+  duration_ms: 0.797208
+  type: 'test'
+  ...
+# Subtest: 업무일지 예시: 미결은 ‘기록상 미결 표현’, 마감 후보, 별점은 입력한 날만
+ok 55 - 업무일지 예시: 미결은 ‘기록상 미결 표현’, 마감 후보, 별점은 입력한 날만
+  ---
+  duration_ms: 0.458
+  type: 'test'
+  ...
+# Subtest: 메모·선교·일반보고 예시
+ok 56 - 메모·선교·일반보고 예시
+  ---
+  duration_ms: 2.21575
+  type: 'test'
+  ...
+# Subtest: 에세이·독서 예시
+ok 57 - 에세이·독서 예시
+  ---
+  duration_ms: 0.808833
+  type: 'test'
+  ...
+# Subtest: 찾은 항목이 없으면 0점이 아니라 ‘찾은 항목 없음’, 기록이 없으면 지표를 만들지 않는다
+ok 58 - 찾은 항목이 없으면 0점이 아니라 ‘찾은 항목 없음’, 기록이 없으면 지표를 만들지 않는다
+  ---
+  duration_ms: 0.087083
+  type: 'test'
+  ...
+# Subtest: 기간: 등급별 허용, 직전 같은 기간, 비교는 두 기간 모두 3건 이상
+ok 59 - 기간: 등급별 허용, 직전 같은 기간, 비교는 두 기간 모두 3건 이상
+  ---
+  duration_ms: 0.240708
+  type: 'test'
+  ...
+# Subtest: English reader preserves original Korean, English and learning sentences without altering the record
+ok 60 - English reader preserves original Korean, English and learning sentences without altering the record
+  ---
+  duration_ms: 2.220417
+  type: 'test'
+  ...
+# Subtest: growth reader separates record date from measurement date and preserves decimal strings/units
+ok 61 - growth reader separates record date from measurement date and preserves decimal strings/units
+  ---
+  duration_ms: 0.118958
+  type: 'test'
+  ...
+# Subtest: voiding reader keeps zero amounts, entry order and the stored interpretation
+ok 62 - voiding reader keeps zero amounts, entry order and the stored interpretation
+  ---
+  duration_ms: 0.246791
+  type: 'test'
+  ...
+# Subtest: malformed voiding entries show an explicit warning and never become invented measurements
+ok 63 - malformed voiding entries show an explicit warning and never become invented measurements
+  ---
+  duration_ms: 0.143292
+  type: 'test'
+  ...
+# Subtest: ordinary memo records are not misclassified as any structured assistant format
+ok 64 - ordinary memo records are not misclassified as any structured assistant format
+  ---
+  duration_ms: 0.189292
+  type: 'test'
+  ...
+# Subtest: existing childcare journals with measurement fields keep their existing format
+ok 65 - existing childcare journals with measurement fields keep their existing format
+  ---
+  duration_ms: 0.060667
+  type: 'test'
+  ...
+# Subtest: actual reader renders escaped original text and only close/origin controls
+ok 66 - actual reader renders escaped original text and only close/origin controls
+  ---
+  duration_ms: 4.344958
+  type: 'test'
+  ...
+# Subtest: actual voiding reader renders the units and saved interpretation without an analysis control
+ok 67 - actual voiding reader renders the units and saved interpretation without an analysis control
+  ---
+  duration_ms: 1.104417
+  type: 'test'
+  ...
+# Subtest: read consent waits for a strict true value and cannot grant consent
+ok 68 - read consent waits for a strict true value and cannot grant consent
+  ---
+  duration_ms: 2.77775
+  type: 'test'
+  ...
+# Subtest: account switch immediately hides prior consent and rejects late callbacks from the old account
+ok 69 - account switch immediately hides prior consent and rejects late callbacks from the old account
+  ---
+  duration_ms: 1.470125
+  type: 'test'
+  ...
+# Subtest: SAYU exact-ID reader preserves the selected structured record, consent and session boundaries
+ok 70 - SAYU exact-ID reader preserves the selected structured record, consent and session boundaries
+  ---
+  duration_ms: 13.686167
+  type: 'test'
+  ...
+# Subtest: growth save preserves measurement date and fields, then views the actual saved ID
+ok 71 - growth save preserves measurement date and fields, then views the actual saved ID
+  ---
+  duration_ms: 3.953
+  type: 'test'
+  ...
+# Subtest: partial growth linkage retries the same entry without creating another record or rewriting the linked subject
+ok 72 - partial growth linkage retries the same entry without creating another record or rewriting the linked subject
+  ---
+  duration_ms: 3.386875
+  type: 'test'
+  ...
+# Subtest: growth linkage retry preserves newer unsaved measurements
+ok 73 - growth linkage retry preserves newer unsaved measurements
+  ---
+  duration_ms: 1.919417
+  type: 'test'
+  ...
+# Subtest: growth initial record failure has no view target or linkage writes
+ok 74 - growth initial record failure has no view target or linkage writes
+  ---
+  duration_ms: 2.60175
+  type: 'test'
+  ...
+# Subtest: growth save: a child picked from the list is saved as before, without any lookup and without a new createdAt
+ok 75 - growth save: a child picked from the list is saved as before, without any lookup and without a new createdAt
+  ---
+  duration_ms: 1.054625
+  type: 'test'
+  ...
+# Subtest: growth save: a typed name already on the list continues that child without creating one or looking up again
+ok 76 - growth save: a typed name already on the list continues that child without creating one or looking up again
+  ---
+  duration_ms: 1.185583
+  type: 'test'
+  ...
+# Subtest: growth save: when the list arrives after a birthdate and gender were typed, the registered values win over the stale typed ones
+ok 77 - growth save: when the list arrives after a birthdate and gender were typed, the registered values win over the stale typed ones
+  ---
+  duration_ms: 1.38725
+  type: 'test'
+  ...
+# Subtest: growth save: a new name the server confirms is unregistered creates a new child with createdAt
+ok 78 - growth save: a new name the server confirms is unregistered creates a new child with createdAt
+  ---
+  duration_ms: 1.220125
+  type: 'test'
+  ...
+# Subtest: growth save: a typed name missing from a stale list is found by the pre-save lookup and continues that child
+ok 79 - growth save: a typed name missing from a stale list is found by the pre-save lookup and continues that child
+  ---
+  duration_ms: 1.010208
+  type: 'test'
+  ...
+# Subtest: growth save: a failed pre-save lookup stops saving so no duplicate child is created, and a retry continues the existing child
+ok 80 - growth save: a failed pre-save lookup stops saving so no duplicate child is created, and a retry continues the existing child
+  ---
+  duration_ms: 2.242375
+  type: 'test'
+  ...
+# Subtest: growth save: a typed birthdate or gender that disagrees with the registered child stops saving without overwriting it
+ok 81 - growth save: a typed birthdate or gender that disagrees with the registered child stops saving without overwriting it
+  ---
+  duration_ms: 0.918583
+  type: 'test'
+  ...
+# Subtest: growth save: a disagreeing birthdate alone, or a disagreeing gender alone, also stops saving
+ok 82 - growth save: a disagreeing birthdate alone, or a disagreeing gender alone, also stops saving
+  ---
+  duration_ms: 2.037791
+  type: 'test'
+  ...
+# Subtest: growth save: a found child keeps its registered name, birthdate and gender, and only blanks are filled from the typed values
+ok 83 - growth save: a found child keeps its registered name, birthdate and gender, and only blanks are filled from the typed values
+  ---
+  duration_ms: 3.0075
+  type: 'test'
+  ...
+# Subtest: growth save: a lookup that finishes after the account left writes nothing
+ok 84 - growth save: a lookup that finishes after the account left writes nothing
+  ---
+  duration_ms: 0.97875
+  type: 'test'
+  ...
+# Subtest: same-name child lookup adapter: queries only this user's child subjects and hands the snapshot to the decision
+ok 85 - same-name child lookup adapter: queries only this user's child subjects and hands the snapshot to the decision
+  ---
+  duration_ms: 1.313875
+  type: 'test'
+  ...
+# Subtest: same-name child lookup adapter: a thrown query and a cache-only snapshot are both "could not confirm", never "none"
+ok 86 - same-name child lookup adapter: a thrown query and a cache-only snapshot are both "could not confirm", never "none"
+  ---
+  duration_ms: 2.309208
+  type: 'test'
+  ...
+# Subtest: English save success keeps learning on screen and explicit view uses the returned ID
+ok 87 - English save success keeps learning on screen and explicit view uses the returned ID
+  ---
+  duration_ms: 3.742083
+  type: 'test'
+  ...
+# Subtest: English save failure still enters learning, clears an old saved target and offers no invalid view
+ok 88 - English save failure still enters learning, clears an old saved target and offers no invalid view
+  ---
+  duration_ms: 2.846167
+  type: 'test'
+  ...
+# Subtest: health pending and nonboolean consent cannot start growth persistence
+ok 89 - health pending and nonboolean consent cannot start growth persistence
+  ---
+  duration_ms: 3.064375
+  type: 'test'
+  ...
+# Subtest: account departure during growth record save prevents subsequent subject/entry writes and view publication
+ok 90 - account departure during growth record save prevents subsequent subject/entry writes and view publication
+  ---
+  duration_ms: 2.018166
+  type: 'test'
+  ...
+# Subtest: account departure during growth subject linkage stops the entry write
+ok 91 - account departure during growth subject linkage stops the entry write
+  ---
+  duration_ms: 14.131416
+  type: 'test'
+  ...
+# Subtest: late translation from a departed account cannot start an English record save or enter learning
+ok 92 - late translation from a departed account cannot start an English record save or enter learning
+  ---
+  duration_ms: 0.948083
+  type: 'test'
+  ...
+# Subtest: late English save from a departed account cannot publish a view target
+ok 93 - late English save from a departed account cannot publish a view target
+  ---
+  duration_ms: 3.3805
+  type: 'test'
+  ...
+# Subtest: departed account cannot start a selected-diary translation or cache persistence
+ok 94 - departed account cannot start a selected-diary translation or cache persistence
+  ---
+  duration_ms: 1.306791
+  type: 'test'
+  ...
+# Subtest: late selected-diary translation cannot start cache persistence after account departure
+ok 95 - late selected-diary translation cannot start cache persistence after account departure
+  ---
+  duration_ms: 1.045083
+  type: 'test'
+  ...
+# Subtest: actual page session guards reject changed Firebase owners before React rerenders and after cleanup
+ok 96 - actual page session guards reject changed Firebase owners before React rerenders and after cleanup
+  ---
+  duration_ms: 2.374958
+  type: 'test'
+  ...
+1..96
+# tests 96
+# suites 0
+# pass 96
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1826.284208
+
+# end_utc: 2026-10-31T02:57:51Z
+# exit_code: 0

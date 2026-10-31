@@ -1,0 +1,110 @@
+[
+  {
+    "area": "frontend",
+    "package": "react-router",
+    "version": "7.18.1",
+    "registry_integrity": "sha512-GDLgg3i3uM0aeJO3Fm+TCS+sDQ7gu12T6x0qdTEzcwqEfleci7JwugVNIF3U//0FWKnJT7ptG+20B2jfDqnZAg==",
+    "registry_tarball": "https://registry.npmjs.org/react-router/-/react-router-7.18.1.tgz",
+    "lock_entries": [
+      "node_modules/react-router"
+    ],
+    "integrity_match": true,
+    "tarball_match": true
+  },
+  {
+    "area": "frontend",
+    "package": "react-router-dom",
+    "version": "7.18.1",
+    "registry_integrity": "sha512-KaZh+X/6UtEp28x51AUYZDMg9NGoz2ja3dNHa+ta/tk40vCzKhQ/RypCWBMLbmDr6//E24Vv5uPsrqXFozdkAg==",
+    "registry_tarball": "https://registry.npmjs.org/react-router-dom/-/react-router-dom-7.18.1.tgz",
+    "lock_entries": [
+      "node_modules/react-router-dom"
+    ],
+    "integrity_match": true,
+    "tarball_match": true
+  },
+  {
+    "area": "frontend",
+    "package": "fast-uri",
+    "version": "3.1.5",
+    "registry_integrity": "sha512-gHwA1O9LDIcKunMKhObS/HimwtehO1nPUECKAu5TpKgaO19fcWEl4bliWe1jWxVFvIXztJjjQ4L8XQ1EU9f7Jw==",
+    "registry_tarball": "https://registry.npmjs.org/fast-uri/-/fast-uri-3.1.5.tgz",
+    "lock_entries": [
+      "node_modules/fast-uri"
+    ],
+    "integrity_match": true,
+    "tarball_match": true
+  },
+  {
+    "area": "frontend",
+    "package": "postcss",
+    "version": "8.5.26",
+    "registry_integrity": "sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==",
+    "registry_tarball": "https://registry.npmjs.org/postcss/-/postcss-8.5.26.tgz",
+    "lock_entries": [
+      "node_modules/postcss"
+    ],
+    "integrity_match": true,
+    "tarball_match": true
+  },
+  {
+    "area": "frontend",
+    "package": "nanoid",
+    "version": "3.3.17",
+    "registry_integrity": "sha512-xQLf0A3HOMlgHq0n247/LRuAOYmB7dXJ/DvAxGvsSBij45XtBSmQycu+F8ODbHwns/XyFZagyL1+J0Offw1E0g==",
+    "registry_tarball": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.17.tgz",
+    "lock_entries": [
+      "node_modules/nanoid"
+    ],
+    "integrity_match": true,
+    "tarball_match": true
+  },
+  {
+    "area": "frontend",
+    "package": "dompurify",
+    "version": "3.4.13",
+    "registry_integrity": "sha512-2vmYIoqjze2d+kakP8S/nS5shfsl587kzwEjcGlTdiksUVgFHnFCsLYDVj/JNqJVOQZGSYBTmuycv0PodwmnMQ==",
+    "registry_tarball": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.13.tgz",
+    "lock_entries": [
+      "node_modules/dompurify"
+    ],
+    "integrity_match": true,
+    "tarball_match": true
+  },
+  {
+    "area": "functions",
+    "package": "brace-expansion",
+    "version": "2.1.4",
+    "registry_integrity": "sha512-hGfVzPxthbf3+2yjg/RBs60cB0FhqBS/zvdV/4wn4/BmN0bNMMHPc4V/BbFieqf1TKAGGAHnY4eSjajCl0f2Xg==",
+    "registry_tarball": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-2.1.4.tgz",
+    "lock_entries": [
+      "node_modules/brace-expansion"
+    ],
+    "integrity_match": true,
+    "tarball_match": true
+  },
+  {
+    "area": "functions",
+    "package": "brace-expansion",
+    "version": "1.1.18",
+    "registry_integrity": "sha512-Edep/X9fGqVNmzKBVsDYIOtD+z1tuezV70LBjdCst9Tqu76lsnvRiZ6oTic1n+/BIwX6QDGAO94PN4N2SADvtw==",
+    "registry_tarball": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.18.tgz",
+    "lock_entries": [
+      "node_modules/test-exclude/node_modules/brace-expansion"
+    ],
+    "integrity_match": true,
+    "tarball_match": true
+  },
+  {
+    "area": "functions",
+    "package": "ip-address",
+    "version": "10.5.0",
+    "registry_integrity": "sha512-R5SnVLJmgYYvf2F2ZgwSBnelz5G4q5AxIC277GDfUaNbrZKNANcBC7RHqYYePlszf4kBolVkJauG0ZjHHFh55g==",
+    "registry_tarball": "https://registry.npmjs.org/ip-address/-/ip-address-10.5.0.tgz",
+    "lock_entries": [
+      "node_modules/ip-address"
+    ],
+    "integrity_match": true,
+    "tarball_match": true
+  }
+]

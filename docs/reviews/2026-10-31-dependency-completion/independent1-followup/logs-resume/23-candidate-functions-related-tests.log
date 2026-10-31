@@ -1,0 +1,433 @@
+# cmd: node --test test/polishContent.test.js test/aiUsageLogger.request.test.js test/aiGateway.test.js test/monthlyAiQuota.policy.test.js
+# cwd: .audit-baseline/candidate/functions
+# target_sha: 42bc6a4218775fe925cbc88a964377be3ce7ca08
+# start_utc: 2026-10-31T02:56:48Z
+
+TAP version 13
+# Subtest: Gemini: 설정 표의 모델로, 받은 값만 그대로 넘긴다
+ok 1 - Gemini: 설정 표의 모델로, 받은 값만 그대로 넘긴다
+  ---
+  duration_ms: 2.559333
+  type: 'test'
+  ...
+# Subtest: Gemini: 사용량이 없으면 null, 본문 오류는 text() 를 읽을 때 난다(기존 호출 순서 유지)
+ok 2 - Gemini: 사용량이 없으면 null, 본문 오류는 text() 를 읽을 때 난다(기존 호출 순서 유지)
+  ---
+  duration_ms: 0.51025
+  type: 'test'
+  ...
+# Subtest: OpenAI 어댑터: 회사를 바꾸면 같은 요청을 OpenAI 형식으로 보낸다
+ok 3 - OpenAI 어댑터: 회사를 바꾸면 같은 요청을 OpenAI 형식으로 보낸다
+  ---
+  duration_ms: 0.487917
+  type: 'test'
+  ...
+# Subtest: 설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(제목 추출만 승인받아 Luna 로 교체)
+ok 4 - 설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(제목 추출만 승인받아 Luna 로 교체)
+  ---
+  duration_ms: 0.4015
+  type: 'test'
+  ...
+# Subtest: 기본 다듬기(sayuPolishBasic)만 Luna 로 보내고, 같은 함수의 나머지 다듬기·한마디·통계는 Gemini 로 보낸다
+ok 5 - 기본 다듬기(sayuPolishBasic)만 Luna 로 보내고, 같은 함수의 나머지 다듬기·한마디·통계는 Gemini 로 보낸다
+  ---
+  duration_ms: 0.30225
+  type: 'test'
+  ...
+# Subtest: 제목 추출(recordTitle)은 OpenAI 키로 Luna 에 추론 없이 보내고, 키워드는 Gemini 그대로 보낸다
+ok 6 - 제목 추출(recordTitle)은 OpenAI 키로 Luna 에 추론 없이 보내고, 키워드는 Gemini 그대로 보낸다
+  ---
+  duration_ms: 0.323417
+  type: 'test'
+  ...
+# Subtest: 옮긴 호출부는 SDK 를 직접 만들지 않고 창구를 쓴다
+ok 7 - 옮긴 호출부는 SDK 를 직접 만들지 않고 창구를 쓴다
+  ---
+  duration_ms: 2.29475
+  type: 'test'
+  ...
+# Subtest: 옮긴 onCall·예약 함수는 창구만 쓰고, 모델 이름을 코드에 직접 적지 않는다
+ok 8 - 옮긴 onCall·예약 함수는 창구만 쓰고, 모델 이름을 코드에 직접 적지 않는다
+  ---
+  duration_ms: 4.794459
+  type: 'test'
+  ...
+# Subtest: 미래전망은 유형별 용도로, 식물 보조 함수 3개도 창구로 부른다
+ok 9 - 미래전망은 유형별 용도로, 식물 보조 함수 3개도 창구로 부른다
+  ---
+  duration_ms: 5.366
+  type: 'test'
+  ...
+# Subtest: 호출 옵션(callOptions)은 generateContent 두 번째 인자로만 넘긴다
+ok 10 - 호출 옵션(callOptions)은 generateContent 두 번째 인자로만 넘긴다
+  ---
+  duration_ms: 0.536
+  type: 'test'
+  ...
+# Subtest: 별도 파일 기능 4개도 창구를 쓰고, 독서 대화 모델 상수는 설정 표 값과 같다
+ok 11 - 별도 파일 기능 4개도 창구를 쓰고, 독서 대화 모델 상수는 설정 표 값과 같다
+  ---
+  duration_ms: 92.530208
+  type: 'test'
+  ...
+# Subtest: OpenAI SDK 는 창구를 불러올 때 함께 불러오지 않는다(OpenAI 로 보낼 때만)
+ok 12 - OpenAI SDK 는 창구를 불러올 때 함께 불러오지 않는다(OpenAI 로 보낼 때만)
+  ---
+  duration_ms: 143.165041
+  type: 'test'
+  ...
+# Subtest: OpenAI 어댑터: 시간 제한·취소 신호는 요청 옵션으로 옮기고, 옮길 수 없는 설정은 오류로 막는다
+ok 13 - OpenAI 어댑터: 시간 제한·취소 신호는 요청 옵션으로 옮기고, 옮길 수 없는 설정은 오류로 막는다
+  ---
+  duration_ms: 0.928333
+  type: 'test'
+  ...
+# Subtest: 키: 설정 표의 회사 키를 창구가 읽고, 함수 secrets 도 설정 표에서 정해진다
+ok 14 - 키: 설정 표의 회사 키를 창구가 읽고, 함수 secrets 도 설정 표에서 정해진다
+  ---
+  duration_ms: 0.266125
+  type: 'test'
+  ...
+# Subtest: 호출부마다 넘기는 설정(시스템 지시·생성 설정·호출 옵션·이미지)이 빠지지 않는다
+ok 15 - 호출부마다 넘기는 설정(시스템 지시·생성 설정·호출 옵션·이미지)이 빠지지 않는다
+  ---
+  duration_ms: 5.526292
+  type: 'test'
+  ...
+# Subtest: 창구를 쓰는 함수는 secrets 를 설정 표(aiSecretsFor)로 연결하고, Gemini 키를 직접 읽지 않는다
+ok 16 - 창구를 쓰는 함수는 secrets 를 설정 표(aiSecretsFor)로 연결하고, Gemini 키를 직접 읽지 않는다
+  ---
+  duration_ms: 7.976542
+  type: 'test'
+  ...
+# Subtest: basic: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+ok 17 - basic: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+  ---
+  duration_ms: 2.588458
+  type: 'test'
+  ...
+# Subtest: premium/inactive 기존 의미 유지: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+ok 18 - premium/inactive 기존 의미 유지: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+  ---
+  duration_ms: 0.656167
+  type: 'test'
+  ...
+# Subtest: 만료 endDate: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+ok 19 - 만료 endDate: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+  ---
+  duration_ms: 0.64425
+  type: 'test'
+  ...
+# Subtest: 만료 expiresAt: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+ok 20 - 만료 expiresAt: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+  ---
+  duration_ms: 0.530459
+  type: 'test'
+  ...
+# Subtest: 미래 만료일: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+ok 21 - 미래 만료일: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+  ---
+  duration_ms: 0.752042
+  type: 'test'
+  ...
+# Subtest: 문서 없음: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+ok 22 - 문서 없음: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+  ---
+  duration_ms: 0.758208
+  type: 'test'
+  ...
+# Subtest: beta 아닌 fallback: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+ok 23 - beta 아닌 fallback: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+  ---
+  duration_ms: 0.658541
+  type: 'test'
+  ...
+# Subtest: 개발자: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+ok 24 - 개발자: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+  ---
+  duration_ms: 0.612459
+  type: 'test'
+  ...
+# Subtest: 명시적 actualPlan: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+ok 25 - 명시적 actualPlan: 기존 판정 유지·같은 요청 병렬 3로그에 최대 1조회
+  ---
+  duration_ms: 0.956042
+  type: 'test'
+  ...
+# Subtest: 요청 사이 캐시 없음·동일 요청의 최초 로그 판정 스냅샷 유지
+ok 26 - 요청 사이 캐시 없음·동일 요청의 최초 로그 판정 스냅샷 유지
+  ---
+  duration_ms: 1.948083
+  type: 'test'
+  ...
+# Subtest: 조회 실패는 기존 fallback을 요청 내 재사용하고 다음 요청에서 재시도한다
+ok 27 - 조회 실패는 기존 fallback을 요청 내 재사용하고 다음 요청에서 재시도한다
+  ---
+  duration_ms: 0.770417
+  type: 'test'
+  ...
+# Subtest: 저장 실패는 밖으로 전파하지 않으며 다른 로그 저장 시도는 계속한다
+ok 28 - 저장 실패는 밖으로 전파하지 않으며 다른 로그 저장 시도는 계속한다
+  ---
+  duration_ms: 1.231917
+  type: 'test'
+  ...
+# Subtest: 기존 logAiUsage 직접 호출은 요청 캐시를 적용하지 않는다
+ok 29 - 기존 logAiUsage 직접 호출은 요청 캐시를 적용하지 않는다
+  ---
+  duration_ms: 0.700667
+  type: 'test'
+  ...
+# monthly AI quota policy tests passed
+# Subtest: test/monthlyAiQuota.policy.test.js
+ok 3 - test/monthlyAiQuota.policy.test.js
+  ---
+  duration_ms: 215.773083
+  type: 'test'
+  ...
+# Subtest: diary: 옵션 누락에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다
+ok 31 - diary: 옵션 누락에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다
+  ---
+  duration_ms: 5.925875
+  type: 'test'
+  ...
+# Subtest: diary: 옵션 true에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다
+ok 32 - diary: 옵션 true에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다
+  ---
+  duration_ms: 1.321417
+  type: 'test'
+  ...
+# Subtest: diary: 옵션 false에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다
+ok 33 - diary: 옵션 false에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다
+  ---
+  duration_ms: 1.060458
+  type: 'test'
+  ...
+# Subtest: reading: 옵션 누락에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다
+ok 34 - reading: 옵션 누락에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다
+  ---
+  duration_ms: 1.040542
+  type: 'test'
+  ...
+# Subtest: reading: 옵션 true에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다
+ok 35 - reading: 옵션 true에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다
+  ---
+  duration_ms: 0.979334
+  type: 'test'
+  ...
+# Subtest: reading: 옵션 false에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다
+ok 36 - reading: 옵션 false에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다
+  ---
+  duration_ms: 0.95175
+  type: 'test'
+  ...
+# Subtest: null/숫자/문자열/객체는 false로 간주하지 않아 구형 요청의 생성 동작을 유지한다
+ok 37 - null/숫자/문자열/객체는 false로 간주하지 않아 구형 요청의 생성 동작을 유지한다
+  ---
+  duration_ms: 5.726
+  type: 'test'
+  ...
+# Subtest: 통계 지원 10형식과 BASIC/PREMIUM 모드에서 false는 통계 요청을 생략하지 않는다
+ok 38 - 통계 지원 10형식과 BASIC/PREMIUM 모드에서 false는 통계 요청을 생략하지 않는다
+  ---
+  duration_ms: 14.818333
+  type: 'test'
+  ...
+# Subtest: format 누락/미지원 형식도 false에서는 본문만 생성하며 반환 계약을 유지한다
+ok 39 - format 누락/미지원 형식도 false에서는 본문만 생성하며 반환 계약을 유지한다
+  ---
+  duration_ms: 1.833625
+  type: 'test'
+  ...
+# Subtest: 한마디 옵션은 인증·입력 타입/길이 검증을 우회하지 않는다
+ok 40 - 한마디 옵션은 인증·입력 타입/길이 검증을 우회하지 않는다
+  ---
+  duration_ms: 7.833125
+  type: 'test'
+  ...
+# Subtest: 5000자 경계 입력은 false에서도 허용하고 rate/quota 예약을 그대로 거친다
+ok 41 - 5000자 경계 입력은 false에서도 허용하고 rate/quota 예약을 그대로 거친다
+  ---
+  duration_ms: 0.99675
+  type: 'test'
+  ...
+# Subtest: rateDenied: false가 제한을 우회하거나 모델 요청을 추가하지 않는다
+ok 42 - rateDenied: false가 제한을 우회하거나 모델 요청을 추가하지 않는다
+  ---
+  duration_ms: 0.755584
+  type: 'test'
+  ...
+# Subtest: quotaDenied: false가 제한을 우회하거나 모델 요청을 추가하지 않는다
+ok 43 - quotaDenied: false가 제한을 우회하거나 모델 요청을 추가하지 않는다
+  ---
+  duration_ms: 0.712208
+  type: 'test'
+  ...
+# Subtest: 본문 호출/text 읽기 실패는 옵션과 무관하게 중단하고 quota를 1회 환원한다
+ok 44 - 본문 호출/text 읽기 실패는 옵션과 무관하게 중단하고 quota를 1회 환원한다
+  ---
+  duration_ms: 3.112833
+  type: 'test'
+  ...
+# Subtest: 통계 호출/JSON 파싱 실패의 부분 성공 계약은 한마디 옵션과 무관하게 유지한다
+ok 45 - 통계 호출/JSON 파싱 실패의 부분 성공 계약은 한마디 옵션과 무관하게 유지한다
+  ---
+  duration_ms: 4.429583
+  type: 'test'
+  ...
+# Subtest: 기존 한마디 실패는 빈 문자열로 부분 성공하며 false에서는 해당 실패원에 진입하지 않는다
+ok 46 - 기존 한마디 실패는 빈 문자열로 부분 성공하며 false에서는 해당 실패원에 진입하지 않는다
+  ---
+  duration_ms: 4.660292
+  type: 'test'
+  ...
+# Subtest: 정확히 BASIC 일 때만 본문을 Luna 용도로 보내고, 성공 기록도 실제 용도의 모델로 남긴다
+ok 47 - 정확히 BASIC 일 때만 본문을 Luna 용도로 보내고, 성공 기록도 실제 용도의 모델로 남긴다
+  ---
+  duration_ms: 3.944625
+  type: 'test'
+  ...
+# Subtest: BASIC 본문 실패도 quota 를 1회 환원하고 실패 기록을 남기며 다른 AI 호출로 넘어가지 않는다
+ok 48 - BASIC 본문 실패도 quota 를 1회 환원하고 실패 기록을 남기며 다른 AI 호출로 넘어가지 않는다
+  ---
+  duration_ms: 1.503167
+  type: 'test'
+  ...
+# Subtest: 기본·풍성형 지시문은 원문 말투·경계를 지키고, 균형·보수형은 원문 말투 유지, 배뇨 요약은 그대로다
+ok 49 - 기본·풍성형 지시문은 원문 말투·경계를 지키고, 균형·보수형은 원문 말투 유지, 배뇨 요약은 그대로다
+  ---
+  duration_ms: 3.959541
+  type: 'test'
+  ...
+# Subtest: 옵션 누락 시 한마디 정리·50자 반환 제한도 기존대로 유지한다
+ok 50 - 옵션 누락 시 한마디 정리·50자 반환 제한도 기존대로 유지한다
+  ---
+  duration_ms: 0.791541
+  type: 'test'
+  ...
+# Subtest: 요청마다 고유 ID이고 한 요청의 세 단계는 같은 ID·purpose·결과 한 행을 남긴다
+ok 51 - 요청마다 고유 ID이고 한 요청의 세 단계는 같은 ID·purpose·결과 한 행을 남긴다
+  ---
+  duration_ms: 0.952375
+  type: 'test'
+  ...
+# Subtest: sayuPolish/failPurpose: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다
+ok 52 - sayuPolish/failPurpose: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다
+  ---
+  duration_ms: 0.778583
+  type: 'test'
+  ...
+# Subtest: sayuPolish/failTextPurpose: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다
+ok 53 - sayuPolish/failTextPurpose: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다
+  ---
+  duration_ms: 0.716334
+  type: 'test'
+  ...
+# Subtest: recordStats/failPurpose: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다
+ok 54 - recordStats/failPurpose: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다
+  ---
+  duration_ms: 0.767042
+  type: 'test'
+  ...
+# Subtest: recordStats/failTextPurpose: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다
+ok 55 - recordStats/failTextPurpose: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다
+  ---
+  duration_ms: 0.801333
+  type: 'test'
+  ...
+# Subtest: sayuPolishComment/failPurpose: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다
+ok 56 - sayuPolishComment/failPurpose: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다
+  ---
+  duration_ms: 0.788125
+  type: 'test'
+  ...
+# Subtest: sayuPolishComment/failTextPurpose: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다
+ok 57 - sayuPolishComment/failTextPurpose: 공급자와 응답 읽기 실패를 중복 행 없이 구분한다
+  ---
+  duration_ms: 0.893417
+  type: 'test'
+  ...
+# Subtest: 통계 JSON 없음/파싱 실패는 한 단계 실패로 기록하고 본문·한마디·quota를 유지한다
+ok 58 - 통계 JSON 없음/파싱 실패는 한 단계 실패로 기록하고 본문·한마디·quota를 유지한다
+  ---
+  duration_ms: 1.697083
+  type: 'test'
+  ...
+# Subtest: 입력·quota 거부는 모델을 호출하지 않은 요청 실패로만 기록한다
+ok 59 - 입력·quota 거부는 모델을 호출하지 않은 요청 실패로만 기록한다
+  ---
+  duration_ms: 1.434833
+  type: 'test'
+  ...
+# Subtest: 인증·rate 거부는 기존처럼 usage 행을 추가하지 않는다
+ok 60 - 인증·rate 거부는 기존처럼 usage 행을 추가하지 않는다
+  ---
+  duration_ms: 0.682084
+  type: 'test'
+  ...
+# Subtest: 오류 진단 코드 보존·원문 제외: http_429
+ok 61 - 오류 진단 코드 보존·원문 제외: http_429
+  ---
+  duration_ms: 0.859125
+  type: 'test'
+  ...
+# Subtest: 오류 진단 코드 보존·원문 제외: http_503
+ok 62 - 오류 진단 코드 보존·원문 제외: http_503
+  ---
+  duration_ms: 0.81275
+  type: 'test'
+  ...
+# Subtest: 오류 진단 코드 보존·원문 제외: http_504
+ok 63 - 오류 진단 코드 보존·원문 제외: http_504
+  ---
+  duration_ms: 1.105667
+  type: 'test'
+  ...
+# Subtest: 오류 진단 코드 보존·원문 제외: http_429
+ok 64 - 오류 진단 코드 보존·원문 제외: http_429
+  ---
+  duration_ms: 0.773709
+  type: 'test'
+  ...
+# Subtest: 오류 진단 코드 보존·원문 제외: deadline-exceeded
+ok 65 - 오류 진단 코드 보존·원문 제외: deadline-exceeded
+  ---
+  duration_ms: 0.831917
+  type: 'test'
+  ...
+# Subtest: 오류 진단 코드 보존·원문 제외: ETIMEDOUT
+ok 66 - 오류 진단 코드 보존·원문 제외: ETIMEDOUT
+  ---
+  duration_ms: 0.771
+  type: 'test'
+  ...
+# Subtest: 오류 진단 코드 보존·원문 제외: RESOURCE_EXHAUSTED
+ok 67 - 오류 진단 코드 보존·원문 제외: RESOURCE_EXHAUSTED
+  ---
+  duration_ms: 4.07625
+  type: 'test'
+  ...
+# Subtest: 오류 진단 코드 보존·원문 제외: provider_error
+ok 68 - 오류 진단 코드 보존·원문 제외: provider_error
+  ---
+  duration_ms: 1.114833
+  type: 'test'
+  ...
+# Subtest: 단계 이후 요청 오류도 모델 호출을 중복 계산하지 않고 기록한다
+ok 69 - 단계 이후 요청 오류도 모델 호출을 중복 계산하지 않고 기록한다
+  ---
+  duration_ms: 3.114625
+  type: 'test'
+  ...
+1..69
+# tests 69
+# suites 0
+# pass 69
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 624.680208
+
+# end_utc: 2026-10-31T02:56:49Z
+# exit_code: 0

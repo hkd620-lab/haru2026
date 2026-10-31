@@ -1,0 +1,8 @@
+# cmd: npm audit --json
+# cwd: .audit-baseline/main/frontend
+# target_sha: 5972c5cf93381ea48ba8e31381a4ed883fe1f6bc
+# start_utc: 2026-10-31T02:56:11Z
+
+
+# end_utc: 2026-10-31T02:56:13Z
+# exit_code: 1
