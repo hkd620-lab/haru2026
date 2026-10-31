@@ -1,0 +1,111 @@
+$ (cwd=functions) node --test test/aiGateway.test.js
+# start 2026-10-31T08:36:13.250259+00:00
+# end   2026-10-31T08:36:14.199946+00:00
+# exit  0
+
+TAP version 13
+# Subtest: Gemini: 설정 표의 모델로, 받은 값만 그대로 넘긴다
+ok 1 - Gemini: 설정 표의 모델로, 받은 값만 그대로 넘긴다
+  ---
+  duration_ms: 8.06925
+  type: 'test'
+  ...
+# Subtest: Gemini: 사용량이 없으면 null, 본문 오류는 text() 를 읽을 때 난다(기존 호출 순서 유지)
+ok 2 - Gemini: 사용량이 없으면 null, 본문 오류는 text() 를 읽을 때 난다(기존 호출 순서 유지)
+  ---
+  duration_ms: 1.255541
+  type: 'test'
+  ...
+# Subtest: OpenAI 어댑터: 회사를 바꾸면 같은 요청을 OpenAI 형식으로 보낸다
+ok 3 - OpenAI 어댑터: 회사를 바꾸면 같은 요청을 OpenAI 형식으로 보낸다
+  ---
+  duration_ms: 1.722084
+  type: 'test'
+  ...
+# Subtest: 설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(제목 추출만 승인받아 Luna 로 교체)
+ok 4 - 설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(제목 추출만 승인받아 Luna 로 교체)
+  ---
+  duration_ms: 2.728125
+  type: 'test'
+  ...
+# Subtest: 기본 다듬기(sayuPolishBasic)만 Luna 로 보내고, 같은 함수의 나머지 다듬기·한마디·통계는 Gemini 로 보낸다
+ok 5 - 기본 다듬기(sayuPolishBasic)만 Luna 로 보내고, 같은 함수의 나머지 다듬기·한마디·통계는 Gemini 로 보낸다
+  ---
+  duration_ms: 0.705416
+  type: 'test'
+  ...
+# Subtest: 제목 추출(recordTitle)은 OpenAI 키로 Luna 에 추론 없이 보내고, 키워드는 Gemini 그대로 보낸다
+ok 6 - 제목 추출(recordTitle)은 OpenAI 키로 Luna 에 추론 없이 보내고, 키워드는 Gemini 그대로 보낸다
+  ---
+  duration_ms: 0.659208
+  type: 'test'
+  ...
+# Subtest: 옮긴 호출부는 SDK 를 직접 만들지 않고 창구를 쓴다
+ok 7 - 옮긴 호출부는 SDK 를 직접 만들지 않고 창구를 쓴다
+  ---
+  duration_ms: 4.206875
+  type: 'test'
+  ...
+# Subtest: 옮긴 onCall·예약 함수는 창구만 쓰고, 모델 이름을 코드에 직접 적지 않는다
+ok 8 - 옮긴 onCall·예약 함수는 창구만 쓰고, 모델 이름을 코드에 직접 적지 않는다
+  ---
+  duration_ms: 7.562292
+  type: 'test'
+  ...
+# Subtest: 미래전망은 유형별 용도로, 식물 보조 함수 3개도 창구로 부른다
+ok 9 - 미래전망은 유형별 용도로, 식물 보조 함수 3개도 창구로 부른다
+  ---
+  duration_ms: 9.876542
+  type: 'test'
+  ...
+# Subtest: 호출 옵션(callOptions)은 generateContent 두 번째 인자로만 넘긴다
+ok 10 - 호출 옵션(callOptions)은 generateContent 두 번째 인자로만 넘긴다
+  ---
+  duration_ms: 1.22975
+  type: 'test'
+  ...
+# Subtest: 별도 파일 기능 4개도 창구를 쓰고, 독서 대화 모델 상수는 설정 표 값과 같다
+ok 11 - 별도 파일 기능 4개도 창구를 쓰고, 독서 대화 모델 상수는 설정 표 값과 같다
+  ---
+  duration_ms: 203.8325
+  type: 'test'
+  ...
+# Subtest: OpenAI SDK 는 창구를 불러올 때 함께 불러오지 않는다(OpenAI 로 보낼 때만)
+ok 12 - OpenAI SDK 는 창구를 불러올 때 함께 불러오지 않는다(OpenAI 로 보낼 때만)
+  ---
+  duration_ms: 240.584875
+  type: 'test'
+  ...
+# Subtest: OpenAI 어댑터: 시간 제한·취소 신호는 요청 옵션으로 옮기고, 옮길 수 없는 설정은 오류로 막는다
+ok 13 - OpenAI 어댑터: 시간 제한·취소 신호는 요청 옵션으로 옮기고, 옮길 수 없는 설정은 오류로 막는다
+  ---
+  duration_ms: 1.71175
+  type: 'test'
+  ...
+# Subtest: 키: 설정 표의 회사 키를 창구가 읽고, 함수 secrets 도 설정 표에서 정해진다
+ok 14 - 키: 설정 표의 회사 키를 창구가 읽고, 함수 secrets 도 설정 표에서 정해진다
+  ---
+  duration_ms: 0.646791
+  type: 'test'
+  ...
+# Subtest: 호출부마다 넘기는 설정(시스템 지시·생성 설정·호출 옵션·이미지)이 빠지지 않는다
+ok 15 - 호출부마다 넘기는 설정(시스템 지시·생성 설정·호출 옵션·이미지)이 빠지지 않는다
+  ---
+  duration_ms: 6.908292
+  type: 'test'
+  ...
+# Subtest: 창구를 쓰는 함수는 secrets 를 설정 표(aiSecretsFor)로 연결하고, Gemini 키를 직접 읽지 않는다
+ok 16 - 창구를 쓰는 함수는 secrets 를 설정 표(aiSecretsFor)로 연결하고, Gemini 키를 직접 읽지 않는다
+  ---
+  duration_ms: 9.359792
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 764.768667

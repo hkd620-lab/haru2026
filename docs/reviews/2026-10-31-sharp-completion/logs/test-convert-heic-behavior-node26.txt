@@ -1,0 +1,5 @@
+
+> test:convert-heic-behavior
+> node --experimental-strip-types test/heicConversionCore.test.js
+
+HEIC conversion cleanup behavior tests passed

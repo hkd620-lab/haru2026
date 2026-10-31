@@ -1,0 +1,43 @@
+{
+  "function": "analyzeFacebookZip",
+  "main": "a8a8a6b8b0e38464bbadbd683cb3a9319166eeae",
+  "revision": "analyzefacebookzip-00044-var",
+  "sourceGeneration": "1789506615242058",
+  "zipSha256": "268592d948940a4d70af56444f4323e2d67c3c0581bfadb3aa52c212fb8f8573",
+  "sameFiles": [
+    "src/bookReview.ts",
+    "src/bookStudio.ts",
+    "src/broadcastNotification.ts",
+    "src/englishBibleWordMeaning.ts",
+    "src/grammar/bibleSource.ts",
+    "src/grammar/grammarV2.ts",
+    "src/grammar/grammarV2Prompt.ts",
+    "src/grammar/grammarV2Types.ts",
+    "src/grammar/grammarV2Validator.ts",
+    "src/internalEntitlements.ts",
+    "src/subscriptionBillingCore.ts",
+    "src/subscriptionHelpers.ts",
+    "src/subscriptionRefunds.ts",
+    "src/subscriptionRefundsCore.ts",
+    "src/utils/monthlyAiQuota.ts",
+    "src/utils/rateLimit.ts"
+  ],
+  "changedFiles": [
+    "package-lock.json",
+    "package.json",
+    "src/accountDeletion.ts",
+    "src/aiUsageLogger.ts",
+    "src/bookMaterial.ts",
+    "src/elderBook.ts",
+    "src/epubExport.ts",
+    "src/generateLawsuitClaimReason.ts",
+    "src/index.ts",
+    "src/oauthStateCore.ts",
+    "src/scheduledNotification.ts",
+    "src/snsAnalyzer.ts",
+    "src/snsToDiary.ts"
+  ],
+  "missingInMain": [],
+  "functionBlockIdentical": true,
+  "functionDiffLines": 0
+}

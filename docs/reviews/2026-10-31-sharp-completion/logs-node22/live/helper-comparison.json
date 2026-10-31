@@ -1,0 +1,175 @@
+{
+  "generateGrowthTimelinePdf": {
+    "sharpRange": "^0.34.5",
+    "declaredIn": {
+      "src/index.ts": true,
+      "src/snsAnalyzer.ts": false
+    },
+    "liveSharpLines": {
+      "src/index.ts": [
+        "const sharp = require('sharp');",
+        "return await sharp(Buffer.from(response.data))",
+        "// sharp로 모든 이미지를 안전한 JPEG로 정규화 후 multipart 구성.",
+        "bytes = await sharp(Buffer.from(img.base64, 'base64'))",
+        "logger.warn(`PlantNet 이미지 ${i + 1} sharp 변환 실패 — 원본 사용: ${e?.message}`);"
+      ],
+      "src/snsAnalyzer.ts": [
+        "const sharp = require('sharp');",
+        "const resized = await sharp(photoBuf)"
+      ]
+    },
+    "mainSharpLines": {
+      "src/index.ts": [
+        "const sharp = require('sharp');",
+        "return await sharp(Buffer.from(response.data))",
+        "// sharp로 모든 이미지를 안전한 JPEG로 정규화 후 multipart 구성.",
+        "bytes = await sharp(Buffer.from(img.base64, 'base64'))",
+        "logger.warn(`PlantNet 이미지 ${i + 1} sharp 변환 실패 — 원본 사용: ${e?.message}`);"
+      ],
+      "src/snsAnalyzer.ts": [
+        "const sharp = require('sharp');",
+        "const resized = await sharp(photoBuf)"
+      ]
+    },
+    "helpers": {
+      "generateGrowthTimelinePdf": {
+        "file": "src/index.ts",
+        "liveFound": true,
+        "mainFound": true,
+        "identical": true,
+        "diffLines": 0
+      },
+      "prepareTimelinePdfImage": {
+        "file": "src/index.ts",
+        "liveFound": true,
+        "mainFound": true,
+        "identical": true,
+        "diffLines": 0
+      }
+    },
+    "wholeFileDiffLines": {
+      "src/index.ts": 3643,
+      "src/snsAnalyzer.ts": 129
+    }
+  },
+  "detectPlantAdvanced": {
+    "sharpRange": "^0.34.5",
+    "declaredIn": {
+      "src/index.ts": true,
+      "src/snsAnalyzer.ts": false
+    },
+    "liveSharpLines": {
+      "src/index.ts": [
+        "const sharp = require('sharp');",
+        "return await sharp(Buffer.from(response.data))",
+        "// sharp로 모든 이미지를 안전한 JPEG로 정규화 후 multipart 구성.",
+        "bytes = await sharp(Buffer.from(img.base64, 'base64'))",
+        "logger.warn(`PlantNet 이미지 ${i + 1} sharp 변환 실패 — 원본 사용: ${e?.message}`);"
+      ],
+      "src/snsAnalyzer.ts": [
+        "const sharp = require('sharp');",
+        "const resized = await sharp(photoBuf)"
+      ]
+    },
+    "mainSharpLines": {
+      "src/index.ts": [
+        "const sharp = require('sharp');",
+        "return await sharp(Buffer.from(response.data))",
+        "// sharp로 모든 이미지를 안전한 JPEG로 정규화 후 multipart 구성.",
+        "bytes = await sharp(Buffer.from(img.base64, 'base64'))",
+        "logger.warn(`PlantNet 이미지 ${i + 1} sharp 변환 실패 — 원본 사용: ${e?.message}`);"
+      ],
+      "src/snsAnalyzer.ts": [
+        "const sharp = require('sharp');",
+        "const resized = await sharp(photoBuf)"
+      ]
+    },
+    "helpers": {
+      "detectPlantAdvanced": {
+        "file": "src/index.ts",
+        "liveFound": true,
+        "mainFound": true,
+        "identical": false,
+        "diffLines": 27
+      },
+      "callPlantNetIdentification": {
+        "file": "src/index.ts",
+        "liveFound": true,
+        "mainFound": true,
+        "identical": true,
+        "diffLines": 0
+      },
+      "callKindwiseIdentification": {
+        "file": "src/index.ts",
+        "liveFound": true,
+        "mainFound": true,
+        "identical": true,
+        "diffLines": 0
+      },
+      "callGeminiCrossVerification": {
+        "file": "src/index.ts",
+        "liveFound": true,
+        "mainFound": true,
+        "identical": false,
+        "diffLines": 30
+      },
+      "resolveKoreanPlantName": {
+        "file": "src/index.ts",
+        "liveFound": true,
+        "mainFound": true,
+        "identical": false,
+        "diffLines": 23
+      }
+    },
+    "wholeFileDiffLines": {
+      "src/index.ts": 3643,
+      "src/snsAnalyzer.ts": 129
+    }
+  },
+  "analyzeFacebookZip": {
+    "sharpRange": "^0.34.5",
+    "declaredIn": {
+      "src/index.ts": false,
+      "src/snsAnalyzer.ts": true
+    },
+    "liveSharpLines": {
+      "src/index.ts": [
+        "const sharp = require('sharp');",
+        "return await sharp(Buffer.from(response.data))",
+        "// sharp로 모든 이미지를 안전한 JPEG로 정규화 후 multipart 구성.",
+        "bytes = await sharp(Buffer.from(img.base64, 'base64'))",
+        "logger.warn(`PlantNet 이미지 ${i + 1} sharp 변환 실패 — 원본 사용: ${e?.message}`);"
+      ],
+      "src/snsAnalyzer.ts": [
+        "const sharp = require('sharp');",
+        "const resized = await sharp(photoBuf)"
+      ]
+    },
+    "mainSharpLines": {
+      "src/index.ts": [
+        "const sharp = require('sharp');",
+        "return await sharp(Buffer.from(response.data))",
+        "// sharp로 모든 이미지를 안전한 JPEG로 정규화 후 multipart 구성.",
+        "bytes = await sharp(Buffer.from(img.base64, 'base64'))",
+        "logger.warn(`PlantNet 이미지 ${i + 1} sharp 변환 실패 — 원본 사용: ${e?.message}`);"
+      ],
+      "src/snsAnalyzer.ts": [
+        "const sharp = require('sharp');",
+        "const resized = await sharp(photoBuf)"
+      ]
+    },
+    "helpers": {
+      "analyzeFacebookZip": {
+        "file": "src/snsAnalyzer.ts",
+        "liveFound": true,
+        "mainFound": true,
+        "identical": false,
+        "diffLines": 25
+      }
+    },
+    "wholeFileDiffLines": {
+      "src/index.ts": 3097,
+      "src/snsAnalyzer.ts": 113
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "url": "https://github.com/hkd620-lab/haru2026/pull/319#issuecomment-6541187841",
+      "body": "Visit the preview URL for this PR (updated for commit 871a1f6):\n\n[https://haru2026-8abb8--pr319-codex-completion-sha-klcgbs3y.web.app](https://haru2026-8abb8--pr319-codex-completion-sha-klcgbs3y.web.app)\n\n<sub>(expires Sat, 07 Nov 2026 08:44:03 GMT)</sub>\n\n<sub>🔥 via [Firebase Hosting GitHub Action](https://github.com/marketplace/actions/deploy-to-firebase-hosting) 🌎</sub>\n\n<sub>Sign: ae7b4a9a9f3f54971034c7b5880fb9b08c295f07</sub>",
+      "user": {
+        "login": "github-actions[bot]",
+        "name": "github-actions[bot]",
+        "email": null,
+        "avatar_url": "https://avatars.githubusercontent.com/in/15368?v=4",
+        "id": 41898282
+      },
+      "id": 6541187841,
+      "pull_request_review_id": null,
+      "in_reply_to_id": null,
+      "created_at": "2026-10-31T08:32:27Z",
+      "updated_at": "2026-10-31T08:44:09Z",
+      "review": null,
+      "side": null,
+      "line": null,
+      "start_line": null,
+      "path": null,
+      "body_html": "<p dir=\"auto\">Visit the preview URL for this PR (updated for commit <a class=\"commit-link\" data-hovercard-type=\"commit\" data-hovercard-url=\"https://github.com/hkd620-lab/haru2026/commit/871a1f64ff17b968750b32dea3ec22db54ca4cef/hovercard\" href=\"https://github.com/hkd620-lab/haru2026/commit/871a1f64ff17b968750b32dea3ec22db54ca4cef\"><tt>871a1f6</tt></a>):</p>\n<p dir=\"auto\"><a href=\"https://haru2026-8abb8--pr319-codex-completion-sha-klcgbs3y.web.app\" rel=\"nofollow\">https://haru2026-8abb8--pr319-codex-completion-sha-klcgbs3y.web.app</a></p>\n<p dir=\"auto\"><sub>(expires Sat, 07 Nov 2026 08:44:03 GMT)</sub></p>\n<p dir=\"auto\"><sub>🔥 via <a href=\"https://github.com/marketplace/actions/deploy-to-firebase-hosting\">Firebase Hosting GitHub Action</a> 🌎</sub></p>\n<p dir=\"auto\"><sub>Sign: ae7b4a9a9f3f54971034c7b5880fb9b08c295f07</sub></p>"
+    },
+    {
+      "url": "https://github.com/hkd620-lab/haru2026/pull/319#issuecomment-6541263003",
+      "body": "@codex review\n검토 대상 HEAD: 67386e69c5299eaf46f2a1070a902f8217ab6152.\n#114를 대체하는 sharp 0.35.5 이행입니다. Linux x64 Node 22의 npm ci·빌드·이미지 회귀 14건·전체 Functions cold load(export 114개)가 통과했습니다(run 41184919339). 제품 diff와 보안·호환성, 기존 3개 이미지 처리 경로의 동등성을 검토해 주세요. 아직 운영 배포하지 않았습니다. Node 22 로컬 기준선 보완 기록을 추가 중이며, 제품 변경이 생기면 새 HEAD 검토를 다시 요청하겠습니다.",
+      "user": {
+        "login": "hkd620-lab",
+        "name": "hkd620-lab",
+        "email": null,
+        "avatar_url": "https://avatars.githubusercontent.com/u/233199315?v=4",
+        "id": 233199315
+      },
+      "id": 6541263003,
+      "pull_request_review_id": null,
+      "in_reply_to_id": null,
+      "created_at": "2026-10-31T08:40:59Z",
+      "updated_at": "2026-10-31T08:40:59Z",
+      "review": null,
+      "side": null,
+      "line": null,
+      "start_line": null,
+      "path": null,
+      "body_html": "<p dir=\"auto\"><a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> review<br>\n검토 대상 HEAD: <a class=\"commit-link\" data-hovercard-type=\"commit\" data-hovercard-url=\"https://github.com/hkd620-lab/haru2026/commit/67386e69c5299eaf46f2a1070a902f8217ab6152/hovercard\" href=\"https://github.com/hkd620-lab/haru2026/commit/67386e69c5299eaf46f2a1070a902f8217ab6152\"><tt>67386e6</tt></a>.<br>\n#114를 대체하는 sharp 0.35.5 이행입니다. Linux x64 Node 22의 npm ci·빌드·이미지 회귀 14건·전체 Functions cold load(export 114개)가 통과했습니다(run 41184919339). 제품 diff와 보안·호환성, 기존 3개 이미지 처리 경로의 동등성을 검토해 주세요. 아직 운영 배포하지 않았습니다. Node 22 로컬 기준선 보완 기록을 추가 중이며, 제품 변경이 생기면 새 HEAD 검토를 다시 요청하겠습니다.</p>"
+    },
+    {
+      "url": "https://github.com/hkd620-lab/haru2026/pull/319#issuecomment-6541265665",
+      "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"67386e69c5299eaf46f2a1070a902f8217ab6152\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n## Codex Review Summary\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-10-31T08:42:04.983724Z\">2026-10-31T08:42:04.983724Z</relative-time> | `67386e6` | Manual request |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>",
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "name": "chatgpt-codex-connector[bot]",
+        "email": null,
+        "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+        "id": 199175422
+      },
+      "id": 6541265665,
+      "pull_request_review_id": null,
+      "in_reply_to_id": null,
+      "created_at": "2026-10-31T08:41:18Z",
+      "updated_at": "2026-10-31T08:42:05Z",
+      "review": null,
+      "side": null,
+      "line": null,
+      "start_line": null,
+      "path": null,
+      "body_html": "\n\n<h2 dir=\"auto\">Codex Review Summary</h2>\n<p dir=\"auto\">This comment shows the latest Codex review activity on this pull request.</p>\n<markdown-accessiblity-table><table role=\"table\">\n<thead>\n<tr>\n<th>Review</th>\n<th>Status</th>\n<th>Commit</th>\n<th>Review trigger</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>📝 <strong>Code Review</strong></td>\n<td>✅ <strong>Completed</strong> <relative-time datetime=\"2026-10-31T08:42:04.983724Z\">2026-10-31T08:42:04.983724Z</relative-time></td>\n<td><code class=\"notranslate\">67386e6</code></td>\n<td>Manual request</td>\n</tr>\n</tbody>\n</table></markdown-accessiblity-table>\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br>\n<p dir=\"auto\"><a href=\"https://chatgpt.com/codex/cloud/settings/general\" rel=\"nofollow\">Your team has set up Codex to review pull requests in this repo</a>. Reviews are triggered when you</p>\n<ul dir=\"auto\">\n<li>Open a pull request for review</li>\n<li>Mark a draft as ready</li>\n<li>Comment \"<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> review\" or \"<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> security review\".</li>\n</ul>\n<p dir=\"auto\">Codex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.</p>\n</details>"
+    },
+    {
+      "url": "https://github.com/hkd620-lab/haru2026/pull/319#issuecomment-6541272382",
+      "body": "<!-- codex-review-receipt:v1 -->\n\nCodex Review: Didn't find any major issues. Swish!\n\n**Reviewed commit:** `67386e69c5`\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nCodex can also answer questions or update the PR. Try commenting \"@codex address that feedback\".\n            \n</details>",
+      "user": {
+        "login": "chatgpt-codex-connector[bot]",
+        "name": "chatgpt-codex-connector[bot]",
+        "email": null,
+        "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+        "id": 199175422
+      },
+      "id": 6541272382,
+      "pull_request_review_id": null,
+      "in_reply_to_id": null,
+      "created_at": "2026-10-31T08:42:03Z",
+      "updated_at": "2026-10-31T08:42:03Z",
+      "review": null,
+      "side": null,
+      "line": null,
+      "start_line": null,
+      "path": null,
+      "body_html": "\n<p dir=\"auto\">Codex Review: Didn't find any major issues. Swish!</p>\n<p dir=\"auto\"><strong>Reviewed commit:</strong> <code class=\"notranslate\">67386e69c5</code></p>\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br>\n<p dir=\"auto\"><a href=\"https://chatgpt.com/codex/cloud/settings/general\" rel=\"nofollow\">Your team has set up Codex to review pull requests in this repo</a>. Reviews are triggered when you</p>\n<ul dir=\"auto\">\n<li>Open a pull request for review</li>\n<li>Mark a draft as ready</li>\n<li>Comment \"<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> review\".</li>\n</ul>\n<p dir=\"auto\">If Codex has suggestions, it will comment; otherwise it will react with 👍.</p>\n<p dir=\"auto\">Codex can also answer questions or update the PR. Try commenting \"<a class=\"user-mention notranslate\" data-hovercard-type=\"user\" data-hovercard-url=\"/users/codex/hovercard\" data-octo-click=\"hovercard-link-click\" data-octo-dimensions=\"link_type:self\" href=\"https://github.com/codex\">@codex</a> address that feedback\".</p>\n</details>"
+    }
+  ],
+  "url": "https://github.com/hkd620-lab/haru2026/pull/319",
+  "title": "hkd620-lab/haru2026 PR #319 comments",
+  "display_url": "https://github.com/hkd620-lab/haru2026/pull/319",
+  "display_title": "hkd620-lab/haru2026 PR #319 comments"
+}
