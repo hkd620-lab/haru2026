@@ -1,0 +1,54 @@
+이번 19:30 재개 실행의 읽기 전용 확인 결과 (CC, Node v22.23.2, npm 10.9.8)
+파일 작성 시점 HEAD: c99f59d816abb3790759565aa34ed8b5b82c01c9
+
+$ git ls-remote origin refs/heads/codex-completion-reader141
+c99f59d816abb3790759565aa34ed8b5b82c01c9	refs/heads/codex-completion-reader141
+
+$ git ls-remote origin refs/heads/main
+a8a8a6b8b0e38464bbadbd683cb3a9319166eeae	refs/heads/main
+
+$ git rev-parse origin/main; git merge-base HEAD origin/main
+a8a8a6b8b0e38464bbadbd683cb3a9319166eeae
+a8a8a6b8b0e38464bbadbd683cb3a9319166eeae
+
+$ git diff --check a8a8a6b8 c99f59d8
+(출력 없음)
+
+$ git diff --name-status a8a8a6b8 HEAD -- firestore.rules storage.rules mobile frontend/src/app/routes.tsx frontend/src/app/pages/HaruRawPage.tsx frontend/package-lock.json functions/package-lock.json functions/lib AGENTS.md CLAUDE.md
+(출력 없음)
+
+$ cmp functions/lib/index.js <control>/reader141-lib-backup/index.js && cmp functions/lib/snsToDiary.js <control>/reader141-lib-backup/snsToDiary.js && echo backup-identical
+backup-identical
+
+$ stat (복구 전 수정 시각)
+2026-10-31T17:42:03+0900 functions/lib/index.js
+2026-10-31T17:41:58+0900 functions/lib/snsToDiary.js
+2026-10-31T17:39:32+0900 node22-followup/logs/03-functions-build.log
+2026-10-31T17:40:50+0900 node22-followup/logs/04-functions-generate-tts.log
+2026-10-31T17:42:05+0900 node22-followup/logs/05-functions-reading-ai.log
+2026-10-31T17:42:16+0900 node22-followup/logs/07-frontend-bible-grammar.log
+2026-10-31T17:48:32+0900 node22-followup/logs/12-frontend-build.log
+2026-10-31T17:39:04+0900 frontend/src/app/pages/BiblePage.tsx
+
+$ git log -1 --format='%h %ad %s' --date=iso c99f59d8
+c99f59d8 fix: AI 고음질 듣기 표시와 재생 제어 보완 경대 허 2026-10-31 17:39:23 +0900
+
+$ Grep 'ttsQuality|tts-1-hd' functions/lib/index.js (복구 전)
+69:const ttsQuality_1 = require("./ttsQuality");
+8104:    const safeQuality = (0, ttsQuality_1.normalizeTtsQuality)(quality);
+8105:    const ttsSettings = ttsQuality_1.TTS_QUALITY_SETTINGS[safeQuality];
+8106:    const filePath = (0, ttsQuality_1.buildTtsCachePath)({ cacheKey, voice: safeVoice, quality: safeQuality, text });
+
+$ git show HEAD:functions/lib/index.js | grep -c -E 'ttsQuality|tts-1-hd'
+0
+
+$ git diff --stat -- functions/lib/index.js functions/lib/snsToDiary.js (복구 전)
+ functions/lib/index.js      | 2367 ++++++-------------------------------------
+ functions/lib/snsToDiary.js |   15 +-
+ 2 files changed, 332 insertions(+), 2050 deletions(-)
+
+$ git restore --source=HEAD --worktree -- functions/lib/index.js functions/lib/snsToDiary.js
+(출력 없음)
+
+$ Grep 민감값 형식(AIza, sk-, ghp_, xox[bp]-, PRIVATE KEY, VITE_*=, 더미값) node22-followup/logs
+0건

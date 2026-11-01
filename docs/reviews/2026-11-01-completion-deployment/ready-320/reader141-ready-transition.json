@@ -1,0 +1,50 @@
+{
+  "status": "fulfilled",
+  "value": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Action completed."
+      }
+    ],
+    "structuredContent": {
+      "url": "https://github.com/hkd620-lab/haru2026/pull/320",
+      "number": 320,
+      "state": "open",
+      "merged": false,
+      "mergeable": true,
+      "draft": false,
+      "body": "## 목적·주요 변경\n#141에 남은 성경 문법 단어 뜻·선택형 AI 고음질 듣기·독서 한 권 이어쓰기를 현행 구조로 반영합니다. 표준 음성은 tts-1을 유지하고 AI 고음질만 tts-1-hd 별도 캐시를 사용합니다. 책 시작일을 보존하고 팝업 요청의 늦은 응답·재시도·일시정지 재개·페이지 이탈 취소를 처리합니다. 고음질 최종 실패와 빈 응답은 유효한 요청에 한 번 안내합니다.\n\n## 검증·검토\n최신 검토 HEAD 4513f63cf52d91dbd4ba7c0afdfea518c1dbf826, 제품 수정 58ac7a0a. CC가 Node22 문법35/35·Enter21/21·입력정책·웹 build를 통과했고, 신규 지적의 수정 전 실패·도우미 실패·변형12개 결과도 보존했습니다. Functions 기존 빌드·영역시험·실제export114 일치 근거를 유지합니다(이번 재수정은 프론트 2파일).\n- [CC 수정·명령·실패/성공 로그](https://github.com/hkd620-lab/haru2026/tree/4513f63cf52d91dbd4ba7c0afdfea518c1dbf826/docs/reviews/2026-10-31-reader-completion/review-fixes-resume0035)\n- [독립2 질문·승인 원문과 CC 반영·제한 보완](https://github.com/hkd620-lab/haru2026/tree/80622676b41d77070677c197adfc9e4a63e63a5e/docs/reviews/2026-10-31-reader-completion/resume0035-review2)\n- [Codex4 실행 색인](https://github.com/hkd620-lab/haru2026/blob/80622676b41d77070677c197adfc9e4a63e63a5e/docs/reviews/2026-10-31-reader-completion/resume0035-review2/codex-index-4.md), [실제 결과: 지적 없음](https://github.com/hkd620-lab/haru2026/pull/320#issuecomment-6546813737)\n독립2 판정은 **승인(제품 코드·설계)**, 수정 후 승인 누적1/3 유지. F1/F2/Codex3 P2 해결. 검토 후 80622676은 새 docs/reviews 10개 추가만 포함합니다. 검토 HEAD CI41218210970 성공, 최종80622676 CI41235041205도 build_and_preview·Deploy Preview 모두 성공했습니다. 세 PR 합본의 웹/Functions build·131/131·export114 동일 검증도 PR321의 joint-validation 원문에 첨부했습니다. 기존 중단·실패 기록은 변경하지 않았습니다.\n\n## 배포 영향\n아직 미병합·운영 미배포. 프로젝트 haru2026-8abb8 / asia-northeast3 / Node22, generateTTS 1개를 같은 후보 SHA에서 웹 병합보다 먼저 선택배포해야 합니다. Firestore 핵심 경로(users/{uid}/records/{date})·환경변수·Rules·결제·인증 정책 변경 없음. 기존 캐시 객체 이동·삭제 없음. 비밀키·개인정보 미포함.\n\n## 위험·되돌리기\n실제 브라우저·iOS/Android 자동재생·운영 OpenAI/Storage 및 독서 E2E는 미실행입니다. 전체 장 재생과 고음질 재개가 겹칠 때 잘못된 안내 가능성은 독립2의 비차단 P3이며 실제 재현은 미확인입니다. 표준 단어 팝업 닫기 시 늦은 기존 음성도 별도 후속 과제입니다. tts-1과tts-1-hd는2027-01-06 종료 예정입니다.\n세 PR이 준비되면 운영 병합·선택배포·합성 자료 운영 시험 범위를 한 번 묶어 사용자에게 확인합니다. 운영 반영 후 문제 시 직전 실측 함수 revision과 이전 Hosting으로 복구합니다. 초기화 재개는 실행됐고 중복 방지용 예약은 삭제했습니다.",
+      "title": "feat: 성경 고음질 듣기와 단어 뜻·독서 이어쓰기 보완",
+      "base": "main",
+      "base_sha": "a8a8a6b8b0e38464bbadbd683cb3a9319166eeae",
+      "head": "codex-completion-reader141",
+      "head_sha": "80622676b41d77070677c197adfc9e4a63e63a5e",
+      "head_repo_id": 1164151333,
+      "head_repo_full_name": "hkd620-lab/haru2026",
+      "merge_commit_sha": null,
+      "user": {
+        "login": "hkd620-lab",
+        "name": "hkd620-lab",
+        "email": null,
+        "avatar_url": "https://avatars.githubusercontent.com/u/233199315?v=4",
+        "id": null
+      },
+      "requested_reviewers": null,
+      "requested_team_reviewers": null,
+      "diff": null,
+      "comments": null,
+      "created_at": "2026-10-31T08:45:28Z",
+      "updated_at": "2026-10-31T23:03:33Z",
+      "closed_at": null,
+      "merged_at": null,
+      "commits": 12,
+      "changed_files": 109,
+      "additions": 9644,
+      "deletions": 59,
+      "display_url": "https://github.com/hkd620-lab/haru2026/pull/320",
+      "display_title": "feat: 성경 고음질 듣기와 단어 뜻·독서 이어쓰기 보완"
+    },
+    "isError": false
+  }
+}

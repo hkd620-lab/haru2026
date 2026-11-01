@@ -1,0 +1,29 @@
+
+> @figma/my-make-file@0.0.1 test:reading-ai
+> node --import tsx --test test/readingAi.test.mjs
+
+✔ external questions work without a passage and only include the current book context (1.646375ms)
+✔ external answers retain attribution and existing references without entering the user journal (1.117667ms)
+✔ external import rejects empty, excessive, duplicate and full references without losing existing content (0.960167ms)
+✔ applying internal AI notes after an external import preserves external answers and attribution (0.362208ms)
+✔ combined internal/external limits reject changes without mutating saved references (0.211666ms)
+✔ only chosen answers and their actual user questions become reference material (0.195709ms)
+✔ old records without the field remain readable and cross-book reference is rejected (0.378417ms)
+✔ switching books drops old completion flags, OCR and AI fields while preserving unrelated formats (0.240291ms)
+✔ 첫 책 선택은 공통 작성창 초안을 보존하고 이후 책 전환은 소감을 비운다 (0.142458ms)
+✔ reapplying a selection does not duplicate user questions (0.172416ms)
+✔ long conversation stays bounded and preserves the latest follow-up pair (0.282958ms)
+✔ long local sessions drop invisible selections so new answers remain selectable (0.213ms)
+✔ prior notes favor recent user journals and final snapshot includes new sessions (0.488375ms)
+✔ stable book IDs and original canonical/legacy meta remain compatible (1.057834ms)
+✔ close/refresh recovery retains text without photos, and account/book chats stay isolated (0.434292ms)
+✔ expired drafts are purged and unavailable storage reports failure (0.139708ms)
+✔ monthly quota, login and network errors are understandable and retain drafts (0.119792ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 147.147041

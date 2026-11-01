@@ -1,0 +1,24 @@
+
+> test:reading-ai
+> npm run build && node --test test/readingAi.test.js
+
+
+> build
+> tsc && mkdir -p lib/fonts && cp src/fonts/*.ttf lib/fonts/
+
+✔ authentication and invalid/empty input never spend quota or call the provider (1.977292ms)
+✔ questions without a passage use the same quota and preserve an honestly empty passage (0.49775ms)
+✔ all context fields, roles and conversation totals have enforced limits (0.35875ms)
+✔ the same shared quota/rate policy runs before generation, including journal suggestions (0.263333ms)
+✔ monthly and rate limits prevent any provider call (0.325792ms)
+✔ provider and malformed output failures refund quota and never echo user content (0.3845ms)
+✔ follow-up prompt keeps roles, memory, current passage and prior user notes separate (0.123583ms)
+✔ JSON output has bounded answer and memory, and empty output is rejected (0.141667ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 870.024292

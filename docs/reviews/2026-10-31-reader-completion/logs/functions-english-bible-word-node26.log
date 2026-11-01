@@ -1,0 +1,5 @@
+
+> test:english-bible-word
+> node test/englishBibleWordMeaning.test.js
+
+englishBibleWordMeaning tests passed

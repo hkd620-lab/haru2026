@@ -1,0 +1,49 @@
+{
+  "content": [],
+  "structuredContent": {
+    "headRevision": "4513f63cf52d91dbd4ba7c0afdfea518c1dbf826",
+    "checks": [
+      {
+        "id": 124587091682,
+        "name": "build_and_preview",
+        "head_sha": "4513f63cf52d91dbd4ba7c0afdfea518c1dbf826",
+        "status": "completed",
+        "conclusion": "success",
+        "details_url": "https://github.com/hkd620-lab/haru2026/actions/runs/41218210970/job/124587091682",
+        "output": {
+          "title": null,
+          "summary": null,
+          "text": null,
+          "annotations_count": 2
+        }
+      }
+    ],
+    "statuses": [],
+    "annotations": [
+      {
+        "path": ".github",
+        "start_line": 2,
+        "end_line": 2,
+        "annotation_level": "warning",
+        "message": "Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/",
+        "title": "",
+        "raw_details": ""
+      },
+      {
+        "path": ".github",
+        "start_line": 1,
+        "end_line": 1,
+        "annotation_level": "notice",
+        "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\"",
+        "title": "",
+        "raw_details": ""
+      }
+    ],
+    "hasMore": false,
+    "job": null,
+    "jobs": [],
+    "log": null,
+    "logTruncated": false,
+    "providerGuidance": "GitHub guidance for this response only: use checkRunId for output and annotations, runId from a GitHub Actions /runs/<id> link to list jobs, or jobId from a /jobs/<id> link for logs. page paginates checks, jobs or annotations. Keep the supplied account and returned headRevision on follow-up reads. Third-party CI exposes only the output reported to GitHub."
+  }
+}

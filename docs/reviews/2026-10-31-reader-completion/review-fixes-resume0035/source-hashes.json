@@ -1,0 +1,108 @@
+{
+  "checked_at": "2026-11-01T01:06:24.122046+09:00",
+  "recorder": "Claude Code (CC)",
+  "files": {
+    "reader141-review-fixes-resume0035-prompt.txt": {
+      "sha256": "a47815b9a701981b0762f411c0a558154903e137a91c27eea0f64bbaca3979e2",
+      "same_as_control": true,
+      "bytes": 5344,
+      "secret_pattern_matches": []
+    },
+    "reader141-review-fixes-prompt.txt": {
+      "sha256": "c94b9dbca52047f58152bfc58378d193536fe8589e3cf44f551f7703b4c584cc",
+      "same_as_control": true,
+      "bytes": 4488,
+      "secret_pattern_matches": []
+    },
+    "reader141-review-fixes-result.json": {
+      "sha256": "fdf3fa18671bb22257bf1da5bd7da4c2abf58720d073111e384855c5787c172e",
+      "same_as_control": true,
+      "bytes": 2328,
+      "secret_pattern_matches": []
+    },
+    "reader141-review-fixes-stderr.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "same_as_control": true,
+      "bytes": 0,
+      "secret_pattern_matches": []
+    },
+    "reader141-independent1-prompt.txt": {
+      "sha256": "a00d0a0e5c315b1c25317ebcabce28d8ccbccdf73a9d9492d3b525285d2c4993",
+      "same_as_control": true,
+      "bytes": 3802,
+      "secret_pattern_matches": []
+    },
+    "reader141-independent1-result.json": {
+      "sha256": "5aa2353ef0dd660d50c8018c9866614d29030b717e6c81dfe21b0230a98b93bd",
+      "same_as_control": true,
+      "bytes": 16268,
+      "secret_pattern_matches": []
+    },
+    "reader141-independent1-stderr.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "same_as_control": true,
+      "bytes": 0,
+      "secret_pattern_matches": []
+    },
+    "reader141-retry-fix-prompt.txt": {
+      "sha256": "dd8ac21dfdb4d4c525757cbc27261ce0ced822cb4c7f77debf396d1b2e9d4df0",
+      "same_as_control": true,
+      "bytes": 3157,
+      "secret_pattern_matches": []
+    },
+    "reader141-retry-fix-result.json": {
+      "sha256": "270829fb12f670afcf2bebf5e11c31fca872c37dd0b2d0fa2be89c408a8d9528",
+      "same_as_control": true,
+      "bytes": 15264,
+      "secret_pattern_matches": []
+    },
+    "reader141-retry-fix-stderr.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "same_as_control": true,
+      "bytes": 0,
+      "secret_pattern_matches": []
+    },
+    "reader141-codex-review3-comments.json": {
+      "sha256": "44c8f594a6c2c865c21cf3a5043ce6ca6316e51dffe2238ce3af660b6859c6e5",
+      "same_as_control": true,
+      "bytes": 29442,
+      "secret_pattern_matches": []
+    },
+    "reader141-ci-fb710-details.json": {
+      "sha256": "aaa2c41e64a2735f438cee5f7c1ad6b608c0a551a01df145dcc910db34f23660",
+      "same_as_control": true,
+      "bytes": 1819,
+      "secret_pattern_matches": []
+    },
+    "reader141-resume0035-run-logged.py": {
+      "sha256": "379c1b0d1c4ab66e82187760b2b1307b754c65dbb610c8400e81f0fc8914fd2d",
+      "same_as_control": true,
+      "bytes": 1455,
+      "secret_pattern_matches": []
+    },
+    "reader141-resume0035-mutation-check.py": {
+      "sha256": "043be6cdf7cb1ab48e989ced90e77c954e3d331c511716381c0fb06a72964f79",
+      "same_as_control": true,
+      "bytes": 5490,
+      "secret_pattern_matches": []
+    },
+    "reader141-resume0035-tsc-compare.py": {
+      "sha256": "da60a079ea48f0c412849727c0cb1536b34ab7f4c95e668bd1bff94fb562737f",
+      "same_as_control": true,
+      "bytes": 1126,
+      "secret_pattern_matches": []
+    },
+    "reader141-resume0035-tsconfig.json": {
+      "sha256": "7a3ffbd8f54a5453d32ed12233512bbdec9270e95dfd3d67487fa8b06979f806",
+      "same_as_control": true,
+      "bytes": 591,
+      "secret_pattern_matches": []
+    },
+    "reader141-resume0035-preserve.py": {
+      "sha256": "285de64d976bd473028009e3f1839cdad3d0e45ffa596fbb2d4a31442aa19da2",
+      "same_as_control": true,
+      "bytes": 2336,
+      "secret_pattern_matches": []
+    }
+  }
+}

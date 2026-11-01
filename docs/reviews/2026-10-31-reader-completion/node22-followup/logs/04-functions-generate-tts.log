@@ -1,0 +1,66 @@
+
+> test:generate-tts
+> npm run build && node --test test/generateTts.test.js
+
+
+> build
+> tsc && mkdir -p lib/fonts && cp src/fonts/*.ttf lib/fonts/
+
+TAP version 13
+# Subtest: quality가 없는 기존 호출은 표준 모델·속도와 기존 캐시 경로를 그대로 쓴다
+ok 1 - quality가 없는 기존 호출은 표준 모델·속도와 기존 캐시 경로를 그대로 쓴다
+  ---
+  duration_ms: 88.722792
+  type: 'test'
+  ...
+# Subtest: native만 tts-1-hd와 0.92 속도를 쓰고, 알 수 없는 값은 표준으로 처리한다
+ok 2 - native만 tts-1-hd와 0.92 속도를 쓰고, 알 수 없는 값은 표준으로 처리한다
+  ---
+  duration_ms: 20.221542
+  type: 'test'
+  ...
+# Subtest: 같은 cacheKey여도 표준과 고음질 캐시는 서로의 음성을 돌려주지 않는다
+ok 3 - 같은 cacheKey여도 표준과 고음질 캐시는 서로의 음성을 돌려주지 않는다
+  ---
+  duration_ms: 6.549833
+  type: 'test'
+  ...
+# Subtest: 고음질 캐시는 잘린 cacheKey가 같아도 본문·음성이 다르면 새로 만든다
+ok 4 - 고음질 캐시는 잘린 cacheKey가 같아도 본문·음성이 다르면 새로 만든다
+  ---
+  duration_ms: 7.226958
+  type: 'test'
+  ...
+# Subtest: 표준 호출의 cacheKey로 고음질 객체 경로를 지정할 수 없다
+ok 5 - 표준 호출의 cacheKey로 고음질 객체 경로를 지정할 수 없다
+  ---
+  duration_ms: 0.762208
+  type: 'test'
+  ...
+# Subtest: 고음질도 로그인·입력 검증과 하루 사용 한도를 통과해야 공급자를 부른다
+ok 6 - 고음질도 로그인·입력 검증과 하루 사용 한도를 통과해야 공급자를 부른다
+  ---
+  duration_ms: 5.472208
+  type: 'test'
+  ...
+# Subtest: 고음질 공급자 실패는 캐시·사용량을 남기지 않고 같은 오류로 끝나며 비밀값을 노출하지 않는다
+ok 7 - 고음질 공급자 실패는 캐시·사용량을 남기지 않고 같은 오류로 끝나며 비밀값을 노출하지 않는다
+  ---
+  duration_ms: 3.020084
+  type: 'test'
+  ...
+# Subtest: 고음질 429는 기존 재시도 후 성공하면 저장한다
+ok 8 - 고음질 429는 기존 재시도 후 성공하면 저장한다
+  ---
+  duration_ms: 9.865208
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 619.292625

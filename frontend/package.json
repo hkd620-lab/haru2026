@@ -11,6 +11,8 @@
     "dev": "vite",
     "dev:reading-ai-qa": "vite --config test/reading-ai-browser/vite.config.mjs",
     "test:reading-ai": "node --import tsx --test test/readingAi.test.mjs",
+    "test:reading-continue": "node --import tsx --test test/readingContinue.test.mjs",
+    "test:bible-grammar": "node --import tsx --test test/bibleGrammarPopup.test.mjs",
     "test:question-enter": "node --import tsx --test test/questionEnterSubmit.test.mjs",
     "test:question-inputs": "node test/questionInputs.policy.test.cjs",
     "test:subscription-display": "node test/subscriptionDisplay.policy.test.cjs",

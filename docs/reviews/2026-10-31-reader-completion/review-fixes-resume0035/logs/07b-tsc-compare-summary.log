@@ -1,0 +1,17 @@
+실행자: Claude Code (CC), phase review-fixes-resume0035
+시작: 2026-11-01T01:07:30.335545+09:00
+node -v: v22.23.2
+npm -v: 10.9.8
+HEAD: 58ac7a0a0023ff2ea28e008febbfd97e903c23c9
+코드 상태: 제품 커밋 58ac7a0a, 07 로그만 집계
+git status --short:
+?? docs/reviews/2026-10-31-reader-completion/review-fixes-resume0035/
+명령: python3 -I /private/tmp/haru-completion-control-20261031/reader141-resume0035-tsc-compare.py docs/reviews/2026-10-31-reader-completion/review-fixes-resume0035/logs/07-tsc-bible-page-baseline-compare.log
+---
+전체 오류 16, 수정 전 사본 2, 수정본 2
+수정본에만 있는 오류:
+수정 전에만 있는 오류:
+수정본 오류 줄: [2791, 2814]
+---
+종료 코드: 0
+끝: 2026-11-01T01:07:30.913485+09:00

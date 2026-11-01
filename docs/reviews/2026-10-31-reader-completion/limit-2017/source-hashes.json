@@ -1,0 +1,37 @@
+[
+  {
+    "name": "reader141-independent1-prompt.txt",
+    "bytes": 3802,
+    "sha256": "a00d0a0e5c315b1c25317ebcabce28d8ccbccdf73a9d9492d3b525285d2c4993"
+  },
+  {
+    "name": "reader141-independent1-result.json",
+    "bytes": 16268,
+    "sha256": "5aa2353ef0dd660d50c8018c9866614d29030b717e6c81dfe21b0230a98b93bd"
+  },
+  {
+    "name": "reader141-independent1-stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "reader141-review-fixes-prompt.txt",
+    "bytes": 4488,
+    "sha256": "c94b9dbca52047f58152bfc58378d193536fe8589e3cf44f551f7703b4c584cc"
+  },
+  {
+    "name": "reader141-review-fixes-result.json",
+    "bytes": 2328,
+    "sha256": "fdf3fa18671bb22257bf1da5bd7da4c2abf58720d073111e384855c5787c172e"
+  },
+  {
+    "name": "reader141-review-fixes-stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "reader141-codex-review3-comments.json",
+    "bytes": 29442,
+    "sha256": "44c8f594a6c2c865c21cf3a5043ce6ca6316e51dffe2238ce3af660b6859c6e5"
+  }
+]
