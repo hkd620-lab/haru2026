@@ -1,0 +1,10 @@
+$ (cwd=functions) npm run test:convert-heic-guard
+# start 2026-10-31T08:34:59.811463+00:00
+# end   2026-10-31T08:35:00.333358+00:00
+# exit  0
+
+
+> test:convert-heic-guard
+> node test/convertHeicGuard.policy.test.js
+
+convertHeic guard policy test passed

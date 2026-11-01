@@ -1,0 +1,35 @@
+✔ 런타임 버전 기록 (0.728ms)
+ℹ node=v26.8.2 darwin/arm64 sharp=0.35.5 libvips=8.18.7
+✔ 복제한 체인이 실제 함수 소스와 일치한다 (1.831792ms)
+✔ 타임라인 PDF: EXIF 방향을 적용해 cover로 자르고 메타데이터를 지운다 (15.330167ms)
+ℹ timeline bytes=2279
+✔ 타임라인 PDF: 작은 치수는 최소 320x240을 유지한다 (6.476209ms)
+✔ 타임라인 PDF: 처리한 JPEG가 pdfkit PDF에 들어가고 다시 열린다 (19.420792ms)
+ℹ pdf bytes=3578
+✔ 식물 감식: 크기를 유지한 채 방향만 적용한 JPEG로 정규화한다 (5.359167ms)
+✔ SNS 썸네일: 400px로 줄이고 작은 원본은 키우지 않는다 (7.02875ms)
+✔ SNS 썸네일: rotate가 없는 현재 동작을 유지하고 메타데이터는 지운다 (5.097959ms)
+✔ 투명 PNG는 세 경로 모두 검정 배경의 JPEG가 된다 (10.822ms)
+✔ 색공간·비트 깊이가 다른 입력도 8비트 sRGB JPEG로 정규화한다 (136.831708ms)
+ℹ timeline/cmykJpeg left=232,0,0 right=28,59,139
+ℹ plant/cmykJpeg left=232,0,0 right=28,59,139
+ℹ sns/cmykJpeg left=232,0,0 right=28,59,139
+ℹ timeline/displayP3Jpeg left=255,1,3 right=1,0,254
+ℹ plant/displayP3Jpeg left=255,1,3 right=1,0,254
+ℹ sns/displayP3Jpeg left=255,1,3 right=1,0,254
+ℹ timeline/rgb16Png left=254,0,0 right=0,0,254
+ℹ plant/rgb16Png left=254,0,0 right=0,0,254
+ℹ sns/rgb16Png left=254,0,0 right=0,0,254
+✔ 0.35 기본 limitInputChannels: 5채널은 처리하고 6채널은 거부한다 (106.766417ms)
+✔ WebP·GIF·TIFF·AVIF 입력을 세 경로가 모두 처리한다 (28.932833ms)
+✔ 해독할 수 없는 HEIC·손상 입력은 거부되어 각 함수의 catch 경로로 간다 (1.516542ms)
+✔ 컴파일된 Functions 전체가 cold load되고 대상 함수 3개를 내보낸다 (422.077125ms)
+ℹ exports=114
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1001.110792

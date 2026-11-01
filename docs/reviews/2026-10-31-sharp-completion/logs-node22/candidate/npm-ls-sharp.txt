@@ -1,0 +1,8 @@
+$ (cwd=functions) npm ls sharp
+# start 2026-10-31T08:35:24.097495+00:00
+# end   2026-10-31T08:35:26.165567+00:00
+# exit  0
+
+functions@ /private/tmp/haru-completion-control-20261031/sharp114-node22-work/candidate/functions
+└── sharp@0.35.5
+

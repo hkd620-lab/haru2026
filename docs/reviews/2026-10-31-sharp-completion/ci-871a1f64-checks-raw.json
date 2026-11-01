@@ -1,0 +1,55 @@
+{
+  "headRevision": "871a1f64ff17b968750b32dea3ec22db54ca4cef",
+  "checks": [
+    {
+      "id": 124492334104,
+      "name": "Deploy Preview",
+      "head_sha": "871a1f64ff17b968750b32dea3ec22db54ca4cef",
+      "status": "completed",
+      "conclusion": "success",
+      "details_url": "https://github.com/hkd620-lab/haru2026/runs/124492334104",
+      "output": {
+        "title": "Deploy preview succeeded",
+        "summary": "[https://haru2026-8abb8--pr319-codex-completion-sha-klcgbs3y.web.app](https://haru2026-8abb8--pr319-codex-completion-sha-klcgbs3y.web.app)",
+        "text": null,
+        "annotations_count": 0
+      }
+    },
+    {
+      "id": 124492051174,
+      "name": "build_and_preview",
+      "head_sha": "871a1f64ff17b968750b32dea3ec22db54ca4cef",
+      "status": "completed",
+      "conclusion": "success",
+      "details_url": "https://github.com/hkd620-lab/haru2026/actions/runs/41185694268/job/124492051174",
+      "output": {
+        "title": null,
+        "summary": null,
+        "text": null,
+        "annotations_count": 2
+      }
+    },
+    {
+      "id": 124492050952,
+      "name": "linux_x64_node22",
+      "head_sha": "871a1f64ff17b968750b32dea3ec22db54ca4cef",
+      "status": "completed",
+      "conclusion": "success",
+      "details_url": "https://github.com/hkd620-lab/haru2026/actions/runs/41185694294/job/124492050952",
+      "output": {
+        "title": null,
+        "summary": null,
+        "text": null,
+        "annotations_count": 2
+      }
+    }
+  ],
+  "statuses": [],
+  "annotations": [],
+  "hasMore": false,
+  "job": null,
+  "jobs": [],
+  "log": null,
+  "logTruncated": false,
+  "providerGuidance": "GitHub guidance for this response only: use checkRunId for output and annotations, runId from a GitHub Actions /runs/<id> link to list jobs, or jobId from a /jobs/<id> link for logs. page paginates checks, jobs or annotations. Keep the supplied account and returned headRevision on follow-up reads. Third-party CI exposes only the output reported to GitHub."
+}

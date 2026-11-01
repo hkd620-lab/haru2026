@@ -1,0 +1,30 @@
+--- live-callGeminiCrossVerification
++++ main-callGeminiCrossVerification
+@@ -2,7 +2,6 @@
+   plantId: KindwiseIdResult | null,
+   plantNet: PlantNetIdResult | null,
+   images: { base64: string; mimeType: string }[],
+-  apiKey: string,
+ ): Promise<CrossVerificationResult> {
+   // 두 API 결과 요약을 JSON 문자열로 직렬화 (Gemini가 비교 분석)
+   const plantIdSummary = plantId
+@@ -83,8 +82,6 @@
+   "careSummary": "오늘 사용자가 바로 할 일 1~2문장"
+ }`;
+ 
+-  const genAI = new GoogleGenerativeAI(apiKey);
+-  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+ 
+   // 사진들을 모두 첨부 (Gemini는 multi-image 지원)
+   const parts: any[] = [prompt];
+@@ -92,8 +89,8 @@
+     parts.push({ inlineData: { data: img.base64, mimeType: img.mimeType || 'image/jpeg' } });
+   }
+ 
+-  const result = await model.generateContent(parts);
+-  const text = result.response.text();
++  const result = await callAi({ purpose: 'plantCrossVerification', input: parts });
++  const text = result.text();
+   const cleaned = text.replace(/```json|```/g, '').trim();
+   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+   if (!jsonMatch) throw new Error('Gemini 응답에서 JSON을 찾을 수 없습니다.');

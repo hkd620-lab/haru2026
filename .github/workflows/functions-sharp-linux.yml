@@ -1,0 +1,53 @@
+name: Functions sharp Linux check
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/functions-sharp-linux.yml'
+      - 'functions/package.json'
+      - 'functions/package-lock.json'
+      - 'functions/src/index.ts'
+      - 'functions/src/snsAnalyzer.ts'
+      - 'functions/test/sharpImagePipelines.test.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux_x64_node22:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Confirm runtime
+        run: |
+          node -e "if (!process.version.startsWith('v22.') || process.platform !== 'linux' || process.arch !== 'x64') { console.error(process.version, process.platform, process.arch); process.exit(1); }"
+          node -v
+          npm -v
+
+      - name: Install from lockfile
+        run: npm ci --no-audit --no-fund
+
+      - name: Confirm Linux native packages
+        run: |
+          npm ls sharp
+          test -d node_modules/@img/sharp-linux-x64
+          test -d node_modules/@img/sharp-libvips-linux-x64
+
+      - name: Build and run image pipelines
+        run: npm run test:sharp-pipelines
