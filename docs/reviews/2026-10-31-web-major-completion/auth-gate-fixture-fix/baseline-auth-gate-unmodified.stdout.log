@@ -1,0 +1,597 @@
+TAP version 13
+# ✘ [ERROR] No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+#     frontend/src/app/contexts/AuthContext.tsx:31:2:
+#       31 │   bindLoginTraceToAccount,
+#          ╵   ~~~~~~~~~~~~~~~~~~~~~~~
+# ✘ [ERROR] No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+#     frontend/src/app/contexts/AuthContext.tsx:32:2:
+#       32 │   blockLoginTrace,
+#          ╵   ~~~~~~~~~~~~~~~
+# ✘ [ERROR] No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+#     frontend/src/app/contexts/AuthContext.tsx:33:2:
+#       33 │   endLoginTraceForAuthChange,
+#          ╵   ~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ✘ [ERROR] No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+#     frontend/src/app/contexts/AuthContext.tsx:34:2:
+#       34 │   markLoginAccessReady,
+#          ╵   ~~~~~~~~~~~~~~~~~~~~
+# ✘ [ERROR] No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+#     frontend/src/app/contexts/AuthContext.tsx:36:2:
+#       36 │   resumeLoginTrace,
+#          ╵   ~~~~~~~~~~~~~~~~
+# Subtest: initial auth + delayed document block /
+not ok 1 - initial auth + delayed document block /
+  ---
+  duration_ms: 535.801709
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:54:39'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: initial auth + delayed document block /record
+not ok 2 - initial auth + delayed document block /record
+  ---
+  duration_ms: 1.31175
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:54:39'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: signed out auth permits public landing
+not ok 3 - signed out auth permits public landing
+  ---
+  duration_ms: 0.073666
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:68:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: lookup error stays closed, retry replaces listener, old events cannot unlock
+not ok 4 - lookup error stays closed, retry replaces listener, old events cannot unlock
+  ---
+  duration_ms: 0.04475
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:74:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: offline/cache-only timeout offers retry and logout
+not ok 5 - offline/cache-only timeout offers retry and logout
+  ---
+  duration_ms: 0.195875
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:96:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: missing consent (undefined) requires confirmed save
+not ok 6 - missing consent (undefined) requires confirmed save
+  ---
+  duration_ms: 0.050791
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:107:57'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: missing consent ({}) requires confirmed save
+not ok 7 - missing consent ({}) requires confirmed save
+  ---
+  duration_ms: 0.035833
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:107:57'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: missing consent ({"consents":null}) requires confirmed save
+not ok 8 - missing consent ({"consents":null}) requires confirmed save
+  ---
+  duration_ms: 0.122834
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:107:57'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: pending deletion wins over missing consent, recovery waits for server
+not ok 9 - pending deletion wins over missing consent, recovery waits for server
+  ---
+  duration_ms: 0.354083
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:131:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: account switch invalidates ready state and all late previous callbacks
+not ok 10 - account switch invalidates ready state and all late previous callbacks
+  ---
+  duration_ms: 0.243292
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:146:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: same UID relogin never reuses an earlier session
+not ok 11 - same UID relogin never reuses an earlier session
+  ---
+  duration_ms: 0.040875
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:164:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: lookup error logout failure keeps gate, later logout succeeds
+not ok 12 - lookup error logout failure keeps gate, later logout succeeds
+  ---
+  duration_ms: 0.031
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:176:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: late redirect result cannot restore previous account
+not ok 13 - late redirect result cannot restore previous account
+  ---
+  duration_ms: 0.029917
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:189:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: email signup consent continuation survives page unmount
+not ok 14 - email signup consent continuation survives page unmount
+  ---
+  duration_ms: 0.029292
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:199:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: failed consent save retains gate and can be retried
+not ok 15 - failed consent save retains gate and can be retried
+  ---
+  duration_ms: 0.0285
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:211:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: failed recovery retains pending deletion and can be retried
+not ok 16 - failed recovery retains pending deletion and can be retried
+  ---
+  duration_ms: 0.094041
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:222:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: late save after account switch does not update new account gate
+not ok 17 - late save after account switch does not update new account gate
+  ---
+  duration_ms: 0.029166
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:235:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: retry during a pending save resets busy state and ignores old completion
+not ok 18 - retry during a pending save resets busy state and ignores old completion
+  ---
+  duration_ms: 0.02725
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:250:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: unmount cancels listener and late callbacks
+not ok 19 - unmount cancels listener and late callbacks
+  ---
+  duration_ms: 0.027584
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:264:1'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: consent gate can open /terms without mounting protected app
+not ok 20 - consent gate can open /terms without mounting protected app
+  ---
+  duration_ms: 0.027958
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:275:3'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+# Subtest: consent gate can open /privacy without mounting protected app
+not ok 21 - consent gate can open /privacy without mounting protected app
+  ---
+  duration_ms: 0.025708
+  type: 'test'
+  location: '/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/auth-user-document-gate.test.cjs:275:3'
+  failureType: 'hookFailed'
+  error: |-
+    Build failed with 5 errors:
+    frontend/src/app/contexts/AuthContext.tsx:31:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "bindLoginTraceToAccount"
+    frontend/src/app/contexts/AuthContext.tsx:32:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "blockLoginTrace"
+    frontend/src/app/contexts/AuthContext.tsx:33:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "endLoginTraceForAuthChange"
+    frontend/src/app/contexts/AuthContext.tsx:34:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "markLoginAccessReady"
+    frontend/src/app/contexts/AuthContext.tsx:36:2: ERROR: No matching export in "tests/fixtures/auth-gate/firebase.ts" for import "resumeLoginTrace"
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    failureErrorWithLog (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1467:15)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:926:25
+    runOnEndCallbacks (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:1307:45)
+    buildResponseToResult (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:924:7)
+    /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:951:16
+    responseCallbacks.<computed> (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:603:9)
+    handleIncomingPacket (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:658:12)
+    Socket.readFromStdout (/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/node_modules/esbuild/lib/main.js:581:7)
+    Socket.emit (node:events:519:28)
+    addChunk (node:internal/streams/readable:561:12)
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 0
+# fail 21
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1046.68925

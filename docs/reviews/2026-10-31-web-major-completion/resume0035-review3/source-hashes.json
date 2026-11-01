@@ -1,0 +1,11 @@
+{
+  "web-upgrade-independent3-prompt.txt": "cc37030fcc8cbf47ab5ad82f35cb53553f895e7807acb235f3467f73027c5de0",
+  "web-upgrade-independent3-result.json": "8239e1f48bccaa47d1e0acae84cda5622dbf3c717d55c5b4d5b6b59b9816ffb7",
+  "web-upgrade-independent3-stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "web-upgrade-auth-fixture-fix-result.json": "84c3267a9e6daa7e735dc148d61b059df2459cd051c1b85deae5b6a9030744aa",
+  "web-upgrade-auth-fixture-fix-stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "web321-codex3-running-comments.json": "b1929753eadb0a58a82bd3f9caf9be55a2038c368d9eeedd9014b5721506dbe8",
+  "web321-codex3-completed-comments.json": "a3c6b81cf026617adc4bc0d570e24c8fd2806fce013c3b50d819474291bf1910",
+  "web321-ci-authfix-48a098e7.json": "d98db2d7e114be04bc691e4c213aee6e99ef81e62fe056c29c49f97eff573c7a",
+  "web321-ci-authfix-details.json": "f3cd136591bbf07d57bba434cef98f2767bdfd80bf858108b961010ccb37458d"
+}

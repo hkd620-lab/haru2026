@@ -1,0 +1,15 @@
+{
+  "command": "node --test /private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/tests/public-legal-boundary.test.cjs",
+  "cwd": "/private/tmp/haru-completion-web-upgrade-20261031",
+  "head": "a8a8a6b8 test source, absolute path, run from candidate cwd",
+  "startedAt": "2026-10-31T19:41:50.678Z",
+  "endedAt": "2026-10-31T19:41:51.162Z",
+  "exitCode": 0,
+  "signal": null,
+  "spawnError": null,
+  "node": "v22.23.2",
+  "npm": "10.9.8",
+  "platform": "darwin",
+  "arch": "arm64",
+  "osRelease": "27.0.0"
+}

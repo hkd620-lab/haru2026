@@ -1,0 +1,62 @@
+{
+ "dist": "frontend/dist",
+ "modern": {
+  "count": 379,
+  "byEcma": {
+   "2015": 375,
+   "2016": 1,
+   "2018": 1,
+   "2020": 2
+  },
+  "total": {
+   "dynamicImport": 1871,
+   "importMeta": 6
+  },
+  "sample": {
+   "dynamicImport": [
+    "index-BELRPzHl.js:1870",
+    "pdf-Ctfukaoh.js:1"
+   ],
+   "importMeta": [
+    "index-BELRPzHl.js:4",
+    "pdf-Ctfukaoh.js:2"
+   ]
+  },
+  "errors": []
+ },
+ "legacy": {
+  "count": 380,
+  "byEcma": {
+   "2015": 377,
+   "2018": 3
+  },
+  "total": {},
+  "sample": {},
+  "errors": []
+ },
+ "css": [
+  {
+   "name": "index-CNQWOTaY.css",
+   "bytes": 176065,
+   "layer": 5,
+   "property": 88,
+   "supports": 64,
+   "media": 30,
+   "oklch": 0,
+   "oklab": 0,
+   "colorMix": 108,
+   "hexColor": 494,
+   "rgb": 61,
+   "isPseudo": 113,
+   "wherePseudo": 86,
+   "hasPseudo": 17,
+   "nesting": 0,
+   "logicalInset": 1,
+   "marginInline": 29,
+   "webkitBackdrop": 3,
+   "backdrop": 3,
+   "fontFace": 0,
+   "keyframes": 7
+  }
+ ]
+}

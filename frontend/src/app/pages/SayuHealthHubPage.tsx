@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router';
 import { getOrigin } from '../services/v2Origin';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 

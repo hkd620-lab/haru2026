@@ -1,0 +1,516 @@
+===== test/aiImport.policy.test.cjs exit=0 {'tests': 7, 'pass': 7, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/aiImportReturn.test.mjs exit=0 {'tests': 2, 'pass': 2, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/aiLibraryDeletion.test.mjs exit=0 {'tests': 2, 'pass': 2, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/aiLibraryPagination.test.mjs exit=0 {'tests': 5, 'pass': 5, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/aiLibrarySource.test.mjs exit=0 {'tests': 2, 'pass': 2, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/assistantEntryScroll.policy.test.cjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/assistantRecommendations.test.mjs exit=0 {'tests': 40, 'pass': 40, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/assistantSavedResultOpen.test.mjs exit=1 {'tests': 19, 'pass': 18, 'fail': 1, 'cancelled': 0, 'skipped': 0}
+TAP version 13
+# Subtest: future story saves once, views the exact ID, and preserves source/content
+ok 1 - future story saves once, views the exact ID, and preserves source/content
+  ---
+  duration_ms: 11.944292
+  type: 'test'
+  ...
+# Subtest: future story synchronous lock blocks repeated save, publish and view during saving
+ok 2 - future story synchronous lock blocks repeated save, publish and view during saving
+  ---
+  duration_ms: 0.804084
+  type: 'test'
+  ...
+# Subtest: future story failed save has no view target and can retry without changing the story
+ok 3 - future story failed save has no view target and can retry without changing the story
+  ---
+  duration_ms: 0.994167
+  type: 'test'
+  ...
+# Subtest: future story publishing locks saving and viewing, and reuses an already saved ID
+ok 4 - future story publishing locks saving and viewing, and reuses an already saved ID
+  ---
+  duration_ms: 10.809125
+  type: 'test'
+  ...
+# Subtest: future story failed publication keeps the newly saved ID usable without resaving
+ok 5 - future story failed publication keeps the newly saved ID usable without resaving
+  ---
+  duration_ms: 0.724416
+  type: 'test'
+  ...
+# Subtest: future story missing nickname releases the publication lock without saving
+ok 6 - future story missing nickname releases the publication lock without saving
+  ---
+  duration_ms: 0.216584
+  type: 'test'
+  ...
+# Subtest: LAW opens the actual returned ID on the selected past date and keeps original fields/attachments
+ok 7 - LAW opens the actual returned ID on the selected past date and keeps original fields/attachments
+  ---
+  duration_ms: 3.803916
+  type: 'test'
+  ...
+# Subtest: LAW locks repeated save, date changes and close while the initial read is pending
+ok 8 - LAW locks repeated save, date changes and close while the initial read is pending
+  ---
+  duration_ms: 1.143167
+  type: 'test'
+  ...
+# Subtest: LAW initial read failure does not save or navigate and preserves a retryable error
+ok 9 - LAW initial read failure does not save or navigate and preserves a retryable error
+  ---
+  duration_ms: 0.761583
+  type: 'test'
+  ...
+# Subtest: LAW write failure stays on the result, releases its lock and allows retry
+ok 10 - LAW write failure stays on the result, releases its lock and allows retry
+  ---
+  duration_ms: 1.166417
+  type: 'test'
+  ...
+# Subtest: LAW invalid date never reads, writes or navigates
+ok 11 - LAW invalid date never reads, writes or navigates
+  ---
+  duration_ms: 0.262625
+  type: 'test'
+  ...
+# Subtest: LAW does not redirect after the result page was unmounted during saving
+ok 12 - LAW does not redirect after the result page was unmounted during saving
+  ---
+  duration_ms: 8.0125
+  type: 'test'
+  ...
+# Subtest: timeline viewing closes once and uses the saved ID in the assistants tab
+ok 13 - timeline viewing closes once and uses the saved ID in the assistants tab
+  ---
+  duration_ms: 1.967917
+  type: 'test'
+  ...
+# Subtest: timeline blocks close/view while saving and clears the saved target on close
+ok 14 - timeline blocks close/view while saving and clears the saved target on close
+  ---
+  duration_ms: 1.07225
+  type: 'test'
+  ...
+# Subtest: growth timeline forwards the service ID and locks repeated finalize synchronously
+ok 15 - growth timeline forwards the service ID and locks repeated finalize synchronously
+  ---
+  duration_ms: 10.478833
+  type: 'test'
+  ...
+# Subtest: growth timeline failed persistence keeps its draft and never supplies a view ID
+ok 16 - growth timeline failed persistence keeps its draft and never supplies a view ID
+  ---
+  duration_ms: 0.801291
+  type: 'test'
+  ...
+# Subtest: SAYU opens the exact future essay among same-date siblings
+not ok 17 - SAYU opens the exact future essay among same-date siblings
+  ---
+  duration_ms: 1.396375
+  type: 'test'
+  location: '/private/tmp/haru-completion-web-upgrade-20261031/frontend/test/assistantSavedResultOpen.test.mjs:271:1'
+  failureType: 'testCodeFailure'
+  error: 'isSpecialDayRecord is not defined'
+  code: 'ERR_TEST_FAILURE'
+  name: 'ReferenceError'
+  stack: |-
+    openFormatSayu (eval at readSavedRoute (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/assistantSavedResultOpen.test.mjs:267:3), <anonymous>:49:22)
+    applyRoute (eval at readSavedRoute (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/assistantSavedResultOpen.test.mjs:267:3), <anonymous>:157:5)
+    eval (eval at readSavedRoute (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/assistantSavedResultOpen.test.mjs:267:3), <anonymous>:162:1)
+    readSavedRoute (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/assistantSavedResultOpen.test.mjs:267:67)
+    TestContext.<anonymous> (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/assistantSavedResultOpen.test.mjs:273:18)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: SAYU opens the exact LAW document among same-date siblings
+ok 18 - SAYU opens the exact LAW document among same-date siblings
+  ---
+  duration_ms: 1.014458
+  type: 'test'
+  ...
+# Subtest: SAYU opens the exact growth timeline with its existing display-label route
+ok 19 - SAYU opens the exact growth timeline with its existing display-label route
+  ---
+  duration_ms: 99.957666
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 18
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 887.814875
+
+===== test/authCallbackAndHomePersonalization.policy.test.cjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/authCallbackDiagnostics.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/childVaccineSchedule.test.mjs exit=0 {'tests': 4, 'pass': 4, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/epubExportGuide.test.mjs exit=0 {'tests': 3, 'pass': 3, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/epubReaderGuide.test.mjs exit=0 {'tests': 4, 'pass': 4, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/epubSingleRecord.test.mjs exit=0 {'tests': 2, 'pass': 2, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/formatPhotoUploadResult.test.mjs exit=0 {'tests': 23, 'pass': 23, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/formatPolishRequest.test.mjs exit=0 {'tests': 10, 'pass': 10, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/formatRegistry.test.mjs exit=0 {'tests': 7, 'pass': 7, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/growthSubject.test.mjs exit=0 {'tests': 12, 'pass': 12, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/haruLawAttachmentCleanup.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/haruLawError.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/haruLawSave.test.cjs exit=0 {'tests': 13, 'pass': 12, 'fail': 0, 'cancelled': 0, 'skipped': 1}
+===== test/householdAmount.test.mjs exit=0 {'tests': 7, 'pass': 7, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/householdCardImport.test.mjs exit=0 {'tests': 46, 'pass': 46, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/householdCashEntry.test.mjs exit=0 {'tests': 12, 'pass': 12, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/householdCategories.test.mjs exit=0 {'tests': 14, 'pass': 14, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/householdDashboard.test.mjs exit=0 {'tests': 13, 'pass': 13, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/householdDuplicates.test.mjs exit=0 {'tests': 7, 'pass': 7, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/householdEdit.test.mjs exit=0 {'tests': 12, 'pass': 12, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/householdExport.test.mjs exit=0 {'tests': 8, 'pass': 8, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/householdPdf.test.mjs exit=0 {'tests': 8, 'pass': 8, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/householdSavePreview.test.mjs exit=0 {'tests': 7, 'pass': 7, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/householdSummary.test.mjs exit=0 {'tests': 15, 'pass': 15, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/lawEasyExplain.policy.test.cjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/ledgerAmount.test.mjs exit=0 {'tests': 4, 'pass': 4, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/ledgerEmptyExport.test.mjs exit=0 {'tests': 17, 'pass': 17, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/ledgerExportConsistency.test.mjs exit=0 {'tests': 8, 'pass': 8, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/loginPerformanceCallsites.policy.test.cjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/loginPerformanceTrace.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/loginProviderStorage.policy.test.cjs exit=0 {'tests': 9, 'pass': 9, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/mergePeriodAccess.test.mjs exit=0 {'tests': 4, 'pass': 4, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/notificationTimeZone.policy.test.cjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/originalAssistantRecords.test.mjs exit=0 {'tests': 11, 'pass': 11, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/originalSaveAutoTitle.test.mjs exit=0 {'tests': 16, 'pass': 16, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/photoSelectionRoutes.test.mjs exit=0 {'tests': 13, 'pass': 13, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/plantDetectiveEdit.test.mjs exit=0 {'tests': 8, 'pass': 8, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/plantDetectivePhotoEdit.test.mjs exit=0 {'tests': 8, 'pass': 8, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/polishCommentOptOut.test.mjs exit=0 {'tests': 8, 'pass': 8, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/questionEnterSubmit.test.mjs exit=0 {'tests': 21, 'pass': 21, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/questionInputs.policy.test.cjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/readingAi.test.mjs exit=0 {'tests': 17, 'pass': 17, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/recordPhotoCompression.test.mjs exit=0 {'tests': 4, 'pass': 4, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/recordPhotoLayouts.test.mjs exit=0 {'tests': 21, 'pass': 21, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/recordPhotoPolicy.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/recordPhotoUploadCore.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/recordPhotoUploadDeadline.test.mjs exit=0 {'tests': 4, 'pass': 4, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/recordStats.test.mjs exit=0 {'tests': 16, 'pass': 16, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/sayuAssistantAdapters.test.mjs exit=0 {'tests': 6, 'pass': 6, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/sayuEditedTitle.test.mjs exit=0 {'tests': 13, 'pass': 13, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/sayuGrowthTimeline.test.mjs exit=1 {'tests': 11, 'pass': 5, 'fail': 6, 'cancelled': 0, 'skipped': 0}
+TAP version 13
+# Subtest: 성장타임라인 판정·목록·날짜 클릭·상세 열기 출력이 이동 전 원본과 같다 (base)
+not ok 1 - 성장타임라인 판정·목록·날짜 클릭·상세 열기 출력이 이동 전 원본과 같다 (base)
+  ---
+  duration_ms: 171.844667
+  type: 'test'
+  location: '/private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.test.mjs:15:3'
+  failureType: 'testCodeFailure'
+  error: 'isSpecialDayRecord is not defined'
+  code: 'ERR_TEST_FAILURE'
+  name: 'ReferenceError'
+  stack: |-
+    openFormatSayu (eval at build (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:112:12), <anonymous>:525:22)
+    openEntry (eval at build (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:112:12), <anonymous>:791:29)
+    serialize (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:117:48)
+    file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:119:113
+    Array.map (<anonymous>)
+    serialize (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:119:93)
+    Array.map (<anonymous>)
+    serialize (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:118:44)
+    runSayuTimelineScenarios (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:138:19)
+    run (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.test.mjs:12:31)
+  ...
+# Subtest: 성장타임라인 판정·목록·날짜 클릭·상세 열기 출력이 이동 전 원본과 같다 (noConsent)
+not ok 2 - 성장타임라인 판정·목록·날짜 클릭·상세 열기 출력이 이동 전 원본과 같다 (noConsent)
+  ---
+  duration_ms: 25.69975
+  type: 'test'
+  location: '/private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.test.mjs:15:3'
+  failureType: 'testCodeFailure'
+  error: 'isSpecialDayRecord is not defined'
+  code: 'ERR_TEST_FAILURE'
+  name: 'ReferenceError'
+  stack: |-
+    openFormatSayu (eval at build (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:112:12), <anonymous>:525:22)
+    openEntry (eval at build (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:112:12), <anonymous>:791:29)
+    serialize (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:117:48)
+    file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:119:113
+    Array.map (<anonymous>)
+    serialize (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:119:93)
+    Array.map (<anonymous>)
+    serialize (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:118:44)
+    runSayuTimelineScenarios (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:138:19)
+    run (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.test.mjs:12:31)
+  ...
+# Subtest: 성장타임라인 판정·목록·날짜 클릭·상세 열기 출력이 이동 전 원본과 같다 (consentLoading)
+not ok 3 - 성장타임라인 판정·목록·날짜 클릭·상세 열기 출력이 이동 전 원본과 같다 (consentLoading)
+  ---
+  duration_ms: 31.482292
+  type: 'test'
+  location: '/private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.test.mjs:15:3'
+  failureType: 'testCodeFailure'
+  error: 'isSpecialDayRecord is not defined'
+  code: 'ERR_TEST_FAILURE'
+  name: 'ReferenceError'
+  stack: |-
+    openFormatSayu (eval at build (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:112:12), <anonymous>:525:22)
+    openEntry (eval at build (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:112:12), <anonymous>:791:29)
+    serialize (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:117:48)
+    file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:119:113
+    Array.map (<anonymous>)
+    serialize (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:119:93)
+    Array.map (<anonymous>)
+    serialize (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:118:44)
+    runSayuTimelineScenarios (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:138:19)
+    run (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.test.mjs:12:31)
+  ...
+# Subtest: 성장타임라인 판정·목록·날짜 클릭·상세 열기 출력이 이동 전 원본과 같다 (notOwner)
+not ok 4 - 성장타임라인 판정·목록·날짜 클릭·상세 열기 출력이 이동 전 원본과 같다 (notOwner)
+  ---
+  duration_ms: 17.725292
+  type: 'test'
+  location: '/private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.test.mjs:15:3'
+  failureType: 'testCodeFailure'
+  error: 'isSpecialDayRecord is not defined'
+  code: 'ERR_TEST_FAILURE'
+  name: 'ReferenceError'
+  stack: |-
+    openFormatSayu (eval at build (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:112:12), <anonymous>:525:22)
+    openEntry (eval at build (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:112:12), <anonymous>:791:29)
+    serialize (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:117:48)
+    file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:119:113
+    Array.map (<anonymous>)
+    serialize (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:119:93)
+    Array.map (<anonymous>)
+    serialize (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/sayuGrowthTimeline.harness.mjs:118:44)
+    runS
+===== test/sayuMobileReadingUx.policy.test.cjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/sayuPhotoUpload.test.mjs exit=0 {'tests': 8, 'pass': 8, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/selectedRecordPhoto.test.mjs exit=0 {'tests': 11, 'pass': 11, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/snsPrivateThumbnails.policy.test.cjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/snsRecordsMerge.policy.test.cjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/snsStoryCreator.policy.test.cjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/snsStoryRequestState.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/snsThumbnailAuthCache.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/snsThumbnailPersistentCache.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/snsThumbnailRequestQueue.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/snsThumbnailTieredLoad.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/socialLoginReturnOrigin.policy.test.cjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/statsPeriodUrl.test.mjs exit=0 {'tests': 3, 'pass': 3, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/statsStorage.policy.test.cjs exit=1 {'tests': 1, 'pass': 0, 'fail': 1, 'cancelled': 0, 'skipped': 0}
+TAP version 13
+# stats storage policy tests passed
+# node:internal/modules/run_main:123
+#     triggerUncaughtException(
+#     ^
+# AssertionError [ERR_ASSERTION]: The input did not match the regular expression /useEffect\\(\\(\\) => \\{\\n\\s*photoEditorSessionRef\\.current \\+= 1;\\n[^\\n]*\\n\\s*return \\(\\) => \\{ photoEditorSessionRef\\.current \\+= 1; \\};\\n\\s*\\}, \\[isOpen, format, recordId\\]\\);/. Input:
+# "import { getRecordPhotoLimit } from '../services/recordPhotoLimit';\\n" +
+#   "import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText, Pencil } from 'lucide-react';\\n" +
+#   "import { useState, useEffect, useRef, Fragment } from 'react';\\n" +
+#   "import { ReadingAiChat } from './ReadingAiChat';\\n" +
+#   "import { ReadingBookFields } from './ReadingBookFields';\\n" +
+#   "import { useReadingDraft } from '../hooks/useReadingDraft';\\n" +
+#   "import { applyReadingAiReference, buildPreviousReadingSummary, buildReadingSnapshot, parseReadingAiReference, readingAiReferenceText, resetReadingBookDraft } from '../services/readingAiCore';\\n" +
+#   "import { useNavigate } from 'react-router';\\n" +
+#   "import { getTestData } from '../data/testData';\\n" +
+#   "import { getFunctions, httpsCallable } from 'firebase/functions';\\n" +
+#   "import { getStorage, ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject, type StorageReference } from 'firebase/storage';\\n" +
+#   "import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';\\n" +
+#   "import { compressImage } from '../services/imageService';\\n" +
+#   "import { startSelectedRecordPhotoReads, readSelectedRecordPhotos } from '../services/selectedRecordPhoto';\\n" +
+#   "import { compressUploadPhoto } from '../services/photoUploadService';\\n" +
+#   "import { compressRecordPhoto } from '../services/recordPhotoCompression';\\n" +
+#   "import { useAuth } from '../contexts/AuthContext';\\n" +
+#   "import { toast } from 'sonner';\\n" +
+#   "import { LoadingOverlay } from './LoadingOverlay';\\n" +
+#   "import GrapeLoadingMini from './GrapeLoadingMini';\\n" +
+#   "import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';\\n" +
+#   'import {\\n' +
+#   '  cleanupTrackedRecordPhotos,\\n' +
+#   '  decodeConvertedJpeg,\\n' +
+#   '  enqueuePendingRecordPhotoCleanup,\\n' +
+#   '  excludeCommittedRecordPhotoUrls,\\n' +
+#   '  retryPendingRecordPhotoCleanup,\\n' +
+#   '  RECORD_PHOTO_UPLOAD_TIMEOUT,\\n' +
+#   '  withRecordPhotoUploadDeadline,\\n' +
+#   "} from '../services/recordPhotoUploadCore';\\n" +
+#   'import {\\n' +
+#   '  makeReadingBookId,\\n' +
+#   '  normalizeBookField,\\n' +
+#   '  buildReadingMetaCombined,\\n' +
+#   '  READING_ENTRY_TYPES,\\n' +
+#   '  READING_STATUS,\\n' +
+#   "} from '../types/haruTypes';\\n" +
+#   "import { buildFormatKeyMap } from '../records/formatRegistry';\\n" +
+#   "import { WRITABLE_FORMATS } from '../records/writeBeforeFormat';\\n" +
+#   "import { findGrowthLMS, type GrowthGender } from '../../data/growthLMS';\\n" +
+#   "import { calcAgeInMonths, calcPercentile } from '../../utils/growthCalc';\\n" +
+#   "import { GrowthChart } from '../../components/GrowthChart';\\n" +
+#   'import {\\n' +
+#   '  LEDGER_ASSET_TREATMENT_LABELS,\\n' +
+#   '  LEDGER_EXPENSE_DEDUCTION_LABELS,\\n' +
+#   '  LEDGER_XLSX_PROOF,\\n' +
+#   '  LEDGER_HOMETAX_CHECK_LABELS,\\n' +
+#   '  LEDGER_VAT_DEDUCTION_LABELS,\\n' +
+#   '  LEDGER_VAT_TAX_TYPE_LABELS,\\n' +
+#   '  adjustLedgerTaxFieldsForUsage,\\n' +
+#   '  calculateVatIncludedAmounts,\\n' +
+#   '  classifyLedgerPreviewRows,\\n' +
+#   '  createLedgerEntry as newLedgerEntry,\\n' +
+#   '  defaultLedgerAssetTreatment,\\n' +
+#   '  defaultLedgerExpenseDeduction,\\n' +
+#   '  defaultLedgerVatDeduction,\\n' +
+#   '  hashLedgerImportKey,\\n' +
+#   '  ledgerEntryAmount,\\n' +
+#   '  normalizeLedgerAmount,\\n' +
+#   '  normalizeLedgerDate,\\n' +
+#   '  parseLedgerWorkbook,\\n' +
+#   '  type LedgerAssetTreatment,\\n' +
+#   '  type LedgerExpenseDeduction,\\n' +
+#   '  type LedgerHometaxCheck,\\n' +
+#   '  type LedgerEntry,\\n' +
+#   '  type LedgerPeriodPreviewRow,\\n' +
+#   '  type LedgerVatDeduction,\\n' +
+#   '  type LedgerVatTaxType,\\n' +
+#   "} from '../services/ledgerPeriodImport';\\n" +
+#   'import {\\n' +
+#   '  saveLedgerPeriodEntriesBatch,\\n' +
+#   "} from '../services/ledgerPeriodSaveService';\\n" +
+#   'import {\\n' +
+#   '  parseKakaoBankWorkbook,\\n' +
+#   '  groupKakaoRowsByMonth,\\n' +
+#   '  mapCategory as kakaoDefaultCategory,\\n' +
+#   '  type KakaoXlsxMonthGroup,\\n' +
+#   '  type KakaoXlsxPreviewRow,\\n' +
+#   "} from '../services/householdKakaoImport';\\n" +
+#   "import { parseHouseholdAmountText } from '../utils/householdAmount';\\n" +
+#   "import { checkHouseholdDuplicates, HouseholdDuplicateReviewRequired, type HouseholdDecisions, type HouseholdDuplicateCheck } from '../services/householdDuplicates';\\n" +
+#   "import { loadHouseholdRecords, type HouseholdSaveResult } from '../services/householdSaveService';\\n" +
+#   "import { HouseholdDuplicateReview } from './HouseholdDuplicateReview';\\n" +
+#   "import { householdSaveLabel, isBlankHouseholdEntry, mergeHouseholdChecks, previewHouseholdSave } from '../services/householdSavePreview';\\n" +
+#   "import { HouseholdSaveSummary } from './HouseholdSaveSummary';\\n" +
+#   "import { parseKakaoBankPdf } from '../services/householdKakaoPdfImport';\\n" +
+#   "import { HouseholdImportGuide } from './HouseholdImportGuide';\\n" +
+#   "import { householdImportKind, type HouseholdGuideSourceId } from '../services/householdImportSources';\\n" +
+#   "import { readHouseholdCardFile, type CardImportContext, type CardImportReview, type HouseholdCardType } from '../services/householdCardImport';\\n" +
+#   "import { canSelectCardRow, chooseCardCancellation, validateHouseholdImportSave, isCardPaymentCandidate, cardImportCounts, cardImportCountLabel, cardImportCompletion } from '../services/householdImportReview';\\n" +
+#   
+===== test/structuredAssistantRecords.test.mjs exit=0 {'tests': 37, 'pass': 37, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/subscriptionDisplay.policy.test.cjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/validateBuildEnv.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/voidingRecordTarget.test.mjs exit=0 {'tests': 17, 'pass': 17, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/webMajorUpgrade.test.mjs exit=1 {'tests': 12, 'pass': 11, 'fail': 1, 'cancelled': 0, 'skipped': 0}
+TAP version 13
+# Subtest: Router 8 전제: react-router-dom이 없고 React·Vite 최소 버전을 lock이 지킨다
+ok 1 - Router 8 전제: react-router-dom이 없고 React·Vite 최소 버전을 lock이 지킨다
+  ---
+  duration_ms: 2.959084
+  type: 'test'
+  ...
+# Subtest: 소스는 제거된 react-router-dom을 import하지 않는다
+ok 2 - 소스는 제거된 react-router-dom을 import하지 않는다
+  ---
+  duration_ms: 102.606667
+  type: 'test'
+  ...
+# Subtest: 앱 라우터는 선언형 BrowserRouter를 유지하고 framework·data router를 들이지 않는다
+ok 3 - 앱 라우터는 선언형 BrowserRouter를 유지하고 framework·data router를 들이지 않는다
+  ---
+  duration_ms: 0.395667
+  type: 'test'
+  ...
+# Subtest: 중첩 경로·동적 파라미터·검색 파라미터가 v8 컨텍스트로 전달된다
+ok 4 - 중첩 경로·동적 파라미터·검색 파라미터가 v8 컨텍스트로 전달된다
+  ---
+  duration_ms: 10.3765
+  type: 'test'
+  ...
+# Subtest: Link는 href를 만들고 없는 경로는 catch-all로 간다
+ok 5 - Link는 href를 만들고 없는 경로는 catch-all로 간다
+  ---
+  duration_ms: 2.157167
+  type: 'test'
+  ...
+# Subtest: Navigate replace는 첫 렌더에서 대상 element를 대신 그리지 않는다
+ok 6 - Navigate replace는 첫 렌더에서 대상 element를 대신 그리지 않는다
+  ---
+  duration_ms: 0.917542
+  type: 'test'
+  ...
+# Subtest: 라우터 밖 훅은 조용히 넘어가지 않고 오류를 낸다
+ok 7 - 라우터 밖 훅은 조용히 넘어가지 않고 오류를 낸다
+  ---
+  duration_ms: 0.483083
+  type: 'test'
+  ...
+# Subtest: React.lazy와 Suspense는 lazy 경로의 fallback을 렌더한다
+ok 8 - React.lazy와 Suspense는 lazy 경로의 fallback을 렌더한다
+  ---
+  duration_ms: 4.174375
+  type: 'test'
+  ...
+# Subtest: vite 설정은 iOS 13 레거시·모던·CSS 타깃을 명시해 유지한다
+ok 9 - vite 설정은 iOS 13 레거시·모던·CSS 타깃을 명시해 유지한다
+  ---
+  duration_ms: 1.075666
+  type: 'test'
+  ...
+# Subtest: vite가 esbuild를 끌어오지 않으므로 시험이 쓰는 esbuild를 직접 선언한다
+ok 10 - vite가 esbuild를 끌어오지 않으므로 시험이 쓰는 esbuild를 직접 선언한다
+  ---
+  duration_ms: 1.201
+  type: 'test'
+  ...
+# Subtest: 빌드 산출물은 iOS 13이 파싱 못 하는 lookbehind 리터럴을 남기지 않고 webkit 접두사를 유지한다
+not ok 11 - 빌드 산출물은 iOS 13이 파싱 못 하는 lookbehind 리터럴을 남기지 않고 webkit 접두사를 유지한다
+  ---
+  duration_ms: 216.151209
+  type: 'test'
+  location: '/private/tmp/haru-completion-web-upgrade-20261031/frontend/test/webMajorUpgrade.test.mjs:161:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+    + [
+    +   'index-BELRPzHl.js',
+    +   'index-legacy-_dkoSCsX.js'
+    + ]
+    - []
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    0: 'index-BELRPzHl.js'
+    1: 'index-legacy-_dkoSCsX.js'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/haru-completion-web-upgrade-20261031/frontend/test/webMajorUpgrade.test.mjs:168:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: recharts는 React 19 요소를 인식하는 react-is로 Fragment 자식을 그린다
+ok 12 - recharts는 React 19 요소를 인식하는 react-is로 Fragment 자식을 그린다
+  ---
+  duration_ms: 18.307875
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 11
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2504.872875
+
+===== test/writeBeforeFormat.test.mjs exit=0 {'tests': 5, 'pass': 5, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== test/writingDraftLifecycle.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}
+===== tests/ledgerPeriodImport.test.mjs exit=0 {'tests': 1, 'pass': 1, 'fail': 0, 'cancelled': 0, 'skipped': 0}

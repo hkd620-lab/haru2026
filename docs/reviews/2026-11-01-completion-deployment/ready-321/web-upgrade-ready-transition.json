@@ -1,0 +1,50 @@
+{
+  "status": "fulfilled",
+  "value": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Action completed."
+      }
+    ],
+    "structuredContent": {
+      "url": "https://github.com/hkd620-lab/haru2026/pull/321",
+      "number": 321,
+      "state": "open",
+      "merged": false,
+      "mergeable": true,
+      "draft": false,
+      "body": "## 목적·주요 변경\n#96·#116의 웹 기반 변경을 현행 main에 맞춰 React 19.3.1 / react-router 8.5.1 / Vite 8.3.5로 반영합니다. 기존 BrowserRouter 선언형과 URL을 유지하며 필수 peer 의존성을 갱신했습니다. Vite의 esbuild 제거와 구형 iOS 부팅·Safari 블러 회귀를 보완했습니다. 루트 약관 시험의 Router 참조와 오래된 인증 시험 fixture도 보정했습니다. 제품 인증 정책이나 시험 기대값은 바꾸지 않았습니다.\n\n## 검증·검토\nNode22 npm ci·웹 build 성공. frontend 전체 81파일643시험은634통과/8실패/1skip이고 기존 main의 같은3파일8실패를 유지합니다. tsc108건도 기준선과 같습니다. 정적assets·manifest·SW793항목 및 더미환경 로그아웃 현대/강제legacy12경로를 대조했습니다(실제 iOS 검증 아님).\n독립2 추가 요구로 실제 Chromium 인증 관문을 실행했고, 기존 fixture export5개 누락을 기준선에서도 재현한 뒤 같은 패치를 적용해 기준선21/21·후보21/21 통과했습니다. 공개 약관6/6·webMajorUpgrade12/12 통과. 세 PR 합본에서는 웹/Functions build·관련131/131·compiled export114 동일 및 sharp/TTS 동시 로드를 확인했습니다.\n- [최초·중간 실패와 보정 전 인증 시험](https://github.com/hkd620-lab/haru2026/tree/cda7326d7e81989e2bf131c822bd7fdd5c35d77e/docs/reviews/2026-10-31-web-major-completion/auth-gate-validation)\n- [fixture 보정·기준선/후보 실제 시험 명령·원문](https://github.com/hkd620-lab/haru2026/tree/cda7326d7e81989e2bf131c822bd7fdd5c35d77e/docs/reviews/2026-10-31-web-major-completion/auth-gate-fixture-fix)\n- [독립3 질문·승인 원문 및 Codex3 색인](https://github.com/hkd620-lab/haru2026/tree/cda7326d7e81989e2bf131c822bd7fdd5c35d77e/docs/reviews/2026-10-31-web-major-completion/resume0035-review3)\n- [세 PR 합본 검증131개·양쪽 build·export114 원문](https://github.com/hkd620-lab/haru2026/tree/cda7326d7e81989e2bf131c822bd7fdd5c35d77e/docs/reviews/2026-10-31-web-major-completion/joint-validation)\n독립3 판정 **승인 (제품 코드·설계와 시험 증거 한정)**, 수정 후 승인 누적1/3 유지. [Codex3 실제 결과 지적0](https://github.com/hkd620-lab/haru2026/pull/321#issuecomment-6548613004), 검토 HEAD48a098e7. 이후 cda7326d는 새 docs/reviews102개 추가만 포함합니다. 최종 cda7326d [CI41240674512](https://github.com/hkd620-lab/haru2026/actions/runs/41240674512) build_and_preview·Deploy Preview 모두 성공했습니다.\n\n## 배포 영향\n아직 미병합·운영 미배포. main 병합 시 haru2026-8abb8 Hosting 자동 반영 대상입니다. 이 PR 자체는 Functions·Firestore 핵심경로(users/{uid}/records/{date})·리전(asia-northeast3)·환경변수·Rules·결제·인증 정책 변경이 없습니다. 비밀값·개인정보를 추가하지 않았습니다. 별도PR319/320의 이미지3함수와 generateTTS 선택배포는 세PR 운영 범위 확인 후 진행합니다.\n\n## 위험·되돌리기\n실제 Google OAuth·로그인 후 전체 화면·기록 저장·차트·마크다운·가져오기·운영 PWA 갱신과 iOS 실기기 확인은 미실행입니다. Preview /terms도 브라우저 ERR_BLOCKED_BY_CLIENT로 확인하지 못했습니다. 구형 iOS 동적 lookbehind의 기존 한계는 남아 있습니다. 모의 Firebase Chromium 경계 시험과 실제 운영 E2E를 구분합니다. 전체 보안 취약점 해결 범위가 아닙니다. 운영 문제 시 직전 Hosting으로 되돌리고 변경 커밋을 정상 revert합니다. 병합·운영 배포는 허대표님 범위 확인 대기입니다.",
+      "title": "chore: Vite 8·React Router 8 이행과 기존 화면 호환성 검증",
+      "base": "main",
+      "base_sha": "a8a8a6b8b0e38464bbadbd683cb3a9319166eeae",
+      "head": "codex-completion-web-upgrade",
+      "head_sha": "cda7326d7e81989e2bf131c822bd7fdd5c35d77e",
+      "head_repo_id": 1164151333,
+      "head_repo_full_name": "hkd620-lab/haru2026",
+      "merge_commit_sha": null,
+      "user": {
+        "login": "hkd620-lab",
+        "name": "hkd620-lab",
+        "email": null,
+        "avatar_url": "https://avatars.githubusercontent.com/u/233199315?v=4",
+        "id": null
+      },
+      "requested_reviewers": null,
+      "requested_team_reviewers": null,
+      "diff": null,
+      "comments": null,
+      "created_at": "2026-10-31T11:03:21Z",
+      "updated_at": "2026-10-31T23:03:36Z",
+      "closed_at": null,
+      "merged_at": null,
+      "commits": 14,
+      "changed_files": 377,
+      "additions": 57085,
+      "deletions": 1663,
+      "display_url": "https://github.com/hkd620-lab/haru2026/pull/321",
+      "display_title": "chore: Vite 8·React Router 8 이행과 기존 화면 호환성 검증"
+    },
+    "isError": false
+  }
+}

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Route, Routes, useLocation } from 'react-router';
 import { TermsPage } from '../pages/TermsPage';
 import { PrivacyPage } from '../pages/PrivacyPage';
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { Calendar, ArrowLeft } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
 import { useAuth } from '../contexts/AuthContext';

@@ -1,0 +1,84 @@
+{
+  "actor": "CC executor (Claude Code, claude-opus-5-5)",
+  "purpose": "배포 전 #319 #320 #321 상호영향 검증. 기존 독립 제품 승인 3건을 대체하는 판정이 아니다.",
+  "target": {
+    "worktree": "/private/tmp/haru-completion-joint-20261101",
+    "branch": "codex/completion-joint-validation",
+    "head": "b935b8988eb6a9d7ccd560c4a5e7a7f913800813",
+    "tree": "4a49e02d5e6550879f3bdb294d77bf5b571fdc66",
+    "headParents": ["022646e1abb2cafbb10bdfe174f92b3dc7507232", "48a098e7f6042a453e352a3782aeb72d5d2970f5"],
+    "firstMergeParents": ["80622676b41d77070677c197adfc9e4a63e63a5e", "b9651bf212f1a96787b4850b1cebe2ed40c8571e"]
+  },
+  "environment": {
+    "node": "v22.23.2",
+    "npm": "10.9.8",
+    "platform": "darwin arm64",
+    "react": "19.3.1",
+    "reactDom": "19.3.1",
+    "reactRouter": "8.5.1",
+    "vite": "8.3.5",
+    "esbuild": "0.28.2",
+    "sharp": "0.35.5",
+    "libvips": "8.18.7",
+    "playwrightTest": "1.59.1"
+  },
+  "timeUtc": { "firstStart": "2026-10-31T20:39:24.241Z", "lastTestEnd": "2026-10-31T20:42:11.880Z" },
+  "installs": [
+    { "label": "01-npm-ci-frontend", "exitCode": 0, "added": 830 },
+    { "label": "02-npm-ci-functions", "exitCode": 0, "added": 742 },
+    { "label": "03-npm-ci-tests", "exitCode": 0, "added": 4 }
+  ],
+  "builds": [
+    { "label": "10-frontend-build", "exitCode": 0, "note": "더미 6값, 42.73초, PWA 793항목. stderr는 Vite 경고만 있다" },
+    { "label": "20-functions-build", "exitCode": 0, "stderrBytes": 0 }
+  ],
+  "tests": [
+    { "label": "11-bible-grammar", "expected": 35, "tests": 35, "pass": 35, "fail": 0, "skipped": 0, "exitCode": 0 },
+    { "label": "12-reading-continue", "expected": 10, "tests": 10, "pass": 10, "fail": 0, "skipped": 0, "exitCode": 0 },
+    { "label": "13-frontend-reading-ai", "expected": 17, "tests": 17, "pass": 17, "fail": 0, "skipped": 0, "exitCode": 0 },
+    { "label": "14-auth-gate", "expected": 21, "tests": 21, "pass": 21, "fail": 0, "skipped": 0, "exitCode": 0 },
+    { "label": "15-public-legal", "expected": 6, "tests": 6, "pass": 6, "fail": 0, "skipped": 0, "exitCode": 0 },
+    { "label": "16-web-major-upgrade", "expected": 12, "tests": 12, "pass": 12, "fail": 0, "skipped": 0, "exitCode": 0 },
+    { "label": "21-generate-tts", "expected": 8, "tests": 8, "pass": 8, "fail": 0, "skipped": 0, "exitCode": 0 },
+    { "label": "22-functions-reading-ai", "expected": 8, "tests": 8, "pass": 8, "fail": 0, "skipped": 0, "exitCode": 0 },
+    { "label": "23-sharp-pipelines", "expected": 14, "tests": 14, "pass": 14, "fail": 0, "skipped": 0, "exitCode": 0 }
+  ],
+  "testTotals": { "tests": 131, "pass": 131, "fail": 0, "cancelled": 0, "skipped": 0 },
+  "exports": {
+    "source": "compiled functions/lib/index.js, Object.keys. 소스 정규식 미사용",
+    "count": 114,
+    "unique": 114,
+    "comparisons": {
+      "sharp-node22-baseline(a8a8a6b8)": { "baselineCount": 114, "added": 0, "removed": 0 },
+      "sharp-node22-candidate": { "baselineCount": 114, "added": 0, "removed": 0 },
+      "reader141-parent-exports-check": { "baselineCount": 114, "added": 0, "removed": 0 }
+    },
+    "file": "exports-diff.json"
+  },
+  "jointChecks": {
+    "sharpAndCompiledGenerateTtsSameProcessLoad": { "label": "25-sharp-tts-load", "exitCode": 0, "region": "asia-northeast3" },
+    "voiceUiInBuiltBundles": { "label": "34-dist-bible-voice", "exitCode": 0, "files": ["index-Bq4jc-eH.js", "index-legacy-D7Nd6SK6.js"] }
+  },
+  "finalState": {
+    "srcTestsLocksRulesUnchanged": true,
+    "lockSha256SameAsBefore": true,
+    "newCommit": false,
+    "push": false,
+    "trackedGeneratedChanges": ["functions/lib/index.js", "functions/lib/snsToDiary.js"],
+    "trackedGeneratedChangesNote": "요청된 Functions build가 만든 변경이다. 커밋본 lib/index.js는 2026-10-06 fe5830cd 이후 낡아 새 TTS 코드가 없고, firebase.json predeploy가 배포 때 다시 빌드한다. 복원하지 않고 남겼다. 커밋하면 안 된다."
+  },
+  "sensitivePatternMatchesInLogs": 0,
+  "permissionDenied": [
+    "cd /private/tmp/haru-completion-control-20261031 && git rev-parse --is-inside-work-tree 등 복합 명령: control 폴더 git 상태 미확인",
+    "ls -la /Users/heogyeongdae/Developer/AI_STORAGE_POLICY.md ...; cat package.json; node -e ... 복합 명령: Read로 필요한 파일만 확인",
+    "ls /Users/heogyeongdae/Library/Caches/ms-playwright: 허용 폴더 밖. 인증 관문 시험 자체는 통과"
+  ],
+  "notVerified": [
+    "BiblePage를 실제 브라우저와 BrowserRouter에 마운트한 음성 재생",
+    "컴파일된 lib의 generateTTS handler 실행. 21-generate-tts는 src 원문을 변환해 모의 의존성으로 실행한다",
+    "sharp와 generateTTS가 함께 쓰이는 호출 경로. 코드상 같은 프로세스 로드까지만 확인했다",
+    "실제 OpenAI, Storage, Firebase, 운영 E2E, 에뮬레이터",
+    "Linux 재실행, CI, 전체 643시험, 전체 tsc, 모바일",
+    "export 로드 중 네트워크 차단 측정. require만 했고 handler는 호출하지 않았다"
+  ]
+}

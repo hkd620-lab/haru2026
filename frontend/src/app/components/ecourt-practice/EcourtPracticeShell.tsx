@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
 
 type EcourtPracticeShellProps = {

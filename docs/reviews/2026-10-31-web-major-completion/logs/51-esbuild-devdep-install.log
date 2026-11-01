@@ -1,0 +1,7 @@
+$ (cwd=frontend) npm install --save-dev esbuild@^0.28.2 --no-audit --no-fund
+# start 2026-10-31T19:40:39+09:00
+
+added 2 packages, and removed 2 packages in 2s
+
+# end 2026-10-31T19:40:42+09:00 exit=0
+

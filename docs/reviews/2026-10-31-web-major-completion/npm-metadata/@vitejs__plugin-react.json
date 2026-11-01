@@ -1,0 +1,32 @@
+{
+  "name": "@vitejs/plugin-react",
+  "version": "6.1.2",
+  "dist-tags": {
+    "alpha": "3.0.0-alpha.2",
+    "beta": "6.0.0-beta.0",
+    "latest": "6.1.2"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "peerDependencies": {
+    "vite": "^8.0.0",
+    "oxc-transform-react": "^0.152.0",
+    "@rolldown/plugin-babel": "^0.1.7 || ^0.2.0",
+    "babel-plugin-react-compiler": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "oxc-transform-react": {
+      "optional": true
+    },
+    "@rolldown/plugin-babel": {
+      "optional": true
+    },
+    "babel-plugin-react-compiler": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@rolldown/pluginutils": "^1.0.1"
+  }
+}

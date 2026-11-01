@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import { BUSINESS_INFO } from './BusinessInfoNotice';
 
 export function Footer() {

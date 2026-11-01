@@ -1,0 +1,13 @@
+{
+  "name": "react-responsive-masonry",
+  "version": "2.9.0",
+  "dist-tags": {
+    "latest": "2.9.0"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0"
+  },
+  "dependencies": {
+    "prop-types": "^15.7.2"
+  }
+}

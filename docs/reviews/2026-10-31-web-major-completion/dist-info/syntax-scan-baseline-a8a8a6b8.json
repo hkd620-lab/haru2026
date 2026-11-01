@@ -1,0 +1,77 @@
+{
+ "dist": "/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8/frontend/dist",
+ "modern": {
+  "count": 378,
+  "byEcma": {
+   "2015": 376,
+   "2020": 2
+  },
+  "total": {
+   "regexUnicodeProperty": 7,
+   "dynamicImport": 1871,
+   "importMeta": 3
+  },
+  "sample": {
+   "regexUnicodeProperty": [
+    "index-o2hflKZX.js:6",
+    "pdf-8C7lU80E.js:1"
+   ],
+   "dynamicImport": [
+    "index-o2hflKZX.js:1870",
+    "pdf-8C7lU80E.js:1"
+   ],
+   "importMeta": [
+    "index-o2hflKZX.js:1",
+    "pdf-8C7lU80E.js:2"
+   ]
+  },
+  "errors": []
+ },
+ "legacy": {
+  "count": 379,
+  "byEcma": {
+   "5": 8,
+   "2015": 369,
+   "2019": 2
+  },
+  "total": {
+   "regexLookbehind": 2,
+   "regexUnicodeProperty": 10
+  },
+  "sample": {
+   "regexLookbehind": [
+    "index-legacy-CoJe1g39.js:2"
+   ],
+   "regexUnicodeProperty": [
+    "index-legacy-CoJe1g39.js:8",
+    "pdf-legacy-BVSViVAp.js:2"
+   ]
+  },
+  "errors": []
+ },
+ "css": [
+  {
+   "name": "index-BagJrzBd.css",
+   "bytes": 155131,
+   "layer": 5,
+   "property": 88,
+   "supports": 56,
+   "media": 30,
+   "oklch": 124,
+   "oklab": 1,
+   "colorMix": 108,
+   "hexColor": 417,
+   "rgb": 43,
+   "isPseudo": 106,
+   "wherePseudo": 77,
+   "hasPseudo": 17,
+   "nesting": 0,
+   "logicalInset": 8,
+   "marginInline": 36,
+   "webkitBackdrop": 3,
+   "backdrop": 3,
+   "fontFace": 0,
+   "keyframes": 7
+  }
+ ]
+}

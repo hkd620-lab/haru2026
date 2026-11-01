@@ -1,0 +1,17 @@
+{
+  "actor": "CC executor (Claude Code)",
+  "label": "23-sharp-pipelines",
+  "command": "node --test test/sharpImagePipelines.test.js",
+  "cwd": "/private/tmp/haru-completion-joint-20261101/functions",
+  "head": "b935b8988eb6a9d7ccd560c4a5e7a7f913800813",
+  "startedAt": "2026-10-31T20:42:06.969Z",
+  "endedAt": "2026-10-31T20:42:09.931Z",
+  "exitCode": 0,
+  "signal": null,
+  "spawnError": null,
+  "node": "v22.23.2",
+  "npm": "10.9.8",
+  "platform": "darwin",
+  "arch": "arm64",
+  "osRelease": "27.0.0"
+}

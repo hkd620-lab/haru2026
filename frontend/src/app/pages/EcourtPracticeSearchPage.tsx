@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Search } from 'lucide-react';
 import { EcourtPracticeShell } from '../components/ecourt-practice/EcourtPracticeShell';
 

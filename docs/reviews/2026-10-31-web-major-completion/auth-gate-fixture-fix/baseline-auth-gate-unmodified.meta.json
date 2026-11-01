@@ -1,0 +1,15 @@
+{
+  "command": "node --test tests/auth-user-document-gate.test.cjs",
+  "cwd": "/private/tmp/haru-completion-control-20261031/web-upgrade-baseline-build-a8a8a6b8",
+  "head": "a8a8a6b8 (archive, not a git repo)",
+  "startedAt": "2026-10-31T19:40:31.917Z",
+  "endedAt": "2026-10-31T19:40:33.081Z",
+  "exitCode": 1,
+  "signal": null,
+  "spawnError": null,
+  "node": "v22.23.2",
+  "npm": "10.9.8",
+  "platform": "darwin",
+  "arch": "arm64",
+  "osRelease": "27.0.0"
+}

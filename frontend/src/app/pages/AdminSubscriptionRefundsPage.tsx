@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { CheckCircle2, RefreshCw, XCircle } from 'lucide-react';
 import { toast } from 'sonner';

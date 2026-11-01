@@ -1,0 +1,17 @@
+{
+  "actor": "CC executor (Claude Code)",
+  "label": "34-dist-bible-voice",
+  "command": "node -e const fs=require('fs'),p=require('path');const d='dist/assets';const all=fs.readdirSync(d).filter(f=>f.endsWith('.js'));const has=s=>all.filter(f=>fs.readFileSync(p.join(d,f),'utf8').includes(s));console.log(JSON.stringify({jsFiles:all.length,bibleNamed:all.filter(f=>/bible/i.test(f)),withListenLabel:has('AI 고음질 듣기'),withGenerateTTS:has('generateTTS')},null,2))",
+  "cwd": "/private/tmp/haru-completion-joint-20261101/frontend",
+  "head": "b935b8988eb6a9d7ccd560c4a5e7a7f913800813",
+  "startedAt": "2026-10-31T20:43:15.829Z",
+  "endedAt": "2026-10-31T20:43:16.270Z",
+  "exitCode": 0,
+  "signal": null,
+  "spawnError": null,
+  "node": "v22.23.2",
+  "npm": "10.9.8",
+  "platform": "darwin",
+  "arch": "arm64",
+  "osRelease": "27.0.0"
+}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { httpsCallable } from 'firebase/functions';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { AlertTriangle, ArrowLeft, Loader2, PawPrint, Search } from 'lucide-react';

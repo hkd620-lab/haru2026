@@ -1,0 +1,110 @@
+# excluded syntax-broken unused files: ['src/app/components/ExportModal.tsx']
+# exit=2
+src/app/components/FormatModal.tsx: error TS2339: Property 'garden_crop' does not exist on type '{}'.
+src/app/components/FormatModal.tsx: error TS2345: Argument of type 'RecordFormat' is not assignable to parameter of type 'RecordFormat'.
+src/app/components/FormatModal.tsx: error TS2345: Argument of type 'UploadTask' is not assignable to parameter of type 'CancelableUpload<UploadTaskSnapshot>'.
+src/app/components/FormatModal.tsx: error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/app/components/FormatModal.tsx: error TS2552: Cannot find name 'setVoidingForm'. Did you mean 'isVoidingFormat'?
+src/app/components/FormatModal.tsx: error TS7053: Element implicitly has an 'any' type because expression of type '`${string}_style`' can't be used to index type '{}'.
+src/app/components/FormatModal.tsx: error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+src/app/components/FormatModal.tsx: error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+src/app/components/GrapeAnimation.tsx: error TS2339: Property 'glob' does not exist on type 'ImportMeta'.
+src/app/components/RecordDetailModal.tsx: error TS2315: Type 'Record' is not generic.
+src/app/components/RecordListModal.tsx: error TS2315: Type 'Record' is not generic.
+src/app/components/SayuModal.tsx: error TS2322: Type '(GrowthTimelineEditItem | { locationStatus: string; url: string; takenDate: string; memo: string; order: number; locationLabel?: string | undefined; locationCandidate?: ReverseGeocodeCandidate | undefined; latitude?: number | undefined; longitude?: number | undefined; })[]' is not assignable to type 'GrowthTimelineEditItem[]'.
+src/app/components/SayuModal.tsx: error TS2345: Argument of type '(prev: GrowthTimelineEditItem[]) => (GrowthTimelineEditItem | { locationStatus: string; url: string; takenDate: string; memo: string; ... 4 more ...; longitude?: number | undefined; })[]' is not assignable to parameter of type 'SetStateAction<GrowthTimelineEditItem[]>'.
+src/app/components/SnsStoryCreator.tsx: error TS2345: Argument of type '{ rangeType: string; year: string | undefined; from: string | undefined; to: string | undefined; excludedRecordIds: string[]; }' is not assignable to parameter of type 'SnsStoryRequestBase'.
+src/app/components/SnsStoryCreator.tsx: error TS2345: Argument of type '{ sourceFingerprint: string; title: string; confirmedSynopsis: string; rangeType: string; year: string | undefined; from: string | undefined; to: string | undefined; excludedRecordIds: string[]; }' is not assignable to parameter of type 'SnsStoryFinalRequestInput'.
+src/app/contexts/AuthContext.tsx: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/contexts/AuthContext.tsx: error TS2339: Property 'loginWithKakao' does not exist on type 'typeof import("/private/tmp/haru-completion-web-upgrade-20261031/frontend/src/firebase")'.
+src/app/contexts/AuthContext.tsx: error TS2339: Property 'loginWithNaver' does not exist on type 'typeof import("/private/tmp/haru-completion-web-upgrade-20261031/frontend/src/firebase")'.
+src/app/pages/AiLibraryPage.tsx: error TS2559: Type 'HaruRecord' has no properties in common with type 'AiLibrarySourceRecord'.
+src/app/pages/AiLibraryPage.tsx: error TS2559: Type 'HaruRecord' has no properties in common with type 'AiLibrarySourceRecord'.
+src/app/pages/AiLibraryPage.tsx: error TS2559: Type 'HaruRecord' has no properties in common with type 'AiLibrarySourceRecord'.
+src/app/pages/AiLibraryPage.tsx: error TS2559: Type 'HaruRecord' has no properties in common with type 'AiLibrarySourceRecord'.
+src/app/pages/BiblePage.tsx: error TS2322: Type '((startVerse?: number | undefined) => Promise<void>) | ((startVerse?: number | undefined) => Promise<void>) | ((startVerse?: number | undefined) => Promise<void>) | (() => Promise<...>) | (() => Promise<...>) | (() => Promise<...>)' is not assignable to type 'MouseEventHandler<HTMLButtonElement> | undefined'.
+src/app/pages/BiblePage.tsx: error TS2322: Type '((startVerse?: number | undefined) => Promise<void>) | ((startVerse?: number | undefined) => Promise<void>) | ((startVerse?: number | undefined) => Promise<void>) | (() => Promise<...>) | (() => Promise<...>) | (() => Promise<...>)' is not assignable to type 'MouseEventHandler<HTMLButtonElement> | undefined'.
+src/app/pages/EcourtPracticeHomePage.tsx: error TS2339: Property 'highlight' does not exist on type '{ readonly title: "로그인"; readonly description: "공동인증서 또는 간편인증으로 들어가는 흐름을 연습합니다."; readonly icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; readonly actionLabel: "로그인 연습"; readonly path: "/lawsuit-practice/portal/login"; readonly primary: true; } | ... 6 more ... | { ...; }'.
+src/app/pages/EcourtPracticeHomePage.tsx: error TS2339: Property 'primary' does not exist on type '{ readonly title: "로그인"; readonly description: "공동인증서 또는 간편인증으로 들어가는 흐름을 연습합니다."; readonly icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; readonly actionLabel: "로그인 연습"; readonly path: "/lawsuit-practice/portal/login"; readonly primary: true; } | ... 6 more ... | { ...; }'.
+src/app/pages/EcourtPracticeHomePage.tsx: error TS2339: Property 'state' does not exist on type '{ readonly title: "로그인"; readonly description: "공동인증서 또는 간편인증으로 들어가는 흐름을 연습합니다."; readonly icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; readonly actionLabel: "로그인 연습"; readonly path: "/lawsuit-practice/portal/login"; readonly primary: true; } | ... 6 more ... | { ...; }'.
+src/app/pages/EcourtPracticeHomePage.tsx: error TS2339: Property 'state' does not exist on type '{ readonly title: "로그인"; readonly description: "공동인증서 또는 간편인증으로 들어가는 흐름을 연습합니다."; readonly icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; readonly actionLabel: "로그인 연습"; readonly path: "/lawsuit-practice/portal/login"; readonly primary: true; } | ... 6 more ... | { ...; }'.
+src/app/pages/EcourtPracticeHomePage.tsx: error TS2339: Property 'state' does not exist on type '{ readonly title: "로그인"; readonly description: "공동인증서 또는 간편인증으로 들어가는 흐름을 연습합니다."; readonly icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; readonly actionLabel: "로그인 연습"; readonly path: "/lawsuit-practice/portal/login"; readonly primary: true; } | ... 6 more ... | { ...; }'.
+src/app/pages/EcourtPracticeLoginPage.tsx: error TS2322: Type 'string | ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ReactNode'.
+src/app/pages/GrammarDashboard.tsx: error TS2339: Property 'glob' does not exist on type 'ImportMeta'.
+src/app/pages/HouseholdPage.tsx: error TS2550: Property 'replaceAll' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2021' or later.
+src/app/pages/HouseholdPage.tsx: error TS2550: Property 'replaceAll' does not exist on type 'string'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2021' or later.
+src/app/pages/LandingPage.tsx: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/pages/LandingPage.tsx: error TS2503: Cannot find namespace 'JSX'.
+src/app/pages/LibraryPage.tsx: error TS2322: Type 'import("/private/tmp/haru-completion-web-upgrade-20261031/frontend/src/app/types/haruTypes").RecordFormat' is not assignable to type 'RecordFormat'.
+src/app/pages/LoginPage.tsx: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/pages/NovelStoryPage.tsx: error TS2345: Argument of type '{ date: string; formats: string[]; content: string; essay_title: string; essay_ai_title: string; essay_sayu: string; future_story_source: { type: string; protagonistName: string; timeOption: string; fromRecord: boolean; recordTitle: string; recordDate: string; recordFormat: string; }; }' is not assignable to parameter of type 'Partial<HaruRecord>'.
+src/app/pages/NovelStoryPage.tsx: error TS2345: Argument of type '{ date: string; formats: string[]; content: string; essay_title: string; essay_ai_title: string; essay_sayu: string; future_story_source: { type: string; protagonistName: string; timeOption: string; fromRecord: boolean; recordTitle: string; recordDate: string; recordFormat: string; }; }' is not assignable to parameter of type 'Partial<HaruRecord>'.
+src/app/pages/PlantDetectivePage.tsx: error TS2322: Type '{ name: string; sub: string; score: number | null; }[]' is not assignable to type '{ name: string; sub?: string | undefined; score?: number | undefined; }[]'.
+src/app/pages/PlantDetectivePage.tsx: error TS2322: Type '{ name: string; sub: string; score: number | null; }[]' is not assignable to type '{ name: string; sub?: string | undefined; score?: number | undefined; }[]'.
+src/app/pages/PlantDetectivePage.tsx: error TS2345: Argument of type 'Uint8Array<ArrayBufferLike>[]' is not assignable to parameter of type 'BlobPart[]'.
+src/app/pages/RecordPage.tsx: error TS2322: Type 'import("/private/tmp/haru-completion-web-upgrade-20261031/frontend/src/app/types/haruTypes").RecordFormat' is not assignable to type 'RecordFormat'.
+src/app/pages/RecordPage.tsx: error TS2345: Argument of type '"pet"' is not assignable to parameter of type 'RecordFormat'.
+src/app/pages/RecordPage.tsx: error TS2367: This comparison appears to be unintentional because the types '"하루LAW" | "HARUraw" | "생활" | "업무" | "AI대화" | "나도작가" | "하루학습"' and '"HARU예언"' have no overlap.
+src/app/pages/RecordPage.tsx: error TS2367: This comparison appears to be unintentional because the types '"하루LAW" | "HARUraw" | "생활" | "업무" | "AI대화" | "나도작가" | "하루학습"' and '"HARU예언"' have no overlap.
+src/app/pages/RecordPage.tsx: error TS2367: This comparison appears to be unintentional because the types 'Category | null' and '"하루LAW"' have no overlap.
+src/app/pages/RecordPage.tsx: error TS2367: This comparison appears to be unintentional because the types 'Category | null' and '"하루학습"' have no overlap.
+src/app/pages/SayuHealthVoidingPage.tsx: error TS2769: No overload matches this call.
+src/app/pages/SayuHealthVoidingPage.tsx: error TS2769: No overload matches this call.
+src/app/pages/SayuPage.tsx: error TS18048: 'record' is possibly 'undefined'.
+src/app/pages/SinglePaymentPage.tsx: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/pages/SinglePaymentPage.tsx: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/pages/SubscriptionPage.tsx: error TS2322: Type '{}' is not assignable to type 'string'.
+src/app/pages/SubscriptionPage.tsx: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/pages/SubscriptionPage.tsx: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/pages/SubscriptionPage.tsx: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/pages/SubscriptionPage.tsx: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/pages/SubscriptionPage.tsx: error TS2339: Property 'plan' does not exist on type 'SubscribeWithBillingKeyResult & Record<"issueId", unknown>'.
+src/app/pages/SubscriptionPage.tsx: error TS2339: Property 'plan' does not exist on type 'SubscribeWithBillingKeyResult & Record<"issueId", unknown>'.
+src/app/pages/SubscriptionPage.tsx: error TS2339: Property 'plan' does not exist on type 'SubscribeWithBillingKeyResult & Record<"issueId", unknown>'.
+src/app/pages/SubscriptionPage.tsx: error TS2339: Property 'provider' does not exist on type 'SubscribeWithBillingKeyResult & Record<"issueId", unknown>'.
+src/app/services/drugService.ts: error TS2322: Type '({ itemSeq: string; itemName: string; entpName: string; ingredient: string; category: string; prescriptionType: PrescriptionType; efficacyText: string; useMethodText: string; ... 5 more ...; original: Record<...>; } | null)[]' is not assignable to type 'OfficialDrugApiItem[]'.
+src/app/services/drugService.ts: error TS2677: A type predicate's type must be assignable to its parameter's type.
+src/app/services/firestoreService.ts: error TS2322: Type '({ formatKey: string; formatLabel: RecordFormat; sayuText: string; } | null)[]' is not assignable to type 'SharedRecordFormat[]'.
+src/app/services/firestoreService.ts: error TS2353: Object literal may only specify known properties, and 'positivity_ratio' does not exist in type 'DiaryStats & { total_days: number; energy_average: number; personality_type: string; strengths: string[]; }'.
+src/app/services/firestoreService.ts: error TS2353: Object literal may only specify known properties, and 'positivity_ratio' does not exist in type 'EssayStats & { total_days: number; energy_average: number; personality_type: string; strengths: string[]; }'.
+src/app/services/firestoreService.ts: error TS2353: Object literal may only specify known properties, and 'positivity_ratio' does not exist in type 'GardenLogStats & { total_days: number; energy_average: number; personality_type: string; strengths: string[]; }'.
+src/app/services/firestoreService.ts: error TS2353: Object literal may only specify known properties, and 'positivity_ratio' does not exist in type 'GeneralReportStats & { total_days: number; energy_average: number; personality_type: string; strengths: string[]; }'.
+src/app/services/firestoreService.ts: error TS2353: Object literal may only specify known properties, and 'positivity_ratio' does not exist in type 'GrowthDiaryStats & { total_days: number; energy_average: number; personality_type: string; strengths: string[]; }'.
+src/app/services/firestoreService.ts: error TS2353: Object literal may only specify known properties, and 'positivity_ratio' does not exist in type 'MissionReportStats & { total_days: number; energy_average: number; personality_type: string; strengths: string[]; }'.
+src/app/services/firestoreService.ts: error TS2353: Object literal may only specify known properties, and 'positivity_ratio' does not exist in type 'PetLogStats & { total_days: number; energy_average: number; personality_type: string; strengths: string[]; }'.
+src/app/services/firestoreService.ts: error TS2353: Object literal may only specify known properties, and 'positivity_ratio' does not exist in type 'TravelRecordStats & { total_days: number; energy_average: number; personality_type: string; strengths: string[]; }'.
+src/app/services/firestoreService.ts: error TS2353: Object literal may only specify known properties, and 'positivity_ratio' does not exist in type 'WorkLogStats & { total_days: number; energy_average: number; personality_type: string; strengths: string[]; }'.
+src/app/services/firestoreService.ts: error TS2677: A type predicate's type must be assignable to its parameter's type.
+src/app/services/firestoreService.ts: error TS2741: Property 'meta' is missing in type '{ category: string; type: string; title: string; date: string; summary: string; refPath: string; }' but required in type 'Required<LibraryEntryInput>'.
+src/app/services/householdExportService.ts: error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+src/app/services/householdKakaoPdfImport.ts: error TS2307: Cannot find module 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url' or its corresponding type declarations.
+src/app/services/householdKakaoPdfImport.ts: error TS2353: Object literal may only specify known properties, and 'isEvalSupported' does not exist in type 'DocumentInitParameters'.
+src/app/services/ledgerExportService.ts: error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+src/app/services/ledgerExportService.ts: error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+src/app/services/ledgerExportService.ts: error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+src/app/services/notificationService.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/services/voidingExportService.ts: error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+src/app/types/haruTypes.ts: error TS2741: Property '배뇨일지' is missing in type '{ 일기: string; 에세이: string; 선교보고: string; 일반보고: string; 업무일지: string; 여행기록: string; 독서사유: string; 텃밭일지: string; 애완동물관찰일지: string; 육아일기: string; 성장기록: string; HARU주식관리: string; 주식거래일지: string; 메모: string; 성장타임라인: string; HARUraw: string; HARU보조장부: string; HARU가계부: string; }' but required in type 'Record<RecordFormat, string>'.
+src/app/utils/householdDashboard.ts: error TS2550: Property 'at' does not exist on type 'string[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2022' or later.
+src/app/utils/snsPrivateThumbnailState.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/app/utils/snsPrivateThumbnailState.ts: error TS7016: Could not find a declaration file for module './snsThumbnailAuthCache'. '/private/tmp/haru-completion-web-upgrade-20261031/frontend/src/app/utils/snsThumbnailAuthCache.js' implicitly has an 'any' type.
+src/app/utils/snsPrivateThumbnailState.ts: error TS7016: Could not find a declaration file for module './snsThumbnailIdbStore'. '/private/tmp/haru-completion-web-upgrade-20261031/frontend/src/app/utils/snsThumbnailIdbStore.js' implicitly has an 'any' type.
+src/app/utils/snsPrivateThumbnailState.ts: error TS7016: Could not find a declaration file for module './snsThumbnailPersistentCache'. '/private/tmp/haru-completion-web-upgrade-20261031/frontend/src/app/utils/snsThumbnailPersistentCache.js' implicitly has an 'any' type.
+src/app/utils/snsPrivateThumbnailState.ts: error TS7016: Could not find a declaration file for module './snsThumbnailRequestQueue'. '/private/tmp/haru-completion-web-upgrade-20261031/frontend/src/app/utils/snsThumbnailRequestQueue.js' implicitly has an 'any' type.
+src/app/utils/snsPrivateThumbnailState.ts: error TS7016: Could not find a declaration file for module './snsThumbnailTieredLoad'. '/private/tmp/haru-completion-web-upgrade-20261031/frontend/src/app/utils/snsThumbnailTieredLoad.js' implicitly has an 'any' type.
+src/firebase.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/firebase.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/firebase.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/firebase.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/firebase.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/firebase.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/firebase.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/firebase.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/firebase.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/firebase.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/firebase.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/firebase.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/lib/supabase.ts: error TS2307: Cannot find module '/utils/supabase/info' or its corresponding type declarations.
+src/lib/supabase.ts: error TS2307: Cannot find module '@supabase/supabase-js' or its corresponding type declarations.
+src/main.tsx: error TS2339: Property 'location' does not exist on type 'never'.
+src/main.tsx: error TS7016: Could not find a declaration file for module 'react-dom/client'. '/private/tmp/haru-completion-web-upgrade-20261031/frontend/node_modules/react-dom/client.js' implicitly has an 'any' type.

@@ -1,0 +1,25 @@
+{
+  "name": "react-day-picker",
+  "version": "10.0.2",
+  "dist-tags": {
+    "legacy-v8": "8.10.2",
+    "next": "10.0.0-next.6",
+    "latest": "10.0.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "@types/react": ">=16.8.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "@date-fns/tz": "^1.4.1"
+  }
+}

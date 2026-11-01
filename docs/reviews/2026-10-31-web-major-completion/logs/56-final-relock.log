@@ -1,0 +1,7 @@
+$ (cwd=frontend) npm install --package-lock-only --no-audit --no-fund
+# start 2026-10-31T19:53:09+09:00
+
+up to date in 754ms
+
+# end 2026-10-31T19:53:10+09:00 exit=0
+

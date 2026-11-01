@@ -1,0 +1,17 @@
+{
+  "jsFiles": 759,
+  "bibleNamed": [
+    "bible_quotes 4-1IMuNAwx.js",
+    "bible_quotes 4-legacy-vIsrTCuO.js",
+    "bible_quotes 5-1IMuNAwx.js",
+    "bible_quotes 5-legacy-vIsrTCuO.js"
+  ],
+  "withListenLabel": [
+    "index-Bq4jc-eH.js",
+    "index-legacy-D7Nd6SK6.js"
+  ],
+  "withGenerateTTS": [
+    "index-Bq4jc-eH.js",
+    "index-legacy-D7Nd6SK6.js"
+  ]
+}

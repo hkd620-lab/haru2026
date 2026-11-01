@@ -1,0 +1,42 @@
+{
+  "generateTTS": {
+    "status": "fulfilled",
+    "value": {
+      "chunk_id": "8b3737",
+      "wall_time_seconds": 2.442743334,
+      "exit_code": 0,
+      "original_token_count": 108,
+      "output": "{\n  \"buildConfig\": {\n    \"runtime\": \"nodejs22\"\n  },\n  \"environment\": \"GEN_2\",\n  \"name\": \"projects/haru2026-8abb8/locations/asia-northeast3/functions/generateTTS\",\n  \"serviceConfig\": {\n    \"allTrafficOnLatestRevision\": true,\n    \"revision\": \"generatetts-00117-roq\",\n    \"service\": \"projects/haru2026-8abb8/locations/asia-northeast3/services/generatetts\"\n  },\n  \"state\": \"ACTIVE\",\n  \"updateTime\": \"2026-09-12T12:49:13.373608403Z\"\n}\n"
+    }
+  },
+  "generateGrowthTimelinePdf": {
+    "status": "fulfilled",
+    "value": {
+      "chunk_id": "6ed330",
+      "wall_time_seconds": 2.601193959,
+      "exit_code": 0,
+      "original_token_count": 118,
+      "output": "{\n  \"buildConfig\": {\n    \"runtime\": \"nodejs22\"\n  },\n  \"environment\": \"GEN_2\",\n  \"name\": \"projects/haru2026-8abb8/locations/asia-northeast3/functions/generateGrowthTimelinePdf\",\n  \"serviceConfig\": {\n    \"allTrafficOnLatestRevision\": true,\n    \"revision\": \"generategrowthtimelinepdf-00033-det\",\n    \"service\": \"projects/haru2026-8abb8/locations/asia-northeast3/services/generategrowthtimelinepdf\"\n  },\n  \"state\": \"ACTIVE\",\n  \"updateTime\": \"2026-09-12T12:45:59.990385725Z\"\n}\n"
+    }
+  },
+  "detectPlantAdvanced": {
+    "status": "fulfilled",
+    "value": {
+      "chunk_id": "283968",
+      "wall_time_seconds": 2.5691293330000002,
+      "exit_code": 0,
+      "original_token_count": 114,
+      "output": "{\n  \"buildConfig\": {\n    \"runtime\": \"nodejs22\"\n  },\n  \"environment\": \"GEN_2\",\n  \"name\": \"projects/haru2026-8abb8/locations/asia-northeast3/functions/detectPlantAdvanced\",\n  \"serviceConfig\": {\n    \"allTrafficOnLatestRevision\": true,\n    \"revision\": \"detectplantadvanced-00041-tiw\",\n    \"service\": \"projects/haru2026-8abb8/locations/asia-northeast3/services/detectplantadvanced\"\n  },\n  \"state\": \"ACTIVE\",\n  \"updateTime\": \"2026-09-12T12:46:04.944712978Z\"\n}\n"
+    }
+  },
+  "analyzeFacebookZip": {
+    "status": "fulfilled",
+    "value": {
+      "chunk_id": "17fe79",
+      "wall_time_seconds": 2.590779542,
+      "exit_code": 0,
+      "original_token_count": 113,
+      "output": "{\n  \"buildConfig\": {\n    \"runtime\": \"nodejs22\"\n  },\n  \"environment\": \"GEN_2\",\n  \"name\": \"projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeFacebookZip\",\n  \"serviceConfig\": {\n    \"allTrafficOnLatestRevision\": true,\n    \"revision\": \"analyzefacebookzip-00044-var\",\n    \"service\": \"projects/haru2026-8abb8/locations/asia-northeast3/services/analyzefacebookzip\"\n  },\n  \"state\": \"ACTIVE\",\n  \"updateTime\": \"2026-09-15T21:11:56.548151377Z\"\n}\n"
+    }
+  }
+}

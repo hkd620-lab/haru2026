@@ -1,6 +1,6 @@
 import { useRecordReadConsent } from '../hooks/useRecordReadConsent';
 import { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router';
 import { collection, doc, getDocs, query, setDoc, serverTimestamp, arrayUnion, where } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';

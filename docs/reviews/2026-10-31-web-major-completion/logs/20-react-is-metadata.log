@@ -1,0 +1,6 @@
+$ (cwd=frontend) npm view react-is@19.3.1 version peerDependencies
+# start 2026-10-31T17:27:41+09:00
+19.3.1
+
+# end 2026-10-31T17:27:42+09:00 exit=0
+

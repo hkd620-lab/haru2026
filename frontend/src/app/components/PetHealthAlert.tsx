@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 const DANGER_KEYWORDS = [
   '포도', '건포도', '초콜릿', '자일리톨', '양파', '마늘', '대파', '쪽파',

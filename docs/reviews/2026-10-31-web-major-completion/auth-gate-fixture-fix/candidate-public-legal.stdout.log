@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: /terms displays the real public legal page only
+ok 1 - /terms displays the real public legal page only
+  ---
+  duration_ms: 15.1195
+  type: 'test'
+  ...
+# Subtest: /privacy displays the real public legal page only
+ok 2 - /privacy displays the real public legal page only
+  ---
+  duration_ms: 3.051375
+  type: 'test'
+  ...
+# Subtest: /terms/?from=consent displays the real public legal page only
+ok 3 - /terms/?from=consent displays the real public legal page only
+  ---
+  duration_ms: 4.594458
+  type: 'test'
+  ...
+# Subtest: /record does not bypass the application boundary
+ok 4 - /record does not bypass the application boundary
+  ---
+  duration_ms: 0.433167
+  type: 'test'
+  ...
+# Subtest: /settings does not bypass the application boundary
+ok 5 - /settings does not bypass the application boundary
+  ---
+  duration_ms: 0.645708
+  type: 'test'
+  ...
+# Subtest: /terms-copy does not bypass the application boundary
+ok 6 - /terms-copy does not bypass the application boundary
+  ---
+  duration_ms: 0.3895
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 366.476583

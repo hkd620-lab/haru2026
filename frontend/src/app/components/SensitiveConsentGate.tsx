@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 const COPY: Record<'health' | 'legal', { label: string; feature: string }> = {
   health: { label: '건강', feature: 'AI 정리·요약' },
