@@ -37,7 +37,7 @@ for (const provider of ['kakao', 'naver', 'google']) {
     ? 'export const naverLoginStart = onRequest('
     : provider === 'naver'
       ? 'export const googleLoginStart = onRequest('
-      : 'type DriveTokenData = {';
+      : '// ===== 🔔 테스트 알림 발송 =====';
   const callbackBlock = getBlock(`export const ${provider}Callback = onRequest(`, nextStart);
 
   if (provider === 'google') {

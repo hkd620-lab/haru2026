@@ -42,8 +42,6 @@ export const AI_ROUTES = {
   // 영어·영어성경
   bibleWordMeaning: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '영어성경 단어 뜻(getWordMeaning)' },
   bibleVerseQuiz: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '영어성경 구절 퀴즈' },
-  bibleVerseTranslation: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '영어성경 구절 번역' },
-  bibleVerseWordMapping: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '영어성경 구절 단어 대응' },
   englishTranslate: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '영어일기 번역(translateToEnglish)' },
   // 뉴스
   newsDigest: { provider: 'gemini', model: 'gemini-3.1-flash-lite', label: '오늘의 뉴스 정리(예약 실행)' },

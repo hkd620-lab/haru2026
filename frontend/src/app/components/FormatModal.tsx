@@ -1,4 +1,5 @@
 import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
+import { isStockOcrQuotaExceeded, STOCK_OCR_QUOTA_NOTICE } from '../services/stockOcrQuota';
 import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText, Pencil } from 'lucide-react';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { ReadingAiChat } from './ReadingAiChat';
@@ -1915,6 +1916,7 @@ ${contentValues}
         } catch (ocrError: any) {
           console.error('주식 거래 캡처 OCR 실패:', ocrError);
           toast.warning(String(ocrError?.message || '거래 캡처 텍스트 추출에 실패했습니다.'));
+          if (isStockOcrQuotaExceeded(ocrError)) break;
         }
       }
 
@@ -2173,6 +2175,7 @@ ${contentValues}
       // 통신 문제로 실패한 사진은 '다시 시도' 버튼으로 같은 파일을 다시 올릴 수 있게 모아 둔다.
       const retryableFiles: File[] = [];
       const functionsInstance = getFunctions(undefined, 'asia-northeast3');
+      let stockOcrQuotaReached = false;
 
       while (selectedPhotoReads.length > 0) {
         const selectedPhoto = await selectedPhotoReads.shift()!;
@@ -2246,12 +2249,13 @@ ${contentValues}
             url: downloadUrl,
             uploadedAt: new Date().toISOString(),
           });
-          if (isStockFormat) {
+          if (isStockFormat && !stockOcrQuotaReached) {
             try {
               await extractStockTextFromImage(compressed);
             } catch (ocrError: any) {
               console.error('주식 거래 캡처 OCR 실패:', ocrError);
               toast.warning(String(ocrError?.message || '거래 캡처 텍스트 추출에 실패했습니다.'));
+              if (isStockOcrQuotaExceeded(ocrError)) stockOcrQuotaReached = true;
             }
           }
         } catch (fileError: any) {
@@ -6535,6 +6539,9 @@ ${contentValues.slice(0, 4100)}`,
                   </label>
                   <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
                     사진은 서버에 저장하지 않고, 추출된 텍스트만 캡처 원문 칸에 남습니다.
+                  </p>
+                  <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+                    {STOCK_OCR_QUOTA_NOTICE}
                   </p>
                   <input
                     ref={stockOcrInputRef}

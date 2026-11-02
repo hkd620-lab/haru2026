@@ -12,14 +12,9 @@ import { finishLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
-// 일반 사용자 메뉴에서 숨기는 기록형식/비서 (개발자에게는 그대로 노출, 코드·FormatModal은 보존)
-const HIDDEN_RECORD_FORMATS = new Set(['선교보고', '일반보고', '주식거래일지']);
+// 일반 사용자 메뉴에서 숨기는 비서 (코드는 보존)
 const HIDDEN_AGENT_LABELS = new Set([
-  'HARU주식',
-  '📦 HARU 기록탐정',
-  '명작탐정비서',
   '나도작가',
-  '영어성경',
 ]);
 
 const FONT_KR =
@@ -194,7 +189,19 @@ const RECORDS: RecordItem[] = [
       </>
     ),
   },
-  // 주식거래일지는 비서(비서실 'HARU주식')로 본다 — 2026-10-23 허대표님 결정 ②
+  {
+    label: '주식거래일지',
+    sub: '거래와 복기',
+    bg: '#F5E5DC',
+    stroke: '#B85C2E',
+    format: '주식거래일지',
+    icon: (
+      <>
+        <path d="M3 17l6-6 4 4 8-8" />
+        <path d="M14 7h7v7" />
+      </>
+    ),
+  },
   {
     label: '메모',
     sub: '짧은 한 조각',
@@ -314,22 +321,6 @@ const AGENTS: Agent[] = [
     ),
   },
   {
-    label: '영어성경',
-    sub: '영어·영한·한영 듣기·말하기·해석·단어·문법을 한 번에 — 영어성경 학습의 결정판',
-    tag: 'BIBLE · 학습',
-    variant: 'terracotta',
-    stroke: '#B85C2E',
-    path: '/bible',
-    icon: (
-      <>
-        <rect x="4" y="3" width="16" height="18" rx="2" />
-        <path d="M12 7v8" />
-        <path d="M9 11h6" />
-        <path d="M4 19h16" />
-      </>
-    ),
-  },
-  {
     label: '영어일기',
     sub: '내가 기록한 일기와 에세이로 자연스러운 영작 학습',
     tag: 'WRITE · 영문',
@@ -363,21 +354,6 @@ const AGENTS: Agent[] = [
     ),
   },
   {
-    label: 'HARU주식',
-    sub: '내가 매도·매수한 종목들의 현재와 미래를 예측하여 주식 투자를 즐겁게.',
-    tag: 'STOCK · 안내',
-    variant: 'terracotta',
-    stroke: '#B85C2E',
-    path: '/record',
-    state: { format: '주식거래일지' },
-    icon: (
-      <>
-        <path d="M3 17l6-6 4 4 8-8" />
-        <path d="M14 7h7v7" />
-      </>
-    ),
-  },
-  {
     label: '하루식물탐정',
     sub: '잎과 열매 사진을 보고 식물 상태와 돌봄 힌트를 알려드립니다.',
     tag: 'GARDEN · 사진',
@@ -392,40 +368,6 @@ const AGENTS: Agent[] = [
         <path d="M12 13c4 0 7-3 7-7-4 0-7 3-7 7z" />
         <circle cx="18" cy="18" r="3" />
         <path d="M20.5 20.5L22 22" />
-      </>
-    ),
-  },
-  {
-    label: '📦 HARU 기록탐정',
-    sub: 'Google Drive에서 선택한 문서·이미지·PDF만 HARU 폴더에 정리합니다.',
-    tag: 'RECORD · 정리',
-    variant: 'lilac',
-    stroke: '#5A4E7A',
-    path: '/asset-explorer',
-    beta: true,
-    icon: (
-      <>
-        <path d="M4 7h6l2 2h8v10a2 2 0 01-2 2H6a2 2 0 01-2-2z" />
-        <path d="M8 13h8" />
-        <path d="M8 17h5" />
-      </>
-    ),
-  },
-  {
-    label: '명작탐정비서',
-    sub: '잊혔지만 다시 소개할 가치가 있는 책·채널·영상·음악을 찾아 기록합니다.',
-    tag: 'CURATION · 명작',
-    variant: 'lilac',
-    stroke: '#5A4E7A',
-    path: '/dev/masterpiece-detective',
-    beta: true,
-    developerOnly: true,
-    icon: (
-      <>
-        <path d="M4 19V5a2 2 0 012-2h8l4 4v12a2 2 0 01-2 2H6a2 2 0 01-2-2z" />
-        <path d="M14 3v5h5" />
-        <circle cx="10" cy="13" r="3" />
-        <path d="M12.5 15.5L15 18" />
       </>
     ),
   },
@@ -583,9 +525,9 @@ export function HomePageV2() {
   currentUserUidRef.current = currentUserUid;
   const isDeveloper = user?.uid === DEVELOPER_UID;
   const canUseAiLibrary = hasAiLibraryAccess(user?.email, user?.emailVerified);
-  // 숨김 기록 + 개발자 전용 항목은 일반 사용자 홈에서 비노출
+  // 개발자 전용 항목은 일반 사용자 홈에서 비노출
   const visibleRecords = useMemo(
-    () => RECORDS.filter((r) => !HIDDEN_RECORD_FORMATS.has(r.format) && (!r.developerOnly || isDeveloper)),
+    () => RECORDS.filter((r) => !r.developerOnly || isDeveloper),
     [isDeveloper],
   );
   const visibleAgents = useMemo(
