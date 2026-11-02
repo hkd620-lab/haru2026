@@ -56,6 +56,7 @@ import {
   sweepExpiredHeicTempObjects,
 } from './heicConversionCore';
 import { TTS_QUALITY_SETTINGS, buildTtsCachePath, normalizeTtsQuality } from './ttsQuality';
+import { reserveStockOcrQuota, rollbackStockOcrQuota } from './stockOcrQuota';
 import * as PortOne from '@portone/server-sdk';
 import {
   getMonthlyAiQuotaStatus as getMonthlyAiQuotaStatusForUser,
@@ -5902,7 +5903,9 @@ export const extractStockTradeTextFromPhoto = onCall(
       throw new HttpsError('invalid-argument', '사진이 너무 큽니다. 한 장당 7MB 이하로 줄여주세요.');
     }
 
+    let stockOcrReservation: MonthlyOcrQuotaReservation | null = null;
     try {
+      stockOcrReservation = await reserveStockOcrQuota(request.auth.uid);
       const prompt = `주식 거래 캡처 이미지에서 보이는 거래 내용을 추출하세요.
 
 [규칙]
@@ -5961,9 +5964,17 @@ export const extractStockTradeTextFromPhoto = onCall(
       return {
         text: String(parsed?.text || rawText || '').slice(0, 12000),
         trade: safeTrade,
+        quota: {
+          plan: stockOcrReservation.plan,
+          used: stockOcrReservation.used,
+          limit: stockOcrReservation.limit,
+          remaining: stockOcrReservation.remaining,
+          period: stockOcrReservation.period,
+        },
       };
     } catch (error: any) {
       imageBase64 = '';
+      await rollbackStockOcrQuota(stockOcrReservation);
       if (error instanceof HttpsError) throw error;
       logger.error('주식 거래 캡처 OCR 실패', { message: error?.message?.slice(0, 200) });
       throw new HttpsError('internal', '거래 캡처 텍스트 추출에 실패했습니다. 사진을 더 또렷하게 올려 주세요.');

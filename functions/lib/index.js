@@ -65,6 +65,7 @@ const subscriptionBillingCore_1 = require("./subscriptionBillingCore");
 const rateLimit_1 = require("./utils/rateLimit");
 const heicConversionCore_1 = require("./heicConversionCore");
 const ttsQuality_1 = require("./ttsQuality");
+const stockOcrQuota_1 = require("./stockOcrQuota");
 const PortOne = __importStar(require("@portone/server-sdk"));
 const monthlyAiQuota_1 = require("./utils/monthlyAiQuota");
 const internalEntitlements_1 = require("./internalEntitlements");
@@ -5061,7 +5062,9 @@ exports.extractStockTradeTextFromPhoto = (0, https_2.onCall)({
     if (imageKb > 7 * 1024) {
         throw new https_2.HttpsError('invalid-argument', '사진이 너무 큽니다. 한 장당 7MB 이하로 줄여주세요.');
     }
+    let stockOcrReservation = null;
     try {
+        stockOcrReservation = await (0, stockOcrQuota_1.reserveStockOcrQuota)(request.auth.uid);
         const prompt = `주식 거래 캡처 이미지에서 보이는 거래 내용을 추출하세요.
 
 [규칙]
@@ -5116,10 +5119,18 @@ exports.extractStockTradeTextFromPhoto = (0, https_2.onCall)({
         return {
             text: String((parsed === null || parsed === void 0 ? void 0 : parsed.text) || rawText || '').slice(0, 12000),
             trade: safeTrade,
+            quota: {
+                plan: stockOcrReservation.plan,
+                used: stockOcrReservation.used,
+                limit: stockOcrReservation.limit,
+                remaining: stockOcrReservation.remaining,
+                period: stockOcrReservation.period,
+            },
         };
     }
     catch (error) {
         imageBase64 = '';
+        await (0, stockOcrQuota_1.rollbackStockOcrQuota)(stockOcrReservation);
         if (error instanceof https_2.HttpsError)
             throw error;
         logger.error('주식 거래 캡처 OCR 실패', { message: (_d = error === null || error === void 0 ? void 0 : error.message) === null || _d === void 0 ? void 0 : _d.slice(0, 200) });
