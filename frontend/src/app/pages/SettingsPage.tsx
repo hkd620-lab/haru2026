@@ -15,7 +15,6 @@ import {
   resolveSubscriptionDisplay,
 } from '../utils/subscriptionDisplay';
 import { getLoginProviderLabel } from '../utils/loginProvider';
-import GrammarDashboard from './GrammarDashboard';
 import { BUSINESS_INFO, BUSINESS_INFO_TEXT } from '../components/BusinessInfoNotice';
 
 const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
@@ -1355,19 +1354,6 @@ export function SettingsPage() {
             )}
           </div>
         </section>
-
-        {isAdmin && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{
-              fontSize: 13, fontWeight: 700, color: '#1A3C6E',
-              marginBottom: 12, paddingBottom: 8,
-              borderBottom: '1px solid #e2e8f0'
-            }}>
-              🔐 관리자 전용
-            </div>
-            <GrammarDashboard uid={user?.uid || ''} />
-          </div>
-        )}
 
         {isAdmin && (
           <section

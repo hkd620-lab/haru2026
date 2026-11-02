@@ -13,6 +13,10 @@ export const WRITABLE_FORMATS = WRITABLE_CANDIDATES.filter((format) => ![
   '주식거래일지',
 ].includes(format));
 
+// 주식거래일지는 SAYU에서 전용 묶음(HARU주식관리)으로 모으므로 CATEGORY_FORMATS에는 넣지 않고 기록 선택 화면에만 더한다.
+export const WORK_ENTRY_FORMATS: RecordFormat[] = [...CATEGORY_FORMATS['업무'], '주식거래일지'];
+export const DRAFT_PICKER_FORMATS: RecordFormat[] = [...WRITABLE_FORMATS, '주식거래일지'];
+
 const PREMIUM_DRAFT_FIELD: Partial<Record<RecordFormat, string>> = {
   '일기': 'diary_여백',
   '에세이': 'essay_space',
@@ -25,6 +29,7 @@ const PREMIUM_DRAFT_FIELD: Partial<Record<RecordFormat, string>> = {
   '애완동물관찰일지': 'pet_space',
   '육아일기': 'child_space',
   '메모': 'memo_content',
+  '주식거래일지': 'stock_reflection',
 };
 
 // 아직 저장하지 않은 글을 기존 형식 편집창의 간편/프리미엄 양쪽에서 볼 수 있게 한다.
@@ -35,8 +40,11 @@ export function buildDraftEditorData(
   const firstLine = content.split('\n').map((line) => line.trim()).find(Boolean) || '';
   const premiumField = PREMIUM_DRAFT_FIELD[format];
   return {
-    [`${prefix}_simple`]: content,
-    [`${prefix}_title`]: firstLine.slice(0, 48),
+    // 주식은 간편 입력칸이 없고 SAYU 목록·대시보드가 종목명으로 묶으므로, 거래소감만 채워 종목명 입력을 건너뛰지 않게 한다.
+    ...(format === '주식거래일지' ? {} : {
+      [`${prefix}_simple`]: content,
+      [`${prefix}_title`]: firstLine.slice(0, 48),
+    }),
     ...(premiumField ? { [premiumField]: content } : {}),
     _recordId: recordId,
     _recordDate: date,

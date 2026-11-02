@@ -6,10 +6,6 @@ import { clearOrigin } from "../services/v2Origin";
 
 const DEVELOPER_UID = "naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8";
 
-// 일반 사용자 메뉴에서 숨기는 기록형식/비서 (개발자에게는 그대로 노출)
-const HIDDEN_RECORD_FORMATS = new Set(["선교보고", "일반보고", "주식거래일지"]);
-const HIDDEN_SECRETARY_LABELS = new Set(["주식거래일지", "영어성경"]);
-
 export function HomePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -43,7 +39,7 @@ export function HomePage() {
       .catch(() => setTodayFormatCount(0));
   }, [user?.uid]);
 
-  // 📕 HARU 기록 — 11개 (독서사유 포함)
+  // 📕 HARU 기록 — 12개 (독서사유 포함)
   const recordCards: { label: string; format: string; icon: string }[] = [
     { icon: "📔", label: "일기", format: "일기" },
     { icon: "✍️", label: "에세이", format: "에세이" },
@@ -55,6 +51,7 @@ export function HomePage() {
     { icon: "⛪", label: "선교보고", format: "선교보고" },
     { icon: "📋", label: "일반보고", format: "일반보고" },
     { icon: "💼", label: "업무일지", format: "업무일지" },
+    { icon: "📈", label: "주식거래일지", format: "주식거래일지" },
     { icon: "📝", label: "메모", format: "메모" },
   ];
 
@@ -69,10 +66,8 @@ export function HomePage() {
     { icon: "🔮", label: "HARU미래전망", path: "/prophecy-hub" },
     { icon: "⚖️", label: "하루LAW", path: "/record", state: { category: "하루LAW" } },
     { icon: "🧾", label: "전자소송연습비서", path: "/legal-assistant", accent: "#b85c2e" },
-    { icon: "📖", label: "영어성경", path: "/bible" },
     { icon: "✏️", label: "영어일기", path: "/diary-learn" },
     { icon: "📱", label: "SNS 가져오기", path: "/sns-records", accent: "#10b981" },
-    { icon: "📈", label: "주식거래일지", path: "/record", state: { format: "주식거래일지" }, accent: "#10b981" },
     { icon: "💊", label: "건강관리", path: "/health", accent: "#10b981" },
   ];
 
@@ -295,7 +290,6 @@ export function HomePage() {
               }}
             >
               {recordCards
-                .filter((card) => !HIDDEN_RECORD_FORMATS.has(card.format))
                 .map((card) => (
                 <button
                   key={card.label}
@@ -323,7 +317,6 @@ export function HomePage() {
               }}
             >
               {secretaryCards
-                .filter((card) => !HIDDEN_SECRETARY_LABELS.has(card.label))
                 .map((card) => (
                 <button
                   key={card.label}

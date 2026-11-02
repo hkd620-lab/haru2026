@@ -12,7 +12,7 @@ import { HaruLawPanel, useHaruLaw } from '../assistants/haruLaw/HaruLawPanel';
 import { PetHealthAlert, detectPetAlertLevel, type PetAlertLevel } from '../components/PetHealthAlert';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
-import { applyDraftSaveTarget, buildDraftEditorData, WRITABLE_FORMATS } from '../records/writeBeforeFormat';
+import { applyDraftSaveTarget, buildDraftEditorData, DRAFT_PICKER_FORMATS, WORK_ENTRY_FORMATS } from '../records/writeBeforeFormat';
 import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
 import { startSelectedRecordPhotoReads } from '../services/selectedRecordPhoto';
 import { db } from '../../firebase';
@@ -1125,27 +1125,6 @@ export function RecordPage() {
                 학습할 형식을 선택하세요
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* 영어성경학습 */}
-                <button
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 16,
-                    padding: '20px', borderRadius: 12,
-                    border: '1.5px solid #d0dff0',
-                    backgroundColor: '#f8faff',
-                    cursor: 'pointer', textAlign: 'left',
-                  }}
-                  onClick={() => navigate('/bible')}
-                >
-                  <span style={{ fontSize: 32 }}>📖</span>
-                  <div>
-                    <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', marginBottom: 4 }}>
-                      영어성경학습
-                    </p>
-                    <p style={{ fontSize: 12, color: '#999' }}>
-                      영어 성경 읽기 · TTS 듣기 · AI 번역/해설
-                    </p>
-                  </div>
-                </button>
                 {/* 영어일기작성 */}
                 <button
                   style={{
@@ -1173,7 +1152,7 @@ export function RecordPage() {
             <HaruLawPanel law={haruLaw} />
           ) : selectedCategory ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {CATEGORY_FORMATS[selectedCategory]
+              {(selectedCategory === '업무' ? WORK_ENTRY_FORMATS : CATEGORY_FORMATS[selectedCategory])
                 .filter((format) => format !== 'HARU가계부' && format !== 'HARU보조장부')
                 .map((format) => {
                 return (
@@ -1212,7 +1191,7 @@ export function RecordPage() {
           <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>어떤 형식으로 저장할까요?</h2>
           <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요. 작성한 글과 사진으로 AI 도움 안내가 이어집니다.</p>
           <div className="mt-4 grid grid-cols-2 gap-2">
-            {WRITABLE_FORMATS.map((format) => (
+            {DRAFT_PICKER_FORMATS.map((format) => (
               <button key={format} type="button" onClick={() => openDraftEditorForFormat(format)} className="rounded-lg border p-3 text-left text-sm hover:bg-yellow-50">
                 {format === '애완동물관찰일지' ? '반려동물' : format}
               </button>

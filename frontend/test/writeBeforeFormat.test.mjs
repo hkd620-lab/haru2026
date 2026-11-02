@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { applyDraftSaveTarget, buildDraftEditorData, WRITABLE_FORMATS } from '../src/app/records/writeBeforeFormat.ts';
+import { CATEGORY_FORMATS } from '../src/app/types/haruTypes.ts';
+import { applyDraftSaveTarget, buildDraftEditorData, DRAFT_PICKER_FORMATS, WORK_ENTRY_FORMATS, WRITABLE_FORMATS } from '../src/app/records/writeBeforeFormat.ts';
 
 test('형식 선택 뒤 기존 편집창의 간편·프리미엄 입력칸에 초안이 이어진다', () => {
   const source = '첫 줄\n둘째 줄';
@@ -46,6 +47,27 @@ test('선교·일반보고 초안은 간편 본문과 프리미엄 여백에 전
     assert.equal(draft[`${prefix}_title`], '보고 제목');
     assert.equal(draft[`${prefix}_sayu`], undefined);
   }
+});
+
+test('일반 사용자의 기록 선택에 선교·일반보고와 주식거래일지가 함께 나온다', () => {
+  for (const list of [DRAFT_PICKER_FORMATS, WORK_ENTRY_FORMATS]) {
+    for (const format of ['선교보고', '일반보고', '주식거래일지']) assert.ok(list.includes(format), format);
+    assert.equal(new Set(list).size, list.length);
+  }
+  assert.ok(!DRAFT_PICKER_FORMATS.includes('HARU가계부'));
+  assert.ok(!DRAFT_PICKER_FORMATS.includes('HARU보조장부'));
+  assert.ok(!CATEGORY_FORMATS['업무'].includes('주식거래일지'), 'SAYU 업무 묶음에 주식이 중복되지 않는다');
+  assert.ok(CATEGORY_FORMATS['HARU주식관리'].includes('HARU주식관리'), '기존 저장 식별자를 유지한다');
+});
+
+test('주식거래일지 초안은 거래소감으로만 이어지고 제목은 종목명 입력에 맡긴다', () => {
+  const draft = buildDraftEditorData('주식거래일지', '첫 줄\n오늘 거래 복기', '2026-10-23', 'stock-1');
+  assert.equal(draft.stock_reflection, '첫 줄\n오늘 거래 복기');
+  assert.equal(draft.stock_simple, undefined, '입력칸 없는 숨은 복사본을 만들지 않는다');
+  assert.equal(draft.stock_title, undefined);
+  assert.equal(draft.stock_sayu, undefined);
+  assert.equal(draft._recordId, 'stock-1');
+  assert.equal(draft._recordDate, '2026-10-23');
 });
 
 test('새 독서 회차는 초안 ID로 재시도하고 기존 회차 수정은 원래 ID·날짜를 유지한다', () => {

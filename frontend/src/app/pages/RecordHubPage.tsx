@@ -3,10 +3,6 @@ import { useAuth } from '../contexts/AuthContext';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
-// 일반 사용자 메뉴에서 숨기는 기록형식/비서 (개발자에게는 그대로 노출)
-const HIDDEN_RECORD_FORMATS = new Set(['선교보고', '일반보고', '주식거래일지']);
-const HIDDEN_CARD_LABELS = new Set(['주식거래일지', '영어성경']);
-
 export function RecordHubPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -24,15 +20,14 @@ export function RecordHubPage() {
     { label: '선교보고', format: '선교보고' },
     { label: '일반보고', format: '일반보고' },
     { label: '업무일지', format: '업무일지' },
+    { label: '주식거래일지', format: '주식거래일지' },
     { label: '메모', format: '메모' },
   ];
   const knowledgeCards: { icon: string; label: string; desc?: string; path: string; isNew?: boolean; accent?: string; state?: { category?: string; format?: string } }[] = [
     { icon: '🔮', label: 'HARU미래전망', path: '/prophecy-hub' },
     { icon: '⚖️', label: '하루LAW', path: '/record', state: { category: '하루LAW' } },
-    { icon: '📖', label: '영어성경', path: '/bible' },
     { icon: '✏️', label: '영어일기', path: '/diary-learn' },
     { icon: '📱', label: 'SNS 갈무리', desc: 'SNS에 흩어진 기록을 모아 정리하고 나의 이야기로 만듭니다.', path: '/sns-records', isNew: true, accent: '#10b981' },
-    { icon: '📈', label: '주식거래일지', desc: '캡처 OCR·거래소감 기록', path: '/record', state: { format: '주식거래일지' } },
   ];
 
   const devToolCards: { icon: string; label: string; desc: string; path: string }[] = [
@@ -138,7 +133,6 @@ export function RecordHubPage() {
             }}
           >
             {workRecords
-              .filter(({ format }) => !HIDDEN_RECORD_FORMATS.has(format))
               .map(({ label, format }) => (
               <button
                 key={label}
@@ -163,7 +157,6 @@ export function RecordHubPage() {
             }}
           >
             {knowledgeCards
-              .filter((card) => !HIDDEN_CARD_LABELS.has(card.label))
               .map((card) => (
               <button
                 key={card.label}

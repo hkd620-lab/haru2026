@@ -98,7 +98,7 @@ test('OpenAI 어댑터: 회사를 바꾸면 같은 요청을 OpenAI 형식으로
 test('설정 표: 이번에 옮긴 기능은 이전과 같은 모델을 쓴다(제목 추출만 승인받아 Luna 로 교체)', () => {
   const migrated = ['sayuPolish', 'sayuPolishComment', 'recordStats', 'recordTitleBackfill', 'recordKeywords', 'haruMemo',
     'bookPhotoOcr', 'stockPhotoOcr', 'subledgerPhotoOcr', 'householdPhotoOcr',
-    'bibleWordMeaning', 'bibleVerseQuiz', 'bibleVerseTranslation', 'bibleVerseWordMapping', 'englishTranslate',
+    'bibleWordMeaning', 'bibleVerseQuiz', 'englishTranslate',
     'newsDigest', 'newsDigestRefresh', 'newsMetadata', 'prophecyAnalysis', 'prophecySynopsis',
     'drugPhoto', 'symptomSpecialty', 'plantAdvice', 'plantKoreanName', 'plantCrossVerification',
     'readingChat', 'snsToDiary', 'bookMaterial', 'lawsuitClaimReason'];
@@ -212,7 +212,6 @@ test('옮긴 onCall·예약 함수는 창구만 쓰고, 모델 이름을 코드�
   };
   const expected = {
     getWordMeaning: 'bibleWordMeaning', getVerseQuiz: 'bibleVerseQuiz', translateToEnglish: 'englishTranslate',
-    getVerseTranslation: 'bibleVerseTranslation', getVerseWordMapping: 'bibleVerseWordMapping',
     fetchTopNews: 'newsDigest', refreshNews: 'newsDigestRefresh', extractKNewsMetadata: 'newsMetadata',
     analyzeRecordForProphecy: 'prophecyAnalysis', analyzeDrugPhoto: 'drugPhoto', analyzeSymptomsForSpecialty: 'symptomSpecialty',
     petFoodCheck: 'petFoodCheck',
@@ -230,7 +229,7 @@ test('옮긴 onCall·예약 함수는 창구만 쓰고, 모델 이름을 코드�
 
 test('미래전망은 유형별 용도로, 식물 보조 함수 3개도 창구로 부른다', () => {
   const src = fs.readFileSync(path.join(__dirname, '../src/index.ts'), 'utf8');
-  const prophecy = src.slice(src.indexOf('export const generateHaruProphecy ='), src.indexOf('export const getVerseTranslation ='));
+  const prophecy = src.slice(src.indexOf('export const generateHaruProphecy ='), src.indexOf('export const getCustomToken ='));
   assert.match(prophecy, /purpose: type === 'story' \? 'prophecyStory' : 'prophecySynopsis'/);
   assert.doesNotMatch(prophecy, /new GoogleGenerativeAI|getGenerativeModel|'gemini-[\w.-]+'/);
   for (const [fn, purpose] of [['callGeminiAdvice', 'plantAdvice'], ['resolveKoreanPlantName', 'plantKoreanName'], ['callGeminiCrossVerification', 'plantCrossVerification']]) {
@@ -389,10 +388,9 @@ test('호출부마다 넘기는 설정(시스템 지시·생성 설정·호출 �
     `index.ts:polishPurpose:${base},systemInstruction`, `index.ts:sayuPolishComment:${base}`, `index.ts:recordStats:${base}`,
     `index.ts:recordTitle:${base}`, `index.ts:haruMemo:${base}`, `index.ts:recordKeywords:${base}`, `index.ts:recordTitleBackfill:${base}`,
     `index.ts:bookPhotoOcr:${base}:image`, `index.ts:stockPhotoOcr:${base}:image`, `index.ts:subledgerPhotoOcr:${base}:image`, `index.ts:householdPhotoOcr:${base}:image`,
-    `index.ts:bibleWordMeaning:${base}`, `index.ts:bibleWordMeaning:${base}`, `index.ts:bibleVerseQuiz:${base}`, `index.ts:englishTranslate:${base}`,
+    `index.ts:bibleWordMeaning:${base}`, `index.ts:bibleVerseQuiz:${base}`, `index.ts:englishTranslate:${base}`,
     `index.ts:newsDigest:${base}`, `index.ts:newsDigestRefresh:${base}`,
     `index.ts:prophecyAnalysis:${base},systemInstruction`, `index.ts:prophecyStory:${base},systemInstruction`,
-    `index.ts:bibleVerseTranslation:${base}`, `index.ts:bibleVerseWordMapping:${base}`,
     `index.ts:drugPhoto:${base}:image`, `index.ts:symptomSpecialty:${base},systemInstruction`, `index.ts:newsMetadata:${base}:image`,
     `index.ts:plantAdvice:${base}:image`, `index.ts:plantKoreanName:${base}`, `index.ts:plantCrossVerification:${base}:image`, `index.ts:petFoodCheck:${base}`,
     `readingAi.ts:readingChat:callOptions,generationConfig,${base},systemInstruction`,
@@ -411,7 +409,7 @@ test('창구를 쓰는 함수는 secrets 를 설정 표(aiSecretsFor)로 연결�
     extractStockTradeTextFromPhoto: "'stockPhotoOcr'", extractLedgerTextFromImage: "'subledgerPhotoOcr'", extractHouseholdTextFromImage: "'householdPhotoOcr'",
     getWordMeaning: "'bibleWordMeaning'", getVerseQuiz: "'bibleVerseQuiz'", translateToEnglish: "'englishTranslate'", fetchTopNews: "'newsDigest'",
     refreshNews: "'newsDigestRefresh'", analyzeRecordForProphecy: "'prophecyAnalysis'", generateHaruProphecy: "'prophecyStory', 'prophecySynopsis'",
-    getVerseTranslation: "'bibleVerseTranslation'", getVerseWordMapping: "'bibleVerseWordMapping'", analyzeDrugPhoto: "'drugPhoto'",
+    analyzeDrugPhoto: "'drugPhoto'",
     analyzeSymptomsForSpecialty: "'symptomSpecialty'", extractKNewsMetadata: "'newsMetadata'", analyzePlantPhoto: "'plantAdvice'",
     detectPlantAdvanced: "'plantKoreanName', 'plantCrossVerification'", petFoodCheck: "'petFoodCheck'",
   };

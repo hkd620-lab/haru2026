@@ -9,7 +9,7 @@ const {
 const indexSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8');
 const googleCallbackSrc = indexSrc.slice(
   indexSrc.indexOf('export const googleCallback = onRequest('),
-  indexSrc.indexOf('type DriveTokenData = {'),
+  indexSrc.indexOf('// ===== 🔔 테스트 알림 발송 ====='),
 );
 const callbackCoreSrc = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'googleOAuthCallbackCore.ts'),

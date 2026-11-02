@@ -36,8 +36,6 @@ import { BookStudio } from './pages/BookStudio';
 import { BookCreate } from './pages/BookCreate';
 import { BookReader } from './pages/BookReader';
 import { NewsPage } from './pages/NewsPage';
-import { BiblePage } from './pages/BiblePage';
-import VocabPage from './pages/VocabPage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { AdminChecklistPage } from './pages/AdminChecklistPage';
 import { AdminHaruLawReviewPage } from './pages/AdminHaruLawReviewPage';
@@ -82,9 +80,6 @@ import { PetHealthFoodPage } from './pages/PetHealthFoodPage';
 import { PetHealthSymptomPage } from './pages/PetHealthSymptomPage';
 import { PetHealthVaccinePage } from './pages/PetHealthVaccinePage';
 import { PlantDetectivePage } from './pages/PlantDetectivePage';
-import { AssetExplorerPage } from './pages/AssetExplorerPage';
-import { MasterpieceDetectivePage } from './pages/MasterpieceDetectivePage';
-import { HangulWordPage } from './pages/HangulWordPage';
 import { HealthMedicationPage } from './pages/HealthMedicationPage';
 import { HouseholdPage } from './pages/HouseholdPage';
 import { BottomNav } from './components/BottomNav';
@@ -259,7 +254,6 @@ function AppChrome() {
           <Route path="/legal-cases" element={<LegalCasesPage />} />
           <Route path="/legal-cases/:caseId" element={<LegalCaseDetailPage />} />
           <Route path="/plant-detective" element={<PlantDetectivePage />} />
-          <Route path="/asset-explorer" element={<AssetExplorerPage />} />
 
           {/* HARU건강관리 (허브 + 3개 하위) */}
           <Route path="/sayu-health" element={<SayuHealthHubPage />} />
@@ -282,9 +276,7 @@ function AppChrome() {
 
           <Route path="/health" element={<HealthMedicationPage />} />
 
-          {/* 영어성경학습 */}
-          <Route path="/bible" element={<BiblePage />} />
-          <Route path="/vocab" element={<VocabPage />} />
+          {/* 영어일기 */}
           <Route path="/diary-learn" element={<DiaryLearnPage />} />
 
           {/* 관리자 페이지 */}
@@ -298,10 +290,6 @@ function AppChrome() {
           <Route path="/admin/haru-law-review" element={<AdminHaruLawReviewPage />} />
           <Route path="/admin/subscription-refunds" element={<AdminSubscriptionRefundsPage />} />
 
-          {/* 개발자 전용 임시 화면 */}
-          <Route path="/dev/masterpiece-detective" element={<MasterpieceDetectivePage />} />
-          <Route path="/dev/hangul-word" element={<HangulWordPage />} />
-
           {/* 구독 페이지 */}
           <Route path="/subscription" element={<SubscriptionPage />} />
           <Route path="/payment/single" element={<SinglePaymentPage />} />
@@ -313,6 +301,9 @@ function AppChrome() {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/refund" element={<RefundPage />} />
+
+          {/* 없는 경로(옛 북마크·방문 이력 포함)는 빈 화면 대신 홈으로 */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
       {!isAiImportRoute && <TodayQuote />}
