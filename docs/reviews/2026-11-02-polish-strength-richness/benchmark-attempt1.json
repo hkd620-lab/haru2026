@@ -1,0 +1,78 @@
+{
+  "testedAt": "2026-11-02T13:13:43.119Z",
+  "kind": "local Functions gateway benchmark, not deployed, synthetic inputs only",
+  "results": [
+    {
+      "id": "market",
+      "format": "일기",
+      "group": "rich",
+      "text": "오늘 아내랑 시장 갔다. 사람이 많았다. 사과 샀다. 같이 다녀서 좋았다. 좀 피곤했다.",
+      "results": [
+        {
+          "strength": "WEAK",
+          "model": "gpt-6-luna",
+          "provider": "openai",
+          "text": "오늘 아내랑 시장에 갔다. 사람이 많았다. 사과를 샀다. 같이 다녀서 좋았다. 좀 피곤했다.",
+          "inputTokens": 974,
+          "outputTokens": 35
+        },
+        {
+          "strength": "STRONG",
+          "model": "gpt-6-luna",
+          "provider": "openai",
+          "text": "오늘은 아내와 함께 시장에 갔다. 시장에는 사람이 많았고, 사과를 샀다. 조금 피곤하기는 했지만 아내와 같이 다녀서 좋았다.",
+          "inputTokens": 1280,
+          "outputTokens": 45
+        }
+      ]
+    },
+    {
+      "id": "trip",
+      "format": "일기",
+      "group": "rich",
+      "text": "토요일 아내랑 양평 다녀옴. 오전 10시 출발. 길 막혀서 12시 도착. 점심 막국수 먹음. 국물 시원해서 맛있었다. 강변 30분 걸음. 날씨 흐림. 비 안 옴. 아내랑 오랜만에 같이 걸어서 좋았음. 돌아올 때도 차 막힘. 집에 오니 피곤했다. 다음 주 계획은 아직 안 정했다.",
+      "results": [
+        {
+          "strength": "WEAK",
+          "model": "gpt-6-luna",
+          "provider": "openai",
+          "text": "토요일에 아내와 양평에 다녀왔다. 오전 10시에 출발했는데 길이 막혀 12시에 도착했다. 점심으로 막국수를 먹었다. 국물이 시원해서 맛있었다. 강변을 30분 걸었다. 날씨는 흐렸지만 비는 오지 않았다. 아내와 오랜만에 함께 걸어서 좋았다. 돌아올 때도 차가 막혔다. 집에 오니 피곤했다. 다음 주 계획은 아직 정하지 않았다.",
+          "inputTokens": 1047,
+          "outputTokens": 114
+        },
+        {
+          "strength": "STRONG",
+          "model": "gpt-6-luna",
+          "provider": "openai",
+          "text": "토요일에는 아내와 함께 양평에 다녀왔다. 오전 10시에 출발했는데, 길이 막혀 12시에 도착했다. 점심으로 막국수를 먹었고, 국물이 시원해서 맛있었다.\n\n강변을 30분 동안 걸었다. 날씨는 흐렸지만 비는 오지 않았다. 아내와 오랜만에 같이 걸어서 좋았다. 돌아오는 길에도 차가 막혔고, 집에 오니 피곤했다. 다음 주 계획은 아직 정하지 않았다.",
+          "inputTokens": 1353,
+          "outputTokens": 119
+        }
+      ]
+    },
+    {
+      "id": "uncertain-report",
+      "format": "일반보고",
+      "group": "conservative",
+      "text": "오늘 거래처와 통화. 금요일 납품은 안 된다고 함. 월요일 가능할 수도. 확답은 내일 오후 3시. 팀장에게 전달. 계약금 30만원은 아직 안 보냈다.",
+      "results": [
+        {
+          "strength": "WEAK",
+          "model": "gpt-6-luna",
+          "provider": "openai",
+          "text": "오늘 거래처와 통화했다. 금요일 납품은 어렵다고 했고, 월요일은 가능할 수도 있다고 한다. 확답은 내일 오후 3시에 받을 예정이다. 팀장에게 전달했다. 계약금 30만원은 아직 보내지 않았다.",
+          "inputTokens": 1019,
+          "outputTokens": 60
+        },
+        {
+          "strength": "STRONG",
+          "model": "gpt-6-luna",
+          "provider": "openai",
+          "text": "오늘 거래처와 통화했다. 거래처는 금요일 납품은 어렵다고 했다. 월요일 납품은 가능할 수도 있다고 했으며, 확답은 내일 오후 3시에 주기로 했다. 통화 내용을 팀장에게 전달했다. 계약금 30만 원은 아직 보내지 않았다.",
+          "inputTokens": 1303,
+          "outputTokens": 71
+        }
+      ]
+    }
+  ]
+}

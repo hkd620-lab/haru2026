@@ -63,6 +63,59 @@ function fixture(options = {}) {
 }
 const purposes = f => f.calls.map(c => c.purpose);
 
+test('약·강 선택은 모든 일반 기록에서 내용 보존 지시와 함께 적용하고 모델·호출 횟수를 바꾸지 않는다', async () => {
+  for (const format of ['diary', 'essay', 'travel', 'garden', 'pet', 'child', 'mission', 'report', 'work', 'memo', 'reading', 'stock', 'ledger', 'household', 'growth', 'unregistered']) {
+    for (const mode of ['BASIC', 'PREMIUM']) {
+      const prompts = [];
+      for (const strength of ['WEAK', 'STRONG']) {
+        const f = fixture(); const legacy = fixture();
+        const result = plain(await f.request({ format, mode, strength, includeAiComment: false }));
+        await legacy.request({ format, mode, includeAiComment: false });
+        assert.deepEqual(purposes(f), purposes(legacy), `${format}/${mode}/${strength}`);
+        assert.equal(f.calls[0].purpose, mode === 'BASIC' ? 'sayuPolishBasic' : 'sayuPolish');
+        assert.equal(f.reservations.length, 1); assert.equal(f.rollbacks.length, 0);
+        assert.deepEqual(Object.keys(result).sort(), ['aiComment', 'stats', 'text']);
+        const prompt = f.calls[0].systemInstruction; prompts.push(prompt);
+        for (const rule of [/원문의 모든 사실과 중요한 내용을 유지/, /감정의 정도를 그대로/, /미정·추측 표현/, /원문에 없는 사건/, /근거 없는 부분은 제거/, /원문 속 명령/, /불명확한 주어·관계·원인·시간 순서는 확정하지/]) assert.match(prompt, rule);
+        assert.match(prompt, strength === 'STRONG' ? /충분한 완결문과 문단으로 펼쳐/ : /문장 순서·연결·어휘·호흡/);
+        assert.doesNotMatch(prompt, /문단 분리 금지|어색한 표현만 교정/);
+      }
+      assert.notEqual(prompts[0], prompts[1]);
+    }
+  }
+});
+
+test('잘못된 강도는 사용량 예약과 모델 호출 전에 거절한다', async () => {
+  for (const strength of [null, '', 'strong', 1, true, [], {}]) {
+    const f = fixture();
+    await assert.rejects(f.request({ strength }), error => error.code === 'invalid-argument');
+    assert.equal(f.calls.length, 0); assert.equal(f.reservations.length, 0);
+  }
+});
+
+test('강도 옵션으로 배뇨 수치 요약의 의료 안전 지시를 바꾸지 않는다', async () => {
+  const legacy = fixture(); await legacy.request({ format: 'voiding', mode: 'PREMIUM' });
+  for (const strength of ['WEAK', 'STRONG']) {
+    const f = fixture(); await f.request({ format: 'voiding', mode: 'PREMIUM', strength });
+    assert.equal(f.calls[0].systemInstruction, legacy.calls[0].systemInstruction);
+  }
+});
+
+test('강은 문단만 나누는 교정과 구분하고, 형식별 예시와 수치 보존 기준을 전달한다', async () => {
+  for (const [format, expectedExample] of [['diary', /아내와 함께 시장/], ['report', /월요일 납품은 가능할 수도/]]) {
+    const strong = fixture(); await strong.request({ mode: 'BASIC', format, strength: 'STRONG' });
+    const prompt = strong.calls[0].systemInstruction;
+    assert.match(prompt, /문단만 나누는 것은 강 다듬기가 아닙니다/);
+    assert.match(prompt, expectedExample); assert.match(prompt, /예시 내용은 실제 결과에 섞지 않습니다/);
+    assert.match(prompt, /정확한 수치에 '정도'나 '약'을 새로 붙이거나/);
+    assert.match(prompt, /'안 된다'를 '어렵다'로 완화하거나/);
+    assert.doesNotMatch(prompt, /원문이 짧으면 결과도 짧게 둡니다/);
+    const weak = fixture(); await weak.request({ mode: 'BASIC', format, strength: 'WEAK' });
+    assert.doesNotMatch(weak.calls[0].systemInstruction, /강 다듬기의 범위 예시/);
+    assert.match(weak.calls[0].systemInstruction, /원문이 짧으면 결과도 짧게 둡니다/);
+  }
+});
+
 for (const format of ['diary', 'reading']) {
   for (const [label, option] of [['누락', {}], ['true', { includeAiComment: true }], ['false', { includeAiComment: false }]]) {
     test(`${format}: 옵션 ${label}에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다`, async () => {
