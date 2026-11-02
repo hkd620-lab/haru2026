@@ -35,12 +35,32 @@ test('독서·일반 AI·속도 제한 오류를 주식 월한도로 오인하�
   assert.ok(STOCK_OCR_QUOTA_NOTICE.includes('직접 입력·저장'));
 });
 
-test('기존 사진 처리 경로도 월한도 이후 OCR을 반복하지 않는다', async () => {
-  const start = source.indexOf('          if (isStockFormat) {', source.indexOf('const uploadSelectedImages ='));
-  const block = source.slice(start, source.indexOf('\n        } catch (fileError', start));
-  let calls = 0;
-  const context = { isStockFormat: true, isStockOcrQuotaExceeded, console: { error() {} }, toast: { warning() {} },
-    extractStockTextFromImage: async () => { calls++; throw exhausted; } };
-  vm.runInNewContext(transformSync(`globalThis.run=async()=>{for(const compressed of [1,2,3]){${block}}};`, { loader: 'ts' }).code, context);
-  await context.run(); assert.equal(calls, 1);
+test('월한도 초과 때 초안 사진 3장의 업로드는 완료하고 OCR만 중단한다', async () => {
+  const start = source.indexOf('  const uploadSelectedImages = async');
+  const handler = source.slice(start, source.indexOf('\n  };', start) + 5);
+  let calls = 0, uploads = 0; const state = { images: [], meta: [] };
+  const context = {
+    isCleaningSessionUploadsRef: { current: false }, isUploadingRef: { current: false },
+    initialPhotoUploadFailedRef: { current: false }, initialUploadedImagesRef: { current: [] },
+    ledgerInputMode: 'simple', uploadedImages: [], format: '주식거래일지', prefix: 'stock', recordId: 'local-draft',
+    user: { uid: 'local-test' }, getRecordPhotoLimit: () => 10, isStockFormat: true,
+    getStorage: () => ({}), getFunctions: () => ({}), readOriginalImageMeta: async () => ({}),
+    startSelectedRecordPhotoReads: files => files.map(file => Promise.resolve({ ok: true, file })),
+    compressRecordPhoto: async file => file, ref: (_, fullPath) => ({ fullPath }),
+    withRecordPhotoUploadDeadline: promise => promise, uploadBytesResumable: async () => { uploads++; },
+    getDownloadURL: async () => `https://test.invalid/${uploads}`,
+    sessionUploadedImageUrlsRef: { current: [] }, photoEditorSessionRef: { current: 1 }, fileInputRef: { current: null },
+    isStockOcrQuotaExceeded, extractStockTextFromImage: async () => { calls++; throw exhausted; },
+    setInitialPhotoUploadFailed: value => { state.failed = value; }, setIsUploading() {},
+    setUploadedImages: update => { state.images = update(state.images); },
+    setUploadedImageMeta: update => { state.meta = update(state.meta); },
+    console: { error() {} }, toast: Object.fromEntries(['warning','success','error'].map(k => [k, () => {}])),
+  };
+  vm.runInNewContext(transformSync(`${handler}\nglobalThis.run=uploadSelectedImages;`, { loader: 'ts' }).code, context);
+  await context.run(Array.from({ length: 3 }, () => ({ name: 'test.png', type: 'image/png', size: 1 })), true);
+  assert.equal(calls, 1);
+  assert.equal(uploads, 3);
+  assert.equal(state.images.length, 3);
+  assert.equal(state.meta.length, 3);
+  assert.equal(context.initialPhotoUploadFailedRef.current, false, '직접 입력한 기록의 저장 차단 플래그가 켜지면 안 됨');
 });

@@ -2169,6 +2169,7 @@ ${contentValues}
       // 통신 문제로 실패한 사진은 '다시 시도' 버튼으로 같은 파일을 다시 올릴 수 있게 모아 둔다.
       const retryableFiles: File[] = [];
       const functionsInstance = getFunctions(undefined, 'asia-northeast3');
+      let stockOcrQuotaReached = false;
 
       while (selectedPhotoReads.length > 0) {
         const selectedPhoto = await selectedPhotoReads.shift()!;
@@ -2242,13 +2243,13 @@ ${contentValues}
             url: downloadUrl,
             uploadedAt: new Date().toISOString(),
           });
-          if (isStockFormat) {
+          if (isStockFormat && !stockOcrQuotaReached) {
             try {
               await extractStockTextFromImage(compressed);
             } catch (ocrError: any) {
               console.error('주식 거래 캡처 OCR 실패:', ocrError);
               toast.warning(String(ocrError?.message || '거래 캡처 텍스트 추출에 실패했습니다.'));
-              if (isStockOcrQuotaExceeded(ocrError)) break;
+              if (isStockOcrQuotaExceeded(ocrError)) stockOcrQuotaReached = true;
             }
           }
         } catch (fileError: any) {
