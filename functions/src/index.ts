@@ -13,6 +13,7 @@ const sharp = require('sharp');
 import * as fs from 'fs';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
+import { getEssayChatImageUrls, prepareEssayChatImages } from './resultChatImages';
 import { createPolishUsage, type PolishUsage } from './polishUsage';
 import { aiSecretsFor, callAi } from './ai/aiGateway';
 import { buildFormatPrefixMap, formatPrefixesOf } from './formats/formatRegistry';
@@ -4070,6 +4071,8 @@ export const chatWithResult = onCall(
     }
 
     const record = recordSnap.data() || {};
+    const essayImageUrls = getEssayChatImageUrls(record, sourceKey);
+    const deadlineBoundRequest = attachments.length > 0 || essayImageUrls.length > 0;
     let sourceResult = clampResultChatText(getRecordResultBySourceKey(record, sourceKey, sourceIndex), RESULT_CHAT_SOURCE_MAX_LENGTH);
     // _sayu 결과물이 없으면(원문만 저장했거나 과거 기록) 원문 본문으로 폴백해 대화 가능하게
     if (!sourceResult && sourceKey.endsWith('_sayu')) {
@@ -4216,6 +4219,10 @@ export const chatWithResult = onCall(
       preparedAttachments = attachments.length > 0
         ? await prepareHaruLawAttachments(uid, attachments, requestWorkDeadlineMs)
         : null;
+      const essayImages = essayImageUrls.length > 0
+        ? await runHaruLawOperationBeforeDeadline(requestWorkDeadlineMs,
+          () => prepareEssayChatImages(essayImageUrls, uid, undefined, requestWorkDeadlineMs))
+        : { parts: [], guide: '' };
       try {
         monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'chatWithResult');
       } catch (error: any) {
@@ -4257,7 +4264,7 @@ export const chatWithResult = onCall(
       }
 
       const recentMessageRows = await getRecentResultChatMessages(messagesRef);
-      const reusable = attachments.length > 0
+      const reusable = attachments.length > 0 || essayImageUrls.length > 0
         ? null
         : answerRoute !== 'web_search'
           ? findReusableResultChatAnswer(recentMessageRows, question, answerRoute)
@@ -4389,7 +4396,7 @@ export const chatWithResult = onCall(
         systemGuide: policy.systemGuide,
         recordOnlyChosen,
         questionSafetyGuide,
-      });
+      }) + (essayImages.guide ? `\n\n${essayImages.guide}` : '');
       const fileParts = preparedAttachments
         ? await uploadPreparedHaruLawAttachments(
           GEMINI_API_KEY_SECRET.value(),
@@ -4400,12 +4407,13 @@ export const chatWithResult = onCall(
         )
         : [] as HaruLawGeminiFilePart[];
       const attachmentMeta = preparedAttachments?.attachmentMeta ?? [];
+      const modelParts = [...fileParts, ...essayImages.parts];
       haruLawProcessingStage = 'summary_ai';
-      const contents: any = fileParts.length > 0
-        ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
+      const contents: any = modelParts.length > 0
+        ? [{ role: 'user', parts: [{ text: prompt }, ...modelParts] }]
         : prompt;
       const startedAt = Date.now();
-      let response = preparedAttachments
+      let response = deadlineBoundRequest
         ? await runHaruLawModelBeforeDeadline(
           requestWorkDeadlineMs,
           ({ abortSignal }) => ai.models.generateContent({
@@ -4423,7 +4431,7 @@ export const chatWithResult = onCall(
             ? { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS }
             : { maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
         });
-      if (preparedAttachments) getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
+      if (deadlineBoundRequest) getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
       let inputTokens = addOptionalTokenCounts(null, response.usageMetadata?.promptTokenCount);
       let outputTokens = addOptionalTokenCounts(null, response.usageMetadata?.candidatesTokenCount);
 
@@ -4447,10 +4455,10 @@ export const chatWithResult = onCall(
           question,
           questionSafetyGuide,
         } : undefined);
-        const retryContents: any = fileParts.length > 0
-          ? [{ role: 'user', parts: [{ text: retryPrompt }, ...fileParts] }]
+        const retryContents: any = modelParts.length > 0
+          ? [{ role: 'user', parts: [{ text: retryPrompt }, ...modelParts] }]
           : retryPrompt;
-        response = preparedAttachments
+        response = deadlineBoundRequest
           ? await runHaruLawModelBeforeDeadline(
             requestWorkDeadlineMs,
             ({ abortSignal }) => ai.models.generateContent({
@@ -4464,7 +4472,7 @@ export const chatWithResult = onCall(
             contents: retryContents,
             config: { tools: [{ googleSearch: {} }], maxOutputTokens: RESULT_CHAT_MAX_OUTPUT_TOKENS },
           });
-        if (preparedAttachments) getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
+        if (deadlineBoundRequest) getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
         inputTokens = addOptionalTokenCounts(inputTokens, response.usageMetadata?.promptTokenCount);
         outputTokens = addOptionalTokenCounts(outputTokens, response.usageMetadata?.candidatesTokenCount);
         ({ sources, usedWebSearch } = getResultChatSources(response));
@@ -4489,7 +4497,7 @@ export const chatWithResult = onCall(
         throw new Error(attachments.length > 0 ? 'attachment content could not be read' : 'empty_answer');
       }
 
-      const attachmentBacked = preparedAttachments !== null;
+      const attachmentBacked = deadlineBoundRequest;
       if (!attachmentBacked && answerRoute === 'web_search') {
         usageForAnswer = await finalizeWebSearchSlot(threadRef, actualPlan, true);
         webSearchFinalized = true;
@@ -4584,7 +4592,7 @@ export const chatWithResult = onCall(
         webSearchRollback = finalizeWebSearchSlot(threadRef, actualPlan, false);
         reservedWebSearch = false;
       }
-      if (attachments.length > 0) {
+      if (deadlineBoundRequest) {
         await settleHaruLawRollbacksBeforeDeadline(
           requestRollbackDeadlineMs,
           [monthlyRollback, webSearchRollback],
@@ -4627,6 +4635,9 @@ export const chatWithResult = onCall(
         });
       }
       if (error instanceof HttpsError) {
+        if (essayImageUrls.length > 0 && (error.details as { reason?: string })?.reason === 'HARULAW_AI_TEMPORARY_UNAVAILABLE') {
+          throw new HttpsError('deadline-exceeded', '이미지를 포함한 답변 시간이 초과되었습니다. 잠시 후 다시 질문해 주세요.');
+        }
         throw error;
       }
       if (sourceKey === 'haruraw_sayu') {

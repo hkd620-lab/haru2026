@@ -1,0 +1,20 @@
+{
+  "at": "2026-11-02T22:35:27.287Z",
+  "model": "gemini-3.1-flash-lite",
+  "input": "합성 파란 배경 + 빨간 원 PNG, 답을 드러내는 텍스트 없음",
+  "calls": 1,
+  "productionRecordWrite": false,
+  "viaDeployedCallable": false,
+  "answer": "이 그림은 선명한 파란색 배경 중앙에 붉은색 원이 배치된 형태입니다. 대비가 뚜렷한 두 가지 색상과 단순한 기하학적 도형으로 구성되어 있습니다.",
+  "passed": true,
+  "usage": {
+    "promptTokenCount": 1286,
+    "candidatesTokenCount": 46,
+    "totalTokenCount": 1332,
+    "promptTokensDetails": [
+      { "modality": "IMAGE", "tokenCount": 1064 },
+      { "modality": "TEXT", "tokenCount": 222 }
+    ],
+    "serviceTier": "standard"
+  }
+}
