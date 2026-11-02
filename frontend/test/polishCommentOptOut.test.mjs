@@ -143,3 +143,21 @@ for (const aiComment of ['새 한마디', '', undefined, 123]) {
     assert.deepEqual(state.saved.memo_stats, { preserved: true }); assert.deepEqual(state.errors, []);
   });
 }
+
+test('다시 다듬기는 강을 전달하고 배뇨 요약에서는 강도 필드를 아예 보내지 않는다', async () => {
+  for (const formatKey of ['memo', 'voiding']) {
+    const requests = [], writes = [];
+    await handler('SayuModal', 'handleRepolish', {
+      currentUser: { uid: 'synthetic-user' }, isRefining: false, polishStrength: 'STRONG', formatKey, format: '', recordDate: '2026-11-02', firestoreId: 'synthetic-record',
+      editedOriginalData: { [`${formatKey}_simple`]: '합성 원문' }, setIsRefining() {}, showLoading() {}, hideLoading() {}, functions: {}, db: {},
+      httpsCallable: () => async request => { requests.push(request); return { data: { text: '다듬은 글' } }; },
+      doc: () => ({}), updateDoc: async (_ref, payload) => writes.push(payload),
+      setEditedContent() {}, setViewMode() {}, setLocalAiComment() {}, toast: { error: assert.fail, success() {} }, console,
+    })();
+    assert.equal(requests.length, 1); assert.equal(requests[0].mode, 'PREMIUM');
+    if (formatKey === 'voiding') assert.equal(Object.hasOwn(requests[0], 'strength'), false);
+    else assert.equal(requests[0].strength, 'STRONG');
+    assert.match(requests[0].text, /\[원문 시작\]\n합성 원문\n\[원문 끝\]/);
+    assert.deepEqual(writes, [{ [`${formatKey}_sayu`]: '다듬은 글' }]);
+  }
+});

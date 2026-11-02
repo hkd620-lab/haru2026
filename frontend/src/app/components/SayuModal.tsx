@@ -1746,7 +1746,7 @@ export function SayuModal({
         text: `다음은 "${format || formatKey}" 형식으로 작성된 기록입니다. 원문의 사실과 감정을 지키며 다듬어주세요.\n\n[원문 시작]\n${contentValues}\n[원문 끝]`,
         format: formatKey,
         mode: 'PREMIUM',
-        strength: formatKey === 'voiding' ? undefined : polishStrength,
+        ...(formatKey === 'voiding' ? {} : { strength: polishStrength }),
       });
       const responseData = result.data as { text: string; aiComment?: string };
       const polished = responseData.text;
