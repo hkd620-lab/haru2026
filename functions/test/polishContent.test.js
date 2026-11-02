@@ -101,6 +101,21 @@ test('강도 옵션으로 배뇨 수치 요약의 의료 안전 지시를 바꾸
   }
 });
 
+test('강은 문단만 나누는 교정과 구분하고, 형식별 예시와 수치 보존 기준을 전달한다', async () => {
+  for (const [format, expectedExample] of [['diary', /아내와 함께 시장/], ['report', /월요일 납품은 가능할 수도/]]) {
+    const strong = fixture(); await strong.request({ mode: 'BASIC', format, strength: 'STRONG' });
+    const prompt = strong.calls[0].systemInstruction;
+    assert.match(prompt, /문단만 나누는 것은 강 다듬기가 아닙니다/);
+    assert.match(prompt, expectedExample); assert.match(prompt, /예시 내용은 실제 결과에 섞지 않습니다/);
+    assert.match(prompt, /정확한 수치에 '정도'나 '약'을 새로 붙이거나/);
+    assert.match(prompt, /'안 된다'를 '어렵다'로 완화하거나/);
+    assert.doesNotMatch(prompt, /원문이 짧으면 결과도 짧게 둡니다/);
+    const weak = fixture(); await weak.request({ mode: 'BASIC', format, strength: 'WEAK' });
+    assert.doesNotMatch(weak.calls[0].systemInstruction, /강 다듬기의 범위 예시/);
+    assert.match(weak.calls[0].systemInstruction, /원문이 짧으면 결과도 짧게 둡니다/);
+  }
+});
+
 for (const format of ['diary', 'reading']) {
   for (const [label, option] of [['누락', {}], ['true', { includeAiComment: true }], ['false', { includeAiComment: false }]]) {
     test(`${format}: 옵션 ${label}에서 본문/통계는 유지하고 명시적 false만 한마디를 생략한다`, async () => {
