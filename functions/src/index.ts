@@ -2348,13 +2348,16 @@ export const polishContent = onCall(
     });
     let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
     try {
-      const { text, mode = 'premium', format, includeAiComment } = request.data;
+      const { text, mode = 'premium', format, includeAiComment, strength } = request.data;
 
       if (!text || typeof text !== 'string') {
         throw new HttpsError('invalid-argument', '텍스트가 필요합니다.');
       }
       if (text.length > 5000) {
         throw new HttpsError('invalid-argument', '텍스트는 5000자 이내여야 합니다.');
+      }
+      if (strength !== undefined && strength !== 'WEAK' && strength !== 'STRONG') {
+        throw new HttpsError('invalid-argument', '다듬기 정도는 약 또는 강으로 선택해주세요.');
       }
       monthlyQuotaReservation = await reserveMonthlyAiQuota(request.auth.uid, 'polishContent');
 
@@ -2391,7 +2394,36 @@ export const polishContent = onCall(
 - 입력에 [원문 시작]과 [원문 끝] 표시가 있으면 그 사이만 다듬을 원문입니다. 표시 밖의 안내문과 표시 자체는 결과에 옮기지 않습니다.
 - 다듬은 본문만 출력합니다. 제목·설명·마크다운 기호를 붙이지 않습니다.`;
 
-      if (mode === 'BASIC') {
+      // 강약을 보낸 기록 편집 화면에만 새 지시문 적용. 구형 호출·배뇨 수치 요약은 기존 동작 유지.
+      if (strength !== undefined && normalizedFormat !== 'voiding') {
+        const strengthGuide = strength === 'STRONG'
+          ? `강: 원문에 있는 사실과 이미 드러난 감정을 충분한 완결문과 문단으로 펼쳐, 약보다 풍성하게 다듬습니다.
+메모식으로 압축된 표현은 같은 의미의 자연스러운 서술로 풀고, 서로 관련된 내용을 묶어 문단의 흐름과 호흡을 살립니다.
+단순한 맞춤법 교정이나 요약에 그치지 않습니다. 다만 같은 사실·감정을 반복하거나 수식어로 분량만 늘리지 않습니다.
+원문에 없는 해석·의미·가치 판단·여운·다짐·감정의 지속은 덧붙이지 않습니다.`
+          : `약: 원문에 있는 내용을 빠뜨리지 않고 문장 순서·연결·어휘·호흡을 자연스럽게 다듬습니다.
+단순한 맞춤법 교정에 그치지 않고, 끊어진 문장들을 읽기 좋은 흐름으로 정돈합니다.
+필요하면 문단을 나누되 원문을 불필요하게 길게 풀어 쓰지 않습니다.`;
+        const formatGuide = formatGroup === 'rich'
+          ? '일기·에세이·여행기록: 원문에 이미 표현된 감정만 그 정도 그대로 살립니다. 감각 묘사나 비유를 새로 만들지 않습니다.'
+          : formatGroup === 'balanced'
+          ? '관찰 기록: 관찰한 사실과 작성자의 느낌을 구분합니다. 성장·건강·상태 변화나 그 원인을 추정하지 않습니다.'
+          : '보고·업무·메모·독서·장부 등: 형식에 맞는 어조를 유지하고 사실과 작성자의 생각을 구분합니다. 감성적 수식·의견·진단·조언·계산·재계산·새 해석을 추가하지 않습니다.';
+        systemPrompt = `당신은 원문의 사실과 감정을 보존하며 글을 풍성하게 다듬는 편집자입니다.
+${strengthGuide}
+
+[형식별 기준]
+${formatGuide}
+
+[내용 보존과 자기검증]
+- 원문의 모든 사실과 중요한 내용을 유지합니다. 요약하거나 정보를 누락하지 않습니다.
+- 생략된 조사와 서술어는 문맥상 명백한 범위에서만 풀어 씁니다. 불명확한 주어·관계·원인·시간 순서는 확정하지 않습니다.
+- 감정의 강도·확실성·인과관계·대조 관계를 새로 만들거나 강화하지 않습니다.
+- 출력 전에 각 문장이 원문의 어느 내용에 근거하는지 확인하고, 근거 없는 부분은 제거합니다. 검증 과정은 출력하지 않습니다.
+- 원문이 짧거나 정보가 적으면 결과도 짧을 수 있습니다. 분량 목표를 맞추기 위해 창작하지 않습니다.
+
+${SOURCE_PRESERVATION_RULES}`;
+      } else if (mode === 'BASIC') {
         systemPrompt = `당신은 신중한 편집자입니다.
 원문을 최대한 유지하며 맞춤법과 어색한 표현만 교정하세요.
 원문 말투 유지, 내용 추가 금지, 문단 분리 금지.

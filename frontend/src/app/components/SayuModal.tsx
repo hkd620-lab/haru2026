@@ -20,6 +20,7 @@ import { buildFormatKeyMap, invertFormatKeyMap } from '../records/formatRegistry
 import { exportRecordsToEpub } from '../services/epubExportService';
 import { getEpubReaderHint } from '../utils/epubReaderGuide';
 import GrapeLoadingMini from './GrapeLoadingMini';
+import { PolishStrengthSelect, type PolishStrength } from './PolishStrengthSelect';
 import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './GrowthTimelineDocumentModal';
 import { compressImage } from '../services/imageService';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
@@ -634,6 +635,7 @@ export function SayuModal({
   const openedHouseholdOriginalRef = useRef<Record<string, string>>({});
   const [isSavingOriginal, setIsSavingOriginal] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
+  const [polishStrength, setPolishStrength] = useState<PolishStrength>('WEAK');
   const [localAiComment, setLocalAiComment] = useState(aiComment);
   const [editedWeather, setEditedWeather] = useState(weather || '');
   const [editedTemperature, setEditedTemperature] = useState(temperature || '');
@@ -1250,6 +1252,7 @@ export function SayuModal({
         specialDay: (currentRating || 0) > 0,
       };
       setEditedContent(content);
+      setPolishStrength('WEAK');
       setEditedWeather(weather || '');
       setEditedTemperature(temperature || '');
       setEditedMood(mood || '');
@@ -1727,7 +1730,7 @@ export function SayuModal({
 
   // ✨ 다시 다듬기
   const handleRepolish = async () => {
-    if (!currentUser || !formatKey || (!recordDate && !firestoreId)) return;
+    if (isRefining || !currentUser || !formatKey || (!recordDate && !firestoreId)) return;
     setIsRefining(true);
     showLoading('AI가 다듬고 있습니다');
     try {
@@ -1740,9 +1743,10 @@ export function SayuModal({
       }
       const polishContentFunc = httpsCallable(functions, 'polishContent');
       const result = await polishContentFunc({
-        text: `다음은 "${format || formatKey}" 형식으로 작성된 기록입니다. 이 내용을 자연스럽고 읽기 좋게 교정해주세요.\n\n${contentValues}`,
+        text: `다음은 "${format || formatKey}" 형식으로 작성된 기록입니다. 원문의 사실과 감정을 지키며 다듬어주세요.\n\n[원문 시작]\n${contentValues}\n[원문 끝]`,
         format: formatKey,
         mode: 'PREMIUM',
+        ...(formatKey === 'voiding' ? {} : { strength: polishStrength }),
       });
       const responseData = result.data as { text: string; aiComment?: string };
       const polished = responseData.text;
@@ -3462,7 +3466,8 @@ export function SayuModal({
               backgroundColor: '#fff',
             }}
           >
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            {formatKey !== 'voiding' && <PolishStrengthSelect value={polishStrength} onChange={setPolishStrength} disabled={isSavingOriginal || isRefining} />}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button
                 onClick={handleSaveOriginal}
                 disabled={isSavingOriginal || isRefining}
