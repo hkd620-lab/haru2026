@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getStorage } from 'firebase-admin/storage';
 import sharp from 'sharp';
+import { HttpsError } from 'firebase-functions/v2/https';
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_IMAGES = 5;
@@ -40,18 +41,18 @@ export function resolveEssayChatImage(url: string, uid: string, bucketName: stri
   } catch { return null; }
 }
 
-async function loadImage(url: string, uid: string): Promise<Buffer> {
+async function loadImage(url: string, uid: string, timeoutMs = 5000): Promise<Buffer> {
   const bucket = getStorage().bucket();
   const target = resolveEssayChatImage(url, uid, bucket.name, process.env.CLOUDINARY_CLOUD_NAME || 'dmhutjnpn');
   if (!target) throw new Error('Unsupported record image');
   if (target.kind === 'cloudinary') {
     const response = await axios.get(target.url, {
-      responseType: 'arraybuffer', timeout: 5000, maxContentLength: MAX_BYTES, maxRedirects: 0,
+      responseType: 'arraybuffer', timeout: timeoutMs, maxContentLength: MAX_BYTES, maxRedirects: 0,
     });
     return Buffer.from(response.data);
   }
   const stream = bucket.file(target.path).createReadStream({ start: 0, end: MAX_BYTES });
-  const timer = setTimeout(() => stream.destroy(new Error('Record image timeout')), 5000);
+  const timer = setTimeout(() => stream.destroy(new Error('Record image timeout')), timeoutMs);
   try {
     const chunks: Buffer[] = [];
     let size = 0;
@@ -65,19 +66,28 @@ async function loadImage(url: string, uid: string): Promise<Buffer> {
 }
 
 export async function prepareEssayChatImages(
-  urls: string[], uid: string, read: (url: string, uid: string) => Promise<Buffer> = loadImage,
+  urls: string[], uid: string, read: (url: string, uid: string, timeoutMs: number) => Promise<Buffer> = loadImage,
+  deadlineMs = Infinity,
 ) {
+  const remainingMs = () => {
+    const remaining = deadlineMs - Date.now();
+    if (remaining <= 0) throw new HttpsError('deadline-exceeded', '이미지 확인 시간이 초과되었습니다. 잠시 후 다시 질문해 주세요.');
+    return remaining;
+  };
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
   let failed = 0;
   for (const [index, url] of urls.slice(0, MAX_IMAGES).entries()) {
+    const timeoutMs = Math.min(5000, remainingMs());
     try {
-      const bytes = await read(url, uid);
+      const bytes = await read(url, uid, timeoutMs);
+      remainingMs();
       if (bytes.length > MAX_BYTES) throw new Error('Record image too large');
       const image = await sharp(bytes, { limitInputPixels: 40_000_000 })
         .rotate().resize(1536, 1536, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer();
+      remainingMs();
       parts.push({ text: `[에세이 본문 첨부 이미지 ${index + 1}]` },
         { inlineData: { mimeType: 'image/jpeg', data: image.toString('base64') } });
-    } catch { failed++; }
+    } catch { remainingMs(); failed++; }
   }
   const omitted = Math.max(0, urls.length - MAX_IMAGES);
   const guide = urls.length ? [

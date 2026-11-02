@@ -69,3 +69,29 @@ test('최대 크기 초과 입력은 모델에 보내지 않음', async () => {
   assert.equal(result.parts.length, 0);
   assert.match(result.guide, /읽기 실패 1장/);
 });
+
+test('이미지 읽기에 남은 공통 시간만 주고 마감 후 다음 이미지를 읽지 않음', async () => {
+  const png = await sharp({ create: { width: 2, height: 2, channels: 3, background: 'red' } }).png().toBuffer();
+  const originalNow = Date.now;
+  let now = originalNow();
+  const deadline = now + 5000;
+  const budgets = [];
+  Date.now = () => now;
+  try {
+    await assert.rejects(prepareEssayChatImages(['a', 'b', 'c'], 'alice', async (_url, _uid, timeoutMs) => {
+      budgets.push(timeoutMs);
+      now += 4000;
+      return png;
+    }, deadline), error => error.code === 'deadline-exceeded');
+    assert.deepEqual(budgets, [5000, 1000]);
+  } finally { Date.now = originalNow; }
+});
+
+test('이미지 전체 마감이 이미 지났으면 읽기 호출 없음', async () => {
+  let calls = 0;
+  await assert.rejects(prepareEssayChatImages(['a'], 'alice', async () => {
+    calls++;
+    return Buffer.alloc(0);
+  }, Date.now() - 1), error => error.code === 'deadline-exceeded');
+  assert.equal(calls, 0);
+});

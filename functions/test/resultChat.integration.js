@@ -20,6 +20,7 @@ const realLegacyGenai = require('@google/generative-ai');
 const genaiCalls = [];
 let essayImageFixture;
 const essayImageReadPaths = [];
+let essayImageReadDelayQueueMs = [];
 const legacyGenaiCalls = [];
 let forceWebSearchError = false;
 let webSearchNotGroundedResponsesRemaining = 0;
@@ -204,7 +205,7 @@ class InstrumentedGoogleGenAI {
       generateContent: async (request) => {
         const captured = cloneGenerateContentRequest(request);
         genaiCalls.push(captured);
-        if (captured.contents.includes('fileData')) {
+        if (captured.contents.includes('fileData') || captured.contents.includes('inlineData')) {
           const injectedModelDelayMs = geminiModelDelayQueueMs.shift() ?? 0;
           if (injectedModelDelayMs > 0 && advanceControlledClock) {
             advanceControlledClock(injectedModelDelayMs);
@@ -401,6 +402,8 @@ Module._load = function patchedLoad(request, parent, isMain) {
           file: (storagePath) => ({
             createReadStream: () => {
               essayImageReadPaths.push(storagePath);
+              const delay = essayImageReadDelayQueueMs.shift() ?? 0;
+              if (delay && advanceControlledClock) advanceControlledClock(delay);
               return require('node:stream').Readable.from([essayImageFixture]);
             },
             getMetadata: async () => {
@@ -1661,6 +1664,53 @@ async function run() {
     assert.strictEqual(genaiCalls.length, before + 4);
     assert.ok(genaiCalls.at(-1).contents.includes('inlineData'));
     assert.ok(genaiCalls.at(-1).hasGoogleSearchTool);
+
+    // A common 60s work deadline preserves 15s for writes and 15s recovery
+    // within the 90s callable. Image delays and both model attempts share it.
+    await db.doc(`users/${essayUid}/records/essay`).update({
+      essay_images: JSON.stringify(Array.from({ length: 5 }, (_, i) =>
+        `https://firebasestorage.googleapis.com/v0/b/demo-essay.appspot.com/o/${encodeURIComponent(`${imagePath}-${i}`)}?alt=media`)),
+    });
+    const timeoutCases = [
+      { name: 'image preparation', imageDelays: [60_001], modelDelays: [], attempts: 0, retry: false },
+      { name: 'first model', imageDelays: [4000, 4000, 4000, 4000, 4000], modelDelays: [40_001], attempts: 1, retry: false },
+      { name: 'search retry', imageDelays: [4000, 4000, 4000, 4000, 4000], modelDelays: [20_000, 20_001], attempts: 2, retry: true },
+      { name: 'native model abort', imageDelays: [4000, 4000, 4000, 4000, 4000], modelDelays: [10_000], attempts: 1, retry: false, abort: true },
+    ];
+    for (const scenario of timeoutCases) {
+      await resetResultChatRateLimit(essayUid);
+      const usedBefore = await getMonthlyUsed(essayUid);
+      const threadBefore = await getThread(essayUid, 'essay', 'essay_sayu');
+      const messagesBefore = (await getMessages(essayUid, 'essay', 'essay_sayu')).length;
+      const callsBefore = genaiCalls.length;
+      const realNow = Date.now;
+      let now = realNow();
+      Date.now = () => now;
+      advanceControlledClock = elapsed => { now += elapsed; };
+      essayImageReadDelayQueueMs = [...scenario.imageDelays];
+      geminiModelDelayQueueMs = [...scenario.modelDelays];
+      geminiModelAbortNameQueue = scenario.abort ? ['AbortError'] : [];
+      webSearchNotGroundedResponsesRemaining = scenario.retry ? 1 : 0;
+      try {
+        await assert.rejects(callable(essayUid, {
+          ...data, question: `그림 ${scenario.name} 시간 제한 확인`, searchPreference: 'web_confirmed',
+        }), error => error.code === 'deadline-exceeded', scenario.name);
+      } finally {
+        Date.now = realNow;
+        advanceControlledClock = null;
+        essayImageReadDelayQueueMs = [];
+        geminiModelDelayQueueMs = [];
+        geminiModelAbortNameQueue = [];
+        webSearchNotGroundedResponsesRemaining = 0;
+      }
+      assert.strictEqual(genaiCalls.length, callsBefore + scenario.attempts, scenario.name);
+      assert.ok(genaiCalls.slice(callsBefore).every(call => call.hasAbortSignal), scenario.name);
+      assert.strictEqual(await getMonthlyUsed(essayUid), usedBefore, scenario.name);
+      await assertThreadSearchUsage(essayUid, 'essay', 'essay_sayu', threadBefore.webSearchUsedCount || 0, 0);
+      assert.strictEqual((await getMessages(essayUid, 'essay', 'essay_sayu')).length, messagesBefore, scenario.name);
+      const after = await getThread(essayUid, 'essay', 'essay_sayu');
+      assert.ok(!after.activeRequestId, scenario.name);
+    }
   }
 
   const logs = await getLogs({ featureName: 'result_chat' });
