@@ -1,5 +1,7 @@
 export * from '../reading-ai-browser/sdk';
 import {httpsCallable as originalCallable} from '../reading-ai-browser/sdk';
+export { getDocs as getDocsFromServer } from '../reading-ai-browser/sdk';
+export const runTransaction = async () => { throw new Error('QA: transaction forbidden'); };
 export const httpsCallable = (functions: unknown, name: string) => name === 'getMonthlyAiQuotaStatus' ? async () => {
   await new Promise(resolve=>setTimeout(resolve, 2500));
   const scenario = new URLSearchParams(location.search).get('quota');

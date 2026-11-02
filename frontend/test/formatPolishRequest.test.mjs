@@ -24,7 +24,7 @@ function fixture({ format = '일기', prefix = 'diary', formData = {}, fields = 
   const toast = Object.fromEntries(['info', 'success', 'error', 'warning'].map(level => [level, message => notices.push({ level, message })]));
   // 상태 값은 context 에 두어 다음 호출(다음 렌더)이 바뀐 값을 읽게 한다
   const context = {
-    isPolishing: false, pendingPolishMode: initialPendingMode, format, prefix, formData, fields, selectedCrops, recordStyle, isStockFormat, isSaving: false, isLoadingMonthlyAiQuota: false, monthlyAiQuotaStatus: null,
+    isPolishing: false, pendingPolishMode: initialPendingMode, pendingPolishStrength: 'WEAK', format, prefix, formData, fields, selectedCrops, recordStyle, isStockFormat, isSaving: false, isLoadingMonthlyAiQuota: false, monthlyAiQuotaStatus: null,
     photoEditorSessionRef: { current: 1 }, isUploadingRef: { current: false }, initialPhotoUploadFailedRef: { current: false },
     polishedContent: '', polishStats: null, sayuMode: 'BASIC', uploadedImages: [],
     sayuKey: `${prefix}_sayu`, imagesKey: `${prefix}_images`, imageMetaKey: `${prefix}_imageMeta`,
@@ -35,6 +35,7 @@ function fixture({ format = '일기', prefix = 'diary', formData = {}, fields = 
     DIARY_PREMIUM_FIELDS: [{ key: 'diary_a' }, { key: 'diary_b' }],
     toast, console: { error() {} },
     setSayuMode: v => { state.mode = v; context.sayuMode = v; }, setShowModeSelect: () => {}, setIsPolishing: v => { state.busy = v; context.isPolishing = v; },
+    setPolishStrength: v => { state.strength = v; }, setPendingPolishStrength: v => { context.pendingPolishStrength = v; },
     setPolishedContent: v => { state.polished = v; context.polishedContent = v; }, setPolishStats: v => { state.stats = v; context.polishStats = v; }, setShowPolishModal: v => { state.modal = v; },
     setPendingPolishMode: v => { context.pendingPolishMode = v; }, setMonthlyAiQuotaStatus: v => { state.quota = v; context.monthlyAiQuotaStatus = v; },
     setShowMonthlyAiQuotaModal: v => { state.quotaModal = v; }, setIsLoadingMonthlyAiQuota: v => { state.quotaLoading = v; context.isLoadingMonthlyAiQuota = v; },
@@ -65,7 +66,8 @@ test('원문은 말투·명령·인용 그대로 원문 표시 사이에 넣고,
   for (const [i, mode] of ['PREMIUM', 'BASIC'].entries()) {
     const { region, name, payload } = f.requests[i];
     assert.deepEqual([region, name], ['asia-northeast3', 'polishContent']);
-    assert.deepEqual(Object.keys(payload).sort(), ['format', 'includeAiComment', 'mode', 'text']);
+    assert.deepEqual(Object.keys(payload).sort(), ['format', 'includeAiComment', 'mode', 'strength', 'text']);
+    assert.equal(payload.strength, 'WEAK');
     assert.deepEqual([payload.format, payload.mode, payload.includeAiComment], ['diary', mode, false]);
     assert.equal(between(payload.text), diary);
     assert.ok(payload.text.endsWith(`[원문 시작]\n${diary}\n[원문 끝]`));
@@ -77,7 +79,7 @@ test('원문은 말투·명령·인용 그대로 원문 표시 사이에 넣고,
     // 안내문은 기존(580자)보다 짧아 5000자 입력 한도를 더 줄이지 않는다
     assert.ok(payload.text.length - diary.length <= 520, String(payload.text.length - diary.length));
   }
-  assert.deepEqual(f.state, { mode: 'BASIC', busy: false, polished: '다듬은 본문', stats: { content_richness: 3 }, modal: true });
+  assert.deepEqual(f.state, { mode: 'BASIC', strength: 'WEAK', busy: false, polished: '다듬은 본문', stats: { content_richness: 3 }, modal: true });
 });
 
 test('텃밭 작물 줄도 원문 표시 안에 들어가고, 빈 입력은 서버를 부르지 않는다', async () => {
