@@ -1,0 +1,136 @@
+{
+  "pr": 324,
+  "approvedHead": "cdad3f88faeef46c817b038a98f935e84268415b",
+  "mergeSha": "4ae66c7219be9a6476f743760dff6ac4d1112690",
+  "project": "haru2026-8abb8",
+  "region": "asia-northeast3",
+  "deployedFunction": "polishContent",
+  "functionAfter": {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishContent",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "polishcontent-00246-muv",
+      "service": "projects/haru2026-8abb8/locations/asia-northeast3/services/polishcontent"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-11-02T12:57:11.149316564Z"
+  },
+  "hosting": {
+    "conclusion": "success",
+    "headSha": "4ae66c7219be9a6476f743760dff6ac4d1112690",
+    "jobs": [
+      {
+        "completedAt": "2026-11-02T12:59:46Z",
+        "conclusion": "success",
+        "databaseId": 125289250800,
+        "name": "build_and_deploy",
+        "startedAt": "2026-11-02T12:58:28Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-11-02T12:58:29Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-11-02T12:58:28Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-11-02T12:58:32Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-11-02T12:58:29Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-11-02T12:58:36Z",
+            "conclusion": "success",
+            "name": "Setup Node.js",
+            "number": 3,
+            "startedAt": "2026-11-02T12:58:32Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-11-02T12:59:37Z",
+            "conclusion": "success",
+            "name": "Install and Build",
+            "number": 4,
+            "startedAt": "2026-11-02T12:58:36Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-11-02T12:59:43Z",
+            "conclusion": "success",
+            "name": "Run FirebaseExtended/action-hosting-deploy@v0",
+            "number": 5,
+            "startedAt": "2026-11-02T12:59:37Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-11-02T12:59:43Z",
+            "conclusion": "success",
+            "name": "Post Setup Node.js",
+            "number": 9,
+            "startedAt": "2026-11-02T12:59:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-11-02T12:59:44Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 10,
+            "startedAt": "2026-11-02T12:59:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-11-02T12:59:44Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 11,
+            "startedAt": "2026-11-02T12:59:44Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/hkd620-lab/haru2026/actions/runs/41449012016/job/125289250800"
+      }
+    ],
+    "startedAt": "2026-11-02T12:58:24Z",
+    "updatedAt": "2026-11-02T12:59:46Z"
+  },
+  "bundle": {
+    "site": "https://haru2026.com",
+    "moduleUrl": "https://haru2026.com/assets/index-CUpMfJJs.js",
+    "sha256": "fad6def242dc5d525f133731469ec5d45b07ad7812a1bc76121f91f2ee407117",
+    "containsStrengthSelector": true,
+    "containsStrongDescription": true,
+    "containsStrongEnum": true
+  },
+  "productionE2E": {
+    "testedVia": "https://haru2026.com/record",
+    "recordFormat": "일기",
+    "persistedRecord": false,
+    "apiCalls": 4,
+    "cases": [
+      {
+        "source": "오늘 아내랑 시장 갔다. 사람이 많았다. 사과 샀다. 같이 다녀서 좋았다. 좀 피곤했다.",
+        "weak": "오늘 아내랑 시장에 갔다. 사람이 많았다. 사과를 샀다. 함께 다녀서 좋았고, 좀 피곤했다.",
+        "strong": "오늘 아내랑 시장에 갔다. 사람이 많았다. 사과를 샀다. 아내와 같이 다녀서 좋았다. 좀 피곤했다.",
+        "observation": "두 결과 모두 사실을 보존했으나 강약 차이는 작았음"
+      },
+      {
+        "source": "토요일 아내랑 양평 다녀옴. 오전 10시 출발. 길 막혀서 12시 도착. 점심 막국수 먹음. 국물 시원해서 맛있었다. 강변 30분 걸음. 날씨 흐림. 비 안 옴. 아내랑 오랜만에 같이 걸어서 좋았음. 돌아올 때도 차 막힘. 집에 오니 피곤했다. 다음 주 계획은 아직 안 정했다.",
+        "weak": "토요일에 아내와 양평에 다녀왔다. 오전 10시에 출발했지만 길이 막혀 12시에 도착했다. 점심으로 막국수를 먹었는데, 국물이 시원해서 맛있었다. 강변을 30분 정도 걸었다. 날씨는 흐렸지만 비는 오지 않았다. 아내와 오랜만에 함께 걸어서 좋았다. 돌아오는 길에도 차가 막혔고, 집에 오니 피곤했다. 다음 주 계획은 아직 정하지 않았다.",
+        "strong": "토요일에 아내와 양평에 다녀왔다. 오전 10시에 출발했지만 길이 막혀 12시에 도착했다. 점심으로 막국수를 먹었는데, 국물이 시원해서 맛있었다.\n\n강변을 30분 동안 걸었다. 날씨는 흐렸지만 비는 오지 않았다. 아내와 오랜만에 함께 걸어서 좋았다. 돌아오는 길에도 차가 막혔고, 집에 도착하니 피곤했다. 다음 주 계획은 아직 정하지 않았다.",
+        "observation": "강은 문단을 나누었으나 표현·분량 차이가 작아 합의한 풍성함 대비 보완 필요"
+      }
+    ]
+  },
+  "rulesChanged": false,
+  "otherFunctionsDeployed": false,
+  "sourceMatchesMerge": true,
+  "qualityStatus": "약강 선택과 생성은 동작하나 시험 2건에서 강의 풍성함 차이가 작아 합의한 예시 수준 대비 보완 필요. 후속 지시문 보완안은 아직 미배포."
+}
