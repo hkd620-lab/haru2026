@@ -13,6 +13,7 @@ const sharp = require('sharp');
 import * as fs from 'fs';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
+import { getEssayChatImageUrls, prepareEssayChatImages } from './resultChatImages';
 import { createPolishUsage, type PolishUsage } from './polishUsage';
 import { aiSecretsFor, callAi } from './ai/aiGateway';
 import { buildFormatPrefixMap, formatPrefixesOf } from './formats/formatRegistry';
@@ -4088,6 +4089,7 @@ export const chatWithResult = onCall(
     }
 
     const record = recordSnap.data() || {};
+    const essayImageUrls = getEssayChatImageUrls(record, sourceKey);
     let sourceResult = clampResultChatText(getRecordResultBySourceKey(record, sourceKey, sourceIndex), RESULT_CHAT_SOURCE_MAX_LENGTH);
     // _sayu 결과물이 없으면(원문만 저장했거나 과거 기록) 원문 본문으로 폴백해 대화 가능하게
     if (!sourceResult && sourceKey.endsWith('_sayu')) {
@@ -4234,6 +4236,7 @@ export const chatWithResult = onCall(
       preparedAttachments = attachments.length > 0
         ? await prepareHaruLawAttachments(uid, attachments, requestWorkDeadlineMs)
         : null;
+      const essayImages = await prepareEssayChatImages(essayImageUrls, uid);
       try {
         monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'chatWithResult');
       } catch (error: any) {
@@ -4275,7 +4278,7 @@ export const chatWithResult = onCall(
       }
 
       const recentMessageRows = await getRecentResultChatMessages(messagesRef);
-      const reusable = attachments.length > 0
+      const reusable = attachments.length > 0 || essayImageUrls.length > 0
         ? null
         : answerRoute !== 'web_search'
           ? findReusableResultChatAnswer(recentMessageRows, question, answerRoute)
@@ -4407,7 +4410,7 @@ export const chatWithResult = onCall(
         systemGuide: policy.systemGuide,
         recordOnlyChosen,
         questionSafetyGuide,
-      });
+      }) + (essayImages.guide ? `\n\n${essayImages.guide}` : '');
       const fileParts = preparedAttachments
         ? await uploadPreparedHaruLawAttachments(
           GEMINI_API_KEY_SECRET.value(),
@@ -4418,9 +4421,10 @@ export const chatWithResult = onCall(
         )
         : [] as HaruLawGeminiFilePart[];
       const attachmentMeta = preparedAttachments?.attachmentMeta ?? [];
+      const modelParts = [...fileParts, ...essayImages.parts];
       haruLawProcessingStage = 'summary_ai';
-      const contents: any = fileParts.length > 0
-        ? [{ role: 'user', parts: [{ text: prompt }, ...fileParts] }]
+      const contents: any = modelParts.length > 0
+        ? [{ role: 'user', parts: [{ text: prompt }, ...modelParts] }]
         : prompt;
       const startedAt = Date.now();
       let response = preparedAttachments
@@ -4465,8 +4469,8 @@ export const chatWithResult = onCall(
           question,
           questionSafetyGuide,
         } : undefined);
-        const retryContents: any = fileParts.length > 0
-          ? [{ role: 'user', parts: [{ text: retryPrompt }, ...fileParts] }]
+        const retryContents: any = modelParts.length > 0
+          ? [{ role: 'user', parts: [{ text: retryPrompt }, ...modelParts] }]
           : retryPrompt;
         response = preparedAttachments
           ? await runHaruLawModelBeforeDeadline(

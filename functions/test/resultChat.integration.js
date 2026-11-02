@@ -18,6 +18,8 @@ const realGeminiSmokeOnly = process.env.HARU_RESULT_CHAT_REAL_SMOKE === '1';
 const realGenai = require('@google/genai');
 const realLegacyGenai = require('@google/generative-ai');
 const genaiCalls = [];
+let essayImageFixture;
+const essayImageReadPaths = [];
 const legacyGenaiCalls = [];
 let forceWebSearchError = false;
 let webSearchNotGroundedResponsesRemaining = 0;
@@ -395,7 +397,12 @@ Module._load = function patchedLoad(request, parent, isMain) {
     return {
       getStorage: () => ({
         bucket: () => ({
+          name: 'demo-essay.appspot.com',
           file: (storagePath) => ({
+            createReadStream: () => {
+              essayImageReadPaths.push(storagePath);
+              return require('node:stream').Readable.from([essayImageFixture]);
+            },
             getMetadata: async () => {
               attachmentMetadataPaths.push(storagePath);
               const injectedDelayMs = attachmentMetadataDelayQueueMs.shift() ?? 0;
@@ -1619,6 +1626,42 @@ async function run() {
   assert.ok(!lawSearchCalls.at(-1).contents.includes('inlineData'));
   assert.strictEqual(activeGeminiFiles.size, 0);
   assert.strictEqual((await db.collection('haruLawGeminiFileCleanup').get()).size, 0);
+
+  // Saved essay images must reach the existing model call, including search
+  // retries. An old text-only cached answer must never hide the image again.
+  if (!useRealGemini) {
+    const essayUid = 'result-chat-essay-image-user';
+    await resetUser(essayUid);
+    await db.doc(`users/${essayUid}/subscription/info`).set({ plan: 'premium', status: 'active' });
+    essayImageFixture = await require('sharp')({ create: {
+      width: 8, height: 8, channels: 3, background: 'red',
+    } }).png().toBuffer();
+    const imagePath = `users/${essayUid}/format_photos/essay.png`;
+    await db.doc(`users/${essayUid}/records/essay`).set({
+      essay_sayu: '내가 그린 그림을 붙인 에세이.',
+      essay_images: JSON.stringify([`https://firebasestorage.googleapis.com/v0/b/demo-essay.appspot.com/o/${encodeURIComponent(imagePath)}?alt=media`]),
+    });
+    const data = { recordId: 'essay', sourceKey: 'essay_sayu', question: '본문 속 그림은 어떤 그림이지?' };
+    const before = genaiCalls.length;
+    const readsBefore = essayImageReadPaths.length;
+    const choice = await callable(essayUid, data);
+    assert.strictEqual(choice.requiresConfirmation, true);
+    assert.strictEqual(essayImageReadPaths.length, readsBefore);
+    for (let i = 0; i < 2; i++) {
+      const result = await callable(essayUid, { ...data, searchPreference: 'record_only' });
+      assert.ok(result.answer);
+      assert.ok(!result.cached);
+    }
+    assert.strictEqual(genaiCalls.length, before + 2);
+    assert.ok(genaiCalls.at(-1).contents.includes('inlineData'));
+    assert.ok(genaiCalls.at(-1).contents.includes('에세이 본문 첨부 이미지 1'));
+    assert.strictEqual(genaiCalls.at(-1).hasGoogleSearchTool, false);
+    webSearchNotGroundedResponsesRemaining = 1;
+    await callable(essayUid, { ...data, searchPreference: 'web_confirmed' });
+    assert.strictEqual(genaiCalls.length, before + 4);
+    assert.ok(genaiCalls.at(-1).contents.includes('inlineData'));
+    assert.ok(genaiCalls.at(-1).hasGoogleSearchTool);
+  }
 
   const logs = await getLogs({ featureName: 'result_chat' });
   assert.ok(logs.some((log) => log.actualPlan === 'basic' && log.answerRoute === 'record_only' && log.webSearchUsed === false && log.searchSourceCount === 0));
