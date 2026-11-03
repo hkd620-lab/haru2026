@@ -14,6 +14,7 @@ type HomePersonalizationModalProps = {
   initialRecordKeys: string[];
   initialAgentKeys: string[];
   saving?: boolean;
+  error?: string | null;
   onClose: () => void;
   onSave: (selection: { selectedRecordFormats: string[]; selectedAgents: string[] }) => void | Promise<void>;
 };
@@ -28,17 +29,20 @@ export function HomePersonalizationModal({
   initialRecordKeys,
   initialAgentKeys,
   saving = false,
+  error,
   onClose,
   onSave,
 }: HomePersonalizationModalProps) {
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(() => new Set(initialRecordKeys));
   const [selectedAgents, setSelectedAgents] = useState<Set<string>>(() => new Set(initialAgentKeys));
+  const initialRecordSelection = JSON.stringify(initialRecordKeys);
+  const initialAgentSelection = JSON.stringify(initialAgentKeys);
 
   useEffect(() => {
     if (!isOpen) return;
-    setSelectedRecords(new Set(initialRecordKeys));
-    setSelectedAgents(new Set(initialAgentKeys));
-  }, [isOpen, initialRecordKeys, initialAgentKeys]);
+    setSelectedRecords(new Set<string>(JSON.parse(initialRecordSelection)));
+    setSelectedAgents(new Set<string>(JSON.parse(initialAgentSelection)));
+  }, [isOpen, initialRecordSelection, initialAgentSelection]);
 
   const totalSelected = selectedRecords.size + selectedAgents.size;
   const allRecordKeys = useMemo(() => records.map((item) => item.key), [records]);
@@ -122,17 +126,17 @@ export function HomePersonalizationModal({
                   letterSpacing: 0,
                 }}
               >
-                내 HARU 관리
+                내 하루비서 관리
               </h2>
               <p style={{ margin: '6px 0 0', color: '#7A6F5A', fontSize: 12, lineHeight: 1.6 }}>
-                자주 쓰는 AI 비서를 골라 홈에 표시합니다. 기록은 글쓰기에서 시작합니다.
+                자주 쓰는 비서만 골라 두세요. 담지 않은 비서도 전체 보기에서 바로 이용할 수 있습니다.
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              aria-label="내 HARU 관리 닫기"
+              aria-label="내 하루비서 관리 닫기"
               style={iconButtonStyle}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinecap="round">
@@ -148,6 +152,7 @@ export function HomePersonalizationModal({
         </div>
 
         <div style={{ padding: 22, display: 'grid', gap: 24 }}>
+          {error && <p role="alert" style={{ margin: 0, color: '#9C3528', fontSize: 13 }}>{error}</p>}
           {records.length > 0 && (
             <OptionGroup
               title="HARU 기록"

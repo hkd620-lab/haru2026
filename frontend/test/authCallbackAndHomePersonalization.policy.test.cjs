@@ -40,7 +40,7 @@ assert(!authCallbackSrc.includes('console.error(\'Firebase 로그인 실패:\', 
 assert(homeSrc.includes('const isPersonalizationPending = !effectivePersonalizationLoaded && homeViewMode === \'my\';'));
 assertBefore(homeSrc, 'setPersonalization(null);\n      setPersonalizationOwnerUid(null);\n      setPersonalizationLoaded(false);', 'firestoreService.getHomePersonalization(requestUid)');
 assert(homeSrc.includes('{isPersonalizationPending && <HomePersonalizationSkeleton />}'));
-assert(homeSrc.includes('{!isPersonalizationPending && !isMyHaruEmpty && ('));
+assert(homeSrc.includes("const homeAgents = agentViewMode === 'all'"));
 assert(homeSrc.includes('const [personalizationOwnerUid, setPersonalizationOwnerUid] = useState<string | null>(null);'));
 assert(homeSrc.includes('const currentUserUidRef = useRef<string | null>(currentUserUid);'));
 assert(homeSrc.includes('currentUserUidRef.current = currentUserUid;'));

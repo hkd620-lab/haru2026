@@ -109,6 +109,7 @@ export interface HomePersonalizationSettings {
   selectedRecordFormats: string[];
   selectedAgents: string[];
   personalized?: boolean;
+  assistantSelectionConfigured?: boolean;
   updatedAt?: any;
 }
 
@@ -2520,6 +2521,7 @@ class FirestoreService {
         selectedRecordFormats: Array.isArray(data.selectedRecordFormats) ? data.selectedRecordFormats : [],
         selectedAgents: Array.isArray(data.selectedAgents) ? data.selectedAgents : [],
         personalized: data.personalized === true,
+        assistantSelectionConfigured: data.assistantSelectionConfigured === true,
         updatedAt: data.updatedAt,
       };
     } catch (error) {
@@ -2541,6 +2543,7 @@ class FirestoreService {
         selectedRecordFormats: data.selectedRecordFormats,
         selectedAgents: data.selectedAgents,
         personalized: true,
+        assistantSelectionConfigured: true,
         updatedAt: serverTimestamp(),
       }, { merge: true });
     } catch (error) {
