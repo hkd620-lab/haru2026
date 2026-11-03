@@ -1,0 +1,33 @@
+{
+  "commit": "5732554c022d83bd12d7769daf62e7f69b3c9584",
+  "lockSha256": "d499990f95e4aaf8aa1fdfc30793928836766013d1f3d5b6195f14a9ff837a5c",
+  "buildAssets": [
+    "/assets/index-Ci6j4Mwj.js",
+    "/assets/index-legacy-CRbOEoO0.js"
+  ],
+  "hostingVersions": [
+    "448b4ad1a8645d34"
+  ],
+  "url": "https://haru2026.com",
+  "status": 200,
+  "etag": "\"49a340fdcee0150d56fd1c110d52081ef0ae07a001671ff3bfbda7dcd1ab97f5\"",
+  "title": [
+    "haru2026 하루2026 | AI 생활기록·생활관리 플랫폼"
+  ],
+  "assetChecks": [
+    {
+      "path": "/assets/index-Ci6j4Mwj.js",
+      "status": 200,
+      "bytes": 5297007,
+      "sha256": "be048f26327207fa6164acd18cf1287f00352f048187ef6c4f62babd390eb476"
+    },
+    {
+      "path": "/assets/index-legacy-CRbOEoO0.js",
+      "status": 200,
+      "bytes": 5493471,
+      "sha256": "cd4fa0787744e3cba19be42946a2475b783f92c1ece0d5ec5e46da8a879d3ca8"
+    }
+  ],
+  "checkedAt": "2026-11-03T11:07:12.143291+09:00",
+  "hostingVersionSource": "GitHub Actions log; project and site names masked, workflow projectId verified separately"
+}
