@@ -1,0 +1,1894 @@
+[
+  {
+    "group": 1,
+    "functions": [
+      "analyzeDrugPhoto",
+      "analyzePlantPhoto",
+      "extractHouseholdTextFromImage",
+      "extractKNewsMetadata",
+      "extractLedgerTextFromImage",
+      "extractReadingBookTextFromPhoto"
+    ],
+    "zipSha256": "353daf2e5433c772bcff5d4d5b177bb43264db41988d07df762f31b229fca1b8",
+    "archiveBytes": 14225132,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/bookStudio.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 2,
+    "functions": [
+      "analyzeFacebookZip",
+      "detectPlantAdvanced",
+      "generateGrowthTimelinePdf",
+      "generateTTS"
+    ],
+    "zipSha256": "f2d54819e25923d6c338f12dd79b1ce7f3ad01c3a9a0fdb9bb7ce56f6f8ead37",
+    "archiveBytes": 14642445,
+    "comparedFiles": 48,
+    "changed": [
+      "lib/ai/aiModels.js",
+      "lib/index.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/resultChatImages.js",
+      "lib/stockOcrQuota.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 3,
+    "functions": [
+      "analyzeRecordForProphecy",
+      "generateHaruMemo",
+      "generateHaruProphecy",
+      "generateLawsuitClaimReason",
+      "refreshNews",
+      "suggestChapterTitle"
+    ],
+    "zipSha256": "b9c1f6804d1737de596b956cae7b4d79cb54639c6ac523b74d53c986ceb25f02",
+    "archiveBytes": 14227548,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 4,
+    "functions": [
+      "analyzeSymptomsForSpecialty",
+      "clearKeywordsCache",
+      "extractKeywords",
+      "getGrammarExplain",
+      "petFoodCheck",
+      "searchOfficialDrugs",
+      "testNibrPlantSearch",
+      "translateToEnglish"
+    ],
+    "zipSha256": "9825582fdaf0e95a53fb5fae7fcdbb9aa81349cf494e3ec3350bfb14ac136b6c",
+    "archiveBytes": 14225132,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/bookStudio.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 5,
+    "functions": [
+      "applyBookPublishRevision",
+      "assignElderBookSources",
+      "buildElderBookOutline",
+      "gatherElderBookSources",
+      "reviewBookForPublish",
+      "suggestBookPublishRevision"
+    ],
+    "zipSha256": "f806b997a52728a657e3fde17d79f2c570401d6f716d7e276b700df12e78d83c",
+    "archiveBytes": 14225132,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/bookStudio.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 6,
+    "functions": [
+      "approveSubscriptionRefund",
+      "getSubscriptionRefundEligibility",
+      "listSubscriptionRefundRequests",
+      "rejectSubscriptionRefund",
+      "requestSubscriptionRefund"
+    ],
+    "zipSha256": "84879b8d0ecc3f949e29253a863379d1efe3da959d5d294e6e19c4cd435f464a",
+    "archiveBytes": 14227548,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 7,
+    "functions": [
+      "cancelAccountDeletion",
+      "executeScheduledDeletion",
+      "requestAccountDeletion"
+    ],
+    "zipSha256": "7313e4a6017c972ba1ec98a6f452272b4c2d98142a622da9e8ac9f37572d73bf",
+    "archiveBytes": 14323561,
+    "comparedFiles": 32,
+    "changed": [
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/scheduledNotification.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 8,
+    "functions": [
+      "cancelSubscription",
+      "createSinglePaymentRequest",
+      "createSubscriptionBillingRequest",
+      "portoneWebhook",
+      "recoverSubscriptionBillingRequest",
+      "subscribeWithBillingKey",
+      "verifyPayment",
+      "verifySinglePayment"
+    ],
+    "zipSha256": "d3fd87526335845fa0412e1767286704dcc28b10c066a8532dfa9df70430ba1f",
+    "archiveBytes": 14227548,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 9,
+    "functions": [
+      "chatWithReadingContext"
+    ],
+    "zipSha256": "a36fe6a141758a5d45b798b33c6731b931e6aa82034b0bfcc03905e3c969c6fe",
+    "archiveBytes": 14610971,
+    "comparedFiles": 46,
+    "changed": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiUsageLogger.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/index.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/polishUsage.js",
+      "lib/resultChatImages.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 10,
+    "functions": [
+      "chatWithResult"
+    ],
+    "zipSha256": "f969ea047e5f923c15f42107581f2540ea10b4d8fa2f44966c2844cd0d32f975",
+    "archiveBytes": 14609037,
+    "comparedFiles": 49,
+    "changed": [
+      "package-lock.json"
+    ],
+    "onlyLive": [
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 11,
+    "functions": [
+      "cleanupHaruLawGeminiFiles"
+    ],
+    "zipSha256": "f5d01ee81669859439c05b4de6398255d57359064be2d44c74ece00aaf2dea66",
+    "archiveBytes": 14533911,
+    "comparedFiles": 36,
+    "changed": [
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/scheduledNotification.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 12,
+    "functions": [
+      "cleanupHeicTemp",
+      "convertHeic"
+    ],
+    "zipSha256": "45de9df34bc7e826ef1aea390a31314c124ea4fbe9edd4296ed0d69f5f59fadc",
+    "archiveBytes": 14313984,
+    "comparedFiles": 31,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/scheduledNotification.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 13,
+    "functions": [
+      "cleanupTtsUsage",
+      "processRecurringSubscriptions"
+    ],
+    "zipSha256": "15f94da77d3972002dac6e05a1c7415691405fea66612fe54bdbea042b1bd311",
+    "archiveBytes": 14227548,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 14,
+    "functions": [
+      "convertSnsToDiary",
+      "decryptKakaoXlsx",
+      "draftElderBookChapters",
+      "generateBook",
+      "lawPrecedent",
+      "prepareHaruLawSharePreview",
+      "uploadReceiptToDrive"
+    ],
+    "zipSha256": "3c393e2a283f8f3d8ec5131ffd6d47d6f1c9d4b0ddf8737f09b1a9e067c9ef3f",
+    "archiveBytes": 14225132,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/bookStudio.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 15,
+    "functions": [
+      "convertToBookMaterial",
+      "deleteAiLibraryLogs",
+      "listAiLibraryLogs",
+      "saveAiLibraryImport"
+    ],
+    "zipSha256": "0cdfdb534266e23df1e0b29b03137626962be18b33b3a4b5690417a828a1a82f",
+    "archiveBytes": 14527914,
+    "comparedFiles": 36,
+    "changed": [
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLawErrorCore.js",
+      "lib/index.js",
+      "lib/scheduledNotification.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 16,
+    "functions": [
+      "deleteRecordImage",
+      "sendBroadcastNotification",
+      "sendTestNotification"
+    ],
+    "zipSha256": "f7871110605d8d052281ef76cbfb2cdc23aa10425b803c1c530b8a16ab21904e",
+    "archiveBytes": 14225132,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/bookStudio.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 17,
+    "functions": [
+      "exportEpub"
+    ],
+    "zipSha256": "c1bb7dbf7723a80e624a14a5c8f260e1a53225810e3a1bab1f34f5acf163cfbd",
+    "archiveBytes": 14623993,
+    "comparedFiles": 46,
+    "changed": [
+      "lib/ai/aiModels.js",
+      "lib/aiUsageLogger.js",
+      "lib/index.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/polishUsage.js",
+      "lib/resultChatImages.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 18,
+    "functions": [
+      "extractStockTradeTextFromPhoto"
+    ],
+    "zipSha256": "affb8269c88afd9d697510dcac7bf2285a90d2cc11e05610f9c3b7d71caeb0f5",
+    "archiveBytes": 14597654,
+    "comparedFiles": 48,
+    "changed": [
+      "lib/index.js",
+      "package-lock.json"
+    ],
+    "onlyLive": [
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/resultChatImages.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 19,
+    "functions": [
+      "extractTitle"
+    ],
+    "zipSha256": "62ef2c40706c6220cdc8846bd77bc1cb52b3b2ab36a73727c1ed724d281447f8",
+    "archiveBytes": 14614365,
+    "comparedFiles": 46,
+    "changed": [
+      "lib/ai/aiModels.js",
+      "lib/aiUsageLogger.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/index.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/polishUsage.js",
+      "lib/resultChatImages.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 20,
+    "functions": [
+      "generateSnsStoryFinal"
+    ],
+    "zipSha256": "d135c2e2e62fa80f5fa4c2ab3e08e567df8b00fb93c0eb4fbe1507c23403327e",
+    "archiveBytes": 14302361,
+    "comparedFiles": 30,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/scheduledNotification.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 21,
+    "functions": [
+      "generateSnsStorySynopsis"
+    ],
+    "zipSha256": "87ba997a6d27701788ed0f5ad0b1d08ba168e683d58d04916a12ba6d889cbecc",
+    "archiveBytes": 14302118,
+    "comparedFiles": 30,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/scheduledNotification.js",
+      "lib/snsStory.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 22,
+    "functions": [
+      "generateTitlesForAll"
+    ],
+    "zipSha256": "19dd417b68e0e052633b57b69fe729fea900f3a4215b11b8b79391bee4ab3de9",
+    "archiveBytes": 14589937,
+    "comparedFiles": 45,
+    "changed": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiUsageLogger.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/formats/formatRegistry.js",
+      "lib/index.js",
+      "lib/readingAiCore.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/epubContent.js",
+      "lib/polishUsage.js",
+      "lib/resultChatImages.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 23,
+    "functions": [
+      "getCustomToken"
+    ],
+    "zipSha256": "98377aba5a0d504f17b16904fc8a3e37686a2c8b499d6419970e8ef3c48dae81",
+    "archiveBytes": 14224825,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/bookStudio.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 24,
+    "functions": [
+      "getDrugInfo"
+    ],
+    "zipSha256": "812d3b622cd85e0585e6c200ddaec55e4cd9ea441f2155741a9d7bd2da271c42",
+    "archiveBytes": 14306977,
+    "comparedFiles": 30,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/scheduledNotification.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 25,
+    "functions": [
+      "getHospitalList",
+      "getKoreanPlantInfo",
+      "getOnbidRealEstateList",
+      "getVerseQuiz",
+      "getWordMeaning"
+    ],
+    "zipSha256": "43dbc8017c5e1708072e8feb086aee680d9c5c79a482584ae4497d79f4c29dbc",
+    "archiveBytes": 14224750,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/bookStudio.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 26,
+    "functions": [
+      "getMonthlyAiQuotaStatus",
+      "recordPaidServiceUsage",
+      "scheduledPushNotification"
+    ],
+    "zipSha256": "40c0e9ba8ff4865cb242e9f51a5505c6c5f5be5b77ebe9b6c5a9c535a11059ca",
+    "archiveBytes": 14227651,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 27,
+    "functions": [
+      "getSnsThumbnailData"
+    ],
+    "zipSha256": "19a07c30ef50aa4af94f1f88ca1e8797aaec96b938bbd38a1a70ad6138910a20",
+    "archiveBytes": 14257675,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 28,
+    "functions": [
+      "googleCallback"
+    ],
+    "zipSha256": "8790733ea9a2aef0b96b0dbeed518ae5bf9a2a674250017ac4d4c2b7ada3163c",
+    "archiveBytes": 14528038,
+    "comparedFiles": 36,
+    "changed": [
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/haruLawErrorCore.js",
+      "lib/index.js",
+      "lib/scheduledNotification.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 29,
+    "functions": [
+      "googleLoginStart"
+    ],
+    "zipSha256": "53efaebd54535b832c008b89d5f79201b9d5be6446e6204108996c5b68233db4",
+    "archiveBytes": 14324063,
+    "comparedFiles": 32,
+    "changed": [
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/scheduledNotification.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 30,
+    "functions": [
+      "kakaoCallback",
+      "kakaoLoginStart",
+      "naverCallback",
+      "naverLoginStart"
+    ],
+    "zipSha256": "9487e44c9c7098787bcf1515a84b95d99df3e0ce2d4d90bcf7c97414144dbbf7",
+    "archiveBytes": 14261048,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/scheduledNotification.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 31,
+    "functions": [
+      "lawEasyExplain"
+    ],
+    "zipSha256": "5c6b9b8cc95c63c7309688cdf52cfb4b77706acec9f64f3b54573f61c20ac32a",
+    "archiveBytes": 14323550,
+    "comparedFiles": 32,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/scheduledNotification.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 32,
+    "functions": [
+      "lawSearch"
+    ],
+    "zipSha256": "7fbf74a6404f67ef081b985e5ce770d93c0b4c74069a48261678b1975f7051ca",
+    "archiveBytes": 14512038,
+    "comparedFiles": 36,
+    "changed": [
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/scheduledNotification.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 33,
+    "functions": [
+      "listPendingHaruLawSharedCards",
+      "publishHaruLawSharedCard",
+      "reviewHaruLawSharedCard",
+      "unpublishHaruLawSharedCard"
+    ],
+    "zipSha256": "89a7ae34123b8233059567cb26ec3417ac9cd4fc323d6e4c50d857565f9465f4",
+    "archiveBytes": 14225132,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/bookStudio.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 34,
+    "functions": [
+      "polishContent"
+    ],
+    "zipSha256": "784ff9d52941d9b32541db8e0ce28facddf671da29e73128d3cb7f8bc0ca80e4",
+    "archiveBytes": 14649374,
+    "comparedFiles": 48,
+    "changed": [
+      "lib/ai/aiModels.js",
+      "lib/index.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/resultChatImages.js",
+      "lib/stockOcrQuota.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 35,
+    "functions": [
+      "polishElderBookChapters"
+    ],
+    "zipSha256": "f19e78003f211b4ee079faebb3af098352aaa62523fb96f45dcd82e5616a9918",
+    "archiveBytes": 14622703,
+    "comparedFiles": 46,
+    "changed": [
+      "lib/ai/aiModels.js",
+      "lib/aiUsageLogger.js",
+      "lib/epubExport.js",
+      "lib/index.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/polishUsage.js",
+      "lib/resultChatImages.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  },
+  {
+    "group": 36,
+    "functions": [
+      "removeAllTags",
+      "reverseGeocodeKakao"
+    ],
+    "zipSha256": "4910d5a064e279fa910a9a51544138ff7a1902918a4736e1469ab9fdb9b706e5",
+    "archiveBytes": 14224825,
+    "comparedFiles": 29,
+    "changed": [
+      "lib/accountDeletion.js",
+      "lib/aiUsageLogger.js",
+      "lib/bookMaterial.js",
+      "lib/bookStudio.js",
+      "lib/elderBook.js",
+      "lib/epubExport.js",
+      "lib/generateLawsuitClaimReason.js",
+      "lib/index.js",
+      "lib/oauthStateCore.js",
+      "lib/scheduledNotification.js",
+      "lib/snsAnalyzer.js",
+      "lib/snsToDiary.js",
+      "package-lock.json",
+      "package.json"
+    ],
+    "onlyLive": [
+      "lib/englishBibleWordMeaning.js",
+      "lib/grammar/bibleSource.js",
+      "lib/grammar/grammarV2.js",
+      "lib/grammar/grammarV2Prompt.js",
+      "lib/grammar/grammarV2Types.js",
+      "lib/grammar/grammarV2Validator.js"
+    ],
+    "onlyCandidate": [
+      "lib/ai/aiGateway.js",
+      "lib/ai/aiModels.js",
+      "lib/aiLibrary.js",
+      "lib/epubContent.js",
+      "lib/formats/formatRegistry.js",
+      "lib/googleOAuthCallbackCore.js",
+      "lib/haruLaw/haruLawAttachments.js",
+      "lib/haruLaw/haruLawFunctions.js",
+      "lib/haruLawErrorCore.js",
+      "lib/heicConversionCore.js",
+      "lib/lawEasyExplainCore.js",
+      "lib/oauthCallbackDiagnostics.js",
+      "lib/polishUsage.js",
+      "lib/readingAi.js",
+      "lib/readingAiCore.js",
+      "lib/resultChatImages.js",
+      "lib/scheduledNotificationCore.js",
+      "lib/sharedHelpers.js",
+      "lib/snsStory.js",
+      "lib/stockOcrQuota.js",
+      "lib/ttsQuality.js"
+    ],
+    "liveLockVersions": {
+      "node_modules/firebase-admin": "13.7.0",
+      "node_modules/node-forge": "1.4.0"
+    }
+  }
+]

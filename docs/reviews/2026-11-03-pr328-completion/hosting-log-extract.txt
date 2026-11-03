@@ -1,0 +1,5 @@
+build_and_deploy	Install and Build	2026-11-03T05:57:28.2262107Z dist/assets/index.esm-legacy-FSUhfh4T.js          28.61 kB │ gzip:     9.58 kB
+build_and_deploy	Install and Build	2026-11-03T05:57:28.2275567Z dist/assets/index-legacy-CRbOEoO0.js           5,493.47 kB │ gzip: 1,491.43 kB
+build_and_deploy	Install and Build	2026-11-03T05:57:29.8984496Z dist/assets/index.esm-BLt45krB.js           28.45 kB │ gzip:     9.45 kB
+build_and_deploy	Install and Build	2026-11-03T05:57:29.8987064Z dist/assets/index-Ci6j4Mwj.js            5,297.00 kB │ gzip: 1,448.04 kB
+build_and_deploy	Run FirebaseExtended/action-hosting-deploy@v0	2026-11-03T05:57:37.7941548Z     "hosting": "projects/***/sites/***/versions/8e836f851b5b844c"

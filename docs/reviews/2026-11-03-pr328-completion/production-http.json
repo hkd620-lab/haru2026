@@ -1,0 +1,32 @@
+{
+  "commit": "69480ecafdb8b170051e1ea3ae71bb72512f1208",
+  "lockSha256": "76e03c4c6015e6caa55135ef5e4b1bf46460ab433c5627781c33cab5159b40e4",
+  "buildAssets": [
+    "/assets/index-Ci6j4Mwj.js",
+    "/assets/index-legacy-CRbOEoO0.js"
+  ],
+  "hostingVersions": [
+    "8e836f851b5b844c"
+  ],
+  "url": "https://haru2026.com",
+  "status": 200,
+  "etag": "\"49a340fdcee0150d56fd1c110d52081ef0ae07a001671ff3bfbda7dcd1ab97f5\"",
+  "title": [
+    "haru2026 하루2026 | AI 생활기록·생활관리 플랫폼"
+  ],
+  "assetChecks": [
+    {
+      "path": "/assets/index-Ci6j4Mwj.js",
+      "status": 200,
+      "bytes": 5297007,
+      "sha256": "be048f26327207fa6164acd18cf1287f00352f048187ef6c4f62babd390eb476"
+    },
+    {
+      "path": "/assets/index-legacy-CRbOEoO0.js",
+      "status": 200,
+      "bytes": 5493471,
+      "sha256": "cd4fa0787744e3cba19be42946a2475b783f92c1ece0d5ec5e46da8a879d3ca8"
+    }
+  ],
+  "checkedAt": "2026-11-03T14:58:35.500008+09:00"
+}

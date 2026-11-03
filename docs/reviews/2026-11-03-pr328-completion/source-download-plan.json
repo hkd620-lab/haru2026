@@ -1,0 +1,579 @@
+{
+  "groups": [
+    [
+      {
+        "function": "analyzeDrugPhoto",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/analyzeDrugPhoto/function-source.zip#1789217154401123",
+        "bytes": 14225132
+      },
+      {
+        "function": "analyzePlantPhoto",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/analyzePlantPhoto/function-source.zip#1789217154189487",
+        "bytes": 14225132
+      },
+      {
+        "function": "extractHouseholdTextFromImage",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/extractHouseholdTextFromImage/function-source.zip#1789217154191540",
+        "bytes": 14225132
+      },
+      {
+        "function": "extractKNewsMetadata",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/extractKNewsMetadata/function-source.zip#1789217154402254",
+        "bytes": 14225132
+      },
+      {
+        "function": "extractLedgerTextFromImage",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/extractLedgerTextFromImage/function-source.zip#1789217154396230",
+        "bytes": 14225132
+      },
+      {
+        "function": "extractReadingBookTextFromPhoto",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/extractReadingBookTextFromPhoto/function-source.zip#1789217083873769",
+        "bytes": 14225132
+      }
+    ],
+    [
+      {
+        "function": "analyzeFacebookZip",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/analyzeFacebookZip/function-source.zip#1793573397173214",
+        "bytes": 14642445
+      },
+      {
+        "function": "detectPlantAdvanced",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/detectPlantAdvanced/function-source.zip#1793573498508319",
+        "bytes": 14642445
+      },
+      {
+        "function": "generateGrowthTimelinePdf",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/generateGrowthTimelinePdf/function-source.zip#1793573397272205",
+        "bytes": 14642445
+      },
+      {
+        "function": "generateTTS",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/generateTTS/function-source.zip#1793573397355605",
+        "bytes": 14642445
+      }
+    ],
+    [
+      {
+        "function": "analyzeRecordForProphecy",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/analyzeRecordForProphecy/function-source.zip#1789286715156312",
+        "bytes": 14227548
+      },
+      {
+        "function": "generateHaruMemo",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/generateHaruMemo/function-source.zip#1789286714724721",
+        "bytes": 14227548
+      },
+      {
+        "function": "generateHaruProphecy",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/generateHaruProphecy/function-source.zip#1789286715085803",
+        "bytes": 14227548
+      },
+      {
+        "function": "generateLawsuitClaimReason",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/generateLawsuitClaimReason/function-source.zip#1789286715131065",
+        "bytes": 14227548
+      },
+      {
+        "function": "refreshNews",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/refreshNews/function-source.zip#1789286715525092",
+        "bytes": 14227548
+      },
+      {
+        "function": "suggestChapterTitle",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/suggestChapterTitle/function-source.zip#1789286715088723",
+        "bytes": 14227548
+      }
+    ],
+    [
+      {
+        "function": "analyzeSymptomsForSpecialty",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/analyzeSymptomsForSpecialty/function-source.zip#1789215412018078",
+        "bytes": 14225132
+      },
+      {
+        "function": "clearKeywordsCache",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/clearKeywordsCache/function-source.zip#1789215412038040",
+        "bytes": 14225132
+      },
+      {
+        "function": "extractKeywords",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/extractKeywords/function-source.zip#1789215411909758",
+        "bytes": 14225132
+      },
+      {
+        "function": "getGrammarExplain",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/getGrammarExplain/function-source.zip#1789215411946709",
+        "bytes": 14225132
+      },
+      {
+        "function": "petFoodCheck",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/petFoodCheck/function-source.zip#1789215412069208",
+        "bytes": 14225132
+      },
+      {
+        "function": "searchOfficialDrugs",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/searchOfficialDrugs/function-source.zip#1789215340975440",
+        "bytes": 14225132
+      },
+      {
+        "function": "testNibrPlantSearch",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/testNibrPlantSearch/function-source.zip#1789215412075287",
+        "bytes": 14225132
+      },
+      {
+        "function": "translateToEnglish",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/translateToEnglish/function-source.zip#1789215411864496",
+        "bytes": 14225132
+      }
+    ],
+    [
+      {
+        "function": "applyBookPublishRevision",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/applyBookPublishRevision/function-source.zip#1789216506025429",
+        "bytes": 14225132
+      },
+      {
+        "function": "assignElderBookSources",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/assignElderBookSources/function-source.zip#1789216506136008",
+        "bytes": 14225132
+      },
+      {
+        "function": "buildElderBookOutline",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/buildElderBookOutline/function-source.zip#1789216506157944",
+        "bytes": 14225132
+      },
+      {
+        "function": "gatherElderBookSources",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/gatherElderBookSources/function-source.zip#1789216506093019",
+        "bytes": 14225132
+      },
+      {
+        "function": "reviewBookForPublish",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/reviewBookForPublish/function-source.zip#1789216404303328",
+        "bytes": 14225132
+      },
+      {
+        "function": "suggestBookPublishRevision",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/suggestBookPublishRevision/function-source.zip#1789216505948919",
+        "bytes": 14225132
+      }
+    ],
+    [
+      {
+        "function": "approveSubscriptionRefund",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/approveSubscriptionRefund/function-source.zip#1789296669627571",
+        "bytes": 14227548
+      },
+      {
+        "function": "getSubscriptionRefundEligibility",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/getSubscriptionRefundEligibility/function-source.zip#1789296598474785",
+        "bytes": 14227548
+      },
+      {
+        "function": "listSubscriptionRefundRequests",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/listSubscriptionRefundRequests/function-source.zip#1789296669226862",
+        "bytes": 14227548
+      },
+      {
+        "function": "rejectSubscriptionRefund",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/rejectSubscriptionRefund/function-source.zip#1789296669437230",
+        "bytes": 14227548
+      },
+      {
+        "function": "requestSubscriptionRefund",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/requestSubscriptionRefund/function-source.zip#1789296669098235",
+        "bytes": 14227548
+      }
+    ],
+    [
+      {
+        "function": "cancelAccountDeletion",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/cancelAccountDeletion/function-source.zip#1790157543380784",
+        "bytes": 14323561
+      },
+      {
+        "function": "executeScheduledDeletion",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/executeScheduledDeletion/function-source.zip#1790157472094617",
+        "bytes": 14323561
+      },
+      {
+        "function": "requestAccountDeletion",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/requestAccountDeletion/function-source.zip#1790157472009417",
+        "bytes": 14323561
+      }
+    ],
+    [
+      {
+        "function": "cancelSubscription",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/cancelSubscription/function-source.zip#1789295410916595",
+        "bytes": 14227548
+      },
+      {
+        "function": "createSinglePaymentRequest",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/createSinglePaymentRequest/function-source.zip#1789295339945963",
+        "bytes": 14227548
+      },
+      {
+        "function": "createSubscriptionBillingRequest",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/createSubscriptionBillingRequest/function-source.zip#1789295410730025",
+        "bytes": 14227548
+      },
+      {
+        "function": "portoneWebhook",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/portoneWebhook/function-source.zip#1789295410924989",
+        "bytes": 14227548
+      },
+      {
+        "function": "recoverSubscriptionBillingRequest",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/recoverSubscriptionBillingRequest/function-source.zip#1789295410855749",
+        "bytes": 14227548
+      },
+      {
+        "function": "subscribeWithBillingKey",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/subscribeWithBillingKey/function-source.zip#1789295410555514",
+        "bytes": 14227548
+      },
+      {
+        "function": "verifyPayment",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/verifyPayment/function-source.zip#1789295411005195",
+        "bytes": 14227548
+      },
+      {
+        "function": "verifySinglePayment",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/verifySinglePayment/function-source.zip#1789295411062393",
+        "bytes": 14227548
+      }
+    ],
+    [
+      {
+        "function": "chatWithReadingContext",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/chatWithReadingContext/function-source.zip#1793017033017499",
+        "bytes": 14610971
+      }
+    ],
+    [
+      {
+        "function": "chatWithResult",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/chatWithResult/function-source.zip#1793663470819547",
+        "bytes": 14609037
+      }
+    ],
+    [
+      {
+        "function": "cleanupHaruLawGeminiFiles",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/cleanupHaruLawGeminiFiles/function-source.zip#1791236044028049",
+        "bytes": 14533911
+      }
+    ],
+    [
+      {
+        "function": "cleanupHeicTemp",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/cleanupHeicTemp/function-source.zip#1789972936764270",
+        "bytes": 14313984
+      },
+      {
+        "function": "convertHeic",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/convertHeic/function-source.zip#1791957609637675",
+        "bytes": 14313984
+      }
+    ],
+    [
+      {
+        "function": "cleanupTtsUsage",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/cleanupTtsUsage/function-source.zip#1789299776194886",
+        "bytes": 14227548
+      },
+      {
+        "function": "processRecurringSubscriptions",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/processRecurringSubscriptions/function-source.zip#1789299776383950",
+        "bytes": 14227548
+      }
+    ],
+    [
+      {
+        "function": "convertSnsToDiary",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/convertSnsToDiary/function-source.zip#1789217338036556",
+        "bytes": 14225132
+      },
+      {
+        "function": "decryptKakaoXlsx",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/decryptKakaoXlsx/function-source.zip#1789217338029556",
+        "bytes": 14225132
+      },
+      {
+        "function": "draftElderBookChapters",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/draftElderBookChapters/function-source.zip#1789217338314633",
+        "bytes": 14225132
+      },
+      {
+        "function": "generateBook",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/generateBook/function-source.zip#1789217337815212",
+        "bytes": 14225132
+      },
+      {
+        "function": "lawPrecedent",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/lawPrecedent/function-source.zip#1789217338333412",
+        "bytes": 14225132
+      },
+      {
+        "function": "prepareHaruLawSharePreview",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/prepareHaruLawSharePreview/function-source.zip#1789217338168013",
+        "bytes": 14225132
+      },
+      {
+        "function": "uploadReceiptToDrive",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/uploadReceiptToDrive/function-source.zip#1789217337800447",
+        "bytes": 14225132
+      }
+    ],
+    [
+      {
+        "function": "convertToBookMaterial",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/convertToBookMaterial/function-source.zip#1790805203890746",
+        "bytes": 14527914
+      },
+      {
+        "function": "deleteAiLibraryLogs",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/deleteAiLibraryLogs/function-source.zip#1790805184256349",
+        "bytes": 14527914
+      },
+      {
+        "function": "listAiLibraryLogs",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/listAiLibraryLogs/function-source.zip#1790805124231472",
+        "bytes": 14527914
+      },
+      {
+        "function": "saveAiLibraryImport",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/saveAiLibraryImport/function-source.zip#1790805184074023",
+        "bytes": 14527914
+      }
+    ],
+    [
+      {
+        "function": "deleteRecordImage",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/deleteRecordImage/function-source.zip#1789216714348279",
+        "bytes": 14225132
+      },
+      {
+        "function": "sendBroadcastNotification",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/sendBroadcastNotification/function-source.zip#1789216714581421",
+        "bytes": 14225132
+      },
+      {
+        "function": "sendTestNotification",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/sendTestNotification/function-source.zip#1789216714588292",
+        "bytes": 14225132
+      }
+    ],
+    [
+      {
+        "function": "exportEpub",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/exportEpub/function-source.zip#1793192761463891",
+        "bytes": 14623993
+      }
+    ],
+    [
+      {
+        "function": "extractStockTradeTextFromPhoto",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/extractStockTradeTextFromPhoto/function-source.zip#1793651578564062",
+        "bytes": 14597654
+      }
+    ],
+    [
+      {
+        "function": "extractTitle",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/extractTitle/function-source.zip#1793053162097106",
+        "bytes": 14614365
+      }
+    ],
+    [
+      {
+        "function": "generateSnsStoryFinal",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/generateSnsStoryFinal/function-source.zip#1789783312897679",
+        "bytes": 14302361
+      }
+    ],
+    [
+      {
+        "function": "generateSnsStorySynopsis",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/generateSnsStorySynopsis/function-source.zip#1789734508983624",
+        "bytes": 14302118
+      }
+    ],
+    [
+      {
+        "function": "generateTitlesForAll",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/generateTitlesForAll/function-source.zip#1792533430590855",
+        "bytes": 14589937
+      }
+    ],
+    [
+      {
+        "function": "getCustomToken",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/getCustomToken/function-source.zip#1789204056078185",
+        "bytes": 14224825
+      }
+    ],
+    [
+      {
+        "function": "getDrugInfo",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/getDrugInfo/function-source.zip#1789915815014320",
+        "bytes": 14306977
+      }
+    ],
+    [
+      {
+        "function": "getHospitalList",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/getHospitalList/function-source.zip#1789191442835425",
+        "bytes": 14224750
+      },
+      {
+        "function": "getKoreanPlantInfo",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/getKoreanPlantInfo/function-source.zip#1789191443815684",
+        "bytes": 14224750
+      },
+      {
+        "function": "getOnbidRealEstateList",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/getOnbidRealEstateList/function-source.zip#1789191443464606",
+        "bytes": 14224750
+      },
+      {
+        "function": "getVerseQuiz",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/getVerseQuiz/function-source.zip#1789191443664922",
+        "bytes": 14224750
+      },
+      {
+        "function": "getWordMeaning",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/getWordMeaning/function-source.zip#1789191443332752",
+        "bytes": 14224750
+      }
+    ],
+    [
+      {
+        "function": "getMonthlyAiQuotaStatus",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/getMonthlyAiQuotaStatus/function-source.zip#1789322815127907",
+        "bytes": 14227651
+      },
+      {
+        "function": "recordPaidServiceUsage",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/recordPaidServiceUsage/function-source.zip#1789322906403135",
+        "bytes": 14227651
+      },
+      {
+        "function": "scheduledPushNotification",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/scheduledPushNotification/function-source.zip#1789322906778821",
+        "bytes": 14227651
+      }
+    ],
+    [
+      {
+        "function": "getSnsThumbnailData",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/getSnsThumbnailData/function-source.zip#1789694481178702",
+        "bytes": 14257675
+      }
+    ],
+    [
+      {
+        "function": "googleCallback",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/googleCallback/function-source.zip#1790817422405725",
+        "bytes": 14528038
+      }
+    ],
+    [
+      {
+        "function": "googleLoginStart",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/googleLoginStart/function-source.zip#1790505060685005",
+        "bytes": 14324063
+      }
+    ],
+    [
+      {
+        "function": "kakaoCallback",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/kakaoCallback/function-source.zip#1789700472482428",
+        "bytes": 14261048
+      },
+      {
+        "function": "kakaoLoginStart",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/kakaoLoginStart/function-source.zip#1789700400395530",
+        "bytes": 14261048
+      },
+      {
+        "function": "naverCallback",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/naverCallback/function-source.zip#1789700472678004",
+        "bytes": 14261048
+      },
+      {
+        "function": "naverLoginStart",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/naverLoginStart/function-source.zip#1789700472693032",
+        "bytes": 14261048
+      }
+    ],
+    [
+      {
+        "function": "lawEasyExplain",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/lawEasyExplain/function-source.zip#1790124419272623",
+        "bytes": 14323550
+      }
+    ],
+    [
+      {
+        "function": "lawSearch",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/lawSearch/function-source.zip#1791495834806489",
+        "bytes": 14512038
+      }
+    ],
+    [
+      {
+        "function": "listPendingHaruLawSharedCards",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/listPendingHaruLawSharedCards/function-source.zip#1789216278713468",
+        "bytes": 14225132
+      },
+      {
+        "function": "publishHaruLawSharedCard",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/publishHaruLawSharedCard/function-source.zip#1789216208572266",
+        "bytes": 14225132
+      },
+      {
+        "function": "reviewHaruLawSharedCard",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/reviewHaruLawSharedCard/function-source.zip#1789216278749322",
+        "bytes": 14225132
+      },
+      {
+        "function": "unpublishHaruLawSharedCard",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/unpublishHaruLawSharedCard/function-source.zip#1789216278824085",
+        "bytes": 14225132
+      }
+    ],
+    [
+      {
+        "function": "polishContent",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/polishContent/function-source.zip#1793627491859863",
+        "bytes": 14649374
+      }
+    ],
+    [
+      {
+        "function": "polishElderBookChapters",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/polishElderBookChapters/function-source.zip#1793191769828936",
+        "bytes": 14622703
+      }
+    ],
+    [
+      {
+        "function": "removeAllTags",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/removeAllTags/function-source.zip#1789210714768376",
+        "bytes": 14224825
+      },
+      {
+        "function": "reverseGeocodeKakao",
+        "url": "gs://gcf-v2-sources-398138267500-asia-northeast3/reverseGeocodeKakao/function-source.zip#1789210612795299",
+        "bytes": 14224825
+      }
+    ]
+  ],
+  "groupsCount": 36,
+  "uniqueBytes": 517540752,
+  "functionCount": 100
+}

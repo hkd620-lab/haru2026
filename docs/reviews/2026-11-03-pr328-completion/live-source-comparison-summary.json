@@ -1,0 +1,12 @@
+{
+  "groups": 36,
+  "functions": 100,
+  "remoteMd5Verified": true,
+  "uniqueDownloadBytes": 517540752,
+  "liveLockNodeForge": "1.4.0 for all 100 current exports",
+  "functionsWithChangedCompiledFiles": 99,
+  "functionWithoutChangedCommonCompiledFiles": [
+    "chatWithResult"
+  ],
+  "warning": "All groups also contain legacy compiled files absent from candidate; this is not a full artifact equality claim. No production deploy performed."
+}
