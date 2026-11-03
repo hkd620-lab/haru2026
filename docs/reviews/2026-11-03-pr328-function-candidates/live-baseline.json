@@ -1,0 +1,2510 @@
+[
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "entryPoint": "convertSnsToDiary",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217338036556",
+          "object": "convertSnsToDiary/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/convertSnsToDiary",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "convertsnstodiary-00047-qev"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:13.534345824Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/235a4ba5-a602-4b3a-bfff-7d895771975d",
+      "entryPoint": "startHaruDriveConnect",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287677718918",
+          "object": "startHaruDriveConnect/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/startHaruDriveConnect",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "startharudriveconnect-00037-yak"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:30.140930533Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/91bde810-c8cc-4285-968d-a78ed16bb9fd",
+      "entryPoint": "executeScheduledDeletion",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790157472094617",
+          "object": "executeScheduledDeletion/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/executeScheduledDeletion",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "executescheduleddeletion-00014-jaf"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-23T09:59:22.892984589Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/bdbc3ccb-6c66-4b70-823d-ff838c085a5b",
+      "entryPoint": "extractStockTradeTextFromPhoto",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793651578564062",
+          "object": "extractStockTradeTextFromPhoto/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractStockTradeTextFromPhoto",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "extractstocktradetextfromphoto-00033-wun"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-11-02T20:34:48.638784264Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/dc6ab370-1675-4d5e-bdfc-b6d69ef4acd9",
+      "entryPoint": "getMonthlyAiQuotaStatus",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789322815127907",
+          "object": "getMonthlyAiQuotaStatus/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getMonthlyAiQuotaStatus",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getmonthlyaiquotastatus-00007-yel"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T18:08:48.316391182Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/0236221f-ab37-42ce-a43d-d081ed518b32",
+      "entryPoint": "exportEpub",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793192761463891",
+          "object": "exportEpub/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/exportEpub",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "exportepub-00034-zem"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-10-28T13:07:19.197794334Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a22b44b0-ab5c-438e-a777-386c4a5b60fa",
+      "entryPoint": "gatherElderBookSources",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216506093019",
+          "object": "gatherElderBookSources/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/gatherElderBookSources",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "gatherelderbooksources-00035-quf"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:35:16.283472011Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "entryPoint": "getKoreanPlantInfo",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443815684",
+          "object": "getKoreanPlantInfo/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getKoreanPlantInfo",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getkoreanplantinfo-00044-zud"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:49.553256403Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d36c824d-9010-4d47-85ef-07bfeb53d139",
+      "entryPoint": "saveAiLibraryImport",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790805184074023",
+          "object": "saveAiLibraryImport/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/saveAiLibraryImport",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "saveailibraryimport-00002-wow"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-30T21:53:27.164949351Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d85a7b9d-9557-4fda-851a-e518f651a654",
+      "entryPoint": "sendBroadcastNotification",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216714581421",
+          "object": "sendBroadcastNotification/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/sendBroadcastNotification",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "sendbroadcastnotification-00154-giv"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:38:45.177598244Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/ea3f6744-6fed-4d8f-8449-5217cb30aa86",
+      "entryPoint": "cleanupTtsUsage",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789299776194886",
+          "object": "cleanupTtsUsage/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cleanupTtsUsage",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "cleanupttsusage-00047-wub"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T11:43:08.126590381Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e74f680e-5e0d-4725-b1c4-9d2ab8af3f70",
+      "entryPoint": "extractKNewsMetadata",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217154402254",
+          "object": "extractKNewsMetadata/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractKNewsMetadata",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "extractknewsmetadata-00041-qon"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:46:08.775247901Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/518ecef2-9218-47a0-9da3-ae4b9c18805e",
+      "entryPoint": "generateHaruProphecy",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286715085803",
+          "object": "generateHaruProphecy/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateHaruProphecy",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "generateharuprophecy-00086-vob"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:27.586330143Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/43a07020-be53-4e00-be3f-12b783edc422",
+      "entryPoint": "copyOneDriveAssets",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287738026359",
+          "object": "copyOneDriveAssets/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/copyOneDriveAssets",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "copyonedriveassets-00035-cud"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:28.234390431Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/dc6ab370-1675-4d5e-bdfc-b6d69ef4acd9",
+      "entryPoint": "scheduledPushNotification",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789322906778821",
+          "object": "scheduledPushNotification/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/scheduledPushNotification",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "scheduledpushnotification-00156-xud"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T18:08:50.724972947Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3c0c036-8287-4b7b-9b7b-df06af7219af",
+      "entryPoint": "generateSnsStorySynopsis",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789734508983624",
+          "object": "generateSnsStorySynopsis/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateSnsStorySynopsis",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "generatesnsstorysynopsis-00001-zix"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-18T12:30:23.659439697Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d5d73b5d-46c3-4a57-acf8-3596f0b1c41d",
+      "entryPoint": "oneDriveCallback",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789204055931437",
+          "object": "oneDriveCallback/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/oneDriveCallback",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "onedrivecallback-00042-var"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T09:07:50.867406440Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "entryPoint": "getVerseWordMapping",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443658303",
+          "object": "getVerseWordMapping/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getVerseWordMapping",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getversewordmapping-00060-vor"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:48.520446514Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "entryPoint": "searchOfficialDrugs",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215340975440",
+          "object": "searchOfficialDrugs/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/searchOfficialDrugs",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "searchofficialdrugs-00027-kav"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:11.682298595Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "entryPoint": "draftElderBookChapters",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217338314633",
+          "object": "draftElderBookChapters/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/draftElderBookChapters",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "draftelderbookchapters-00035-wud"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:12.596333616Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d36c824d-9010-4d47-85ef-07bfeb53d139",
+      "entryPoint": "deleteAiLibraryLogs",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790805184256349",
+          "object": "deleteAiLibraryLogs/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/deleteAiLibraryLogs",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "deleteailibrarylogs-00002-loq"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-30T21:53:28.719525481Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/43a07020-be53-4e00-be3f-12b783edc422",
+      "entryPoint": "ensureOneDriveHaruFolder",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287738041918",
+          "object": "ensureOneDriveHaruFolder/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/ensureOneDriveHaruFolder",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "ensureonedriveharufolder-00035-coh"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:30.303643860Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "entryPoint": "extractKeywords",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215411909758",
+          "object": "extractKeywords/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractKeywords",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "extractkeywords-00044-kiy"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:09.980525838Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "entryPoint": "prepareHaruLawSharePreview",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217338168013",
+          "object": "prepareHaruLawSharePreview/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/prepareHaruLawSharePreview",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "prepareharulawsharepreview-00028-lib"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:11.721566041Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/43a07020-be53-4e00-be3f-12b783edc422",
+      "entryPoint": "getOneDriveCandidates",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287737808690",
+          "object": "getOneDriveCandidates/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getOneDriveCandidates",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getonedrivecandidates-00035-hig"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:30.683739617Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "entryPoint": "preloadChapterGrammar",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217338396574",
+          "object": "preloadChapterGrammar/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/preloadChapterGrammar",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "preloadchaptergrammar-00071-bek"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:15.378589761Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "entryPoint": "createSinglePaymentRequest",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295339945963",
+          "object": "createSinglePaymentRequest/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/createSinglePaymentRequest",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "createsinglepaymentrequest-00008-juj"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:16.692397135Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "entryPoint": "getWordMeaning",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443332752",
+          "object": "getWordMeaning/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getWordMeaning",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getwordmeaning-00095-hoz"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:45.951310514Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/ea3f6744-6fed-4d8f-8449-5217cb30aa86",
+      "entryPoint": "processRecurringSubscriptions",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789299776383950",
+          "object": "processRecurringSubscriptions/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/processRecurringSubscriptions",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "processrecurringsubscriptions-00026-kuc"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T11:43:09.971305069Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e58fc881-25b7-4bbb-863c-fdc41cd8cd97",
+      "entryPoint": "lawSearch",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1791495834806489",
+          "object": "lawSearch/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/lawSearch",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "lawsearch-00140-maw"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-10-08T21:46:10.269164880Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/243c4a87-4c79-4c4f-9f05-b949f6c0914a",
+      "entryPoint": "reviewHaruLawSharedCard",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216278749322",
+          "object": "reviewHaruLawSharedCard/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/reviewHaruLawSharedCard",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "reviewharulawsharedcard-00014-wik"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:31:31.475983632Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a22b44b0-ab5c-438e-a777-386c4a5b60fa",
+      "entryPoint": "suggestBookPublishRevision",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216505948919",
+          "object": "suggestBookPublishRevision/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/suggestBookPublishRevision",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "suggestbookpublishrevision-00015-coy"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:35:17.267999192Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d36c824d-9010-4d47-85ef-07bfeb53d139",
+      "entryPoint": "listAiLibraryLogs",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790805124231472",
+          "object": "listAiLibraryLogs/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/listAiLibraryLogs",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "listailibrarylogs-00002-hun"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-30T21:53:29.059118487Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/f7f22250-7e92-4070-9350-3612584c6891",
+      "entryPoint": "detectPlantAdvanced",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793573498508319",
+          "object": "detectPlantAdvanced/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/detectPlantAdvanced",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "detectplantadvanced-00042-bir"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-11-01T22:51:50.392204524Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/243c4a87-4c79-4c4f-9f05-b949f6c0914a",
+      "entryPoint": "publishHaruLawSharedCard",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216208572266",
+          "object": "publishHaruLawSharedCard/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/publishHaruLawSharedCard",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "publishharulawsharedcard-00026-wex"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:31:21.237663656Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/dc6ab370-1675-4d5e-bdfc-b6d69ef4acd9",
+      "entryPoint": "recordPaidServiceUsage",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789322906403135",
+          "object": "recordPaidServiceUsage/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/recordPaidServiceUsage",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "recordpaidserviceusage-00009-yuv"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T18:08:49.280501393Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/eb60f65c-c309-4ef4-9fb5-362f63b2ce75",
+      "entryPoint": "generateSnsStoryFinal",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789783312897679",
+          "object": "generateSnsStoryFinal/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateSnsStoryFinal",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "generatesnsstoryfinal-00002-mad"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-19T02:03:40.573942119Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e74f680e-5e0d-4725-b1c4-9d2ab8af3f70",
+      "entryPoint": "extractLedgerTextFromImage",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217154396230",
+          "object": "extractLedgerTextFromImage/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractLedgerTextFromImage",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "extractledgertextfromimage-00024-won"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:46:06.613224131Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "entryPoint": "createSubscriptionBillingRequest",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295410730025",
+          "object": "createSubscriptionBillingRequest/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/createSubscriptionBillingRequest",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "createsubscriptionbillingrequest-00009-zav"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:21.581742690Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/ed44ddcd-00ab-42cc-84df-1bf5ae2a99de",
+      "entryPoint": "getSnsThumbnailData",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789694481178702",
+          "object": "getSnsThumbnailData/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getSnsThumbnailData",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getsnsthumbnaildata-00004-dij"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-18T01:23:48.931394744Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e74f680e-5e0d-4725-b1c4-9d2ab8af3f70",
+      "entryPoint": "extractHouseholdTextFromImage",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217154191540",
+          "object": "extractHouseholdTextFromImage/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractHouseholdTextFromImage",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "extracthouseholdtextfromimage-00021-wiy"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:46:09.287076029Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/37f41804-6c98-4eb4-b4ab-c7910b4d9cfb",
+      "entryPoint": "rejectSubscriptionRefund",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789296669437230",
+          "object": "rejectSubscriptionRefund/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/rejectSubscriptionRefund",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "rejectsubscriptionrefund-00006-miz"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:51:20.393548307Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/44d20e2e-96e1-4544-ae95-007840aa5b58",
+      "entryPoint": "googleLoginStart",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790505060685005",
+          "object": "googleLoginStart/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/googleLoginStart",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "googleloginstart-00165-nov"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-27T10:32:20.373626620Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "entryPoint": "getGrammarExplain",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215411946709",
+          "object": "getGrammarExplain/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getGrammarExplain",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getgrammarexplain-00099-cez"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:08.771299139Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "entryPoint": "getVerseQuiz",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443664922",
+          "object": "getVerseQuiz/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getVerseQuiz",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getversequiz-00087-faz"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:50.296161540Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "entryPoint": "testNibrPlantSearch",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215412075287",
+          "object": "testNibrPlantSearch/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/testNibrPlantSearch",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "testnibrplantsearch-00037-zon"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:10.979564218Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "entryPoint": "verifySinglePayment",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295411062393",
+          "object": "verifySinglePayment/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/verifySinglePayment",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "verifysinglepayment-00027-xad"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:22.685396161Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d5d73b5d-46c3-4a57-acf8-3596f0b1c41d",
+      "entryPoint": "getCustomToken",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789204056078185",
+          "object": "getCustomToken/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getCustomToken",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getcustomtoken-00058-sig"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T09:07:51.440157533Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d1ac25bf-ec6f-44c7-873a-448b43ecb8a8",
+      "entryPoint": "polishElderBookChapters",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793191769828936",
+          "object": "polishElderBookChapters/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishElderBookChapters",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "polishelderbookchapters-00036-duy"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-10-28T12:51:04.432627719Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "entryPoint": "getHaruDriveCandidates",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443161714",
+          "object": "getHaruDriveCandidates/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getHaruDriveCandidates",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getharudrivecandidates-00037-pon"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:46.456835903Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "entryPoint": "subscribeWithBillingKey",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295410555514",
+          "object": "subscribeWithBillingKey/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/subscribeWithBillingKey",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "subscribewithbillingkey-00035-zoj"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:23.807945942Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/43a07020-be53-4e00-be3f-12b783edc422",
+      "entryPoint": "copyHaruDriveAssets",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287678014278",
+          "object": "copyHaruDriveAssets/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/copyHaruDriveAssets",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "copyharudriveassets-00036-vis"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:29.902537264Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/518ecef2-9218-47a0-9da3-ae4b9c18805e",
+      "entryPoint": "generateLawsuitClaimReason",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286715131065",
+          "object": "generateLawsuitClaimReason/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateLawsuitClaimReason",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "generatelawsuitclaimreason-00036-cal"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:27.082970451Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/243c4a87-4c79-4c4f-9f05-b949f6c0914a",
+      "entryPoint": "unpublishHaruLawSharedCard",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216278824085",
+          "object": "unpublishHaruLawSharedCard/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/unpublishHaruLawSharedCard",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "unpublishharulawsharedcard-00026-wem"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:31:29.192209547Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/37f41804-6c98-4eb4-b4ab-c7910b4d9cfb",
+      "entryPoint": "approveSubscriptionRefund",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789296669627571",
+          "object": "approveSubscriptionRefund/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/approveSubscriptionRefund",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "approvesubscriptionrefund-00009-zij"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:51:20.861593548Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a22b44b0-ab5c-438e-a777-386c4a5b60fa",
+      "entryPoint": "buildElderBookOutline",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216506157944",
+          "object": "buildElderBookOutline/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/buildElderBookOutline",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "buildelderbookoutline-00036-qos"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:35:19.429551741Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "entryPoint": "lawPrecedent",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217338333412",
+          "object": "lawPrecedent/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/lawPrecedent",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "lawprecedent-00124-bix"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:12.283610994Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "entryPoint": "getVerseTranslation",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443371160",
+          "object": "getVerseTranslation/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getVerseTranslation",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getversetranslation-00062-bis"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:50.349803209Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "entryPoint": "petFoodCheck",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215412069208",
+          "object": "petFoodCheck/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/petFoodCheck",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "petfoodcheck-00023-dug"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:10.324351032Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/43a07020-be53-4e00-be3f-12b783edc422",
+      "entryPoint": "getOneDriveConnectionState",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287737681970",
+          "object": "getOneDriveConnectionState/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getOneDriveConnectionState",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getonedriveconnectionstate-00037-yen"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:30.753314847Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e74f680e-5e0d-4725-b1c4-9d2ab8af3f70",
+      "entryPoint": "extractReadingBookTextFromPhoto",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217083873769",
+          "object": "extractReadingBookTextFromPhoto/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractReadingBookTextFromPhoto",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "extractreadingbooktextfromphoto-00036-hiv"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:45:56.623665994Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "entryPoint": "getGrammarExplainV2",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215412070579",
+          "object": "getGrammarExplainV2/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getGrammarExplainV2",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getgrammarexplainv2-00010-cux"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:10.731803650Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/518ecef2-9218-47a0-9da3-ae4b9c18805e",
+      "entryPoint": "generateHaruMemo",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286714724721",
+          "object": "generateHaruMemo/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateHaruMemo",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "generateharumemo-00041-tes"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:27.678838765Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/f7f22250-7e92-4070-9350-3612584c6891",
+      "entryPoint": "generateGrowthTimelinePdf",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793573397272205",
+          "object": "generateGrowthTimelinePdf/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateGrowthTimelinePdf",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "generategrowthtimelinepdf-00034-sox"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-11-01T22:51:50.393259589Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/0f7702a4-cb12-4746-a2d8-1eefa3e0ec40",
+      "entryPoint": "extractTitle",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793053162097106",
+          "object": "extractTitle/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractTitle",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "extracttitle-00130-vuq"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-10-26T22:20:58.386408790Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/8023a7b7-10b6-47c3-937a-a3645d8385f0",
+      "entryPoint": "naverCallback",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789700472678004",
+          "object": "naverCallback/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/naverCallback",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "navercallback-00186-ray"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-18T03:01:23.536605492Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/3486c1e4-d82d-423f-84e0-237665bc9b17",
+      "entryPoint": "generateTTS",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793573397355605",
+          "object": "generateTTS/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateTTS",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "generatetts-00118-niw"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-11-01T22:51:50.545062508Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "entryPoint": "clearKeywordsCache",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215412038040",
+          "object": "clearKeywordsCache/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/clearKeywordsCache",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "clearkeywordscache-00042-yol"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:10.143424540Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/9acb0fae-c512-4e39-916b-799c0251fa2f",
+      "entryPoint": "requestAccountDeletion",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790157472009417",
+          "object": "requestAccountDeletion/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/requestAccountDeletion",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "requestaccountdeletion-00015-vek"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-23T09:59:24.981118189Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/8023a7b7-10b6-47c3-937a-a3645d8385f0",
+      "entryPoint": "kakaoLoginStart",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789700400395530",
+          "object": "kakaoLoginStart/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/kakaoLoginStart",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "kakaologinstart-00191-jiv"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-18T03:01:23.731098232Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a34f6cdd-ff6d-4f40-b785-dca0947ee1a7",
+      "entryPoint": "cleanupHaruLawGeminiFiles",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1791236044028049",
+          "object": "cleanupHaruLawGeminiFiles/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cleanupHaruLawGeminiFiles",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "cleanupharulawgeminifiles-00001-def"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-10-05T21:35:48.234114153Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/518ecef2-9218-47a0-9da3-ae4b9c18805e",
+      "entryPoint": "analyzeRecordForProphecy",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286715156312",
+          "object": "analyzeRecordForProphecy/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeRecordForProphecy",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "analyzerecordforprophecy-00078-xaw"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:27.786627555Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "entryPoint": "decryptKakaoXlsx",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217338029556",
+          "object": "decryptKakaoXlsx/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/decryptKakaoXlsx",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "decryptkakaoxlsx-00013-xos"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:08.803321664Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e74f680e-5e0d-4725-b1c4-9d2ab8af3f70",
+      "entryPoint": "analyzePlantPhoto",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217154189487",
+          "object": "analyzePlantPhoto/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzePlantPhoto",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "analyzeplantphoto-00040-zij"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:46:07.551712608Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "entryPoint": "generateBook",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217337815212",
+          "object": "generateBook/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateBook",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "generatebook-00121-tub"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:14.088786108Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a22b44b0-ab5c-438e-a777-386c4a5b60fa",
+      "entryPoint": "reviewBookForPublish",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216404303328",
+          "object": "reviewBookForPublish/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/reviewBookForPublish",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "reviewbookforpublish-00014-vun"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:35:13.194765747Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/5191dc06-3bc0-4b2a-9bae-66d76a0c9749",
+      "entryPoint": "reverseGeocodeKakao",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789210612795299",
+          "object": "reverseGeocodeKakao/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/reverseGeocodeKakao",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "reversegeocodekakao-00036-nin"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T10:58:39.564919545Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/8023a7b7-10b6-47c3-937a-a3645d8385f0",
+      "entryPoint": "kakaoCallback",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789700472482428",
+          "object": "kakaoCallback/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/kakaoCallback",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "kakaocallback-00195-wam"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-18T03:01:23.638198983Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/518ecef2-9218-47a0-9da3-ae4b9c18805e",
+      "entryPoint": "refreshNews",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286715525092",
+          "object": "refreshNews/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/refreshNews",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "refreshnews-00086-taf"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:29.636559986Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/235a4ba5-a602-4b3a-bfff-7d895771975d",
+      "entryPoint": "startOneDriveConnect",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287748228055",
+          "object": "startOneDriveConnect/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/startOneDriveConnect",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "startonedriveconnect-00039-cuc"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:38.244480512Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "entryPoint": "getHospitalList",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191442835425",
+          "object": "getHospitalList/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getHospitalList",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "gethospitallist-00051-jul"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:47.680303968Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e74f680e-5e0d-4725-b1c4-9d2ab8af3f70",
+      "entryPoint": "analyzeDrugPhoto",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217154401123",
+          "object": "analyzeDrugPhoto/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeDrugPhoto",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "analyzedrugphoto-00051-dif"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:46:06.585264158Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "entryPoint": "getOnbidRealEstateList",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443464606",
+          "object": "getOnbidRealEstateList/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getOnbidRealEstateList",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getonbidrealestatelist-00048-haz"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:48.591958749Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/c1027161-cdd1-43e7-be20-07b1cdb0cc60",
+      "entryPoint": "convertHeic",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1791957609637675",
+          "object": "convertHeic/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/convertHeic",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "convertheic-00144-sin"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-10-14T06:02:12.305051964Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a22b44b0-ab5c-438e-a777-386c4a5b60fa",
+      "entryPoint": "assignElderBookSources",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216506136008",
+          "object": "assignElderBookSources/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/assignElderBookSources",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "assignelderbooksources-00036-guy"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:35:15.642994045Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/bea8846c-b5eb-4224-9a27-fcd0b929075d",
+      "entryPoint": "chatWithResult",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793663470819547",
+          "object": "chatWithResult/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/chatWithResult",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "chatwithresult-00038-dey"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-11-02T23:53:00.032166887Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/5191dc06-3bc0-4b2a-9bae-66d76a0c9749",
+      "entryPoint": "removeAllTags",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789210714768376",
+          "object": "removeAllTags/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/removeAllTags",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "removealltags-00129-sim"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T10:58:47.596497662Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/518ecef2-9218-47a0-9da3-ae4b9c18805e",
+      "entryPoint": "suggestChapterTitle",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286715088723",
+          "object": "suggestChapterTitle/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/suggestChapterTitle",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "suggestchaptertitle-00034-qiw"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:24.996076906Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/15ea839b-a93f-4535-8b59-765897516e20",
+      "entryPoint": "googleCallback",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790817422405725",
+          "object": "googleCallback/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/googleCallback",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "googlecallback-00171-bor"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-10-01T01:18:49.365959375Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "entryPoint": "cancelSubscription",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295410916595",
+          "object": "cancelSubscription/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cancelSubscription",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "cancelsubscription-00020-wih"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:22.876553648Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "entryPoint": "portoneWebhook",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295410924989",
+          "object": "portoneWebhook/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/portoneWebhook",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "portonewebhook-00014-lep"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:20.917050045Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d85a7b9d-9557-4fda-851a-e518f651a654",
+      "entryPoint": "sendTestNotification",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216714588292",
+          "object": "sendTestNotification/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/sendTestNotification",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "sendtestnotification-00130-tah"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:38:45.673214178Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "entryPoint": "uploadReceiptToDrive",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217337800447",
+          "object": "uploadReceiptToDrive/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/uploadReceiptToDrive",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "uploadreceipttodrive-00023-yaj"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:11.819742975Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/567d125c-3a57-492b-bfb9-6924a44d61ea",
+      "entryPoint": "polishContent",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793627491859863",
+          "object": "polishContent/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishContent",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "polishcontent-00247-lef"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-11-02T13:52:47.896908444Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/37f41804-6c98-4eb4-b4ab-c7910b4d9cfb",
+      "entryPoint": "listSubscriptionRefundRequests",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789296669226862",
+          "object": "listSubscriptionRefundRequests/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/listSubscriptionRefundRequests",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "listsubscriptionrefundrequests-00006-mot"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:51:19.533943163Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/243c4a87-4c79-4c4f-9f05-b949f6c0914a",
+      "entryPoint": "listPendingHaruLawSharedCards",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216278713468",
+          "object": "listPendingHaruLawSharedCards/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/listPendingHaruLawSharedCards",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "listpendingharulawsharedcards-00014-biz"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:31:30.554228548Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/235a4ba5-a602-4b3a-bfff-7d895771975d",
+      "entryPoint": "haruDriveCallback",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287748210553",
+          "object": "haruDriveCallback/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/haruDriveCallback",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "harudrivecallback-00037-zew"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:38.139403618Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/63117577-1a04-4090-9379-9298bc736e49",
+      "entryPoint": "chatWithReadingContext",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793017033017499",
+          "object": "chatWithReadingContext/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/chatWithReadingContext",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "chatwithreadingcontext-00003-qor"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-10-26T12:18:36.598390678Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/249b9cfd-0351-4224-a0fc-eaa3c36953df",
+      "entryPoint": "analyzeFacebookZip",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793573397173214",
+          "object": "analyzeFacebookZip/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeFacebookZip",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "analyzefacebookzip-00045-zoh"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-11-01T22:51:53.675715078Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/8023a7b7-10b6-47c3-937a-a3645d8385f0",
+      "entryPoint": "naverLoginStart",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789700472693032",
+          "object": "naverLoginStart/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/naverLoginStart",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "naverloginstart-00182-gok"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-18T03:01:25.015641970Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "entryPoint": "recoverSubscriptionBillingRequest",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295410855749",
+          "object": "recoverSubscriptionBillingRequest/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/recoverSubscriptionBillingRequest",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "recoversubscriptionbillingrequest-00007-don"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:21.639941302Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "entryPoint": "verifyPayment",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295411005195",
+          "object": "verifyPayment/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/verifyPayment",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "verifypayment-00010-rep"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:23.553155699Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/9acb0fae-c512-4e39-916b-799c0251fa2f",
+      "entryPoint": "cancelAccountDeletion",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790157543380784",
+          "object": "cancelAccountDeletion/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cancelAccountDeletion",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "cancelaccountdeletion-00011-men"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-23T09:59:23.485521455Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/9b19751e-88dd-4e8a-ad22-335ca5f23cc9",
+      "entryPoint": "generateTitlesForAll",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1792533430590855",
+          "object": "generateTitlesForAll/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateTitlesForAll",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "generatetitlesforall-00129-nuf"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-10-20T21:59:23.952927313Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d85a7b9d-9557-4fda-851a-e518f651a654",
+      "entryPoint": "deleteRecordImage",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216714348279",
+          "object": "deleteRecordImage/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/deleteRecordImage",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "deleterecordimage-00042-qac"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:38:45.287255861Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b64e582f-522d-4769-a4c6-2cdc1dd7937b",
+      "entryPoint": "getDrugInfo",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789915815014320",
+          "object": "getDrugInfo/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getDrugInfo",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getdruginfo-00052-bab"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-20T14:52:36.447710015Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/37f41804-6c98-4eb4-b4ab-c7910b4d9cfb",
+      "entryPoint": "getSubscriptionRefundEligibility",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789296598474785",
+          "object": "getSubscriptionRefundEligibility/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getSubscriptionRefundEligibility",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "getsubscriptionrefundeligibility-00005-taf"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:51:10.904277241Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "entryPoint": "analyzeSymptomsForSpecialty",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215412018078",
+          "object": "analyzeSymptomsForSpecialty/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeSymptomsForSpecialty",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "analyzesymptomsforspecialty-00043-dov"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:09.913296461Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/220b2486-977d-4876-8899-f4ef13c31d95",
+      "entryPoint": "convertToBookMaterial",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790805203890746",
+          "object": "convertToBookMaterial/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/convertToBookMaterial",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "converttobookmaterial-00049-tat"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-30T21:53:34.193027674Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/dd3372e6-d21f-402f-a72d-7d2bc1021558",
+      "entryPoint": "lawEasyExplain",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790124419272623",
+          "object": "lawEasyExplain/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/lawEasyExplain",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "laweasyexplain-00119-nom"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-23T00:48:29.288823907Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "entryPoint": "translateToEnglish",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215411864496",
+          "object": "translateToEnglish/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/translateToEnglish",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "translatetoenglish-00086-nuy"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:12.395531420Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a22b44b0-ab5c-438e-a777-386c4a5b60fa",
+      "entryPoint": "applyBookPublishRevision",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216506025429",
+          "object": "applyBookPublishRevision/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/applyBookPublishRevision",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "applybookpublishrevision-00015-cid"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:35:15.338927602Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e69dbfef-89a3-4099-a91e-0f3d1bb9d982",
+      "entryPoint": "cleanupHeicTemp",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789972936764270",
+          "object": "cleanupHeicTemp/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cleanupHeicTemp",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "cleanupheictemp-00001-xaj"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-21T06:43:57.329610677Z"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/37f41804-6c98-4eb4-b4ab-c7910b4d9cfb",
+      "entryPoint": "requestSubscriptionRefund",
+      "runtime": "nodejs22",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789296669098235",
+          "object": "requestSubscriptionRefund/function-source.zip"
+        }
+      }
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/requestSubscriptionRefund",
+    "serviceConfig": {
+      "allTrafficOnLatestRevision": true,
+      "revision": "requestsubscriptionrefund-00009-zam"
+    },
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:51:22.885645426Z"
+  }
+]

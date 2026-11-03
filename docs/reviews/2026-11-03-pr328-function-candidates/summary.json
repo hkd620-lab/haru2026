@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-11-03T15:22:05.190428+09:00",
+  "approvedCommit": "69480ecafdb8b170051e1ea3ae71bb72512f1208",
+  "groups": 36,
+  "functions": 100,
+  "originalSourceDrift": 0,
+  "changedFilesPerCandidate": [
+    "package-lock.json"
+  ],
+  "changedFields": [
+    "version",
+    "resolved",
+    "integrity"
+  ],
+  "oldVersion": "1.4.0",
+  "newVersion": "1.4.2",
+  "distinctLockGraphs": 3,
+  "unchangedArchiveEntriesVerified": 4169,
+  "candidateBytes": 489433920,
+  "buildScriptDisabledForAllTargets": true,
+  "deployed": false,
+  "status": "LOCAL_CANDIDATES_ONLY_REVIEW_REQUIRED"
+}

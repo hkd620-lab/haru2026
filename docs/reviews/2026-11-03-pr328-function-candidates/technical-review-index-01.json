@@ -1,0 +1,15 @@
+{
+  "resultRecordedAt": "2026-11-03T15:24:37.531301+09:00",
+  "reviewer": "Codex /root/candidate_review",
+  "type": "technical pre-review only; shared conversation context",
+  "formalPolicy8_1Approval": false,
+  "scriptSha256": "b0019eb10acf3c629fe11040e28864ada1d100ebcba80a743cf5b231662fafa1",
+  "requestFile": "technical-review-request-01.txt",
+  "verbatimResultFile": "technical-review-result-01.md",
+  "operationalConditions": [
+    "Fresh source/revision/updateTime and build setting check before any deployment",
+    "Cloud Build and actual dependency/native runtime verification",
+    "Review concrete single-target source-only PATCH request before approval"
+  ],
+  "trafficClarification": "Reviewer traffic wording is based on allTrafficOnLatestRevision=true; actual Cloud Run traffic split was not independently fetched. preparation-result.md requires that read before approval."
+}

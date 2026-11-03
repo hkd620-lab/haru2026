@@ -1,0 +1,61 @@
+{
+  "runtime": "Node 22",
+  "results": [
+    {
+      "representativeGroup": 1,
+      "installExit": 0,
+      "testPass": 7,
+      "testFail": 0,
+      "installScripts": false,
+      "devDependencies": false,
+      "lockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc"
+    },
+    {
+      "representativeGroup": 2,
+      "installExit": 0,
+      "testPass": 7,
+      "testFail": 0,
+      "installScripts": false,
+      "devDependencies": false,
+      "lockSha256": "76e03c4c6015e6caa55135ef5e4b1bf46460ab433c5627781c33cab5159b40e4"
+    },
+    {
+      "representativeGroup": 9,
+      "installExit": 0,
+      "testPass": 7,
+      "testFail": 0,
+      "installScripts": false,
+      "devDependencies": false,
+      "lockSha256": "b92625e60e8a6e1cb3edb8eb356debc676fa546475a2bf532b1ee3f9a72a4a28"
+    }
+  ],
+  "priorOfflineAttempts": [
+    {
+      "groupRepresentative": 1,
+      "installExit": 1,
+      "lifecycleScriptsEnabled": false,
+      "productionDependenciesOnly": true,
+      "lockUnchanged": true
+    },
+    {
+      "groupRepresentative": 2,
+      "installExit": 0,
+      "lifecycleScriptsEnabled": false,
+      "productionDependenciesOnly": true,
+      "compatibilityExit": 0,
+      "lockUnchanged": true
+    },
+    {
+      "groupRepresentative": 9,
+      "installExit": 1,
+      "lifecycleScriptsEnabled": false,
+      "productionDependenciesOnly": true,
+      "lockUnchanged": true
+    }
+  ],
+  "retryReason": "Groups 1 and 9 required existing dependency sharp 0.34.5 absent from local cache. Online retries succeeded.",
+  "limits": [
+    "Native install lifecycle scripts skipped; native image packages not exercised.",
+    "No Cloud Build, production deploy or user E2E."
+  ]
+}

@@ -1,0 +1,914 @@
+[
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/convertSnsToDiary"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/startHaruDriveConnect"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/executeScheduledDeletion"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractStockTradeTextFromPhoto"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getMonthlyAiQuotaStatus"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/exportEpub"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/gatherElderBookSources"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getKoreanPlantInfo"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/saveAiLibraryImport"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/sendBroadcastNotification"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cleanupTtsUsage"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractKNewsMetadata"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateHaruProphecy"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/copyOneDriveAssets"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/scheduledPushNotification"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateSnsStorySynopsis"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/oneDriveCallback"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getVerseWordMapping"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/searchOfficialDrugs"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/draftElderBookChapters"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/deleteAiLibraryLogs"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/ensureOneDriveHaruFolder"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractKeywords"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/prepareHaruLawSharePreview"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getOneDriveCandidates"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/preloadChapterGrammar"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/createSinglePaymentRequest"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getWordMeaning"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/processRecurringSubscriptions"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/lawSearch"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/reviewHaruLawSharedCard"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/suggestBookPublishRevision"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/listAiLibraryLogs"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/detectPlantAdvanced"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/publishHaruLawSharedCard"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/recordPaidServiceUsage"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateSnsStoryFinal"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractLedgerTextFromImage"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/createSubscriptionBillingRequest"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getSnsThumbnailData"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractHouseholdTextFromImage"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/rejectSubscriptionRefund"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/googleLoginStart"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getGrammarExplain"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getVerseQuiz"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/testNibrPlantSearch"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/verifySinglePayment"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getCustomToken"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishElderBookChapters"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getHaruDriveCandidates"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/subscribeWithBillingKey"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/copyHaruDriveAssets"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateLawsuitClaimReason"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/unpublishHaruLawSharedCard"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/approveSubscriptionRefund"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/buildElderBookOutline"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/lawPrecedent"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getVerseTranslation"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/petFoodCheck"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getOneDriveConnectionState"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractReadingBookTextFromPhoto"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getGrammarExplainV2"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateHaruMemo"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateGrowthTimelinePdf"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractTitle"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/naverCallback"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateTTS"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/clearKeywordsCache"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/requestAccountDeletion"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/kakaoLoginStart"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cleanupHaruLawGeminiFiles"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeRecordForProphecy"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/decryptKakaoXlsx"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzePlantPhoto"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateBook"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/reviewBookForPublish"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/reverseGeocodeKakao"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/kakaoCallback"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/refreshNews"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/startOneDriveConnect"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getHospitalList"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeDrugPhoto"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getOnbidRealEstateList"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/convertHeic"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/assignElderBookSources"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/chatWithResult"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/removeAllTags"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/suggestChapterTitle"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/googleCallback"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cancelSubscription"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/portoneWebhook"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/sendTestNotification"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/uploadReceiptToDrive"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishContent"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/listSubscriptionRefundRequests"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/listPendingHaruLawSharedCards"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/haruDriveCallback"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/chatWithReadingContext"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeFacebookZip"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/naverLoginStart"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/recoverSubscriptionBillingRequest"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/verifyPayment"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cancelAccountDeletion"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateTitlesForAll"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/deleteRecordImage"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getDrugInfo"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getSubscriptionRefundEligibility"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeSymptomsForSpecialty"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/convertToBookMaterial"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/lawEasyExplain"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/translateToEnglish"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/applyBookPublishRevision"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cleanupHeicTemp"
+  },
+  {
+    "buildConfig": {
+      "environmentVariables": {
+        "GOOGLE_NODE_RUN_SCRIPTS": ""
+      }
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/requestSubscriptionRefund"
+  }
+]

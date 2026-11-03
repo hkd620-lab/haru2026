@@ -1,0 +1,6 @@
+검토 종류: Codex 보조 기술 사전검토. 정책 8.1의 독립 Claude/PR 자동 Codex 검토를 대체하지 않음.
+대상: 시작 HEAD f5996c92a2adc27cf66bfcb947b60adbfda485b0 위 미커밋 준비 스크립트 및 후보 파일. 공유 대화 맥락 있음.
+검토자: Codex 하위 에이전트 /root/candidate_review. 파일 수정·배포·외부 게시 금지.
+
+요청 원문:
+Read-only independent technical pre-review of PR328 dependency-only local candidates. Review docs/reviews/2026-11-03-pr328-function-candidates/prepare-candidates.py and external evidence /Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01 (summary.json, candidates.json, function-matrix.json and representative zip). Do not mutate files, deploy, send messages externally, or read/output secrets. Check source preservation, grouping baseline, three-field-only lock update, retained GOOGLE_NODE_RUN_SCRIPTS empty prerequisite, risks of proposed future source-only updateMask buildConfig.source. Return concrete findings with priority; distinguish local candidate readiness from production deployment approval and mention that this Codex technical pre-review is NOT the independent Claude review required by policy 8.1. Need not inspect all huge files; verify meaningful sample and exact changed-field invariants. We are preparing candidates only, no approval sought until formal review requirements fulfilled.

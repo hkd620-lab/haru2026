@@ -1,0 +1,894 @@
+[
+  {
+    "group": 1,
+    "functions": [
+      "analyzeDrugPhoto",
+      "analyzePlantPhoto",
+      "extractHouseholdTextFromImage",
+      "extractKNewsMetadata",
+      "extractLedgerTextFromImage",
+      "extractReadingBookTextFromPhoto"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-01.zip",
+    "originalSha256": "353daf2e5433c772bcff5d4d5b177bb43264db41988d07df762f31b229fca1b8",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-01/candidate.zip",
+    "candidateSha256": "a81df82a2d31cecbc8ac26300085e7b57bd70e8f064eff928d4a67768e134b65",
+    "candidateBytes": 13457716,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 2,
+    "functions": [
+      "analyzeFacebookZip",
+      "detectPlantAdvanced",
+      "generateGrowthTimelinePdf",
+      "generateTTS"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-02.zip",
+    "originalSha256": "f2d54819e25923d6c338f12dd79b1ce7f3ad01c3a9a0fdb9bb7ce56f6f8ead37",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-02/candidate.zip",
+    "candidateSha256": "7bd94e5a6694ce1e75d76e66e9a3ef1d2b4685ad2b1e8850db4e3385e5652167",
+    "candidateBytes": 13839963,
+    "originalLockSha256": "353cf33259b44fed9b136f3fcd07103ff51204bb85092f4116a7d5d3bd9c9dbd",
+    "candidateLockSha256": "76e03c4c6015e6caa55135ef5e4b1bf46460ab433c5627781c33cab5159b40e4",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 168,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 3,
+    "functions": [
+      "analyzeRecordForProphecy",
+      "generateHaruMemo",
+      "generateHaruProphecy",
+      "generateLawsuitClaimReason",
+      "refreshNews",
+      "suggestChapterTitle"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-03.zip",
+    "originalSha256": "b9c1f6804d1737de596b956cae7b4d79cb54639c6ac523b74d53c986ceb25f02",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-03/candidate.zip",
+    "candidateSha256": "6f39f09500a0d85d92f6a21b7c9b03e44eb1dc1d77330ea9b74d6c95e1775d43",
+    "candidateBytes": 13459707,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 4,
+    "functions": [
+      "analyzeSymptomsForSpecialty",
+      "clearKeywordsCache",
+      "extractKeywords",
+      "getGrammarExplain",
+      "petFoodCheck",
+      "searchOfficialDrugs",
+      "testNibrPlantSearch",
+      "translateToEnglish"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-04.zip",
+    "originalSha256": "9825582fdaf0e95a53fb5fae7fcdbb9aa81349cf494e3ec3350bfb14ac136b6c",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-04/candidate.zip",
+    "candidateSha256": "653b313170fa6c074af07fa87308990dfbde20989cb6fe6ed682c8ef8cf2ecb8",
+    "candidateBytes": 13457716,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 5,
+    "functions": [
+      "applyBookPublishRevision",
+      "assignElderBookSources",
+      "buildElderBookOutline",
+      "gatherElderBookSources",
+      "reviewBookForPublish",
+      "suggestBookPublishRevision"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-05.zip",
+    "originalSha256": "f806b997a52728a657e3fde17d79f2c570401d6f716d7e276b700df12e78d83c",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-05/candidate.zip",
+    "candidateSha256": "74d8e7813dfe6050e633292f5981b2a8a6dd7be2a87d52d2839489a8430fb56c",
+    "candidateBytes": 13457716,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 6,
+    "functions": [
+      "approveSubscriptionRefund",
+      "getSubscriptionRefundEligibility",
+      "listSubscriptionRefundRequests",
+      "rejectSubscriptionRefund",
+      "requestSubscriptionRefund"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-06.zip",
+    "originalSha256": "84879b8d0ecc3f949e29253a863379d1efe3da959d5d294e6e19c4cd435f464a",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-06/candidate.zip",
+    "candidateSha256": "ced5937c967460d9c0fec0aebdb74cae13a3c0d7fc333c2f1b233b333d9a8360",
+    "candidateBytes": 13459707,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 7,
+    "functions": [
+      "cancelAccountDeletion",
+      "executeScheduledDeletion",
+      "requestAccountDeletion"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-07.zip",
+    "originalSha256": "7313e4a6017c972ba1ec98a6f452272b4c2d98142a622da9e8ac9f37572d73bf",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-07/candidate.zip",
+    "candidateSha256": "3c8fcb5d62331ae64ef206859f9d622a9e135977a30bdb5ccf764eeba247a53b",
+    "candidateBytes": 13541205,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 108,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 8,
+    "functions": [
+      "cancelSubscription",
+      "createSinglePaymentRequest",
+      "createSubscriptionBillingRequest",
+      "portoneWebhook",
+      "recoverSubscriptionBillingRequest",
+      "subscribeWithBillingKey",
+      "verifyPayment",
+      "verifySinglePayment"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-08.zip",
+    "originalSha256": "d3fd87526335845fa0412e1767286704dcc28b10c066a8532dfa9df70430ba1f",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-08/candidate.zip",
+    "candidateSha256": "1f473e738498a031c8dc7d6cf61e271e1d206c4604ff4b634a4a9ff001f03dba",
+    "candidateBytes": 13459707,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 9,
+    "functions": [
+      "chatWithReadingContext"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-09.zip",
+    "originalSha256": "a36fe6a141758a5d45b798b33c6731b931e6aa82034b0bfcc03905e3c969c6fe",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-09/candidate.zip",
+    "candidateSha256": "cb6ee3dcc92e5d4687d671af6e455cb34e1e0e16334450477e203540cc7b09ad",
+    "candidateBytes": 13811618,
+    "originalLockSha256": "93ee6094d82e8c721ba4f84a79500f867cee87407325d4f5fee26fdfe1e21b2c",
+    "candidateLockSha256": "b92625e60e8a6e1cb3edb8eb356debc676fa546475a2bf532b1ee3f9a72a4a28",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 161,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 10,
+    "functions": [
+      "chatWithResult"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-10.zip",
+    "originalSha256": "f969ea047e5f923c15f42107581f2540ea10b4d8fa2f44966c2844cd0d32f975",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-10/candidate.zip",
+    "candidateSha256": "9a9687d413e58dd8d2bd83b66a3b50461be77d4a9db9b87d601b0d65aee183fe",
+    "candidateBytes": 13814116,
+    "originalLockSha256": "353cf33259b44fed9b136f3fcd07103ff51204bb85092f4116a7d5d3bd9c9dbd",
+    "candidateLockSha256": "76e03c4c6015e6caa55135ef5e4b1bf46460ab433c5627781c33cab5159b40e4",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 169,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 11,
+    "functions": [
+      "cleanupHaruLawGeminiFiles"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-11.zip",
+    "originalSha256": "f5d01ee81669859439c05b4de6398255d57359064be2d44c74ece00aaf2dea66",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-11/candidate.zip",
+    "candidateSha256": "360cf21da262cd4bef3995bbed86eb47bed613bb9ea37eb825f858b05867e7d6",
+    "candidateBytes": 13739544,
+    "originalLockSha256": "93ee6094d82e8c721ba4f84a79500f867cee87407325d4f5fee26fdfe1e21b2c",
+    "candidateLockSha256": "b92625e60e8a6e1cb3edb8eb356debc676fa546475a2bf532b1ee3f9a72a4a28",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 130,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 12,
+    "functions": [
+      "cleanupHeicTemp",
+      "convertHeic"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-12.zip",
+    "originalSha256": "45de9df34bc7e826ef1aea390a31314c124ea4fbe9edd4296ed0d69f5f59fadc",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-12/candidate.zip",
+    "candidateSha256": "cd1acd81fa32e64a73c7899fad3d948bd816342f9ac4b952b88360ca8464e73c",
+    "candidateBytes": 13532487,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 104,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 13,
+    "functions": [
+      "cleanupTtsUsage",
+      "processRecurringSubscriptions"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-13.zip",
+    "originalSha256": "15f94da77d3972002dac6e05a1c7415691405fea66612fe54bdbea042b1bd311",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-13/candidate.zip",
+    "candidateSha256": "4b2c221b831c67dde2a6f748097c67dcb9269220e494b6c6242e9913ea532293",
+    "candidateBytes": 13459707,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 14,
+    "functions": [
+      "convertSnsToDiary",
+      "decryptKakaoXlsx",
+      "draftElderBookChapters",
+      "generateBook",
+      "lawPrecedent",
+      "prepareHaruLawSharePreview",
+      "uploadReceiptToDrive"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-14.zip",
+    "originalSha256": "3c393e2a283f8f3d8ec5131ffd6d47d6f1c9d4b0ddf8737f09b1a9e067c9ef3f",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-14/candidate.zip",
+    "candidateSha256": "462e6c2b936e54f28d144ac5995bf8043768668c23e9fc4fd1bd68d76acf456c",
+    "candidateBytes": 13457716,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 15,
+    "functions": [
+      "convertToBookMaterial",
+      "deleteAiLibraryLogs",
+      "listAiLibraryLogs",
+      "saveAiLibraryImport"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-15.zip",
+    "originalSha256": "0cdfdb534266e23df1e0b29b03137626962be18b33b3a4b5690417a828a1a82f",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-15/candidate.zip",
+    "candidateSha256": "7c87157742929494e087df4ffd3ceb088e8298e0329d45343137c439311d53bd",
+    "candidateBytes": 13734553,
+    "originalLockSha256": "93ee6094d82e8c721ba4f84a79500f867cee87407325d4f5fee26fdfe1e21b2c",
+    "candidateLockSha256": "b92625e60e8a6e1cb3edb8eb356debc676fa546475a2bf532b1ee3f9a72a4a28",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 130,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 16,
+    "functions": [
+      "deleteRecordImage",
+      "sendBroadcastNotification",
+      "sendTestNotification"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-16.zip",
+    "originalSha256": "f7871110605d8d052281ef76cbfb2cdc23aa10425b803c1c530b8a16ab21904e",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-16/candidate.zip",
+    "candidateSha256": "d299bdd59d1547f9296562f7b19b90dcc016cecb4ca9b3ad2e23bac0c517df74",
+    "candidateBytes": 13457716,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 17,
+    "functions": [
+      "exportEpub"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-17.zip",
+    "originalSha256": "c1bb7dbf7723a80e624a14a5c8f260e1a53225810e3a1bab1f34f5acf163cfbd",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-17/candidate.zip",
+    "candidateSha256": "ba30de58ee110319d1320b84b24fa6205fa79baa5d2a4ebc267614404250b6d7",
+    "candidateBytes": 13823037,
+    "originalLockSha256": "93ee6094d82e8c721ba4f84a79500f867cee87407325d4f5fee26fdfe1e21b2c",
+    "candidateLockSha256": "b92625e60e8a6e1cb3edb8eb356debc676fa546475a2bf532b1ee3f9a72a4a28",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 161,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 18,
+    "functions": [
+      "extractStockTradeTextFromPhoto"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-18.zip",
+    "originalSha256": "affb8269c88afd9d697510dcac7bf2285a90d2cc11e05610f9c3b7d71caeb0f5",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-18/candidate.zip",
+    "candidateSha256": "fa8ba0ac528a648def3b1112f186b9df6da26bd741a3f4f7594c4b3de75da87f",
+    "candidateBytes": 13803781,
+    "originalLockSha256": "353cf33259b44fed9b136f3fcd07103ff51204bb85092f4116a7d5d3bd9c9dbd",
+    "candidateLockSha256": "76e03c4c6015e6caa55135ef5e4b1bf46460ab433c5627781c33cab5159b40e4",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 164,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 19,
+    "functions": [
+      "extractTitle"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-19.zip",
+    "originalSha256": "62ef2c40706c6220cdc8846bd77bc1cb52b3b2ab36a73727c1ed724d281447f8",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-19/candidate.zip",
+    "candidateSha256": "73e097540e6ab5f0327d5e6ae3a16ea85112c23759577dfd76aff3e028950533",
+    "candidateBytes": 13814412,
+    "originalLockSha256": "93ee6094d82e8c721ba4f84a79500f867cee87407325d4f5fee26fdfe1e21b2c",
+    "candidateLockSha256": "b92625e60e8a6e1cb3edb8eb356debc676fa546475a2bf532b1ee3f9a72a4a28",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 159,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 20,
+    "functions": [
+      "generateSnsStoryFinal"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-20.zip",
+    "originalSha256": "d135c2e2e62fa80f5fa4c2ab3e08e567df8b00fb93c0eb4fbe1507c23403327e",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-20/candidate.zip",
+    "candidateSha256": "4bde5349e4bb23dcbc7fee2d4f1f5463c6def704822d38ce2ddb7ae8977e7dcc",
+    "candidateBytes": 13522541,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 100,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 21,
+    "functions": [
+      "generateSnsStorySynopsis"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-21.zip",
+    "originalSha256": "87ba997a6d27701788ed0f5ad0b1d08ba168e683d58d04916a12ba6d889cbecc",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-21/candidate.zip",
+    "candidateSha256": "50b30b01708a8fec171c140f0f044599b788b464b8227a72dc3b53b51f74f305",
+    "candidateBytes": 13522335,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 100,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 22,
+    "functions": [
+      "generateTitlesForAll"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-22.zip",
+    "originalSha256": "19dd417b68e0e052633b57b69fe729fea900f3a4215b11b8b79391bee4ab3de9",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-22/candidate.zip",
+    "candidateSha256": "c1388a82a7e64d542f132ee019a48d95d8e0ae9d7ec9bf5662dc7bcfc013c8e2",
+    "candidateBytes": 13792505,
+    "originalLockSha256": "93ee6094d82e8c721ba4f84a79500f867cee87407325d4f5fee26fdfe1e21b2c",
+    "candidateLockSha256": "b92625e60e8a6e1cb3edb8eb356debc676fa546475a2bf532b1ee3f9a72a4a28",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 155,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 23,
+    "functions": [
+      "getCustomToken"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-23.zip",
+    "originalSha256": "98377aba5a0d504f17b16904fc8a3e37686a2c8b499d6419970e8ef3c48dae81",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-23/candidate.zip",
+    "candidateSha256": "dcfdd9982538a17cfce17b16c1491f8fceb60792fc96a4adcacb3a5fb3ea66f7",
+    "candidateBytes": 13457498,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 24,
+    "functions": [
+      "getDrugInfo"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-24.zip",
+    "originalSha256": "812d3b622cd85e0585e6c200ddaec55e4cd9ea441f2155741a9d7bd2da271c42",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-24/candidate.zip",
+    "candidateSha256": "4eba1eb2e479519a41fae42a39f5041e970f3ea185eeb617f79f447d84ddf60f",
+    "candidateBytes": 13526324,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 101,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 25,
+    "functions": [
+      "getHospitalList",
+      "getKoreanPlantInfo",
+      "getOnbidRealEstateList",
+      "getVerseQuiz",
+      "getWordMeaning"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-25.zip",
+    "originalSha256": "43dbc8017c5e1708072e8feb086aee680d9c5c79a482584ae4497d79f4c29dbc",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-25/candidate.zip",
+    "candidateSha256": "95c7467c6f05f4b826c2b6e391e0f7d0ce361494fbe3733edfe640bfd3842d12",
+    "candidateBytes": 13457432,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 26,
+    "functions": [
+      "getMonthlyAiQuotaStatus",
+      "recordPaidServiceUsage",
+      "scheduledPushNotification"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-26.zip",
+    "originalSha256": "40c0e9ba8ff4865cb242e9f51a5505c6c5f5be5b77ebe9b6c5a9c535a11059ca",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-26/candidate.zip",
+    "candidateSha256": "1ca7890e8730c5e8ff673726916cbd7f701a0022d1a908f4d6db9cfb48c78e20",
+    "candidateBytes": 13459756,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 27,
+    "functions": [
+      "getSnsThumbnailData"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-27.zip",
+    "originalSha256": "19a07c30ef50aa4af94f1f88ca1e8797aaec96b938bbd38a1a70ad6138910a20",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-27/candidate.zip",
+    "candidateSha256": "0e2c59367c9a9cf5f3308283ea1b926bdc65550f95818e75f01c92e297c146cd",
+    "candidateBytes": 13485433,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 95,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 28,
+    "functions": [
+      "googleCallback"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-28.zip",
+    "originalSha256": "8790733ea9a2aef0b96b0dbeed518ae5bf9a2a674250017ac4d4c2b7ada3163c",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-28/candidate.zip",
+    "candidateSha256": "c4d2d2c1f6c3dc4c4b625bfb21abfbb9fcc2e3f244d6e87c97ec135096c5d02a",
+    "candidateBytes": 13734649,
+    "originalLockSha256": "93ee6094d82e8c721ba4f84a79500f867cee87407325d4f5fee26fdfe1e21b2c",
+    "candidateLockSha256": "b92625e60e8a6e1cb3edb8eb356debc676fa546475a2bf532b1ee3f9a72a4a28",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 130,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 29,
+    "functions": [
+      "googleLoginStart"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-29.zip",
+    "originalSha256": "53efaebd54535b832c008b89d5f79201b9d5be6446e6204108996c5b68233db4",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-29/candidate.zip",
+    "candidateSha256": "e215a7313a018ced1f5a536f0c756fc1fe384d30b0ea439863f6a13252265786",
+    "candidateBytes": 13541677,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 109,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 30,
+    "functions": [
+      "kakaoCallback",
+      "kakaoLoginStart",
+      "naverCallback",
+      "naverLoginStart"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-30.zip",
+    "originalSha256": "9487e44c9c7098787bcf1515a84b95d99df3e0ce2d4d90bcf7c97414144dbbf7",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-30/candidate.zip",
+    "candidateSha256": "d256640887c8c39909b5c0e7eddf77644a97b51c476886f8fd706358bdce954a",
+    "candidateBytes": 13488505,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 96,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 31,
+    "functions": [
+      "lawEasyExplain"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-31.zip",
+    "originalSha256": "5c6b9b8cc95c63c7309688cdf52cfb4b77706acec9f64f3b54573f61c20ac32a",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-31/candidate.zip",
+    "candidateSha256": "0b25a21d4516484b1713a52e29a612fa11e2bea553d9aca3e4a9e2b2ee1df6d1",
+    "candidateBytes": 13541183,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 108,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 32,
+    "functions": [
+      "lawSearch"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-32.zip",
+    "originalSha256": "7fbf74a6404f67ef081b985e5ce770d93c0b4c74069a48261678b1975f7051ca",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-32/candidate.zip",
+    "candidateSha256": "d34e98529791a09a67f6004be27e0d81dbff5cced190092a27ac7c3480e03b69",
+    "candidateBytes": 13739043,
+    "originalLockSha256": "93ee6094d82e8c721ba4f84a79500f867cee87407325d4f5fee26fdfe1e21b2c",
+    "candidateLockSha256": "b92625e60e8a6e1cb3edb8eb356debc676fa546475a2bf532b1ee3f9a72a4a28",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 130,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 33,
+    "functions": [
+      "listPendingHaruLawSharedCards",
+      "publishHaruLawSharedCard",
+      "reviewHaruLawSharedCard",
+      "unpublishHaruLawSharedCard"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-33.zip",
+    "originalSha256": "89a7ae34123b8233059567cb26ec3417ac9cd4fc323d6e4c50d857565f9465f4",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-33/candidate.zip",
+    "candidateSha256": "58cda329e342dba33197dda4eb070f611a5d61a6d4063f8d4cfa851cb3ac6c2b",
+    "candidateBytes": 13457716,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 34,
+    "functions": [
+      "polishContent"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-34.zip",
+    "originalSha256": "784ff9d52941d9b32541db8e0ce28facddf671da29e73128d3cb7f8bc0ca80e4",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-34/candidate.zip",
+    "candidateSha256": "1a0fd99348827ac427e4d132c4ac9d6c0481bbd3d3868c92d07f89e6912abedd",
+    "candidateBytes": 13845772,
+    "originalLockSha256": "353cf33259b44fed9b136f3fcd07103ff51204bb85092f4116a7d5d3bd9c9dbd",
+    "candidateLockSha256": "76e03c4c6015e6caa55135ef5e4b1bf46460ab433c5627781c33cab5159b40e4",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 170,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 35,
+    "functions": [
+      "polishElderBookChapters"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-35.zip",
+    "originalSha256": "f19e78003f211b4ee079faebb3af098352aaa62523fb96f45dcd82e5616a9918",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-35/candidate.zip",
+    "candidateSha256": "8ced31300768b3294b4fd19ac2afdb377aede97c99af75972e05dfebe3b6ad84",
+    "candidateBytes": 13821929,
+    "originalLockSha256": "93ee6094d82e8c721ba4f84a79500f867cee87407325d4f5fee26fdfe1e21b2c",
+    "candidateLockSha256": "b92625e60e8a6e1cb3edb8eb356debc676fa546475a2bf532b1ee3f9a72a4a28",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 161,
+    "rebuildDisabledRequired": true
+  },
+  {
+    "group": 36,
+    "functions": [
+      "removeAllTags",
+      "reverseGeocodeKakao"
+    ],
+    "originalPath": "/private/tmp/haru-pr328-20261103/live-source-comparison/group-36.zip",
+    "originalSha256": "4910d5a064e279fa910a9a51544138ff7a1902918a4736e1469ab9fdb9b706e5",
+    "candidatePath": "/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261103_PR328_Functions_후보_01/group-36/candidate.zip",
+    "candidateSha256": "945e91ecebe1dbfd9eb465b8ec7abe4607ee1845a42f22c16e23e82b49a793de",
+    "candidateBytes": 13457498,
+    "originalLockSha256": "3ab26aa5b64c7a7305a547d96ba44c80d44236f9aa50825070189037905dfe1d",
+    "candidateLockSha256": "ab63b3945e39b4f2bf2f3e128f1f47931c90e9aebfed97ab0d39b5c05ab4facc",
+    "changedFiles": [
+      "package-lock.json"
+    ],
+    "changedLockFields": [
+      "version",
+      "resolved",
+      "integrity"
+    ],
+    "unchangedEntriesVerified": 90,
+    "rebuildDisabledRequired": true
+  }
+]
