@@ -231,7 +231,10 @@ class InstrumentedGoogleGenAI {
           return {
             text: '검색 출처 없는 테스트 답변입니다.',
             usageMetadata: { promptTokenCount: 101, candidatesTokenCount: 23 },
-            candidates: [{ finishReason: 'STOP' }],
+            candidates: [{ finishReason: 'STOP', groundingMetadata: {
+              webSearchQueries: ['관련 없는 검색'],
+              groundingChunks: [{ web: { title: '검색했지만 답변 근거가 아닌 자료', uri: 'https://example.test/unrelated' } }],
+            } }],
           };
         }
         if (captured.contents.includes('첨부 PDF의 최신 내용을 확인해줘.')) {
@@ -259,6 +262,10 @@ class InstrumentedGoogleGenAI {
               groundingMetadata: {
                 webSearchQueries: ['테스트 최신자료 확인'],
                 groundingChunks: [{ web: { title: '테스트 출처', uri: 'https://example.test/source' } }],
+                groundingSupports: [{
+                  segment: { startIndex: 0, endIndex: Buffer.byteLength('검색으로 확인한 테스트 답변입니다.'), text: '검색으로 확인한 테스트 답변입니다.' },
+                  groundingChunkIndices: [0],
+                }],
               },
             }],
           };
@@ -987,12 +994,15 @@ async function run() {
   assert.strictEqual(retrySucceededResult.webSearchUsed, true);
   assert.strictEqual(retrySucceededResult.webSearchUsedCount, 1);
   assert.ok(retrySucceededResult.sources.length >= 1);
+  assert.strictEqual(retrySucceededResult.sources[0].citationId, 1);
+  assert.ok(retrySucceededResult.answer.includes('[1]'));
   assert.strictEqual(countWebSearchCalls(), retrySucceededCallsBefore + 2);
   assert.ok(genaiCalls[genaiCalls.length - 1].contents.includes('[외부자료 검색 재시도]'));
   assert.strictEqual(await getMonthlyUsed(USERS.developer), notGroundedMonthlyBefore + 1);
   await assertThreadSearchUsage(USERS.developer, 'stock', 'stock_sayu', 1, 0);
   let messages = await getMessages(USERS.developer, 'stock', 'stock_sayu');
   assert.strictEqual(messages.filter((message) => message.role === 'assistant').length, 1);
+  assert.strictEqual(messages.find((message) => message.role === 'assistant').sources[0].citationId, 1);
 
   webSearchNotGroundedResponsesRemaining = 2;
   const failedRetryMonthlyBefore = await getMonthlyUsed(USERS.developer);
@@ -1004,7 +1014,7 @@ async function run() {
     searchPreference: 'web_confirmed',
   });
   assert.strictEqual(notGroundedResult.failureReason, 'web_search_failed');
-  assert.ok(notGroundedResult.notice.includes('외부자료 확인을 실행하지 못했습니다.'));
+  assert.ok(notGroundedResult.notice.includes('답변을 뒷받침하는 외부자료를 충분히 확인하지 못했습니다.'));
   assert.strictEqual(notGroundedResult.webSearchUsedCount, 0);
   assert.strictEqual(notGroundedResult.webSearchRemainingCount, 4);
   assert.strictEqual(countWebSearchCalls(), failedRetryCallsBefore + 2);
@@ -1648,21 +1658,27 @@ async function run() {
     const before = genaiCalls.length;
     const readsBefore = essayImageReadPaths.length;
     const choice = await callable(essayUid, data);
-    assert.strictEqual(choice.requiresConfirmation, true);
-    assert.strictEqual(essayImageReadPaths.length, readsBefore);
+    assert.strictEqual(choice.answerRoute, 'record_only');
+    assert.strictEqual(choice.webSearchUsed, false);
+    assert.strictEqual(essayImageReadPaths.length, readsBefore + 1);
     for (let i = 0; i < 2; i++) {
       const result = await callable(essayUid, { ...data, searchPreference: 'record_only' });
       assert.ok(result.answer);
       assert.ok(!result.cached);
     }
-    assert.strictEqual(genaiCalls.length, before + 2);
+    assert.strictEqual(genaiCalls.length, before + 3);
     assert.ok(genaiCalls.at(-1).contents.includes('inlineData'));
     assert.ok(genaiCalls.at(-1).contents.includes('에세이 본문 첨부 이미지 1'));
     assert.strictEqual(genaiCalls.at(-1).hasGoogleSearchTool, false);
-    webSearchNotGroundedResponsesRemaining = 1;
-    await callable(essayUid, { ...data, searchPreference: 'web_confirmed' });
+    const mediaSearchChoice = await callable(essayUid, { ...data, searchPreference: 'web_confirmed' });
     assert.strictEqual(genaiCalls.length, before + 4);
     assert.ok(genaiCalls.at(-1).contents.includes('inlineData'));
+    assert.strictEqual(genaiCalls.at(-1).hasGoogleSearchTool, false);
+    assert.strictEqual(mediaSearchChoice.answerRoute, 'record_only');
+    assert.deepStrictEqual(mediaSearchChoice.sources, []);
+    webSearchNotGroundedResponsesRemaining = 1;
+    await callable(essayUid, { ...data, question: '사진 속 그림의 화가를 외부 검색해줘', searchPreference: 'web_confirmed' });
+    assert.strictEqual(genaiCalls.length, before + 6);
     assert.ok(genaiCalls.at(-1).hasGoogleSearchTool);
 
     // A common 60s work deadline preserves 15s for writes and 15s recovery

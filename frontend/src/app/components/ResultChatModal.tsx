@@ -37,6 +37,8 @@ import {
   type HaruLawUserError,
 } from '../utils/haruLawError';
 import { EnterSubmitGuard, handleQuestionEnterKeyDown } from '../utils/questionEnterSubmit';
+import { formatResultChatMemo } from '../utils/resultChatEvidence';
+import { ResultChatSources } from './ResultChatSources';
 
 // functions/src/index.ts 의 WEB_SEARCH_LIMITS 와 동일하게 유지할 것
 const WEB_SEARCH_LIMITS_UI: Record<string, number> = { free: 1, basic: 2, premium: 4, developer: 4 };
@@ -694,7 +696,10 @@ export function ResultChatModal({
       pendingAttachmentsRef.current = [];
       attemptedAttachmentPathsRef.current.clear();
       setPendingAttachments([]);
-      setMessages((prev) => [...prev, {
+      setMessages((prev) => [...prev,
+        ...(!optimistic && searchPreference === 'auto' && !options.skipOptimisticUser
+          ? [{ role: 'user' as const, content: trimmed, ...(attachmentsToSend?.length ? { attachments: attachmentsToSend } : {}) }]
+          : []), {
         role: 'assistant',
         content: response.answer,
         sources: response.sources,
@@ -728,7 +733,7 @@ export function ResultChatModal({
   };
 
   const saveAsMemo = async (content: string, index: number) => {
-    const text = content.trim();
+    const text = formatResultChatMemo(content, messages[index]?.sources);
     if (!text || savingIndex !== null) return;
     const savedMemoId = savedMemoIds[index];
     if (savedMemoId) {
@@ -912,22 +917,7 @@ export function ResultChatModal({
                     ))}
                   </div>
                 )}
-                {message.role === 'assistant' && message.sources && message.sources.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 2, maxWidth: '100%' }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8' }}>🔎 출처</span>
-                    {message.sources.map((src, i) => (
-                      <a
-                        key={`${src.uri}_${i}`}
-                        href={src.uri}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ fontSize: 11, color: '#2563EB', textDecoration: 'none', wordBreak: 'break-all', overflowWrap: 'anywhere' }}
-                      >
-                        {src.title || src.uri}
-                      </a>
-                    ))}
-                  </div>
-                )}
+                {message.role === 'assistant' && <ResultChatSources sources={message.sources} />}
                 {message.role === 'assistant' && message.content.trim() && (
                   <button
                     type="button"
