@@ -1,0 +1,130 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@fastify/busboy": {
+      "name": "@fastify/busboy",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1240981,
+          "name": "@fastify/busboy",
+          "dependency": "@fastify/busboy",
+          "title": "@fastify/busboy vulnerable to Denial of Service via oversized multipart boundary",
+          "url": "https://github.com/advisories/GHSA-xjh9-v7x6-24jw",
+          "severity": "high",
+          "cwe": [
+            "CWE-835",
+            "CWE-1322"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": ">=3.1.0 <3.2.1"
+        },
+        {
+          "source": 1240982,
+          "name": "@fastify/busboy",
+          "dependency": "@fastify/busboy",
+          "title": "@fastify/busboy vulnerable to Denial of Service via prototype-named multipart part header",
+          "url": "https://github.com/advisories/GHSA-x8mw-p69m-v3mx",
+          "severity": "high",
+          "cwe": [
+            "CWE-754"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": ">=1.0.0 <3.2.1"
+        },
+        {
+          "source": 1241276,
+          "name": "@fastify/busboy",
+          "dependency": "@fastify/busboy",
+          "title": "@fastify/busboy vulnerable to CRLF injection via multipart Content-Disposition filename and name",
+          "url": "https://github.com/advisories/GHSA-gxm5-99cw-xjw9",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-93"
+          ],
+          "cvss": {
+            "score": 5.8,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:L/A:N"
+          },
+          "range": "<3.2.2"
+        }
+      ],
+      "effects": [],
+      "range": "<=3.2.1",
+      "nodes": [
+        "node_modules/@fastify/busboy"
+      ],
+      "fixAvailable": true
+    },
+    "@grpc/grpc-js": {
+      "name": "@grpc/grpc-js",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1240622,
+          "name": "@grpc/grpc-js",
+          "dependency": "@grpc/grpc-js",
+          "title": "@grpc/grpc-js: In certain configurations, getAuthContext can return unauthorized certificates as though they were authorized",
+          "url": "https://github.com/advisories/GHSA-m9gg-hp2v-232j",
+          "severity": "high",
+          "cwe": [
+            "CWE-295"
+          ],
+          "cvss": {
+            "score": 7.4,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+          },
+          "range": ">=1.14.0 <1.14.5"
+        },
+        {
+          "source": 1240624,
+          "name": "@grpc/grpc-js",
+          "dependency": "@grpc/grpc-js",
+          "title": "@grpc/grpc-js: The server transmits some error messages thrown by method handlers to the client in status messages",
+          "url": "https://github.com/advisories/GHSA-f596-whhp-79r4",
+          "severity": "low",
+          "cwe": [
+            "CWE-550"
+          ],
+          "cvss": {
+            "score": 3.7,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"
+          },
+          "range": ">=1.14.0 <1.14.5"
+        }
+      ],
+      "effects": [],
+      "range": "1.14.0 - 1.14.4",
+      "nodes": [
+        "node_modules/@grpc/grpc-js"
+      ],
+      "fixAvailable": true
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 2,
+      "critical": 0,
+      "total": 2
+    },
+    "dependencies": {
+      "prod": 65,
+      "dev": 0,
+      "optional": 114,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 178
+    }
+  }
+}

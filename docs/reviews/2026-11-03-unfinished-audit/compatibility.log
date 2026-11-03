@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: locked node-forge version loads
+ok 1 - locked node-forge version loads
+  ---
+  duration_ms: 1.863
+  type: 'test'
+  ...
+# Subtest: PEM decoding accepts string and Buffer inputs identically
+ok 2 - PEM decoding accepts string and Buffer inputs identically
+  ---
+  duration_ms: 3.081042
+  type: 'test'
+  ...
+# Subtest: ASN.1 certificate round trip and signature verification
+ok 3 - ASN.1 certificate round trip and signature verification
+  ---
+  duration_ms: 156.243417
+  type: 'test'
+  ...
+# Subtest: Firebase Admin local custom-token signing works with a synthetic RSA key
+ok 4 - Firebase Admin local custom-token signing works with a synthetic RSA key
+  ---
+  duration_ms: 192.633208
+  type: 'test'
+  ...
+# Subtest: node-fetch ESM dependency loads from the tools CommonJS environment
+ok 5 - node-fetch ESM dependency loads from the tools CommonJS environment
+  ---
+  duration_ms: 51.635459
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1026.746334
