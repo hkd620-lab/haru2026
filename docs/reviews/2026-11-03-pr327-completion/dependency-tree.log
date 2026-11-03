@@ -1,0 +1,440 @@
+haru2026@1.0.0 /private/tmp/haru-pr327-20261103/candidate
+├─┬ firebase-admin@12.7.0
+│ ├── @fastify/busboy@3.2.0
+│ ├─┬ @firebase/database-compat@1.0.8
+│ │ ├─┬ @firebase/component@0.6.9
+│ │ │ ├── @firebase/util@1.10.0 deduped
+│ │ │ └── tslib@2.8.1 deduped
+│ │ ├── @firebase/database-types@1.0.5 deduped
+│ │ ├─┬ @firebase/database@1.0.8
+│ │ │ ├── @firebase/app-check-interop-types@0.3.2
+│ │ │ ├── @firebase/auth-interop-types@0.2.3
+│ │ │ ├── @firebase/component@0.6.9 deduped
+│ │ │ ├── @firebase/logger@0.4.2 deduped
+│ │ │ ├── @firebase/util@1.10.0 deduped
+│ │ │ ├── faye-websocket@0.11.4 deduped
+│ │ │ └── tslib@2.8.1 deduped
+│ │ ├─┬ @firebase/logger@0.4.2
+│ │ │ └── tslib@2.8.1 deduped
+│ │ ├─┬ @firebase/util@1.10.0
+│ │ │ └── tslib@2.8.1 deduped
+│ │ └── tslib@2.8.1
+│ ├─┬ @firebase/database-types@1.0.5
+│ │ ├── @firebase/app-types@0.9.2
+│ │ └── @firebase/util@1.10.0 deduped
+│ ├─┬ @google-cloud/firestore@7.11.6
+│ │ ├── @opentelemetry/api@1.9.1
+│ │ ├── fast-deep-equal@3.1.3
+│ │ ├── functional-red-black-tree@1.0.1
+│ │ ├─┬ google-gax@4.6.1
+│ │ │ ├─┬ @grpc/grpc-js@1.14.4
+│ │ │ │ ├─┬ @grpc/proto-loader@0.8.1
+│ │ │ │ │ ├── lodash.camelcase@4.3.0 deduped
+│ │ │ │ │ ├── long@5.3.2 deduped
+│ │ │ │ │ ├── protobufjs@7.6.5 deduped
+│ │ │ │ │ └── yargs@17.7.2 deduped
+│ │ │ │ └── @js-sdsl/ordered-map@4.4.2
+│ │ │ ├── @grpc/proto-loader@0.7.15 deduped
+│ │ │ ├── @types/long@4.0.2
+│ │ │ ├── abort-controller@3.0.0 deduped
+│ │ │ ├── duplexify@4.1.3 deduped
+│ │ │ ├── google-auth-library@9.15.1 deduped
+│ │ │ ├─┬ node-fetch@2.7.0
+│ │ │ │ ├── UNMET OPTIONAL DEPENDENCY encoding@^0.1.0
+│ │ │ │ └─┬ whatwg-url@5.0.0
+│ │ │ │   ├── tr46@0.0.3
+│ │ │ │   └── webidl-conversions@3.0.1
+│ │ │ ├── object-hash@3.0.0
+│ │ │ ├─┬ proto3-json-serializer@2.0.2
+│ │ │ │ └── protobufjs@7.6.5 deduped
+│ │ │ ├── protobufjs@7.6.5 deduped
+│ │ │ ├── retry-request@7.0.2 deduped
+│ │ │ └── uuid@11.1.1 deduped
+│ │ └─┬ protobufjs@7.6.5
+│ │   ├── @protobufjs/aspromise@1.1.2
+│ │   ├── @protobufjs/base64@1.1.2
+│ │   ├── @protobufjs/codegen@2.0.5
+│ │   ├── @protobufjs/eventemitter@1.1.1
+│ │   ├─┬ @protobufjs/fetch@1.1.1
+│ │   │ └── @protobufjs/aspromise@1.1.2 deduped
+│ │   ├── @protobufjs/float@1.0.2
+│ │   ├── @protobufjs/path@1.1.2
+│ │   ├── @protobufjs/pool@1.1.0
+│ │   ├── @protobufjs/utf8@1.1.1
+│ │   ├─┬ @types/node@25.3.0
+│ │   │ └── undici-types@7.18.2
+│ │   └── long@5.3.2
+│ ├─┬ @google-cloud/storage@7.19.0
+│ │ ├─┬ @google-cloud/paginator@5.0.2
+│ │ │ ├── arrify@2.0.1
+│ │ │ └── extend@3.0.2
+│ │ ├── @google-cloud/projectify@4.0.0
+│ │ ├── @google-cloud/promisify@4.0.0
+│ │ ├─┬ abort-controller@3.0.0
+│ │ │ └── event-target-shim@5.0.1
+│ │ ├─┬ async-retry@1.3.3
+│ │ │ └── retry@0.13.1
+│ │ ├─┬ duplexify@4.1.3
+│ │ │ ├─┬ end-of-stream@1.4.5
+│ │ │ │ └─┬ once@1.4.0
+│ │ │ │   └── wrappy@1.0.2
+│ │ │ ├── inherits@2.0.4
+│ │ │ ├─┬ readable-stream@3.6.2
+│ │ │ │ ├── inherits@2.0.4 deduped
+│ │ │ │ ├─┬ string_decoder@1.3.0
+│ │ │ │ │ └── safe-buffer@5.2.1 deduped
+│ │ │ │ └── util-deprecate@1.0.2
+│ │ │ └── stream-shift@1.0.3
+│ │ ├─┬ fast-xml-parser@5.8.0
+│ │ │ ├── @nodable/entities@2.1.0
+│ │ │ ├─┬ fast-xml-builder@1.2.0
+│ │ │ │ ├── path-expression-matcher@1.5.0 deduped
+│ │ │ │ └── xml-naming@0.1.0 deduped
+│ │ │ ├── path-expression-matcher@1.5.0
+│ │ │ ├── strnum@2.3.0
+│ │ │ └── xml-naming@0.1.0
+│ │ ├─┬ gaxios@6.7.1
+│ │ │ ├── extend@3.0.2 deduped
+│ │ │ ├─┬ https-proxy-agent@7.0.6
+│ │ │ │ ├── agent-base@7.1.4
+│ │ │ │ └── debug@4.4.3 deduped
+│ │ │ ├── is-stream@2.0.1
+│ │ │ ├── node-fetch@2.7.0 deduped
+│ │ │ └── uuid@11.1.1 deduped
+│ │ ├─┬ google-auth-library@9.15.1
+│ │ │ ├── base64-js@1.5.1
+│ │ │ ├─┬ ecdsa-sig-formatter@1.0.11
+│ │ │ │ └── safe-buffer@5.2.1 deduped
+│ │ │ ├── gaxios@6.7.1 deduped
+│ │ │ ├─┬ gcp-metadata@6.1.1
+│ │ │ │ ├── gaxios@6.7.1 deduped
+│ │ │ │ ├── google-logging-utils@0.0.2
+│ │ │ │ └─┬ json-bigint@1.0.0
+│ │ │ │   └── bignumber.js@9.3.1
+│ │ │ ├─┬ gtoken@7.1.0
+│ │ │ │ ├── gaxios@6.7.1 deduped
+│ │ │ │ └── jws@4.0.1 deduped
+│ │ │ └── jws@4.0.1 deduped
+│ │ ├── html-entities@2.6.0
+│ │ ├── mime@3.0.0
+│ │ ├─┬ p-limit@3.1.0
+│ │ │ └── yocto-queue@0.1.0
+│ │ ├─┬ retry-request@7.0.2
+│ │ │ ├─┬ @types/request@2.48.13
+│ │ │ │ ├── @types/caseless@0.12.5
+│ │ │ │ ├── @types/node@25.3.0 deduped
+│ │ │ │ ├── @types/tough-cookie@4.0.5
+│ │ │ │ └─┬ form-data@2.5.6
+│ │ │ │   ├── asynckit@0.4.0
+│ │ │ │   ├─┬ combined-stream@1.0.8
+│ │ │ │   │ └── delayed-stream@1.0.0
+│ │ │ │   ├─┬ es-set-tostringtag@2.1.0
+│ │ │ │   │ ├── es-errors@1.3.0
+│ │ │ │   │ ├─┬ get-intrinsic@1.3.0
+│ │ │ │   │ │ ├─┬ call-bind-apply-helpers@1.0.2
+│ │ │ │   │ │ │ ├── es-errors@1.3.0 deduped
+│ │ │ │   │ │ │ └── function-bind@1.1.2 deduped
+│ │ │ │   │ │ ├── es-define-property@1.0.1
+│ │ │ │   │ │ ├── es-errors@1.3.0 deduped
+│ │ │ │   │ │ ├─┬ es-object-atoms@1.1.2
+│ │ │ │   │ │ │ └── es-errors@1.3.0 deduped
+│ │ │ │   │ │ ├── function-bind@1.1.2 deduped
+│ │ │ │   │ │ ├─┬ get-proto@1.0.1
+│ │ │ │   │ │ │ ├─┬ dunder-proto@1.0.1
+│ │ │ │   │ │ │ │ ├── call-bind-apply-helpers@1.0.2 deduped
+│ │ │ │   │ │ │ │ ├── es-errors@1.3.0 deduped
+│ │ │ │   │ │ │ │ └── gopd@1.2.0 deduped
+│ │ │ │   │ │ │ └── es-object-atoms@1.1.2 deduped
+│ │ │ │   │ │ ├── gopd@1.2.0
+│ │ │ │   │ │ ├── has-symbols@1.1.0
+│ │ │ │   │ │ ├── hasown@2.0.4 deduped
+│ │ │ │   │ │ └── math-intrinsics@1.1.0
+│ │ │ │   │ ├─┬ has-tostringtag@1.0.2
+│ │ │ │   │ │ └── has-symbols@1.1.0 deduped
+│ │ │ │   │ └── hasown@2.0.4 deduped
+│ │ │ │   ├─┬ hasown@2.0.4
+│ │ │ │   │ └── function-bind@1.1.2
+│ │ │ │   ├─┬ mime-types@2.1.35
+│ │ │ │   │ └── mime-db@1.52.0
+│ │ │ │   └── safe-buffer@5.2.1 deduped
+│ │ │ ├── extend@3.0.2 deduped
+│ │ │ └── teeny-request@9.0.0 deduped
+│ │ ├─┬ teeny-request@9.0.0
+│ │ │ ├─┬ http-proxy-agent@5.0.0
+│ │ │ │ ├── @tootallnate/once@2.0.1
+│ │ │ │ ├─┬ agent-base@6.0.2
+│ │ │ │ │ └── debug@4.4.3 deduped
+│ │ │ │ └── debug@4.4.3 deduped
+│ │ │ ├─┬ https-proxy-agent@5.0.1
+│ │ │ │ ├─┬ agent-base@6.0.2
+│ │ │ │ │ └── debug@4.4.3 deduped
+│ │ │ │ └── debug@4.4.3 deduped
+│ │ │ ├── node-fetch@2.7.0 deduped
+│ │ │ ├─┬ stream-events@1.0.5
+│ │ │ │ └── stubs@3.0.0
+│ │ │ └── uuid@11.1.1 deduped
+│ │ └── uuid@11.1.1 deduped
+│ ├─┬ @types/node@22.19.19
+│ │ └── undici-types@6.21.0
+│ ├── farmhash-modern@1.1.0
+│ ├─┬ jsonwebtoken@9.0.3
+│ │ ├─┬ jws@4.0.1
+│ │ │ ├─┬ jwa@2.0.1
+│ │ │ │ ├── buffer-equal-constant-time@1.0.1
+│ │ │ │ ├── ecdsa-sig-formatter@1.0.11 deduped
+│ │ │ │ └── safe-buffer@5.2.1 deduped
+│ │ │ └── safe-buffer@5.2.1
+│ │ ├── lodash.includes@4.3.0
+│ │ ├── lodash.isboolean@3.0.3
+│ │ ├── lodash.isinteger@4.0.4
+│ │ ├── lodash.isnumber@3.0.3
+│ │ ├── lodash.isplainobject@4.0.6
+│ │ ├── lodash.isstring@4.0.1
+│ │ ├── lodash.once@4.1.1
+│ │ ├── ms@2.1.3
+│ │ └── semver@7.8.1
+│ ├─┬ jwks-rsa@3.2.2
+│ │ ├─┬ @types/jsonwebtoken@9.0.10
+│ │ │ ├── @types/ms@2.1.0
+│ │ │ └── @types/node@25.3.0 deduped
+│ │ ├─┬ debug@4.4.3
+│ │ │ └── ms@2.1.3 deduped
+│ │ ├── jose@4.15.9
+│ │ ├── limiter@1.1.5
+│ │ └─┬ lru-memoizer@2.3.0
+│ │   ├── lodash.clonedeep@4.5.0
+│ │   └─┬ lru-cache@6.0.0
+│ │     └── yallist@4.0.0
+│ ├── node-forge@1.4.2
+│ └── uuid@11.1.1 overridden
+└─┬ firebase@12.9.0
+  ├─┬ @firebase/ai@2.8.0
+  │ ├── @firebase/app-check-interop-types@0.3.3
+  │ ├── @firebase/app-types@0.9.3 deduped
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├─┬ @firebase/component@0.7.0
+  │ │ ├── @firebase/util@1.13.0 deduped
+  │ │ └── tslib@2.8.1 deduped
+  │ ├─┬ @firebase/logger@0.5.0
+  │ │ └── tslib@2.8.1 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/analytics-compat@0.2.25
+  │ ├── @firebase/analytics-types@0.8.3
+  │ ├── @firebase/analytics@0.10.19 deduped
+  │ ├── @firebase/app-compat@0.5.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/analytics@0.10.19
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/installations@0.6.19 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/app-check-compat@0.4.0
+  │ ├── @firebase/app-check-types@0.5.3
+  │ ├── @firebase/app-check@0.11.0 deduped
+  │ ├── @firebase/app-compat@0.5.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/app-check@0.11.0
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/app-compat@0.5.8
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├── @firebase/app-types@0.9.3
+  ├─┬ @firebase/app@0.14.8
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ ├── idb@7.1.1
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/auth-compat@0.6.2
+  │ ├── @firebase/app-compat@0.5.8 deduped
+  │ ├─┬ @firebase/auth-types@0.13.0
+  │ │ ├── @firebase/app-types@0.9.3 deduped
+  │ │ └── @firebase/util@1.13.0 deduped
+  │ ├── @firebase/auth@1.12.0 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/auth@1.12.0
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ ├── UNMET OPTIONAL DEPENDENCY @react-native-async-storage/async-storage@^2.2.0
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/data-connect@0.3.12
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├── @firebase/auth-interop-types@0.2.4
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/database-compat@2.1.0
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├─┬ @firebase/database-types@1.0.16
+  │ │ ├── @firebase/app-types@0.9.3 deduped
+  │ │ └── @firebase/util@1.13.0 deduped
+  │ ├── @firebase/database@1.1.0 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/database@1.1.0
+  │ ├── @firebase/app-check-interop-types@0.3.3 deduped
+  │ ├── @firebase/auth-interop-types@0.2.4 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ ├─┬ faye-websocket@0.11.4
+  │ │ └─┬ websocket-driver@0.7.5
+  │ │   ├── http-parser-js@0.5.10
+  │ │   ├── safe-buffer@5.2.1 deduped
+  │ │   └── websocket-extensions@0.1.4
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/firestore-compat@0.4.5
+  │ ├── @firebase/app-compat@0.5.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├─┬ @firebase/firestore-types@3.0.3
+  │ │ ├── @firebase/app-types@0.9.3 deduped
+  │ │ └── @firebase/util@1.13.0 deduped
+  │ ├── @firebase/firestore@4.11.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/firestore@4.11.0
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ ├── @firebase/webchannel-wrapper@1.0.5
+  │ ├─┬ @grpc/grpc-js@1.9.16
+  │ │ ├── @grpc/proto-loader@0.7.15 deduped
+  │ │ └── @types/node@25.3.0 deduped
+  │ ├─┬ @grpc/proto-loader@0.7.15
+  │ │ ├── lodash.camelcase@4.3.0
+  │ │ ├── long@5.3.2 deduped
+  │ │ ├── protobufjs@7.6.5 deduped
+  │ │ └─┬ yargs@17.7.2
+  │ │   ├─┬ cliui@8.0.1
+  │ │   │ ├── string-width@4.2.3 deduped
+  │ │   │ ├─┬ strip-ansi@6.0.1
+  │ │   │ │ └── ansi-regex@5.0.1
+  │ │   │ └─┬ wrap-ansi@7.0.0
+  │ │   │   ├─┬ ansi-styles@4.3.0
+  │ │   │   │ └─┬ color-convert@2.0.1
+  │ │   │   │   └── color-name@1.1.4
+  │ │   │   ├── string-width@4.2.3 deduped
+  │ │   │   └── strip-ansi@6.0.1 deduped
+  │ │   ├── escalade@3.2.0
+  │ │   ├── get-caller-file@2.0.5
+  │ │   ├── require-directory@2.1.1
+  │ │   ├─┬ string-width@4.2.3
+  │ │   │ ├── emoji-regex@8.0.0
+  │ │   │ ├── is-fullwidth-code-point@3.0.0
+  │ │   │ └── strip-ansi@6.0.1 deduped
+  │ │   ├── y18n@5.0.8
+  │ │   └── yargs-parser@21.1.1
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/functions-compat@0.4.1
+  │ ├── @firebase/app-compat@0.5.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/functions-types@0.6.3
+  │ ├── @firebase/functions@0.13.1 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/functions@0.13.1
+  │ ├── @firebase/app-check-interop-types@0.3.3 deduped
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├── @firebase/auth-interop-types@0.2.4 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/messaging-interop-types@0.2.3
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/installations-compat@0.2.19
+  │ ├── @firebase/app-compat@0.5.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├─┬ @firebase/installations-types@0.5.3
+  │ │ └── @firebase/app-types@0.9.3 deduped
+  │ ├── @firebase/installations@0.6.19 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/installations@0.6.19
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ ├── idb@7.1.1 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/messaging-compat@0.2.23
+  │ ├── @firebase/app-compat@0.5.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/messaging@0.12.23 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/messaging@0.12.23
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/installations@0.6.19 deduped
+  │ ├── @firebase/messaging-interop-types@0.2.3 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ ├── idb@7.1.1 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/performance-compat@0.2.22
+  │ ├── @firebase/app-compat@0.5.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/performance-types@0.2.3
+  │ ├── @firebase/performance@0.7.9 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/performance@0.7.9
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/installations@0.6.19 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ ├── tslib@2.8.1 deduped
+  │ └── web-vitals@4.2.4
+  ├─┬ @firebase/remote-config-compat@0.2.21
+  │ ├── @firebase/app-compat@0.5.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/remote-config-types@0.5.0
+  │ ├── @firebase/remote-config@0.8.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/remote-config@0.8.0
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/installations@0.6.19 deduped
+  │ ├── @firebase/logger@0.5.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/storage-compat@0.4.0
+  │ ├── @firebase/app-compat@0.5.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├─┬ @firebase/storage-types@0.8.3
+  │ │ ├── @firebase/app-types@0.9.3 deduped
+  │ │ └── @firebase/util@1.13.0 deduped
+  │ ├── @firebase/storage@0.14.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  ├─┬ @firebase/storage@0.14.0
+  │ ├── @firebase/app@0.14.8 deduped
+  │ ├── @firebase/component@0.7.0 deduped
+  │ ├── @firebase/util@1.13.0 deduped
+  │ └── tslib@2.8.1 deduped
+  └─┬ @firebase/util@1.13.0
+    └── tslib@2.8.1 deduped
+

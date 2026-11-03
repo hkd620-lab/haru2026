@@ -1,0 +1,11 @@
+{
+  "package.json": {
+    "bytes_equal": true,
+    "sha256": "0c20b90de46b96794b3bf28666fe923721b61617d33b3eb9b7ec365edea43715"
+  },
+  "package-lock.json": {
+    "bytes_equal": true,
+    "sha256": "d499990f95e4aaf8aa1fdfc30793928836766013d1f3d5b6195f14a9ff837a5c"
+  },
+  "registry_metadata_matches_lock": true
+}
