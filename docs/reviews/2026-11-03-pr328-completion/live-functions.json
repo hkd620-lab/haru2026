@@ -1,0 +1,1028 @@
+[
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/convertSnsToDiary",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:13.534345824Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/startHaruDriveConnect",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:30.140930533Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/executeScheduledDeletion",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-23T09:59:22.892984589Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractStockTradeTextFromPhoto",
+    "state": "ACTIVE",
+    "updateTime": "2026-11-02T20:34:48.638784264Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getMonthlyAiQuotaStatus",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T18:08:48.316391182Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/exportEpub",
+    "state": "ACTIVE",
+    "updateTime": "2026-10-28T13:07:19.197794334Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/gatherElderBookSources",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:35:16.283472011Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getKoreanPlantInfo",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:49.553256403Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/saveAiLibraryImport",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-30T21:53:27.164949351Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/sendBroadcastNotification",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:38:45.177598244Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cleanupTtsUsage",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T11:43:08.126590381Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractKNewsMetadata",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:46:08.775247901Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateHaruProphecy",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:27.586330143Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/copyOneDriveAssets",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:28.234390431Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/scheduledPushNotification",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T18:08:50.724972947Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateSnsStorySynopsis",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-18T12:30:23.659439697Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/oneDriveCallback",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T09:07:50.867406440Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getVerseWordMapping",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:48.520446514Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/searchOfficialDrugs",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:11.682298595Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/draftElderBookChapters",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:12.596333616Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/deleteAiLibraryLogs",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-30T21:53:28.719525481Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/ensureOneDriveHaruFolder",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:30.303643860Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractKeywords",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:09.980525838Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/prepareHaruLawSharePreview",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:11.721566041Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getOneDriveCandidates",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:30.683739617Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/preloadChapterGrammar",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:15.378589761Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/createSinglePaymentRequest",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:16.692397135Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getWordMeaning",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:45.951310514Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/processRecurringSubscriptions",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T11:43:09.971305069Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/lawSearch",
+    "state": "ACTIVE",
+    "updateTime": "2026-10-08T21:46:10.269164880Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/reviewHaruLawSharedCard",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:31:31.475983632Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/suggestBookPublishRevision",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:35:17.267999192Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/listAiLibraryLogs",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-30T21:53:29.059118487Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/detectPlantAdvanced",
+    "state": "ACTIVE",
+    "updateTime": "2026-11-01T22:51:50.392204524Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/publishHaruLawSharedCard",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:31:21.237663656Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/recordPaidServiceUsage",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T18:08:49.280501393Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateSnsStoryFinal",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-19T02:03:40.573942119Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractLedgerTextFromImage",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:46:06.613224131Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/createSubscriptionBillingRequest",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:21.581742690Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getSnsThumbnailData",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-18T01:23:48.931394744Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractHouseholdTextFromImage",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:46:09.287076029Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/rejectSubscriptionRefund",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:51:20.393548307Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/googleLoginStart",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-27T10:32:20.373626620Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getGrammarExplain",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:08.771299139Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getVerseQuiz",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:50.296161540Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/testNibrPlantSearch",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:10.979564218Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/verifySinglePayment",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:22.685396161Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getCustomToken",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T09:07:51.440157533Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishElderBookChapters",
+    "state": "ACTIVE",
+    "updateTime": "2026-10-28T12:51:04.432627719Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getHaruDriveCandidates",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:46.456835903Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/subscribeWithBillingKey",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:23.807945942Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/copyHaruDriveAssets",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:29.902537264Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateLawsuitClaimReason",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:27.082970451Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/unpublishHaruLawSharedCard",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:31:29.192209547Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/approveSubscriptionRefund",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:51:20.861593548Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/buildElderBookOutline",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:35:19.429551741Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/lawPrecedent",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:12.283610994Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getVerseTranslation",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:50.349803209Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/petFoodCheck",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:10.324351032Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getOneDriveConnectionState",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:30.753314847Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractReadingBookTextFromPhoto",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:45:56.623665994Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getGrammarExplainV2",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:10.731803650Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateHaruMemo",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:27.678838765Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateGrowthTimelinePdf",
+    "state": "ACTIVE",
+    "updateTime": "2026-11-01T22:51:50.393259589Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractTitle",
+    "state": "ACTIVE",
+    "updateTime": "2026-10-26T22:20:58.386408790Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/naverCallback",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-18T03:01:23.536605492Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateTTS",
+    "state": "ACTIVE",
+    "updateTime": "2026-11-01T22:51:50.545062508Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/clearKeywordsCache",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:10.143424540Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/requestAccountDeletion",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-23T09:59:24.981118189Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/kakaoLoginStart",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-18T03:01:23.731098232Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cleanupHaruLawGeminiFiles",
+    "state": "ACTIVE",
+    "updateTime": "2026-10-05T21:35:48.234114153Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeRecordForProphecy",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:27.786627555Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/decryptKakaoXlsx",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:08.803321664Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzePlantPhoto",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:46:07.551712608Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateBook",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:14.088786108Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/reviewBookForPublish",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:35:13.194765747Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/reverseGeocodeKakao",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T10:58:39.564919545Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/kakaoCallback",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-18T03:01:23.638198983Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/refreshNews",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:29.636559986Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/startOneDriveConnect",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:38.244480512Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getHospitalList",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:47.680303968Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeDrugPhoto",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:46:06.585264158Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getOnbidRealEstateList",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T05:37:48.591958749Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/convertHeic",
+    "state": "ACTIVE",
+    "updateTime": "2026-10-14T06:02:12.305051964Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/assignElderBookSources",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:35:15.642994045Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/chatWithResult",
+    "state": "ACTIVE",
+    "updateTime": "2026-11-02T23:53:00.032166887Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/removeAllTags",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T10:58:47.596497662Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/suggestChapterTitle",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:05:24.996076906Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/googleCallback",
+    "state": "ACTIVE",
+    "updateTime": "2026-10-01T01:18:49.365959375Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cancelSubscription",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:22.876553648Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/portoneWebhook",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:20.917050045Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/sendTestNotification",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:38:45.673214178Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/uploadReceiptToDrive",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:49:11.819742975Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishContent",
+    "state": "ACTIVE",
+    "updateTime": "2026-11-02T13:52:47.896908444Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/listSubscriptionRefundRequests",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:51:19.533943163Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/listPendingHaruLawSharedCards",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:31:30.554228548Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/haruDriveCallback",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T08:22:38.139403618Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/chatWithReadingContext",
+    "state": "ACTIVE",
+    "updateTime": "2026-10-26T12:18:36.598390678Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeFacebookZip",
+    "state": "ACTIVE",
+    "updateTime": "2026-11-01T22:51:53.675715078Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/naverLoginStart",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-18T03:01:25.015641970Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/recoverSubscriptionBillingRequest",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:21.639941302Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/verifyPayment",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:30:23.553155699Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cancelAccountDeletion",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-23T09:59:23.485521455Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateTitlesForAll",
+    "state": "ACTIVE",
+    "updateTime": "2026-10-20T21:59:23.952927313Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/deleteRecordImage",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:38:45.287255861Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getDrugInfo",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-20T14:52:36.447710015Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getSubscriptionRefundEligibility",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:51:10.904277241Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeSymptomsForSpecialty",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:09.913296461Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/convertToBookMaterial",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-30T21:53:34.193027674Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/lawEasyExplain",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-23T00:48:29.288823907Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/translateToEnglish",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:17:12.395531420Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/applyBookPublishRevision",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-12T12:35:15.338927602Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cleanupHeicTemp",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-21T06:43:57.329610677Z"
+  },
+  {
+    "buildConfig": {
+      "runtime": "nodejs22"
+    },
+    "environment": "GEN_2",
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/requestSubscriptionRefund",
+    "state": "ACTIVE",
+    "updateTime": "2026-09-13T10:51:22.885645426Z"
+  }
+]

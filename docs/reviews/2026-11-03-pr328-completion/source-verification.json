@@ -1,0 +1,15 @@
+{
+  "head": "e829fa4cc2197703ab21e6318b174fb19b4f9fd2",
+  "base": "5732554c022d83bd12d7769daf62e7f69b3c9584",
+  "byteEqualToGit": true,
+  "sha256": {
+    "package.json": "b85cae0eaa56102c1c88903820ee8b69baf15e9949cd832614af99b95eb7910d",
+    "package-lock.json": "76e03c4c6015e6caa55135ef5e4b1bf46460ab433c5627781c33cab5159b40e4"
+  },
+  "buildExit": 0,
+  "installExit": 0,
+  "compatibilityExit": 0,
+  "relatedTestsExit": 0,
+  "auditExit": 1,
+  "checkedAt": "2026-11-03T14:51:09.484692+09:00"
+}

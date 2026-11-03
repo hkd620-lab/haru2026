@@ -1,0 +1,2043 @@
+[
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217338036556",
+          "object": "convertSnsToDiary/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3bd4cad4c3d0aaf353cf4c4f661f64e816036434"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/convertSnsToDiary"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/235a4ba5-a602-4b3a-bfff-7d895771975d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287677718918",
+          "object": "startHaruDriveConnect/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "fed828d0cf735927f485db14386f96bf5da459f9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/startHaruDriveConnect"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/91bde810-c8cc-4285-968d-a78ed16bb9fd",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790157472094617",
+          "object": "executeScheduledDeletion/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-scheduled": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1e3d60c002ec65b6180ffcd04cc5787634a3d32e"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/executeScheduledDeletion"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/bdbc3ccb-6c66-4b70-823d-ff838c085a5b",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793651578564062",
+          "object": "extractStockTradeTextFromPhoto/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "ff973599b8d9c6e96d1b135b20f5a314cb856657"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractStockTradeTextFromPhoto"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/dc6ab370-1675-4d5e-bdfc-b6d69ef4acd9",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789322815127907",
+          "object": "getMonthlyAiQuotaStatus/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "d83cfbd69867a3c6a228e75cc5e40fb436e3e8e0"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getMonthlyAiQuotaStatus"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/0236221f-ab37-42ce-a43d-d081ed518b32",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793192761463891",
+          "object": "exportEpub/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "76b535e7f911b98c0c7924f52a36c3dd2aeee9fa"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/exportEpub"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a22b44b0-ab5c-438e-a777-386c4a5b60fa",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216506093019",
+          "object": "gatherElderBookSources/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1399a3c87ae67b2c09fcb0f1ab8399f63ff76d8a"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/gatherElderBookSources"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443815684",
+          "object": "getKoreanPlantInfo/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "7220c444f0787cfd1e5edfff6dbb7af668358337"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getKoreanPlantInfo"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d36c824d-9010-4d47-85ef-07bfeb53d139",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790805184074023",
+          "object": "saveAiLibraryImport/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "6d4614c4fb06e54447354a6312027e481f9fae87"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/saveAiLibraryImport"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d85a7b9d-9557-4fda-851a-e518f651a654",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216714581421",
+          "object": "sendBroadcastNotification/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1399a3c87ae67b2c09fcb0f1ab8399f63ff76d8a"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/sendBroadcastNotification"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/ea3f6744-6fed-4d8f-8449-5217cb30aa86",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789299776194886",
+          "object": "cleanupTtsUsage/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-scheduled": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "c311609587d34d7ed419d5ee097d1ed5238e6480"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cleanupTtsUsage"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e74f680e-5e0d-4725-b1c4-9d2ab8af3f70",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217154402254",
+          "object": "extractKNewsMetadata/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3bd4cad4c3d0aaf353cf4c4f661f64e816036434"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractKNewsMetadata"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/518ecef2-9218-47a0-9da3-ae4b9c18805e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286715085803",
+          "object": "generateHaruProphecy/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9a39174097cfb0b6cf7ac276b2a32aeeb331a684"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateHaruProphecy"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/43a07020-be53-4e00-be3f-12b783edc422",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287738026359",
+          "object": "copyOneDriveAssets/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "345581ebdce060f12c22c43232fe97a3753741d1"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/copyOneDriveAssets"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/dc6ab370-1675-4d5e-bdfc-b6d69ef4acd9",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789322906778821",
+          "object": "scheduledPushNotification/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-scheduled": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "d83cfbd69867a3c6a228e75cc5e40fb436e3e8e0"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/scheduledPushNotification"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3c0c036-8287-4b7b-9b7b-df06af7219af",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789734508983624",
+          "object": "generateSnsStorySynopsis/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "0a8f3d605b525a94dc4dfc0b834fe51de208d6a2"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateSnsStorySynopsis"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d5d73b5d-46c3-4a57-acf8-3596f0b1c41d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789204055931437",
+          "object": "oneDriveCallback/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "aecc288e58215b7a9242a8c7f68f9a49f98ddf79"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/oneDriveCallback"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443658303",
+          "object": "getVerseWordMapping/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "e4c99361b7924ca36fe0fe13bd64a90e84904aac"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getVerseWordMapping"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215340975440",
+          "object": "searchOfficialDrugs/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "f3761abd4cba81c20f2dc4f669263f62d5f4304b"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/searchOfficialDrugs"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217338314633",
+          "object": "draftElderBookChapters/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "70925148fa9daba9bc5ac957dd208ba1c7dbae5c"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/draftElderBookChapters"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d36c824d-9010-4d47-85ef-07bfeb53d139",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790805184256349",
+          "object": "deleteAiLibraryLogs/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "6d4614c4fb06e54447354a6312027e481f9fae87"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/deleteAiLibraryLogs"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/43a07020-be53-4e00-be3f-12b783edc422",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287738041918",
+          "object": "ensureOneDriveHaruFolder/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "c311609587d34d7ed419d5ee097d1ed5238e6480"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/ensureOneDriveHaruFolder"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215411909758",
+          "object": "extractKeywords/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3bd4cad4c3d0aaf353cf4c4f661f64e816036434"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractKeywords"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217338168013",
+          "object": "prepareHaruLawSharePreview/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3bd4cad4c3d0aaf353cf4c4f661f64e816036434"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/prepareHaruLawSharePreview"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/43a07020-be53-4e00-be3f-12b783edc422",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287737808690",
+          "object": "getOneDriveCandidates/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "345581ebdce060f12c22c43232fe97a3753741d1"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getOneDriveCandidates"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217338396574",
+          "object": "preloadChapterGrammar/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "841a05cd95b9f2d224c2d1f4271aaad595538a9d"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/preloadChapterGrammar"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295339945963",
+          "object": "createSinglePaymentRequest/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "c311609587d34d7ed419d5ee097d1ed5238e6480"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/createSinglePaymentRequest"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443332752",
+          "object": "getWordMeaning/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "e4c99361b7924ca36fe0fe13bd64a90e84904aac"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getWordMeaning"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/ea3f6744-6fed-4d8f-8449-5217cb30aa86",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789299776383950",
+          "object": "processRecurringSubscriptions/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-scheduled": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9320cfda2473e039d1b4371311d9eeb3b986ddd9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/processRecurringSubscriptions"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e58fc881-25b7-4bbb-863c-fdc41cd8cd97",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1791495834806489",
+          "object": "lawSearch/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "f3044ff2cbde325cf26749a0a8e5453d333c3a6c"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/lawSearch"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/243c4a87-4c79-4c4f-9f05-b949f6c0914a",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216278749322",
+          "object": "reviewHaruLawSharedCard/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1399a3c87ae67b2c09fcb0f1ab8399f63ff76d8a"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/reviewHaruLawSharedCard"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a22b44b0-ab5c-438e-a777-386c4a5b60fa",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216505948919",
+          "object": "suggestBookPublishRevision/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "70925148fa9daba9bc5ac957dd208ba1c7dbae5c"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/suggestBookPublishRevision"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d36c824d-9010-4d47-85ef-07bfeb53d139",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790805124231472",
+          "object": "listAiLibraryLogs/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "6d4614c4fb06e54447354a6312027e481f9fae87"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/listAiLibraryLogs"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/f7f22250-7e92-4070-9350-3612584c6891",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793573498508319",
+          "object": "detectPlantAdvanced/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "2e36dca8bf61d15d9e410ef66ace3729a0b0aeb3"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/detectPlantAdvanced"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/243c4a87-4c79-4c4f-9f05-b949f6c0914a",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216208572266",
+          "object": "publishHaruLawSharedCard/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1399a3c87ae67b2c09fcb0f1ab8399f63ff76d8a"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/publishHaruLawSharedCard"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/dc6ab370-1675-4d5e-bdfc-b6d69ef4acd9",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789322906403135",
+          "object": "recordPaidServiceUsage/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "d83cfbd69867a3c6a228e75cc5e40fb436e3e8e0"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/recordPaidServiceUsage"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/eb60f65c-c309-4ef4-9fb5-362f63b2ce75",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789783312897679",
+          "object": "generateSnsStoryFinal/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "c33d856253cd49378b558709ff67e7a39c2e552e"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateSnsStoryFinal"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e74f680e-5e0d-4725-b1c4-9d2ab8af3f70",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217154396230",
+          "object": "extractLedgerTextFromImage/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3bd4cad4c3d0aaf353cf4c4f661f64e816036434"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractLedgerTextFromImage"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295410730025",
+          "object": "createSubscriptionBillingRequest/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "c311609587d34d7ed419d5ee097d1ed5238e6480"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/createSubscriptionBillingRequest"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/ed44ddcd-00ab-42cc-84df-1bf5ae2a99de",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789694481178702",
+          "object": "getSnsThumbnailData/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "b93544792800467f6834ad08be398f672eb39bec"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getSnsThumbnailData"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e74f680e-5e0d-4725-b1c4-9d2ab8af3f70",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217154191540",
+          "object": "extractHouseholdTextFromImage/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3bd4cad4c3d0aaf353cf4c4f661f64e816036434"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractHouseholdTextFromImage"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/37f41804-6c98-4eb4-b4ab-c7910b4d9cfb",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789296669437230",
+          "object": "rejectSubscriptionRefund/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "c311609587d34d7ed419d5ee097d1ed5238e6480"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/rejectSubscriptionRefund"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/44d20e2e-96e1-4544-ae95-007840aa5b58",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790505060685005",
+          "object": "googleLoginStart/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "69b16de3a471efa8ea333b3c7bac50c04bded329"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/googleLoginStart"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215411946709",
+          "object": "getGrammarExplain/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "841a05cd95b9f2d224c2d1f4271aaad595538a9d"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getGrammarExplain"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443664922",
+          "object": "getVerseQuiz/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "e4c99361b7924ca36fe0fe13bd64a90e84904aac"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getVerseQuiz"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215412075287",
+          "object": "testNibrPlantSearch/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1399a3c87ae67b2c09fcb0f1ab8399f63ff76d8a"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/testNibrPlantSearch"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295411062393",
+          "object": "verifySinglePayment/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9320cfda2473e039d1b4371311d9eeb3b986ddd9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/verifySinglePayment"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d5d73b5d-46c3-4a57-acf8-3596f0b1c41d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789204056078185",
+          "object": "getCustomToken/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "a2f4d64e4141a17cc734b792a039a141644aed80"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getCustomToken"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d1ac25bf-ec6f-44c7-873a-448b43ecb8a8",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793191769828936",
+          "object": "polishElderBookChapters/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3813156d51888a677f3703105f8a8f3c58c598b4"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishElderBookChapters"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443161714",
+          "object": "getHaruDriveCandidates/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "a683a96465d990d97c5702dd53eb9f048e3d3640"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getHaruDriveCandidates"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295410555514",
+          "object": "subscribeWithBillingKey/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9320cfda2473e039d1b4371311d9eeb3b986ddd9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/subscribeWithBillingKey"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/43a07020-be53-4e00-be3f-12b783edc422",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287678014278",
+          "object": "copyHaruDriveAssets/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "fed828d0cf735927f485db14386f96bf5da459f9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/copyHaruDriveAssets"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/518ecef2-9218-47a0-9da3-ae4b9c18805e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286715131065",
+          "object": "generateLawsuitClaimReason/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9a39174097cfb0b6cf7ac276b2a32aeeb331a684"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateLawsuitClaimReason"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/243c4a87-4c79-4c4f-9f05-b949f6c0914a",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216278824085",
+          "object": "unpublishHaruLawSharedCard/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1399a3c87ae67b2c09fcb0f1ab8399f63ff76d8a"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/unpublishHaruLawSharedCard"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/37f41804-6c98-4eb4-b4ab-c7910b4d9cfb",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789296669627571",
+          "object": "approveSubscriptionRefund/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9320cfda2473e039d1b4371311d9eeb3b986ddd9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/approveSubscriptionRefund"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a22b44b0-ab5c-438e-a777-386c4a5b60fa",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216506157944",
+          "object": "buildElderBookOutline/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "70925148fa9daba9bc5ac957dd208ba1c7dbae5c"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/buildElderBookOutline"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217338333412",
+          "object": "lawPrecedent/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "41043ccad03590fd503977a6ec75276a1bcbe234"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/lawPrecedent"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443371160",
+          "object": "getVerseTranslation/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "e4c99361b7924ca36fe0fe13bd64a90e84904aac"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getVerseTranslation"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215412069208",
+          "object": "petFoodCheck/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3bd4cad4c3d0aaf353cf4c4f661f64e816036434"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/petFoodCheck"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/43a07020-be53-4e00-be3f-12b783edc422",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287737681970",
+          "object": "getOneDriveConnectionState/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "c311609587d34d7ed419d5ee097d1ed5238e6480"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getOneDriveConnectionState"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e74f680e-5e0d-4725-b1c4-9d2ab8af3f70",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217083873769",
+          "object": "extractReadingBookTextFromPhoto/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3bd4cad4c3d0aaf353cf4c4f661f64e816036434"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractReadingBookTextFromPhoto"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215412070579",
+          "object": "getGrammarExplainV2/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "841a05cd95b9f2d224c2d1f4271aaad595538a9d"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getGrammarExplainV2"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/518ecef2-9218-47a0-9da3-ae4b9c18805e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286714724721",
+          "object": "generateHaruMemo/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9a39174097cfb0b6cf7ac276b2a32aeeb331a684"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateHaruMemo"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/f7f22250-7e92-4070-9350-3612584c6891",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793573397272205",
+          "object": "generateGrowthTimelinePdf/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "ead0edc33ca3a18982d87fe33ed88f16e87c99c9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateGrowthTimelinePdf"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/0f7702a4-cb12-4746-a2d8-1eefa3e0ec40",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793053162097106",
+          "object": "extractTitle/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "e3486c7355ffba5de6ae2f877881acc7785d016b"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/extractTitle"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/8023a7b7-10b6-47c3-937a-a3645d8385f0",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789700472678004",
+          "object": "naverCallback/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "aa4a378367820a9ea7bbfcb404b4e27fb6f3839e"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/naverCallback"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/3486c1e4-d82d-423f-84e0-237665bc9b17",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793573397355605",
+          "object": "generateTTS/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "ceb4d669570240a6848beb3b5d0bf7c469feb60b"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateTTS"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215412038040",
+          "object": "clearKeywordsCache/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1399a3c87ae67b2c09fcb0f1ab8399f63ff76d8a"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/clearKeywordsCache"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/9acb0fae-c512-4e39-916b-799c0251fa2f",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790157472009417",
+          "object": "requestAccountDeletion/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1e3d60c002ec65b6180ffcd04cc5787634a3d32e"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/requestAccountDeletion"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/8023a7b7-10b6-47c3-937a-a3645d8385f0",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789700400395530",
+          "object": "kakaoLoginStart/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "4af513280c9bd487c6d8db269b1faebaebfa805e"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/kakaoLoginStart"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a34f6cdd-ff6d-4f40-b785-dca0947ee1a7",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1791236044028049",
+          "object": "cleanupHaruLawGeminiFiles/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-scheduled": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "cdca5ec1f90b32e8cd3df5d8231f90591be9d88e"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cleanupHaruLawGeminiFiles"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/518ecef2-9218-47a0-9da3-ae4b9c18805e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286715156312",
+          "object": "analyzeRecordForProphecy/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9a39174097cfb0b6cf7ac276b2a32aeeb331a684"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeRecordForProphecy"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217338029556",
+          "object": "decryptKakaoXlsx/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1399a3c87ae67b2c09fcb0f1ab8399f63ff76d8a"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/decryptKakaoXlsx"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e74f680e-5e0d-4725-b1c4-9d2ab8af3f70",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217154189487",
+          "object": "analyzePlantPhoto/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "dc158ad23730f47cb11b98a07619b88e937d23b2"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzePlantPhoto"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217337815212",
+          "object": "generateBook/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "70925148fa9daba9bc5ac957dd208ba1c7dbae5c"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateBook"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a22b44b0-ab5c-438e-a777-386c4a5b60fa",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216404303328",
+          "object": "reviewBookForPublish/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "70925148fa9daba9bc5ac957dd208ba1c7dbae5c"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/reviewBookForPublish"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/5191dc06-3bc0-4b2a-9bae-66d76a0c9749",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789210612795299",
+          "object": "reverseGeocodeKakao/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "c91ab3079f16f68b8d75a46884037b34fc81b273"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/reverseGeocodeKakao"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/8023a7b7-10b6-47c3-937a-a3645d8385f0",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789700472482428",
+          "object": "kakaoCallback/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "4af513280c9bd487c6d8db269b1faebaebfa805e"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/kakaoCallback"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/518ecef2-9218-47a0-9da3-ae4b9c18805e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286715525092",
+          "object": "refreshNews/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9a39174097cfb0b6cf7ac276b2a32aeeb331a684"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/refreshNews"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/235a4ba5-a602-4b3a-bfff-7d895771975d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287748228055",
+          "object": "startOneDriveConnect/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "345581ebdce060f12c22c43232fe97a3753741d1"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/startOneDriveConnect"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191442835425",
+          "object": "getHospitalList/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "6c1409be543d43f8bd418175c8f7e69c9bdfd7b0"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getHospitalList"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e74f680e-5e0d-4725-b1c4-9d2ab8af3f70",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217154401123",
+          "object": "analyzeDrugPhoto/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3bd4cad4c3d0aaf353cf4c4f661f64e816036434"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeDrugPhoto"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b3e5b92e-361b-4b5f-8bd0-f030415bb3b0",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789191443464606",
+          "object": "getOnbidRealEstateList/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "65ae06addf6dd0903f5acecd51e0fbb1d128bdf5"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getOnbidRealEstateList"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/c1027161-cdd1-43e7-be20-07b1cdb0cc60",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1791957609637675",
+          "object": "convertHeic/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "b389ef3364500c01cc292adc789c206d0fa27450"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/convertHeic"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a22b44b0-ab5c-438e-a777-386c4a5b60fa",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216506136008",
+          "object": "assignElderBookSources/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "70925148fa9daba9bc5ac957dd208ba1c7dbae5c"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/assignElderBookSources"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/bea8846c-b5eb-4224-9a27-fcd0b929075d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793663470819547",
+          "object": "chatWithResult/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3b7b80daf26ee63cb90a82ba312cb41786ee43b8"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/chatWithResult"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/5191dc06-3bc0-4b2a-9bae-66d76a0c9749",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789210714768376",
+          "object": "removeAllTags/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "57d438d21dca3c3537ba39034e65795595f2564f"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/removeAllTags"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/518ecef2-9218-47a0-9da3-ae4b9c18805e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789286715088723",
+          "object": "suggestChapterTitle/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "f5d69f20320222034ee2f3f7b0dac8a416f11602"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/suggestChapterTitle"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/15ea839b-a93f-4535-8b59-765897516e20",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790817422405725",
+          "object": "googleCallback/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "677353e3b7ad75325154eb388385a78bd33614d6"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/googleCallback"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295410916595",
+          "object": "cancelSubscription/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9320cfda2473e039d1b4371311d9eeb3b986ddd9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cancelSubscription"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295410924989",
+          "object": "portoneWebhook/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "e85a8766bf9acaf67d989869145d9145bf1c9bd3"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/portoneWebhook"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d85a7b9d-9557-4fda-851a-e518f651a654",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216714588292",
+          "object": "sendTestNotification/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1399a3c87ae67b2c09fcb0f1ab8399f63ff76d8a"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/sendTestNotification"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/7f2e444c-efc2-4eef-a0e0-d081f34e882e",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789217337800447",
+          "object": "uploadReceiptToDrive/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "f79fb83aaf8c48c495eb09deebd154522c580b39"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/uploadReceiptToDrive"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/567d125c-3a57-492b-bfb9-6924a44d61ea",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793627491859863",
+          "object": "polishContent/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "0927f63a3436c31ec195017ea3d74fbe716f33a9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/polishContent"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/37f41804-6c98-4eb4-b4ab-c7910b4d9cfb",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789296669226862",
+          "object": "listSubscriptionRefundRequests/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "c311609587d34d7ed419d5ee097d1ed5238e6480"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/listSubscriptionRefundRequests"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/243c4a87-4c79-4c4f-9f05-b949f6c0914a",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216278713468",
+          "object": "listPendingHaruLawSharedCards/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1399a3c87ae67b2c09fcb0f1ab8399f63ff76d8a"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/listPendingHaruLawSharedCards"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/235a4ba5-a602-4b3a-bfff-7d895771975d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789287748210553",
+          "object": "haruDriveCallback/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "fed828d0cf735927f485db14386f96bf5da459f9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/haruDriveCallback"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/63117577-1a04-4090-9379-9298bc736e49",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793017033017499",
+          "object": "chatWithReadingContext/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "8bd78e02f567b61d553ce65b4ed511c90d4dbad2"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/chatWithReadingContext"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/249b9cfd-0351-4224-a0fc-eaa3c36953df",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1793573397173214",
+          "object": "analyzeFacebookZip/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "ead0edc33ca3a18982d87fe33ed88f16e87c99c9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeFacebookZip"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/8023a7b7-10b6-47c3-937a-a3645d8385f0",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789700472693032",
+          "object": "naverLoginStart/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "aa4a378367820a9ea7bbfcb404b4e27fb6f3839e"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/naverLoginStart"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295410855749",
+          "object": "recoverSubscriptionBillingRequest/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9320cfda2473e039d1b4371311d9eeb3b986ddd9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/recoverSubscriptionBillingRequest"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/fb76eed9-e755-4706-9e5d-5dd25a9c646d",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789295411005195",
+          "object": "verifyPayment/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9320cfda2473e039d1b4371311d9eeb3b986ddd9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/verifyPayment"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/9acb0fae-c512-4e39-916b-799c0251fa2f",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790157543380784",
+          "object": "cancelAccountDeletion/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "4b1a0dabc23347a29387ce221fa4de4f121f8f64"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cancelAccountDeletion"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/9b19751e-88dd-4e8a-ad22-335ca5f23cc9",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1792533430590855",
+          "object": "generateTitlesForAll/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "a56ccfd504fdaa0b91754b86cf29ea74fae6d1cb"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/generateTitlesForAll"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/d85a7b9d-9557-4fda-851a-e518f651a654",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216714348279",
+          "object": "deleteRecordImage/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1399a3c87ae67b2c09fcb0f1ab8399f63ff76d8a"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/deleteRecordImage"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/b64e582f-522d-4769-a4c6-2cdc1dd7937b",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789915815014320",
+          "object": "getDrugInfo/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "dd5ed6c96dbba35f272c6fb07a9a98925ba62aae"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getDrugInfo"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/37f41804-6c98-4eb4-b4ab-c7910b4d9cfb",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789296598474785",
+          "object": "getSubscriptionRefundEligibility/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "c311609587d34d7ed419d5ee097d1ed5238e6480"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/getSubscriptionRefundEligibility"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215412018078",
+          "object": "analyzeSymptomsForSpecialty/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3bd4cad4c3d0aaf353cf4c4f661f64e816036434"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/analyzeSymptomsForSpecialty"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/220b2486-977d-4876-8899-f4ef13c31d95",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790805203890746",
+          "object": "convertToBookMaterial/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "efe3a58dc895681c7962ccf2d9103d3921430522"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/convertToBookMaterial"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/dd3372e6-d21f-402f-a72d-7d2bc1021558",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1790124419272623",
+          "object": "lawEasyExplain/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "0431bc66feada30979d38b58a0773b4b3be5116c"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/lawEasyExplain"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/6be10ecb-c8b2-4f70-b3c5-6757abdda1f6",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789215411864496",
+          "object": "translateToEnglish/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "3bd4cad4c3d0aaf353cf4c4f661f64e816036434"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/translateToEnglish"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/a22b44b0-ab5c-438e-a777-386c4a5b60fa",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789216506025429",
+          "object": "applyBookPublishRevision/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "1399a3c87ae67b2c09fcb0f1ab8399f63ff76d8a"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/applyBookPublishRevision"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/e69dbfef-89a3-4099-a91e-0f3d1bb9d982",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789972936764270",
+          "object": "cleanupHeicTemp/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-scheduled": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "b389ef3364500c01cc292adc789c206d0fa27450"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/cleanupHeicTemp"
+  },
+  {
+    "buildConfig": {
+      "build": "projects/398138267500/locations/asia-northeast3/builds/37f41804-6c98-4eb4-b4ab-c7910b4d9cfb",
+      "source": {
+        "storageSource": {
+          "bucket": "gcf-v2-sources-398138267500-asia-northeast3",
+          "generation": "1789296669098235",
+          "object": "requestSubscriptionRefund/function-source.zip"
+        }
+      }
+    },
+    "labels": {
+      "deployment-callable": "true",
+      "deployment-tool": "cli-firebase",
+      "firebase-functions-hash": "9320cfda2473e039d1b4371311d9eeb3b986ddd9"
+    },
+    "name": "projects/haru2026-8abb8/locations/asia-northeast3/functions/requestSubscriptionRefund"
+  }
+]
