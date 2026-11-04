@@ -3751,10 +3751,14 @@ function findReusableResultChatAnswer(
   options: { allowRecentWebSearchMs?: number } = {},
 ): { answer: string; sources: { title: string; uri: string }[] } | null {
   const normalizedQuestion = normalizeResultChatQuestion(question).toLowerCase();
-  for (let i = messages.length - 2; i >= 0; i -= 1) {
-    const userMessage = messages[i];
-    const assistantMessage = messages[i + 1];
-    if (userMessage?.role !== 'user' || assistantMessage?.role !== 'assistant') continue;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const assistantMessage = messages[i];
+    if (assistantMessage?.role !== 'assistant') continue;
+    // Firestore timestamps can tie: adjacent rows are not necessarily a question/answer pair.
+    const userMessage = assistantMessage.requestId
+      ? messages.find((message) => message.role === 'user' && message.requestId === assistantMessage.requestId)
+      : messages[i - 1];
+    if (userMessage?.role !== 'user') continue;
     const priorQuestion = normalizeResultChatQuestion(String(userMessage.content || '')).toLowerCase();
     if (priorQuestion !== normalizedQuestion) continue;
     if (assistantMessage.answerRoute !== route) continue;

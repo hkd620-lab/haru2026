@@ -884,6 +884,31 @@ async function run() {
   assert.strictEqual(await getMonthlyUsed(USERS.basic), duplicateMonthlyBefore);
   await assertThreadSearchUsage(USERS.basic, 'child', 'child_sayu', 1, 0);
 
+  // Same-millisecond writes can sort assistant before user. Request IDs must pair them.
+  const cachePairUid = 'result-chat-cache-pair-user';
+  await resetUser(cachePairUid);
+  await db.doc(`users/${cachePairUid}/subscription/info`).set({ plan: 'premium', status: 'active' });
+  await db.doc(`users/${cachePairUid}/records/memo`).set({ memo_sayu: '시험용 기록.' });
+  const cachePairThread = db.doc(`users/${cachePairUid}/records/memo/resultThreads/memo_sayu`);
+  await cachePairThread.set({ webSearchUsedCount: 1, webSearchReservedCount: 0 });
+  const sameTime = admin.firestore.Timestamp.now();
+  const pairedQuestion = '현재 공공기관 안내를 확인해줘.';
+  await cachePairThread.collection('messages').doc('a-assistant').set({
+    role: 'assistant', requestId: 'same-ms-pair', createdAt: sameTime,
+    content: '검색으로 확인한 안내.[출처 1]', answerRoute: 'web_search', webSearchUsed: true,
+    sources: [{ title: '공식 안내', uri: 'https://example.test/official', citationId: 1 }],
+  });
+  await cachePairThread.collection('messages').doc('z-user').set({
+    role: 'user', requestId: 'same-ms-pair', createdAt: sameTime, content: pairedQuestion,
+  });
+  const cachePairCallsBefore = genaiCalls.length;
+  const cachePair = await callable(cachePairUid, {
+    recordId: 'memo', sourceKey: 'memo_sayu', question: pairedQuestion, searchPreference: 'web_confirmed',
+  });
+  assert.strictEqual(cachePair.cached, true);
+  assert.strictEqual(genaiCalls.length, cachePairCallsBefore);
+  await assertThreadSearchUsage(cachePairUid, 'memo', 'memo_sayu', 1, 0);
+
   const financeAutoRisk = await callable(USERS.basic, {
     recordId: 'stock',
     sourceKey: 'stock_sayu',
