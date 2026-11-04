@@ -86,10 +86,13 @@ export function buildResultChatEvidence(response: Pick<GenerateContentResponse, 
 }
 
 export function isRecordMediaQuestion(question: string): boolean {
-  // Requests for a work's author/origin or an explicit lookup still use the user's search choice.
-  if (/(검색|인터넷|웹|최신|외부|출처|작가|화가|원작|제작자|역사|시세|가격|오늘|내일|현재|최근|이번\s*주|날씨|기온|환율|주가|일정|운영\s*시간|영업\s*시간|입장료|법령|정책|지원금|뉴스|추천)/.test(question)) return false;
-  // Conservatively retain source selection for multiple requests, even when one is media observation.
-  if (/(그리고|또한|아울러|더불어|설명하고|분석하고|묘사하고|읽고|보여주고|알려주고|[?!.]\s*\S)/.test(question)) return false;
-  return /(사진|그림|이미지|첨부|PDF|pdf)/.test(question)
-    && /(어떤|무엇|뭐|내용|설명|묘사|분석|읽어|보여|보이|그려)/.test(question);
+  // Auto-route only short, single observation requests. Unrecognized or mixed requests
+  // retain source selection instead of depending on an incomplete list of external keywords.
+  const normalized = question.toLowerCase().replace(/\s+/g, '').replace(/[?!.。]+$/, '');
+  const subject = normalized.match(/^(?:(?:본문|기록|에세이|글)(?:속|안)?(?:의)?|내가|첨부한|첨부|올린|업로드한|보낸|이|그|위|내|방금)*(?:사진|그림|이미지|pdf)(?:은|는|이|가|을|를)?/);
+  if (!subject) return false;
+  const rest = normalized.slice(subject[0].length);
+  const identify = /^(?:어떤(?:사진|그림|이미지|내용|모습)(?:이야|인가요|이지|인가|일까|인지)|(?:무엇|뭐)(?:이야|야|인가요|이지))$/;
+  const describe = /^(?:의)?(?:내용(?:을)?|모습(?:을)?|장면(?:을)?)?(?:좀)?(?:(?:설명|분석|묘사)(?:해줘|해주세요|해줄래|부탁해|해줄수있어)|읽어(?:줘|주세요)|보여(?:줘|주세요)|알려(?:줘|주세요))$/;
+  return identify.test(rest) || describe.test(rest);
 }
