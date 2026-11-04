@@ -9,6 +9,7 @@ import { HomePersonalizationModal } from '../components/HomePersonalizationModal
 import { shouldShowAssistantOnboarding } from '../services/assistantOnboardingService';
 import { firestoreService, type HomePersonalizationSettings } from '../services/firestoreService';
 import { finishLoginTrace, markLoginTrace } from '../utils/loginPerformance';
+import { getHomeAssistantSelection } from '../utils/homeAssistantSelection';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -552,14 +553,8 @@ export function HomePageV2() {
   const [personalizationOwnerUid, setPersonalizationOwnerUid] = useState<string | null>(null);
   const [personalizationLoaded, setPersonalizationLoaded] = useState(false);
   const [homeViewMode, setHomeViewMode] = useState<'my' | 'all'>('my');
-  const [myHaruBannerHidden, setMyHaruBannerHidden] = useState(() => {
-    try {
-      return typeof window !== 'undefined'
-        && localStorage.getItem('haru_home_my_haru_banner_dismissed') === '1';
-    } catch {
-      return false;
-    }
-  });
+  const [agentViewMode, setAgentViewMode] = useState<'my' | 'all'>('my');
+  const [personalizationError, setPersonalizationError] = useState<string | null>(null);
   const [onboardingGateReady, setOnboardingGateReady] = useState(false);
   const [onboardingBannerHidden, setOnboardingBannerHidden] = useState(() => {
     try {
@@ -573,11 +568,6 @@ export function HomePageV2() {
   const dismissOnboardingBanner = () => {
     setOnboardingBannerHidden(true);
     try { localStorage.setItem('haru_home_onboarding_banner_dismissed', '1'); } catch { /* ignore */ }
-  };
-
-  const dismissMyHaruBanner = () => {
-    setMyHaruBannerHidden(true);
-    try { localStorage.setItem('haru_home_my_haru_banner_dismissed', '1'); } catch { /* ignore */ }
   };
 
   // v2 진입을 sessionStorage에 기록 → 통계/합본 등 깊은 경로 닫기 시 v2 복귀용
@@ -634,6 +624,9 @@ export function HomePageV2() {
     let cancelled = false;
 
     const loadHomePersonalization = async () => {
+      setAgentViewMode('my');
+      setPersonalizationModalOpen(false);
+      setPersonalizationError(null);
       if (authLoading) {
         setPersonalization(null);
         setPersonalizationOwnerUid(null);
@@ -710,26 +703,17 @@ export function HomePageV2() {
     : visibleRecords.map((record) => record.format);
   const selectedAgents = !effectivePersonalizationLoaded
     ? []
-    : hasPersonalizedHome
-    ? currentPersonalization?.selectedAgents || []
-    : visibleAgents.map((agent) => getAgentKey(agent));
-  const selectedAgentSet = useMemo(() => {
-    const keys = new Set(selectedAgents);
-    // 기존 개인화에서 장부를 기록 카드로 골랐던 사용자는 비서실 카드로 이어서 보여준다.
-    for (const agent of visibleAgents) {
-      if ((agent.label === 'HARU가계부' || agent.label === 'HARU보조장부') && selectedRecordFormats.includes(agent.label)) {
-        keys.add(getAgentKey(agent));
-      }
-    }
-    return keys;
-  }, [selectedAgents, selectedRecordFormats, visibleAgents]);
+    : getHomeAssistantSelection(currentPersonalization, visibleAgents.map((agent) => ({
+      key: getAgentKey(agent), label: agent.label,
+    })));
+  const selectedAgentSet = new Set(selectedAgents);
   const homeRecords = homeViewMode === 'all'
     ? visibleRecords
     : [];
-  const homeAgents = homeViewMode === 'all'
+  const homeAgents = agentViewMode === 'all'
     ? visibleAgents
     : visibleAgents.filter((agent) => selectedAgentSet.has(getAgentKey(agent)));
-  const isMyHaruEmpty = effectivePersonalizationLoaded && homeViewMode === 'my' && hasPersonalizedHome && homeAgents.length === 0;
+  const isMyHaruEmpty = effectivePersonalizationLoaded && agentViewMode === 'my' && homeAgents.length === 0;
 
   useEffect(() => {
     if (authLoading || !user?.uid || !onboardingGateReady || !effectivePersonalizationLoaded) return;
@@ -739,27 +723,39 @@ export function HomePageV2() {
   const saveHomePersonalization = async (selection: {
     selectedRecordFormats: string[];
     selectedAgents: string[];
-  }) => {
+  }, closeModal = true) => {
+    if (personalizationSaving || !effectivePersonalizationLoaded) return;
     if (!currentUserUid) {
       navigate('/login');
       return;
     }
 
     const saveUid = currentUserUid;
+    const savedSelection = {
+      // 비서 선택으로 기존 기록 설정을 지우지 않는다.
+      selectedRecordFormats: currentPersonalization?.selectedRecordFormats ?? [],
+      selectedAgents: selection.selectedAgents,
+    };
     setPersonalizationSaving(true);
+    setPersonalizationError(null);
     try {
-      await firestoreService.saveHomePersonalization(saveUid, selection);
+      await firestoreService.saveHomePersonalization(saveUid, savedSelection);
       if (currentUserUidRef.current !== saveUid) return;
       setPersonalization({
-        selectedRecordFormats: selection.selectedRecordFormats,
-        selectedAgents: selection.selectedAgents,
+        selectedRecordFormats: savedSelection.selectedRecordFormats,
+        selectedAgents: savedSelection.selectedAgents,
         personalized: true,
+        assistantSelectionConfigured: true,
       });
       setPersonalizationOwnerUid(saveUid);
-      setHomeViewMode('my');
-      setPersonalizationModalOpen(false);
-      setMyHaruBannerHidden(true);
-      try { localStorage.setItem('haru_home_my_haru_banner_dismissed', '1'); } catch { /* ignore */ }
+      if (closeModal) {
+        setAgentViewMode('my');
+        setPersonalizationModalOpen(false);
+      }
+    } catch {
+      if (currentUserUidRef.current === saveUid) {
+        setPersonalizationError('비서 선택을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      }
     } finally {
       setPersonalizationSaving(false);
     }
@@ -869,7 +865,7 @@ export function HomePageV2() {
           /* 카드 그리드 강제 — Tailwind arbitrary breakpoint 미동작 우회 */
           [data-v2="records-grid"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
           [data-v2="tools-grid"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
-          [data-v2="agents-grid"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
+          [data-v2="agents-grid"] { grid-template-columns: 1fr !important; gap: 12px !important; }
 
           .v2-rec { padding: 12px 10px !important; gap: 6px !important; border-radius: 14px !important; }
           .v2-rec > span:first-of-type { width: 38px !important; height: 38px !important; border-radius: 10px !important; }
@@ -1374,7 +1370,7 @@ export function HomePageV2() {
         >
           <div
             role="tablist"
-            aria-label="홈 보기 전환"
+            aria-label="하루기록 보기 전환"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -1386,134 +1382,15 @@ export function HomePageV2() {
             }}
           >
             <HomeModeButton active={homeViewMode === 'my'} onClick={() => setHomeViewMode('my')}>
-              내 HARU
+              내 하루기록
             </HomeModeButton>
             <HomeModeButton active={homeViewMode === 'all'} onClick={() => setHomeViewMode('all')}>
               전체 보기
             </HomeModeButton>
           </div>
-          <button
-            type="button"
-            onClick={() => setPersonalizationModalOpen(true)}
-            className="v2-pill"
-            style={{
-              ...pillStyle,
-              background: '#4A5A2C',
-              borderColor: '#4A5A2C',
-              color: '#F5F0E8',
-              fontWeight: 800,
-            }}
-          >
-            <PillSvg>
-              <path d="M4 7h16M4 12h16M4 17h16" />
-              <path d="M8 7v10M16 7v10" />
-            </PillSvg>
-            내 HARU 관리
-          </button>
         </section>
 
-        {personalizationLoaded && !hasPersonalizedHome && !myHaruBannerHidden && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              background: '#fff',
-              border: '1px solid #E5DFD0',
-              borderRadius: 18,
-              padding: '14px 16px',
-              marginBottom: 24,
-              color: '#2C2C2A',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setPersonalizationModalOpen(true)}
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                background: 'transparent',
-                border: 'none',
-                color: 'inherit',
-                cursor: 'pointer',
-                textAlign: 'left',
-                minWidth: 0,
-              }}
-            >
-              <span
-                aria-hidden="true"
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  background: '#E0E8B8',
-                  color: '#4A5A2C',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <PillSvg>
-                  <path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z" />
-                  <path d="M19 16l.8 1.8L21.5 18.5 19.7 19.3 19 21l-.8-1.7L16.5 18.5l1.7-.7z" />
-                </PillSvg>
-              </span>
-              <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 800 }}>내 HARU를 만들어 보세요</span>
-                <span style={{ fontSize: 11, color: '#7A6F5A' }}>
-                  자주 사용하는 AI 비서를 골라 홈에 표시할 수 있습니다.
-                </span>
-              </span>
-              <span
-                aria-hidden="true"
-                style={{
-                  marginLeft: 'auto',
-                  fontSize: 13,
-                  fontWeight: 800,
-                  whiteSpace: 'nowrap',
-                  background: '#F5F0E8',
-                  borderRadius: 999,
-                  padding: '6px 12px',
-                  color: '#4A5A2C',
-                  flexShrink: 0,
-                }}
-              >
-                만들기 →
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={dismissMyHaruBanner}
-              aria-label="내 HARU 안내 닫기"
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 999,
-                border: '1px solid #E5DFD0',
-                background: 'transparent',
-                color: '#7A6F5A',
-                cursor: 'pointer',
-                flexShrink: 0,
-                fontSize: 14,
-                lineHeight: 1,
-              }}
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
         {isPersonalizationPending && <HomePersonalizationSkeleton />}
-
-        {!isPersonalizationPending && isMyHaruEmpty && (
-          <EmptyMyHaru
-            onShowAll={() => setHomeViewMode('all')}
-            onManage={() => setPersonalizationModalOpen(true)}
-          />
-        )}
 
         {/* RECORDS SECTION */}
         {!isPersonalizationPending && (
@@ -1618,7 +1495,7 @@ export function HomePageV2() {
         )}
 
         {/* AGENTS SECTION */}
-        {!isPersonalizationPending && !isMyHaruEmpty && (
+        {!isPersonalizationPending && (
         <section data-v2="section" style={{ marginBottom: 36 }}>
           <SectionHead
             iconBg="#DDD0E8"
@@ -1634,19 +1511,38 @@ export function HomePageV2() {
               </>
             }
           />
+          <div data-v2="assistant-controls" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+            <div role="tablist" aria-label="하루비서 보기 전환" style={{ display: 'inline-flex', padding: 4, borderRadius: 999, background: '#fff', border: '1px solid #E5DFD0' }}>
+              <HomeModeButton active={agentViewMode === 'my'} onClick={() => setAgentViewMode('my')}>
+                내 하루비서
+              </HomeModeButton>
+              <HomeModeButton active={agentViewMode === 'all'} onClick={() => setAgentViewMode('all')}>
+                전체 보기
+              </HomeModeButton>
+            </div>
+            <button type="button" disabled={!effectivePersonalizationLoaded || personalizationSaving} onClick={() => setPersonalizationModalOpen(true)} style={pillStyle}>
+              내 하루비서 관리
+            </button>
+          </div>
+          {personalizationError && !personalizationModalOpen && <p role="alert" style={{ color: '#9C3528', fontSize: 13 }}>{personalizationError}</p>}
+          {!effectivePersonalizationLoaded && agentViewMode === 'my' ? (
+            <p role="status" style={{ color: '#7A6F5A', fontSize: 13 }}>내 하루비서를 불러오는 중입니다.</p>
+          ) : isMyHaruEmpty ? (
+            <EmptyMyHaru onShowAll={() => setAgentViewMode('all')} />
+          ) : (
           <div
             data-v2="agents-grid"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
               gap: 14,
             }}
           >
             {homeAgents.map((a) => {
               const disabled = a.path === null && !a.action;
               return (
+              <div key={a.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, minWidth: 0 }}>
               <button
-                key={a.label}
                 type="button"
                 disabled={disabled}
                 aria-disabled={disabled}
@@ -1667,6 +1563,8 @@ export function HomePageV2() {
                 className={disabled ? '' : 'v2-agent'}
                 data-v2="agent"
                 style={{
+                  width: '100%',
+                  flex: 1,
                   borderRadius: 20,
                   padding: 22,
                   display: 'flex',
@@ -1768,92 +1666,30 @@ export function HomePageV2() {
                   </span>
                 </div>
               </button>
+              {agentViewMode === 'all' && !disabled && (
+                <button
+                  type="button"
+                  disabled={!effectivePersonalizationLoaded || personalizationSaving}
+                  aria-pressed={selectedAgentSet.has(getAgentKey(a))}
+                  aria-label={`${a.label} ${selectedAgentSet.has(getAgentKey(a)) ? '내 비서에서 빼기' : '내 비서에 담기'}`}
+                  onClick={() => {
+                    const key = getAgentKey(a);
+                    const keys = new Set(selectedAgentSet);
+                    if (keys.has(key)) keys.delete(key);
+                    else keys.add(key);
+                    void saveHomePersonalization({ selectedRecordFormats, selectedAgents: Array.from(keys) }, false);
+                  }}
+                  style={{ ...pillStyle, fontSize: 12, padding: '8px 12px' }}
+                >
+                  {selectedAgentSet.has(getAgentKey(a)) ? '✓ 내 비서에서 빼기' : '+ 내 비서에 담기'}
+                </button>
+              )}
+              </div>
               );
             })}
 
-            {/* Placeholder */}
-            <button
-              type="button"
-              aria-disabled
-              disabled
-              style={{
-                borderRadius: 20,
-                padding: 22,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 14,
-                cursor: 'default',
-                position: 'relative',
-                overflow: 'hidden',
-                minHeight: 148,
-                textAlign: 'left',
-                background: 'transparent',
-                border: '1.5px dashed #d4cdb9',
-                color: '#888780',
-              }}
-            >
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 14,
-                  background: 'transparent',
-                  border: '1.5px dashed #d4cdb9',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative',
-                  zIndex: 1,
-                }}
-              >
-                <RecSvg stroke="#888780">
-                  <path d="M12 5v14M5 12h14" />
-                </RecSvg>
-              </div>
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <div
-                  style={{
-                    fontFamily: FONT_SERIF,
-                    fontSize: 18,
-                    fontWeight: 700,
-                    letterSpacing: '-0.01em',
-                    color: '#7A6F5A',
-                  }}
-                >
-                  새 비서 예정
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    marginTop: 6,
-                    opacity: 0.78,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  곧 새로운 동료가 합류합니다
-                </div>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    marginTop: 12,
-                    padding: '3px 9px',
-                    borderRadius: 999,
-                    background: 'transparent',
-                    border: '1px solid #E5DFD0',
-                    fontFamily: FONT_EN,
-                    fontSize: 9,
-                    fontWeight: 600,
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  COMING SOON
-                </span>
-              </div>
-            </button>
           </div>
+          )}
         </section>
         )}
 
@@ -2038,6 +1874,7 @@ export function HomePageV2() {
         initialRecordKeys={[]}
         initialAgentKeys={Array.from(selectedAgentSet)}
         saving={personalizationSaving}
+        error={personalizationError}
         onClose={() => {
           if (!personalizationSaving) setPersonalizationModalOpen(false);
         }}
@@ -2090,74 +1927,15 @@ function HomeModeButton({
   );
 }
 
-function EmptyMyHaru({
-  onShowAll,
-  onManage,
-}: {
-  onShowAll: () => void;
-  onManage: () => void;
-}) {
+function EmptyMyHaru({ onShowAll }: { onShowAll: () => void }) {
   return (
-    <section
-      style={{
-        background: '#fff',
-        border: '1px solid #E5DFD0',
-        borderRadius: 22,
-        padding: '34px 24px',
-        marginBottom: 36,
-        textAlign: 'center',
-      }}
-    >
-      <div
-        style={{
-          width: 54,
-          height: 54,
-          borderRadius: 16,
-          background: '#E0E8B8',
-          color: '#4A5A2C',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 14px',
-        }}
-      >
-        <RecSvg stroke="#4A5A2C">
-          <path d="M12 5v14M5 12h14" />
-        </RecSvg>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, padding: 20, borderRadius: 18, background: '#fff', border: '1px dashed #D4CDB9' }}>
+      <div>
+        <p style={{ margin: 0, color: '#2C2C2A', fontSize: 15 }}>자주 쓰는 비서를 여기에 담아두세요</p>
+        <p style={{ margin: '6px 0 0', color: '#7A6F5A', fontSize: 12 }}>필요한 비서는 전체 보기에서 바로 이용할 수 있습니다.</p>
       </div>
-      <h2
-        style={{
-          margin: 0,
-          fontFamily: FONT_SERIF,
-          fontSize: 24,
-          color: '#2C2C2A',
-          letterSpacing: 0,
-        }}
-      >
-        선택한 비서가 없습니다
-      </h2>
-      <p style={{ margin: '8px 0 18px', color: '#7A6F5A', fontSize: 13, lineHeight: 1.7 }}>
-        기록은 위 글쓰기에서 시작하고, 필요한 비서는 직접 골라 둘 수 있습니다.
-      </p>
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button type="button" onClick={onShowAll} style={pillStyle}>
-          전체 기능 보기
-        </button>
-        <button
-          type="button"
-          onClick={onManage}
-          style={{
-            ...pillStyle,
-            background: '#4A5A2C',
-            borderColor: '#4A5A2C',
-            color: '#F5F0E8',
-            fontWeight: 800,
-          }}
-        >
-          내 HARU 관리
-        </button>
-      </div>
-    </section>
+      <button type="button" onClick={onShowAll} style={pillStyle}>비서 둘러보기</button>
+    </div>
   );
 }
 
