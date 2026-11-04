@@ -19,6 +19,6 @@ export function formatResultChatMemo(content: string, sources?: ResultChatSource
   const safeSources = getSafeResultChatSources(sources);
   if (!safeSources.length) return content.trim();
   const lines = safeSources.map((source) =>
-    `${source.citationId ? `[${source.citationId}] ` : ''}${source.title || source.uri}\n${source.uri}`);
+    `${source.citationId ? `[출처 ${source.citationId}] ` : ''}${source.title || source.uri}\n${source.uri}`);
   return `${content.trim()}\n\n${resultChatSourceLabel(safeSources)}\n${lines.join('\n\n')}`;
 }

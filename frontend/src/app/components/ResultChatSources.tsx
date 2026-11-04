@@ -17,7 +17,7 @@ export function ResultChatSources({ sources }: { sources?: ResultChatSource[] })
           rel="noopener noreferrer"
           style={{ fontSize: 11, color: '#2563EB', textDecoration: 'none', wordBreak: 'break-all', overflowWrap: 'anywhere' }}
         >
-          {source.citationId ? `[${source.citationId}] ` : ''}{source.title || source.uri}
+          {source.citationId ? `[출처 ${source.citationId}] ` : ''}{source.title || source.uri}
         </a>
       ))}
     </aside>

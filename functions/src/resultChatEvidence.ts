@@ -58,8 +58,7 @@ export function buildResultChatEvidence(response: Pick<GenerateContentResponse, 
   let answer = '';
   let cursor = 0;
   let markerLength = 0;
-  // Neutralize model-written numeric citations; only metadata may assign citation numbers.
-  const clean = (text: string) => text.replace(/\[\[?\d+\]?\](?:\([^\n)]*\))?/g, '');
+  const emittedCitations = new Set<number>();
   for (const [position, indices] of [...points].sort((a, b) => a[0] - b[0])) {
     const ids = new Set<number>();
     for (const index of indices) {
@@ -73,21 +72,24 @@ export function buildResultChatEvidence(response: Pick<GenerateContentResponse, 
       }
       ids.add(citationId);
     }
-    // Plain numbered markers stay intact when the answer is saved as a memo.
-    const marker = [...ids].map((id) => `[${id}]`).join('');
+    // A distinct citation namespace preserves bracketed years, arrays and other source data.
+    const marker = [...ids].map((id) => `[출처 ${id}]`).join('');
     if (markerLength + marker.length > 500) break;
-    answer += clean(visible.slice(cursor, position)) + marker;
+    ids.forEach((id) => emittedCitations.add(id));
+    answer += visible.slice(cursor, position) + marker;
     markerLength += marker.length;
     cursor = position;
   }
-  answer += clean(visible.slice(cursor));
-  const cited = sources.filter((source) => answer.includes(`[${source.citationId}]`));
+  answer += visible.slice(cursor);
+  const cited = sources.filter((source) => emittedCitations.has(source.citationId));
   return { answer: answer.trim(), sources: cited, usedWebSearch: cited.length > 0 };
 }
 
 export function isRecordMediaQuestion(question: string): boolean {
   // Requests for a work's author/origin or an explicit lookup still use the user's search choice.
-  if (/(검색|인터넷|웹|최신|외부|출처|작가|화가|원작|제작자|역사|시세|가격)/.test(question)) return false;
+  if (/(검색|인터넷|웹|최신|외부|출처|작가|화가|원작|제작자|역사|시세|가격|오늘|내일|현재|최근|이번\s*주|날씨|기온|환율|주가|일정|운영\s*시간|영업\s*시간|입장료|법령|정책|지원금|뉴스|추천)/.test(question)) return false;
+  // Conservatively retain source selection for multiple requests, even when one is media observation.
+  if (/(그리고|또한|아울러|더불어|설명하고|분석하고|묘사하고|읽고|보여주고|알려주고|[?!.]\s*\S)/.test(question)) return false;
   return /(사진|그림|이미지|첨부|PDF|pdf)/.test(question)
     && /(어떤|무엇|뭐|내용|설명|묘사|분석|읽어|보여|보이|그려)/.test(question);
 }

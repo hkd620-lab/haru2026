@@ -25,7 +25,7 @@ test('한글·이모지 바이트 위치에 인용하고 답변에서 사용하�
   const fact = '공식 관람 시간은 오전 9시입니다.';
   const result = buildResultChatEvidence(response(prefix + fact + ' 확인 후 방문하세요.',
     [support(fact, [1], prefix)], [chunk('https://example.test/unrelated'), chunk()]));
-  assert.equal(result.answer, prefix + fact + '[1] 확인 후 방문하세요.');
+  assert.equal(result.answer, prefix + fact + '[출처 1] 확인 후 방문하세요.');
   assert.deepEqual(result.sources, [{ title: '공식 안내', uri: 'https://example.test/official', citationId: 1 }]);
 });
 
@@ -35,7 +35,7 @@ test('여러 문장·중복 URL·뒤섞인 연결은 본문 등장 순서로 번
   const result = buildResultChatEvidence(response(first + second,
     [support(second, [0, 2], first), support(first, [1, 1])],
     [chunk('https://example.test/b'), chunk('https://example.test/a'), chunk('https://example.test/a')]));
-  assert.equal(result.answer, first + '[1]' + second + '[2][1]');
+  assert.equal(result.answer, first + '[출처 1]' + second + '[출처 2][출처 1]');
   assert.equal(result.sources.length, 2);
   assert.equal(result.sources[0].uri, 'https://example.test/a');
 });
@@ -44,7 +44,7 @@ test('다중 part·thought 제외 후 위치를 연결하고 비정상 part는 �
   const text = '기록 사실.외부 사실.';
   const parts = [{ text: '내부 추론', thought: true }, { text: '기록 사실.' }, { text: '외부 사실.' }];
   const result = buildResultChatEvidence(response(text, [support('외부 사실.', [0], '', 2)], [chunk()], parts));
-  assert.equal(result.answer, text + '[1]');
+  assert.equal(result.answer, text + '[출처 1]');
   assert.equal(buildResultChatEvidence(response(text, [support('내부 추론')], [chunk()], parts)).usedWebSearch, false);
 });
 
@@ -66,18 +66,21 @@ test('틀린 인덱스·본문 불일치·잘린 문장·위험 URL·없는 chun
   assert.equal(buildResultChatEvidence(response(text, [support(text)], [chunk()], [{ text: '다른 part' }])).usedWebSearch, false);
 });
 
-test('모델이 만든 번호는 제거하고 근거 메타데이터로만 인용 번호 생성', () => {
-  const prefix = '설명[99]과 가짜 인용[[2]](https://fake.test).';
+test('연도·배열 등 대괄호 숫자 원문은 보존하고 서버 인용을 별도 표기로 구분', () => {
+  const prefix = '정부가 [2026]년에 발표한 배열 값은 [100]입니다. ';
   const fact = '확인된 사실입니다.';
   const result = buildResultChatEvidence(response(prefix + fact, [support(fact, [0], prefix)]));
-  assert.equal(result.answer, '설명과 가짜 인용.' + fact + '[1]');
+  assert.equal(result.answer, prefix + fact + '[출처 1]');
+  assert.equal(buildResultChatEvidence(response(prefix, [support(prefix)])).answer, prefix.trim() + ' [출처 1]');
 });
 
 test('첨부 관찰 질문은 기록 분석, 명시적 외부 확인은 검색 선택 유지', () => {
   for (const question of ['첨부한 사진은 어떤 사진이야?', '본문속의 그림은 어떤 그림이지?', '첨부 PDF 내용을 읽어줘']) {
     assert.equal(isRecordMediaQuestion(question), true, question);
   }
-  for (const question of ['사진 속 그림의 화가를 검색해줘', '그림의 역사와 원작을 알려줘', '최신 외부자료로 사진의 출처를 확인해줘', '내일 날씨는?']) {
+  for (const question of ['사진 속 그림의 화가를 검색해줘', '그림의 역사와 원작을 알려줘', '최신 외부자료로 사진의 출처를 확인해줘', '내일 날씨는?',
+    '사진 내용을 설명하고 오늘 서울 날씨도 알려줘', '사진을 분석하고 주변 맛집도 알려줘',
+    '첨부 PDF를 읽고 내일 환율을 설명해줘', '사진을 설명해줘. 박물관 영업시간도 알려줘']) {
     assert.equal(isRecordMediaQuestion(question), false, question);
   }
 });

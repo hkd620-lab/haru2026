@@ -24,6 +24,7 @@ let essayImageReadDelayQueueMs = [];
 const legacyGenaiCalls = [];
 let forceWebSearchError = false;
 let webSearchNotGroundedResponsesRemaining = 0;
+let emptyWebResponsesRemaining = 0;
 let webSearchDelayMs = 0;
 const RESULT_CHAT_RATE_LIMIT_FOR_TEST = 12;
 const HARULAW_ATTACH_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
@@ -225,6 +226,10 @@ class InstrumentedGoogleGenAI {
         }
         if (captured.hasGoogleSearchTool && forceWebSearchError) {
           throw new Error('injected_web_search_failure');
+        }
+        if (captured.hasGoogleSearchTool && emptyWebResponsesRemaining > 0) {
+          emptyWebResponsesRemaining -= 1;
+          return { text: '', usageMetadata: { promptTokenCount: 101, candidatesTokenCount: 0 }, candidates: [{}] };
         }
         if (captured.hasGoogleSearchTool && webSearchNotGroundedResponsesRemaining > 0) {
           webSearchNotGroundedResponsesRemaining -= 1;
@@ -982,7 +987,7 @@ async function run() {
   assert.ok(!lawRetryMessages.some((message) => message.content.includes('최신 판례')));
   await resetResultChatRateLimit(USERS.developer);
 
-  webSearchNotGroundedResponsesRemaining = 1;
+  emptyWebResponsesRemaining = 1;
   const notGroundedMonthlyBefore = await getMonthlyUsed(USERS.developer);
   const retrySucceededCallsBefore = countWebSearchCalls();
   const retrySucceededResult = await callable(USERS.developer, {
@@ -995,7 +1000,7 @@ async function run() {
   assert.strictEqual(retrySucceededResult.webSearchUsedCount, 1);
   assert.ok(retrySucceededResult.sources.length >= 1);
   assert.strictEqual(retrySucceededResult.sources[0].citationId, 1);
-  assert.ok(retrySucceededResult.answer.includes('[1]'));
+  assert.ok(retrySucceededResult.answer.includes('[출처 1]'));
   assert.strictEqual(countWebSearchCalls(), retrySucceededCallsBefore + 2);
   assert.ok(genaiCalls[genaiCalls.length - 1].contents.includes('[외부자료 검색 재시도]'));
   assert.strictEqual(await getMonthlyUsed(USERS.developer), notGroundedMonthlyBefore + 1);
@@ -1491,18 +1496,14 @@ async function run() {
   const emptyAnswerMessagesBefore = (await getMessages(USERS.developer, 'law', 'haruraw_sayu')).length;
   const emptyAnswerUploadsBefore = geminiFileUploads.length;
   const emptyAnswerDeletesBefore = geminiFileDeletes.length;
-  await assert.rejects(
-    callable(USERS.developer, {
+  const emptySearchAnswer = await callable(USERS.developer, {
       recordId: 'law',
       sourceKey: 'haruraw_sayu',
       question: '첨부 PDF의 최신 내용을 확인해줘.',
       searchPreference: 'web_confirmed',
       attachments: [attachment],
-    }),
-    (error) => error?.code === 'invalid-argument'
-      && error?.details?.reason === 'ATTACHMENT_CONTENT_UNREADABLE'
-      && error?.details?.retryable === false,
-  );
+  });
+  assert.strictEqual(emptySearchAnswer.failureReason, 'web_search_failed');
   await assertThreadSearchUsage(USERS.developer, 'law', 'haruraw_sayu', emptyAnswerUsedBefore, 0);
   assert.strictEqual(await getMonthlyUsed(USERS.developer), emptyAnswerMonthlyBefore);
   assert.strictEqual(geminiFileUploads.length, emptyAnswerUploadsBefore + 1);
@@ -1510,6 +1511,14 @@ async function run() {
   assert.strictEqual(activeGeminiFiles.size, 0);
   messages = await getMessages(USERS.developer, 'law', 'haruraw_sayu');
   assert.strictEqual(messages.length, emptyAnswerMessagesBefore);
+
+  // Record-only empty attachment answers keep the attachment-specific error.
+  await resetResultChatRateLimit(USERS.developer);
+  await assert.rejects(callable(USERS.developer, {
+    recordId: 'law', sourceKey: 'haruraw_sayu', question: '첨부 PDF의 최신 내용을 확인해줘.',
+    searchPreference: 'record_only', attachments: [attachment],
+  }), (error) => error?.code === 'invalid-argument' && error?.details?.reason === 'ATTACHMENT_CONTENT_UNREADABLE');
+  assert.strictEqual(await getMonthlyUsed(USERS.developer), emptyAnswerMonthlyBefore);
 
   await assert.rejects(
     callable(USERS.developer, {
@@ -1680,6 +1689,17 @@ async function run() {
     await callable(essayUid, { ...data, question: '사진 속 그림의 화가를 외부 검색해줘', searchPreference: 'web_confirmed' });
     assert.strictEqual(genaiCalls.length, before + 6);
     assert.ok(genaiCalls.at(-1).hasGoogleSearchTool);
+
+    const mixed = { ...data, question: '사진 내용을 설명하고 오늘 서울 날씨도 알려줘' };
+    const mixedCallsBefore = genaiCalls.length;
+    const mixedChoice = await callable(essayUid, mixed);
+    assert.strictEqual(mixedChoice.requiresConfirmation, true);
+    assert.strictEqual(genaiCalls.length, mixedCallsBefore);
+    const mixedSearch = await callable(essayUid, { ...mixed, searchPreference: 'web_confirmed' });
+    assert.strictEqual(mixedSearch.answerRoute, 'web_search');
+    assert.strictEqual(genaiCalls.at(-1).hasGoogleSearchTool, true);
+    assert.ok(genaiCalls.at(-1).contents.includes('inlineData'));
+    await resetResultChatRateLimit(essayUid);
 
     // A common 60s work deadline preserves 15s for writes and 15s recovery
     // within the 90s callable. Image delays and both model attempts share it.

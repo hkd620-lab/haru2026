@@ -7,9 +7,9 @@ import { formatResultChatMemo, getSafeResultChatSources, resultChatSourceLabel }
 
 test('메모로 저장해도 문장 인용 번호와 원문 링크가 함께 보존됨', () => {
   const sources = [{ title: '공공기관 안내', uri: 'https://example.test/policy', citationId: 1 }];
-  const text = formatResultChatMemo('외부 사실입니다.[1]', sources);
-  assert.match(text, /외부 사실입니다\.\[1\]/);
-  assert.match(text, /\[1\] 공공기관 안내\nhttps:\/\/example.test\/policy/);
+  const text = formatResultChatMemo('외부 사실입니다.[출처 1]', sources);
+  assert.match(text, /외부 사실입니다\.\[출처 1\]/);
+  assert.match(text, /\[출처 1\] 공공기관 안내\nhttps:\/\/example.test\/policy/);
   assert.equal(resultChatSourceLabel(sources), '답변 문장에 연결된 출처');
 });
 
@@ -35,7 +35,7 @@ test('실제 출처 컴포넌트가 인용 번호·안전한 링크·과거 출�
   const render = (sources) => renderToStaticMarkup(React.createElement(ResultChatSources, { sources }));
   const current = render([{ title: '기관 안내', uri: 'https://example.test/official', citationId: 1 }]);
   assert.match(current, /답변 문장에 연결된 출처/);
-  assert.match(current, /\[1\] 기관 안내/);
+  assert.match(current, /\[출처 1\] 기관 안내/);
   assert.match(current, /href="https:\/\/example.test\/official"/);
   assert.match(current, /rel="noopener noreferrer"/);
   assert.match(render([{ title: '과거 출처', uri: 'https://example.test/old' }]), /문장별 연결 미확인/);

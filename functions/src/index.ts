@@ -3762,7 +3762,7 @@ function findReusableResultChatAnswer(
     if (route === 'web_search' && (!Array.isArray(assistantMessage.sources)
       || !assistantMessage.sources.length
       || !assistantMessage.sources.every((source: any) => Number.isInteger(source.citationId)
-        && String(assistantMessage.content || '').includes(`[${source.citationId}]`)))) continue;
+        && String(assistantMessage.content || '').includes(`[출처 ${source.citationId}]`)))) continue;
     if (assistantMessage.webSearchUsed) {
       const createdAtMs = typeof assistantMessage.createdAt?.toMillis === 'function'
         ? assistantMessage.createdAt.toMillis()
@@ -4437,7 +4437,7 @@ export const chatWithResult = onCall(
       if (deadlineBoundRequest) getHaruLawRemainingWorkMs(requestWorkDeadlineMs);
       let inputTokens = addOptionalTokenCounts(null, response.usageMetadata?.promptTokenCount);
       let outputTokens = addOptionalTokenCounts(null, response.usageMetadata?.candidatesTokenCount);
-      if (!String(response.text || '').trim()) {
+      if (answerRoute !== 'web_search' && !String(response.text || '').trim()) {
         throw new Error(attachments.length > 0 ? 'attachment content could not be read' : 'empty_answer');
       }
 
