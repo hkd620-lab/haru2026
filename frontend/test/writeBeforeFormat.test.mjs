@@ -1,7 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CATEGORY_FORMATS } from '../src/app/types/haruTypes.ts';
-import { applyDraftSaveTarget, buildDraftEditorData, DRAFT_PICKER_FORMATS, WORK_ENTRY_FORMATS, WRITABLE_FORMATS } from '../src/app/records/writeBeforeFormat.ts';
+import { applyDraftSaveTarget, buildDraftEditorData, readHomeWritingDraft, DRAFT_PICKER_FORMATS, WORK_ENTRY_FORMATS, WRITABLE_FORMATS } from '../src/app/records/writeBeforeFormat.ts';
+import { RECORD_FORMAT_DESCRIPTIONS } from '../src/app/records/recordFormatDescriptions.ts';
+
+test('홈에서 넘긴 글은 같은 계정의 실제 글 형식에만 이어지고 원문을 유지한다', () => {
+  const content = '첫 줄\n  둘째 줄과 여백  ';
+  for (const format of DRAFT_PICKER_FORMATS) {
+    const state = { homeWritingDraft: { ownerUid: 'owner', content, format } };
+    assert.deepEqual(readHomeWritingDraft(state, 'owner'), state.homeWritingDraft);
+    assert.equal(readHomeWritingDraft(state, 'different-user'), null);
+    assert.equal(readHomeWritingDraft(state, undefined), null);
+    assert.ok(RECORD_FORMAT_DESCRIPTIONS[format]?.description, `${format} 작성 전후에 보여줄 설명`);
+  }
+  for (const draft of [null, {}, { ownerUid: 'owner', content: '  ', format: '일기' }, { ownerUid: 'owner', content, format: 'HARU가계부' }, { ownerUid: 'owner', content, format: '편지' }, { ownerUid: 'owner', content: 3, format: '일기' }]) {
+    assert.equal(readHomeWritingDraft({ homeWritingDraft: draft }, 'owner'), null);
+  }
+});
 
 test('형식 선택 뒤 기존 편집창의 간편·프리미엄 입력칸에 초안이 이어진다', () => {
   const source = '첫 줄\n둘째 줄';

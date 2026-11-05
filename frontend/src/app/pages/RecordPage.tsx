@@ -12,7 +12,8 @@ import { HaruLawPanel, useHaruLaw } from '../assistants/haruLaw/HaruLawPanel';
 import { PetHealthAlert, detectPetAlertLevel, type PetAlertLevel } from '../components/PetHealthAlert';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
-import { applyDraftSaveTarget, buildDraftEditorData, DRAFT_PICKER_FORMATS, WORK_ENTRY_FORMATS } from '../records/writeBeforeFormat';
+import { applyDraftSaveTarget, buildDraftEditorData, readHomeWritingDraft, WORK_ENTRY_FORMATS } from '../records/writeBeforeFormat';
+import { RecordFormatPicker } from '../components/RecordFormatPicker';
 import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
 import { startSelectedRecordPhotoReads } from '../services/selectedRecordPhoto';
 import { db } from '../../firebase';
@@ -230,6 +231,8 @@ function RecordPageContent() {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<RecordFormat[]>([]);
   const [draftContent, setDraftContent] = useState('');
+  const [pendingHomeFormat, setPendingHomeFormat] = useState<{ ownerUid: string; format: RecordFormat } | null>(null);
+  const homeDraftConsumedRef = useRef(false);
   const [draftPhotos, setDraftPhotos] = useState<DraftPhoto[]>([]);
   const draftPhotosRef = useRef<DraftPhoto[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -706,6 +709,27 @@ function RecordPageContent() {
     setFormatPickerOpen(false);
     setFormatModalOpen(true);
   };
+
+  useEffect(() => {
+    if (homeDraftConsumedRef.current) return;
+    const incoming = readHomeWritingDraft(location.state, user?.uid);
+    if (!incoming) return;
+    homeDraftConsumedRef.current = true;
+    setDraftContent(incoming.content);
+    setPendingHomeFormat({ ownerUid: incoming.ownerUid, format: incoming.format });
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, user?.uid, navigate]);
+
+  useEffect(() => {
+    if (!pendingHomeFormat || !draftContent.trim() || !user) return;
+    if (pendingHomeFormat.ownerUid !== user.uid) {
+      setDraftContent('');
+      setPendingHomeFormat(null);
+      return;
+    }
+    openDraftEditorForFormat(pendingHomeFormat.format);
+    setPendingHomeFormat(null);
+  }, [pendingHomeFormat, draftContent, user]);
 
   const finishDraftAfterSave = (recordId: string) => {
     if (recordId !== draftRecordIdRef.current) return;
@@ -1194,22 +1218,7 @@ function RecordPageContent() {
       </div>
     </div>
 
-    {formatPickerOpen && (
-      <div role="dialog" aria-modal="true" aria-label="저장할 기록 형식 선택" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl bg-white p-5">
-          <h2 className="text-lg font-semibold" style={{ color: '#1A3C6E' }}>어떤 형식으로 저장할까요?</h2>
-          <p className="mt-1 text-sm text-gray-600">애매하면 일기를 선택하세요. 작성한 글과 사진으로 AI 도움 안내가 이어집니다.</p>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {DRAFT_PICKER_FORMATS.map((format) => (
-              <button key={format} type="button" onClick={() => openDraftEditorForFormat(format)} className="rounded-lg border p-3 text-left text-sm hover:bg-yellow-50">
-                {format === '애완동물관찰일지' ? '반려동물' : format}
-              </button>
-            ))}
-          </div>
-          <button type="button" onClick={() => setFormatPickerOpen(false)} className="mt-4 w-full rounded-lg border py-2 text-sm">돌아가기</button>
-        </div>
-      </div>
-    )}
+    <RecordFormatPicker open={formatPickerOpen} afterWriting onClose={() => setFormatPickerOpen(false)} onSelect={openDraftEditorForFormat} />
 
     {diaryLearnOpen && <DiaryLearnModal onClose={() => setDiaryLearnOpen(false)} />}
     {savedFormat && (

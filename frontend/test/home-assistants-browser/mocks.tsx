@@ -1,3 +1,5 @@
+import { AI_LIBRARY_DEVELOPER_EMAIL } from '../../src/app/utils/aiLibraryAccess';
+declare const __HOME_DEVELOPER_UID__: string;
 const params = new URLSearchParams(window.location.search);
 const law = 'path:/record:{"category":"하루LAW"}';
 let selection: any = params.get('scenario') === 'existing'
@@ -9,8 +11,14 @@ let selection: any = params.get('scenario') === 'existing'
     : params.get('scenario') === 'empty'
       ? { personalized: true, assistantSelectionConfigured: true, selectedRecordFormats: ['메모'], selectedAgents: [] }
       : null;
-export function useAuth() { return { user: { uid: 'fixture-user', email: 'fixture@example.test', emailVerified: false }, loading: false }; }
+const fixtureUser = { uid: params.get('scenario') === 'developer' ? __HOME_DEVELOPER_UID__ : 'fixture-user', email: params.get('scenario') === 'library-developer' ? AI_LIBRARY_DEVELOPER_EMAIL : 'fixture@example.test', emailVerified: params.get('scenario') === 'library-developer' };
+export function useAuth() { return { user: params.get('scenario') === 'guest' ? null : fixtureUser, loading: false }; }
+export const buildTimelineMeta = () => ({});
 export const firestoreService = {
+  async saveRecord(_uid: string, data: any) {
+    document.getElementById('fixture-status')!.textContent = JSON.stringify({ savedRecord: data });
+    return data.id;
+  },
   async getHomePersonalization() { return selection; },
   async saveHomePersonalization(_uid: string, data: any) {
     if (params.get('scenario') === 'error') throw new Error('fixture-save-failure');
@@ -18,7 +26,10 @@ export const firestoreService = {
     document.getElementById('fixture-status')!.textContent = JSON.stringify(selection);
   },
 };
-export async function shouldShowAssistantOnboarding() { return false; }
+export async function shouldShowAssistantOnboarding() {
+  if (params.get('scenario') === 'onboarding-pending') return new Promise(() => {});
+  return params.get('scenario') === 'onboarding-new';
+}
 export function TimelineCollageModal() { return null; }
 export function finishLoginTrace() {}
 export function markLoginTrace() {}
