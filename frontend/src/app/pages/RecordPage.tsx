@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
 import { Calendar, Camera, Check, Pencil, X } from 'lucide-react';
 import { PageHeaderActions } from '../components/PageHeaderActions';
-import { useLocation, useNavigate } from 'react-router';
+import { Navigate, useLocation, useNavigate } from 'react-router';
 import { firestoreService, buildTimelineMeta } from '../services/firestoreService';
 import { getOrigin } from '../services/v2Origin';
 import { useAuth } from '../contexts/AuthContext';
@@ -163,6 +163,15 @@ function SortableTagItem({
 }
 
 export function RecordPage() {
+  const location = useLocation();
+  // 이전 홈·추천·북마크의 category 진입도 전용 화면으로 연결한다.
+  if ((location.state as any)?.category === '하루LAW') {
+    return <Navigate to="/haru-law" replace state={{ ...(location.state as object), resetAssistantScroll: true }} />;
+  }
+  return <RecordPageContent />;
+}
+
+function RecordPageContent() {
   const [diaryLearnOpen, setDiaryLearnOpen] = useState(false);
   const [showNovelIntro, setShowNovelIntro] = useState(false);
 

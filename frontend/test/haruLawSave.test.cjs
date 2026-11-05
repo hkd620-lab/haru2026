@@ -22,9 +22,8 @@ const dateStateSource = source.slice(source.indexOf('  const [lawSaveDate,'), so
 const dateStateJS = transformSync(dateStateSource, { loader: 'ts' }).code;
 const saveRefsSource = source.slice(source.indexOf('  const lawSaveRef = useRef(false);'), source.indexOf('  const [lawSaved,'));
 const saveRefsJS = transformSync(saveRefsSource, { loader: 'ts' }).code;
-const dateLabelOffset = source.indexOf('<label htmlFor="law-save-date"');
-const dateInputSource = source.slice(source.lastIndexOf('              <div', dateLabelOffset), source.indexOf('              {/* 검색창 */}', dateLabelOffset));
-const dateInputJS = transformSync(`return <>${dateInputSource.trim()}</>;`, { loader: 'tsx' }).code;
+const dateInputSource = source.slice(source.indexOf('  const renderSaveDate = () => ('), source.indexOf('  const renderStyledContent'));
+const dateInputJS = transformSync(`${dateInputSource}; return <>{renderSaveDate()}</>;`, { loader: 'tsx' }).code;
 const serviceSource = fs.readFileSync(path.join(root, 'frontend/src/app/services/firestoreService.ts'), 'utf8');
 const serviceMethod = serviceSource.slice(serviceSource.indexOf('  async saveRecord('), serviceSource.indexOf('  // 결과물 기반 AI 대화'));
 const serviceJS = transformSync(`class SaveService { ${serviceMethod} }; return new SaveService();`, { loader: 'ts' }).code;
@@ -185,6 +184,25 @@ test('선택 날짜 조회·실제 saveRecord의 문서 경로·id·date 일치 
   assert.equal(store.get(target).mood, '울적');
   assert.deepEqual(store.get(target).plantDetective, [{ memo: 'preserved plant' }]);
   assert.equal(store.size, 3);
+});
+
+test('전용 화면은 새 기록에 미선택 환경값을 만들지 않고 기존 환경값은 보존한다', async () => {
+  for (const existing of [null, { content: '기존 원문', formats: ['일기'], weather: '눈', temperature: '혹한', mood: '평온', photoUrls: ['existing-photo'] }]) {
+    let saved;
+    const h = harness({
+      weather: '', temperature: '', mood: '',
+      getDoc: async () => ({ exists: () => !!existing, data: () => existing }),
+      firestoreService: { saveRecord: async (_uid, data) => { saved = data; return data.id; } },
+    });
+    await h.run();
+    for (const key of ['weather', 'temperature', 'mood']) {
+      if (existing) assert.equal(saved[key], existing[key]);
+      else assert.equal(Object.hasOwn(saved, key), false);
+    }
+    assert.equal(saved.content, existing?.content || '');
+    assert.deepEqual(saved.formats, existing ? ['일기', 'HARUraw'] : ['HARUraw']);
+    assert.equal(h.state.saved, true);
+  }
 });
 
 function retryButton(notice) {

@@ -2,6 +2,8 @@ const params = new URLSearchParams(window.location.search);
 const law = 'path:/record:{"category":"하루LAW"}';
 let selection: any = params.get('scenario') === 'existing'
   ? { personalized: true, assistantSelectionConfigured: true, selectedRecordFormats: ['메모'], selectedAgents: ['path:/legal-assistant:{}'] }
+  : params.get('scenario') === 'law-selected'
+    ? { personalized: true, assistantSelectionConfigured: true, selectedRecordFormats: ['메모'], selectedAgents: [law] }
   : params.get('scenario') === 'legacy'
     ? { personalized: true, selectedRecordFormats: ['HARU가계부', '메모'], selectedAgents: [law, 'path:/legal-assistant:{}'] }
     : params.get('scenario') === 'empty'
