@@ -7,7 +7,9 @@ export interface EpubReaderGuide {
   platform: EpubReaderPlatform;
   title: string;
   steps: string[];
+  note?: string;
   linkLabel?: string;
+  linkAriaLabel?: string;
   linkUrl?: string;
 }
 
@@ -26,12 +28,14 @@ export function getEpubReaderGuide(platform: EpubReaderPlatform): EpubReaderGuid
       platform,
       title: '안드로이드에서 EPUB 여는 방법',
       steps: [
-        '안드로이드 휴대폰(갤럭시 등)에 EPUB 지원 앱이 없다면 별도 리더 앱이 필요합니다.',
-        '지원 앱이 없으면 ‘Google Play 북’을 설치할 수 있습니다.',
-        '설치 후 ‘내 파일 → 다운로드’에서 EPUB을 누르고 Play 북으로 여세요.',
-        '바로 열리지 않으면 ‘다운로드’ 또는 ‘파일’ 앱에서 EPUB의 ‘연결 프로그램 → Play 북’ 또는 ‘Play 북에 업로드’를 선택하세요. 업로드한 파일은 Play 북 → 라이브러리 → 업로드에서 찾을 수 있습니다.',
+        '휴대폰(갤럭시 등)에 EPUB 지원 앱이 없다면 아래 버튼으로 공식 Play 스토어에서 ‘Google Play 북’을 설치하세요. 이미 지원 앱이 있으면 이 단계는 건너뛰세요.',
+        '설치를 마치면 하루로 돌아와 ‘EPUB 다운로드’를 누르세요. 컴퓨터 없이 휴대폰에서 하루에 접속해 바로 내려받을 수 있습니다.',
+        '‘내 파일 → 다운로드’에서 EPUB 파일을 누르고 ‘Play 북’으로 여세요. 바로 열리지 않으면 ‘연결 프로그램 → Play 북’ 또는 ‘Play 북에 업로드’를 선택하세요.',
+        'Play 북이 파일 처리를 마치면 Play 북 → 라이브러리에서 읽을 수 있습니다.',
       ],
+      note: 'Google Play 북으로 연 EPUB은 본문과 사진이 사용자의 Google 계정에 업로드되어 보관됩니다. 계정에 올리지 않으려면 휴대폰 안에서만 파일을 여는 EPUB 리더 앱을 사용할 수 있습니다.',
       linkLabel: 'Google Play 북 설치하기',
+      linkAriaLabel: '공식 Play 스토어에서 Google Play 북 설치하기 (새 창에서 열림)',
       linkUrl: GOOGLE_PLAY_BOOKS_URL,
     };
   }
@@ -51,7 +55,7 @@ export function getEpubReaderGuide(platform: EpubReaderPlatform): EpubReaderGuid
     steps: [
       'Mac은 기본 앱 ‘도서(Books)’로 열 수 있습니다.',
       'Windows는 EPUB을 지원하는 전자책 뷰어 프로그램이 필요합니다.',
-      '휴대폰에서 보려면 파일을 휴대폰으로 옮긴 뒤 위 안내대로 전자책 앱에서 여세요.',
+      '휴대폰에서 보려면 휴대폰에서 하루에 접속해 EPUB을 바로 내려받으면 됩니다. 휴대폰에서 이 안내를 열면 기기에 맞는 방법이 표시됩니다.',
     ],
   };
 }
@@ -63,7 +67,7 @@ export function getCurrentEpubReaderGuide(): EpubReaderGuide {
 
 // 저장 완료 알림에 붙이는 한 줄 안내
 export function getEpubReaderHint(guide: EpubReaderGuide = getCurrentEpubReaderGuide()): string {
-  if (guide.platform === 'android') return '파일이 열리지 않으면 ‘Google Play 북’ 같은 전자책 앱이 필요합니다.';
+  if (guide.platform === 'android') return '‘내 파일 → 다운로드’에서 EPUB을 눌러 Play 북으로 여세요. 지원 앱이 없으면 ‘Google Play 북’ 같은 전자책 앱이 필요합니다.';
   if (guide.platform === 'ios') return '‘파일’ 앱에서 EPUB을 눌러 ‘도서’ 앱으로 여세요.';
   return 'EPUB은 전자책 앱(Mac ‘도서’, Windows 전자책 뷰어)에서 열립니다.';
 }

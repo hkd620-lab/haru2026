@@ -1,0 +1,17 @@
+# UTC: 2026-11-05T05:33:03Z
+# HEAD: 90ca414ed40b3593422b204fb876c74f28982442  BASE: a2db466523f306f5e835d460d4b618c6e6cc1982
+# method: functions/src/index.ts 의 '^export ' 줄(Cloud Functions 배포 목록 원천)을 BASE와 HEAD에서 추출해 diff
+# BASE export 줄 수: 77
+# HEAD export 줄 수: 77
+# exportEpub 관련 줄(HEAD):
+73:export { exportEpub } from './epubExport';
+----- diff BASE vs HEAD (비어 있으면 변화 0개) -----
+----- diff exit code: 0 -----
+
+# 참고: 변경된 모듈 functions/src/epubContent.ts 의 export 비교(모듈 내부용, index.ts 미노출)
+12a13,14
+> export const EPUB_STYLESHEET = `img.haru-photo{${PHOTO_STYLE}max-height:95vh;break-inside:avoid;page-break-inside:avoid;}`;
+> export function epubPhotoHtml
+----- diff exit code: 1 -----
+# 참고: functions/src/epubExport.ts 의 export 비교
+----- diff exit code: 0 -----

@@ -125,3 +125,40 @@ test('단건도 로그인·유료 구독 검사를 통과해야 한다', async (
   plan = 'free';
   try { await assert.rejects(run(request), { code: 'permission-denied' }); } finally { plan = 'basic'; }
 });
+
+test('실제 EPUB: 사진 2장이 내장되고, 리더 페이지 나눔(단 설정)을 덮어쓰지 않으며 사진은 반응형으로 표시된다', async () => {
+  const http = require('node:http');
+  // 1x1 PNG
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const server = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'image/png' }); res.end(png); });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const record = records.get(recordId);
+  records.set(recordId, { ...record, diary_images: JSON.stringify([`${base}/1.png`, `${base}/2.png`]) });
+  try {
+    const { singleRecordId, ...rangeRequest } = request;
+    for (const data of [request, { ...rangeRequest, recordIds: [recordId] }]) {
+      const result = await run(data);
+      assert.equal(result.skippedPhotos, 0);
+      const zip = await JSZip.loadAsync(savedBuffer);
+      const images = Object.values(zip.files).filter((file) => file.name.startsWith('OEBPS/images/') && !file.dir);
+      assert.equal(images.length, 2);
+      const css = await zip.file('OEBPS/style.css').async('string');
+      assert.doesNotMatch(css, /column|(^|[},\s])(html|body|\*)\s*[{,]/, '리더의 html/body 페이지 나눔을 덮어쓰지 않는다');
+      assert.match(css, /img\.haru-photo\{[^}]*display:block;[^}]*max-width:100%;[^}]*height:auto;/);
+      const chapter = (await Promise.all(Object.values(zip.files).filter((file) => /\.xhtml$/.test(file.name)).map((file) => file.async('string'))))
+        .find((html) => html.includes('haru-photo'));
+      const imgs = chapter.match(/<img [^>]*>/g);
+      assert.equal(imgs.length, 2);
+      for (const img of imgs) {
+        assert.match(img, /class="haru-photo"/);
+        assert.match(img, /src="images\/[^"]+\.png"/);
+        assert.match(img, /style="display:block;max-width:100%;height:auto;/);
+      }
+      assert.doesNotMatch(chapter, /column/);
+    }
+  } finally {
+    records.set(recordId, record);
+    server.close();
+  }
+});

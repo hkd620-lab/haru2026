@@ -21,11 +21,13 @@ export function EpubReaderNotice({ defaultOpen }: { defaultOpen?: boolean }) {
           <ol style={{ margin: 0, paddingLeft: 18 }}>
             {guide.steps.map((step) => <li key={step}>{step}</li>)}
           </ol>
+          {guide.note && <p style={{ margin: '6px 0 0', color: '#64748B' }}>{guide.note}</p>}
           {guide.linkUrl && (
             <a
               href={guide.linkUrl}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label={guide.linkAriaLabel}
               style={{ display: 'inline-block', marginTop: 8, padding: '6px 10px', borderRadius: 8, background: '#1A3C6E', color: '#fff', fontWeight: 700, textDecoration: 'none' }}
             >
               {guide.linkLabel} →

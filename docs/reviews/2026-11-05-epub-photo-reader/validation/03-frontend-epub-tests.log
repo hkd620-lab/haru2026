@@ -1,0 +1,25 @@
+# UTC: 2026-11-05T05:32:17Z
+# HEAD: 90ca414ed40b3593422b204fb876c74f28982442
+# cwd: /private/tmp/haru-epub-photo-reader-fix/frontend
+# command: node --import tsx --test test/epubReaderGuide.test.mjs test/epubExportGuide.test.mjs test/epubSingleRecord.test.mjs
+----- output (stdout+stderr) -----
+✔ 안드로이드는 사진·리더 안내와 공식 설치 링크를 먼저 보여 주고 명시적으로 다운로드한다 (2.257625ms)
+✔ 취소 버튼·Escape·창 닫기는 다운로드하지 않고 안내창을 정리한다 (1.641083ms)
+✔ 아이폰과 컴퓨터에는 기기에 맞는 안내를 표시한다 (1.700958ms)
+✔ 기기 판별: 갤럭시(안드로이드)·아이폰·아이패드(데스크톱 표시)·PC (0.722625ms)
+✔ 안드로이드 안내: 지원 앱이 없을 때의 설치 안내와 공식 링크 (0.23025ms)
+✔ EPUB 경로 네 곳은 공통 서비스를 거치고 안내 취소를 실패로 표시하지 않는다 (2.975333ms)
+✔ EPUB 저장 화면 4곳에 안내가 연결돼 있다 (0.632125ms)
+✔ 안드로이드 안내 순서: 설치(있으면 생략) → 하루로 돌아와 다운로드 → 내 파일에서 Play 북으로 열기 → 라이브러리 (0.236333ms)
+✔ 저장 화면 안내 패널도 계정 업로드 설명과 새 창 설명을 표시한다 (0.217375ms)
+✔ 단건 서비스는 날짜와 선택 ID를 분리해 전송하고 다운로드한다 (71.749834ms)
+✔ SAYU 단건 버튼은 문서 ID를 날짜 대신 쓰지 않고 별도 인자로 넘긴다 (0.52075ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 207.376875
+----- exit code: 0 -----
