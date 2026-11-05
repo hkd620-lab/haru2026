@@ -37,6 +37,14 @@ test('직접 인용·법령 번호·코드 블록의 내용을 고치지 않는�
   const indented = '    확인된 사실\n    제8조의2';
   assert.equal(formatHaruLawAnswer(indented), indented);
   assert.match(render(indented), /<pre><code>/);
+  const proseWithCode = '본문과 코드가 이어집니다.\n```text\n첫 줄\n\n다음 줄\n```';
+  assert.deepEqual(splitHaruLawAnswer(proseWithCode), {summary:'',analysis:proseWithCode});
+  assert.match(render(proseWithCode), /<pre><code class="language-text">첫 줄\n\n다음 줄\n<\/code><\/pre>/);
+});
+
+test('빈 줄 없이 저장된 옛 답변도 파일명·문장·검증코드의 줄 구분을 유지한다', () => {
+  const html = render('PDF 파일:\n첫 문장: 원문입니다.\n검증코드: PDF339-K7');
+  assert.match(html, /PDF 파일:<br\/>\n첫 문장: 원문입니다\.<br\/>\n검증코드: PDF339-K7/);
 });
 
 test('AI·첨부 문서의 HTML과 위험한 링크를 실행 가능한 내용으로 렌더링하지 않는다', () => {

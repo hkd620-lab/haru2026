@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 
 const sectionTitles = new Set([
   '확인된 사실', '추가 확인이 필요한 사실', '법적으로 말할 수 있는 범위',
@@ -35,7 +36,8 @@ export function formatHaruLawAnswer(text: string): string {
 export function splitHaruLawAnswer(text: string): { summary: string; analysis: string } {
   const answer = formatHaruLawAnswer(text);
   // 제목이나 목록으로 시작한 답변에서 첫 제목을 '핵심 답변'으로 떼어내지 않는다.
-  if (/^(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|>|`{3}|~{3}|\|)/.test(answer)) {
+  if (/^(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|>|`{3}|~{3}|\|)/.test(answer)
+    || /\n[ \t]*(?:`{3}|~{3})/.test(answer)) {
     return { summary: '', analysis: answer };
   }
   const boundary = answer.search(/\n\s*\n|\n(?=#{1,6}\s)/);
@@ -48,7 +50,7 @@ export function HaruLawAnswer({ text }: { text: string }) {
   return (
     <div className="haru-law-answer">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkBreaks]}
         skipHtml
         components={{
           a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>,
