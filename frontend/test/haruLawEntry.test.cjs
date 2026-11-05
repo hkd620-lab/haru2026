@@ -9,7 +9,8 @@ const read = p => fs.readFileSync(path.join(__dirname, '../src/app', p), 'utf8')
 const panelSource = read('assistants/haruLaw/HaruLawPanel.tsx');
 const helper = panelSource.slice(panelSource.indexOf('function getLawEasySummary'), panelSource.indexOf('type UseHaruLawParams'));
 const panelJS = transformSync(helper + panelSource.slice(panelSource.indexOf('export function HaruLawPanel')).replace('export function', 'function'), { loader: 'tsx' }).code;
-const Panel = new Function('React', 'HARULAW_ATTACH_MAX_FILES', 'Paperclip', 'GrapeLoadingMini', 'HARULAW_ATTACHMENT_ACCEPT', 'getHaruLawAttachmentLabel', panelJS + '; return HaruLawPanel;')(React, 5, () => null, () => null, '.pdf,.hwp,.hwpx,.txt', mime => mime);
+// 답변 타이포그래피·마크다운 안전성은 haruLawAnswer.test.mjs에서 실제 컴포넌트로 검증한다.
+const Panel = new Function('React', 'HARULAW_ATTACH_MAX_FILES', 'Paperclip', 'GrapeLoadingMini', 'HARULAW_ATTACHMENT_ACCEPT', 'getHaruLawAttachmentLabel', 'HaruLawAnswer', 'splitHaruLawAnswer', panelJS + '; return HaruLawPanel;')(React, 5, () => null, () => null, '.pdf,.hwp,.hwpx,.txt', mime => mime, ({text}) => React.createElement('div', null, text), text => ({summary:text,analysis:''}));
 const law = extra => ({ setLawQuery: () => {}, handleLawSaveDateChange: () => {}, lawQuery: '', lawSaveDate: '2026-11-05', lawGuideConfirmed: false, lawResults: [], lawAttachments: [], lawSearchHistory: {current:[]}, lawFileInputRef: {current:null}, isLawPaidUser: true, ...extra });
 const render = (extra = {}, standalone = true) => renderToStaticMarkup(React.createElement(Panel, {law:law(extra), standalone}));
 

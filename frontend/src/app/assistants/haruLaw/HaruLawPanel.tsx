@@ -17,6 +17,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import type { RefObject } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
+import { HaruLawAnswer, splitHaruLawAnswer } from '../../components/HaruLawAnswer';
 
 const HARULAW_ATTACH_MAX_FILES = 5;
 const HARULAW_ATTACH_ALLOWED_TYPES = HARULAW_ATTACHMENT_TYPES;
@@ -493,6 +494,7 @@ export function HaruLawPanel({ law, standalone = false }: { law: HaruLawState; s
     handleEasyExplain,
     isLawPaidUser,
   } = law;
+  const answerParts = splitHaruLawAnswer(lawSummary || '관련 조문을 바탕으로 검토가 필요합니다. 사례관계에 따라 실제 판단은 달라질 수 있습니다.');
   const renderSaveDate = () => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
       <label htmlFor="law-save-date" style={{ fontSize: 13, color: '#1A3C6E' }}>저장 날짜</label>
@@ -789,14 +791,14 @@ export function HaruLawPanel({ law, standalone = false }: { law: HaruLawState; s
                   <p style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 700, lineHeight: 1.6, marginBottom: 12 }}>
                     {activeLawQuery}
                   </p>
-                  <p style={{ fontSize: 12, color: '#6B7280', fontWeight: 800, marginBottom: 6 }}>핵심 답변</p>
-                  <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, marginBottom: 12 }}>
-                    {lawSummary || '관련 조문을 바탕으로 검토가 필요합니다. 사례관계에 따라 실제 판단은 달라질 수 있습니다.'}
-                  </p>
-                  <p style={{ fontSize: 12, color: '#6B7280', fontWeight: 800, marginBottom: 6 }}>AI 분석</p>
-                  <p style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.7, marginBottom: 12 }}>
-                    아래 관련 조문을 기준으로 쉬운 해석을 확인할 수 있습니다. 단정적인 결론이 아니라 가능성, 주의점, 추가 확인이 필요한 부분을 중심으로 보세요.
-                  </p>
+                  {answerParts.summary && <div style={{ marginBottom: 20 }}>
+                    <p style={{ fontSize: 12, color: '#6B7280', fontWeight: 800, marginBottom: 10 }}>핵심 답변</p>
+                    <HaruLawAnswer text={answerParts.summary} />
+                  </div>}
+                  {answerParts.analysis && <div style={{ marginBottom: 20 }}>
+                    <p style={{ fontSize: 12, color: '#6B7280', fontWeight: 800, marginBottom: 10 }}>AI 분석</p>
+                    <HaruLawAnswer text={answerParts.analysis} />
+                  </div>}
                   <p style={{ fontSize: 11, color: '#92400E', lineHeight: 1.6, margin: 0 }}>
                     본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체하지 않습니다.
                   </p>

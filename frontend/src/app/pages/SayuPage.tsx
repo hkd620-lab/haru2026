@@ -1,5 +1,6 @@
 import { readSelectedRecordPhoto } from '../services/selectedRecordPhoto';
 import { getHaruLawAttachmentLabel } from '../utils/haruLawAttachment';
+import { HaruLawAnswer, splitHaruLawAnswer } from '../components/HaruLawAnswer';
 import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -5880,12 +5881,7 @@ export function SayuPage() {
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
             {(() => {
-              const cleanedSummary = cleanHaruLawMarkdown(harurawModal.summary);
-              const summaryLines = cleanedSummary.split('\n').filter(Boolean);
-              const coreSummary = summaryLines[0] || '관련 조문을 바탕으로 검토가 필요합니다. 사례관계에 따라 실제 판단은 달라질 수 있습니다.';
-              const analysisLines = summaryLines.length > 1
-                ? summaryLines.slice(1)
-                : ['아래 관련 조문과 실제 사실관계를 함께 확인해야 합니다. 단정적인 결론보다 가능성, 주의점, 추가 확인 사항을 중심으로 검토하세요.'];
+              const answerParts = splitHaruLawAnswer(harurawModal.summary || '관련 조문을 바탕으로 검토가 필요합니다. 사례관계에 따라 실제 판단은 달라질 수 있습니다.');
               const lawArticles = parseHaruLawArticles(harurawModal.articles);
               const sectionStyle = {
                 padding: 16,
@@ -5942,12 +5938,10 @@ export function SayuPage() {
                     )}
                   </div>
 
-                  <div style={sectionStyle}>
+                  {answerParts.summary && <div style={sectionStyle}>
                     <p style={labelStyle}>핵심 답변</p>
-                    <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, margin: 0 }}>
-                      {coreSummary}
-                    </p>
-                  </div>
+                    <HaruLawAnswer text={answerParts.summary} />
+                  </div>}
 
                   {lawArticles.length > 0 && (
                     <div style={sectionStyle}>
@@ -5972,16 +5966,10 @@ export function SayuPage() {
                     </div>
                   )}
 
-                  <div style={sectionStyle}>
+                  {answerParts.analysis && <div style={sectionStyle}>
                     <p style={labelStyle}>AI 분석</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {analysisLines.map((line, idx) => (
-                        <p key={idx} style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.7, margin: 0 }}>
-                          {line}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
+                    <HaruLawAnswer text={answerParts.analysis} />
+                  </div>}
 
                   {/* 하루LAW 추가 질문 — 기존 결과물 AI 대화(ResultChatModal) 재사용 */}
                   {harurawModal.recordId && (() => {
