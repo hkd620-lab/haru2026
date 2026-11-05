@@ -1089,6 +1089,9 @@ export function HomePageV2() {
         <HomeRecordComposer
           key={currentUserUid || 'guest'}
           content={homeDraftContent}
+          signedIn={Boolean(currentUserUid)}
+          ready={Boolean(currentUserUid) && onboardingGateReady}
+          onLogin={() => navigate('/login')}
           onContentChange={(content) => setHomeWriting({ ownerUid: currentUserUid, content })}
           onContinue={(content, format) => {
             if (!currentUserUid) { navigate('/login'); return; }
