@@ -1,4 +1,5 @@
 import { readSelectedRecordPhoto } from '../services/selectedRecordPhoto';
+import { getHaruLawAttachmentLabel } from '../utils/haruLawAttachment';
 import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -5929,7 +5930,7 @@ export function SayuPage() {
                               {isImage && url ? (
                                 <img src={url} alt={att.fileName} style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />
                               ) : (
-                                <span style={{ fontSize: 11, fontWeight: 900, color: '#1A3C6E' }}>PDF</span>
+                                <span style={{ fontSize: 11, fontWeight: 900, color: '#1A3C6E' }}>{getHaruLawAttachmentLabel(att.mimeType)}</span>
                               )}
                               <span style={{ fontSize: 12, color: '#1A3C6E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {att.fileName}
