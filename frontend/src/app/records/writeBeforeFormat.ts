@@ -17,6 +17,19 @@ export const WRITABLE_FORMATS = WRITABLE_CANDIDATES.filter((format) => ![
 export const WORK_ENTRY_FORMATS: RecordFormat[] = [...CATEGORY_FORMATS['업무'], '주식거래일지'];
 export const DRAFT_PICKER_FORMATS: RecordFormat[] = [...WRITABLE_FORMATS, '주식거래일지'];
 
+export type HomeWritingDraft = { ownerUid: string; content: string; format: RecordFormat };
+
+// 홈에서 작성한 글은 기존 기록 편집창으로만 넘긴다. 다른 계정·전용 장부 형식은 받지 않는다.
+export function readHomeWritingDraft(state: unknown, currentUid: string | undefined): HomeWritingDraft | null {
+  if (!currentUid || !state || typeof state !== 'object') return null;
+  const draft = (state as { homeWritingDraft?: unknown }).homeWritingDraft;
+  if (!draft || typeof draft !== 'object') return null;
+  const { ownerUid, content, format } = draft as Partial<HomeWritingDraft>;
+  if (ownerUid !== currentUid || typeof content !== 'string' || !content.trim()) return null;
+  if (!DRAFT_PICKER_FORMATS.includes(format as RecordFormat)) return null;
+  return { ownerUid, content, format: format as RecordFormat };
+}
+
 const PREMIUM_DRAFT_FIELD: Partial<Record<RecordFormat, string>> = {
   '일기': 'diary_여백',
   '에세이': 'essay_space',

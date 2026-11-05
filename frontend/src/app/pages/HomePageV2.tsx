@@ -10,6 +10,11 @@ import { shouldShowAssistantOnboarding } from '../services/assistantOnboardingSe
 import { firestoreService, type HomePersonalizationSettings } from '../services/firestoreService';
 import { finishLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 import { getHomeAssistantSelection } from '../utils/homeAssistantSelection';
+import { HomeRecordComposer } from '../components/HomeRecordComposer';
+import { RECORD_FORMAT_DESCRIPTIONS } from '../records/recordFormatDescriptions';
+import type { RecordFormat } from '../types/haruTypes';
+import { HOME_ASSISTANT_NEEDS } from '../utils/homeAssistantDescriptions';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../components/ui/dialog';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
@@ -527,6 +532,8 @@ export function HomePageV2() {
   const currentUserUid = user?.uid ?? null;
   const currentUserUidRef = useRef<string | null>(currentUserUid);
   currentUserUidRef.current = currentUserUid;
+  const [homeWriting, setHomeWriting] = useState({ ownerUid: currentUserUid, content: '' });
+  const homeDraftContent = homeWriting.ownerUid === currentUserUid ? homeWriting.content : '';
   const isDeveloper = user?.uid === DEVELOPER_UID;
   const canUseAiLibrary = hasAiLibraryAccess(user?.email, user?.emailVerified);
   // 개발자 전용 항목은 일반 사용자 홈에서 비노출
@@ -548,7 +555,7 @@ export function HomePageV2() {
   }, []);
   const today = useMemo(() => todayLabel(now), [now]);
   const timeText = clockLabel(now);
-  const greetingText = greetingLabel(now);
+  const [previewAgent, setPreviewAgent] = useState<Agent | null>(null);
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
   const [personalizationModalOpen, setPersonalizationModalOpen] = useState(false);
   const [personalizationSaving, setPersonalizationSaving] = useState(false);
@@ -873,12 +880,12 @@ export function HomePageV2() {
           .v2-rec { padding: 12px 10px !important; gap: 6px !important; border-radius: 14px !important; }
           .v2-rec > span:first-of-type { width: 38px !important; height: 38px !important; border-radius: 10px !important; }
           .v2-rec > span:nth-of-type(2) { font-size: 12px !important; }
-          .v2-rec > span:nth-of-type(3) { font-size: 9px !important; margin-top: -4px !important; }
+          .v2-rec > span:nth-of-type(3) { font-size: 13px !important; line-height: 1.6 !important; margin-top: 0 !important; color: #646B57 !important; }
 
           [data-v2="agent"] { padding: 12px !important; gap: 8px !important; min-height: 112px !important; border-radius: 14px !important; }
           [data-v2="agent"] > div:first-of-type { width: 38px !important; height: 38px !important; border-radius: 10px !important; }
           [data-v2="agent-title"] { font-size: 13px !important; }
-          [data-v2="agent-sub"] { font-size: 10px !important; margin-top: 3px !important; line-height: 1.4 !important; }
+          [data-v2="agent-sub"] { font-size: 13px !important; margin-top: 3px !important; line-height: 1.4 !important; }
           [data-v2="agent-tag"] { font-size: 8px !important; padding: 2px 6px !important; margin-top: 6px !important; }
 
           [data-v2="cta"] { padding: 16px 18px !important; font-size: 14px !important; border-radius: 18px !important; margin-top: 4px !important; }
@@ -1078,287 +1085,26 @@ export function HomePageV2() {
           </div>
         </header>
 
-        {/* 온보딩(사용 안내) 배너 — 처음 사용자가 클릭 한 번으로 안내를 다시 볼 수 있게 */}
+        <p style={{ fontSize: 13, color: '#646B57', margin: '0 0 14px' }}>{today.big} · {timeText}</p>
+        <HomeRecordComposer
+          key={currentUserUid || 'guest'}
+          content={homeDraftContent}
+          onContentChange={(content) => setHomeWriting({ ownerUid: currentUserUid, content })}
+          onContinue={(content, format) => {
+            if (!currentUserUid) { navigate('/login'); return; }
+            navigate('/record', { state: { from: '/v2', homeWritingDraft: { ownerUid: currentUserUid, content, format } } });
+          }}
+          onBrowseFormats={() => {
+            setHomeViewMode('all');
+            window.requestAnimationFrame(() => document.getElementById('home-record-formats')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+          }}
+        />
         {!onboardingBannerHidden && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              background: 'linear-gradient(135deg, #4A5A2C 0%, #5C6E36 100%)',
-              color: '#F5F0E8',
-              borderRadius: 18,
-              padding: '14px 16px',
-              marginBottom: 20,
-              boxShadow: '0 10px 28px -18px rgba(74,90,44,0.55)',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => navigate('/onboarding')}
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                background: 'transparent',
-                border: 'none',
-                color: 'inherit',
-                cursor: 'pointer',
-                textAlign: 'left',
-                minWidth: 0,
-              }}
-            >
-              <span
-                aria-hidden="true"
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  background: 'rgba(245,240,232,0.18)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  fontSize: 20,
-                }}
-              >
-                👋
-              </span>
-              <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 800 }}>처음이신가요? HARU 사용 안내 보기</span>
-                <span style={{ fontSize: 11, opacity: 0.85 }}>
-                  기록·SAYU·비서실을 1분 만에 둘러보세요
-                </span>
-              </span>
-              <span
-                aria-hidden="true"
-                style={{
-                  marginLeft: 'auto',
-                  fontSize: 13,
-                  fontWeight: 800,
-                  whiteSpace: 'nowrap',
-                  background: 'rgba(245,240,232,0.2)',
-                  borderRadius: 999,
-                  padding: '6px 12px',
-                  flexShrink: 0,
-                }}
-              >
-                안내 보기 →
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={dismissOnboardingBanner}
-              aria-label="안내 배너 닫기"
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 999,
-                border: '1px solid rgba(245,240,232,0.4)',
-                background: 'transparent',
-                color: 'inherit',
-                cursor: 'pointer',
-                flexShrink: 0,
-                fontSize: 14,
-                lineHeight: 1,
-              }}
-            >
-              ✕
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <button type="button" onClick={() => navigate('/onboarding')} style={{ ...pillStyle, fontSize: 13 }}>처음이세요? 사용 안내 보기 →</button>
+            <button type="button" onClick={dismissOnboardingBanner} aria-label="안내 배너 닫기" style={{ ...pillStyle, minWidth: 44, minHeight: 44 }}>✕</button>
           </div>
         )}
-
-        {/* HERO ROW */}
-        <div
-          data-v2="hero-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1.55fr 1fr',
-            gap: 16,
-            marginBottom: 32,
-          }}
-        >
-          {/* Hero date */}
-          <section
-            data-v2="hero-date"
-            style={{
-              position: 'relative',
-              background: '#fff',
-              border: '1px solid #E5DFD0',
-              borderRadius: 24,
-              padding: '36px 40px 32px',
-              overflow: 'hidden',
-              minHeight: 260,
-            }}
-          >
-            <div
-              data-v2="hero-date-blob1"
-              style={{
-                position: 'absolute',
-                top: -54,
-                right: 90,
-                width: 220,
-                height: 220,
-                borderRadius: '50%',
-                background: '#D4DEA0',
-                opacity: 0.42,
-              }}
-            />
-            <div
-              data-v2="hero-date-blob2"
-              style={{
-                position: 'absolute',
-                top: 28,
-                right: -44,
-                width: 160,
-                height: 160,
-                borderRadius: '50%',
-                background: '#C9C0DE',
-                opacity: 0.55,
-              }}
-            />
-            <div
-              data-v2="hero-date-blob3"
-              style={{
-                position: 'absolute',
-                bottom: -36,
-                right: 220,
-                width: 88,
-                height: 88,
-                borderRadius: '50%',
-                background: '#E8B894',
-                opacity: 0.28,
-              }}
-            />
-
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div
-                data-v2="hero-date-cap"
-                style={{
-                  fontFamily: FONT_EN,
-                  fontSize: 12,
-                  fontWeight: 500,
-                  letterSpacing: 4,
-                  textTransform: 'uppercase',
-                  color: '#B85C2E',
-                }}
-              >
-                {today.cap}
-              </div>
-              <div
-                data-v2="hero-date-num"
-                style={{
-                  fontFamily: FONT_SERIF,
-                  fontSize: 44,
-                  fontWeight: 700,
-                  color: '#4A5A2C',
-                  lineHeight: 1,
-                  letterSpacing: '-0.02em',
-                  marginTop: 14,
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  gap: 10,
-                  whiteSpace: 'nowrap',
-                  flexWrap: 'wrap',
-                }}
-              >
-                {today.big}
-              </div>
-              <div
-                data-v2="hero-date-headline"
-                style={{
-                  fontFamily: FONT_SERIF,
-                  fontSize: 22,
-                  color: '#2C2C2A',
-                  marginTop: 24,
-                  fontWeight: 400,
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                간편하게,{' '}
-                <b style={{ color: '#4A5A2C', fontWeight: 700 }}>쓸모있게</b>{' '}
-                남기다
-              </div>
-              <div
-                data-v2="hero-date-chips"
-                style={{
-                  display: 'flex',
-                  gap: 10,
-                  marginTop: 28,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <Chip color="calm">
-                  <ChipSvg>
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M12 7v5l3 2" />
-                  </ChipSvg>
-                  {timeText}
-                </Chip>
-              </div>
-            </div>
-          </section>
-
-          {/* Greet */}
-          <aside
-            data-v2="hero-greet"
-            style={{
-              background: '#fff',
-              border: '1px solid #E5DFD0',
-              borderRadius: 24,
-              padding: 28,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: 260,
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                content: '""',
-                position: 'absolute',
-                top: -36,
-                left: -36,
-                width: 140,
-                height: 140,
-                borderRadius: '50%',
-                background: '#E0E8B8',
-                opacity: 0.6,
-              }}
-            />
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div
-                data-v2="hero-greet-cap"
-                style={{
-                  fontFamily: FONT_EN,
-                  fontSize: 11,
-                  letterSpacing: 3,
-                  textTransform: 'uppercase',
-                  fontWeight: 500,
-                  color: '#888780',
-                }}
-              >
-                {greetingText}
-              </div>
-              <h3
-                data-v2="hero-greet-title"
-                style={{
-                  fontFamily: FONT_SERIF,
-                  fontSize: 26,
-                  fontWeight: 700,
-                  color: '#2C2C2A',
-                  margin: '12px 0 10px',
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                오늘도 한 줄, 남겨볼까요?
-              </h3>
-            </div>
-          </aside>
-        </div>
 
         <section
           data-v2="my-haru-controls"
@@ -1396,8 +1142,8 @@ export function HomePageV2() {
         {isPersonalizationPending && <HomePersonalizationSkeleton />}
 
         {/* RECORDS SECTION */}
-        {!isPersonalizationPending && (
-        <section data-v2="section" style={{ marginBottom: 36 }}>
+        {!isPersonalizationPending && homeViewMode === 'all' && (
+        <section id="home-record-formats" data-v2="section" style={{ marginBottom: 36, scrollMarginTop: 20 }}>
           <SectionHead
             iconBg="#E0E8B8"
             iconStroke="#4A5A2C"
@@ -1413,14 +1159,7 @@ export function HomePageV2() {
               </>
             }
           />
-          <button
-            type="button"
-            onClick={() => navigate('/record', { state: { from: '/v2' } })}
-            className="v2-pill"
-            style={{ width: '100%', padding: '18px 20px', marginBottom: 16, borderRadius: 18, border: '1px solid #4A5A2C', background: '#E0E8B8', color: '#2C2C2A', fontSize: 17, fontWeight: 800, textAlign: 'left', cursor: 'pointer' }}
-          >
-            ✍️ 글쓰기 <span style={{ display: 'block', marginTop: 4, fontSize: 12, fontWeight: 400 }}>먼저 글을 쓰고 저장할 때 형식을 고르세요.</span>
-          </button>
+          <p style={{ fontSize: 14, color: '#646B57', marginBottom: 14 }}>남기고 싶은 내용에 맞는 형식을 골라보세요. 형식별 작성 화면으로 이어집니다.</p>
           <div
             data-v2="records-grid"
             style={{
@@ -1433,7 +1172,9 @@ export function HomePageV2() {
               <button
                 key={r.label}
                 type="button"
-                onClick={() => navigate('/record', { state: { format: r.format, from: '/v2' } })}
+                onClick={() => navigate('/record', { state: homeDraftContent.trim() && currentUserUid
+                  ? { from: '/v2', homeWritingDraft: { ownerUid: currentUserUid, content: homeDraftContent, format: r.format } }
+                  : { format: r.format, from: '/v2' } })}
                 className="v2-rec"
                 style={{
                   background: '#fff',
@@ -1481,15 +1222,15 @@ export function HomePageV2() {
                 </span>
                 <span
                   style={{
-                    fontSize: 10,
-                    color: '#888780',
-                    marginTop: -8,
-                    letterSpacing: '0.04em',
+                    fontSize: 13,
+                    color: '#646B57',
+                    marginTop: 0,
+                    lineHeight: 1.6,
                     position: 'relative',
                     zIndex: 1,
                   }}
                 >
-                  {r.sub}
+                  {RECORD_FORMAT_DESCRIPTIONS[r.format as RecordFormat]?.description ?? r.sub}
                 </span>
               </button>
             ))}
@@ -1504,8 +1245,8 @@ export function HomePageV2() {
             iconBg="#DDD0E8"
             iconStroke="#5A4E7A"
             title="HARU 비서실"
-            sub="일상 곁의 작은 AI 동료"
-            badge={`${homeAgents.length}가지 비서`}
+            sub="돈 관리부터 정보 찾기까지, 필요한 도움을 골라보세요."
+            badge={`${visibleAgents.length}가지 비서`}
             badgeDot="#5A4E7A"
             icon={
               <>
@@ -1514,6 +1255,17 @@ export function HomePageV2() {
               </>
             }
           />
+          <p style={{ fontSize: 14, color: '#646B57', margin: '0 0 14px' }}>HARU 비서는 돈을 기록하고, 필요한 정보를 찾고, 생활 속 궁금한 점을 정리하도록 돕는 도구예요.</p>
+          {agentViewMode === 'my' && (
+            <div style={{ display: 'grid', gap: 8, marginBottom: 18 }}>
+              {visibleAgents.filter((agent) => ['HARU가계부', '하루LAW', '하루식물탐정'].includes(agent.label) && !homeAgents.includes(agent)).map((agent) => (
+                <button type="button" key={agent.label} onClick={() => setPreviewAgent(agent)} style={{ background: '#fff', border: '1px solid #E5DFD0', borderRadius: 14, padding: 14, textAlign: 'left', color: '#2C2C2A' }}>
+                  <strong style={{ display: 'block', fontSize: 14 }}>{HOME_ASSISTANT_NEEDS[agent.label]}</strong>
+                  <span style={{ display: 'block', fontSize: 13, color: '#646B57', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 역할 보고 선택하기 →</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div data-v2="assistant-controls" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
             <div role="tablist" aria-label="하루비서 보기 전환" style={{ display: 'inline-flex', padding: 4, borderRadius: 999, background: '#fff', border: '1px solid #E5DFD0' }}>
               <HomeModeButton active={agentViewMode === 'my'} onClick={() => setAgentViewMode('my')}>
@@ -1549,20 +1301,7 @@ export function HomePageV2() {
                 type="button"
                 disabled={disabled}
                 aria-disabled={disabled}
-                onClick={() => {
-                  if (a.action === 'timeline') {
-                    openTimelineModal();
-                    return;
-                  }
-                  if (!a.path) return;
-                  navigate(a.path, {
-                    state: {
-                      ...(a.state || {}),
-                      from: '/v2',
-                      resetAssistantScroll: true,
-                    },
-                  });
-                }}
+                onClick={() => setPreviewAgent(a)}
                 className={disabled ? '' : 'v2-agent'}
                 data-v2="agent"
                 style={{
@@ -1635,8 +1374,9 @@ export function HomePageV2() {
                       letterSpacing: '-0.01em',
                     }}
                   >
-                    {a.label}
+                    {HOME_ASSISTANT_NEEDS[a.label] ?? a.label}
                   </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginTop: 6 }}>{a.label}</div>
                   <div
                     data-v2="agent-sub"
                     style={{
@@ -1665,7 +1405,7 @@ export function HomePageV2() {
                       textTransform: 'uppercase',
                     }}
                   >
-                    {disabled ? '준비중' : a.tag}
+                    {disabled ? '준비중' : '역할 보고 선택하기 →'}
                   </span>
                 </div>
               </button>
@@ -1872,7 +1612,7 @@ export function HomePageV2() {
         agents={visibleAgents.map((agent) => ({
           key: getAgentKey(agent),
           label: agent.label,
-          sub: agent.sub,
+          sub: `${HOME_ASSISTANT_NEEDS[agent.label] ?? ''} · ${agent.sub}`,
         }))}
         initialRecordKeys={[]}
         initialAgentKeys={Array.from(selectedAgentSet)}
@@ -1883,6 +1623,30 @@ export function HomePageV2() {
         }}
         onSave={saveHomePersonalization}
       />
+
+      <Dialog open={previewAgent !== null} onOpenChange={(open) => { if (!open) setPreviewAgent(null); }}>
+        <DialogContent style={{ background: '#F5F0E8', color: '#2C2C2A' }}>
+          <DialogTitle className="pr-6">{previewAgent?.label}{previewAgent?.beta ? ' · 베타' : ''}</DialogTitle>
+          <DialogDescription>{previewAgent ? HOME_ASSISTANT_NEEDS[previewAgent.label] : ''}</DialogDescription>
+          <p style={{ fontSize: 15, lineHeight: 1.7 }}>{previewAgent?.sub}</p>
+          <button type="button" style={{ ...pillStyle, background: '#4A5A2C', color: '#fff', justifyContent: 'center', padding: 14 }} onClick={() => {
+            if (!previewAgent) return;
+            const agent = previewAgent;
+            setPreviewAgent(null);
+            if (agent.action === 'timeline') { openTimelineModal(); return; }
+            if (agent.path) navigate(agent.path, { state: { ...(agent.state || {}), from: '/v2', resetAssistantScroll: true } });
+          }}>{previewAgent?.label} 열기</button>
+          {previewAgent && (
+            <button type="button" disabled={!effectivePersonalizationLoaded || personalizationSaving} style={pillStyle} onClick={() => {
+              const key = getAgentKey(previewAgent);
+              const keys = new Set(selectedAgentSet);
+              if (keys.has(key)) keys.delete(key); else keys.add(key);
+              void saveHomePersonalization({ selectedRecordFormats, selectedAgents: Array.from(keys) }, false);
+            }}>{selectedAgentSet.has(getAgentKey(previewAgent)) ? '✓ 내 비서에서 빼기' : '+ 내 비서에 담기'}</button>
+          )}
+          {personalizationError && <p role="alert">{personalizationError}</p>}
+        </DialogContent>
+      </Dialog>
 
       {timelineModalOpen && user?.uid && (
         <TimelineCollageModal
