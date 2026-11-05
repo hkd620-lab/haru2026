@@ -1,0 +1,55 @@
+# UTC: 2026-11-05T05:32:40Z
+# HEAD: 90ca414ed40b3593422b204fb876c74f28982442  BASE: a2db466523f306f5e835d460d4b618c6e6cc1982
+# method: functions/src/index.ts 의 '^export ' 줄(Cloud Functions 배포 목록 원천)을 BASE와 HEAD에서 추출해 diff
+fatal: ambiguous argument 'A2DB4665nctions/src/index.ts': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+# BASE export 줄 수: 0
+fatal: ambiguous argument 'HEADnctions/src/index.ts': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+# HEAD export 줄 수: 0
+# exportEpub 관련 줄(HEAD):
+fatal: ambiguous argument 'HEADnctions/src/index.ts': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+----- diff BASE vs HEAD (비어 있으면 변화 0개) -----
+fatal: ambiguous argument 'A2DB4665nctions/src/index.ts': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+fatal: ambiguous argument 'HEADnctions/src/index.ts': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+----- diff exit code: 0 -----
+
+# 참고: 변경된 모듈 functions/src/epubContent.ts 의 export 비교(모듈 내부용, index.ts 미노출)
+fatal: ambiguous argument 'A2DB4665nctions/src/epubContent.ts': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+0a1,18
+> export const MAX_RECORD_PHOTOS = 5;
+> export const MAX_EPUB_PHOTOS = 200;
+> export const MAX_MERGE_RECORD_IDS = 500;
+> export const PHOTO_BUDGET_MS = 150_000;
+> export function escapeHtml
+> export function isAssistantRecord
+> export function isMergeRecordFormat
+> export function hasSayu
+> export function isSpecialDayRecord
+> export function getRecordPhotoUrls
+> export function validateRecordIds
+> export function isEligibleMergeRecord
+> export const EPUB_STYLESHEET = `img.haru-photo{${PHOTO_STYLE}max-height:95vh;break-inside:avoid;page-break-inside:avoid;}`;
+> export function epubPhotoHtml
+> export function mergeRecordToHtml
+> export type PhotoFetcher = 
+> export async function preparePhotos
+> export function createTempPhotoFetcher
+----- diff exit code: 1 -----
+# 참고: functions/src/epubExport.ts 의 export 비교
+fatal: ambiguous argument 'A2DB4665nctions/src/epubExport.ts': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+0a1
+> export const exportEpub = onCall(
+----- diff exit code: 1 -----

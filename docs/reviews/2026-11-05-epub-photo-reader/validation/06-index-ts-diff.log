@@ -1,0 +1,6 @@
+# UTC: 2026-11-05T05:32:40Z
+# HEAD: 90ca414ed40b3593422b204fb876c74f28982442
+# cwd: /private/tmp/haru-epub-photo-reader-fix
+# command: git diff --stat --exit-code a2db4665..HEAD -- functions/src/index.ts
+----- output (stdout+stderr) -----
+----- exit code: 0 -----
