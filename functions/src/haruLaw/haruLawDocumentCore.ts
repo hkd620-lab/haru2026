@@ -103,14 +103,17 @@ async function extractHwpx(bytes: Buffer): Promise<string> {
     // 한글이 저장한 문서는 header도 spine에 넣으며 href에 Contents/를 포함한다.
     // 경로 이동·외부 URI는 허용하지 않고, 알려진 메타데이터만 본문에서 제외한다.
     if (!/^(?:Contents\/)?(?:section\d+|header|settings)\.xml$/.test(href)) return unreadable();
-    const entry = zip.file(href) || zip.file('Contents/' + href);
+    const entryPath = href.startsWith('Contents/') || href === 'settings.xml'
+      ? href : 'Contents/' + href;
+    const entry = zip.file(entryPath);
     if (!entry) return unreadable();
     if (/^(?:Contents\/)?(?:header|settings)\.xml$/.test(href)) continue;
-    if (!entry || sections.includes(entry)) return unreadable();
+    if (sections.includes(entry)) return unreadable();
     sections.push(entry);
   }
-  const sectionCount = Object.keys(zip.files).filter(name => /^Contents\/section\d+\.xml$/.test(name)).length;
-  if (!sections.length || sections.length > 128 || sections.length !== sectionCount) return unreadable();
+  const sectionPaths = Object.keys(zip.files).filter(name => /^Contents\/section\d+\.xml$/.test(name));
+  if (!sections.length || sections.length > 128 || sections.length !== sectionPaths.length
+    || !sectionPaths.every(name => sections.some(section => section.name === name))) return unreadable();
   const parser = new XMLParser({ preserveOrder: true, removeNSPrefix: true, parseTagValue: false, trimValues: false, ignoreAttributes: false, processEntities: true });
   let expanded = manifestBytes.length, text = '';
   const visit = (nodes: any[], inText = false): void => {

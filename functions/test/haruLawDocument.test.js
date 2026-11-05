@@ -37,6 +37,13 @@ test('실제 한글의 header spine과 두 가지 href 표기를 처리하고 �
   const text=await extract(HWPX,bytes);assert.match(text,/첫 문단/);assert.doesNotMatch(text,/글꼴 설명/);
  }
 });
+test('상대 본문은 Contents 기준으로만 읽고 루트 동명 파일에 가려지지 않는다',async()=>{
+ const manifest='<package><manifest><item id="section0" href="section0.xml"/></manifest><spine><itemref idref="section0"/></spine></package>';
+ const bytes=await hwpx(section,{'Contents/content.hpf':manifest,'section0.xml':'<sec><p><t>루트 위장 본문</t></p></sec>'});
+ const text=await extract(HWPX,bytes);assert.match(text,/첫 문단/);assert.doesNotMatch(text,/위장/);
+ const missing=await hwpx(section,{'Contents/content.hpf':manifest.replace('href="section0.xml"','href="section9.xml"'),'section9.xml':'<sec><p><t>루트 우회</t></p></sec>'});
+ await assert.rejects(extract(HWPX,missing),/ATTACHMENT_CONTENT_UNREADABLE/);
+});
 test('외부·상위 경로·없는 spine 참조와 중복 본문은 계속 거부한다',async()=>{
  for(const href of ['../section0.xml','https://example.invalid/section0.xml','/Contents/section0.xml','missing.xml']) {
   const manifest=`<package><manifest><item id="section0" href="${href}"/></manifest><spine><itemref idref="section0"/></spine></package>`;
