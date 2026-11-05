@@ -32,13 +32,13 @@ const ERROR_MESSAGES: Record<string, HaruLawUserError> = {
   ATTACHMENT_UNSUPPORTED_TYPE: {
     reason: 'ATTACHMENT_UNSUPPORTED_TYPE',
     title: '지원하지 않는 파일 형식입니다',
-    message: 'PNG, JPEG, WebP, HEIC 또는 PDF 파일로 다시 첨부해 주세요.',
+    message: '이미지, PDF, 한글(HWP/HWPX), 텍스트(TXT) 파일로 다시 첨부해 주세요.',
     retryable: false,
   },
   ATTACHMENT_CONTENT_UNREADABLE: {
     reason: 'ATTACHMENT_CONTENT_UNREADABLE',
     title: '파일에서 내용을 읽지 못했습니다',
-    message: '스캔 상태가 흐리거나 내용이 없는 파일일 수 있습니다. 더 선명한 파일을 첨부하거나 질문에 핵심 내용을 직접 입력해 주세요.',
+    message: '손상·암호·배포용 한글 또는 내용이 없는 파일일 수 있습니다. 암호를 해제해 다시 저장하거나 PDF로 변환해 주세요. 문서가 크면 나누어 첨부하고, 표·그림의 배치가 중요하면 PDF를 이용해 주세요.',
     retryable: false,
   },
   HARULAW_AI_TEMPORARY_UNAVAILABLE: {

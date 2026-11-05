@@ -13,6 +13,7 @@ import { OnyuPreviewPage } from './pages/OnyuPreviewPage';
 import { AssistantOnboardingPage } from './pages/AssistantOnboardingPage';
 import { AssistantOnboardingDetailPage } from './pages/AssistantOnboardingDetailPage';
 import { RecordPage } from './pages/RecordPage';
+import { HaruLawPage } from './pages/HaruLawPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { LoginPage } from './pages/LoginPage';
 import { EmailVerificationPage } from './pages/EmailVerificationPage';
@@ -214,6 +215,7 @@ function AppChrome() {
           {/* 기존 페이지들 */}
           <Route path="/household" element={<HouseholdPage />} />
           <Route path="/record" element={<RecordPage />} />
+          <Route path="/haru-law" element={<HaruLawPage />} />
           <Route path="/library" element={<LibraryPage />} />
           <Route path="/sayu" element={<SayuPage />} />
           <Route path="/sayu-together" element={<SayuTogetherPage />} />

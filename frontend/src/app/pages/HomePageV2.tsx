@@ -34,6 +34,7 @@ type RecordItem = {
 };
 
 type Agent = {
+  selectionKey?: string;
   label: string;
   sub: string;
   tag: string;
@@ -287,12 +288,13 @@ const AGENTS: Agent[] = [
   },
   {
     label: '하루LAW',
-    sub: '법령·판례를 정부 데이터 그대로, 풀이는 AI가 쉬운 말로 풀어드립니다. 환각 제로.',
+    // 이동 경로가 바뀌어도 이미 저장된 내 비서 선택은 유지한다.
+    selectionKey: 'path:/record:{"category":"하루LAW"}',
+    sub: '관련 법령을 찾고, AI의 쉬운 설명으로 상황을 정리해 보세요.',
     tag: 'LAW · 안내',
     variant: 'green',
     stroke: '#4A5A2C',
-    path: '/record',
-    state: { category: '하루LAW' },
+    path: '/haru-law',
     icon: (
       <>
         <path d="M12 3v18" />
@@ -503,6 +505,7 @@ function greetingLabel(now: Date) {
 }
 
 function getAgentKey(agent: Agent) {
+  if (agent.selectionKey) return agent.selectionKey;
   if (agent.action) return `action:${agent.action}`;
   return `path:${agent.path || 'none'}:${JSON.stringify(agent.state || {})}`;
 }

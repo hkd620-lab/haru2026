@@ -1,4 +1,4 @@
-import { readSelectedPhotoAttachments } from '../../services/selectedRecordPhoto';
+import { HARULAW_ATTACHMENT_ACCEPT, HARULAW_ATTACHMENT_TYPES, HARULAW_DOCUMENT_MAX_BYTES, getHaruLawAttachmentLabel, readHaruLawSelectedFiles } from '../../utils/haruLawAttachment';
 // 하루LAW 비서 — 법령 검색·첨부·AI 자문·판례·기록 저장.
 // RecordPage 「하루LAW」 탭에 있던 코드를 그대로 옮겼다(동작 같음).
 // - useHaruLaw: 상태와 처리. RecordPage 가 부르므로 다른 탭에 다녀와도 상태가 유지된다(옮기기 전과 같음).
@@ -19,14 +19,7 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 
 const HARULAW_ATTACH_MAX_FILES = 5;
-const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-  'application/pdf',
-]);
+const HARULAW_ATTACH_ALLOWED_TYPES = HARULAW_ATTACHMENT_TYPES;
 const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
 
 type HaruLawAttachmentRef = {
@@ -126,7 +119,7 @@ export function useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, tempera
       return;
     }
 
-    const selectedAttachments = readSelectedPhotoAttachments(files.slice(0, remainingSlots));
+    const selectedAttachments = readHaruLawSelectedFiles(files.slice(0, remainingSlots));
     setUploadingLawFiles(true);
     try {
       const toUpload = await selectedAttachments;
@@ -139,9 +132,9 @@ export function useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, tempera
         }
         const sizeLimit = file.type === 'application/pdf'
           ? HARULAW_ATTACH_MAX_PDF_BYTES
-          : HARULAW_ATTACH_MAX_IMAGE_BYTES;
+          : file.type.startsWith('image/') ? HARULAW_ATTACH_MAX_IMAGE_BYTES : HARULAW_DOCUMENT_MAX_BYTES;
         if (file.size > sizeLimit) {
-          toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB 이하)`);
+          toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB, 한글·텍스트 8MiB 이하)`);
           return;
         }
       }
@@ -196,7 +189,11 @@ export function useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, tempera
         uploaded.push({ storagePath: path, mimeType: file.type, fileName: file.name, sizeBytes: file.size });
       }
       setLawAttachments((prev) => [...prev, ...uploaded]);
-    } catch {
+    } catch (error) {
+      if ((error as { name?: string })?.name === 'HaruLawDocumentSizeError') {
+        toast.error('한글·텍스트 파일은 8MiB 이하로 첨부해 주세요.');
+        return;
+      }
       console.error('하루LAW 첨부 업로드 실패');
       toast.error('파일 업로드에 실패했습니다. 다시 시도해 주세요.');
     } finally {
@@ -306,8 +303,8 @@ export function useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, tempera
       const recordId = await firestoreService.saveRecord(user.uid, {
         id: dateStr,
         date: dateStr,
-        weather: existingRecord?.weather || weather,
-        temperature: existingRecord?.temperature || temperature,
+        ...((existingRecord?.weather || weather) ? { weather: existingRecord?.weather || weather } : {}),
+        ...((existingRecord?.temperature || temperature) ? { temperature: existingRecord?.temperature || temperature } : {}),
         ...((existingRecord?.mood || mood) ? { mood: existingRecord?.mood || mood } : {}),
         formats: mergedFormats,
         content: typeof existingRecord?.content === 'string' ? existingRecord.content : '',
@@ -466,7 +463,7 @@ export function useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, tempera
 
 export type HaruLawState = ReturnType<typeof useHaruLaw>;
 
-export function HaruLawPanel({ law }: { law: HaruLawState }) {
+export function HaruLawPanel({ law, standalone = false }: { law: HaruLawState; standalone?: boolean }) {
   const {
     lawQuery,
     setLawQuery,
@@ -496,6 +493,20 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
     handleEasyExplain,
     isLawPaidUser,
   } = law;
+  const renderSaveDate = () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <label htmlFor="law-save-date" style={{ fontSize: 13, color: '#1A3C6E' }}>저장 날짜</label>
+      <input
+        id="law-save-date"
+        type="date"
+        value={lawSaveDate}
+        onChange={handleLawSaveDateChange}
+        disabled={uploadingLawFiles || lawLoading || isSavingLaw}
+        style={{ padding: '8px 10px', fontSize: 16, border: '1px solid #1A3C6E', borderRadius: 8 }}
+      />
+    </div>
+  );
+
   const renderStyledContent = (text: string) => (
     <div style={{
       background: 'linear-gradient(135deg, #fdf6ff 0%, #f0f7ff 50%, #f6fff0 100%)',
@@ -562,7 +573,7 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
   );
 
   return (
-  !lawGuideConfirmed ? (
+  !standalone && !lawGuideConfirmed ? (
     <div style={{
       backgroundColor: '#f0f4ff',
       border: '1px solid #c7d9f8',
@@ -578,7 +589,7 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
           📌 국가 법령정보센터 공식 API로 실제 법령을 검색하고, AI가 분석하여 자문을 제공합니다.
         </p>
         <p style={{ marginBottom: 8 }}>
-          ✅ 실제 법령 데이터 기반으로 분석하기 때문에 AI가 법령을 임의로 만들어내는 환각(Hallucination) 현상이 없습니다.
+          실제 법령 데이터를 검색하며, AI 설명에는 오류가 있을 수 있으므로 원문과 함께 확인해 주세요.
         </p>
         <p style={{ marginBottom: 8 }}>
           💡 가해자·피해자 두 가지 관점에서 가상 시나리오로 자문을 드립니다.
@@ -606,22 +617,15 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
     </div>
   ) : (
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <label htmlFor="law-save-date" style={{ fontSize: 13, color: '#1A3C6E' }}>저장 날짜</label>
-                <input
-                  id="law-save-date"
-                  type="date"
-                  value={lawSaveDate}
-                  onChange={handleLawSaveDateChange}
-                  disabled={uploadingLawFiles || lawLoading || isSavingLaw}
-                  style={{ padding: '8px 10px', fontSize: 16, border: '1px solid #1A3C6E', borderRadius: 8 }}
-                />
-              </div>
+              {!standalone && renderSaveDate()}
               {/* 검색창 */}
+              {standalone && <h2 id="law-question-label" style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>어떤 일이 있었나요?</h2>}
+              {standalone && <p id="law-question-hint" style={{ fontSize: 13, color: '#666', lineHeight: 1.6, marginBottom: 12 }}>일어난 일과 궁금한 점을 적어 주세요. 이름·연락처 등 불필요한 개인정보는 제외해 주세요.</p>}
               <form onSubmit={handleLawSearch} style={{ marginBottom: 12 }}>
                 <textarea
                   rows={3}
                   aria-label="하루LAW 질문"
+                  aria-describedby={standalone ? "law-question-hint" : undefined}
                   value={lawQuery}
                   onChange={(e) => setLawQuery(e.target.value)}
                   disabled={lawLoading || uploadingLawFiles}
@@ -639,7 +643,8 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
                     type="button"
                     onClick={() => lawFileInputRef.current?.click()}
                     disabled={!isLawPaidUser || lawLoading || uploadingLawFiles || lawAttachments.length >= HARULAW_ATTACH_MAX_FILES}
-                    title={!isLawPaidUser ? '베이직·프리미엄 이용권 전용' : '파일 첨부 (이미지·PDF, 최대 5개)'}
+                    aria-label="파일 첨부"
+                    title={!isLawPaidUser ? '베이직·프리미엄 이용권 전용' : '파일 첨부 (이미지·PDF·HWP·HWPX·텍스트, 최대 5개)'}
                     style={{
                       padding: '10px 12px',
                       backgroundColor: !isLawPaidUser ? '#E5E7EB' : '#EEF2FF',
@@ -655,6 +660,7 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
                     }}
                   >
                     <Paperclip size={16} />
+                    {standalone && <span>파일 첨부</span>}
                     {lawAttachments.length > 0 && (
                       <span style={{
                         position: 'absolute',
@@ -678,7 +684,7 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
                   <input
                     ref={lawFileInputRef}
                     type="file"
-                    accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf"
+                    accept={HARULAW_ATTACHMENT_ACCEPT}
                     multiple
                     style={{ display: 'none' }}
                     onChange={handleLawFileSelect}
@@ -692,7 +698,7 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
                       fontWeight: 600, fontSize: 13, cursor: lawLoading || uploadingLawFiles ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    법률자문
+                    {standalone ? '관련 법령 찾아보기' : '법률자문'}
                   </button>
                 </div>
                 {lawAttachments.length > 0 && (
@@ -703,7 +709,7 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
                         style={{ display: 'flex', alignItems: 'center', gap: 5, backgroundColor: '#EEF2FF', borderRadius: 8, padding: '4px 8px', fontSize: 12, color: '#1A3C6E', maxWidth: 180 }}
                       >
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {att.mimeType === 'application/pdf' ? 'PDF' : '이미지'} · {att.fileName}
+                          {getHaruLawAttachmentLabel(att.mimeType)} · {att.fileName}
                         </span>
                         <button
                           type="button"
@@ -726,6 +732,8 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
                   </p>
                 )}
               </form>
+
+              {standalone && <p style={{ fontSize: 12, color: '#666', marginBottom: 12 }}>PDF·한글(HWP/HWPX)·텍스트(TXT)·이미지를 첨부할 수 있습니다. 한글·텍스트는 파일당 8MiB, 전체 첨부는 최대 5개·50MiB입니다.</p>}
 
               {/* 로딩 */}
               {lawLoading && (
@@ -890,6 +898,7 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
               {/* 저장 버튼 */}
               {lawResults.length > 0 && (
                 <div style={{ marginTop: 4, marginBottom: 12 }}>
+                  {standalone && renderSaveDate()}
                   <button
                     onClick={handleSaveLawResult}
                     disabled={isSavingLaw || lawSaved}
@@ -905,7 +914,7 @@ export function HaruLawPanel({ law }: { law: HaruLawState }) {
                       cursor: lawSaved ? 'default' : 'pointer',
                     }}
                   >
-                    {lawSaved ? '✅ 저장 완료!' : isSavingLaw ? '저장 중...' : '💾 사유-나의 기록에 저장'}
+                    {lawSaved ? '✅ 저장 완료!' : isSavingLaw ? '저장 중...' : '사유·나의 기록에 저장'}
                   </button>
                   <p style={{ marginTop: 8, fontSize: 12, color: '#6B7280', lineHeight: 1.5, textAlign: 'center' }}>
                     분석 결과는 사유-나의 기록에 저장해 나중에 다시 확인할 수 있습니다.
