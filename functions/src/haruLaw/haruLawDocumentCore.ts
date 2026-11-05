@@ -100,8 +100,12 @@ async function extractHwpx(bytes: Buffer): Promise<string> {
   for (const ref of spine) {
     const item = items.find(item => item['@_id'] === ref['@_idref']);
     const href = String(item?.['@_href'] || '');
-    if (!/^section\d+\.xml$/.test(href)) return unreadable();
-    const entry = zip.file('Contents/' + href);
+    // 한글이 저장한 문서는 header도 spine에 넣으며 href에 Contents/를 포함한다.
+    // 경로 이동·외부 URI는 허용하지 않고, 알려진 메타데이터만 본문에서 제외한다.
+    if (!/^(?:Contents\/)?(?:section\d+|header|settings)\.xml$/.test(href)) return unreadable();
+    const entry = zip.file(href) || zip.file('Contents/' + href);
+    if (!entry) return unreadable();
+    if (/^(?:Contents\/)?(?:header|settings)\.xml$/.test(href)) continue;
     if (!entry || sections.includes(entry)) return unreadable();
     sections.push(entry);
   }

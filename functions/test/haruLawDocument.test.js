@@ -30,6 +30,21 @@ test('HWPX는 파일명 정렬 대신 manifest 읽기 순서를 따르고 누락
  assert.match(await extract(HWPX,bytes),/^먼저\n나중/);
  await assert.rejects(extract(HWPX,await hwpx(xml('일부'),{'Contents/section1.xml':xml('누락')})),/ATTACHMENT_CONTENT_UNREADABLE/);
 });
+test('실제 한글의 header spine과 두 가지 href 표기를 처리하고 헤더 텍스트는 제외한다',async()=>{
+ for(const prefix of ['', 'Contents/']) {
+  const manifest=`<opf:package xmlns:opf="http://www.idpf.org/2007/opf/"><opf:manifest><opf:item id="header" href="${prefix}header.xml"/><opf:item id="section0" href="${prefix}section0.xml"/><opf:item id="settings" href="settings.xml"/></opf:manifest><opf:spine><opf:itemref idref="header"/><opf:itemref idref="section0"/><opf:itemref idref="settings"/></opf:spine></opf:package>`;
+  const bytes=await hwpx(section,{'Contents/content.hpf':manifest,'Contents/header.xml':'<head><t>본문이 아닌 글꼴 설명</t></head>','settings.xml':'<settings/>'});
+  const text=await extract(HWPX,bytes);assert.match(text,/첫 문단/);assert.doesNotMatch(text,/글꼴 설명/);
+ }
+});
+test('외부·상위 경로·없는 spine 참조와 중복 본문은 계속 거부한다',async()=>{
+ for(const href of ['../section0.xml','https://example.invalid/section0.xml','/Contents/section0.xml','missing.xml']) {
+  const manifest=`<package><manifest><item id="section0" href="${href}"/></manifest><spine><itemref idref="section0"/></spine></package>`;
+  await assert.rejects(extract(HWPX,await hwpx(section,{'Contents/content.hpf':manifest})),/ATTACHMENT_CONTENT_UNREADABLE/);
+ }
+ const manifest='<package><manifest><item id="section0" href="Contents/section0.xml"/></manifest><spine><itemref idref="section0"/><itemref idref="section0"/></spine></package>';
+ await assert.rejects(extract(HWPX,await hwpx(section,{'Contents/content.hpf':manifest})),/ATTACHMENT_CONTENT_UNREADABLE/);
+});
 test('HWPX 외부 엔티티·손상 XML·일반 ZIP·과도한 압축 확장은 거부한다',async()=>{
   for(const xml of ['<!DOCTYPE x [<!ENTITY x SYSTEM "file:///etc/passwd">]><sec><t>&x;</t></sec>','<sec><t>broken</sec>','<sec><t>'+ '가'.repeat(6000000)+'</t></sec>'])
     await assert.rejects(extract(HWPX,await hwpx(xml)),/ATTACHMENT_CONTENT_UNREADABLE/);

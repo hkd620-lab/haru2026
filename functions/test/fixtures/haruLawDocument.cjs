@@ -23,7 +23,7 @@ function hwp(text, flags=0, corrupt=false) {
   section.copy(file,11*512);return file;
 }
 async function hwpx(xml, extras={}) {
-  const zip=new JSZip();zip.file('mimetype','application/hwp+zip');zip.file('Contents/content.hpf','<package><manifest><item id="section0" href="section0.xml"/></manifest><spine><itemref idref="section0"/></spine></package>');zip.file('Contents/section0.xml',xml);for(const [p,c]of Object.entries(extras))zip.file(p,c);
+  const zip=new JSZip();zip.file('mimetype','application/hwp+zip');zip.file('Contents/content.hpf','<package><manifest><item id="header" href="Contents/header.xml"/><item id="section0" href="Contents/section0.xml"/></manifest><spine><itemref idref="header"/><itemref idref="section0"/></spine></package>');zip.file('Contents/header.xml','<head/>');zip.file('Contents/section0.xml',xml);for(const [p,c]of Object.entries(extras))zip.file(p,c);
   return zip.generateAsync({type:'nodebuffer',compression:'DEFLATE'});
 }
 module.exports={hwp,hwpx};
