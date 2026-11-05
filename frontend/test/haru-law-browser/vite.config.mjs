@@ -13,5 +13,5 @@ export default defineConfig({
     if (/\/(firebase|AuthContext|firestoreService|useSubscription)(\.tsx?)?$/.test(resolved)) return path.join(root, 'mocks.tsx');
   } }, react(), tailwindcss()],
   resolve: { dedupe: ['react', 'react-dom'] },
-  server: { host: '127.0.0.1', port: 18774, strictPort: true, fs: { allow: [path.resolve(root, '../..')] } },
+  server: { host: '127.0.0.1', port: 18774, strictPort: true, watch: { usePolling: true, interval: 1000 }, fs: { allow: [path.resolve(root, '../..')] } },
 });

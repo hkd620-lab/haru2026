@@ -9,7 +9,7 @@ const read = p => fs.readFileSync(path.join(__dirname, '../src/app', p), 'utf8')
 const panelSource = read('assistants/haruLaw/HaruLawPanel.tsx');
 const helper = panelSource.slice(panelSource.indexOf('function getLawEasySummary'), panelSource.indexOf('type UseHaruLawParams'));
 const panelJS = transformSync(helper + panelSource.slice(panelSource.indexOf('export function HaruLawPanel')).replace('export function', 'function'), { loader: 'tsx' }).code;
-const Panel = new Function('React', 'HARULAW_ATTACH_MAX_FILES', 'Paperclip', 'GrapeLoadingMini', panelJS + '; return HaruLawPanel;')(React, 5, () => null, () => null);
+const Panel = new Function('React', 'HARULAW_ATTACH_MAX_FILES', 'Paperclip', 'GrapeLoadingMini', 'HARULAW_ATTACHMENT_ACCEPT', 'getHaruLawAttachmentLabel', panelJS + '; return HaruLawPanel;')(React, 5, () => null, () => null, '.pdf,.hwp,.hwpx,.txt', mime => mime);
 const law = extra => ({ setLawQuery: () => {}, handleLawSaveDateChange: () => {}, lawQuery: '', lawSaveDate: '2026-11-05', lawGuideConfirmed: false, lawResults: [], lawAttachments: [], lawSearchHistory: {current:[]}, lawFileInputRef: {current:null}, isLawPaidUser: true, ...extra });
 const render = (extra = {}, standalone = true) => renderToStaticMarkup(React.createElement(Panel, {law:law(extra), standalone}));
 

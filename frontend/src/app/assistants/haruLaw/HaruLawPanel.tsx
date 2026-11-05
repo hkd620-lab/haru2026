@@ -1,4 +1,4 @@
-import { readSelectedPhotoAttachments } from '../../services/selectedRecordPhoto';
+import { HARULAW_ATTACHMENT_ACCEPT, HARULAW_ATTACHMENT_TYPES, HARULAW_DOCUMENT_MAX_BYTES, getHaruLawAttachmentLabel, readHaruLawSelectedFiles } from '../../utils/haruLawAttachment';
 // 하루LAW 비서 — 법령 검색·첨부·AI 자문·판례·기록 저장.
 // RecordPage 「하루LAW」 탭에 있던 코드를 그대로 옮겼다(동작 같음).
 // - useHaruLaw: 상태와 처리. RecordPage 가 부르므로 다른 탭에 다녀와도 상태가 유지된다(옮기기 전과 같음).
@@ -19,14 +19,7 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 
 const HARULAW_ATTACH_MAX_FILES = 5;
-const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-  'application/pdf',
-]);
+const HARULAW_ATTACH_ALLOWED_TYPES = HARULAW_ATTACHMENT_TYPES;
 const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
 
 type HaruLawAttachmentRef = {
@@ -126,7 +119,7 @@ export function useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, tempera
       return;
     }
 
-    const selectedAttachments = readSelectedPhotoAttachments(files.slice(0, remainingSlots));
+    const selectedAttachments = readHaruLawSelectedFiles(files.slice(0, remainingSlots));
     setUploadingLawFiles(true);
     try {
       const toUpload = await selectedAttachments;
@@ -139,9 +132,9 @@ export function useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, tempera
         }
         const sizeLimit = file.type === 'application/pdf'
           ? HARULAW_ATTACH_MAX_PDF_BYTES
-          : HARULAW_ATTACH_MAX_IMAGE_BYTES;
+          : file.type.startsWith('image/') ? HARULAW_ATTACH_MAX_IMAGE_BYTES : HARULAW_DOCUMENT_MAX_BYTES;
         if (file.size > sizeLimit) {
-          toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB 이하)`);
+          toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB, 한글·텍스트 8MiB 이하)`);
           return;
         }
       }
@@ -196,7 +189,11 @@ export function useHaruLaw({ lawEntrySectionRef, isLawPaidUser, weather, tempera
         uploaded.push({ storagePath: path, mimeType: file.type, fileName: file.name, sizeBytes: file.size });
       }
       setLawAttachments((prev) => [...prev, ...uploaded]);
-    } catch {
+    } catch (error) {
+      if ((error as { name?: string })?.name === 'HaruLawDocumentSizeError') {
+        toast.error('한글·텍스트 파일은 8MiB 이하로 첨부해 주세요.');
+        return;
+      }
       console.error('하루LAW 첨부 업로드 실패');
       toast.error('파일 업로드에 실패했습니다. 다시 시도해 주세요.');
     } finally {
@@ -647,7 +644,7 @@ export function HaruLawPanel({ law, standalone = false }: { law: HaruLawState; s
                     onClick={() => lawFileInputRef.current?.click()}
                     disabled={!isLawPaidUser || lawLoading || uploadingLawFiles || lawAttachments.length >= HARULAW_ATTACH_MAX_FILES}
                     aria-label="파일 첨부"
-                    title={!isLawPaidUser ? '베이직·프리미엄 이용권 전용' : '파일 첨부 (이미지·PDF, 최대 5개)'}
+                    title={!isLawPaidUser ? '베이직·프리미엄 이용권 전용' : '파일 첨부 (이미지·PDF·HWP·HWPX·텍스트, 최대 5개)'}
                     style={{
                       padding: '10px 12px',
                       backgroundColor: !isLawPaidUser ? '#E5E7EB' : '#EEF2FF',
@@ -687,7 +684,7 @@ export function HaruLawPanel({ law, standalone = false }: { law: HaruLawState; s
                   <input
                     ref={lawFileInputRef}
                     type="file"
-                    accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf"
+                    accept={HARULAW_ATTACHMENT_ACCEPT}
                     multiple
                     style={{ display: 'none' }}
                     onChange={handleLawFileSelect}
@@ -712,7 +709,7 @@ export function HaruLawPanel({ law, standalone = false }: { law: HaruLawState; s
                         style={{ display: 'flex', alignItems: 'center', gap: 5, backgroundColor: '#EEF2FF', borderRadius: 8, padding: '4px 8px', fontSize: 12, color: '#1A3C6E', maxWidth: 180 }}
                       >
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {att.mimeType === 'application/pdf' ? 'PDF' : '이미지'} · {att.fileName}
+                          {getHaruLawAttachmentLabel(att.mimeType)} · {att.fileName}
                         </span>
                         <button
                           type="button"
@@ -735,6 +732,8 @@ export function HaruLawPanel({ law, standalone = false }: { law: HaruLawState; s
                   </p>
                 )}
               </form>
+
+              {standalone && <p style={{ fontSize: 12, color: '#666', marginBottom: 12 }}>PDF·한글(HWP/HWPX)·텍스트(TXT)·이미지를 첨부할 수 있습니다. 한글·텍스트는 파일당 8MiB, 전체 첨부는 최대 5개·50MiB입니다.</p>}
 
               {/* 로딩 */}
               {lawLoading && (
