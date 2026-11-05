@@ -41,3 +41,27 @@ test('EPUB 저장 화면 4곳에 안내가 연결돼 있다', () => {
   }
   assert.match(read('components/SayuModal.tsx'), /description: getEpubReaderHint\(\)/);
 });
+
+test('안드로이드 안내 순서: 설치(있으면 생략) → 하루로 돌아와 다운로드 → 내 파일에서 Play 북으로 열기 → 라이브러리', () => {
+  const android = guide.getEpubReaderGuide('android');
+  assert.equal(android.steps.length, 4);
+  assert.match(android.steps[0], /Google Play 북.*설치.*이미 지원 앱이 있으면 이 단계는 건너뛰세요/);
+  assert.match(android.steps[1], /하루로 돌아와 ‘EPUB 다운로드’.*휴대폰에서 하루에 접속해 바로 내려받을 수 있습니다/);
+  assert.match(android.steps[2], /내 파일 → 다운로드.*Play 북/);
+  assert.match(android.steps[3], /라이브러리에서 읽을 수 있습니다/);
+  assert.match(android.note, /본문과 사진이 사용자의 Google 계정에 업로드되어 보관/);
+  assert.match(android.linkAriaLabel, /새 창/);
+  for (const platform of ['ios', 'desktop']) {
+    const other = guide.getEpubReaderGuide(platform);
+    assert.equal(other.note, undefined, platform);
+    assert.equal(other.linkUrl, undefined, platform);
+    assert.doesNotMatch(other.steps.join(' '), /Play 북/, platform);
+  }
+  assert.match(guide.getEpubReaderGuide('desktop').steps.join(' '), /휴대폰에서 하루에 접속해 EPUB을 바로 내려받/);
+});
+
+test('저장 화면 안내 패널도 계정 업로드 설명과 새 창 설명을 표시한다', () => {
+  const notice = read('components/EpubReaderNotice.tsx');
+  assert.match(notice, /guide\.note &&/);
+  assert.match(notice, /aria-label=\{guide\.linkAriaLabel\}/);
+});

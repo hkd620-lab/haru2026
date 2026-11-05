@@ -81,6 +81,15 @@ export function isEligibleMergeRecord(
 
 const paragraphs = (value: string) => escapeHtml(value).replace(/\n/g, '<br/>');
 
+// EPUB 사진 표시 규칙(2026-11-05 갤럭시 Play 북에서 사진이 오른쪽 조각으로 잘림).
+// 리더의 페이지 나눔(html/body 단 설정)은 건드리지 않고, 사진만 화면 폭·높이 안에 비율 그대로 맞춘다.
+const PHOTO_STYLE = 'display:block;max-width:100%;height:auto;margin:8px auto;';
+export const EPUB_STYLESHEET = `img.haru-photo{${PHOTO_STYLE}max-height:95vh;break-inside:avoid;page-break-inside:avoid;}`;
+
+export function epubPhotoHtml(src: string): string {
+  return `<img class="haru-photo" src="${escapeHtml(src)}" style="${PHOTO_STYLE}">`;
+}
+
 // 합본 EPUB 한 장: 화면·PDF와 같이 SAYU 글 → 사진 순서.
 export function mergeRecordToHtml(record: Record<string, any>, prefix: string, photoUrls: string[]): string {
   const lines: string[] = [];
@@ -89,7 +98,7 @@ export function mergeRecordToHtml(record: Record<string, any>, prefix: string, p
   const title = text(record[`${prefix}_title`]) || text(record.title) || text(record.ai_title);
   if (title) lines.push(`<h2>${escapeHtml(title)}</h2>`);
   lines.push(`<div>${paragraphs(text(record[`${prefix}_sayu`]))}</div>`);
-  for (const url of photoUrls) lines.push(`<img src="${escapeHtml(url)}" style="max-width:100%;margin:8px 0;">`);
+  for (const url of photoUrls) lines.push(epubPhotoHtml(url));
   return lines.join('\n');
 }
 

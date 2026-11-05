@@ -105,3 +105,10 @@ test('사진 내려받기 전체 시간 예산이 지나면 남은 사진은 받
   assert.equal(result.failed, urls.length - calls.length);
   assert.equal(result.srcByChapter[0].filter(Boolean).length, calls.length);
 });
+
+test('사진 표시 규칙: 합본 장 사진도 같은 반응형 표시를 쓰고, 스타일시트는 html/body 단 설정을 건드리지 않는다', () => {
+  const html = epub.mergeRecordToHtml({ diary_sayu: '글' }, 'diary', ['https://p/a.jpg?x="1"']);
+  assert.equal(html.split('\n').pop(), epub.epubPhotoHtml('https://p/a.jpg?x="1"'));
+  assert.match(html, /<img class="haru-photo" src="https:\/\/p\/a\.jpg\?x=&quot;1&quot;" style="display:block;max-width:100%;height:auto;/);
+  assert.doesNotMatch(epub.EPUB_STYLESHEET, /column|html|body|\*/);
+});
