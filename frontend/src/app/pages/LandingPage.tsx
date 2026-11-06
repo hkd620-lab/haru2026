@@ -498,12 +498,16 @@ export function LandingPage() {
             </div>
             <div className="lp-hero__cta-row">
               <button className="lp-btn lp-btn--primary" onClick={goToLogin}>
-                로그인하고 시작하기<Icon name="arrowR" size={18} sw={2} />
+                무료로 시작하기<Icon name="arrowR" size={18} sw={2} />
               </button>
               <button className="lp-btn lp-btn--ghost" onClick={() => scrollTo('how')}>HARU가 하는 일 보기</button>
             </div>
+            <div className="lp-hero__cta-notes">
+              <p className="lp-hero__cta-note">결제 없이 시작 · 유료 구독은 별도 신청</p>
+              <p className="lp-hero__cta-limit">기본 기록 작성·조회 무료 · 일반 AI 월 10회 · 독서 OCR 월 20장</p>
+            </div>
             <div className="lp-hero__login">
-              <span className="lp-hero__login-title">기존 회원은 바로 로그인하세요</span>
+              <span className="lp-hero__login-title">카카오·네이버·Google로 로그인/가입</span>
               {socialLoginButtons.map((b) => (
                 <button key={b.label} type="button" onClick={b.onClick} disabled={isLoginLoading} className="lp-hero__login-btn">
                   {b.label}
@@ -590,7 +594,7 @@ export function LandingPage() {
           <div className="lp-cap">FORMATS · 11가지로 시작합니다</div>
           <h2 className="lp-h2">한 줄에도 자리가 있습니다.</h2>
           <p className="lp-lead" style={{ maxWidth: 600 }}>
-            생활·업무·전문 영역까지, 무엇을 적을지 정하면 어떻게 정리될지가 따라옵니다.
+            생활과 업무 영역까지, 무엇을 적을지 정하면 어떻게 정리될지가 따라옵니다.
             새로운 분야는 형식이 자라며 계속 더해지고 있습니다.
           </p>
           <div className="lp-formats">
@@ -694,7 +698,7 @@ export function LandingPage() {
                 </div>
               ))}
             </div>
-            <p className="lp-plan__foot">자동 체험 기간과 자동 유료 전환은 제공하지 않습니다. 베이직은 사용자가 직접 결제할 때만 시작됩니다.</p>
+            <p className="lp-plan__foot">무료 이용은 자동으로 유료 전환되지 않습니다. 베이직은 결제수단 등록을 완료하면 월 4,000원이 즉시 결제되며, 이후 매월 자동결제됩니다. 설정 &gt; 구독 관리에서 해지할 수 있습니다.</p>
           </div>
         </section>
       )}
@@ -710,11 +714,12 @@ export function LandingPage() {
               <h2>오늘의 기록은,<br />내일의 나를 돕는 자료가 됩니다.</h2>
               <p>한 줄도 좋고, 사진 한 장의 메모도 좋습니다. 쌓이는 일은 HARU가 합니다.</p>
               <div className="lp-final__cta-row">
-                <button className="lp-btn lp-btn--primary" onClick={goToLogin}>로그인하고 시작하기<Icon name="arrowR" size={18} sw={2} /></button>
+                <button className="lp-btn lp-btn--primary" onClick={goToLogin}>무료로 시작하기<Icon name="arrowR" size={18} sw={2} /></button>
                 <button className="lp-btn lp-btn--ghost" onClick={() => scrollTo(SHOW_PRICING ? 'pricing' : 'how')}>
                   {SHOW_PRICING ? '요금 · 구독 안내' : 'HARU 둘러보기'}
                 </button>
               </div>
+              <span className="lp-final__note">결제 없이 시작 · 유료 구독은 별도 신청</span>
             </div>
           </div>
         </div>
@@ -829,6 +834,9 @@ const LP_CSS = `
 @media(max-width:760px){.lp-mini-flow__steps{grid-template-columns:1fr;}.lp-mini-flow__item{padding:8px 11px;}.lp-mini-flow__arrow{position:static;transform:none;margin-left:auto;padding-left:8px;}}
 @media(max-width:640px){.lp-mini-flow{margin:-6px 0 20px;padding:11px;border-radius:15px;}.lp-mini-flow__lead{font-size:12.5px;line-height:1.45;}.lp-mini-flow__copy strong{font-size:12px;}.lp-mini-flow__copy span{font-size:10.5px;}}
 .lp-hero__cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:22px;}
+.lp-hero__cta-notes{margin:-8px 0 22px;}
+.lp-hero__cta-note{margin:0 0 4px;font-size:14px;font-weight:600;color:var(--fg-2);}
+.lp-hero__cta-limit{margin:0;font-size:13px;color:var(--fg-muted);line-height:1.5;}
 .lp-hero__login{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:30px;}
 .lp-hero__login-title{font-size:14px;color:var(--fg-2);margin-right:4px;font-weight:600;}
 .lp-hero__login-btn{background:#fff;border:1px solid var(--border);border-radius:20px;padding:8px 16px;font-size:14px;font-weight:700;color:var(--fg);cursor:pointer;transition:border-color var(--dur) var(--ease),color var(--dur) var(--ease);}
@@ -953,6 +961,7 @@ const LP_CSS = `
 .lp-final .lp-btn--ghost{color:var(--bg);border-color:rgba(245,240,232,0.4);}
 .lp-final .lp-btn--ghost:hover{background:rgba(245,240,232,0.08);border-color:rgba(245,240,232,0.6);}
 .lp-final__cta-row{display:inline-flex;flex-wrap:wrap;justify-content:center;gap:12px;position:relative;z-index:1;}
+.lp-final__note{display:block;margin-top:14px;font-size:13px;color:rgba(245,240,232,0.78);}
 
 .lp-operator-footer{max-width:var(--lp-content);margin:0 auto;padding:0 24px 28px;text-align:center;}
 .lp-operator-footer a{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 14px;border-radius:999px;color:var(--fg-2);font-size:13px;font-weight:700;text-decoration:none;border:1px solid rgba(122,139,78,0.24);background:rgba(255,255,255,0.34);}
