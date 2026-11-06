@@ -75,8 +75,8 @@ const DOORS: { n: string; icon: string; hue: Hue; title: string; body: string; c
   {
     n: '03', icon: 'shield', hue: 'terracotta',
     title: '도움받기',
-    body: '건강·재무·법률처럼 생활에서 생기는 문제를 기록을 바탕으로 점검합니다. 전자소송 준비 과정의 송달·보정·기한·서류 누락도 체크리스트로 확인할 수 있습니다.',
-    chip: '건강 기록 · 재무 기록 · 전자소송 체크리스트',
+    body: '건강·재무·법률처럼 생활에서 생기는 문제를 기록을 바탕으로 점검합니다. 하루LAW는 관련 법령 검색과 상황 정리를 돕습니다. 전자소송 준비 과정의 송달·보정·기한·서류 누락도 체크리스트로 확인할 수 있습니다.',
+    chip: '건강·재무 기록 · 하루LAW · 전자소송 체크리스트',
     note: '전자소송연습은 법률 판단이나 대리 업무가 아니라, 전자소송 준비에 필요한 서류와 기한을 빠뜨리지 않도록 돕는 체크리스트형 연습 기능입니다.',
   },
   {
@@ -698,7 +698,7 @@ export function LandingPage() {
                 </div>
               ))}
             </div>
-            <p className="lp-plan__foot">무료 이용은 자동으로 유료 전환되지 않습니다. 베이직은 결제수단 등록을 완료하면 월 4,000원이 즉시 결제되며, 이후 매월 자동결제됩니다. 설정 &gt; 구독 관리에서 해지할 수 있으며, 해지는 다음 결제를 중단하는 기능이고 이미 결제된 금액은 자동 환불되지 않습니다. 환불 기준은 하단의 환불정책을 확인해 주세요.</p>
+            <p className="lp-plan__foot">무료 이용은 자동으로 유료 전환되지 않습니다. 베이직은 결제수단 등록을 완료하면 월 4,000원이 즉시 결제되며, 이후 매월 자동결제됩니다. 설정 &gt; 구독 관리에서 해지할 수 있으며, 해지는 다음 결제를 중단하는 기능이고 이미 결제된 금액은 자동 환불되지 않습니다. 이미 결제된 기간은 종료일까지 이용할 수 있습니다. 환불 기준은 <a href="/refund" style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>환불정책</a>을 확인해 주세요.</p>
           </div>
         </section>
       )}
@@ -935,7 +935,7 @@ const LP_CSS = `
 .lp-plan__badge{position:absolute;top:-12px;right:20px;background:var(--olive);color:#fff;font-size:10px;font-weight:800;letter-spacing:1.5px;padding:4px 10px;border-radius:999px;}
 .lp-plan__name{font-size:13px;font-weight:800;letter-spacing:2px;margin-bottom:12px;color:var(--olive-dark);}
 .lp-plan--hl .lp-plan__name{color:var(--peach);}
-.lp-plan__price{font-size:40px;font-weight:800;color:var(--fg);}
+.lp-plan__price{font-size:clamp(28px,8vw,40px);font-weight:800;color:var(--fg);white-space:nowrap;}
 .lp-plan--hl .lp-plan__price{color:var(--bg);}
 .lp-plan__price span{font-size:14px;font-weight:500;color:var(--fg-muted);margin-left:4px;}
 .lp-plan--hl .lp-plan__price span{color:rgba(245,240,232,0.6);}
