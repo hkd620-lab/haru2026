@@ -78,16 +78,16 @@ export function MonthProgressCard({ view, onOpenRecord, onRetry, onStartWriting 
       {count > 0 ? (
         <>
           <p aria-live="polite" style={{ margin: '8px 0 12px', fontSize: 32, fontWeight: 800, color: '#4A5A2C', lineHeight: 1.2 }}>{count}편</p>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
             {recent.map((entry) => (
-              <li key={entry.id}>
+              <li key={entry.id} style={{ minWidth: 0 }}>
                 <button
                   type="button"
                   onClick={() => onOpenRecord(entry)}
                   style={{ ...buttonReset, width: '100%', textAlign: 'left', padding: '10px 12px', minHeight: 44, borderRadius: 12, background: '#F8F5EC', display: 'flex', gap: 10, alignItems: 'baseline' }}
                 >
                   <span style={{ fontSize: 14, fontWeight: 700, color: '#4A5A2C', whiteSpace: 'nowrap' }}>{getRecordFormatLabel(entry.format)} · {shortDate(entry.date)}</span>
-                  <span style={{ fontSize: 15, color: '#2C2C2A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.title}</span>
+                  <span style={{ fontSize: 15, color: '#2C2C2A', minWidth: 0, flex: '1 1 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.title}</span>
                 </button>
               </li>
             ))}

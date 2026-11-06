@@ -453,6 +453,9 @@ test('카드 문구: 약속 문구 없음, 0건·실패 문구와 접근성 속�
   assert.match(card, /aria-live="polite"/);
   assert.match(card, /마지막으로 확인한 시각/);
   assert.match(card, /<button\s+type="button"\s+onClick=\{\(\) => onOpenRecord\(entry\)\}/);
+  // 긴 제목이 좁은 화면에서 카드 밖으로 삐져나오지 않게: 격자 열과 칸이 줄어들 수 있어야 한다
+  assert.match(card, /gridTemplateColumns: 'minmax\(0, 1fr\)'/);
+  assert.match(card, /<li key=\{entry\.id\} style=\{\{ minWidth: 0 \}\}>/);
   // 숫자는 서버 확정 뒤에만: 확정 전 분기가 count 보다 먼저 온다
   assert.ok(card.indexOf('!hasConfirmed') < card.indexOf('{count}편'));
 });
