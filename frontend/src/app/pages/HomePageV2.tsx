@@ -1595,7 +1595,6 @@ export function HomePageV2() {
               opacity: 0.5,
             }}
           />
-          <span>REPOSEFUL · 안락하다 · 내추럴</span>
           <span
             style={{
               width: 6,
