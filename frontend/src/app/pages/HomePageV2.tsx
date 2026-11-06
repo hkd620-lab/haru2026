@@ -244,6 +244,7 @@ const AGENTS: Agent[] = [
     ),
   },
   {
+    // 표시명 'HARU주식관리'는 예전 형식·카테고리 이름(FormatModal의 카톡 TXT 체결통보 등)과 같지만, 이 카드가 여는 형식은 '주식거래일지'다.
     selectionKey: 'path:/record:{"format":"주식거래일지"}',
     label: 'HARU주식관리',
     sub: '주식거래일지·거래 복기',
