@@ -1249,7 +1249,7 @@ export function HomePageV2() {
             iconStroke="#5A4E7A"
             title="HARU 비서실"
             sub="돈 관리부터 정보 찾기까지, 필요한 도움을 골라보세요."
-            badge={`${visibleAgents.length}가지 비서`}
+            badge={agentViewMode === 'my' && effectivePersonalizationLoaded ? `전체 ${visibleAgents.length}가지 · 내 비서 ${homeAgents.length}개` : `${visibleAgents.length}가지 비서`}
             badgeDot="#5A4E7A"
             icon={
               <>
@@ -1264,7 +1264,7 @@ export function HomePageV2() {
               {visibleAgents.filter((agent) => ['HARU가계부', '하루LAW', '하루식물탐정'].includes(agent.label) && !homeAgents.includes(agent)).map((agent) => (
                 <button type="button" key={agent.label} onClick={() => setPreviewAgent(agent)} style={{ background: '#fff', border: '1px solid #E5DFD0', borderRadius: 14, padding: 14, textAlign: 'left', color: '#2C2C2A' }}>
                   <strong style={{ display: 'block', fontSize: 14 }}>{HOME_ASSISTANT_NEEDS[agent.label]}</strong>
-                  <span style={{ display: 'block', fontSize: 13, color: '#646B57', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 역할 보고 선택하기 →</span>
+                  <span style={{ display: 'block', fontSize: 13, color: '#646B57', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 무엇을 도와주는지 보기 →</span>
                 </button>
               ))}
             </div>
@@ -1408,7 +1408,7 @@ export function HomePageV2() {
                       textTransform: 'uppercase',
                     }}
                   >
-                    {disabled ? '준비중' : '역할 보고 선택하기 →'}
+                    {disabled ? '준비중' : '무엇을 도와주는지 보기 →'}
                   </span>
                 </div>
               </button>
