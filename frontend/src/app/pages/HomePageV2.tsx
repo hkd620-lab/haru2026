@@ -892,9 +892,9 @@ export function HomePageV2() {
 
           [data-v2="agent"] { padding: 12px !important; gap: 8px !important; min-height: 112px !important; border-radius: 14px !important; }
           [data-v2="agent"] > div:first-of-type { width: 38px !important; height: 38px !important; border-radius: 10px !important; }
-          [data-v2="agent-title"] { font-size: 13px !important; }
+          [data-v2="agent-title"] { font-size: 16px !important; line-height: 1.5 !important; overflow-wrap: anywhere; }
           [data-v2="agent-sub"] { font-size: 13px !important; margin-top: 3px !important; line-height: 1.4 !important; }
-          [data-v2="agent-tag"] { font-size: 8px !important; padding: 2px 6px !important; margin-top: 6px !important; }
+          [data-v2="agent-tag"] { font-size: 14px !important; line-height: 1.5 !important; min-height: 44px; padding: 10px 12px !important; margin-top: 10px !important; }
 
           [data-v2="cta"] { padding: 16px 18px !important; font-size: 14px !important; border-radius: 18px !important; margin-top: 4px !important; }
           [data-v2="cta-icon"] { width: 36px !important; height: 36px !important; }
