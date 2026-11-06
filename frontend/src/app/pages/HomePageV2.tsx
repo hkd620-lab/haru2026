@@ -1280,13 +1280,16 @@ export function HomePageV2() {
               </>
             }
           />
-          <p style={{ fontSize: 14, color: '#646B57', margin: '0 0 14px' }}>HARU 비서는 돈을 기록하고, 필요한 정보를 찾고, 생활 속 궁금한 점을 정리하도록 돕는 도구예요.</p>
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: '#1A3C6E', margin: '0 0 6px' }}>이용할 비서를 선택하세요</h3>
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: '#46566B', margin: 0 }}>아래에서 비서 이름을 누르고, 설명 창의 ‘이 비서 이용하기’를 누르세요. 질문과 내용은 열린 비서 화면의 입력칸에 써 주세요.</p>
+          </div>
           {agentViewMode === 'my' && (
             <div style={{ display: 'grid', gap: 8, marginBottom: 18 }}>
               {visibleAgents.filter((agent) => ['HARU가계부', '하루LAW', '하루식물탐정'].includes(agent.label) && !homeAgents.includes(agent)).map((agent) => (
                 <button type="button" key={agent.label} onClick={() => setPreviewAgent(agent)} style={{ background: '#fff', border: '1px solid #E5DFD0', borderRadius: 14, padding: 14, textAlign: 'left', color: '#2C2C2A' }}>
                   <strong style={{ display: 'block', fontSize: 14 }}>{HOME_ASSISTANT_NEEDS[agent.label]}</strong>
-                  <span style={{ display: 'block', fontSize: 13, color: '#646B57', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 무엇을 도와주는지 보기 →</span>
+                  <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#4A5A2C', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 이 비서 선택하기 →</span>
                 </button>
               ))}
             </div>
@@ -1399,9 +1402,9 @@ export function HomePageV2() {
                       letterSpacing: '-0.01em',
                     }}
                   >
-                    {HOME_ASSISTANT_NEEDS[a.label] ?? a.label}
+                    {a.label}
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginTop: 6 }}>{a.label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginTop: 6 }}>{HOME_ASSISTANT_NEEDS[a.label] ?? a.label}</div>
                   <div
                     data-v2="agent-sub"
                     style={{
@@ -1420,17 +1423,15 @@ export function HomePageV2() {
                       alignItems: 'center',
                       gap: 5,
                       marginTop: 12,
-                      padding: '3px 9px',
-                      borderRadius: 999,
-                      background: 'rgba(255,255,255,0.66)',
-                      fontFamily: FONT_EN,
-                      fontSize: 9,
-                      fontWeight: 600,
-                      letterSpacing: '0.14em',
-                      textTransform: 'uppercase',
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      background: '#fff',
+                      border: '1px solid currentColor',
+                      fontSize: 14,
+                      fontWeight: 700,
                     }}
                   >
-                    {disabled ? '준비중' : '무엇을 도와주는지 보기 →'}
+                    {disabled ? '준비중' : '이 비서 선택하기 →'}
                   </span>
                 </div>
               </button>
@@ -1650,7 +1651,7 @@ export function HomePageV2() {
 
       <Dialog open={previewAgent !== null} onOpenChange={(open) => { if (!open) setPreviewAgent(null); }}>
         <DialogContent style={{ background: '#F5F0E8', color: '#2C2C2A' }}>
-          <DialogTitle className="pr-6">{previewAgent?.label}{previewAgent?.beta ? ' · 베타' : ''}</DialogTitle>
+          <DialogTitle className="pr-6">선택한 비서 · {previewAgent?.label}{previewAgent?.beta ? ' · 베타' : ''}</DialogTitle>
           <DialogDescription>{previewAgent ? HOME_ASSISTANT_NEEDS[previewAgent.label] : ''}</DialogDescription>
           <p style={{ fontSize: 15, lineHeight: 1.7 }}>{previewAgent?.sub}</p>
           <button type="button" style={{ ...pillStyle, background: '#4A5A2C', color: '#fff', justifyContent: 'center', padding: 14 }} onClick={() => {
@@ -1659,7 +1660,7 @@ export function HomePageV2() {
             setPreviewAgent(null);
             if (agent.action === 'timeline') { openTimelineModal(); return; }
             if (agent.path) navigate(agent.path, { state: { ...(agent.state || {}), from: '/v2', resetAssistantScroll: true } });
-          }}>{previewAgent?.label} 열기</button>
+          }}>이 비서 이용하기 →</button>
           {previewAgent && (
             <button type="button" disabled={!effectivePersonalizationLoaded || personalizationSaving} style={pillStyle} onClick={() => {
               const key = getAgentKey(previewAgent);

@@ -11,6 +11,11 @@ html, body {
 @import './tailwind.css';
 @import './theme.css';
 
+/* 기록·비서 질문칸은 입력 전에도 경계가 보이고, 포커스는 별도로 표시한다. */
+.haru-writing-field::placeholder { color: #626B72; opacity: 1; }
+.haru-writing-field:focus { outline: 3px solid #1A3C6E; outline-offset: 3px; }
+.haru-writing-field:disabled { cursor: not-allowed; opacity: .65; }
+
 /* PDF 인쇄 시 불필요한 요소 숨김 */
 @media print {
   .no-print {

@@ -33,8 +33,8 @@ export function HomeRecordComposer({ content, onContentChange, onContinue, onBro
         <p id="home-format-description" aria-live="polite" style={{ fontSize: 13, color: '#646B57', margin: '12px 0 6px' }}>
           {!signedIn ? '로그인하면 나의 기록을 남길 수 있어요.' : !ready ? '첫 사용 안내를 확인하고 있어요. 잠시만 기다려 주세요.' : format ? RECORD_FORMAT_DESCRIPTIONS[format]?.description : '무엇을 쓸지 아직 정하지 않아도 괜찮아요.'}
         </p>
-        <label htmlFor="home-record-content" className="sr-only">나의 기록</label>
-        <textarea id="home-record-content" disabled={!ready} aria-describedby="home-format-description" value={content} onChange={(event) => onContentChange(event.target.value)} placeholder={format ? `${getRecordFormatLabel(format)}에 남기고 싶은 내용을 적어보세요.` : '오늘 있었던 일, 떠오른 생각…'} rows={3} style={{ width: '100%', resize: 'vertical', border: 0, padding: '8px 0 16px', fontSize: 16, lineHeight: 1.6, color: '#2C2C2A', background: 'transparent' }} />
+        <label htmlFor="home-record-content" style={{ display: 'block', margin: '16px 0 8px', fontSize: 16, fontWeight: 700, color: '#4A5A2C' }}>기록 입력 · 아래 글상자에 써 주세요</label>
+        <textarea id="home-record-content" className="haru-writing-field" disabled={!ready} aria-describedby="home-format-description" value={content} onChange={(event) => onContentChange(event.target.value)} placeholder={format ? `${getRecordFormatLabel(format)}에 남기고 싶은 내용을 적어보세요.` : '여기를 눌러 오늘 있었던 일이나 떠오른 생각을 써 보세요.'} rows={3} style={{ display: 'block', width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '2px solid #7B8962', borderRadius: 12, padding: 16, marginBottom: 12, fontSize: 16, lineHeight: 1.6, color: '#2C2C2A', background: '#F8FAF2' }} />
         <button type="submit" disabled={signedIn && (!ready || !content.trim())} className="disabled:opacity-50" style={{ width: '100%', background: '#4A5A2C', color: '#fff', border: 0, borderRadius: 12, padding: '13px 14px', fontSize: 16, fontWeight: 600 }}>
           {!signedIn ? '로그인하고 기록하기' : !ready ? '작성 화면 준비 중…' : format ? '기록 편집·저장으로 이어가기' : '기록하고 형식 고르기'}
         </button>

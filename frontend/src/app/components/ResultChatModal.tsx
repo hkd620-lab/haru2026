@@ -1,5 +1,5 @@
 import { HARULAW_ATTACHMENT_ACCEPT, HARULAW_ATTACHMENT_TYPES, HARULAW_DOCUMENT_MAX_BYTES, getHaruLawAttachmentLabel, readHaruLawSelectedFiles } from '../utils/haruLawAttachment';
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { collection, doc, getDoc, getDocs, getDocsFromServer, limit, orderBy, query } from 'firebase/firestore';
 import { Paperclip, X } from 'lucide-react';
 import { deleteObject, ref as storageRef, uploadBytes } from 'firebase/storage';
@@ -245,6 +245,7 @@ export function ResultChatModal({
   const pendingAttachmentsRef = useRef<HaruLawAttachmentRef[]>([]);
   const attemptedAttachmentPathsRef = useRef<Set<string>>(new Set());
 
+  const questionInputId = useId();
   const threadId = useMemo(() => getThreadId(config.sourceKey, sourceIndex), [config.sourceKey, sourceIndex]);
   const isHaruLaw = config.sourceKey === 'haruraw_sayu';
   const isPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
@@ -1100,8 +1101,11 @@ export function ResultChatModal({
               )}
             </>
           )}
+          <label htmlFor={questionInputId} style={{ display: 'block', margin: '8px 0', fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>{config.label}에게 질문 · 아래 글상자에 써 주세요</label>
           <div style={{ display: 'flex', gap: 8 }}>
             <textarea
+              id={questionInputId}
+              className="haru-writing-field"
               rows={3}
               aria-label="기록·비서 AI 질문"
               value={question}
@@ -1118,15 +1122,14 @@ export function ResultChatModal({
                 flex: 1,
                 minWidth: 0,
                 borderRadius: 10,
-                border: '1px solid #CBD5E1',
+                border: '2px solid #7187A5',
                 padding: '12px',
                 boxSizing: 'border-box',
                 resize: 'none',
                 lineHeight: '21px',
                 fontFamily: 'inherit',
-                fontSize: 14,
-                outline: 'none',
-                backgroundColor: '#FFFFFF',
+                fontSize: 16,
+                backgroundColor: '#F4F8FD',
               }}
             />
             <button
