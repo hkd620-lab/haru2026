@@ -15,6 +15,7 @@
     "test:question-enter": "node --import tsx --test test/questionEnterSubmit.test.mjs",
     "test:question-inputs": "node test/questionInputs.policy.test.cjs",
     "test:subscription-display": "node test/subscriptionDisplay.policy.test.cjs",
+    "test:share-image-meta": "node test/shareImageMeta.policy.test.cjs",
     "test:law-easy-explain": "node test/lawEasyExplain.policy.test.cjs",
     "test:harulaw-attachment-cleanup": "node --import tsx test/haruLawAttachmentCleanup.test.mjs",
     "test:harulaw-errors": "node --import tsx test/haruLawError.test.mjs",
