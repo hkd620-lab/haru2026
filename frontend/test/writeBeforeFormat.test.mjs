@@ -64,15 +64,25 @@ test('선교·일반보고 초안은 간편 본문과 프리미엄 여백에 전
   }
 });
 
-test('일반 사용자의 기록 선택에 선교·일반보고와 주식거래일지가 함께 나온다', () => {
+test('일반 사용자의 기록 선택에 선교·일반보고가 나오고 주식거래일지는 비서로 옮겨 나오지 않는다', () => {
   for (const list of [DRAFT_PICKER_FORMATS, WORK_ENTRY_FORMATS]) {
-    for (const format of ['선교보고', '일반보고', '주식거래일지']) assert.ok(list.includes(format), format);
+    for (const format of ['선교보고', '일반보고']) assert.ok(list.includes(format), format);
+    assert.ok(!list.includes('주식거래일지'), '주식은 홈 비서(HARU주식관리)에서 시작한다');
     assert.equal(new Set(list).size, list.length);
   }
   assert.ok(!DRAFT_PICKER_FORMATS.includes('HARU가계부'));
   assert.ok(!DRAFT_PICKER_FORMATS.includes('HARU보조장부'));
   assert.ok(!CATEGORY_FORMATS['업무'].includes('주식거래일지'), 'SAYU 업무 묶음에 주식이 중복되지 않는다');
   assert.ok(CATEGORY_FORMATS['HARU주식관리'].includes('HARU주식관리'), '기존 저장 식별자를 유지한다');
+});
+
+test('선택 목록에서 빠진 주식거래일지도 이미 전달된 초안은 같은 계정에게 계속 이어진다', () => {
+  const content = '삼성전자 10주 매수\n이유와 복기';
+  const state = { homeWritingDraft: { ownerUid: 'owner', content, format: '주식거래일지' } };
+  assert.deepEqual(readHomeWritingDraft(state, 'owner'), state.homeWritingDraft);
+  assert.equal(readHomeWritingDraft(state, 'different-user'), null);
+  assert.equal(readHomeWritingDraft(state, undefined), null);
+  assert.equal(readHomeWritingDraft({ homeWritingDraft: { ownerUid: 'owner', content, format: 'HARU주식관리' } }, 'owner'), null);
 });
 
 test('주식거래일지 초안은 거래소감으로만 이어지고 제목은 종목명 입력에 맡긴다', () => {

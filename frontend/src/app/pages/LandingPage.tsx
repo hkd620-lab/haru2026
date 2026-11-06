@@ -35,7 +35,7 @@ const agentBg: Record<Hue, string> = {
 const agentBorder: Record<Hue, string> = { green: C.lightGreen, lilac: C.lilac, terracotta: C.peach };
 
 const SHOW_PRICING = true;
-/* ── 기록 형식 11개 (홈 화면 일반 사용자 노출 기준과 일치) ── */
+/* ── 기록 형식 11개 (홈 기록·통계·합본 대상 STATS_MERGE_RECORD_FORMATS와 일치. 장부·주식·하루LAW는 비서) ── */
 const FORMATS: { name: string; icon: string; hue: Hue; cat: string; badge?: string }[] = [
   { name: '일기',         icon: 'diary',     hue: 'green',      cat: '생활' },
   { name: '에세이',       icon: 'pen',       hue: 'lilac',      cat: '생활' },
@@ -44,10 +44,10 @@ const FORMATS: { name: string; icon: string; hue: Hue; cat: string; badge?: stri
   { name: '텃밭일지',     icon: 'seed',      hue: 'green',      cat: '생활' },
   { name: '애완동물관찰일지', icon: 'paw',   hue: 'terracotta', cat: '생활' },
   { name: '육아일기',     icon: 'baby',      hue: 'lilac',      cat: '생활' },
+  { name: '선교보고',     icon: 'church',    hue: 'lilac',      cat: '업무' },
+  { name: '일반보고',     icon: 'bookbind',  hue: 'terracotta', cat: '업무' },
   { name: '업무일지',     icon: 'briefcase', hue: 'lilac',      cat: '업무' },
   { name: '메모',         icon: 'memo',      hue: 'green',      cat: '업무', badge: 'AI 제목' },
-  { name: 'HARU보조장부', icon: 'bookbind',  hue: 'terracotta', cat: '업무' },
-  { name: '하루LAW',      icon: 'law',       hue: 'terracotta', cat: '전문' },
 ];
 
 const SCATTER = [

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { RecordFormat } from '../types/haruTypes';
 import { RECORD_FORMAT_DESCRIPTIONS, getRecordFormatLabel } from '../records/recordFormatDescriptions';
+import { DRAFT_PICKER_FORMATS } from '../records/writeBeforeFormat';
 import { RecordFormatPicker } from './RecordFormatPicker';
 
 export function HomeRecordComposer({ content, onContentChange, onContinue, onBrowseFormats, signedIn, ready, onLogin }: {
@@ -42,7 +43,7 @@ export function HomeRecordComposer({ content, onContentChange, onContinue, onBro
       <button type="button" disabled={signedIn && !ready} onClick={onBrowseFormats} style={{ width: '100%', textAlign: 'left', marginTop: 12, padding: 16, border: '1px solid #E5DFD0', borderRadius: 16, background: '#fff', color: '#2C2C2A' }}>
         <strong style={{ display: 'block', fontSize: 15 }}>어떤 내용을 남기고 싶으세요?</strong>
         <span style={{ display: 'block', fontSize: 13, color: '#646B57', marginTop: 6 }}>일기 · 오늘 있었던 일과 나의 마음<br />독서사유 · 책에서 읽은 내용과 나의 생각<br />텃밭일지 · 식물의 변화와 돌본 내용</span>
-        <span style={{ display: 'block', fontSize: 13, marginTop: 8, color: '#4A5A2C' }}>12가지 형식과 설명 모두 보기 →</span>
+        <span style={{ display: 'block', fontSize: 13, marginTop: 8, color: '#4A5A2C' }}>{DRAFT_PICKER_FORMATS.length}가지 형식과 설명 모두 보기 →</span>
       </button>
       <RecordFormatPicker open={pickerMode !== null} afterWriting={pickerMode === 'after'} onClose={() => setPickerMode(null)} onSelect={(selected) => {
         if (pickerMode === 'after') onContinue(content, selected);

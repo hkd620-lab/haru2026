@@ -13,9 +13,13 @@ export const WRITABLE_FORMATS = WRITABLE_CANDIDATES.filter((format) => ![
   '주식거래일지',
 ].includes(format));
 
-// 주식거래일지는 SAYU에서 전용 묶음(HARU주식관리)으로 모으므로 CATEGORY_FORMATS에는 넣지 않고 기록 선택 화면에만 더한다.
-export const WORK_ENTRY_FORMATS: RecordFormat[] = [...CATEGORY_FORMATS['업무'], '주식거래일지'];
-export const DRAFT_PICKER_FORMATS: RecordFormat[] = [...WRITABLE_FORMATS, '주식거래일지'];
+// 주식거래일지는 홈의 비서(HARU주식관리)로 옮겼으므로 새 작성 선택·업무 탭에는 더하지 않는다.
+// SAYU는 전용 묶음(HARU주식관리)으로 모으므로 CATEGORY_FORMATS에도 넣지 않는다.
+export const WORK_ENTRY_FORMATS: RecordFormat[] = [...CATEGORY_FORMATS['업무']];
+export const DRAFT_PICKER_FORMATS: RecordFormat[] = [...WRITABLE_FORMATS];
+
+// 이전 화면에서 이미 넘겨진 주식 초안은 계속 받아 작성 화면으로 이어 준다(선택 목록과 별개).
+const ACCEPTED_DRAFT_FORMATS: RecordFormat[] = [...DRAFT_PICKER_FORMATS, '주식거래일지'];
 
 export type HomeWritingDraft = { ownerUid: string; content: string; format: RecordFormat };
 
@@ -26,7 +30,7 @@ export function readHomeWritingDraft(state: unknown, currentUid: string | undefi
   if (!draft || typeof draft !== 'object') return null;
   const { ownerUid, content, format } = draft as Partial<HomeWritingDraft>;
   if (ownerUid !== currentUid || typeof content !== 'string' || !content.trim()) return null;
-  if (!DRAFT_PICKER_FORMATS.includes(format as RecordFormat)) return null;
+  if (!ACCEPTED_DRAFT_FORMATS.includes(format as RecordFormat)) return null;
   return { ownerUid, content, format: format as RecordFormat };
 }
 
