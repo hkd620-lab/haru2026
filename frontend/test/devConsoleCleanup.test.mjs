@@ -5,7 +5,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { transformSync } from 'esbuild';
 import { matchRoutes } from 'react-router';
-import { FORMAT_REGISTRY, getFormatKey } from '../src/app/records/formatRegistry.ts';
+import { FORMAT_REGISTRY, getFormatKey, STATS_MERGE_RECORD_FORMATS } from '../src/app/records/formatRegistry.ts';
 import { buildDraftEditorData, DRAFT_PICKER_FORMATS, WORK_ENTRY_FORMATS } from '../src/app/records/writeBeforeFormat.ts';
 
 const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app');
@@ -24,6 +24,7 @@ function loadTable(rel, name) {
 
 const RECORDS = loadTable('pages/HomePageV2.tsx', 'RECORDS');
 const AGENTS = loadTable('pages/HomePageV2.tsx', 'AGENTS');
+const LANDING_FORMATS = loadTable('pages/LandingPage.tsx', 'FORMATS');
 const DEV_TOOLS = loadTable('pages/DevConsolePage.tsx', 'DEV_TOOLS');
 const FORMAT_FIELDS = loadTable('components/FormatModal.tsx', 'FORMAT_FIELDS');
 
@@ -108,8 +109,17 @@ test('이름이 비슷한 하루식물탐정과 공용 영어일기는 메뉴부
   }
 });
 
-test('세 형식은 홈 기록 카드 하나로 일반 사용자에게 보이고 같은 화면의 중복 진입은 없다', () => {
-  for (const [format] of MOVED_FORMATS) {
+test('선교·일반보고는 홈 기록 카드 하나로 보이고 주식거래일지는 홈 비서(HARU주식관리)로 옮겨 같은 화면의 중복 진입은 없다', () => {
+  const stockAgents = AGENTS.filter((agent) => agent.state?.format === '주식거래일지');
+  assert.equal(stockAgents.length, 1, '주식 비서 카드는 하나');
+  assert.equal(stockAgents[0].label, 'HARU주식관리');
+  assert.equal(stockAgents[0].path, '/record');
+  assert.equal(stockAgents[0].selectionKey, 'path:/record:{"format":"주식거래일지"}', '저장되는 비서 선택 키는 고정');
+  assert.ok(!stockAgents[0].developerOnly);
+  assert.equal(RECORDS.filter((record) => record.format === '주식거래일지').length, 0, '홈 기록 카드에서 빠진다');
+  assert.ok(!WORK_ENTRY_FORMATS.includes('주식거래일지'), '업무 탭에서 빠진다');
+  assert.ok(!DRAFT_PICKER_FORMATS.includes('주식거래일지'), '먼저 쓰기 선택에서 빠진다');
+  for (const [format] of MOVED_FORMATS.filter(([movedFormat]) => movedFormat !== '주식거래일지')) {
     const cards = RECORDS.filter((record) => record.format === format);
     assert.equal(cards.length, 1, format);
     assert.ok(!cards[0].developerOnly, format);
@@ -123,6 +133,14 @@ test('세 형식은 홈 기록 카드 하나로 일반 사용자에게 보이고
     assert.doesNotMatch(src, /HIDDEN_(RECORD_FORMATS|SECRETARY_LABELS|CARD_LABELS)/, rel);
     for (const [format] of MOVED_FORMATS) assert.ok(src.includes(`format: ${rel.endsWith('HomePage.tsx') ? `"${format}"` : `'${format}'`}`), `${rel}: ${format}`);
   }
+});
+
+test('기록 형식 소개는 홈 기록 카드·먼저 쓰기 선택·랜딩이 통계·합본 대상과 같은 11종이다', () => {
+  const expected = [...STATS_MERGE_RECORD_FORMATS].sort();
+  assert.equal(expected.length, 11);
+  assert.deepEqual(RECORDS.map((record) => record.format).sort(), expected, '홈 기록 카드');
+  assert.deepEqual([...DRAFT_PICKER_FORMATS].sort(), expected, '먼저 쓰기 선택');
+  assert.deepEqual(LANDING_FORMATS.map((format) => format.name).sort(), expected, '랜딩 기록 형식 소개');
 });
 
 test('홈 카드의 형식이 기록 화면의 작성 모달까지 전달된다', () => {
