@@ -1,0 +1,77 @@
+<!doctype html>
+<!--
+  haru2026 공유 이미지(og:image) v1 원본 — 1200×630
+  - 포도송이는 frontend/src/app/components/GrapeAnimation.tsx 의 '모인 상태'를 그대로 옮긴 것이다(새로 그리지 않음).
+    · 알 28px, 간격 27px, 4줄 역삼각(4·3·2·1), 위치 x = col×27+28, y = row×27
+    · 알 안쪽 아이콘은 frontend/src/imports/*.png 를 파일명 순으로 id 0~9 에 사용
+    · 알 색: purple-400 → 500 → 600 대각선 그라데이션, 그림자 0 10px 25px rgba(0,0,0,.3), 하이라이트 점
+  - 문구는 사이트가 이미 쓰는 문구만 사용한다: haru2026 / 하루2026 / AI 생활기록·생활관리 플랫폼
+  - 개수·기능 주장 문구는 넣지 않는다(기록 형식 수 불일치 방지).
+  - PNG 만드는 법: 이 파일을 헤드리스 Chrome 에서 1200×630 으로 열어 스크린샷을 찍는다.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>haru2026 share image v1</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    position: relative;
+    background: #F5F0E8;
+    color: #2C2C2A;
+    font-family: 'Pretendard', 'Pretendard Variable', -apple-system, system-ui, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  }
+  /* 포도송이: 스테이지를 S배로 키운다. 알 묶음의 좌상단이 (110, 64)에 오도록 배치 */
+  .stage { position: absolute; left: calc(110px - 14px * 4.6); top: calc(64px + 14px * 4.6); transform: scale(4.6); transform-origin: 0 0; width: 0; height: 0; }
+  .grape { position: absolute; width: 28px; height: 28px; }
+  .grape .ring {
+    position: absolute; inset: 0; border-radius: 9999px;
+    background: linear-gradient(to bottom right, #c084fc, #a855f7, #9333ea);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  }
+  .grape .inner {
+    position: absolute; inset: 8px; border-radius: 9999px; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .grape .inner img { width: 100%; height: 100%; object-fit: cover; border-radius: 9999px; }
+  .grape .hl { position: absolute; top: 8px; left: 8px; width: 8px; height: 8px; background: rgba(255, 255, 255, 0.4); border-radius: 9999px; filter: blur(4px); }
+
+  .text { position: absolute; left: 668px; top: 0; height: 630px; display: flex; flex-direction: column; justify-content: center; }
+  .t1 { font-size: 96px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.12; color: #2C2C2A; }
+  .t2 { font-size: 96px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.12; color: #4A5A2C; }
+  .t3 { margin-top: 28px; font-size: 34px; font-weight: 500; color: #7A6F5A; letter-spacing: -0.005em; }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage"></div>
+  <div class="text">
+    <div class="t1">haru2026</div>
+    <div class="t2">하루2026</div>
+    <div class="t3">AI 생활기록·생활관리 플랫폼</div>
+  </div>
+<script>
+  // GrapeAnimation.tsx 의 grapeImages 와 같은 배치(id, row, col)와 아이콘 순서
+  var base = '../../../frontend/src/imports/';
+  var files = ['001메모.png','002선교보고.png','003애완동물관찰일지.png','004업무일지.png','005에세이.png','006.png','007육아일기.png','008일기.png','009일반보고.png','010텃밭일지.png'];
+  var grapes = [
+    { id: 0, row: 0, col: 0 }, { id: 1, row: 0, col: 1 }, { id: 2, row: 0, col: 2 }, { id: 3, row: 0, col: 3 },
+    { id: 4, row: 1, col: 0.5 }, { id: 5, row: 1, col: 1.5 }, { id: 6, row: 1, col: 2.5 },
+    { id: 7, row: 2, col: 1 }, { id: 8, row: 2, col: 2 },
+    { id: 9, row: 3, col: 1.5 }
+  ];
+  var spacing = 27;
+  var stage = document.getElementById('stage');
+  grapes.forEach(function (g) {
+    var cx = g.col * spacing + 28, cy = g.row * spacing;
+    var el = document.createElement('div');
+    el.className = 'grape';
+    el.style.left = (cx - 14) + 'px';
+    el.style.top = (cy - 14) + 'px';
+    el.innerHTML = '<div class="ring"></div><div class="inner"><img alt="" src="' + base + encodeURI(files[g.id]) + '"></div><div class="hl"></div>';
+    stage.appendChild(el);
+  });
+</script>
+</body>
+</html>
