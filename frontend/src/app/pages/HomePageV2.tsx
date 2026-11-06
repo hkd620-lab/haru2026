@@ -1283,7 +1283,7 @@ export function HomePageV2() {
           <p style={{ fontSize: 14, color: '#646B57', margin: '0 0 14px' }}>HARU 비서는 돈을 기록하고, 필요한 정보를 찾고, 생활 속 궁금한 점을 정리하도록 돕는 도구예요.</p>
           {agentViewMode === 'my' && (
             <div style={{ display: 'grid', gap: 8, marginBottom: 18 }}>
-              {visibleAgents.filter((agent) => ['HARU가계부', '하루LAW', '하루식물탐정'].includes(agent.label) && !homeAgents.includes(agent)).map((agent) => (
+              {visibleAgents.filter((agent) => ['HARU가계부', '하루LAW', '하루식물탐정', 'HARU주식관리'].includes(agent.label) && !homeAgents.includes(agent)).map((agent) => (
                 <button type="button" key={agent.label} onClick={() => setPreviewAgent(agent)} style={{ background: '#fff', border: '1px solid #E5DFD0', borderRadius: 14, padding: 14, textAlign: 'left', color: '#2C2C2A' }}>
                   <strong style={{ display: 'block', fontSize: 14 }}>{HOME_ASSISTANT_NEEDS[agent.label]}</strong>
                   <span style={{ display: 'block', fontSize: 13, color: '#646B57', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 무엇을 도와주는지 보기 →</span>
