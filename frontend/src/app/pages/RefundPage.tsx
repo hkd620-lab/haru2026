@@ -45,14 +45,16 @@ const sections = [
   },
 ];
 
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 
 export function RefundPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '40px 20px', fontFamily: 'inherit' }}>
       <button
-        onClick={() => navigate('/settings')}
+        onClick={() => location.key === 'default' ? navigate('/') : navigate(-1)}
+        aria-label="환불정책 닫기"
         style={{ position: 'fixed', top: '16px', right: '16px', width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#1A3C6E', color: 'white', fontSize: '18px', border: 'none', cursor: 'pointer', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >✕</button>
       <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>

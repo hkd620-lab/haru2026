@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
-  getCardFormat, getCardTitle, monthKeyOf, monthRangeLabel, nextMonthStart, normalizeUpdatedMs, selectMonthProgress, todayKeyOf,
+  getCardFormat, getCardTitle, normalizeCardDate, monthKeyOf, monthRangeLabel, nextMonthStart, normalizeUpdatedMs, selectMonthProgress, todayKeyOf,
 } from '../src/app/records/monthProgress.ts';
 import { createMonthProgressController, MONTH_PROGRESS_TIMEOUT_MS } from '../src/app/records/monthProgressController.ts';
 import { STATS_MERGE_RECORD_FORMATS } from '../src/app/records/formatRegistry.ts';
@@ -107,9 +107,10 @@ test('제목: 형식별 제목 칸 → 독서사유 책 제목 → 원문 첫 �
   assert.equal(getCardTitle({ diary_simple: '간편 본문입니다\n둘째' }, '일기'), '간편 본문입니다');
   assert.equal(getCardTitle({}, '일기'), '(내용 없음)');
   const long = getCardTitle({ diary_title: '가'.repeat(30) }, '일기');
-  assert.equal(Array.from(long).length, 20);
+  assert.equal(long, '가'.repeat(20) + '…');
+  assert.equal(getCardTitle({ diary_title: '가'.repeat(20) }, '일기'), '가'.repeat(20));
   const emoji = getCardTitle({ diary_title: '😀'.repeat(25) }, '일기');
-  assert.equal(Array.from(emoji).length, 20, '이모지(서로게이트 쌍)를 반으로 자르지 않는다');
+  assert.equal(emoji, '😀'.repeat(20) + '…', '이모지(서로게이트 쌍)를 반으로 자르지 않는다');
 });
 
 // ───────────── 구독 컨트롤러 ─────────────
@@ -419,9 +420,9 @@ test('카드·훅·계산 모듈은 읽기 전용이다: 쓰기·새 컬렉션·
   assert.match(hook, /orderBy\('date', 'desc'\)/);
 });
 
-test('훅의 effect 의존값은 uid·enabled 뿐이다(1분마다 재구독하지 않는다)', () => {
+test('훅의 effect 의존값은 uid·enabled·Firebase 로그인 uid이다(1분마다 재구독하지 않는다)', () => {
   const hook = read('hooks/useMonthRecordProgress.ts');
-  assert.match(hook, /\}, \[uid, enabled\]\);/);
+  assert.match(hook, /\}, \[uid, enabled, firebaseUid\]\);/);
   assert.doesNotMatch(hook, /useEffect\([\s\S]*?\}, \[[^\]]*(now|todayKey|monthKey)[^\]]*\]\)/);
 });
 
@@ -458,4 +459,14 @@ test('카드 문구: 약속 문구 없음, 0건·실패 문구와 접근성 속�
   assert.match(card, /<li key=\{entry\.id\} style=\{\{ minWidth: 0 \}\}>/);
   // 숫자는 서버 확정 뒤에만: 확정 전 분기가 count 보다 먼저 온다
   assert.ok(card.indexOf('!hasConfirmed') < card.indexOf('{count}편'));
+});
+
+
+test('0 없는 일자는 정규화하고 잘못된 날짜·미래 날짜는 세지 않는다', () => {
+  assert.equal(normalizeCardDate('2026-11-6'), '2026-11-06');
+  assert.equal(normalizeCardDate('2026-11-6T10:00:00+09:00'), '2026-11-06');
+  for (const value of ['2026-02-30', '2026-13-01', '2026-11-0', '2026-11-6oops', {}, null]) assert.equal(normalizeCardDate(value), null);
+  const selected = selectMonthProgress([diary('today', '2026-11-6'), diary('future', '2026-11-7'), diary('bad', '2026-11-31')], '2026-11-06');
+  assert.equal(selected.count, 1);
+  assert.equal(selected.recent[0].date, '2026-11-06');
 });

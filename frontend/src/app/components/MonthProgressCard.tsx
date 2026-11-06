@@ -27,7 +27,7 @@ function shortDate(date: string): string {
   return `${month}/${day}`;
 }
 
-export function MonthProgressCard({ view, onOpenRecord, onRetry, onStartWriting }: {
+function MonthProgressCardContent({ view, onOpenRecord, onRetry, onStartWriting }: {
   view: MonthProgressView;
   onOpenRecord: (entry: MonthProgressEntry) => void;
   onRetry: () => void;
@@ -77,7 +77,7 @@ export function MonthProgressCard({ view, onOpenRecord, onRetry, onStartWriting 
 
       {count > 0 ? (
         <>
-          <p aria-live="polite" style={{ margin: '8px 0 12px', fontSize: 32, fontWeight: 800, color: '#4A5A2C', lineHeight: 1.2 }}>{count}편</p>
+          <p style={{ margin: '8px 0 12px', fontSize: 32, fontWeight: 800, color: '#4A5A2C', lineHeight: 1.2 }}>{count}편</p>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
             {recent.map((entry) => (
               <li key={entry.id} style={{ minWidth: 0 }}>
@@ -95,7 +95,7 @@ export function MonthProgressCard({ view, onOpenRecord, onRetry, onStartWriting 
         </>
       ) : (
         <div style={{ marginTop: 10 }}>
-          <p aria-live="polite" style={{ ...mutedText, margin: '0 0 12px' }}>이번 달 아직 남긴 기록이 없어요. 오늘의 한 줄부터 시작해 보세요.</p>
+          <p style={{ ...mutedText, margin: '0 0 12px' }}>이번 달 아직 남긴 기록이 없어요. 오늘의 한 줄부터 시작해 보세요.</p>
           <button type="button" onClick={onStartWriting} style={{ ...buttonReset, padding: '10px 14px', minHeight: 44, borderRadius: 12, background: '#E9EFDA', color: '#4A5A2C', fontSize: 14, fontWeight: 700 }}>
             오늘의 한 줄 쓰기
           </button>
@@ -112,4 +112,15 @@ export function MonthProgressCard({ view, onOpenRecord, onRetry, onStartWriting 
       )}
     </section>
   );
+}
+
+// 서버 응답 전에 빈 live region을 먼저 마운트해 첫 결과와 0건 전환도 알린다.
+export function MonthProgressCard(props: Parameters<typeof MonthProgressCardContent>[0]) {
+  const { hasConfirmed, count } = props.view;
+  return <>
+    <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+      {hasConfirmed ? `이번 달 기록 ${count}편` : ''}
+    </span>
+    <MonthProgressCardContent {...props} />
+  </>;
 }

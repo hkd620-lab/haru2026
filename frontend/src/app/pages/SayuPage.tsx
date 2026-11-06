@@ -2602,25 +2602,32 @@ export function SayuPage() {
     if (!currentRecord) {
       if (sayuRouteStateLoadingRef.current === routeKey) return;
       sayuRouteStateLoadingRef.current = routeKey;
+      let cancelled = false;
       (async () => {
         try {
-          const data = await firestoreService.getRecords(user.uid);
-          if (currentRecordsUidRef.current !== user.uid) return;
-          setRecords(data);
-          setRecordsOwnerUid(user.uid);
-          if (!data.some((record) => record.id === openRecordId)) {
-            toast.error('저장한 메모를 찾지 못했습니다.');
+          const snapshot = await getDoc(doc(db, 'users', user.uid, 'records', openRecordId));
+          if (cancelled || currentRecordsUidRef.current !== user.uid) return;
+          if (!snapshot.exists()) {
+            toast.error('선택한 기록을 찾지 못했습니다.');
             navigate('/sayu', { replace: true, state: null });
+            return;
           }
+          const record = { ...snapshot.data(), id: snapshot.id } as HaruRecord;
+          // 단건 조회는 전체 목록의 소유/로딩 완료 상태를 바꾸지 않는다.
+          setRecords((prev) => [...prev.filter((item) => item.id !== record.id), record]);
         } catch (error) {
-          console.error('저장한 메모 불러오기 실패:', error);
-          toast.error('저장한 메모를 불러오지 못했습니다.');
+          if (cancelled || currentRecordsUidRef.current !== user.uid) return;
+          console.error('선택한 기록 불러오기 실패:', error);
+          toast.error('선택한 기록을 불러오지 못했습니다.');
           navigate('/sayu', { replace: true, state: null });
         } finally {
-          sayuRouteStateLoadingRef.current = '';
+          if (!cancelled && sayuRouteStateLoadingRef.current === routeKey) sayuRouteStateLoadingRef.current = '';
         }
       })();
-      return;
+      return () => {
+        cancelled = true;
+        if (sayuRouteStateLoadingRef.current === routeKey) sayuRouteStateLoadingRef.current = '';
+      };
     }
 
     const recordDate = String(currentRecord.date || '').slice(0, 10);

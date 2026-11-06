@@ -82,11 +82,11 @@ const REPRESENTATIVE_TITLE_FIELD: Partial<Record<RecordFormat, string>> = {
   '독서사유': 'reading_book_title',
 };
 
-// 20자(코드 포인트 기준)로 자른다. 줄바꿈·연속 공백은 한 칸으로 줄인다.
+// 20자(코드 포인트 기준) 뒤에 생략 표시를 붙인다. 줄바꿈·연속 공백은 한 칸으로 줄인다.
 function shorten(value: string): string {
   const flat = value.replace(/\s+/g, ' ').trim();
   const chars = Array.from(flat);
-  return chars.length > MONTH_PROGRESS_TITLE_MAX ? chars.slice(0, MONTH_PROGRESS_TITLE_MAX).join('') : flat;
+  return chars.length > MONTH_PROGRESS_TITLE_MAX ? `${chars.slice(0, MONTH_PROGRESS_TITLE_MAX).join('')}…` : flat;
 }
 
 // 제목: ① `{prefix}_title` ② 형식별 대표 칸 ③ 원문 첫 줄 ④ '(내용 없음)'.
@@ -102,6 +102,17 @@ export function getCardTitle(record: Record<string, any>, format: RecordFormat):
   return firstLine ? shorten(firstLine) : EMPTY_TITLE;
 }
 
+// 날짜 문자열만 정규화한다. 서버에서 읽지 못한 다른 형식의 날짜를 추가 조회하지 않는다.
+export function normalizeCardDate(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:$|T| )/.exec(value);
+  if (!match) return null;
+  const [, year, month, day] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  if (date.getFullYear() !== Number(year) || date.getMonth() + 1 !== Number(month) || date.getDate() !== Number(day)) return null;
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
 // 이번 달 기록 현황. docs 는 `{ id, ...data }` 모양의 월 범위 구독 결과.
 // 서버 범위(월초 이상, 다음 달 1일 미만)를 믿지 않고 여기서도 월초~오늘로 한 번 더 거른다.
 export function selectMonthProgress(docs: Array<Record<string, any>>, todayKey: string): MonthProgress {
@@ -111,8 +122,8 @@ export function selectMonthProgress(docs: Array<Record<string, any>>, todayKey: 
   for (const record of docs) {
     const id = typeof record.id === 'string' ? record.id : '';
     if (!id || seen.has(id)) continue;
-    if (typeof record.date !== 'string') continue;
-    const date = record.date.slice(0, 10);
+    const date = normalizeCardDate(record.date);
+    if (!date) continue;
     if (date < monthStart || date > todayKey) continue;
     const format = getCardFormat(record);
     if (!format) continue;

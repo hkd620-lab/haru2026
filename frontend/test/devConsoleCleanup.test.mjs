@@ -144,12 +144,28 @@ test('기록 형식 소개는 홈 기록 카드·먼저 쓰기 선택·랜딩이
 });
 
 test('홈 카드의 형식이 기록 화면의 작성 모달까지 전달된다', () => {
-  assert.ok(read('pages/HomePageV2.tsx').includes("navigate('/record', { state: { format: r.format, from: '/v2' } })"));
+  // 실제 홈 클릭 핸들러의 빈 글·작성 중인 글 분기를 모두 실행한다.
+  const home = read('pages/HomePageV2.tsx');
+  const handler = home.match(/onClick=\{(\(\) => navigate\('\/record', \{ state: homeDraftContent[\s\S]*?\}\))\}\s*className="v2-rec"/);
+  assert.ok(handler, '홈 기록 카드 클릭 핸들러');
+  for (const card of RECORDS) {
+    for (const [content, uid] of [['', 'owner'], ['  ', 'owner'], ['작성 중인 글', 'owner'], ['다른 계정 글', null]]) {
+      let actual;
+      const click = new Function('navigate', 'homeDraftContent', 'currentUserUid', 'r', `return (${handler[1]});`)(
+        (route, options) => { actual = { route, ...options }; }, content, uid, card,
+      );
+      click();
+      assert.deepEqual(actual, { route: '/record', state: content.trim() && uid
+        ? { from: '/v2', homeWritingDraft: { ownerUid: uid, content, format: card.format } }
+        : { format: card.format, from: '/v2' } });
+    }
+  }
   const recordPage = read('pages/RecordPage.tsx');
   assert.match(recordPage, /const incomingFormat = \(location\.state as any\)\?\.format as string \| undefined;/);
   assert.match(recordPage, /openFormatDirectly\(incomingFormat as RecordFormat\);/);
   assert.match(recordPage, /selectedCategory === '업무' \? WORK_ENTRY_FORMATS/);
-  assert.match(recordPage, /DRAFT_PICKER_FORMATS\.map\(\(format\) => \(\s*<button key=\{format\} type="button" onClick=\{\(\) => openDraftEditorForFormat\(format\)\}/);
+  assert.match(recordPage, /<RecordFormatPicker[\s\S]*?onSelect=\{openDraftEditorForFormat\}/);
+  assert.match(read('components/RecordFormatPicker.tsx'), /DRAFT_PICKER_FORMATS\.map/);
 });
 
 test('먼저 쓴 글은 세 형식 편집창의 실제 입력칸과 기존 저장 접두어로 이어진다', () => {

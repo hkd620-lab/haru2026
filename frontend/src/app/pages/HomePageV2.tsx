@@ -1286,7 +1286,7 @@ export function HomePageV2() {
           </div>
           {agentViewMode === 'my' && (
             <div style={{ display: 'grid', gap: 8, marginBottom: 18 }}>
-              {visibleAgents.filter((agent) => ['HARU가계부', '하루LAW', '하루식물탐정'].includes(agent.label) && !homeAgents.includes(agent)).map((agent) => (
+              {visibleAgents.filter((agent) => ['HARU가계부', '하루LAW', '하루식물탐정', 'HARU주식관리'].includes(agent.label) && !homeAgents.includes(agent)).map((agent) => (
                 <button type="button" key={agent.label} onClick={() => setPreviewAgent(agent)} style={{ background: '#fff', border: '1px solid #E5DFD0', borderRadius: 14, padding: 14, textAlign: 'left', color: '#2C2C2A' }}>
                   <strong style={{ display: 'block', fontSize: 14 }}>{HOME_ASSISTANT_NEEDS[agent.label]}</strong>
                   <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#4A5A2C', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 이 비서 선택하기 →</span>
