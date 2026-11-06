@@ -11,6 +11,8 @@ import { firestoreService, type HomePersonalizationSettings } from '../services/
 import { finishLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 import { getHomeAssistantSelection } from '../utils/homeAssistantSelection';
 import { HomeRecordComposer } from '../components/HomeRecordComposer';
+import { MonthProgressCard } from '../components/MonthProgressCard';
+import { useMonthRecordProgress } from '../hooks/useMonthRecordProgress';
 import { RECORD_FORMAT_DESCRIPTIONS } from '../records/recordFormatDescriptions';
 import type { RecordFormat } from '../types/haruTypes';
 import { HOME_ASSISTANT_NEEDS } from '../utils/homeAssistantDescriptions';
@@ -570,6 +572,8 @@ export function HomePageV2() {
   const [agentViewMode, setAgentViewMode] = useState<'my' | 'all'>('my');
   const [personalizationError, setPersonalizationError] = useState<string | null>(null);
   const [onboardingGateReady, setOnboardingGateReady] = useState(false);
+  // 이번 달 기록 현황 카드용 구독(읽기 전용). 홈이 마운트된 동안 유지하고 '전체 보기' 전환에도 끊지 않는다.
+  const monthProgress = useMonthRecordProgress({ uid: currentUserUid, enabled: Boolean(currentUserUid) && onboardingGateReady });
   const [onboardingBannerHidden, setOnboardingBannerHidden] = useState(() => {
     try {
       return typeof window !== 'undefined'
@@ -1243,6 +1247,20 @@ export function HomePageV2() {
             ))}
           </div>
         </section>
+        )}
+
+        {/* 이번 달 기록 현황 카드 — '내 하루기록' 탭 안(전체 보기에서는 숨기되 구독은 유지) */}
+        {!isPersonalizationPending && homeViewMode === 'my' && currentUserUid && onboardingGateReady && (
+          <MonthProgressCard
+            view={monthProgress.view}
+            onRetry={monthProgress.retry}
+            onOpenRecord={(entry) => navigate('/sayu', { state: { filterFormat: entry.format, openRecordId: entry.id } })}
+            onStartWriting={() => {
+              const input = document.getElementById('home-record-content');
+              input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              if (input instanceof HTMLTextAreaElement) input.focus();
+            }}
+          />
         )}
 
         {/* AGENTS SECTION */}
