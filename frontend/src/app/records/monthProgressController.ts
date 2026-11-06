@@ -25,7 +25,7 @@ export type MonthProgressView = {
 };
 
 export type SnapshotLike = {
-  docs: Array<{ id: string; data: () => Record<string, any> }>;
+  docs: Array<{ id: string; data: (options?: { serverTimestamps?: 'estimate' | 'previous' | 'none' }) => Record<string, any> }>;
   metadata: { fromCache: boolean; hasPendingWrites: boolean };
 };
 
@@ -54,6 +54,8 @@ export function createMonthProgressController(deps: MonthProgressDeps, onChange:
   const timeoutMs = deps.timeoutMs ?? MONTH_PROGRESS_TIMEOUT_MS;
   let view = createIdleView(deps.todayKey());
   let docs: Array<Record<string, any>> = [];
+  let confirmedDocs: Array<Record<string, any>> = []; // 마지막으로 서버 확정을 받은 문서들(재시도 중 캐시 스냅샷이 덮어쓰지 못하게 따로 둔다)
+  let confirmedThisOpen = false;                       // 지금 구독(open)에서 서버 확정을 받았는가
   let unsubscribe: (() => void) | null = null;
   let timer: unknown = null;
   let token = 0; // 구독을 새로 열 때마다 올려, 이전 구독의 늦은 콜백을 무시한다
@@ -73,14 +75,15 @@ export function createMonthProgressController(deps: MonthProgressDeps, onChange:
     token += 1;
     const mine = token;
     const sessionKey = `${uid}:${monthKey}`;
-    if (!keepValues) docs = [];
+    confirmedThisOpen = false;
+    if (!keepValues) { docs = []; confirmedDocs = []; } else docs = confirmedDocs;
     const todayKey = deps.todayKey();
     const base = keepValues
       ? { ...view, sessionKey, uid, monthKey, todayKey, status: 'loading' as const }
       : { ...createIdleView(todayKey), sessionKey, uid, monthKey };
     emit(base);
     timer = deps.setTimer(() => {
-      if (mine !== token || view.hasConfirmed) return;
+      if (mine !== token || confirmedThisOpen) return;
       timer = null;
       emit({ ...view, status: 'error' }); // 리스너는 끊지 않는다
     }, timeoutMs);
@@ -89,14 +92,21 @@ export function createMonthProgressController(deps: MonthProgressDeps, onChange:
       monthKey,
       (snapshot) => {
         if (mine !== token) return;
-        docs = snapshot.docs.map((d) => ({ ...d.data(), id: d.id }));
+        // 쓰기 대기 중인 serverTimestamp 가 null 로 오지 않도록 추정값을 받는다(막 저장한 기록이 정렬에서 밀리지 않게).
+        const next = snapshot.docs.map((d) => ({ ...d.data({ serverTimestamps: 'estimate' }), id: d.id }));
         const confirmed = !snapshot.metadata.fromCache;
         if (confirmed) {
+          confirmedThisOpen = true;
+          docs = confirmedDocs = next;
           clearTimeoutHandle();
           recompute({ hasConfirmed: true, stale: false, lastConfirmedAt: deps.now(), status: 'ready' });
+        } else if (confirmedThisOpen) {
+          docs = next;
+          recompute({ stale: true, status: 'ready' }); // 같은 구독이 확정 뒤 오프라인이 됨: 마지막 값 유지
         } else if (view.hasConfirmed) {
-          recompute({ stale: true, status: 'ready' }); // 확정 뒤 오프라인: 마지막 확정 값 유지
+          // 재시도 중 새 구독의 첫 캐시 스냅샷: 이전에 확정한 값을 덮어쓰지 않고 시간 제한도 그대로 둔다.
         } else {
+          docs = next;
           recompute(); // 서버 확정 전: 숫자는 숨긴 채 상태만 유지
         }
         refreshToday(); // 스냅샷을 받을 때도 오늘 키를 다시 계산한다
@@ -131,7 +141,8 @@ export function createMonthProgressController(deps: MonthProgressDeps, onChange:
     // 오류 뒤 또는 시간 초과 뒤 다시 시도: 기존 구독을 먼저 해제하고 새로 연다. 같은 세션 키의 확정 값은 유지한다.
     retry() {
       if (!view.uid || !view.monthKey) return;
-      open(view.uid, view.monthKey, true);
+      const monthKey = monthKeyOf(deps.todayKey()); // 월이 바뀐 직후라면 지난달로 다시 열지 않는다
+      open(view.uid, monthKey, monthKey === view.monthKey);
     },
     refreshToday,
     stop() {

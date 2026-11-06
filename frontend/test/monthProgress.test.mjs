@@ -246,6 +246,65 @@ test('시간 초과로 실패한 상태에서 다시 시도하면 살아 있던 
   assert.notEqual(h.active()[0], first);
 });
 
+test('확정 값이 있는 상태에서 다시 시도해도 8초 시간 제한이 살아 있어 실패로 넘어간다', () => {
+  const h = harness();
+  h.controller.start('u1');
+  h.active()[0].onNext(snapshot([diary('a', '2026-11-05')]));
+  h.active()[0].onError(new Error('unavailable'));
+  h.controller.retry();
+  assert.equal(h.timers.size, 1, '재시도마다 시간 제한을 다시 시작');
+  assert.equal(h.controller.getView().status, 'loading');
+  h.fireTimers();
+  const view = h.controller.getView();
+  assert.equal(view.status, 'error', '"다시 확인하는 중" 에서 영원히 멈추지 않는다');
+  assert.equal(view.count, 1, '마지막 확정 값은 유지');
+  assert.equal(h.active().length, 1, '시간 초과로 리스너를 끊지 않는다');
+});
+
+test('다시 시도 중 새 구독의 빈 캐시 스냅샷이 와도 확정 값을 덮어쓰지 않는다', () => {
+  const h = harness();
+  h.controller.start('u1');
+  h.active()[0].onNext(snapshot([diary('a', '2026-11-05'), diary('b', '2026-11-06')]));
+  h.active()[0].onError(new Error('unavailable'));
+  h.controller.retry();
+  h.active()[0].onNext(snapshot([], { fromCache: true }));
+  let view = h.controller.getView();
+  assert.equal(view.count, 2, '오프라인 빈 캐시가 "0편" 으로 보이지 않는다');
+  assert.equal(view.status, 'loading');
+  assert.equal(view.stale, false);
+  // 이어서 서버 확정이 오면 새 값으로 바뀐다
+  h.active()[0].onNext(snapshot([diary('a', '2026-11-05')]));
+  view = h.controller.getView();
+  assert.equal(view.status, 'ready');
+  assert.equal(view.count, 1);
+});
+
+test('다시 시도 때 월이 이미 바뀌었으면 새 월로 열고 지난달 값은 버린다', () => {
+  const h = harness('2026-11-30');
+  h.controller.start('u1');
+  h.active()[0].onNext(snapshot([diary('a', '2026-11-29')]));
+  h.active()[0].onError(new Error('unavailable'));
+  h.setToday('2026-12-01');
+  h.controller.retry();
+  assert.equal(h.active().length, 1);
+  assert.equal(h.active()[0].monthKey, '2026-12');
+  assert.equal(h.controller.getView().count, 0);
+  assert.equal(h.controller.getView().hasConfirmed, false);
+});
+
+test('스냅샷 문서는 쓰기 대기 중 serverTimestamp 를 추정값으로 받는다(막 저장한 기록이 정렬에서 밀리지 않는다)', () => {
+  const h = harness();
+  h.controller.start('u1');
+  const seen = [];
+  const doc = (id, date, updatedAt) => ({ id, data: (options) => { seen.push(options); return { date, formats: ['일기'], diary_title: id, updatedAt: options?.serverTimestamps === 'estimate' ? updatedAt : null }; } });
+  h.active()[0].onNext({
+    docs: [doc('old1', '2026-11-06', '2026-11-06T01:00:00.000Z'), doc('old2', '2026-11-06', '2026-11-06T02:00:00.000Z'), doc('old3', '2026-11-06', '2026-11-06T03:00:00.000Z'), doc('fresh', '2026-11-06', '2026-11-06T09:00:00.000Z')],
+    metadata: { fromCache: false, hasPendingWrites: true },
+  });
+  assert.ok(seen.every((options) => options?.serverTimestamps === 'estimate'));
+  assert.deepEqual(h.controller.getView().recent.map((entry) => entry.id), ['fresh', 'old3', 'old2']);
+});
+
 test('이전 구독의 늦은 콜백은 무시한다(계정 변경·재시도)', () => {
   const h = harness();
   h.controller.start('u1');
@@ -348,7 +407,7 @@ test('stop 은 구독과 타이머를 정리하고 이후 콜백을 무시한다
 
 test('카드·훅·계산 모듈은 읽기 전용이다: 쓰기·새 컬렉션·AI 호출이 없다', () => {
   for (const rel of ['records/monthProgress.ts', 'records/monthProgressController.ts', 'hooks/useMonthRecordProgress.ts', 'components/MonthProgressCard.tsx']) {
-    const src = read(rel);
+    const src = read(rel).replace(/\/\/.*$/gm, ''); // 주석은 제외하고 코드만 본다
     assert.doesNotMatch(src, /\b(setDoc|updateDoc|addDoc|deleteDoc|writeBatch|runTransaction|serverTimestamp)\b/, `${rel}: 쓰기 API 없음`);
     assert.doesNotMatch(src, /httpsCallable|getFunctions|functions\./, `${rel}: Functions·AI 호출 없음`);
   }
