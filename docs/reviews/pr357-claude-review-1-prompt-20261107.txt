@@ -1,0 +1,13 @@
+독립 Claude 검토자에게 요청합니다. 이 세션에는 실행자의 대화 맥락을 전달하지 않습니다.
+
+저장소 /private/tmp/haru-ccr-followups-20261107
+PR https://github.com/hkd620-lab/haru2026/pull/357
+검토 대상 HEAD b0a4f36b92ddd7ea4deb6cb6a435f1f25fb07201
+base origin/main (현재 1c6ad621ed727ddee17fd9251292b061e06d9ad2)
+근거 docs/reviews/pr357-implementation-validation-20261107.md 및 PR 본문, 해당 문서의 GitHub/Slack 원문 링크.
+
+AGENTS.md 및 docs/HARU2026_Slack_운영정책.md 8.1/9.1을 읽고 전체 변경 diff와 관련 구현을 읽기 전용으로 검토하세요. 파일 변경/커밋/푸시/배포/Slack 게시/AI 또는 유료 생성 호출/사용자 데이터 쓰기 금지. 명령은 읽기 전용으로만 사용하세요. 이 건의 첫 독립 검토이며 이전 판정은 없습니다.
+
+구현·설계 적합성, 기능에 비해 과장된 문구 여부, SAYU 원문 보존 및 직접 입력/예시의 구분, 역할 안내의 정확성, 기존 기능 회귀, 테스트의 충분성 및 근거의 범위/한계를 검토하세요. 측정 자체를 다시 실행하거나 운영 사용자 기록을 읽지 마세요. 로컬 검증 원본은 /private/tmp/haru-ccr-sayu-test.log, /private/tmp/haru-ccr-copy-tests.log, /private/tmp/haru-ccr-copy-build.log, /private/tmp/haru-ccr-entry-test.log에서 확인할 수 있습니다.
+
+최종 판정은 '승인' / '수정 후 승인' / '재설계' 중 하나를 명시하고, 근거와 필요한 수정은 파일/위치를 포함하세요. 작업 규모(소/중/대), 멈춤 조건 해당 여부와 운영 배포 전 필요한 승인도 독립적으로 판정하세요. 실행자 대신 승인이나 배포를 수행하지 마세요.

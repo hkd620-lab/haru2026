@@ -88,7 +88,7 @@ const experienceTabs: ExperienceTab[] = [
     icon: <PenLine size={17} />,
     short: '오늘은 별일 없었다. 그래도 저녁에 아내와 산책했다.',
     refined:
-      '오늘은 특별한 사건은 없었지만, 저녁에 아내와 함께 산책하며 하루를 차분히 마무리했다. 별일 없는 하루도 함께 걷고 대화한 시간이 남으면 의미 있는 기록이 된다.',
+      '오늘은 별일 없었지만, 저녁에 아내와 산책했다.',
     useCases: [
       'SAYU 사유정리',
       '월간 하루기록 합본',
@@ -116,7 +116,7 @@ const experienceTabs: ExperienceTab[] = [
     icon: <HeartPulse size={17} />,
     short: '저녁 식사 후 20분 걸었고 단 음료는 마시지 않았다.',
     refined:
-      '오늘은 식후 걷기를 실천하고 단 음료를 참으며 건강을 위한 작은 선택을 했다. 큰 변화는 아니지만 이런 선택이 반복되면 생활 리듬을 안정시키는 기록이 된다.',
+      '저녁 식사 후 20분을 걸었고, 단 음료는 마시지 않았다.',
     useCases: [
       '건강 습관 기록',
       '식사·운동 흐름 합본',
@@ -140,7 +140,7 @@ const experienceTabs: ExperienceTab[] = [
     icon: <Leaf size={17} />,
     short: '호박 암꽃이 피었는데 오후에 떨어져서 아쉬웠다.',
     refined:
-      '오늘은 텃밭에서 호박 암꽃이 피었다가 떨어진 모습을 보며 아쉬움을 느꼈다. 이 기록은 단순한 실패가 아니라 물, 햇빛, 영양, 수분 상태를 다시 살펴보게 하는 관찰 자료가 된다.',
+      '호박 암꽃이 피었지만 오후에 떨어져 아쉬웠다.',
     useCases: [
       '텃밭 관찰 기록',
       '식물 변화 합본',
@@ -164,7 +164,7 @@ const experienceTabs: ExperienceTab[] = [
     icon: <Map size={17} />,
     short: '여행 사진을 정리하다가 바닷가에서 찍은 사진이 가장 기억에 남았다.',
     refined:
-      '오늘은 여행 사진을 정리하며 바닷가에서 보낸 시간을 다시 떠올렸다. 사진 한 장은 단순한 이미지가 아니라 그날의 공기, 동행, 마음을 다시 꺼내보게 하는 추억 기록이 된다.',
+      '여행 사진을 정리하다 보니 바닷가에서 찍은 사진이 가장 기억에 남았다.',
     useCases: [
       '여행기록 정리',
       '사진 기반 합본',
@@ -188,7 +188,7 @@ const experienceTabs: ExperienceTab[] = [
     icon: <BookOpen size={17} />,
     short: '책을 읽다가 부족함도 성장의 시작이라는 문장이 마음에 남았다.',
     refined:
-      '오늘은 책 속 문장을 통해 부족함을 부끄러움이 아니라 성장의 출발점으로 바라보게 되었다. 읽은 문장이 삶의 태도와 연결될 때 독서는 기록을 넘어 사유가 된다.',
+      '책을 읽다가 부족함도 성장의 시작이라는 문장이 마음에 남았다.',
     useCases: [
       '독서사유 정리',
       '월간 독서기록 합본',
@@ -212,7 +212,7 @@ const experienceTabs: ExperienceTab[] = [
     icon: <Users size={17} />,
     short: '딸과 통화했는데 별 얘기는 없었지만 마음이 편했다.',
     refined:
-      '오늘은 딸과 짧게 통화하며 특별한 이야기가 없어도 마음이 편안해지는 시간을 가졌다. 가족과의 평범한 대화는 기록으로 남길 때 오래 꺼내볼 수 있는 추억이 된다.',
+      '딸과 통화했다. 별다른 이야기는 없었지만 마음이 편했다.',
     useCases: [
       '가족 대화 기록',
       '가족 추억 합본',
@@ -236,7 +236,7 @@ const experienceTabs: ExperienceTab[] = [
     icon: <Sprout size={17} />,
     short: '오늘은 부족했지만 기도하면서 마음을 다시 잡았다.',
     refined:
-      '오늘은 부족함을 느꼈지만 기도하며 마음을 다시 정돈했다. 완벽하지 않은 하루도 돌아보고 다시 시작하려는 마음이 담기면 중요한 사유 기록이 된다.',
+      '오늘은 부족했지만, 기도하면서 마음을 다시 잡았다.',
     useCases: [
       '기도와 사유 정리',
       '월간 사유 합본',
@@ -259,7 +259,7 @@ const experienceTabs: ExperienceTab[] = [
 const flowCards = [
   {
     title: 'SAYU 사유정리',
-    body: '짧은 기록을 읽기 좋은 문장으로 정리하고, 그 안의 의미를 찾아줍니다.',
+    body: '원문의 사실·감정을 유지하며 읽기 좋은 문장으로 다듬습니다.',
   },
   {
     title: '월간 합본',
@@ -271,7 +271,7 @@ const flowCards = [
   },
   {
     title: '미래보기',
-    body: '미래를 맞히는 것이 아니라, 지금까지의 기록을 바탕으로 앞으로의 생활 방향을 살펴봅니다.',
+    body: '기록이나 질문 답변을 바탕으로 AI가 미래 이야기를 창작합니다. 실제 미래를 예측하는 결과가 아닙니다.',
   },
   {
     title: '관련 비서 연결',
@@ -339,121 +339,121 @@ const diaryRecords: DiaryRecord[] = [
     index: 1,
     short: '저녁에 20분 걸었다.',
     refined:
-      '오늘은 저녁에 20분을 걸으며 건강을 위한 작은 실천을 남겼다. 짧은 걷기도 반복되면 생활 리듬을 만드는 중요한 기록이 된다.',
+      '저녁에 20분을 걸었다.',
   },
   {
     index: 2,
     short: '단 음료를 마시고 싶었지만 참았다.',
     refined:
-      '오늘은 단 음료를 마시고 싶은 마음을 조절했다. 작은 절제가 쌓이면 건강을 지키는 선택의 흐름이 된다.',
+      '단 음료를 마시고 싶었지만 참았다.',
   },
   {
     index: 3,
     short: '호박꽃이 피어서 기분이 좋았다.',
     refined:
-      '텃밭에서 호박꽃이 핀 모습을 보며 기쁨을 느꼈다. 식물의 작은 변화도 기록으로 남기면 성장의 과정이 된다.',
+      '호박꽃이 피어서 기분이 좋았다.',
   },
   {
     index: 4,
     short: '영어 공부를 조금 했다.',
     refined:
-      '오늘은 많은 양은 아니지만 영어 공부를 이어갔다. 조금이라도 계속하는 태도가 배움의 흐름을 만든다.',
+      '영어 공부를 조금 했다.',
   },
   {
     index: 5,
     short: '몸이 무거웠지만 기록은 남겼다.',
     refined:
-      '몸이 무거운 하루였지만 기록을 남기며 하루를 놓치지 않았다. 완벽하지 않은 날에도 기록은 나를 다시 정돈하게 한다.',
+      '몸이 무거웠지만 기록은 남겼다.',
   },
   {
     index: 6,
     short: '아내와 산책했다.',
     refined:
-      '오늘은 아내와 함께 산책하며 하루를 차분하게 마무리했다. 평범한 산책도 함께한 시간으로 남으면 소중한 가족 기록이 된다.',
+      '아내와 산책했다.',
   },
   {
     index: 7,
     short: '딸과 통화하니 마음이 편했다.',
     refined:
-      '딸과의 통화는 특별한 이야기가 없어도 마음을 편안하게 해주었다. 가족과의 짧은 대화도 삶을 지탱하는 기억이 된다.',
+      '딸과 통화하니 마음이 편했다.',
   },
   {
     index: 8,
     short: '저녁 식사량을 조금 줄였다.',
     refined:
-      '오늘은 저녁 식사량을 조절하며 건강을 생각하는 선택을 했다. 작은 조절이 반복되면 식습관의 흐름을 확인할 수 있다.',
+      '저녁 식사량을 조금 줄였다.',
   },
   {
     index: 9,
     short: '책을 읽다가 부족함도 성장이라는 생각을 했다.',
     refined:
-      '책을 읽으며 부족함을 성장의 출발점으로 받아들이는 생각을 했다. 독서는 삶의 태도를 다시 바라보게 하는 사유의 계기가 된다.',
+      '책을 읽다가 부족함도 성장이라는 생각을 했다.',
   },
   {
     index: 10,
     short: '별일 없는 평온한 하루였다.',
     refined:
-      '오늘은 특별한 사건은 없었지만 평온하게 지나간 하루였다. 별일 없는 날도 기록으로 남기면 생활의 안정감을 확인할 수 있다.',
+      '별일 없는 평온한 하루였다.',
   },
   {
     index: 11,
     short: '체중을 기록했다.',
     refined:
-      '오늘은 체중을 기록하며 내 몸의 상태를 확인했다. 숫자를 남기는 일은 판단보다 관찰에 가깝고, 건강 흐름을 보는 자료가 된다.',
+      '체중을 기록했다.',
   },
   {
     index: 12,
     short: '호박 암꽃이 떨어져서 아쉬웠다.',
     refined:
-      '호박 암꽃이 떨어진 모습을 보며 아쉬움을 느꼈다. 이 기록은 물, 햇빛, 영양, 수분 상태를 다시 살펴보게 하는 관찰 자료가 된다.',
+      '호박 암꽃이 떨어져서 아쉬웠다.',
   },
   {
     index: 13,
     short: '피곤했지만 감사한 일이 있었다.',
     refined:
-      '피곤함이 있었지만 감사한 일을 떠올리며 하루를 마무리했다. 어려운 날에도 감사가 함께 기록되면 마음의 균형을 볼 수 있다.',
+      '피곤했지만 감사한 일이 있었다.',
   },
   {
     index: 14,
     short: '시간을 더 잘 쓰고 싶었다.',
     refined:
-      '오늘은 시간을 더 잘 쓰고 싶다는 생각을 했다. 이런 기록은 단순한 반성이 아니라 앞으로의 생활 방향을 정하는 출발점이 된다.',
+      '시간을 더 잘 쓰고 싶었다.',
   },
   {
     index: 15,
     short: '스쿼트를 했다.',
     refined:
-      '오늘은 스쿼트를 하며 몸을 움직였다. 짧은 운동 기록도 반복되면 건강관리의 흐름을 보여주는 자료가 된다.',
+      '스쿼트를 했다.',
   },
   {
     index: 16,
     short: '잠을 조금 부족하게 잤다.',
     refined:
-      '오늘은 수면이 부족해 몸의 상태를 느꼈다. 수면 기록이 쌓이면 피곤함과 생활 리듬의 관계를 돌아볼 수 있다.',
+      '잠을 조금 부족하게 잤다.',
   },
   {
     index: 17,
     short: '여행 사진을 정리했다.',
     refined:
-      '여행 사진을 정리하며 지난 시간을 다시 떠올렸다. 사진과 짧은 기록이 함께 남으면 추억을 문서처럼 꺼내볼 수 있다.',
+      '여행 사진을 정리했다.',
   },
   {
     index: 18,
     short: '기도하면서 마음을 다시 잡았다.',
     refined:
-      '기도하며 흐트러진 마음을 다시 정돈했다. 하루의 부족함을 돌아보고 다시 시작하려는 마음은 중요한 사유 기록이 된다.',
+      '기도하면서 마음을 다시 잡았다.',
   },
   {
     index: 19,
     short: '가족 이야기를 나누며 저녁을 보냈다.',
     refined:
-      '가족과 이야기를 나누며 저녁 시간을 보냈다. 평범한 대화도 기록으로 남기면 가족의 생활과 관계를 보여주는 자료가 된다.',
+      '가족 이야기를 나누며 저녁을 보냈다.',
   },
   {
     index: 20,
     short: '한 달을 돌아보니 그래도 꾸준히 해온 것이 있었다.',
     refined:
-      '한 달을 돌아보며 작지만 꾸준히 이어온 것들을 확인했다. 기록은 내가 놓치고 지나간 실천과 변화를 다시 보게 해준다.',
+      '한 달을 돌아보니 그래도 꾸준히 해온 것이 있었다.',
   },
 ];
 
@@ -522,7 +522,7 @@ const primaryAssistants: AssistantCard[] = [
   {
     name: 'SAYU 사유비서',
     records: '아내와 산책, 부족함에 대한 문장, 기도, 가족 대화',
-    help: '기록 속 마음의 흐름과 삶의 의미를 정리합니다.',
+    help: '원문의 사실·감정을 유지하며 표현을 다듬습니다.',
     level: '느슨한 연결',
   },
   {
@@ -567,17 +567,17 @@ const extraAssistants: AssistantCard[] = [
   {
     name: '미래보기 비서',
     records: '20개 전체 기록, 반복 습관, 감정 흐름, 관심 주제',
-    help: '지금까지의 기록을 바탕으로 앞으로의 생활 흐름과 실천 방향을 살펴봅니다.',
+    help: '기록이나 질문 답변을 바탕으로 AI 미래 이야기를 창작합니다.',
     level: '향후 연결 예정',
   },
 ];
 
 const glossary = [
   ['기록형식', '글을 쉽게 쓰게 해주는 입력틀입니다.'],
-  ['SAYU', '짧게 쓴 기록을 읽기 좋은 문장으로 다듬고, 그 안의 의미를 찾아주는 사유 공간입니다.'],
+  ['SAYU', '원문의 사실·감정을 유지하며 읽기 좋은 문장으로 다듬는 기능입니다.'],
   ['합본', '여러 날의 기록을 하나의 문서처럼 묶어보는 기능입니다.'],
   ['통계', '내가 얼마나, 어떤 주제로 기록했는지 숫자와 흐름으로 보는 기능입니다.'],
-  ['미래보기', '미래를 맞히는 기능이 아니라, 지금까지의 기록을 바탕으로 앞으로의 생활 흐름과 관리 방향을 살펴보는 기능입니다.'],
+  ['미래보기', '기록이나 질문 답변을 바탕으로 AI 미래 이야기를 창작하는 기능입니다. 실제 미래를 예측하는 결과가 아닙니다.'],
   ['비서 연결', '기록 속 주제에 따라 관련 비서가 다시 참고하거나, 사용자가 선택해 이어서 활용할 수 있게 돕는 연결입니다.'],
   ['핸드오프', '한 기능에서 만든 자료를 다른 비서나 기능에서 이어서 활용할 수 있게 넘기는 방식입니다.'],
 ];
@@ -618,12 +618,13 @@ export function GyeongdaePreviewPage() {
   );
 
   const trimmedEntry = entry.trim();
-  const displayInput = trimmedEntry || activeTab.short;
+  const displayInput = trimmedEntry === defaultInput && activeType !== 'daily'
+    ? activeTab.short
+    : trimmedEntry || activeTab.short;
   const isDefaultDaily = activeType === 'daily' && displayInput === defaultInput;
-  const sayuResult =
-    hasTried && !isDefaultDaily
-      ? `${displayInput} 이 한 줄에는 ${activeTab.meaning.replace('이라는 흐름이 담겨 있습니다.', '')}의 흐름이 담겨 있습니다. HARU2026은 이런 짧은 기록을 읽기 좋은 문장으로 정리하고, 나중에 합본·통계·미래보기·비서 활용 자료로 이어지게 합니다.`
-      : activeTab.refined;
+  const showOriginalEntry = Boolean(hasTried && trimmedEntry && !isDefaultDaily && displayInput !== activeTab.short);
+  const resultInput = showOriginalEntry ? displayInput : (isDefaultDaily ? defaultInput : activeTab.short);
+  const sayuResult = showOriginalEntry ? displayInput : activeTab.refined;
 
   const startExperience = () => {
     setHasTried(true);
@@ -688,8 +689,8 @@ export function GyeongdaePreviewPage() {
                 HARU2026이 당신의 하루를 생활문서로 바꿔드립니다.
               </h1>
               <p style={heroTextStyle}>
-                일기, 건강, 텃밭, 여행, 독서, 가족 기록이 쌓이면 월간 합본,
-                감정 흐름, 반복 주제, 미래보기, 관련 비서 활용 자료가 됩니다.
+                일기, 건강, 텃밭, 여행, 독서, 가족 기록을 모아 읽고 작성 현황을 살펴볼 수 있습니다.
+                이 페이지의 의미·주제·감정 분석은 기록 활용을 설명하는 준비된 예시입니다.
               </p>
               <FlowStrip />
             </div>
@@ -736,37 +737,37 @@ export function GyeongdaePreviewPage() {
         <Section
           id="sayu-result"
           icon={<Sparkles size={20} />}
-          title="당신의 한 줄이 이렇게 정리됩니다"
-          body="입력한 문장은 저장하지 않고, 화면 안에서만 SAYU 정리 예시로 보여줍니다."
+          title={showOriginalEntry ? '직접 입력한 문장을 확인해 보세요' : 'SAYU 정리 예시를 살펴보세요'}
+          body="직접 입력한 문장은 AI로 처리하거나 저장하지 않고 그대로 보여줍니다. 아래 의미·분류·이어 쓰기 질문·통계·미래보기는 준비된 예시이며, 직접 입력한 내용의 분석 결과가 아닙니다."
         >
           <div data-g-grid-2 style={gridStyle(2)}>
             <Card>
-              <PanelLabel>짧은 입력</PanelLabel>
-              <p style={{ ...largeTextStyle, color: '#4A5A2C' }}>{displayInput}</p>
+              <PanelLabel>{showOriginalEntry ? '직접 입력한 원문' : '예시 원문'}</PanelLabel>
+              <p style={{ ...largeTextStyle, color: '#4A5A2C' }}>{resultInput}</p>
             </Card>
             <Card>
-              <PanelLabel>SAYU가 정리한 기록</PanelLabel>
+              <PanelLabel>{showOriginalEntry ? '직접 입력한 문장' : 'SAYU 정리 예시'}</PanelLabel>
               <p style={largeTextStyle}>{sayuResult}</p>
             </Card>
           </div>
           <div data-g-grid-3 style={{ ...gridStyle(3), marginTop: 14 }}>
             <Card>
-              <PanelLabel>오늘 기록의 의미</PanelLabel>
-              <p style={cardTextStyle}>오늘의 기록에는 {activeTab.meaning}</p>
+              <PanelLabel>예시 기록의 의미</PanelLabel>
+              <p style={cardTextStyle}>준비된 예시 기록에는 {activeTab.meaning}</p>
             </Card>
             <Card>
-              <PanelLabel>자동 분류 미리보기</PanelLabel>
+              <PanelLabel>예시 기록의 분류</PanelLabel>
               <MetaList
                 rows={[
                   ['기록 형식', activeTab.category],
                   ['감정 흐름', activeTab.mood],
                   ['반복 가능 주제', activeTab.themes],
-                  ['나중에 연결될 기능', '월간 합본, 감정 통계, 가족·추억 비서, 미래보기'],
+                  ['활용 구상 예시', '월간 합본, 주제·감정 돌아보기, 가족·추억 비서, 미래보기'],
                 ]}
               />
             </Card>
             <Card>
-              <PanelLabel>이어 쓰기 질문</PanelLabel>
+              <PanelLabel>이어 쓰기 질문 예시</PanelLabel>
               <ul style={plainListStyle}>
                 <li>오늘 산책하면서 기억에 남은 대화가 있었나요?</li>
                 <li>이 시간이 왜 편안하게 느껴졌나요?</li>
@@ -843,12 +844,12 @@ export function GyeongdaePreviewPage() {
         <Section
           id="four-weeks"
           icon={<Clock3 size={20} />}
-          title="4주 동안 한 줄씩 쓰면 이렇게 바뀝니다"
+          title="4주 동안 기록을 남기는 예시입니다"
           body="매일 길게 쓰지 않아도 됩니다. 평일에 한 줄씩만 남겨도 한 달 뒤에는 약 20개의 생활 기록이 쌓입니다."
         >
           <p style={{ ...cardTextStyle, fontSize: 15, marginBottom: 16 }}>
-            HARU2026은 이 기록을 월간 생활문서, 감정 흐름, 반복 주제,
-            미래보기 자료, 비서 활용 자료로 바꿔줍니다.
+            저장한 기록은 모아보기로 다시 읽을 수 있습니다.
+            아래 흐름 설명은 준비된 예시 기록을 바탕으로 작성한 설명입니다.
           </p>
           <div data-g-actions style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {weekSimulations.map((week) => (
@@ -873,7 +874,7 @@ export function GyeongdaePreviewPage() {
               </ul>
             </Card>
             <Card>
-              <PanelLabel>HARU2026이 보는 흐름</PanelLabel>
+              <PanelLabel>예시 기록을 돌아보면</PanelLabel>
               <p style={largeTextStyle}>{activeWeekData.insight}</p>
             </Card>
           </div>
@@ -882,8 +883,8 @@ export function GyeongdaePreviewPage() {
         <Section
           id="twenty-records"
           icon={<FileText size={20} />}
-          title="20개의 한 줄이 한 달의 자료가 됩니다"
-          body="각 항목은 짧은 입력과 SAYU 정리를 함께 보여줍니다."
+          title="한 달의 기록 예시 20편"
+          body="각 항목은 짧은 입력과 SAYU 정리 예시입니다. 20편은 체험용 예시 수이며, 실제 기능의 이용 조건이 아닙니다."
         >
           <div data-g-grid-2 style={gridStyle(2)}>
             {diaryRecords.map((record) => (
@@ -932,7 +933,7 @@ export function GyeongdaePreviewPage() {
           id="stats"
           icon={<BarChart3 size={20} />}
           title="20개의 기록을 통계로 보면 흐름이 보입니다"
-          body="기록은 문장으로도 남지만, 숫자로 보면 생활의 흐름이 더 선명해집니다."
+          body="아래 수치와 해석은 미리 준비한 예시입니다. 현재 기록통계에서는 기간·형식별 작성 현황을 확인할 수 있습니다."
         >
           <div data-g-stat-summary style={statSummaryStyle}>
             {[
@@ -949,7 +950,7 @@ export function GyeongdaePreviewPage() {
           </div>
           <div data-g-grid-2 style={{ ...gridStyle(2), marginTop: 14 }}>
             <BarPanel title="주제별 빈도" rows={topicStats} max={6} />
-            <BarPanel title="감정 흐름" rows={moodStats} max={100} />
+            <BarPanel title="감정 흐름 예시" rows={moodStats} max={100} />
           </div>
           <Card style={{ marginTop: 14 }}>
             <PanelLabel>반복 단어</PanelLabel>
@@ -968,8 +969,8 @@ export function GyeongdaePreviewPage() {
         <Section
           id="future"
           icon={<LineChart size={20} />}
-          title="미래를 맞히는 것이 아니라, 생활 방향을 살펴봅니다"
-          body="미래보기는 지금까지의 기록을 바탕으로 생활 습관, 감정 흐름, 관심 주제, 실천 방향을 살펴보는 기능입니다."
+          title="AI가 만드는 미래 이야기 예시입니다"
+          body="미래보기는 기록이나 질문 답변을 바탕으로 AI 이야기를 창작하는 기능입니다. 아래는 준비된 설명 예시이며, 실제 미래를 예측하는 결과가 아닙니다."
         >
           <Notice>
             미래보기는 예언, 진단, 투자 예측, 질병 예측이 아닙니다. 건강 관련
@@ -1063,7 +1064,7 @@ export function GyeongdaePreviewPage() {
           id="subscribe"
           icon={<Sparkles size={20} />}
           title="무료로 시작하고 필요한 만큼 확장하세요"
-          body="HARU2026은 하루 한 줄을 쌓아 나의 생활문서, 감정 흐름, 반복 주제, 미래보기 자료로 바꿔줍니다."
+          body="HARU2026에서 하루 한 줄을 남기고, 표현을 다듬고, 저장한 기록을 기간별로 모아 읽어보세요."
         >
           <p style={{ ...largeTextStyle, maxWidth: 760 }}>
             처음에는 길게 쓰지 않아도 됩니다. 한 줄만 남겨도 한 달 뒤에는 다시

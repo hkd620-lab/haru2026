@@ -1,0 +1,5 @@
+
+> @figma/my-make-file@0.0.1 test:subscription-display
+> node test/subscriptionDisplay.policy.test.cjs
+
+subscription display policy tests passed
