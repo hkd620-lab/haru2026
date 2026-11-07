@@ -217,7 +217,7 @@ const RECORDS: RecordItem[] = [
 const AGENTS: Agent[] = [
   {
     label: 'HARU가계부',
-    sub: '수입·지출 기록',
+    sub: '현금 거래나 지원하는 은행·카드 내역을 입력해, 기간별 수입·지출과 분류별 합계를 봐요.',
     tag: 'MONEY · 가계부',
     variant: 'green',
     stroke: '#166534',
@@ -232,7 +232,7 @@ const AGENTS: Agent[] = [
   },
   {
     label: 'HARU보조장부',
-    sub: '수입·지출 보조',
+    sub: '거래처·사용 구분·증빙을 거래별로 기록하고 엑셀로 내려받아요. 세무 신고용 정식 장부는 아닙니다.',
     tag: 'MONEY · 장부',
     variant: 'lilac',
     stroke: '#7A6F5A',
@@ -284,7 +284,7 @@ const AGENTS: Agent[] = [
   },
   {
     label: 'HARU미래전망',
-    sub: '오늘의 한 줄 기록이 모여 당신의 미래를 전망합니다.',
+    sub: '기록이나 질문 답변을 바탕으로 AI 이야기를 창작해요. 실제 미래를 예측하는 결과가 아닙니다.',
     tag: 'SAYU · 감성',
     variant: 'lilac',
     stroke: '#5A4E7A',

@@ -35,7 +35,7 @@ export function ProphecyHubPage() {
           🔮 HARU 미래전망
         </h1>
         <p className="text-sm mt-1.5" style={{ color: '#666' }}>
-          어떤 방식으로 미래전망을 시작할까요?
+          기록이나 질문 답변으로 만드는 AI 창작 이야기입니다. 어떤 방식으로 시작할까요?
         </p>
       </div>
 
@@ -54,7 +54,7 @@ export function ProphecyHubPage() {
           }}
         >
           <div className="text-3xl mb-3">📖</div>
-          <h2 className="text-lg font-bold mb-1.5">내 기록으로 미래전망</h2>
+          <h2 className="text-lg font-bold mb-1.5">내 기록으로 이야기 만들기</h2>
           <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
             나의 기록을 AI가 분석하여 미래전망 이야기를 만듭니다
           </p>
@@ -72,7 +72,7 @@ export function ProphecyHubPage() {
           }}
         >
           <div className="text-3xl mb-3">🎬</div>
-          <h2 className="text-lg font-bold mb-2">사전설정으로 미래전망</h2>
+          <h2 className="text-lg font-bold mb-2">질문에 답해 이야기 만들기</h2>
           <p className="text-sm leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.88)' }}>
             기록이 없어도 됩니다. 전문 시나리오 창작법에서 발췌한 질문들에 답하면,
             AI가 나만의 미래 이야기를 만들어 드립니다.
@@ -98,7 +98,7 @@ export function ProphecyHubPage() {
             ))}
           </div>
           <p className="text-[11px] mt-3 leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            욕망과 족쇄의 긴장이 이야기의 엔진입니다. 질문에 답하는 과정 자체가 나를 발견하는 시간이 됩니다.
+            질문에 답한 내용을 설정으로 삼아 AI 이야기를 만듭니다.
           </p>
         </button>
 
