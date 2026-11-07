@@ -1,0 +1,58 @@
+<!doctype html>
+<!-- haru2026 포도송이 앱 로고 v1. 2026-11-07 대표 결정.
+기존 공유 이미지 source.html의 포도알 10개, 4·3·2·1 배치, 색·내부 아이콘을 재사용한다.
+하루lab 호박 원본은 변경하지 않는다. AI 재생성 없음.
+1024 정사각형 기준: 앱 아이콘은 배치 배율 5, 중심 (512,512).
+포도알 외곽은 중심 반경 400px 이내(maskable 안전 원 반경 409.6px).
+variant=logo: 투명 배경, 배율 8. variant=badge: 흰 실루엣·투명 배경.
+재생성: node docs/brand/haru2026-grape-v1/render.cjs (Puppeteer 필요).
+-->
+<html lang="ko"><meta charset="utf-8"><title>haru2026 포도송이 로고</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+.art { position: relative; width: 1024px; height: 1024px; background: #FDFEF7; transform-origin: 0 0; }
+.stage { position: absolute; left: 169.5px; top: 309.5px; transform: scale(5); transform-origin: 0 0; }
+.art.logo, .art.badge { background: transparent; }
+.logo .stage, .badge .stage { left: -36px; top: 188px; transform: scale(8); }
+.art.badge .ring { background: white; box-shadow: none; }
+.art.badge .inner, .art.badge .hl { display: none; }
+  .grape { position: absolute; width: 28px; height: 28px; }
+  .grape .ring {
+    position: absolute; inset: 0; border-radius: 9999px;
+    background: linear-gradient(to bottom right, #c084fc, #a855f7, #9333ea);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  }
+  .grape .inner {
+    position: absolute; inset: 8px; border-radius: 9999px; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .grape .inner img { width: 100%; height: 100%; object-fit: cover; border-radius: 9999px; }
+  .grape .hl { position: absolute; top: 8px; left: 8px; width: 8px; height: 8px; background: rgba(255, 255, 255, 0.4); border-radius: 9999px; filter: blur(4px); }
+
+</style><div class="art" id="art"><div class="stage" id="stage"></div></div><script>
+var variant = new URLSearchParams(location.search).get('variant') || 'icon';
+document.getElementById('art').classList.add(variant);
+document.getElementById('art').style.transform = 'scale(' + innerWidth / 1024 + ')';
+  // GrapeAnimation.tsx 의 grapeImages 와 같은 배치(id, row, col)와 아이콘 순서
+  var base = '../../../frontend/src/imports/';
+  var files = ['001메모.png','002선교보고.png','003애완동물관찰일지.png','004업무일지.png','005에세이.png','006.png','007육아일기.png','008일기.png','009일반보고.png','010텃밭일지.png'];
+  var grapes = [
+    { id: 0, row: 0, col: 0 }, { id: 1, row: 0, col: 1 }, { id: 2, row: 0, col: 2 }, { id: 3, row: 0, col: 3 },
+    { id: 4, row: 1, col: 0.5 }, { id: 5, row: 1, col: 1.5 }, { id: 6, row: 1, col: 2.5 },
+    { id: 7, row: 2, col: 1 }, { id: 8, row: 2, col: 2 },
+    { id: 9, row: 3, col: 1.5 }
+  ];
+  var spacing = 27;
+  var stage = document.getElementById('stage');
+  grapes.forEach(function (g) {
+    var cx = g.col * spacing + 28, cy = g.row * spacing;
+    var el = document.createElement('div');
+    el.className = 'grape';
+    el.style.left = (cx - 14) + 'px';
+    el.style.top = (cy - 14) + 'px';
+    el.innerHTML = '<div class="ring"></div><div class="inner"><img alt="" src="' + base + encodeURI(files[g.id]) + '"></div><div class="hl"></div>';
+    stage.appendChild(el);
+  });
+</script></html>

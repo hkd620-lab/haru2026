@@ -3140,8 +3140,8 @@ export function SayuModal({
               <article className="sayu-record-asset-frame" aria-label="하루 기록자산 액자">
                 <header style={{ marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid #D9CBAA', textAlign: 'center' }}>
                   <img
-                    src="/brand/haru-pumpkin-logo.png"
-                    alt="하루lab 공식 호박 로고"
+                    src="/brand/haru2026-grape-logo-v1.png"
+                    alt="haru2026 포도송이 로고"
                     style={{ display: 'block', width: 50, height: 'auto', margin: '0 auto 12px' }}
                   />
                   <p style={{ margin: 0, color: '#86551E', fontSize: 14, fontWeight: 700, letterSpacing: '0.08em' }}>

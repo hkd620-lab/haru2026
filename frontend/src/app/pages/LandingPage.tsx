@@ -196,7 +196,7 @@ function HaruPhone() {
           <div className="ph-head">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div className="ph-mark">
-                <img src="/brand/haru-pumpkin-logo.png" alt="" aria-hidden="true" />
+                <img src="/brand/haru2026-grape-logo-v1.png" alt="" aria-hidden="true" />
               </div>
               <div className="ph-titleblock">
                 <div className="ph-title">haru2026</div>
@@ -402,7 +402,7 @@ export function LandingPage() {
         <div className="lp-wrap lp-nav__inner">
           <a className="lp-nav__brand" href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
             <div className="lp-nav__mark">
-              <img src="/brand/haru-pumpkin-logo.png" alt="" aria-hidden="true" />
+              <img src="/brand/haru2026-grape-logo-v1.png" alt="" aria-hidden="true" />
             </div>
             <div>
               <div className="lp-nav__name">haru2026</div>
