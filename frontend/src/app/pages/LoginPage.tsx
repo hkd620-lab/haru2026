@@ -6,7 +6,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import HaruNewsPreview from '../components/HaruNewsPreview';
 import { InAppBrowserLoginGuide } from '../components/InAppBrowserLoginGuide';
-import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowser';
+import { getInAppBrowserInfo, needsExternalLoginBrowser, type InAppBrowserInfo, type InAppLoginProvider } from '../utils/inAppBrowser';
 import { db } from '../config/firebase';
 import { beginLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 import { buildSocialLoginUrl } from '../utils/socialLoginUrls';
@@ -20,7 +20,7 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const { googleSignIn, signIn, signUp, resetPassword } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [inAppBrowserGuide, setInAppBrowserGuide] = useState<InAppBrowserInfo | null>(null);
+  const [inAppBrowserGuide, setInAppBrowserGuide] = useState<(InAppBrowserInfo & { provider: InAppLoginProvider }) | null>(null);
   const [emailMode, setEmailMode] = useState<'login' | 'signup'>(() => (
     searchParams.get('mode') === 'signup' ? 'signup' : 'login'
   ));
@@ -68,11 +68,11 @@ export function LoginPage() {
     );
   };
 
-  const guardInAppBrowserLogin = () => {
+  const guardInAppBrowserLogin = (provider: InAppLoginProvider) => {
     const info = getInAppBrowserInfo();
-    if (info.isInAppBrowser) {
+    if (needsExternalLoginBrowser(provider, info)) {
       setIsLoading(false);
-      setInAppBrowserGuide(info);
+      setInAppBrowserGuide({ ...info, provider });
       return true;
     }
     return false;
@@ -81,7 +81,7 @@ export function LoginPage() {
   // Google 로그인 - dev: Firebase SDK popup / prod: Cloud Functions 흐름
   const handleGoogleLogin = async () => {
     if (isLoading) return;
-    if (guardInAppBrowserLogin()) return;
+    if (guardInAppBrowserLogin('google')) return;
     setIsLoading(true);
     beginLoginTrace('google');
     if (import.meta.env.DEV) {
@@ -104,7 +104,7 @@ export function LoginPage() {
   // 카카오 로그인
   const handleKakaoLogin = () => {
     if (isLoading) return;
-    if (guardInAppBrowserLogin()) return;
+    if (guardInAppBrowserLogin('kakao')) return;
     setIsLoading(true);
     beginLoginTrace('kakao');
     markLoginTrace('T1_provider_redirect_requested');
@@ -114,7 +114,7 @@ export function LoginPage() {
   // 네이버 로그인
   const handleNaverLogin = () => {
     if (isLoading) return;
-    if (guardInAppBrowserLogin()) return;
+    if (guardInAppBrowserLogin('naver')) return;
     setIsLoading(true);
     beginLoginTrace('naver');
     markLoginTrace('T1_provider_redirect_requested');
@@ -180,6 +180,7 @@ export function LoginPage() {
       <InAppBrowserLoginGuide
         open={Boolean(inAppBrowserGuide)}
         browserInfo={inAppBrowserGuide}
+        provider={inAppBrowserGuide?.provider ?? null}
         onClose={() => setInAppBrowserGuide(null)}
       />
       {isLoading && (
