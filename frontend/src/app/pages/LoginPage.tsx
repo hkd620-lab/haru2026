@@ -189,7 +189,7 @@ export function LoginPage() {
           style={{ backgroundColor: 'rgba(237, 233, 245, 0.95)' }}
         >
           <img
-            src="/brand/haru-pumpkin-logo.png"
+            src="/brand/haru2026-grape-logo-v1.png"
             alt="HARU2026"
             style={{
               width: 90,
@@ -224,7 +224,7 @@ export function LoginPage() {
           <div className="w-full lg:w-96 flex-shrink-0 order-1 lg:order-2">
             <div className="text-center mb-5 sm:mb-8">
               <img
-                src="/brand/haru-pumpkin-logo.png"
+                src="/brand/haru2026-grape-logo-v1.png"
                 alt="HARU2026"
                 className="mx-auto mb-3 sm:mb-4"
                 style={{
