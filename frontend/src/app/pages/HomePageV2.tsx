@@ -844,12 +844,12 @@ export function HomePageV2() {
           [data-v2="hero-date-chips"] > span { font-size: 10px !important; padding: 5px 9px !important; }
 
           [data-v2="page"] { padding: 12px 12px 96px !important; }
-          [data-v2="header"] { padding: 4px 0 12px !important; }
+          [data-v2="header"] { padding: 4px 0 12px !important; flex-wrap: wrap; gap: 12px; }
           [data-v2="logo"] { width: 38px !important; height: 38px !important; border-radius: 11px !important; }
           [data-v2="logo"] img { width: 28px !important; height: 25px !important; }
           [data-v2="brand-title"] { font-size: 17px !important; }
           [data-v2="brand-sub"] { font-size: 11px !important; letter-spacing: 0.5px !important; line-height: 1.4 !important; margin-top: 3px !important; }
-          [data-v2="header-actions"] { gap: 6px !important; }
+          [data-v2="header-actions"] { gap: 6px !important; flex-wrap: wrap; max-width: 100%; margin-left: auto; }
           [data-v2="header-actions"] .v2-pill { padding: 6px 9px !important; font-size: 11px !important; }
           [data-v2="profile"] { width: 36px !important; height: 36px !important; }
 

@@ -11,7 +11,7 @@ let selection: any = params.get('scenario') === 'existing'
     : params.get('scenario') === 'empty'
       ? { personalized: true, assistantSelectionConfigured: true, selectedRecordFormats: ['메모'], selectedAgents: [] }
       : null;
-const fixtureUser = { uid: params.get('scenario') === 'developer' ? __HOME_DEVELOPER_UID__ : 'fixture-user', email: params.get('scenario') === 'library-developer' ? AI_LIBRARY_DEVELOPER_EMAIL : 'fixture@example.test', emailVerified: params.get('scenario') === 'library-developer' };
+const fixtureUser = { uid: ['developer', 'developer-full'].includes(params.get('scenario') || '') ? __HOME_DEVELOPER_UID__ : 'fixture-user', email: ['library-developer', 'developer-full'].includes(params.get('scenario') || '') ? AI_LIBRARY_DEVELOPER_EMAIL : 'fixture@example.test', emailVerified: ['library-developer', 'developer-full'].includes(params.get('scenario') || '') };
 export function useAuth() { return { user: params.get('scenario') === 'guest' ? null : fixtureUser, loading: false }; }
 export const buildTimelineMeta = () => ({});
 export const firestoreService = {
