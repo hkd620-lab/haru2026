@@ -92,7 +92,7 @@ const FLOW = [
   { n: '01', t: '기록 입력',   d: '오늘 있었던 일을 평소 말투로 자유롭게 적습니다.' },
   { n: '02', t: 'AI 정리',     d: 'SAYU가 표현만 다듬어 읽기 좋은 글로 정돈합니다.' },
   { n: '03', t: '분류 · 검색', d: '형식과 날짜로 자동 분류되고, 키워드로 찾을 수 있습니다.' },
-  { n: '04', t: '통계 · 모아보기', d: '월별·연도별로 흐름을 보여주고, 한 권으로 묶어 보관합니다.' },
+  { n: '04', t: '통계 · 모아보기', d: '월별·연도별로 흐름을 보여주고, 한 권으로 묶어 읽고 PDF·EPUB로 내려받습니다.' },
   { n: '05', t: '오래 남는 기록',   d: '책 소재가 되고, 회고 자료가 되고, 다음 세대에 남길 기록이 됩니다.' },
 ];
 
@@ -819,11 +819,11 @@ const LP_CSS = `
 .lp-value-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:-10px 0 26px;max-width:680px;}
 .lp-value-card{background:rgba(255,255,255,0.78);border:1px solid var(--border);border-radius:18px;padding:16px;display:grid;grid-template-columns:42px 1fr;gap:12px;align-items:flex-start;box-shadow:0 12px 28px -24px rgba(74,90,44,0.32);}
 .lp-value-card__ico{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex-shrink:0;}
-.lp-value-card h2{font-size:15px;font-weight:800;line-height:1.35;letter-spacing:-0.01em;color:var(--fg);margin:0 0 6px;}
-.lp-value-card p{font-size:13px;line-height:1.58;color:var(--fg-2);margin:0;}
+.lp-value-card h2{word-break:keep-all;font-size:15px;font-weight:800;line-height:1.35;letter-spacing:-0.01em;color:var(--fg);margin:0 0 6px;}
+.lp-value-card p{word-break:keep-all;font-size:13px;line-height:1.58;color:var(--fg-2);margin:0;}
 @media(max-width:640px){.lp-value-cards{grid-template-columns:1fr;margin:-8px 0 22px;}.lp-value-card{padding:14px;grid-template-columns:38px 1fr;gap:11px;border-radius:16px;}.lp-value-card__ico{width:38px;height:38px;border-radius:12px;}.lp-value-card h2{font-size:14px;}.lp-value-card p{font-size:12.5px;line-height:1.55;}}
 .lp-mini-flow{max-width:680px;margin:-8px 0 22px;padding:12px 13px;border:1px solid rgba(229,223,208,0.9);border-radius:16px;background:rgba(255,255,255,0.54);}
-.lp-mini-flow__lead{margin:0 0 9px;color:var(--fg);font-size:13px;font-weight:700;line-height:1.45;}
+.lp-mini-flow__lead{word-break:keep-all;margin:0 0 9px;color:var(--fg);font-size:13px;font-weight:700;line-height:1.45;}
 .lp-mini-flow__steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
 .lp-mini-flow__item{position:relative;display:flex;align-items:center;gap:7px;min-width:0;padding:8px 24px 8px 8px;border-radius:13px;background:rgba(245,240,232,0.72);}
 .lp-mini-flow__ico{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;}

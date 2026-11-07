@@ -1101,7 +1101,7 @@ export function ResultChatModal({
               )}
             </>
           )}
-          <label htmlFor={questionInputId} style={{ display: 'block', margin: '8px 0', fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>{config.label}에게 질문 · 아래 글상자에 써 주세요</label>
+          <label htmlFor={questionInputId} style={{ display: 'block', margin: '8px 0', fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>{isHaruLaw ? '하루LAW에게 질문' : 'AI에게 질문'} · 아래 글상자에 써 주세요</label>
           <div style={{ display: 'flex', gap: 8 }}>
             <textarea
               id={questionInputId}

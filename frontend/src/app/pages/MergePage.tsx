@@ -417,7 +417,7 @@ export function MergePage() {
       });
     } catch (error) {
       console.error('병합 실패:', error);
-      toast.error('합치기에 실패했습니다. 다시 시도해주세요.');
+      toast.error('모아보기를 열지 못했습니다. 다시 시도해주세요.');
     } finally {
       setIsRunning(false);
     }
@@ -781,7 +781,7 @@ export function MergePage() {
         }}
       >
         <Layers className="w-4 h-4" />
-        <span>{isRunning ? '합치는 중...' : '📥 합치기 실행'}</span>
+        <span>{isRunning ? '모으는 중...' : '📥 모아보기 열기'}</span>
       </button>
       </>)}
 
