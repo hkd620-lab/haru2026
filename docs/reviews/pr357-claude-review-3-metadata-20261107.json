@@ -1,0 +1,23 @@
+{
+  "targetHead": "fb96f14f9ebc2fe70a00b305010bf081bf01ee74",
+  "startedAt": "2026-11-07T13:32:25.757273+00:00",
+  "promptPath": "/private/tmp/haru-pr357-review3-prompt.txt",
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "plan",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Bash",
+    "--disallowedTools",
+    "Edit,Write,NotebookEdit",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json"
+  ],
+  "finishedAt": "2026-11-07T13:34:25.363097+00:00",
+  "exitCode": 0
+}

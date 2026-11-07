@@ -70,12 +70,12 @@ const DOORS: { n: string; icon: string; hue: Hue; title: string; body: string; c
     title: '이해하기',
     body: '쌓인 기록을 돌아보고 내 삶의 흐름을 정리합니다. SAYU가 표현을 다듬고, 통계와 모아보기로 기록을 돌아봅니다.',
     chip: 'SAYU · 통계 · 모아보기',
-    note: 'SAYU는 흩어진 기록을 모아 생각과 흐름을 정리하는 HARU의 사유 기능입니다.',
+    note: 'SAYU는 선택한 기록의 표현을 다듬는 기능입니다. 여러 기록은 모아보기와 통계에서 함께 살펴보세요.',
   },
   {
     n: '03', icon: 'shield', hue: 'terracotta',
     title: '도움받기',
-    body: '건강·재무·법률처럼 생활에서 생기는 문제를 기록을 바탕으로 점검합니다. 하루LAW는 관련 법령 검색과 상황 정리를 돕습니다. 전자소송 준비 과정의 송달·보정·기한·서류 누락도 체크리스트로 확인할 수 있습니다.',
+    body: '건강·재무·법률처럼 생활에서 생기는 문제를 기록을 바탕으로 점검합니다. 하루LAW는 관련 법령 검색과 상황 정리를 돕습니다. 전자소송 준비 과정의 서류 전달·보완·기한·누락도 체크리스트로 확인할 수 있습니다.',
     chip: '건강·재무 기록 · 하루LAW · 전자소송 체크리스트',
     note: '전자소송연습은 법률 판단이나 대리 업무가 아니라, 전자소송 준비에 필요한 서류와 기한을 빠뜨리지 않도록 돕는 체크리스트형 연습 기능입니다.',
   },
@@ -113,7 +113,7 @@ const PRICING = [
   {
     plan: '베이직', price: '₩4,000', period: '/월',
     note: '더 넉넉한 기존 사용 한도와 유료 저장 기능',
-    bullets: ['EPUB 저장', '하루LAW 첨부파일', '독서 OCR 월 100장'],
+    bullets: ['전자책 파일(EPUB) 저장', '하루LAW 첨부파일', '독서 OCR 월 100장'],
     highlight: true, badge: '결제 가능',
     available: true, buttonLabel: '베이직 구독하기', href: '/subscription?plan=basic',
   },
@@ -458,7 +458,8 @@ export function LandingPage() {
             </div>
             <div className="lp-hero__cta-notes">
               <p className="lp-hero__cta-note">결제 없이 시작 · 유료 구독은 별도 신청</p>
-              <p className="lp-hero__cta-limit">기본 기록 작성·조회 무료 · 일반 AI 월 10회 · 독서 OCR 월 20장</p>
+              <p className="lp-hero__cta-limit">기본 기록 작성·조회 무료 · 일반 AI 월 10회 · 독서 사진 글자 읽기(OCR) 월 20장</p>
+              <p className="lp-hero__cta-limit">일반 AI는 글 다듬기·추가 질문 등의 실행 요청 횟수를 함께 셉니다. 독서 OCR의 사진 장수는 별도로 셉니다.</p>
             </div>
             <div className="lp-hero__login">
               <span className="lp-hero__login-title">카카오·네이버·Google로 로그인/가입</span>
@@ -566,7 +567,7 @@ export function LandingPage() {
           <p className="lp-lead" style={{ marginBottom: 24 }}>두 장의 큰 잎이 호박을 키우듯, haru2026은 기록관리와 생활 비서로 일상을 돕습니다.</p>
           <p className="lp-lead" style={{ maxWidth: 660 }}>
             기록은 단순한 추억이 아니라, 나중에 나를 이해하고 돕는 자료가 됩니다.
-            HARU는 일상기록을 분류·통합·분석하고, SAYU는 의미를 정리하며, AI 비서는 필요한 순간에 기록을 꺼내 씁니다.
+            HARU는 기록을 형식과 날짜로 정리하고, SAYU는 원문의 사실·감정을 유지하며 표현을 다듬습니다. AI 비서는 선택한 기능의 안내에 따라 생활 질문을 돕습니다.
             사용자는 네 개의 문으로 접근하고, 필요한 비서는 각 문 안에서 만납니다.
           </p>
           <div className="lp-doors">
