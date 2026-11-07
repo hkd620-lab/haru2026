@@ -623,6 +623,7 @@ export function GyeongdaePreviewPage() {
     : trimmedEntry || activeTab.short;
   const isDefaultDaily = activeType === 'daily' && displayInput === defaultInput;
   const showOriginalEntry = Boolean(hasTried && trimmedEntry && !isDefaultDaily && displayInput !== activeTab.short);
+  const resultInput = showOriginalEntry ? displayInput : (isDefaultDaily ? defaultInput : activeTab.short);
   const sayuResult = showOriginalEntry ? displayInput : activeTab.refined;
 
   const startExperience = () => {
@@ -688,8 +689,8 @@ export function GyeongdaePreviewPage() {
                 HARU2026이 당신의 하루를 생활문서로 바꿔드립니다.
               </h1>
               <p style={heroTextStyle}>
-                일기, 건강, 텃밭, 여행, 독서, 가족 기록이 쌓이면 월간 합본,
-                감정 흐름, 반복 주제, 미래보기, 관련 비서 활용 자료가 됩니다.
+                일기, 건강, 텃밭, 여행, 독서, 가족 기록을 모아 읽고 작성 현황을 살펴볼 수 있습니다.
+                이 페이지의 의미·주제·감정 분석은 기록 활용을 설명하는 준비된 예시입니다.
               </p>
               <FlowStrip />
             </div>
@@ -741,8 +742,8 @@ export function GyeongdaePreviewPage() {
         >
           <div data-g-grid-2 style={gridStyle(2)}>
             <Card>
-              <PanelLabel>짧은 입력</PanelLabel>
-              <p style={{ ...largeTextStyle, color: '#4A5A2C' }}>{displayInput}</p>
+              <PanelLabel>{showOriginalEntry ? '직접 입력한 원문' : '예시 원문'}</PanelLabel>
+              <p style={{ ...largeTextStyle, color: '#4A5A2C' }}>{resultInput}</p>
             </Card>
             <Card>
               <PanelLabel>{showOriginalEntry ? '직접 입력한 문장' : 'SAYU 정리 예시'}</PanelLabel>
@@ -761,7 +762,7 @@ export function GyeongdaePreviewPage() {
                   ['기록 형식', activeTab.category],
                   ['감정 흐름', activeTab.mood],
                   ['반복 가능 주제', activeTab.themes],
-                  ['나중에 연결될 기능', '월간 합본, 감정 통계, 가족·추억 비서, 미래보기'],
+                  ['활용 구상 예시', '월간 합본, 주제·감정 돌아보기, 가족·추억 비서, 미래보기'],
                 ]}
               />
             </Card>
@@ -843,12 +844,12 @@ export function GyeongdaePreviewPage() {
         <Section
           id="four-weeks"
           icon={<Clock3 size={20} />}
-          title="4주 동안 한 줄씩 쓰면 이렇게 바뀝니다"
+          title="4주 동안 기록을 남기는 예시입니다"
           body="매일 길게 쓰지 않아도 됩니다. 평일에 한 줄씩만 남겨도 한 달 뒤에는 약 20개의 생활 기록이 쌓입니다."
         >
           <p style={{ ...cardTextStyle, fontSize: 15, marginBottom: 16 }}>
-            HARU2026은 이 기록을 월간 생활문서, 감정 흐름, 반복 주제,
-            미래보기 자료, 비서 활용 자료로 바꿔줍니다.
+            저장한 기록은 모아보기로 다시 읽을 수 있습니다.
+            아래 흐름 설명은 준비된 예시 기록을 바탕으로 작성한 설명입니다.
           </p>
           <div data-g-actions style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {weekSimulations.map((week) => (
@@ -873,7 +874,7 @@ export function GyeongdaePreviewPage() {
               </ul>
             </Card>
             <Card>
-              <PanelLabel>HARU2026이 보는 흐름</PanelLabel>
+              <PanelLabel>예시 기록을 돌아보면</PanelLabel>
               <p style={largeTextStyle}>{activeWeekData.insight}</p>
             </Card>
           </div>
@@ -932,7 +933,7 @@ export function GyeongdaePreviewPage() {
           id="stats"
           icon={<BarChart3 size={20} />}
           title="20개의 기록을 통계로 보면 흐름이 보입니다"
-          body="기록은 문장으로도 남지만, 숫자로 보면 생활의 흐름이 더 선명해집니다."
+          body="아래 수치와 해석은 미리 준비한 예시입니다. 현재 기록통계에서는 기간·형식별 작성 현황을 확인할 수 있습니다."
         >
           <div data-g-stat-summary style={statSummaryStyle}>
             {[
@@ -949,7 +950,7 @@ export function GyeongdaePreviewPage() {
           </div>
           <div data-g-grid-2 style={{ ...gridStyle(2), marginTop: 14 }}>
             <BarPanel title="주제별 빈도" rows={topicStats} max={6} />
-            <BarPanel title="감정 흐름" rows={moodStats} max={100} />
+            <BarPanel title="감정 흐름 예시" rows={moodStats} max={100} />
           </div>
           <Card style={{ marginTop: 14 }}>
             <PanelLabel>반복 단어</PanelLabel>
@@ -1063,7 +1064,7 @@ export function GyeongdaePreviewPage() {
           id="subscribe"
           icon={<Sparkles size={20} />}
           title="무료로 시작하고 필요한 만큼 확장하세요"
-          body="HARU2026은 하루 한 줄을 쌓아 나의 생활문서, 감정 흐름, 반복 주제, 미래보기 자료로 바꿔줍니다."
+          body="HARU2026에서 하루 한 줄을 남기고, 표현을 다듬고, 저장한 기록을 기간별로 모아 읽어보세요."
         >
           <p style={{ ...largeTextStyle, maxWidth: 760 }}>
             처음에는 길게 쓰지 않아도 됩니다. 한 줄만 남겨도 한 달 뒤에는 다시
