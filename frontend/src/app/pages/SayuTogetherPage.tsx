@@ -376,7 +376,7 @@ export function SayuTogetherPage() {
 
   const handleUnpublishSharedRecord = async (item: SharedRecordListItem) => {
     if (!user?.uid || item.ownerUid !== user.uid || !item.sourceRecordId) return;
-    const confirmed = window.confirm('이 글을 SAYU-함께보기에서 삭제합니다. 내 개인 기록은 삭제되지 않습니다.');
+    const confirmed = window.confirm('이 글을 공개 기록 함께읽기에서 삭제합니다. 내 개인 기록은 삭제되지 않습니다.');
     if (!confirmed) return;
 
     setSharedActionId(item.id);
@@ -386,10 +386,10 @@ export function SayuTogetherPage() {
       setItems(nextItems);
       setSelectedId((current) => current === item.id ? '' : current);
       setComments([]);
-      toast.success('SAYU-함께보기에서 삭제했습니다.');
+      toast.success('공개 기록 함께읽기에서 삭제했습니다.');
     } catch (error) {
       console.error('SAYU-함께보기 공개 삭제 실패:', error);
-      toast.error('함께보기 글을 삭제하지 못했습니다.');
+      toast.error('공개 기록을 삭제하지 못했습니다.');
     } finally {
       setSharedActionId('');
     }
@@ -448,7 +448,7 @@ export function SayuTogetherPage() {
                   opacity: isBusy ? 0.65 : 1,
                 }}
               >
-                함께보기 삭제
+                공개 기록 삭제
               </button>
             </div>
           )}
@@ -796,7 +796,7 @@ export function SayuTogetherPage() {
       return (
         <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #D1FAE5' }}>
           <p className="text-sm" style={{ color: '#0F766E', lineHeight: 1.7 }}>
-            SAYU-함께보기는 로그인한 HARU 회원만 볼 수 있습니다.
+            공개 기록 함께읽기는 로그인한 HARU 회원만 볼 수 있습니다.
           </p>
         </div>
       );
@@ -1096,7 +1096,7 @@ export function SayuTogetherPage() {
           BETA
         </span>
         <span style={{ fontSize: 11, color: '#888780', letterSpacing: '0.04em' }}>
-          SAYU · TOGETHER
+          회원들의 공개 기록
         </span>
       </div>
 
@@ -1105,16 +1105,16 @@ export function SayuTogetherPage() {
           className="text-2xl md:text-3xl font-bold tracking-tight"
           style={{ color: '#1A3C6E' }}
         >
-          🌿 SAYU·함께보기
+          🌿 공개 기록 함께읽기
         </h1>
         <p className="text-sm mt-1.5" style={{ color: '#666', lineHeight: 1.6 }}>
-          HARU 회원들이 공개한 기록을 함께 읽고 댓글로 마음을 나누는 공간입니다.
+          HARU 회원들이 공개한 기록을 함께 읽고 댓글로 마음을 나누는 공간입니다. 기존 ‘SAYU·함께보기’와 같은 공간이에요.
         </p>
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-2">
         {([
-          { key: 'shared', label: '구독자SAYU' },
+          { key: 'shared', label: '회원 공개 기록' },
           { key: 'recovery', label: '원기충전소' },
         ] as const).map((tab) => {
           const active = activeTab === tab.key;

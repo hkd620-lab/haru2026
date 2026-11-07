@@ -1,5 +1,10 @@
 import { useRef } from 'react';
 export const db = {};
+// 홈 현황 카드가 추가된 뒤에도 이 입력·선택 검증은 운영 Firebase에 연결하지 않는다.
+export const auth = { currentUser: null };
+export const onAuthStateChanged = (_auth: unknown, callback: (user: null) => void) => { callback(null); return () => {}; };
+export const orderBy = () => ({});
+export const onSnapshot = () => () => {};
 export const doc = (_db: unknown, ...parts: string[]) => ({ path: parts.join('/'), id: 'fixture-id' });
 export const collection = doc;
 export const getDoc = async () => ({ exists: () => false, data: () => ({}) });

@@ -964,14 +964,15 @@ function RecordPageContent() {
         <section className="bg-white rounded-lg p-4 shadow-sm">
           <h2 className="text-base font-semibold" style={{ color: '#1A3C6E' }}>오늘의 기록</h2>
           <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 형식을 고르면 작성한 글과 사진으로 AI 도움을 받거나 그대로 저장할 수 있습니다.</p>
+          <label htmlFor="record-draft-content" className="block text-base font-semibold mb-2" style={{ color: '#4A5A2C' }}>기록 입력 · 아래 글상자에 써 주세요</label>
           <textarea
-            aria-label="기록 내용"
+            id="record-draft-content"
             value={draftContent}
             onChange={(event) => setDraftContent(event.target.value)}
             placeholder="오늘 남기고 싶은 이야기를 적어 주세요..."
             rows={3}
-            className="w-full rounded-lg border p-3 text-base"
-            style={{ resize: 'vertical' }}
+            className="haru-writing-field w-full rounded-lg p-3 text-base"
+            style={{ resize: 'vertical', border: '2px solid #7B8962', background: '#F8FAF2' }}
           />
           <div className="mt-3 flex items-center justify-between gap-3">
             <span className="text-sm font-medium" style={{ color: '#1A3C6E' }}>사진 {draftPhotos.length}/{COMMON_PHOTO_LIMIT}</span>

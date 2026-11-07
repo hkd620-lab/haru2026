@@ -848,7 +848,7 @@ export function HomePageV2() {
           [data-v2="logo"] { width: 38px !important; height: 38px !important; border-radius: 11px !important; }
           [data-v2="logo"] img { width: 28px !important; height: 25px !important; }
           [data-v2="brand-title"] { font-size: 17px !important; }
-          [data-v2="brand-sub"] { font-size: 8px !important; letter-spacing: 2px !important; margin-top: 3px !important; }
+          [data-v2="brand-sub"] { font-size: 11px !important; letter-spacing: 0.5px !important; line-height: 1.4 !important; margin-top: 3px !important; }
           [data-v2="header-actions"] { gap: 6px !important; }
           [data-v2="header-actions"] .v2-pill { padding: 6px 9px !important; font-size: 11px !important; }
           [data-v2="profile"] { width: 36px !important; height: 36px !important; }
@@ -887,14 +887,14 @@ export function HomePageV2() {
 
           .v2-rec { padding: 12px 10px !important; gap: 6px !important; border-radius: 14px !important; }
           .v2-rec > span:first-of-type { width: 38px !important; height: 38px !important; border-radius: 10px !important; }
-          .v2-rec > span:nth-of-type(2) { font-size: 12px !important; }
+          .v2-rec > span:nth-of-type(2) { font-size: 14px !important; }
           .v2-rec > span:nth-of-type(3) { font-size: 13px !important; line-height: 1.6 !important; margin-top: 0 !important; color: #646B57 !important; }
 
           [data-v2="agent"] { padding: 12px !important; gap: 8px !important; min-height: 112px !important; border-radius: 14px !important; }
           [data-v2="agent"] > div:first-of-type { width: 38px !important; height: 38px !important; border-radius: 10px !important; }
-          [data-v2="agent-title"] { font-size: 13px !important; }
+          [data-v2="agent-title"] { font-size: 16px !important; line-height: 1.5 !important; overflow-wrap: anywhere; }
           [data-v2="agent-sub"] { font-size: 13px !important; margin-top: 3px !important; line-height: 1.4 !important; }
-          [data-v2="agent-tag"] { font-size: 8px !important; padding: 2px 6px !important; margin-top: 6px !important; }
+          [data-v2="agent-tag"] { font-size: 14px !important; line-height: 1.5 !important; min-height: 44px; padding: 10px 12px !important; margin-top: 10px !important; }
 
           [data-v2="cta"] { padding: 16px 18px !important; font-size: 14px !important; border-radius: 18px !important; margin-top: 4px !important; }
           [data-v2="cta-icon"] { width: 36px !important; height: 36px !important; }
@@ -965,7 +965,7 @@ export function HomePageV2() {
                   color: '#2C2C2A',
                 }}
               >
-                HARU
+                haru2026
               </div>
               <div
                 data-v2="brand-sub"
@@ -976,10 +976,10 @@ export function HomePageV2() {
                   letterSpacing: 3,
                   color: '#7A6F5A',
                   marginTop: 6,
-                  textTransform: 'uppercase',
+                  textTransform: 'none',
                 }}
               >
-                BY HARU2026 · EST. 2026
+                BY 하루lab · EST. 2026
               </div>
             </div>
           </div>
@@ -1280,13 +1280,16 @@ export function HomePageV2() {
               </>
             }
           />
-          <p style={{ fontSize: 14, color: '#646B57', margin: '0 0 14px' }}>HARU 비서는 돈을 기록하고, 필요한 정보를 찾고, 생활 속 궁금한 점을 정리하도록 돕는 도구예요.</p>
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: '#1A3C6E', margin: '0 0 6px' }}>이용할 비서를 선택하세요</h3>
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: '#46566B', margin: 0 }}>‘이 비서 알아보기’로 설명을 확인한 뒤, ‘이 비서 이용하기’를 누르세요. 질문 입력이나 사진 추가는 열린 비서 화면의 안내를 따라주세요.</p>
+          </div>
           {agentViewMode === 'my' && (
             <div style={{ display: 'grid', gap: 8, marginBottom: 18 }}>
               {visibleAgents.filter((agent) => ['HARU가계부', '하루LAW', '하루식물탐정', 'HARU주식관리'].includes(agent.label) && !homeAgents.includes(agent)).map((agent) => (
                 <button type="button" key={agent.label} onClick={() => setPreviewAgent(agent)} style={{ background: '#fff', border: '1px solid #E5DFD0', borderRadius: 14, padding: 14, textAlign: 'left', color: '#2C2C2A' }}>
                   <strong style={{ display: 'block', fontSize: 14 }}>{HOME_ASSISTANT_NEEDS[agent.label]}</strong>
-                  <span style={{ display: 'block', fontSize: 13, color: '#646B57', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 무엇을 도와주는지 보기 →</span>
+                  <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#4A5A2C', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 이 비서 알아보기 →</span>
                 </button>
               ))}
             </div>
@@ -1399,9 +1402,9 @@ export function HomePageV2() {
                       letterSpacing: '-0.01em',
                     }}
                   >
-                    {HOME_ASSISTANT_NEEDS[a.label] ?? a.label}
+                    {a.label}
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginTop: 6 }}>{a.label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginTop: 6 }}>{HOME_ASSISTANT_NEEDS[a.label] ?? a.label}</div>
                   <div
                     data-v2="agent-sub"
                     style={{
@@ -1420,17 +1423,15 @@ export function HomePageV2() {
                       alignItems: 'center',
                       gap: 5,
                       marginTop: 12,
-                      padding: '3px 9px',
-                      borderRadius: 999,
-                      background: 'rgba(255,255,255,0.66)',
-                      fontFamily: FONT_EN,
-                      fontSize: 9,
-                      fontWeight: 600,
-                      letterSpacing: '0.14em',
-                      textTransform: 'uppercase',
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      background: '#fff',
+                      border: '1px solid currentColor',
+                      fontSize: 14,
+                      fontWeight: 700,
                     }}
                   >
-                    {disabled ? '준비중' : '무엇을 도와주는지 보기 →'}
+                    {disabled ? '준비중' : '이 비서 알아보기 →'}
                   </span>
                 </div>
               </button>
@@ -1466,8 +1467,8 @@ export function HomePageV2() {
           <SectionHead
             iconBg="#E5DBC2"
             iconStroke="#7A6F5A"
-            title="분석도구"
-            sub="기록과 비서 결과물을 통계로 보고, 합본으로 묶습니다."
+            title="내 기록 살펴보기"
+            sub="얼마나 기록했는지 확인하고, 정리한 기록을 모아 읽어요."
             badge="2가지"
             badgeDot="#B85C2E"
             icon={
@@ -1492,7 +1493,7 @@ export function HomePageV2() {
             {[
               {
                 label: '기록통계',
-                sub: '내 기록과 비서 결과물의 흐름을 봅니다.',
+                sub: '기간별 기록 수와 자주 쓴 형식을 확인해요.',
                 bg: '#DDD0E8',
                 stroke: '#5A4E7A',
                 path: '/stats',
@@ -1508,8 +1509,8 @@ export function HomePageV2() {
                 ),
               },
               {
-                label: '기록합본',
-                sub: '여러 기록과 비서 결과물을 하나로 묶습니다.',
+                label: '기록 모아보기',
+                sub: '기간과 형식을 골라 SAYU로 정리한 기록을 모아 읽어요.',
                 bg: '#E0E8B8',
                 stroke: '#4A5A2C',
                 path: '/merge',
@@ -1574,9 +1575,10 @@ export function HomePageV2() {
                 </span>
                 <span
                   style={{
-                    fontSize: 10,
-                    color: '#888780',
-                    marginTop: -8,
+                    fontSize: 13,
+                    color: '#646B57',
+                    lineHeight: 1.6,
+                    marginTop: 0,
                     letterSpacing: '0.04em',
                     position: 'relative',
                     zIndex: 1,
@@ -1650,7 +1652,7 @@ export function HomePageV2() {
 
       <Dialog open={previewAgent !== null} onOpenChange={(open) => { if (!open) setPreviewAgent(null); }}>
         <DialogContent style={{ background: '#F5F0E8', color: '#2C2C2A' }}>
-          <DialogTitle className="pr-6">{previewAgent?.label}{previewAgent?.beta ? ' · 베타' : ''}</DialogTitle>
+          <DialogTitle className="pr-6">이용할 비서 · {previewAgent?.label}{previewAgent?.beta ? ' · 베타' : ''}</DialogTitle>
           <DialogDescription>{previewAgent ? HOME_ASSISTANT_NEEDS[previewAgent.label] : ''}</DialogDescription>
           <p style={{ fontSize: 15, lineHeight: 1.7 }}>{previewAgent?.sub}</p>
           <button type="button" style={{ ...pillStyle, background: '#4A5A2C', color: '#fff', justifyContent: 'center', padding: 14 }} onClick={() => {
@@ -1659,7 +1661,7 @@ export function HomePageV2() {
             setPreviewAgent(null);
             if (agent.action === 'timeline') { openTimelineModal(); return; }
             if (agent.path) navigate(agent.path, { state: { ...(agent.state || {}), from: '/v2', resetAssistantScroll: true } });
-          }}>{previewAgent?.label} 열기</button>
+          }}>이 비서 이용하기 →</button>
           {previewAgent && (
             <button type="button" disabled={!effectivePersonalizationLoaded || personalizationSaving} style={pillStyle} onClick={() => {
               const key = getAgentKey(previewAgent);

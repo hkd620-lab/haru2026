@@ -1,7 +1,7 @@
 import { motion, useAnimation } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 
-const chars = ['기', '록', '합', '치', '기'];
+const chars = Array.from('기록 모아보기');
 
 export function MergeTitleAnimation() {
   const shimmerControls = useAnimation();
@@ -73,9 +73,10 @@ export function MergeTitleAnimation() {
           </svg>
         </motion.div>
 
-        {/* 기록합치기 글자 */}
+        {/* 기록 모아보기 글자 */}
         <div
           className="relative flex items-center overflow-hidden"
+          role="heading" aria-level={1} aria-label="기록 모아보기"
           style={{ paddingBottom: '2px' }}
         >
           {chars.map((char, i) => (
@@ -90,6 +91,7 @@ export function MergeTitleAnimation() {
               }}
               style={{
                 display: 'inline-block',
+                whiteSpace: 'pre',
                 fontSize: 'clamp(1.35rem, 4.5vw, 1.75rem)',
                 letterSpacing: '0.06em',
                 color: '#1A3C6E',
@@ -130,9 +132,9 @@ export function MergeTitleAnimation() {
           duration: 0.65,
           ease: [0.22, 1, 0.36, 1],
         }}
-        style={{ fontSize: '0.75rem', color: '#888', margin: 0 }}
+        style={{ fontSize: '0.8125rem', color: '#646B57', margin: 0 }}
       >
-        SAYU를 마친 기록을 한 권으로 합칩니다
+        기간과 형식을 골라 AI로 정리한 기록과 사진을 모아 읽어요
       </motion.p>
     </div>
   );

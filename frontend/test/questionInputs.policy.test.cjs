@@ -68,9 +68,9 @@ assert(
 
 // ── 질문칸: rows=3, 크기 조절은 변경 전 상태 유지 ──
 const questionInputs = [
-  ['공통 AI 질문', textareaWhere(resultChat, (e) => e.includes('aria-label="기록·비서 AI 질문"'), '공통 AI 질문')],
+  ['공통 AI 질문', textareaWhere(resultChat, (e) => e.includes('id={questionInputId}'), '공통 AI 질문')],
   ['독서 AI 질문', textareaWhere(readingAiChat, (e) => e.includes('aria-label="독서 AI 질문"'), '독서 AI 질문')],
-  ['하루LAW 질문', textareaWhere(haruLawPanel, (e) => e.includes('aria-label="하루LAW 질문"'), '하루LAW 질문')],
+  ['하루LAW 질문', textareaWhere(haruLawPanel, (e) => e.includes('id="haru-law-question"'), '하루LAW 질문')],
   ['전망 직접 질문', textareaWhere(novelStudio, (e) => e.includes('motiveCustom'), '전망 직접 질문')],
 ];
 for (const [label, element] of questionInputs) assertRows3(element, label);
@@ -98,7 +98,7 @@ const writingInputs = [
   ['외국어일기 작성', textareaWhere(diaryLearn, (e) => e.includes('setKoreanInput'), '외국어일기 작성')],
   // 식물탐정 "오늘의 관찰": 같은 폼의 두 입력칸이 이미 3줄이라 자유 메모만 2줄이던 것을 맞췄다.
   ['식물탐정 자유 메모', textareaWhere(plantDetective, (e) => e.includes('setObsMemo'), '식물탐정 자유 메모')],
-  ['일반 글쓰기 첫 입력칸', textareaWhere(recordPage, (e) => e.includes('aria-label="기록 내용"'), '일반 글쓰기 첫 입력칸')],
+  ['일반 글쓰기 첫 입력칸', textareaWhere(recordPage, (e) => e.includes('id="record-draft-content"'), '일반 글쓰기 첫 입력칸')],
 ];
 for (const [label, element] of writingInputs) {
   assertRows3(element, label);
