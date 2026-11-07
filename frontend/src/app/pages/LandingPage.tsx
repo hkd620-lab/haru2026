@@ -42,7 +42,7 @@ const FORMATS: { name: string; icon: string; hue: Hue; cat: string; badge?: stri
   { name: '여행기록',     icon: 'plane',     hue: 'terracotta', cat: '생활' },
   { name: '독서사유',     icon: 'book',      hue: 'green',      cat: '생활' },
   { name: '텃밭일지',     icon: 'seed',      hue: 'green',      cat: '생활' },
-  { name: '애완동물관찰일지', icon: 'paw',   hue: 'terracotta', cat: '생활' },
+  { name: '반려동물', icon: 'paw',   hue: 'terracotta', cat: '생활' },
   { name: '육아일기',     icon: 'baby',      hue: 'lilac',      cat: '생활' },
   { name: '선교보고',     icon: 'church',    hue: 'lilac',      cat: '업무' },
   { name: '일반보고',     icon: 'bookbind',  hue: 'terracotta', cat: '업무' },
@@ -62,7 +62,7 @@ const DOORS: { n: string; icon: string; hue: Hue; title: string; body: string; c
   {
     n: '01', icon: 'pen', hue: 'green',
     title: '기록하기',
-    body: '오늘의 일, 생각, 사진, 경험을 남깁니다. 형식이 먼저 정해져 있어, 무엇을 적을지부터 자리가 잡힙니다.',
+    body: '오늘의 일, 생각, 사진, 경험을 남깁니다. 형식은 먼저 골라도, 글을 쓴 뒤 골라도 됩니다.',
     chip: '일기 · 여행기록 · 업무일지',
   },
   {
@@ -214,9 +214,9 @@ function HaruPhone() {
             <div className="ph-hero__cap">GOOD MORNING</div>
             <div className="ph-hero__date">오늘도 편하게 기록해볼까요?</div>
             <p className="ph-hero__copy">
-              <span className="ph-copy__line">HARU2026은 구독자님의 흩어진 기록을 하나로 엮어</span>
-              <span className="ph-copy__line">자서전과 1·5·10년 후 미래전망으로 생성해 드립니다.</span>
-              <span className="ph-copy__line">원본을 살린 분류·통계·텍스트 마이닝까지, HARU2026이 함께합니다.</span>
+              <span className="ph-copy__line">오늘의 일과 생각을 편하게 남겨 보세요.</span>
+              <span className="ph-copy__line">필요하면 AI로 표현을 다듬고, 기록을 모아 읽어요.</span>
+              <span className="ph-copy__line">생활의 궁금한 일은 필요한 비서에게 물어보세요.</span>
             </p>
           </div>
 
@@ -441,61 +441,15 @@ export function LandingPage() {
         <div className="lp-hero__deco"><span /><span /></div>
         <div className="lp-wrap lp-hero__grid">
           <div>
-            <div className="lp-cap">RECORD · UNDERSTAND · USE · DISCOVER</div>
+            <div className="lp-cap" style={{ textTransform: 'none' }}>haru2026 · 하루2026</div>
             <h1 className="lp-h1">
-              haru2026<br />
-              <span style={{ color: C.oliveDark }}>하루2026</span><br />
-              두 장의 큰 잎이 호박을 키우다
+              내 기록을 정리하고,<br />
+              <span style={{ color: C.oliveDark }}>생활의 궁금한 일을<br />물어보세요.</span>
             </h1>
             <p className="lp-hero__sub">
-              haru2026은 두 장의 큰 잎이 호박을 키우듯, 기록관리와 생활문제 해결로<br />
-              구독자의 삶을 튼튼하게 키워가는 <strong style={{ color: C.fg, fontWeight: 600 }}>AI 생활관리 플랫폼</strong>입니다.
+              오늘의 일과 생각을 남기고, 필요하면 AI로 표현을 다듬어 보세요.
+              생활에서 궁금한 일은 원하는 비서를 골라 물어볼 수 있어요.
             </p>
-            <div className="lp-value-cards" aria-label="HARU2026 핵심 가치">
-              <article className="lp-value-card">
-                <div className="lp-value-card__ico" style={{ background: hueBg.green }}>
-                  <Icon name="bookbind" size={20} color={hueFg.green} sw={1.7} />
-                </div>
-                <div>
-                  <h2>내 기록이 자서전의 재료가 됩니다</h2>
-                  <p>
-                    하루의 짧은 기록도 쌓이면 삶의 흐름을 보여주는 자료가 됩니다.
-                    HARU타임라인은 흩어진 기록을 시간의 흐름으로 정리해 나만의 생활 자산으로 바꿉니다.
-                  </p>
-                </div>
-              </article>
-              <article className="lp-value-card">
-                <div className="lp-value-card__ico" style={{ background: hueBg.lilac }}>
-                  <Icon name="chart" size={20} color={hueFg.lilac} sw={1.7} />
-                </div>
-                <div>
-                  <h2>오늘의 기록이 미래전망의 근거가 됩니다</h2>
-                  <p>
-                    HARU미래전망은 막연한 예측이 아니라, 사용자가 남긴 기록을 바탕으로
-                    생활 변화와 가능성을 살펴보는 기능입니다.
-                  </p>
-                </div>
-              </article>
-            </div>
-            <div className="lp-mini-flow" aria-label="HARU2026 3단계 흐름">
-              <p className="lp-mini-flow__lead">
-                오늘 한 줄을 남기면, HARU가 읽기 좋은 기록으로 정리하고 나중에 다시 꺼내 쓸 자료로 바꿉니다.
-              </p>
-              <div className="lp-mini-flow__steps">
-                {HERO_FLOW.map((step, i) => (
-                  <div className="lp-mini-flow__item" key={step.t}>
-                    <span className="lp-mini-flow__ico" style={{ background: hueBg[step.hue] }}>
-                      <Icon name={step.icon} size={17} color={hueFg[step.hue]} sw={1.8} />
-                    </span>
-                    <span className="lp-mini-flow__copy">
-                      <strong>{step.t}</strong>
-                      <span>{step.d}</span>
-                    </span>
-                    {i < HERO_FLOW.length - 1 && <span className="lp-mini-flow__arrow" aria-hidden="true">→</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
             <div className="lp-hero__cta-row">
               <button className="lp-btn lp-btn--primary" onClick={goToLogin}>
                 무료로 시작하기<Icon name="arrowR" size={18} sw={2} />
@@ -513,6 +467,51 @@ export function LandingPage() {
                   {b.label}
                 </button>
               ))}
+            </div>
+            <div className="lp-value-cards" aria-label="HARU2026 핵심 가치">
+              <article className="lp-value-card">
+                <div className="lp-value-card__ico" style={{ background: hueBg.green }}>
+                  <Icon name="bookbind" size={20} color={hueFg.green} sw={1.7} />
+                </div>
+                <div>
+                  <h2>내 기록을 남기고 다시 꺼내 봅니다</h2>
+                  <p>
+                    일기, 메모, 독서사유 등으로 기록을 남기고, 필요하면 SAYU로 표현을 다듬어요.
+                    저장한 기록은 통계로 살펴보고, 정리한 글과 사진을 모아 읽을 수 있어요.
+                  </p>
+                </div>
+              </article>
+              <article className="lp-value-card">
+                <div className="lp-value-card__ico" style={{ background: hueBg.lilac }}>
+                  <Icon name="chart" size={20} color={hueFg.lilac} sw={1.7} />
+                </div>
+                <div>
+                  <h2>생활의 궁금한 일을 비서에게 묻습니다</h2>
+                  <p>
+                    가계부 기록, 식물 돌봄, 관련 법령 찾기 등 필요한 비서를 골라 보세요.
+                    선택한 비서 화면에서 질문을 쓰고 답변을 확인할 수 있어요.
+                  </p>
+                </div>
+              </article>
+            </div>
+            <div className="lp-mini-flow" aria-label="HARU2026 3단계 흐름">
+              <p className="lp-mini-flow__lead">
+                한 줄을 남기고, 필요하면 AI로 다듬은 뒤 내용을 확인해 저장해요.
+              </p>
+              <div className="lp-mini-flow__steps">
+                {HERO_FLOW.map((step, i) => (
+                  <div className="lp-mini-flow__item" key={step.t}>
+                    <span className="lp-mini-flow__ico" style={{ background: hueBg[step.hue] }}>
+                      <Icon name={step.icon} size={17} color={hueFg[step.hue]} sw={1.8} />
+                    </span>
+                    <span className="lp-mini-flow__copy">
+                      <strong>{step.t}</strong>
+                      <span>{step.d}</span>
+                    </span>
+                    {i < HERO_FLOW.length - 1 && <span className="lp-mini-flow__arrow" aria-hidden="true">→</span>}
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="lp-hero__trust">
               <span><Icon name="shield" size={18} color={C.olive} />원문 감정 그대로</span>
@@ -562,6 +561,7 @@ export function LandingPage() {
       {/* ───── Four doors ───── */}
       <section className="lp-section" id="how">
         <div className="lp-wrap">
+          <p className="lp-lead" style={{ marginBottom: 24 }}>두 장의 큰 잎이 호박을 키우듯, haru2026은 기록관리와 생활 비서로 일상을 돕습니다.</p>
           <div className="lp-cap">FOUR DOORS · 네 개의 문</div>
           <h2 className="lp-h2">기록하고, 이해하고,<br />도움받고, 발견합니다.</h2>
           <p className="lp-lead" style={{ maxWidth: 660 }}>
@@ -647,7 +647,7 @@ export function LandingPage() {
           <div className="lp-cap">FLOW · 사용 흐름</div>
           <h2 className="lp-h2">오늘의 한 줄이<br />오래 남는 자료가 되기까지.</h2>
           <p className="lp-lead" style={{ maxWidth: 580 }}>
-            입력에서 보관까지 다섯 단계. 사용자는 첫 단계만, 나머지는 HARU가 합니다.
+            기록을 남기고, 필요하면 AI로 다듬어 보세요. 내용을 확인해 저장한 뒤 통계와 모아보기로 다시 살펴볼 수 있어요.
           </p>
           <div className="lp-flow">
             <div className="lp-flow__line" aria-hidden="true" />
@@ -775,7 +775,7 @@ const LP_CSS = `
 .lp-cap{font-family:var(--lp-en);font-size:12px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:var(--fg-muted);margin:0 0 18px;display:inline-flex;align-items:center;gap:10px;}
 .lp-cap::before{content:"";width:28px;height:1px;background:currentColor;opacity:0.5;}
 
-.lp-h1{font-family:var(--lp-kr);font-size:var(--lp-hero);font-weight:700;letter-spacing:-0.025em;line-height:1.14;margin:0 0 24px;color:var(--fg);}
+.lp-h1{font-family:var(--lp-kr);font-size:clamp(32px,4.4vw,60px);word-break:keep-all;font-weight:700;letter-spacing:-0.025em;line-height:1.14;margin:0 0 24px;color:var(--fg);}
 .lp-h2{font-size:var(--lp-h2);font-weight:700;letter-spacing:-0.018em;line-height:1.22;margin:0 0 20px;color:var(--fg);}
 .lp-lead{font-size:var(--lp-lead);line-height:1.7;color:var(--fg-2);margin:0;}
 
@@ -814,7 +814,7 @@ const LP_CSS = `
 
 .lp-hero{padding-top:clamp(48px,8vw,88px);padding-bottom:clamp(56px,8vw,104px);position:relative;}
 .lp-hero__grid{display:grid;grid-template-columns:1.05fr 1fr;gap:clamp(40px,6vw,88px);align-items:center;}
-@media(max-width:920px){.lp-hero__grid{grid-template-columns:1fr;}.lp-hero__visual{order:-1;min-height:480px;}}
+@media(max-width:920px){.lp-hero__grid{grid-template-columns:1fr;}.lp-hero__visual{order:0;min-height:480px;}}
 .lp-hero__sub{font-size:var(--lp-lead);color:var(--fg-2);line-height:1.65;margin:0 0 32px;max-width:52ch;}
 .lp-value-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:-10px 0 26px;max-width:680px;}
 .lp-value-card{background:rgba(255,255,255,0.78);border:1px solid var(--border);border-radius:18px;padding:16px;display:grid;grid-template-columns:42px 1fr;gap:12px;align-items:flex-start;box-shadow:0 12px 28px -24px rgba(74,90,44,0.32);}
@@ -998,6 +998,6 @@ const LP_CSS = `
 .ph-tab{margin-top:auto;padding:8px 0 calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border);background:#fff;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:0 0 auto;}
 .ph-tab__item{display:flex;min-width:0;flex-direction:column;align-items:center;gap:3px;font-size:8px;line-height:1.15;color:var(--fg-muted);text-align:center;word-break:keep-all;}
 .ph-tab__item.active{color:var(--olive-dark);font-weight:600;}
-@media(max-width:520px){.lp-hero__visual{min-height:auto;padding:8px 0 20px;}.lp-float{max-width:44vw;padding:10px 12px!important;border-radius:14px;}.lp-float--a{top:4%;left:0;}.lp-float--c{bottom:3%;left:0;}}
+@media(max-width:520px){.lp-h1{font-size:clamp(30px,10vw,40px);line-height:1.25;word-break:keep-all;}.lp-hero__visual{min-height:auto;padding:8px 0 20px;}.lp-float{max-width:44vw;padding:10px 12px!important;border-radius:14px;}.lp-float--a{top:4%;left:0;}.lp-float--c{bottom:3%;left:0;}}
 @media(max-width:360px){.lp-phone{border-radius:38px;padding:12px;}.lp-phone__inner{border-radius:28px;}.lp-phone__notch{width:78px;height:19px;}.ph-head{min-height:70px;padding:36px 14px 7px;}.ph-hero{margin:4px 12px 8px;padding:13px;}.ph-hero__date{font-size:16px;}.ph-hero__copy{font-size:9.5px;line-height:1.45;}.ph-section{margin:5px 12px;}.ph-grid{margin:0 12px 9px;gap:5px;max-width:calc(100% - 24px);}.ph-cell{flex-basis:62px;padding:7px 4px;}.ph-agents{margin:0 12px 9px;gap:5px;}.ph-agent{padding:7px;gap:6px;}.ph-agent__ico{width:24px;height:24px;}.ph-agent__t{font-size:8.8px;}.ph-agent__s{font-size:7.5px;}.ph-cta{margin:0 12px;padding:9px 12px;}}
 `;

@@ -31,5 +31,6 @@ export async function shouldShowAssistantOnboarding() {
   return params.get('scenario') === 'onboarding-new';
 }
 export function TimelineCollageModal() { return null; }
+export function beginLoginTrace() {}
 export function finishLoginTrace() {}
 export function markLoginTrace() {}

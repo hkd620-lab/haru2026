@@ -965,7 +965,7 @@ export function HomePageV2() {
                   color: '#2C2C2A',
                 }}
               >
-                HARU
+                haru2026
               </div>
               <div
                 data-v2="brand-sub"
@@ -976,10 +976,10 @@ export function HomePageV2() {
                   letterSpacing: 3,
                   color: '#7A6F5A',
                   marginTop: 6,
-                  textTransform: 'uppercase',
+                  textTransform: 'none',
                 }}
               >
-                BY HARU2026 · EST. 2026
+                BY 하루lab · EST. 2026
               </div>
             </div>
           </div>
@@ -1467,8 +1467,8 @@ export function HomePageV2() {
           <SectionHead
             iconBg="#E5DBC2"
             iconStroke="#7A6F5A"
-            title="분석도구"
-            sub="기록과 비서 결과물을 통계로 보고, 합본으로 묶습니다."
+            title="내 기록 살펴보기"
+            sub="얼마나 기록했는지 확인하고, 정리한 기록을 모아 읽어요."
             badge="2가지"
             badgeDot="#B85C2E"
             icon={
@@ -1493,7 +1493,7 @@ export function HomePageV2() {
             {[
               {
                 label: '기록통계',
-                sub: '내 기록과 비서 결과물의 흐름을 봅니다.',
+                sub: '기간별 기록 수와 자주 쓴 형식을 확인해요.',
                 bg: '#DDD0E8',
                 stroke: '#5A4E7A',
                 path: '/stats',
@@ -1509,8 +1509,8 @@ export function HomePageV2() {
                 ),
               },
               {
-                label: '기록합본',
-                sub: '여러 기록과 비서 결과물을 하나로 묶습니다.',
+                label: '기록 모아보기',
+                sub: '기간과 형식을 골라 정리한 기록을 모아 읽어요.',
                 bg: '#E0E8B8',
                 stroke: '#4A5A2C',
                 path: '/merge',

@@ -1105,7 +1105,7 @@ export function SayuTogetherPage() {
           className="text-2xl md:text-3xl font-bold tracking-tight"
           style={{ color: '#1A3C6E' }}
         >
-          🌿 SAYU·함께보기
+          🌿 공개 기록 함께읽기
         </h1>
         <p className="text-sm mt-1.5" style={{ color: '#666', lineHeight: 1.6 }}>
           HARU 회원들이 공개한 기록을 함께 읽고 댓글로 마음을 나누는 공간입니다.

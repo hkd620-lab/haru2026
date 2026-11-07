@@ -28,5 +28,6 @@ test('로그인과 안내 확인이 끝나면 기존 작성 전후 형식 선택
   const html = render({ signedIn: true, ready: true, content: '작성할 기록' });
   assert.doesNotMatch(html.match(/<textarea[^>]*>/)[0], /disabled/);
   assert.match(html, /작성할 기록/);
-  assert.match(html, /기록하고 형식 고르기/);
+  assert.match(html, /다음 · 기록 형식 고르기/);
+  assert.match(html, /다음 화면에서 내용을 확인한 뒤 저장해요/);
 });
