@@ -943,7 +943,7 @@ export function HomePageV2() {
               }}
             >
               <img
-                src="/brand/haru-pumpkin-logo.png"
+                src="/brand/haru2026-grape-logo-v1.png"
                 alt=""
                 aria-hidden="true"
                 style={{
