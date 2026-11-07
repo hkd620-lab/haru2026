@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { InAppBrowserLoginGuide } from '../components/InAppBrowserLoginGuide';
-import { getInAppBrowserInfo, type InAppBrowserInfo } from '../utils/inAppBrowser';
+import { getInAppBrowserInfo, needsExternalLoginBrowser, type InAppBrowserInfo, type InAppLoginProvider } from '../utils/inAppBrowser';
 import { GrapeAnimation } from '../components/GrapeAnimation';
 import { beginLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 import { buildSocialLoginUrl } from '../utils/socialLoginUrls';
@@ -281,7 +281,7 @@ export function LandingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { user, loading, googleSignIn } = useAuth();
   const [isLoginLoading, setIsLoginLoading] = useState(false);
-  const [inAppBrowserGuide, setInAppBrowserGuide] = useState<InAppBrowserInfo | null>(null);
+  const [inAppBrowserGuide, setInAppBrowserGuide] = useState<(InAppBrowserInfo & { provider: InAppLoginProvider }) | null>(null);
 
   useEffect(() => {
     if (!loading && user) {
@@ -297,26 +297,25 @@ export function LandingPage() {
     );
   }
 
-  const guardInAppBrowserLogin = () => {
+  const guardInAppBrowserLogin = (provider: InAppLoginProvider) => {
     const info = getInAppBrowserInfo();
-    if (info.isInAppBrowser) {
+    if (needsExternalLoginBrowser(provider, info)) {
       setIsLoading(false);
       setIsLoginLoading(false);
-      setInAppBrowserGuide(info);
+      setInAppBrowserGuide({ ...info, provider });
       return true;
     }
     return false;
   };
 
   const goToLogin = () => {
-    if (guardInAppBrowserLogin()) return;
     navigate('/login');
   };
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const handleGoogleLogin = async () => {
     if (isLoginLoading) return;
-    if (guardInAppBrowserLogin()) return;
+    if (guardInAppBrowserLogin('google')) return;
     setIsLoading(true);
     setIsLoginLoading(true);
     beginLoginTrace('google');
@@ -340,7 +339,7 @@ export function LandingPage() {
 
   const handleKakaoLogin = () => {
     if (isLoginLoading) return;
-    if (guardInAppBrowserLogin()) return;
+    if (guardInAppBrowserLogin('kakao')) return;
     setIsLoading(true);
     setIsLoginLoading(true);
     beginLoginTrace('kakao');
@@ -350,7 +349,7 @@ export function LandingPage() {
 
   const handleNaverLogin = () => {
     if (isLoginLoading) return;
-    if (guardInAppBrowserLogin()) return;
+    if (guardInAppBrowserLogin('naver')) return;
     setIsLoading(true);
     setIsLoginLoading(true);
     beginLoginTrace('naver');
@@ -394,6 +393,7 @@ export function LandingPage() {
       <InAppBrowserLoginGuide
         open={Boolean(inAppBrowserGuide)}
         browserInfo={inAppBrowserGuide}
+        provider={inAppBrowserGuide?.provider ?? null}
         onClose={() => setInAppBrowserGuide(null)}
       />
 
