@@ -102,11 +102,11 @@ export function AssistantOnboardingPage() {
           <h1 data-assistant-onboarding="title" style={titleStyle}>
             처음 오셨나요?
             <br />
-            한 줄 기록이 한 달 뒤에는 생활문서와 통계가 됩니다.
+            한 줄 기록을 정리하고, 기간별로 다시 살펴보세요.
           </h1>
           <p style={leadStyle}>
-            HARU2026은 짧게 쓴 하루를 읽기 좋은 기록으로 정리하고, 기록이 쌓이면 월간 합본,
-            감정 흐름, 반복 주제, 미래보기 자료로 바꿔줍니다.
+            HARU2026은 원문의 사실·감정을 유지하며 표현을 다듬습니다.
+            저장한 기록은 기간별로 모아 읽고, 기록통계에서 작성 현황을 살펴볼 수 있습니다.
           </p>
         </section>
 

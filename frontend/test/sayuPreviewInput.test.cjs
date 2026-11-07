@@ -52,3 +52,10 @@ test('기본 예시 버튼은 그 원문에 대응하는 준비된 결과를 표
   assert.equal(result.sayuResult, daily.refined);
   assert.equal(result.showOriginalEntry, false);
 });
+
+test('기본 문장을 둔 채 건강 탭으로 바꾸면 건강 예시의 원문과 결과가 함께 표시된다', () => {
+  const result = evaluate(defaultInput, 'health', health, true, defaultInput);
+  assert.equal(result.displayInput, health.short);
+  assert.equal(result.sayuResult, health.refined);
+  assert.equal(result.showOriginalEntry, false);
+});

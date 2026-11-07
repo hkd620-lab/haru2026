@@ -259,7 +259,7 @@ const experienceTabs: ExperienceTab[] = [
 const flowCards = [
   {
     title: 'SAYU 사유정리',
-    body: '짧은 기록을 읽기 좋은 문장으로 정리하고, 그 안의 의미를 찾아줍니다.',
+    body: '원문의 사실·감정을 유지하며 읽기 좋은 문장으로 다듬습니다.',
   },
   {
     title: '월간 합본',
@@ -271,7 +271,7 @@ const flowCards = [
   },
   {
     title: '미래보기',
-    body: '미래를 맞히는 것이 아니라, 지금까지의 기록을 바탕으로 앞으로의 생활 방향을 살펴봅니다.',
+    body: '기록이나 질문 답변을 바탕으로 AI가 미래 이야기를 창작합니다. 실제 미래를 예측하는 결과가 아닙니다.',
   },
   {
     title: '관련 비서 연결',
@@ -522,7 +522,7 @@ const primaryAssistants: AssistantCard[] = [
   {
     name: 'SAYU 사유비서',
     records: '아내와 산책, 부족함에 대한 문장, 기도, 가족 대화',
-    help: '기록 속 마음의 흐름과 삶의 의미를 정리합니다.',
+    help: '원문의 사실·감정을 유지하며 표현을 다듬습니다.',
     level: '느슨한 연결',
   },
   {
@@ -567,17 +567,17 @@ const extraAssistants: AssistantCard[] = [
   {
     name: '미래보기 비서',
     records: '20개 전체 기록, 반복 습관, 감정 흐름, 관심 주제',
-    help: '지금까지의 기록을 바탕으로 앞으로의 생활 흐름과 실천 방향을 살펴봅니다.',
+    help: '기록이나 질문 답변을 바탕으로 AI 미래 이야기를 창작합니다.',
     level: '향후 연결 예정',
   },
 ];
 
 const glossary = [
   ['기록형식', '글을 쉽게 쓰게 해주는 입력틀입니다.'],
-  ['SAYU', '짧게 쓴 기록을 읽기 좋은 문장으로 다듬고, 그 안의 의미를 찾아주는 사유 공간입니다.'],
+  ['SAYU', '원문의 사실·감정을 유지하며 읽기 좋은 문장으로 다듬는 기능입니다.'],
   ['합본', '여러 날의 기록을 하나의 문서처럼 묶어보는 기능입니다.'],
   ['통계', '내가 얼마나, 어떤 주제로 기록했는지 숫자와 흐름으로 보는 기능입니다.'],
-  ['미래보기', '미래를 맞히는 기능이 아니라, 지금까지의 기록을 바탕으로 앞으로의 생활 흐름과 관리 방향을 살펴보는 기능입니다.'],
+  ['미래보기', '기록이나 질문 답변을 바탕으로 AI 미래 이야기를 창작하는 기능입니다. 실제 미래를 예측하는 결과가 아닙니다.'],
   ['비서 연결', '기록 속 주제에 따라 관련 비서가 다시 참고하거나, 사용자가 선택해 이어서 활용할 수 있게 돕는 연결입니다.'],
   ['핸드오프', '한 기능에서 만든 자료를 다른 비서나 기능에서 이어서 활용할 수 있게 넘기는 방식입니다.'],
 ];
@@ -618,7 +618,9 @@ export function GyeongdaePreviewPage() {
   );
 
   const trimmedEntry = entry.trim();
-  const displayInput = trimmedEntry || activeTab.short;
+  const displayInput = trimmedEntry === defaultInput && activeType !== 'daily'
+    ? activeTab.short
+    : trimmedEntry || activeTab.short;
   const isDefaultDaily = activeType === 'daily' && displayInput === defaultInput;
   const showOriginalEntry = Boolean(hasTried && trimmedEntry && !isDefaultDaily && displayInput !== activeTab.short);
   const sayuResult = showOriginalEntry ? displayInput : activeTab.refined;
@@ -734,8 +736,8 @@ export function GyeongdaePreviewPage() {
         <Section
           id="sayu-result"
           icon={<Sparkles size={20} />}
-          title="당신의 한 줄이 이렇게 정리됩니다"
-          body="직접 입력한 문장은 AI로 처리하거나 저장하지 않고 그대로 보여줍니다. 아래 의미·통계·미래보기는 준비된 예시이며, 직접 입력한 내용의 분석 결과가 아닙니다."
+          title={showOriginalEntry ? '직접 입력한 문장을 확인해 보세요' : 'SAYU 정리 예시를 살펴보세요'}
+          body="직접 입력한 문장은 AI로 처리하거나 저장하지 않고 그대로 보여줍니다. 아래 의미·분류·이어 쓰기 질문·통계·미래보기는 준비된 예시이며, 직접 입력한 내용의 분석 결과가 아닙니다."
         >
           <div data-g-grid-2 style={gridStyle(2)}>
             <Card>
@@ -753,7 +755,7 @@ export function GyeongdaePreviewPage() {
               <p style={cardTextStyle}>준비된 예시 기록에는 {activeTab.meaning}</p>
             </Card>
             <Card>
-              <PanelLabel>자동 분류 미리보기</PanelLabel>
+              <PanelLabel>예시 기록의 분류</PanelLabel>
               <MetaList
                 rows={[
                   ['기록 형식', activeTab.category],
@@ -764,7 +766,7 @@ export function GyeongdaePreviewPage() {
               />
             </Card>
             <Card>
-              <PanelLabel>이어 쓰기 질문</PanelLabel>
+              <PanelLabel>이어 쓰기 질문 예시</PanelLabel>
               <ul style={plainListStyle}>
                 <li>오늘 산책하면서 기억에 남은 대화가 있었나요?</li>
                 <li>이 시간이 왜 편안하게 느껴졌나요?</li>
@@ -966,8 +968,8 @@ export function GyeongdaePreviewPage() {
         <Section
           id="future"
           icon={<LineChart size={20} />}
-          title="미래를 맞히는 것이 아니라, 생활 방향을 살펴봅니다"
-          body="미래보기는 지금까지의 기록을 바탕으로 생활 습관, 감정 흐름, 관심 주제, 실천 방향을 살펴보는 기능입니다."
+          title="AI가 만드는 미래 이야기 예시입니다"
+          body="미래보기는 기록이나 질문 답변을 바탕으로 AI 이야기를 창작하는 기능입니다. 아래는 준비된 설명 예시이며, 실제 미래를 예측하는 결과가 아닙니다."
         >
           <Notice>
             미래보기는 예언, 진단, 투자 예측, 질병 예측이 아닙니다. 건강 관련
