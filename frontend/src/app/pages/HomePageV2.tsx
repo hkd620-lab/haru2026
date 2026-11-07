@@ -848,7 +848,7 @@ export function HomePageV2() {
           [data-v2="logo"] { width: 38px !important; height: 38px !important; border-radius: 11px !important; }
           [data-v2="logo"] img { width: 28px !important; height: 25px !important; }
           [data-v2="brand-title"] { font-size: 17px !important; }
-          [data-v2="brand-sub"] { font-size: 8px !important; letter-spacing: 2px !important; margin-top: 3px !important; }
+          [data-v2="brand-sub"] { font-size: 11px !important; letter-spacing: 0.5px !important; line-height: 1.4 !important; margin-top: 3px !important; }
           [data-v2="header-actions"] { gap: 6px !important; }
           [data-v2="header-actions"] .v2-pill { padding: 6px 9px !important; font-size: 11px !important; }
           [data-v2="profile"] { width: 36px !important; height: 36px !important; }
@@ -887,7 +887,7 @@ export function HomePageV2() {
 
           .v2-rec { padding: 12px 10px !important; gap: 6px !important; border-radius: 14px !important; }
           .v2-rec > span:first-of-type { width: 38px !important; height: 38px !important; border-radius: 10px !important; }
-          .v2-rec > span:nth-of-type(2) { font-size: 12px !important; }
+          .v2-rec > span:nth-of-type(2) { font-size: 14px !important; }
           .v2-rec > span:nth-of-type(3) { font-size: 13px !important; line-height: 1.6 !important; margin-top: 0 !important; color: #646B57 !important; }
 
           [data-v2="agent"] { padding: 12px !important; gap: 8px !important; min-height: 112px !important; border-radius: 14px !important; }
@@ -1282,14 +1282,14 @@ export function HomePageV2() {
           />
           <div style={{ marginBottom: 16 }}>
             <h3 style={{ fontSize: 17, fontWeight: 700, color: '#1A3C6E', margin: '0 0 6px' }}>이용할 비서를 선택하세요</h3>
-            <p style={{ fontSize: 14, lineHeight: 1.6, color: '#46566B', margin: 0 }}>아래에서 비서 이름을 누르고, 설명 창의 ‘이 비서 이용하기’를 누르세요. 질문과 내용은 열린 비서 화면의 입력칸에 써 주세요.</p>
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: '#46566B', margin: 0 }}>‘이 비서 알아보기’로 설명을 확인한 뒤, ‘이 비서 이용하기’를 누르세요. 질문 입력이나 사진 추가는 열린 비서 화면의 안내를 따라주세요.</p>
           </div>
           {agentViewMode === 'my' && (
             <div style={{ display: 'grid', gap: 8, marginBottom: 18 }}>
               {visibleAgents.filter((agent) => ['HARU가계부', '하루LAW', '하루식물탐정', 'HARU주식관리'].includes(agent.label) && !homeAgents.includes(agent)).map((agent) => (
                 <button type="button" key={agent.label} onClick={() => setPreviewAgent(agent)} style={{ background: '#fff', border: '1px solid #E5DFD0', borderRadius: 14, padding: 14, textAlign: 'left', color: '#2C2C2A' }}>
                   <strong style={{ display: 'block', fontSize: 14 }}>{HOME_ASSISTANT_NEEDS[agent.label]}</strong>
-                  <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#4A5A2C', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 이 비서 선택하기 →</span>
+                  <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#4A5A2C', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 이 비서 알아보기 →</span>
                 </button>
               ))}
             </div>
@@ -1431,7 +1431,7 @@ export function HomePageV2() {
                       fontWeight: 700,
                     }}
                   >
-                    {disabled ? '준비중' : '이 비서 선택하기 →'}
+                    {disabled ? '준비중' : '이 비서 알아보기 →'}
                   </span>
                 </div>
               </button>
@@ -1510,7 +1510,7 @@ export function HomePageV2() {
               },
               {
                 label: '기록 모아보기',
-                sub: '기간과 형식을 골라 정리한 기록을 모아 읽어요.',
+                sub: '기간과 형식을 골라 SAYU로 정리한 기록을 모아 읽어요.',
                 bg: '#E0E8B8',
                 stroke: '#4A5A2C',
                 path: '/merge',
@@ -1575,9 +1575,10 @@ export function HomePageV2() {
                 </span>
                 <span
                   style={{
-                    fontSize: 10,
-                    color: '#888780',
-                    marginTop: -8,
+                    fontSize: 13,
+                    color: '#646B57',
+                    lineHeight: 1.6,
+                    marginTop: 0,
                     letterSpacing: '0.04em',
                     position: 'relative',
                     zIndex: 1,
@@ -1651,7 +1652,7 @@ export function HomePageV2() {
 
       <Dialog open={previewAgent !== null} onOpenChange={(open) => { if (!open) setPreviewAgent(null); }}>
         <DialogContent style={{ background: '#F5F0E8', color: '#2C2C2A' }}>
-          <DialogTitle className="pr-6">선택한 비서 · {previewAgent?.label}{previewAgent?.beta ? ' · 베타' : ''}</DialogTitle>
+          <DialogTitle className="pr-6">이용할 비서 · {previewAgent?.label}{previewAgent?.beta ? ' · 베타' : ''}</DialogTitle>
           <DialogDescription>{previewAgent ? HOME_ASSISTANT_NEEDS[previewAgent.label] : ''}</DialogDescription>
           <p style={{ fontSize: 15, lineHeight: 1.7 }}>{previewAgent?.sub}</p>
           <button type="button" style={{ ...pillStyle, background: '#4A5A2C', color: '#fff', justifyContent: 'center', padding: 14 }} onClick={() => {

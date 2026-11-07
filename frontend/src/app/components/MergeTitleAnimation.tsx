@@ -132,7 +132,7 @@ export function MergeTitleAnimation() {
           duration: 0.65,
           ease: [0.22, 1, 0.36, 1],
         }}
-        style={{ fontSize: '0.75rem', color: '#888', margin: 0 }}
+        style={{ fontSize: '0.8125rem', color: '#646B57', margin: 0 }}
       >
         기간과 형식을 골라 AI로 정리한 기록과 사진을 모아 읽어요
       </motion.p>

@@ -17,7 +17,9 @@ const render = (extra = {}, standalone = true) => renderToStaticMarkup(React.cre
 test('전용 진입은 안내 확인 없이 질문·검색을 보여주고 결과 전 저장은 숨긴다', () => {
   const html = render();
   assert.match(html, /어떤 일이 있었나요/);
-  assert.match(html, /aria-label="하루LAW 질문"/);
+  assert.match(html, /for="haru-law-question"/);
+  assert.match(html, /하루LAW에게 질문 · 아래 글상자에 써 주세요/);
+  assert.doesNotMatch(html, /aria-label="하루LAW 질문"/);
   assert.match(html, /관련 법령 찾아보기/);
   assert.doesNotMatch(html, /확인했습니다|law-save-date|사유·나의 기록에 저장|오늘의 기록/);
 });

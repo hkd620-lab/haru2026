@@ -34,11 +34,11 @@ export function HomeRecordComposer({ content, onContentChange, onContinue, onBro
           {!signedIn ? '로그인하면 나의 기록을 남길 수 있어요.' : !ready ? '첫 사용 안내를 확인하고 있어요. 잠시만 기다려 주세요.' : format ? RECORD_FORMAT_DESCRIPTIONS[format]?.description : '무엇을 쓸지 아직 정하지 않아도 괜찮아요.'}
         </p>
         <label htmlFor="home-record-content" style={{ display: 'block', margin: '16px 0 8px', fontSize: 16, fontWeight: 700, color: '#4A5A2C' }}>기록 입력 · 아래 글상자에 써 주세요</label>
-        <textarea id="home-record-content" className="haru-writing-field" disabled={!ready} aria-describedby="home-format-description" value={content} onChange={(event) => onContentChange(event.target.value)} placeholder={format ? `${getRecordFormatLabel(format)}에 남기고 싶은 내용을 적어보세요.` : '여기를 눌러 오늘 있었던 일이나 떠오른 생각을 써 보세요.'} rows={3} style={{ display: 'block', width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '2px solid #7B8962', borderRadius: 12, padding: 16, marginBottom: 12, fontSize: 16, lineHeight: 1.6, color: '#2C2C2A', background: '#F8FAF2' }} />
+        <textarea id="home-record-content" className="haru-writing-field" disabled={!ready} aria-describedby="home-format-description" value={content} onChange={(event) => onContentChange(event.target.value)} placeholder={!signedIn ? '로그인 후 여기에 기록을 쓸 수 있어요.' : !ready ? '작성 화면을 준비하고 있어요.' : format ? `${getRecordFormatLabel(format)}에 남기고 싶은 내용을 적어보세요.` : '여기를 눌러 오늘 있었던 일이나 떠오른 생각을 써 보세요.'} rows={3} style={{ display: 'block', width: '100%', boxSizing: 'border-box', resize: 'vertical', border: '2px solid #7B8962', borderRadius: 12, padding: 16, marginBottom: 12, fontSize: 16, lineHeight: 1.6, color: '#2C2C2A', background: '#F8FAF2' }} />
         <button type="submit" disabled={signedIn && (!ready || !content.trim())} className="disabled:opacity-50" style={{ width: '100%', background: '#4A5A2C', color: '#fff', border: 0, borderRadius: 12, padding: '13px 14px', fontSize: 16, fontWeight: 600 }}>
           {!signedIn ? '로그인하고 기록하기' : !ready ? '작성 화면 준비 중…' : format ? '다음 · 기록 확인하기' : '다음 · 기록 형식 고르기'}
         </button>
-        <p style={{ fontSize: 12, color: '#646B57', margin: '10px 0 0' }}>다음 화면에서 내용을 확인한 뒤 저장해요. 사진도 다음 편집창에서 추가할 수 있어요.</p>
+        <p style={{ fontSize: 12, color: '#646B57', margin: '10px 0 0' }}>{!signedIn ? '로그인하면 기록 작성을 시작할 수 있어요.' : !ready ? '준비가 끝나면 이 글상자에 기록을 써 주세요.' : '다음 화면에서 내용을 확인한 뒤 저장해요. 사진도 다음 편집창에서 추가할 수 있어요.'}</p>
       </form>
       <button type="button" disabled={signedIn && !ready} onClick={onBrowseFormats} style={{ width: '100%', textAlign: 'left', marginTop: 12, padding: 16, border: '1px solid #E5DFD0', borderRadius: 16, background: '#fff', color: '#2C2C2A' }}>
         <strong style={{ display: 'block', fontSize: 15 }}>어떤 내용을 남기고 싶으세요?</strong>

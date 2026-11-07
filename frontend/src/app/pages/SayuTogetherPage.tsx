@@ -1096,7 +1096,7 @@ export function SayuTogetherPage() {
           BETA
         </span>
         <span style={{ fontSize: 11, color: '#888780', letterSpacing: '0.04em' }}>
-          SAYU · TOGETHER
+          회원들의 공개 기록
         </span>
       </div>
 
@@ -1114,7 +1114,7 @@ export function SayuTogetherPage() {
 
       <div className="mb-5 grid grid-cols-2 gap-2">
         {([
-          { key: 'shared', label: '구독자SAYU' },
+          { key: 'shared', label: '회원 공개 기록' },
           { key: 'recovery', label: '원기충전소' },
         ] as const).map((tab) => {
           const active = activeTab === tab.key;

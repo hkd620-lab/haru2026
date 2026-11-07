@@ -1107,7 +1107,6 @@ export function ResultChatModal({
               id={questionInputId}
               className="haru-writing-field"
               rows={3}
-              aria-label="기록·비서 AI 질문"
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
               disabled={loading || uploadingFiles || closingAttachments || isChoicePending}

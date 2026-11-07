@@ -354,7 +354,7 @@ export function MergePage() {
     }
 
     if (!canUsePeriod(selectedPeriod)) {
-      toast.warning('선택한 합본 기간을 이용할 수 없습니다. 다른 기간을 선택해 주세요.');
+      toast.warning('선택한 모아보기 기간을 이용할 수 없습니다. 다른 기간을 선택해 주세요.');
       return;
     }
 
@@ -499,7 +499,7 @@ export function MergePage() {
           </div>
           
           <ul className="space-y-1 pl-4" style={{ color: '#92400E', fontSize: '12px' }}>
-            <li>• 합본 화면 결과는 서버에 저장되지 않습니다(EPUB 파일은 내려받기를 위해 잠시 만들어집니다)</li>
+            <li>• 모아보기 결과는 서버에 저장되지 않습니다(EPUB 파일은 내려받기를 위해 잠시 만들어집니다)</li>
             <li>• 앱 내부 뷰어에서 바로 확인하세요</li>
             <li>• PDF로 저장하려면 뷰어에서 저장 버튼을 누르세요</li>
           </ul>
@@ -589,7 +589,7 @@ export function MergePage() {
             📝 형식 선택
           </span>
           <span className="text-xs" style={{ color: '#999' }}>
-            — 합칠 기록형식을 고르세요
+            — 모아 볼 기록형식을 고르세요
           </span>
         </div>
 
@@ -616,7 +616,7 @@ export function MergePage() {
             })}
           </div>
           <p className="text-xs mt-2" style={{ color: '#888' }}>
-            합본에는 SAYU를 마친 기록의 SAYU 글과 그 형식의 사진(기록당 최대 5장)이 들어갑니다. 입력 칸 원문과 첨부파일은 넣지 않습니다.
+            모아보기에는 SAYU를 마친 기록의 SAYU 글과 그 형식의 사진(기록당 최대 5장)이 들어갑니다. 입력 칸 원문과 첨부파일은 넣지 않습니다.
           </p>
         </div>
       </section>
@@ -624,7 +624,7 @@ export function MergePage() {
       <section className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="px-4 pt-3 pb-2 flex items-center gap-2">
           <span style={{ fontSize: '13px', color: '#1A3C6E', fontWeight: 600 }}>
-            ✨ 병합 기준 선택
+            ✨ 모아보기 기준 선택
           </span>
           <span className="text-xs" style={{ color: '#999' }}>
             — 포함할 기록을 선택하세요
@@ -660,10 +660,10 @@ export function MergePage() {
       <section className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="px-4 pt-3 pb-2 flex items-center gap-2">
           <span style={{ fontSize: '13px', color: '#1A3C6E', fontWeight: 600 }}>
-            📅 병합 기간 선택
+            📅 모아보기 기간 선택
           </span>
           <span className="text-xs" style={{ color: '#999' }}>
-            — 합칠 기간을 선택하세요
+            — 모아 볼 기간을 선택하세요
           </span>
         </div>
 
@@ -678,7 +678,7 @@ export function MergePage() {
                 key={option.id}
                 onClick={() => {
                   if (isLocked) {
-                    const message = `${option.title} 합본은 ${accessLabel} 이용할 수 있습니다.`;
+                    const message = `${option.title} 모아보기는 ${accessLabel} 이용할 수 있습니다.`;
                     alert(message);
                     window.location.href = '/subscription';
                     return;
@@ -702,7 +702,7 @@ export function MergePage() {
                   boxShadow: isSelected ? '0 2px 8px rgba(26,60,110,0.12)' : 'none',
                   opacity: isLocked ? 0.7 : 1,
                 }}
-                title={accessLabel ? `${option.title} 합본 · ${accessLabel}` : option.description}
+                title={accessLabel ? `${option.title} 모아보기 · ${accessLabel}` : option.description}
               >
                 <div
                   style={{

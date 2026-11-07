@@ -629,7 +629,6 @@ export function HaruLawPanel({ law, standalone = false }: { law: HaruLawState; s
                   id="haru-law-question"
                   className="haru-writing-field"
                   rows={3}
-                  aria-label="하루LAW 질문"
                   aria-describedby={standalone ? "law-question-hint" : undefined}
                   value={lawQuery}
                   onChange={(e) => setLawQuery(e.target.value)}

@@ -68,8 +68,8 @@ const DOORS: { n: string; icon: string; hue: Hue; title: string; body: string; c
   {
     n: '02', icon: 'spark', hue: 'lilac',
     title: '이해하기',
-    body: '쌓인 기록을 돌아보고 내 삶의 흐름을 정리합니다. SAYU가 표현을 다듬고, 통계와 합본이 변화를 보여줍니다.',
-    chip: 'SAYU · 통계 · 합본 회고',
+    body: '쌓인 기록을 돌아보고 내 삶의 흐름을 정리합니다. SAYU가 표현을 다듬고, 통계와 모아보기로 기록을 돌아봅니다.',
+    chip: 'SAYU · 통계 · 모아보기',
     note: 'SAYU는 흩어진 기록을 모아 생각과 흐름을 정리하는 HARU의 사유 기능입니다.',
   },
   {
@@ -92,14 +92,14 @@ const FLOW = [
   { n: '01', t: '기록 입력',   d: '오늘 있었던 일을 평소 말투로 자유롭게 적습니다.' },
   { n: '02', t: 'AI 정리',     d: 'SAYU가 표현만 다듬어 읽기 좋은 글로 정돈합니다.' },
   { n: '03', t: '분류 · 검색', d: '형식과 날짜로 자동 분류되고, 키워드로 찾을 수 있습니다.' },
-  { n: '04', t: '통계 · 합본', d: '월별·연도별로 흐름을 보여주고, 한 권으로 묶어 보관합니다.' },
+  { n: '04', t: '통계 · 모아보기', d: '월별·연도별로 흐름을 보여주고, 한 권으로 묶어 보관합니다.' },
   { n: '05', t: '오래 남는 기록',   d: '책 소재가 되고, 회고 자료가 되고, 다음 세대에 남길 기록이 됩니다.' },
 ];
 
 const HERO_FLOW = [
   { t: '한 줄 기록', d: '짧게 남김', icon: 'memo', hue: 'green' as Hue },
-  { t: 'SAYU 정리', d: '사유로 정리', icon: 'spark', hue: 'lilac' as Hue },
-  { t: '타임라인·미래전망', d: '다음 선택 참고', icon: 'chart', hue: 'terracotta' as Hue },
+  { t: '필요하면 AI 정리', d: '표현 다듬기', icon: 'spark', hue: 'lilac' as Hue },
+  { t: '확인 후 저장', d: '통계·모아보기', icon: 'chart', hue: 'terracotta' as Hue },
 ];
 
 const PRICING = [
@@ -269,7 +269,7 @@ function HeroFloats() {
         <div style={{ fontSize: 11, color: C.fg2, lineHeight: 1.5 }}>원문 감정 그대로, 표현만 다듬었어요.</div>
       </div>
       <div className="lp-float lp-float--c" style={{ width: 160, padding: '12px 14px' }}>
-        <div style={{ fontFamily: 'var(--lp-en)', fontSize: 9, letterSpacing: '2.5px', color: C.mute, textTransform: 'uppercase', marginBottom: 4 }}>이번 달 합본</div>
+        <div style={{ fontFamily: 'var(--lp-en)', fontSize: 9, letterSpacing: '2.5px', color: C.mute, textTransform: 'uppercase', marginBottom: 4 }}>이번 달 모아보기</div>
         <div style={{ fontSize: 14, fontWeight: 600, color: C.fg, lineHeight: 1.35 }}>11월 일기 · 28편</div>
       </div>
     </>
@@ -488,7 +488,7 @@ export function LandingPage() {
                 <div>
                   <h2>생활의 궁금한 일을 비서에게 묻습니다</h2>
                   <p>
-                    가계부 기록, 식물 돌봄, 관련 법령 찾기 등 필요한 비서를 골라 보세요.
+                    가계부 기록, 식물 사진 확인, 관련 법령 찾기 등 필요한 비서를 골라 보세요.
                     선택한 비서 화면에서 질문을 쓰고 답변을 확인할 수 있어요.
                   </p>
                 </div>
@@ -516,7 +516,7 @@ export function LandingPage() {
             <div className="lp-hero__trust">
               <span><Icon name="shield" size={18} color={C.olive} />원문 감정 그대로</span>
               <span><Icon name="user" size={18} color={C.olive} />오래 쓰도록 만든 설계</span>
-              <span><Icon name="archive" size={18} color={C.olive} />언제든 합본·내보내기</span>
+              <span><Icon name="archive" size={18} color={C.olive} />기록 모아보기·내보내기</span>
             </div>
           </div>
           <div className="lp-hero__visual">
@@ -532,7 +532,7 @@ export function LandingPage() {
           <span><Icon name="shield" size={14} />원문 감정 보존</span>
           <span><Icon name="spark" size={14} />SAYU AI 정리</span>
           <span><Icon name="archive" size={14} />기록 자산화</span>
-          <span><Icon name="bookbind" size={14} />합본 · 책 소재</span>
+          <span><Icon name="bookbind" size={14} />모아보기 · 책 소재</span>
           <span><Icon name="chart" size={14} />통계 · 회고</span>
         </div>
       </div>
@@ -561,9 +561,9 @@ export function LandingPage() {
       {/* ───── Four doors ───── */}
       <section className="lp-section" id="how">
         <div className="lp-wrap">
-          <p className="lp-lead" style={{ marginBottom: 24 }}>두 장의 큰 잎이 호박을 키우듯, haru2026은 기록관리와 생활 비서로 일상을 돕습니다.</p>
           <div className="lp-cap">FOUR DOORS · 네 개의 문</div>
           <h2 className="lp-h2">기록하고, 이해하고,<br />도움받고, 발견합니다.</h2>
+          <p className="lp-lead" style={{ marginBottom: 24 }}>두 장의 큰 잎이 호박을 키우듯, haru2026은 기록관리와 생활 비서로 일상을 돕습니다.</p>
           <p className="lp-lead" style={{ maxWidth: 660 }}>
             기록은 단순한 추억이 아니라, 나중에 나를 이해하고 돕는 자료가 됩니다.
             HARU는 일상기록을 분류·통합·분석하고, SAYU는 의미를 정리하며, AI 비서는 필요한 순간에 기록을 꺼내 씁니다.
@@ -647,7 +647,7 @@ export function LandingPage() {
           <div className="lp-cap">FLOW · 사용 흐름</div>
           <h2 className="lp-h2">오늘의 한 줄이<br />오래 남는 자료가 되기까지.</h2>
           <p className="lp-lead" style={{ maxWidth: 580 }}>
-            기록을 남기고, 필요하면 AI로 다듬어 보세요. 내용을 확인해 저장한 뒤 통계와 모아보기로 다시 살펴볼 수 있어요.
+            기록을 남기고, 필요하면 AI로 다듬어 보세요. 내용을 확인해 저장한 뒤 통계와 모아보기로 다시 살펴볼 수 있어요. 모아보기는 SAYU로 정리한 글과 사진을 한데 묶어 읽는 기능으로, 요금 안내의 ‘합본’과 같은 기능이에요.
           </p>
           <div className="lp-flow">
             <div className="lp-flow__line" aria-hidden="true" />

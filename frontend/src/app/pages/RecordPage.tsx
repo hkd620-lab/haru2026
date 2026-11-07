@@ -967,7 +967,6 @@ function RecordPageContent() {
           <label htmlFor="record-draft-content" className="block text-base font-semibold mb-2" style={{ color: '#4A5A2C' }}>기록 입력 · 아래 글상자에 써 주세요</label>
           <textarea
             id="record-draft-content"
-            aria-label="기록 내용"
             value={draftContent}
             onChange={(event) => setDraftContent(event.target.value)}
             placeholder="오늘 남기고 싶은 이야기를 적어 주세요..."
