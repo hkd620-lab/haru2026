@@ -1,0 +1,12 @@
+import subprocess,pathlib,os,json,datetime
+cwd='/private/tmp/haru-law-iphone-sayu-search-20261105/frontend'
+env=os.environ.copy()
+for suffix,val in {'API_KEY':'demo-build-only','AUTH_DOMAIN':'demo-build-only.firebaseapp.com','PROJECT_ID':'demo-build-only','STORAGE_BUCKET':'demo-build-only.firebasestorage.app','MESSAGING_SENDER_ID':'000000000000','APP_ID':'1:000000000000:web:demo'}.items():env['VITE_FIREBASE_'+suffix]=val;env['VITE_AI_LIBRARY_FIREBASE_'+suffix]=val
+commands=[['node','--import','tsx','--test','test/haruLawAnswer.test.mjs','test/sayuAssistantAdapters.test.mjs'],['node','--test','test/sayuPreviewInput.test.cjs'],['npm','run','build']]
+results=[]
+for idx,cmd in enumerate(commands):
+ path=pathlib.Path('/private/tmp/haru-pending-343-validation-'+str(idx)+'.log')
+ with path.open('w') as out:p=subprocess.run(cmd,cwd=cwd,env=env,stdout=out,stderr=subprocess.STDOUT)
+ results.append({'command':cmd,'exitCode':p.returncode,'log':str(path)})
+ print(json.dumps(results[-1]),flush=True)
+pathlib.Path('/private/tmp/haru-pending-343-validation-summary.json').write_text(json.dumps({'capturedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'results':results,'environment':'비밀없는 demo 환경값, 배포용 빌드 아님.'},ensure_ascii=False,indent=2))
