@@ -15,6 +15,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   createTempPhotoFetcher,
+  EPUB_STYLESHEET,
+  epubPhotoHtml,
   escapeHtml,
   preparePhotos,
   getRecordPhotoUrls,
@@ -273,7 +275,7 @@ async function buildAndSave(
       chapter.photos.forEach((photo, photoIndex) => {
         const src = srcByChapter[index][photoIndex];
         if (!src) return;
-        lines.push(`<img src="${escapeHtml(src)}" style="max-width:100%;margin:8px 0;">`);
+        lines.push(epubPhotoHtml(src));
         if (photo.caption) lines.push(`<p style="font-size:0.85em;color:#666;">${escapeHtml(photo.caption)}</p>`);
       });
       if (chapter.photoOnly && srcByChapter[index].every((src) => !src)) lines.push('<p>(사진을 불러오지 못했습니다)</p>');
@@ -286,7 +288,8 @@ async function buildAndSave(
         : `HARU 기록 ${dateLabel(startDate)} ~ ${dateLabel(endDate)}`),
       author: 'HARU2026',
       lang: 'ko',
-      css: 'body,html{column-count:1!important;columns:1!important;column-width:auto!important;}*{column-count:unset!important;}',
+      // 리더의 페이지 나눔(단 설정)을 덮어쓰지 않는다. 덮어쓰면 Play 북에서 사진이 오른쪽 조각으로만 보이고 넘김이 막혔다.
+      css: EPUB_STYLESHEET,
       // 사진은 이미 임시 파일로 받아 두었다(file://). 만일 읽기에 실패해도 전체를 멈추지 않는다.
       ignoreFailedDownloads: true,
     };

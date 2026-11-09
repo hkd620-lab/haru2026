@@ -1,0 +1,5 @@
+
+> @figma/my-make-file@0.0.1 test:share-image-meta
+> node test/shareImageMeta.policy.test.cjs
+
+share image meta policy tests passed

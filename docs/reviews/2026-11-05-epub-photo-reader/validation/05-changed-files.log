@@ -1,0 +1,15 @@
+# UTC: 2026-11-05T05:32:39Z
+# HEAD: 90ca414ed40b3593422b204fb876c74f28982442
+# cwd: /private/tmp/haru-epub-photo-reader-fix
+# command: git diff --name-status a2db4665..HEAD
+----- output (stdout+stderr) -----
+M	frontend/src/app/components/EpubReaderNotice.tsx
+M	frontend/src/app/services/epubExportGuide.ts
+M	frontend/src/app/utils/epubReaderGuide.ts
+M	frontend/test/epubExportGuide.test.mjs
+M	frontend/test/epubReaderGuide.test.mjs
+M	functions/src/epubContent.ts
+M	functions/src/epubExport.ts
+M	functions/test/epubContent.test.js
+M	functions/test/epubSingleRecord.test.js
+----- exit code: 0 -----

@@ -11,9 +11,49 @@ html, body {
 @import './tailwind.css';
 @import './theme.css';
 
+/* 기록·비서 질문칸은 입력 전에도 경계가 보이고, 포커스는 별도로 표시한다. */
+.haru-writing-field::placeholder { color: #626B72; opacity: 1; }
+.haru-writing-field:focus { outline: 3px solid #1A3C6E; outline-offset: 3px; }
+.haru-writing-field:disabled { cursor: not-allowed; opacity: .65; }
+
 /* PDF 인쇄 시 불필요한 요소 숨김 */
 @media print {
   .no-print {
     display: none !important;
   }
 }
+
+/* 하루LAW: 저장된 답변도 원문을 유지한 채 문단과 목록을 구분한다. */
+.haru-law-answer {
+  max-width: 68ch;
+  min-width: 0;
+  color: #374151;
+  font-size: 15px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.haru-law-answer p { margin: 0 0 1em; text-indent: 1em; }
+.haru-law-answer :is(h1, h2, h3, h4, h5, h6) {
+  margin: 1.6em 0 .7em;
+  color: #1A3C6E;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.haru-law-answer > :first-child { margin-top: 0; }
+.haru-law-answer > :last-child { margin-bottom: 0; }
+.haru-law-answer :is(ul, ol) { margin: .6em 0 1.2em; padding-left: 1.5em; }
+.haru-law-answer ul { list-style: disc; }
+.haru-law-answer ol { list-style: decimal; }
+.haru-law-answer li + li { margin-top: .55em; }
+.haru-law-answer :is(li, blockquote) p { text-indent: 0; }
+.haru-law-answer li p { margin-bottom: .5em; }
+.haru-law-answer strong { font-weight: 700; color: #1f2937; }
+.haru-law-answer a { color: #1A3C6E; text-decoration: underline; }
+.haru-law-answer blockquote { margin: 1em 0; padding-left: 1em; border-left: 3px solid #C7D9F8; }
+.haru-law-answer code { font-size: .92em; background: #F3F4F6; border-radius: 4px; padding: .1em .25em; }
+.haru-law-answer pre { max-width: 100%; overflow-x: auto; margin: 1em 0; padding: .8em; background: #F3F4F6; }
+.haru-law-answer pre code { white-space: pre; overflow-wrap: normal; padding: 0; }
+.haru-law-answer table { display: block; max-width: 100%; overflow-x: auto; margin: 1em 0; border-collapse: collapse; }
+.haru-law-answer :is(th, td) { min-width: 6em; padding: .5em .7em; border: 1px solid #D1D5DB; text-align: left; }
+.haru-law-answer hr { margin: 1.5em 0; border-top: 1px solid #E5E7EB; }

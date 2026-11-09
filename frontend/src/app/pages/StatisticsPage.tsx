@@ -102,10 +102,10 @@ export function StatisticsPage() {
       <div className="mb-4">
         <div className="flex items-center gap-3 mb-2">
           <BarChart3 className="w-8 h-8" style={{ color: '#1A3C6E' }} />
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#1A3C6E' }}>통계</h1>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#1A3C6E' }}>기록통계</h1>
         </div>
         <p className="text-sm" style={{ color: '#666666' }}>
-          기록형식을 골라 내가 쓴 기록을 돌아봅니다.
+          기간별 기록 수와 자주 쓴 형식을 확인해요.
         </p>
       </div>
 

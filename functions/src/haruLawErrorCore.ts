@@ -7,6 +7,9 @@ export const HARULAW_ALLOWED_ATTACHMENT_MIME_TYPES = [
   'image/heic',
   'image/heif',
   'application/pdf',
+  'application/x-hwp',
+  'application/vnd.hancom.hwpx',
+  'text/plain',
 ] as const;
 
 export type HaruLawErrorReason =
@@ -119,6 +122,15 @@ export async function getHaruLawAttachmentContentError(
       return 'ATTACHMENT_PDF_UNREADABLE';
     }
     return null;
+  }
+
+  // 실제 본문 구조·인코딩은 제한된 worker에서 추출하며 한 번 더 검증한다.
+  if (normalizedMimeType === 'text/plain') return bytes.length ? null : 'ATTACHMENT_CONTENT_UNREADABLE';
+  if (normalizedMimeType === 'application/x-hwp') {
+    return startsWithBytes(bytes, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]) ? null : 'ATTACHMENT_CONTENT_UNREADABLE';
+  }
+  if (normalizedMimeType === 'application/vnd.hancom.hwpx') {
+    return startsWithBytes(bytes, [0x50, 0x4b, 0x03, 0x04]) ? null : 'ATTACHMENT_CONTENT_UNREADABLE';
   }
 
   const signatureMatches = normalizedMimeType === 'image/png'

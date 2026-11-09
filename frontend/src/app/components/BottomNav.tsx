@@ -22,7 +22,7 @@ export function BottomNav() {
   const baseItems = [
     { path: homePath, icon: Home, label: 'HARU' },
     { path: '/sayu', icon: Sparkles, label: 'SAYU·나의 기록' },
-    { path: '/sayu-together', icon: Users, label: 'SAYU·함께보기' },
+    { path: '/sayu-together', icon: Users, label: '공개 기록 함께읽기' },
     { path: '/subscription', icon: CreditCard, label: '구독' },
     { path: '/settings', icon: Settings, label: '설정' },
   ];

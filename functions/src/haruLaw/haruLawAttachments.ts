@@ -1,6 +1,7 @@
 // 하루LAW 첨부 파일 처리(Storage 확인·Gemini File 업로드·정리)와 함수 마감 시간 관리.
 // 하루LAW 결과물 AI 대화(index.ts chatWithResult)와 정리 예약 실행(cleanupHaruLawGeminiFiles)이 함께 쓴다.
 // index.ts 에 있던 정의를 그대로 옮겼다(동작 같음).
+import { HARULAW_DOCUMENT_MAX_BYTES, isHaruLawDocumentMime, readHaruLawDocumentText } from './haruLawDocument';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
@@ -175,6 +176,7 @@ export function createHaruLawHttpsError(reason: HaruLawErrorReason): HttpsError 
 }
 
 export function getHaruLawAttachmentSizeLimit(mimeType: string): number {
+  if (isHaruLawDocumentMime(mimeType)) return HARULAW_DOCUMENT_MAX_BYTES;
   return mimeType.startsWith('image/') ? HARULAW_ATTACH_MAX_IMAGE_BYTES : HARULAW_ATTACH_MAX_PDF_BYTES;
 }
 
@@ -259,15 +261,23 @@ export async function prepareHaruLawAttachments(
       if (downloadedTotalBytes > HARULAW_ATTACH_MAX_TOTAL_BYTES) {
         throw createHaruLawHttpsError('ATTACHMENT_TOTAL_SIZE_EXCEEDED');
       }
-      const contentError = await getHaruLawAttachmentContentError(
-        effectiveMimeType,
-        await fs.promises.readFile(tempPath),
-      );
+      const bytes = await fs.promises.readFile(tempPath);
+      const contentError = await getHaruLawAttachmentContentError(effectiveMimeType, bytes);
       if (contentError) {
         throw createHaruLawHttpsError(contentError);
       }
 
-      preparedFiles.push({ tempPath, mimeType: effectiveMimeType });
+      let modelMimeType = effectiveMimeType;
+      if (isHaruLawDocumentMime(effectiveMimeType)) {
+        try {
+          const text = await readHaruLawDocumentText(effectiveMimeType, bytes, workDeadlineMs);
+          await fs.promises.writeFile(tempPath, text, 'utf8');
+          modelMimeType = 'text/plain';
+        } catch {
+          throw createHaruLawHttpsError('ATTACHMENT_CONTENT_UNREADABLE');
+        }
+      }
+      preparedFiles.push({ tempPath, mimeType: modelMimeType });
       attachmentMeta.push({ storagePath: att.storagePath, mimeType: effectiveMimeType, fileName: att.fileName });
     }
 

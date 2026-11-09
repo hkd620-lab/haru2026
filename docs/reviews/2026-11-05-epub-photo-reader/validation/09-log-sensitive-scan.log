@@ -1,0 +1,30 @@
+# UTC: 2026-11-05T05:33:13Z
+# command: grep -nEi <패턴> 01~08 로그 (일치 줄이 없으면 해당 항목 없음)
+## Google API 키
+(일치 없음)
+## 개인키
+(일치 없음)
+## 서명 URL
+(일치 없음)
+## 토큰·비밀 문자열
+(일치 없음)
+## 이메일
+(일치 없음)
+## 네이버·카카오 UID
+(일치 없음)
+## users/ 실제 경로
+docs/reviews/2026-11-05-epub-photo-reader/validation/04-frontend-build.log:41:[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../Users/heogyeongdae/Developer/HARU2026/frontend/node_modules/firebase/firestore/dist/esm/index.esm.js is dynamically imported by src/app/pages/AdminChecklistPage.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, ..., dynamic import will not move module into another chunk.
+docs/reviews/2026-11-05-epub-photo-reader/validation/04-frontend-build.log:43:[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../Users/heogyeongdae/Developer/HARU2026/frontend/node_modules/firebase/functions/dist/esm/index.esm.js is dynamically imported by src/app/services/firestoreService.ts but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, src/app/components/SayuModal.tsx, ..., dynamic import will not move module into another chunk.
+docs/reviews/2026-11-05-epub-photo-reader/validation/04-frontend-build.log:71:[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../Users/heogyeongdae/Developer/HARU2026/frontend/node_modules/firebase/firestore/dist/esm/index.esm.js is dynamically imported by src/app/pages/AdminChecklistPage.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, ..., dynamic import will not move module into another chunk.
+docs/reviews/2026-11-05-epub-photo-reader/validation/04-frontend-build.log:73:[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../Users/heogyeongdae/Developer/HARU2026/frontend/node_modules/firebase/functions/dist/esm/index.esm.js is dynamically imported by src/app/services/firestoreService.ts but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, src/app/components/SayuModal.tsx, ..., dynamic import will not move module into another chunk.
+## 외부 https URL
+docs/reviews/2026-11-05-epub-photo-reader/validation/04-frontend-build.log:39:- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+docs/reviews/2026-11-05-epub-photo-reader/validation/04-frontend-build.log:69:- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+docs/reviews/2026-11-05-epub-photo-reader/validation/04-frontend-build.log:95:See https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.
+# 시험용 env 값 사용 확인(실제 값 아님):
+4:# command: env VITE_FIREBASE_API_KEY=test-key VITE_FIREBASE_AUTH_DOMAIN=test.invalid VITE_FIREBASE_PROJECT_ID=test-project VITE_FIREBASE_STORAGE_BUCKET=test.invalid VITE_FIREBASE_MESSAGING_SENDER_ID=0 VITE_FIREBASE_APP_ID=test-app npm run build
+# 판정:
+# - 'users/ 실제 경로' 일치 4줄은 대소문자 무시 검사로 잡힌 로컬 의존성 경로(/Users/heogyeongdae/.../frontend/node_modules, worktree의 node_modules symlink 대상)이며 Firestore users/{uid} 경로가 아님. 사용자 UID·개인 기록 아님.
+# - 외부 URL 일치 3줄은 rolldown 빌드 도구 문서 링크뿐. 서명 URL·Storage URL 없음.
+# - API 키·개인키·토큰·이메일·네이버/카카오 UID 일치 없음. 프런트 빌드 env는 시험용 값(test-key 등)이며 .env는 읽지 않음.
+# - 테스트 로그의 기록·사진은 테스트 코드의 합성 데이터(1x1 PNG, '선택한 일기 본문' 등)뿐.

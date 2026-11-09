@@ -46,6 +46,9 @@ test('안드로이드는 사진·리더 안내와 공식 설치 링크를 먼저
   assert.equal(install.href, 'https://play.google.com/store/apps/details?id=com.google.android.apps.books');
   assert.equal(install.target, '_blank');
   assert.equal(install.rel, 'noopener noreferrer');
+  assert.match(install.attrs['aria-label'], /새 창/);
+  assert.ok(nodes.some((node) => node.textContent?.includes('Google 계정에 업로드되어 보관')), 'Play 북 계정 업로드 설명');
+  assert.ok(nodes.some((node) => node.textContent?.includes('하루로 돌아와')));
   assert.equal(await confirm(), false, '중복 안내창을 띄우지 않는다');
   nodes.find((node) => node.textContent === 'EPUB 다운로드').click();
   assert.equal(await result, true);
@@ -72,6 +75,7 @@ test('아이폰과 컴퓨터에는 기기에 맞는 안내를 표시한다', asy
     const nodes = descendants(body.children[0]);
     assert.ok(nodes.some((node) => node.textContent?.includes(text)));
     assert.equal(nodes.some((node) => node.tag === 'a'), false, '안드로이드 설치 링크를 잘못 표시하지 않는다');
+    assert.equal(nodes.some((node) => node.textContent?.includes('Google 계정')), false, '안드로이드 계정 안내를 잘못 표시하지 않는다');
     nodes.find((node) => node.textContent === '취소').click();
     assert.equal(await result, false);
   }
