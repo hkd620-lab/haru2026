@@ -5,6 +5,13 @@ import { state, reset } from './mocks';
 window.alert = message => { state.alerts.push(String(message)); };
 window.confirm = () => true;
 const wait = (ms = 80) => new Promise(resolve => setTimeout(resolve, ms));
+async function waitFor(condition: () => boolean, label: string) {
+  const deadline = Date.now() + 3000;
+  while (!condition()) {
+    if (Date.now() >= deadline) throw new Error(`시간 초과: ${label}`);
+    await wait(20);
+  }
+}
 function App() {
   const [revision, setRevision] = useState(0);
   const [results, setResults] = useState<string[]>([]);
@@ -25,10 +32,19 @@ function App() {
       check(page().textContent?.includes('합성 미분류 대화') && !page().textContent?.includes('합성 건강 자료'), '출처 필터 유지');
       button('전체', page().querySelector('nav')!.nextElementSibling!.nextElementSibling!.nextElementSibling!).click(); await wait();
       await folder('미분류'); check(page().textContent?.includes('합성 미분류 대화'), '기존 분류 없는 기록 미분류');
-      select('합성 미분류 대화', 'life'); await wait();
+      // Hold the response explicitly: no guessed React/network duration.
+      // Release only after verifying that an unconfirmed row is retained.
+      state.deferMove = true;
+      select('합성 미분류 대화', 'life');
+      await waitFor(() => state.finishMove !== null, '이동 요청 대기');
+      await wait(); // Let React render while the response is still explicitly held.
+      check(page().textContent?.includes('합성 미분류 대화'), '이동 응답 전 원문 유지');
+      state.deferMove = false; state.finishMove!(); state.finishMove = null;
+      await waitFor(() => !page().textContent?.includes('합성 미분류 대화'), '이동 반영');
       check(!page().textContent?.includes('합성 미분류 대화'), '이동 성공 후 이전 폴더에서 제거');
       await folder('생활정보'); check(page().textContent?.includes('합성 미분류 대화'), '새 폴더에서 이동 기록 표시');
-      state.failMove = true; select('합성 미분류 대화', 'investment'); await wait();
+      state.failMove = true; select('합성 미분류 대화', 'investment');
+      await waitFor(() => state.alerts.some(message => message.includes('결과를 확인하지 못했습니다')), '이동 실패 안내');
       check((page().querySelector('select') as HTMLSelectElement).value === 'life' && state.alerts.some(message => message.includes('결과를 확인하지 못했습니다')), '실패 시 폴더 유지 및 오류 안내');
       state.failMove = false; state.delayed = true;
       await folder('건강상식'); await folder('AI신기술'); await wait(800);
