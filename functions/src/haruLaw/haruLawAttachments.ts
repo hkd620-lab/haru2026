@@ -425,8 +425,10 @@ const HARULAW_ATTACHMENT_FORMAT_LABELS: Record<string, string> = {
   'image/heic': '이미지(HEIC)',
   'image/heif': '이미지(HEIF)',
 };
-// JSON.stringify가 그대로 두는 C1 제어·유니코드 줄바꿈·방향 제어·폭 없는 문자 범위.
+// JSON.stringify가 그대로 두는 각괄호(첨부 경계 표기)·C1 제어·유니코드 줄바꿈·방향 제어·폭 없는 문자 범위.
 const HARULAW_FILE_NAME_ESCAPE_RANGES: Array<[number, number]> = [
+  [0x5b, 0x5b],
+  [0x5d, 0x5d],
   [0x80, 0x9f],
   [0x200b, 0x200f],
   [0x2028, 0x202e],
@@ -435,7 +437,7 @@ const HARULAW_FILE_NAME_ESCAPE_RANGES: Array<[number, number]> = [
 ];
 
 // 첨부 표시는 형식·이름을 알리는 자료일 뿐이다. 파일 이름은 JSON 문자열로 감싸고
-// 위 범위 문자도 escape 표기로 바꿔, 줄바꿈·따옴표로 표시 경계를 흉내 내거나
+// 위 범위 문자도 escape 표기로 바꿔, 줄바꿈·따옴표·각괄호로 표시 경계를 흉내 내거나
 // 지시문처럼 읽히지 않게 한다.
 function quoteHaruLawAttachmentFileName(fileName: string): string {
   return Array.from(JSON.stringify(fileName), (char) => {
