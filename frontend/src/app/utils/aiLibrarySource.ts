@@ -1,15 +1,20 @@
-type AiLibrarySourceRecord = { source?: string; sourceUrl?: string; title?: string };
+type AiLibrarySourceRecord = Record<string, unknown>;
 
 // Group the existing import metadata in the view; never rewrite stored source/data.
 export function getAiLibrarySource(record: AiLibrarySourceRecord): string {
-  if (record.source === 'chatgpt.com' && record.sourceUrl) {
+  // Firestore records have dynamic legacy fields. Narrow at the view boundary
+  // rather than assuming every stored source/title is a string.
+  const source = typeof record.source === 'string' ? record.source : '';
+  const sourceUrl = typeof record.sourceUrl === 'string' ? record.sourceUrl : '';
+  const title = typeof record.title === 'string' ? record.title : '';
+  if (source === 'chatgpt.com' && sourceUrl) {
     try {
-      const url = new URL(record.sourceUrl);
+      const url = new URL(sourceUrl);
       if (url.protocol === 'https:' && url.hostname === 'chatgpt.com' &&
           !url.port && /^\/dots(?:\/|$)/.test(url.pathname)) return 'chatgpt.com/dots';
     } catch { /* Keep the original source for invalid or legacy metadata. */ }
   }
-  if (record.source) return record.source;
-  const match = record.title?.match(/^\[([^\]]+)\]/);
+  if (source) return source;
+  const match = title.match(/^\[([^\]]+)\]/);
   return match ? match[1] : '';
 }

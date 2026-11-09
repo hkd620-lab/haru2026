@@ -49,11 +49,11 @@ Store는 Firestore 트랜잭션에 연결했다. 쓰기를 콜백의 모든 읽�
 
 ## 시험 및 활성화 전 남은 일
 
-`cd functions && npm run test:ai-library-classification`는 현재 TypeScript 소스를 가짜 HTTP·원자적 인메모리 저장소와 함께 시험한다. 대량 합성 자료, 동시 호출, 다른 계획으로 재시도, 승인 누락·만료·철회, 개인정보 검토, 수동 이동·원문 수정·삭제, 비용 한도, 취소와 불확실 복구를 확인한다. 실제 API·Firebase·실자료는 사용하지 않는다. 현재 소스 전용 시험 46개, 기존 Functions 동작·접근 정책 10개, 확장 13개, 프런트엔드 27개가 통과했다.
+`cd functions && npm run test:ai-library-classification`는 현재 TypeScript 소스를 가짜 HTTP·원자적 인메모리 저장소와 함께 시험한다. 대량 합성 자료, 동시 호출, 다른 계획으로 재시도, 승인 누락·만료·철회, 개인정보 검토, 수동 이동·원문 수정·삭제, 비용 한도, 취소와 불확실 복구를 확인한다. 실제 API·Firebase·실자료는 사용하지 않는다. 현재 소스 전용 시험은 한국어 합성 준비 검사를 포함해 71개다. 기존 Functions 동작·접근 정책 10개, 확장 13개, 프런트엔드 import/분류 31개와 모달 구문 회귀 2개도 유지한다.
 
 `test:ai-library-classification:emulator`는 `AI_LIBRARY_TEST_PROJECT=demo-haru-ai-classification`와 loopback `FIRESTORE_EMULATOR_HOST`가 일치할 때만 실행한다. 운영 자격증명 없이 공식 로컬 Firestore 에뮬레이터와 가짜 provider로 저장·재시작·동시성·철회·취소·전송 직전 기록 변경을 검증했다. 6개 시험이 통과했다. 이 시험은 운영 환경 또는 실제 모델 품질 검증의 대체가 아니다.
 
-`frontend/test/ai-library-browser/classification.html`의 실제 React 패널을 Chrome에서 합성 API로 시험했다. 검토·동의·순차 전체 실행·응답 유실·만료·계정 변경·새 계획 20개 검증이 통과했다. 기존 폴더 fixture와 기존 회귀 시험도 별도로 유지한다. Functions 전체 타입검사와 임시 출력 전체 빌드, 프런트엔드 더미 설정 전체 빌드를 확인한다. 프런트엔드 전체 `tsc`는 기존 미수정 `ExportModal.tsx` 구문 오류로 차단되어 새 모듈 개별 타입검사로 보완했다.
+`frontend/test/ai-library-browser/classification.html`의 실제 React 패널을 Chrome에서 합성 API로 시험했다. 검토·동의·순차 전체 실행·응답 유실·만료·계정 변경·새 계획 20개 검증이 통과했다. 기존 폴더 fixture와 기존 회귀 시험도 별도로 유지한다. Functions 전체 타입검사와 임시 출력 전체 빌드, 프런트엔드 더미 설정 전체 빌드를 확인한다. 기존 `ExportModal.tsx`의 중복 삽입을 제거해 구문 오류를 해결했고 완전한 아홉 형식 모듈은 그대로 보존했다. 학습함 출처 메타데이터 경계의 문자열 확인도 보완했다. 프런트엔드 전체 `tsc`에는 다른 33개 파일의 기존 의미 오류 101개가 남아 있으며 전체 통과가 아니다. 수정한 모달·출처·분류 모듈에는 진단이 없고 개별 타입검사와 회귀로 보완한다.
 
 독립 검토에서 전송 직전 기록 변경과 새 계획 복귀 경로를 보완했다. 기존 설치 확장·운영 데이터·본인 작업공간은 변경하지 않았다.
 
@@ -66,3 +66,5 @@ Store는 Firestore 트랜잭션에 연결했다. 쓰기를 콜백의 모든 읽�
 5. 위 조건이 충족된 뒤 시험용 범위부터 정확한 검토·승인·한도에 묶어 실행하고 결과를 확인한다.
 
 공식 문서: [모델·가격](https://docs.typesafe.ai/models), [System One API](https://docs.typesafe.ai/api/system-one), [Choice](https://docs.typesafe.ai/primitives/choice), [Noul](https://docs.typesafe.ai/primitives/noul), [데이터 처리](https://docs.typesafe.ai/legal). 학습에 사용하지 않는다는 설명과 무보관은 다르다. 기본 계정의 ZDR는 확인되지 않았으며 enterprise 대상으로 안내된다.
+
+한국어 실제 모델 평가 전 준비: [합성 표본과 수용 계획](ai-library-jev-korean-quality-plan.md). 외부 호출 없이 20개 표본과 25개 계약 검사를 추가했다. 실제 평가나 운영 활성화 완료를 뜻하지 않는다.
