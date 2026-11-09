@@ -1,0 +1,13 @@
+import subprocess,pathlib,os,json,datetime,sys
+prefix='/private/tmp/haru-pending-major-validation'+('-'+sys.argv[1] if len(sys.argv)>1 else '')
+base=pathlib.Path('/private/tmp/haru-pending-major-deps-20261109/functions')
+env=os.environ.copy();env['PATH']='/opt/homebrew/opt/node@22/bin:'+env.get('PATH','');env['PUPPETEER_SKIP_DOWNLOAD']='true';env.update(GCLOUD_PROJECT='demo-haru-validation',GOOGLE_CLOUD_PROJECT='demo-haru-validation',FUNCTIONS_EMULATOR='true',FIREBASE_CONFIG='{"projectId":"demo-haru-validation"}')
+commands=[['node','--version'],['npm','--version'],['npm','ci','--no-audit','--no-fund'],['npm','run','build'],['npm','run','test:sharp-pipelines'],['npm','run','test:ai-gateway'],['node','-e','const p=require("puppeteer"); console.log(JSON.stringify({puppeteerRequire:typeof p.launch,version:require("puppeteer/package.json").version,zodVersion:require("zod/package.json").version,sdkOpenAI:typeof require("openai").OpenAI,sdkAnthropic:typeof require("@anthropic-ai/sdk").Anthropic})); const keys=Object.keys(require("./lib/index.js")).sort();console.log("EXPORTS_JSON="+JSON.stringify(keys));']]
+results=[]
+for idx,cmd in enumerate(commands):
+ path=pathlib.Path(prefix+'-'+str(idx)+'.log')
+ with path.open('w') as out:p=subprocess.run(cmd,cwd=base,env=env,stdout=out,stderr=subprocess.STDOUT)
+ results.append({'command':cmd,'exitCode':p.returncode,'log':str(path)})
+ print(json.dumps(results[-1]),flush=True)
+ if p.returncode and idx==2:break
+pathlib.Path(prefix+'-summary.json').write_text(json.dumps({'capturedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=base,text=True).strip(),'results':results,'actualAIRequests':False,'productionWrites':False},ensure_ascii=False,indent=2))
