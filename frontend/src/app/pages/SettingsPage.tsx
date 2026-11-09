@@ -5,7 +5,17 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
-import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken, getDeviceTimeZone, backfillNotificationTimeZone } from '../services/notificationService';
+import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken, getDeviceTimeZone, backfillNotificationTimeZone, getThisDevicePushEnvironment, registerThisDevice } from '../services/notificationService';
+import {
+  describeDevicePushStatus,
+  describeRegistrationFailure,
+  describeSelfTestError,
+  describeSelfTestResult,
+  resolveDevicePushStatus,
+  sendSelfTestNotification,
+  type DevicePushEnvironment,
+  type SelfTestView,
+} from '../services/pushDevice';
 import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -115,7 +125,13 @@ export function SettingsPage() {
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [notificationTime, setNotificationTime] = useState('21:00');
   const [isLoadingNotification, setIsLoadingNotification] = useState(false);
-  
+  // 이 기기 알림 상태(계정 알림 설정과 별개)
+  const [devicePushEnv, setDevicePushEnv] = useState<DevicePushEnvironment | null>(null);
+  const [deviceRegisteredNow, setDeviceRegisteredNow] = useState(false);
+  const [isRegisteringDevice, setIsRegisteringDevice] = useState(false);
+  const [isSendingSelfTest, setIsSendingSelfTest] = useState(false);
+  const [selfTestResult, setSelfTestResult] = useState<SelfTestView | null>(null);
+
   // 관리자 전체 알림 상태
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
@@ -377,6 +393,24 @@ export function SettingsPage() {
     }
   };
 
+  // 이 기기의 권한·지원 상태만 확인한다(Firestore 읽기 없음). 기기 설정에서 돌아오면 다시 확인한다.
+  const refreshDevicePush = async () => {
+    try {
+      setDevicePushEnv(await getThisDevicePushEnvironment());
+    } catch {
+      setDevicePushEnv({ supported: false, permission: 'unsupported', isIOS: false, standalone: false });
+    }
+  };
+
+  useEffect(() => {
+    void refreshDevicePush();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshDevicePush();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+
   const loadNotificationSettings = async () => {
     if (!user?.uid) return;
     
@@ -412,6 +446,7 @@ export function SettingsPage() {
             ...(notificationTimeZone ? { notificationTimeZone } : {}),
           });
           setNotificationEnabled(true);
+          setDeviceRegisteredNow(true);
           toast.success('알림이 활성화되었습니다!');
         } else {
           toast.error('알림 권한을 허용해주세요.');
@@ -422,6 +457,7 @@ export function SettingsPage() {
           notificationEnabled: false,
         });
         setNotificationEnabled(false);
+        setDeviceRegisteredNow(false);
         toast.success('알림이 비활성화되었습니다.');
       }
     } catch (error) {
@@ -429,8 +465,45 @@ export function SettingsPage() {
       toast.error('알림 설정 변경에 실패했습니다.');
     } finally {
       setIsLoadingNotification(false);
+      void refreshDevicePush();
     }
   };
+
+  // 계정 알림은 켜 둔 채 이 기기만 권한 요청·재등록한다. 클릭 핸들러에서 곧바로 호출해야 iOS 권한 창이 뜬다.
+  const handleRegisterThisDevice = async () => {
+    if (!user?.uid) return;
+    setIsRegisteringDevice(true);
+    try {
+      const result = await registerThisDevice(user.uid);
+      setDeviceRegisteredNow(result.ok);
+      if (result.ok) {
+        toast.success('이 기기를 알림 받을 기기로 등록했습니다.');
+      } else {
+        toast.error(describeRegistrationFailure(result.reason));
+      }
+    } finally {
+      setIsRegisteringDevice(false);
+      void refreshDevicePush();
+    }
+  };
+
+  // 기존 sendTestNotification(요청자 본인의 등록 기기만 대상)으로 내 기기 테스트 알림을 보낸다.
+  const handleSendSelfTest = async () => {
+    setIsSendingSelfTest(true);
+    setSelfTestResult(null);
+    try {
+      const functions = getFunctions(undefined, 'asia-northeast3');
+      const result = await sendSelfTestNotification((name, data) => httpsCallable(functions, name)(data));
+      setSelfTestResult(describeSelfTestResult(result.data));
+    } catch (error) {
+      setSelfTestResult(describeSelfTestError(error));
+    } finally {
+      setIsSendingSelfTest(false);
+    }
+  };
+
+  const devicePushStatus = resolveDevicePushStatus(devicePushEnv, deviceRegisteredNow);
+  const devicePushView = describeDevicePushStatus(devicePushStatus);
 
   const handleTimeChange = async (newTime: string) => {
     if (!user?.uid) return;
@@ -1134,7 +1207,7 @@ export function SettingsPage() {
                   <div>
                     <span className="text-sm" style={{ color: '#333', fontWeight: 500 }}>알림 받기</span>
                     <p className="text-xs" style={{ color: '#999' }}>
-                      {notificationEnabled ? '✓ 활성화됨' : '비활성화'}
+                      {notificationEnabled ? '✓ 계정 알림 켜짐' : '비활성화'}
                     </p>
                   </div>
                 </div>
@@ -1169,6 +1242,43 @@ export function SettingsPage() {
                       }}
                     />
                   </div>
+                </div>
+              )}
+
+              {notificationEnabled && (
+                <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                  <p className="text-xs" style={{ color: devicePushStatus === 'registered' ? '#10b981' : '#333', fontWeight: 500 }}>
+                    {devicePushView.label}
+                  </p>
+                  {devicePushView.hint && (
+                    <p className="text-xs" style={{ color: '#666' }}>{devicePushView.hint}</p>
+                  )}
+                  {devicePushView.canRegister && (
+                    <button
+                      onClick={handleRegisterThisDevice}
+                      disabled={isRegisteringDevice}
+                      className="w-full px-3 py-2 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-50"
+                      style={{ backgroundColor: '#1A3C6E', color: '#fff' }}
+                    >
+                      {isRegisteringDevice ? '등록 중...' : devicePushView.buttonLabel}
+                    </button>
+                  )}
+                  <button
+                    onClick={handleSendSelfTest}
+                    disabled={isSendingSelfTest}
+                    className="w-full px-3 py-2 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-50"
+                    style={{ border: '1px solid #10b981', color: '#10b981', backgroundColor: '#fff' }}
+                  >
+                    {isSendingSelfTest ? '보내는 중...' : '내 기기에 테스트 알림 보내기'}
+                  </button>
+                  <p className="text-xs" style={{ color: '#999' }}>
+                    이 계정에 등록된 내 기기 전체로 보내집니다. 다른 사용자에게는 보내지 않습니다.
+                  </p>
+                  {selfTestResult && (
+                    <p className="text-xs" style={{ color: selfTestResult.tone === 'error' ? '#dc2626' : '#10b981' }}>
+                      {selfTestResult.text}
+                    </p>
+                  )}
                 </div>
               )}
 
