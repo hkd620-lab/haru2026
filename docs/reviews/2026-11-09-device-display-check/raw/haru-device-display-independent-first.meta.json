@@ -1,0 +1,24 @@
+{
+  "startedAt": "2026-11-09T08:31:44.957108+00:00",
+  "cwd": "/private/tmp/haru-device-display-check-20261109",
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "plan",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Bash",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--add-dir",
+    "/private/tmp",
+    "--allowedTools",
+    "Read,Glob,Grep,Bash(git diff *),Bash(git show *),Bash(git log *),Bash(git status *),Bash(git rev-parse *),Bash(cat *),Bash(rg *),Bash(ls *),Bash(gh pr view *),Bash(gh api *)"
+  ],
+  "exitCode": 0,
+  "finishedAt": "2026-11-09T08:34:08.694835+00:00"
+}

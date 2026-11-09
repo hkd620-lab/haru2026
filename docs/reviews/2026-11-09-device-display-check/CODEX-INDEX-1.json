@@ -1,0 +1,22 @@
+{
+  "reviewTarget": "ad869b04fd717468ef3e6422fcf4d999b3953ae2",
+  "request": {
+    "id": 6735680546,
+    "url": "https://github.com/hkd620-lab/haru2026/pull/366#issuecomment-6735680546",
+    "createdAt": "2026-11-09T08:33:36Z"
+  },
+  "result": {
+    "id": 6735702385,
+    "url": "https://github.com/hkd620-lab/haru2026/pull/366#issuecomment-6735702385",
+    "createdAt": "2026-11-09T08:34:57Z",
+    "outcome": "지적 없음"
+  },
+  "summary": {
+    "id": 6735686462,
+    "url": "https://github.com/hkd620-lab/haru2026/pull/366#issuecomment-6735686462",
+    "completedAt": "2026-11-09T08:34:58.683122Z",
+    "source": "GitHub Codex summary relative-time"
+  },
+  "additionalCodeReviewRequested": false,
+  "reason": "사용자 실제 수신이 기존 운영 코드로 확인되어 추가 진단 기능을 병합하지 않고 종료한다. 미완료 검토를 승인으로 바꾸지 않는다."
+}

@@ -1,0 +1,47 @@
+{
+  "recordedAt": "2026-11-09T08:44:59.815633+00:00",
+  "sourceMain": "f38e0ddcad2c130e92333b0c5dd735972e09e5e8",
+  "operatorConfirmation": "아이폰에서 받았습니다",
+  "confirmedTestStartedAt": "2026-11-09T08:40:08.028Z",
+  "mirroringAppObservedRunning": false,
+  "server": {
+    "recordedAt": "2026-11-09T08:40:59.653152+00:00",
+    "windowStart": "2026-11-09T08:40:00Z",
+    "entryCount": 6,
+    "httpRequests": [
+      {
+        "timestamp": "2026-11-09T08:40:08.463136Z",
+        "service": "sendtestnotification",
+        "revision": "sendtestnotification-00131-baq",
+        "status": 204,
+        "latency": "3.247151363s"
+      },
+      {
+        "timestamp": "2026-11-09T08:40:12.079800Z",
+        "service": "sendtestnotification",
+        "revision": "sendtestnotification-00131-baq",
+        "status": 200,
+        "latency": "1.284976087s"
+      }
+    ],
+    "notificationCompletions": [
+      {
+        "timestamp": "2026-11-09T08:40:13.363953Z",
+        "service": "sendtestnotification",
+        "revision": "sendtestnotification-00131-baq",
+        "succeeded": 2,
+        "failed": 0
+      }
+    ],
+    "memoryLimitErrors": [],
+    "messagingErrorCodes": [],
+    "privateFieldsSaved": false
+  },
+  "result": "기존 운영 코드에서 미러링 종료 후 아이폰 실제 수신 확인. 추가 제품 변경/Hosting 배포 없이 원 작업의 수신 E2E 완료.",
+  "causeLimits": "미러링 중 미수신→종료 후 수신과 화면공유 알림끔 설정을 확인했다. 표시 제한 영향이 의심되지만 모든 과거 미수신의 단독 원인으로 단정하지 않는다. 앞선 메모리 OOM은 별도 실제 서버 실패1회 원인이다.",
+  "pr366": "추가 진단 기능은 미병합·미배포 상태로 종료한다. 브랜치와 원문은 보존한다.",
+  "independentReviewStatus": "첫판정 수정후승인(문서 보완1건). 보완 기록은 보존하나 제품이 불필요해 재검토/승인/병합을 추진하지 않는다. 승인으로 재분류하지 않는다.",
+  "records": "SUPPLEMENT-1은 raw16개 시점. 이후 Codex API원문3개 추가로 raw19개.",
+  "remainingOriginalE2E": [],
+  "settingsChangedByAgent": false
+}
