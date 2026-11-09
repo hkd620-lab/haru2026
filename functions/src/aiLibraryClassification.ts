@@ -1,4 +1,4 @@
-/** OFFLINE ONLY. No callable, credentials, transport or production repository is wired.
+/** Classification core. Provider and runtime authority are explicitly injected by the server.
  * Store/Authority are server trust boundaries, never construct them from request data.
  */
 import { createHash } from 'node:crypto';
@@ -42,7 +42,7 @@ export function prepareClassificationPayload(record: ClassificationRecord): { te
     .replace(/\s+/g, ' ').trim();
   return { text, reason: text ? null : 'empty' };
 }
-function contentHash(record: ClassificationRecord): string {
+export function contentHash(record: ClassificationRecord): string {
   return hash(JSON.stringify([record.type ?? null, record.content ?? null]));
 }
 export function planClassification(owner: string, records: ReadonlyArray<{ id: string; record: ClassificationRecord }>, expiresAt: number, budgetMicrousd: number): ClassificationManifest {
@@ -78,13 +78,13 @@ export interface ClassificationTransaction {
   /** Read server-private runtime/approval/revocation documents in THIS serializable transaction.
    * Revocations/settings changes MUST conflict with these reads. Missing state denies access.
    */
-  getAuthorization(manifestHash: string): { enabled: boolean; approval: TrustedClassificationApproval | null } | undefined;
+  getAuthorization(manifestHash: string): Promise<{ enabled: boolean; approval: TrustedClassificationApproval | null } | undefined> | { enabled: boolean; approval: TrustedClassificationApproval | null } | undefined;
   /** Global immutable dispatch ledger across ALL manifests/jobs. Never delete on restart. */
-  getAttempt(key: string): { manifestHash: string } | undefined;
+  getAttempt(key: string): Promise<{ manifestHash: string } | undefined> | { manifestHash: string } | undefined;
   putAttempt(key: string, attempt: { manifestHash: string }): void;
-  getJob(key: string): ClassificationJob | undefined;
+  getJob(key: string): Promise<ClassificationJob | undefined> | ClassificationJob | undefined;
   putJob(key: string, job: ClassificationJob): void;
-  getRecord(owner: string, id: string): ClassificationRecord | undefined;
+  getRecord(owner: string, id: string): Promise<ClassificationRecord | undefined> | ClassificationRecord | undefined;
   /** Patch ONLY these category fields; preserve body, date, source and book data. */
   patchRecord(owner: string, id: string, patch: Pick<ClassificationRecord, 'aiCategory' | 'aiCategorySource' | 'aiCategoryAuto'>): void;
 }
@@ -92,7 +92,7 @@ export interface ClassificationStore {
   /** Durable SERIALIZABLE transaction. Resolve only after commit. No network calls in callback.
    * Enforce unique manifest key across restarts; never expire/reclaim dispatched entries.
    */
-  transaction<T>(work: (tx: ClassificationTransaction) => T): Promise<T>;
+  transaction<T>(work: (tx: ClassificationTransaction) => T | Promise<T>): Promise<T>;
 }
 export interface ClassificationProvider {
   model: typeof CLASSIFICATION_MODEL;
@@ -105,9 +105,9 @@ export interface ClassificationProvider {
 export class ClassificationRunner {
   constructor(private readonly store: ClassificationStore, private readonly authority: ClassificationAuthority,
     private readonly provider: ClassificationProvider, private readonly now: () => number = Date.now) {}
-  private authorize(tx: ClassificationTransaction, manifest: ClassificationManifest, owner: string): string {
+  private async authorize(tx: ClassificationTransaction, manifest: ClassificationManifest, owner: string): Promise<string> {
     const key = classificationManifestHash(manifest);
-    const state = tx.getAuthorization(key);
+    const state = await tx.getAuthorization(key);
     const approval = state?.approval;
     if (state?.enabled !== true || owner !== manifest.owner || !approval ||
       approval.owner !== manifest.owner || approval.manifestHash !== key || approval.expiresAt !== manifest.expiresAt ||
@@ -125,25 +125,25 @@ export class ClassificationRunner {
     const manifest: ClassificationManifest = JSON.parse(JSON.stringify(input));
     const owner = await this.authority.owner();
     const key = classificationManifestHash(manifest);
-    await this.store.transaction(tx => {
-      this.authorize(tx, manifest, owner);
-      if (!tx.getJob(key)) tx.putJob(key, { manifestHash: key, owner: manifest.owner, cancelled: false, reservedMicrousd: 0,
+    await this.store.transaction(async tx => {
+      await this.authorize(tx, manifest, owner);
+      if (!(await tx.getJob(key))) tx.putJob(key, { manifestHash: key, owner: manifest.owner, cancelled: false, reservedMicrousd: 0,
         items: manifest.records.map(r => ({ ...r, status: r.reason ? (r.reason.endsWith('review') ? 'review' : 'skipped') : 'pending' })) });
     });
     for (let i = 0; i < limit; i++) {
-      const claim = await this.store.transaction(tx => {
-        this.authorize(tx, manifest, owner);
-        const job = tx.getJob(key)!;
+      const claim = await this.store.transaction(async tx => {
+        await this.authorize(tx, manifest, owner);
+        const job = (await tx.getJob(key))!;
         if (job.cancelled || manifest.expiresAt <= this.now()) return null;
         const item = job.items.find(r => r.status === 'pending');
         if (!item) return null;
-        const record = tx.getRecord(manifest.owner, item.id);
+        const record = await tx.getRecord(manifest.owner, item.id);
         const payload = record ? prepareClassificationPayload(record) : { text: '', reason: 'deleted' };
         if (!record || contentHash(record) !== item.contentHash || payload.reason || hash(payload.text) !== item.payloadHash) {
           item.status = 'skipped'; item.reason = payload.reason || 'content_changed'; tx.putJob(key, job); return { skip: true as const };
         }
         const attemptKey = hash(JSON.stringify([manifest.owner, item.id, item.contentHash, item.payloadHash, manifest.model, manifest.policy]));
-        if (tx.getAttempt(attemptKey)) {
+        if (await tx.getAttempt(attemptKey)) {
           item.status = 'skipped'; item.reason = 'prior_attempt_no_retry'; tx.putJob(key, job); return { skip: true as const };
         }
         if (this.provider.maxRequestCostMicrousd > manifest.budgetMicrousd - job.reservedMicrousd) return null;
@@ -166,25 +166,36 @@ export class ClassificationRunner {
         // Committing this atomic permit defines request start. Revocation after commit
         // cannot retract an in-flight request, but prevents later permits and result application.
         // Full reservation is retained even if the permit is denied or the process crashes.
-        const permitted = await this.store.transaction(tx => {
-          this.authorize(tx, manifest, owner);
-          const job = tx.getJob(key)!;
+        const permitted = await this.store.transaction(async tx => {
+          await this.authorize(tx, manifest, owner);
+          const job = (await tx.getJob(key))!;
           const item = job.items.find(r => r.id === claim.id);
           if (job.cancelled || item?.status !== 'dispatched' || item.permittedAt !== undefined) return false;
+          // The record read joins the same serializable permit fence. A deletion,
+          // content edit or manual decision before commit must stop transmission too.
+          const current = await tx.getRecord(manifest.owner, item.id);
+          const payload = current ? prepareClassificationPayload(current) : { text: '', reason: 'deleted' };
+          if (!current || current.aiCategorySource === 'manual' || contentHash(current) !== item.contentHash ||
+              payload.reason || hash(payload.text) !== item.payloadHash) {
+            item.status = 'skipped'; item.reason = 'record_changed_before_permit';
+            // Keep the global attempt and conservative reservation. Never auto-retry.
+            tx.putJob(key, job);
+            return false;
+          }
           item.permittedAt = this.now();
           tx.putJob(key, job);
           return true;
         });
         if (permitted) result = await this.provider.classify(claim.text);
       } catch { /* An uncertain paid outcome is NEVER automatically retried. */ }
-      await this.store.transaction(tx => {
-        const job = tx.getJob(key)!; const item = job.items.find(r => r.id === claim.id)!;
+      await this.store.transaction(async tx => {
+        const job = (await tx.getJob(key))!; const item = job.items.find(r => r.id === claim.id)!;
         if (item.status !== 'dispatched') return;
         let authorized = true;
-        try { this.authorize(tx, manifest, owner); } catch { authorized = false; }
+        try { await this.authorize(tx, manifest, owner); } catch { authorized = false; }
         if (!authorized || !result || (result.decision.status === 'review' && ['transport_error', 'invalid_response'].includes(result.decision.reason))) { item.status = 'unknown'; item.reason = 'dispatch_outcome_unknown'; }
         else {
-          const record = tx.getRecord(manifest.owner, item.id);
+          const record = await tx.getRecord(manifest.owner, item.id);
           if (job.cancelled || manifest.expiresAt <= this.now() || !record || record.aiCategorySource === 'manual' || contentHash(record) !== item.contentHash) {
             item.status = 'skipped'; item.reason = job.cancelled ? 'cancelled' : 'record_changed';
           } else if (result.decision.status !== 'classified' || !isAiLibraryCategory(result.decision.category) ||
@@ -202,20 +213,20 @@ export class ClassificationRunner {
         tx.putJob(key, job);
       });
     }
-    return this.store.transaction(tx => tx.getJob(key)!);
+    return this.store.transaction(async tx => (await tx.getJob(key))!);
   }
   async cancel(input: ClassificationManifest): Promise<void> {
     const manifest = JSON.parse(JSON.stringify(input)) as ClassificationManifest;
     if (await this.authority.owner() !== manifest.owner) throw new Error('approval_required');
     const key = classificationManifestHash(manifest);
-    await this.store.transaction(tx => { const job = tx.getJob(key); if (job) { if (job.owner !== manifest.owner) throw new Error('approval_required'); job.cancelled = true; tx.putJob(key, job); } });
+    await this.store.transaction(async tx => { const job = await tx.getJob(key) ?? { manifestHash: key, owner: manifest.owner, cancelled: false, reservedMicrousd: 0, items: manifest.records.map(r => ({ ...r, status: 'pending' as const })) }; if (job) { if (job.owner !== manifest.owner) throw new Error('approval_required'); job.cancelled = true; tx.putJob(key, job); } });
   }
   /** Operator recovery only. Never resubmit possibly billed requests. No reservation refunds. */
   async recover(input: ClassificationManifest): Promise<void> {
     const manifest = JSON.parse(JSON.stringify(input)) as ClassificationManifest;
     if (await this.authority.owner() !== manifest.owner) throw new Error('approval_required');
     const key = classificationManifestHash(manifest);
-    await this.store.transaction(tx => { const job = tx.getJob(key); if (!job) return;
+    await this.store.transaction(async tx => { const job = await tx.getJob(key); if (!job) return;
       if (job.owner !== manifest.owner) throw new Error('approval_required');
       for (const item of job.items) if (item.status === 'dispatched') { item.status = 'unknown'; item.reason = 'recovery_unknown'; }
       tx.putJob(key, job);

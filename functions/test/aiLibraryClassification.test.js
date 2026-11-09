@@ -27,11 +27,11 @@ function fixture(n = 1, extra = {}) {
   let reviewed = manifest.records.map(r => r.payloadHash);
   const manifests = [manifest]; let beforeTransaction = () => {}; let transactionNumber = 0;
   const store = { transaction(work) {
-    const promise = serial.then(() => {
+    const promise = serial.then(async () => {
       beforeTransaction(++transactionNumber);
       const j = new Map([...jobs].map(([k,v]) => [k,clone(v)])); const r = new Map([...records].map(([k,v]) => [k,clone(v)]));
       const a = new Map(attempts);
-      const result = work({ getAuthorization: key => {
+      const result = await work({ getAuthorization: key => {
         const m = manifests.find(m => classificationManifestHash(m) === key);
         return {enabled,approval: approved && m ? {owner:'owner',manifestHash:key,expiresAt:m.expiresAt,reviewedPayloadHashes:reviewed} : null};
       }, getAttempt: key => a.get(key), putAttempt: (key,value) => a.set(key,value), getJob: key => j.get(key), putJob: (key, job) => j.set(key,clone(job)), getRecord: (uid,id) => uid === 'owner' ? r.get(id) : undefined,
@@ -102,9 +102,9 @@ test('revocation/expiry before apply blocks changes; cancellation is sticky',asy
   }
   const f=fixture(2);await f.runner.step(f.manifest,1);await f.runner.cancel(f.manifest);await f.runner.step(f.manifest);assert.equal(f.calls,1);
 });
-test('duplicate planning rejected; no live entry point or production adapter',()=>{
+test('duplicate planning rejected; core stays dependency-injected and callable is explicitly wired',()=>{
   assert.throws(()=>planClassification('owner',[{id:'1',record:{}},{id:'1',record:{}}],100,10),/duplicate/);
-  const index=fs.readFileSync(path.join(__dirname,'../src/index.ts'),'utf8');assert.doesNotMatch(index,/aiLibraryClassification|aiLibraryJevChoice/);
+  const index=fs.readFileSync(path.join(__dirname,'../src/index.ts'),'utf8');assert.match(index,/aiLibraryClassificationCallable/);
   const source=fs.readFileSync(path.join(__dirname,'../src/aiLibraryClassification.ts'),'utf8');assert.doesNotMatch(source,/firebase-admin|onCall\(|onRequest\(|onSchedule\(|fetch\(|process\.env/);
 });
 
@@ -164,5 +164,14 @@ test('owner can cancel/recover after approval revoked, runtime disabled or expir
     assert.equal(job.reservedMicrousd,2753);assert.equal(f.calls,1);
     f.owner='attacker';await assert.rejects(f.runner.cancel(f.manifest),/approval_required/);
     await assert.rejects(f.runner.recover(f.manifest),/approval_required/);
+  }
+});
+test('delete/edit/manual-clear immediately before atomic permit prevent transmission',async()=>{
+  for(const mutate of [f=>f.records.delete('0'),f=>f.records.get('0').content='Changed public text',f=>Object.assign(f.records.get('0'),{aiCategory:null,aiCategorySource:'manual'})]){
+    const f=fixture();f.beforeTransaction=n=>{if(n===3)mutate(f)};
+    const job=await f.runner.step(f.manifest,1);
+    assert.equal(f.calls,0);assert.equal(job.items[0].status,'skipped');
+    assert.equal(job.items[0].reason,'record_changed_before_permit');assert.equal(job.items[0].permittedAt,undefined);
+    assert.equal(job.reservedMicrousd,2753);await f.runner.step(f.manifest,1);assert.equal(f.calls,0);
   }
 });

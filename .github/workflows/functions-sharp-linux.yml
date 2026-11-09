@@ -7,6 +7,8 @@ on:
       - 'functions/package.json'
       - 'functions/package-lock.json'
       - 'functions/src/index.ts'
+      - 'functions/src/aiLibrary*.ts'
+      - 'functions/test/aiLibrary*.js'
       - 'functions/src/snsAnalyzer.ts'
       - 'functions/test/sharpImagePipelines.test.js'
   workflow_dispatch:
@@ -51,3 +53,6 @@ jobs:
 
       - name: Build and run image pipelines
         run: npm run test:sharp-pipelines
+
+      - name: Verify AI classification with synthetic clients
+        run: npm run test:ai-library-classification

@@ -13019,3 +13019,5 @@ export {
   generateSnsStorySynopsis,
   generateSnsStoryFinal,
 } from './snsStory';
+
+export { aiLibraryClassification } from "./aiLibraryClassificationCallable";

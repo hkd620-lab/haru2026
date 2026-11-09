@@ -1,3 +1,4 @@
+import { AiLibraryClassificationPanel } from '../components/AiLibraryClassificationPanel';
 import { AI_LIBRARY_BUCKETS, applyAiLibraryMoves, normalizeAiLibraryCategory, type AiLibraryFolder, type AiLibraryBucket } from '../utils/aiLibraryCategory';
 import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -645,6 +646,8 @@ export function AiLibraryPage() {
           {deleteMode ? '취소' : '선택 삭제'}
         </button>
       </div>
+
+      {user && <AiLibraryClassificationPanel key={user.uid} uid={user.uid} selectedIds={[...selectedIds]} />}
 
       {/* 선택 삭제 모드일 때 선택 바 */}
       {deleteMode && (
