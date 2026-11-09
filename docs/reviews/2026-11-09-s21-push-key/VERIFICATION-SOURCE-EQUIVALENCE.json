@@ -1,0 +1,64 @@
+{
+  "recordedAt": "2026-11-09T19:57:17.901223+00:00",
+  "reviewedHead": "0688d8da26179ff4ebe187cfa441ff915565d04f",
+  "verificationStartedAt": "2026-11-09T19:49:14+00:00",
+  "comparisonRecordedAfterBuild": true,
+  "preRunHashManifestCaptured": false,
+  "assurance": "CC1/CC2 ended before verification; no product edits after them. Commit records identical six working files; all source/test mtimes precede verification. Exact blob equality captured after commit, not misrepresented as pre-run hash capture.",
+  "files": [
+    {
+      "file": "frontend/public/firebase-messaging-sw.js",
+      "commitBlob": "b3867375824f6e427df2c08b9a2f1c2c612a3fcb",
+      "workingTreeBlob": "b3867375824f6e427df2c08b9a2f1c2c612a3fcb",
+      "identical": true,
+      "lastModifiedAt": "2026-11-09T13:51:27.260656+00:00",
+      "lastModifiedBeforeVerificationStarted": true,
+      "sha256": "147b46cd74d9c8dd8bdc4a06d6eefb7f434ff4b7e2584b4c5abd80a1064c762b"
+    },
+    {
+      "file": "frontend/src/app/services/notificationService.ts",
+      "commitBlob": "580a508ae5607537508bdbe03dbe81087e13f100",
+      "workingTreeBlob": "580a508ae5607537508bdbe03dbe81087e13f100",
+      "identical": true,
+      "lastModifiedAt": "2026-11-09T14:27:40.661701+00:00",
+      "lastModifiedBeforeVerificationStarted": true,
+      "sha256": "e5987901586f65ee59b010ffc0624d088112bca36173fc4e6b4abe6b9cc91037"
+    },
+    {
+      "file": "frontend/src/app/services/pushSubscriptionKey.ts",
+      "commitBlob": "b3fc47bf015f8a9474f42cf1de89a549f9a50ddd",
+      "workingTreeBlob": "b3fc47bf015f8a9474f42cf1de89a549f9a50ddd",
+      "identical": true,
+      "lastModifiedAt": "2026-11-09T13:55:26.274082+00:00",
+      "lastModifiedBeforeVerificationStarted": true,
+      "sha256": "b381a5e707757bd99cb04f02f74c887395e953e10fee3957858cf995ee394730"
+    },
+    {
+      "file": "frontend/src/app/services/fcmRegistrationUpdate.ts",
+      "commitBlob": "5fb3451f06397917b3e95c45f97eef3b4469a2bd",
+      "workingTreeBlob": "5fb3451f06397917b3e95c45f97eef3b4469a2bd",
+      "identical": true,
+      "lastModifiedAt": "2026-11-09T14:27:34.283651+00:00",
+      "lastModifiedBeforeVerificationStarted": true,
+      "sha256": "60f80d1e6d499c97b8d7ce0f3171a2215e2e58c01d5c342d9e8f9c20471f3918"
+    },
+    {
+      "file": "frontend/test/pushSubscriptionKey.test.mjs",
+      "commitBlob": "04c9fd94b4bae1f663a4e1e449cc5307c2b4f2c3",
+      "workingTreeBlob": "04c9fd94b4bae1f663a4e1e449cc5307c2b4f2c3",
+      "identical": true,
+      "lastModifiedAt": "2026-11-09T13:55:29.267412+00:00",
+      "lastModifiedBeforeVerificationStarted": true,
+      "sha256": "b55aefaa33b64ebf5f47be787565b6869ebb6c3c2178b684fbf1fd149567edea"
+    },
+    {
+      "file": "frontend/test/fcmRegistrationUpdate.test.mjs",
+      "commitBlob": "bc4fc3d4aee77bc8c964af9c9f89097c4707a7c7",
+      "workingTreeBlob": "bc4fc3d4aee77bc8c964af9c9f89097c4707a7c7",
+      "identical": true,
+      "lastModifiedAt": "2026-11-09T14:28:20.513971+00:00",
+      "lastModifiedBeforeVerificationStarted": true,
+      "sha256": "5477e5cddf867ea2502d9076927bd1ca1055bcd192544345545e65462048f08f"
+    }
+  ]
+}
