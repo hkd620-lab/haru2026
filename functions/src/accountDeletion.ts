@@ -5,6 +5,7 @@ import { getStorage } from 'firebase-admin/storage';
 import * as logger from 'firebase-functions/logger';
 import * as admin from 'firebase-admin';
 import { cancelSubscriptionForUid, revokeBillingKeyForWithdrawal, PORTONE_API_SECRET } from './subscriptionHelpers';
+import { CLASSIFICATION_PRIVATE_ROOT } from './aiLibraryClassificationStore';
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -63,14 +64,20 @@ export const requestAccountDeletion = onCall(
     const now = new Date();
     const scheduledAt = new Date(now.getTime() + DELETION_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
 
-    await db.doc(`users/${uid}`).set(
-      {
+    const userRef = db.doc(`users/${uid}`);
+    await db.runTransaction(async tx => {
+      const user = await tx.get(userRef);
+      // A slow/repeated request must not postpone a claimed deletion or recreate
+      // its user document after the scheduled worker has finished.
+      if (!user.exists || user.data()?.deletionStartedAt !== undefined) {
+        throw new HttpsError('failed-precondition', '계정 삭제가 이미 시작되었습니다.');
+      }
+      tx.update(userRef, {
         accountStatus: 'pending_deletion',
         deletionRequestedAt: FieldValue.serverTimestamp(),
         deletionScheduledAt: Timestamp.fromDate(scheduledAt),
-      },
-      { merge: true },
-    );
+      });
+    });
 
     logger.info(
       '✅ 회원탈퇴 신청 접수 — uid: %s, scheduledAt: %s',
@@ -96,14 +103,20 @@ export const cancelAccountDeletion = onCall(
 
     const uid = request.auth.uid;
 
-    await db.doc(`users/${uid}`).set(
-      {
+    const userRef = db.doc(`users/${uid}`);
+    await db.runTransaction(async tx => {
+      const user = await tx.get(userRef);
+      // The scheduled worker and cancellation serialize on this same owner document.
+      // Once a destructive sweep starts, restoring access could recreate already-deleted data.
+      if (!user.exists || user.data()?.deletionStartedAt !== undefined) {
+        throw new HttpsError('failed-precondition', '계정 삭제가 시작되어 취소할 수 없습니다.');
+      }
+      tx.update(userRef, {
         accountStatus: FieldValue.delete(),
         deletionRequestedAt: FieldValue.delete(),
         deletionScheduledAt: FieldValue.delete(),
-      },
-      { merge: true },
-    );
+      });
+    });
 
     logger.info('✅ 회원탈퇴 취소(복구) — uid: %s', uid);
 
@@ -114,7 +127,7 @@ export const cancelAccountDeletion = onCall(
 // ===== 실제 삭제 (1단계 승인 범위 + billingSubscriptions 처리 변경 승인분) =====
 // [삭제] users/{uid} 하위 서브컬렉션 전체, Storage users/{uid}/ 전체 + profile_images/{uid}/,
 //        email_to_uid, prophecyUsage, shared_records(+comments),
-//        sharedHaruLawCardMeta, haruLawSharePreviews
+//        sharedHaruLawCardMeta, haruLawSharePreviews, aiLibraryClassificationPrivate/{uid} 전체
 //        + billingSubscriptions/{uid}.billingKey(포트원 빌링키 포함) — 30일 유예 없이
 //          requestAccountDeletion 신청 즉시 삭제(아래 markBillingRecordsWithdrawn은 안전망)
 // [보존] billingSubscriptions/{uid}의 결제일시·금액·상품명·주문번호 등 거래기록,
@@ -273,6 +286,25 @@ export const executeScheduledDeletion = onSchedule(
       const uid = docSnap.id;
       const completedSteps: string[] = [];
       try {
+        // Recheck after the query: cancellation may already have committed. Keep the
+        // pending status/schedule for existing retry queries if any later step fails.
+        const claimed = await db.runTransaction(async tx => {
+          const user = await tx.get(docSnap.ref);
+          const data = user.data();
+          if (!user.exists || data?.accountStatus !== 'pending_deletion' ||
+              !(data.deletionScheduledAt instanceof Timestamp) || data.deletionScheduledAt.toMillis() > Date.now()) return false;
+          if (data.deletionStartedAt === undefined) tx.update(docSnap.ref, { deletionStartedAt: FieldValue.serverTimestamp() });
+          return true;
+        });
+        if (!claimed) continue;
+        completedSteps.push('deletion_claim');
+
+        // A missing root document can still have arbitrarily nested subcollections.
+        // Delete the entire owner tree, not just known plans/jobs or existing roots.
+        // Failure must retain Auth/users and reach the normal scheduled retry path.
+        await db.recursiveDelete(db.collection(CLASSIFICATION_PRIVATE_ROOT).doc(uid));
+        completedSteps.push('aiLibraryClassificationPrivate');
+
         const storageFileCount = await deleteStorageFilesForUid(uid);
         completedSteps.push(`storage(${storageFileCount}건)`);
 

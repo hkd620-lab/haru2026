@@ -17,11 +17,23 @@ test('missing/disabled/not-credential-ready private runtime stops before records
  for(const runtime of [undefined,{enabled:false,credentialsReady:true},{enabled:true,credentialsReady:false}]){
   let factories=0;let reads=0;
   const ref=path=>({path,collection:id=>ref(path+'/'+id),doc:id=>ref(path+'/'+id)});
-  const db={collection:id=>ref(id),runTransaction:fn=>fn({get:async r=>{assert.ok(r.path.endsWith('/control/runtime'));reads++;return {data:()=>runtime}},getAll:()=>{throw Error('record read forbidden')}})};
+  const db={collection:id=>ref(id),runTransaction:fn=>fn({get:async r=>{if(r.path==='users/'+context.uid)return {exists:true,data:()=>({})};assert.ok(r.path.endsWith('/control/runtime'));reads++;return {data:()=>runtime}},getAll:()=>{throw Error('record read forbidden')}})};
   const service=createClassificationService({db:()=>db,providerForOwner:()=>{factories++;throw Error('credential factory forbidden')}});
   assert.deepEqual(await service(context,{action:'capability'}),{enabled:false});
   await assert.rejects(service(context,{action:'prepare',scope:'all',budgetMicrousd:2753,expiresAt:Date.now()+60000}),/runtime_disabled/);
   assert.equal(factories,0);assert.equal(reads,2);
+ }
+});
+test('every service route blocks missing, pending or deleting accounts before private data/provider access',async()=>{
+ const ref=path=>({path,collection:id=>ref(path+'/'+id),doc:id=>ref(path+'/'+id)});
+ for(const user of [undefined,{accountStatus:'pending_deletion'},{deletionStartedAt:1}]){
+  let reads=0;
+  const db={collection:id=>ref(id),runTransaction:fn=>fn({get:async r=>{assert.equal(r.path,'users/'+context.uid);reads++;return {exists:user!==undefined,data:()=>user}}})};
+  const service=createClassificationService({db:()=>db,providerForOwner:()=>{throw Error('provider construction forbidden')}});
+  for(const action of ['capability','prepare','review','approve','step','cancel','recover','restore','status']){
+   await assert.rejects(service(context,{action,manifestHash:'a'.repeat(64),scope:'all',budgetMicrousd:2753,expiresAt:Date.now()+60000}),/account_unavailable/);
+  }
+  assert.equal(reads,9);
  }
 });
 test('snapshot codec preserves native values and refuses unsupported/oversize/deep values without truncation',()=>{

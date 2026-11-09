@@ -18,6 +18,7 @@ async function fixture(count=2){
  const context={uid:owner,email:'hkd620@gmail.com',emailVerified:true,origin:'https://haru2026.com'};
  const provider={model:'jev-1.14.0',maxRequestCostMicrousd:2753,classify:async()=>{calls++;return {decision:{status:'classified',category:'ai-tech',confidence:.95}}}};
  const options={db:()=>db,provider};const service=createClassificationService(options);
+ await p.user.set({});
  await p.runtime.set({enabled:true,credentialsReady:true});
  for(let i=0;i<count;i++)await p.record(String(i)).set({type:'ai_log',content:'Synthetic public AI article '+i,date:'preserve'});
  const prepare=()=>service(context,{action:'prepare',scope:'all',budgetMicrousd:count*2753,expiresAt:Date.now()+600000});
@@ -45,7 +46,7 @@ test('runtime disable before permit, concurrent workers and uncertain outcome ne
  await Promise.all([f.service(f.context,{action:'step',manifestHash:plan.manifestHash}),f.service(f.context,{action:'step',manifestHash:plan.manifestHash})]);assert.equal(calls,1);
  await f.p.runtime.set({enabled:false,credentialsReady:false});await f.p.approval(plan.manifestHash).delete();
  await f.service(f.context,{action:'recover',manifestHash:plan.manifestHash});await f.service(f.context,{action:'cancel',manifestHash:plan.manifestHash});
- await assert.rejects(f.service({...f.context,uid:'synthetic-other'},{action:'cancel',manifestHash:plan.manifestHash}),/plan_not_found/);
+ await db.doc('users/'+f.owner+'-other').set({});await assert.rejects(f.service({...f.context,uid:f.owner+'-other'},{action:'cancel',manifestHash:plan.manifestHash}),/plan_not_found/);
  await assert.rejects(f.service(f.context,{action:'prepare',scope:'all',budgetMicrousd:2753,expiresAt:Date.now()+60000}),/runtime_disabled/);assert.equal(calls,1);
 });
 test('transaction authorization is reread after revocation before permit',async()=>{
@@ -119,7 +120,7 @@ test('legacy or missing durable snapshots explicitly unavailable; new owner cann
   if(kind==='missing')await f.p.restoration(plan.manifestHash,'0').delete();
   if(kind==='malformed')await f.p.restoration(plan.manifestHash,'0').update({'before.aiCategory':{present:true}});
   const before=(await f.p.record('0').get()).data();const result=await f.service(f.context,{action:'restore',manifestHash:plan.manifestHash});assert.equal(result.items[0].restoration.status,'unavailable');assert.deepEqual((await f.p.record('0').get()).data(),before);
-  await assert.rejects(f.service({...f.context,uid:'other-synthetic'},{action:'restore',manifestHash:plan.manifestHash}),/plan_not_found/);
+  await db.doc('users/'+f.owner+'-other').set({});await assert.rejects(f.service({...f.context,uid:f.owner+'-other'},{action:'restore',manifestHash:plan.manifestHash}),/plan_not_found/);
  }
 });
 test('partial interrupted restore is resumable and racing restore/cancel/recover never reclaims attempts',async()=>{
@@ -149,5 +150,63 @@ test('concurrent manual move always wins against category restoration',async()=>
   await Promise.all([f.service(f.context,{action:'restore',manifestHash:plan.manifestHash}),f.p.record('0').update({aiCategory:'health',aiCategorySource:'manual'})]);
   const current=(await f.p.record('0').get()).data();assert.equal(current.aiCategory,'health');assert.equal(current.aiCategorySource,'manual');
   await f.service(f.context,{action:'restore',manifestHash:plan.manifestHash});assert.equal((await f.p.record('0').get()).data().aiCategory,'health');
+ }
+});
+
+test('owner recursive deletion removes every private descendant even with absent root/job parents',async()=>{
+ const f=await fixture(1);const other=await fixture(1);const plan=await f.prepare();await f.approve(plan);
+ await f.service(f.context,{action:'step',manifestHash:plan.manifestHash});
+ const orphan=f.p.root.collection('jobs').doc('absent-parent').collection('restorations').doc('orphan');await orphan.set({synthetic:true});
+ assert.equal((await f.p.root.get()).exists,false);assert.equal((await orphan.parent.parent.get()).exists,false);
+ const refs=[f.p.runtime,f.p.plan(plan.manifestHash),f.p.review(plan.manifestHash),f.p.approval(plan.manifestHash),f.p.job(plan.manifestHash),f.p.restoration(plan.manifestHash,'0'),orphan,
+  ...(await f.p.root.collection('attempts').get()).docs.map(doc=>doc.ref)];
+ await f.p.user.update({accountStatus:'pending_deletion',deletionStartedAt:new Date()});
+ await db.recursiveDelete(f.p.root);await db.recursiveDelete(f.p.root);
+ assert.ok((await db.getAll(...refs)).every(doc=>!doc.exists));assert.equal((await f.p.root.listCollections()).length,0);
+ assert.equal((await other.p.runtime.get()).exists,true);assert.equal((await f.p.record('0').get()).exists,true);
+});
+
+test('pending deletion before permit stops dispatch and keeps the active retry ledger until final sweep',async()=>{
+ const f=await fixture(1);const plan=await f.prepare();await f.approve(plan);const base=createClassificationStore(db,f.owner);let transactions=0;
+ const wrapped={transaction:async work=>{if(++transactions===3)await f.p.user.update({accountStatus:'pending_deletion'});return base.transaction(work)}};
+ const runner=new ClassificationRunner(wrapped,{owner:async()=>f.owner},f.provider);
+ await assert.rejects(runner.step(plan.manifest),/account_unavailable/);assert.equal(f.calls,0);
+ assert.equal((await f.p.root.collection('attempts').get()).size,1);assert.equal((await f.p.job(plan.manifestHash).get()).data().reservedMicrousd,2753);
+ // Cancellation within the grace period restores access, never the paid attempt budget.
+ const {FieldValue}=require('firebase-admin/firestore');await f.p.user.update({accountStatus:FieldValue.delete()});
+ await runner.recover(plan.manifest);await runner.step(plan.manifest);assert.equal(f.calls,0);
+ assert.equal((await f.p.root.collection('attempts').get()).size,1);
+});
+
+test('late provider result and stale cleanup cannot recreate a swept tree, including after minimal user recreation',async()=>{
+ const f=await fixture(1);const plan=await f.prepare();await f.approve(plan);
+ let release;f.provider.classify=()=>new Promise(resolve=>release=resolve);
+ const pending=f.service(f.context,{action:'step',manifestHash:plan.manifestHash});
+ while(!release)await new Promise(resolve=>setTimeout(resolve,1));
+ await f.p.user.update({accountStatus:'pending_deletion',deletionStartedAt:new Date()});await db.recursiveDelete(f.p.root);
+ release({decision:{status:'classified',category:'life',confidence:1}});
+ await assert.rejects(pending,/account_unavailable/);assert.equal((await f.p.record('0').get()).data().aiCategory,undefined);
+ await f.p.user.delete();
+ for(const action of ['prepare','review','approve','step','cancel','recover','restore','status']){
+  await assert.rejects(f.service(f.context,{action,scope:'all',budgetMicrousd:2753,expiresAt:Date.now()+60000,manifestHash:plan.manifestHash}),/account_unavailable/);
+ }
+ await f.p.user.set({consents:{synthetic:true}});
+ const runner=new ClassificationRunner(createClassificationStore(db,f.owner),{owner:async()=>f.owner},f.provider);
+ for(const action of ['step','cancel','recover','restore'])await assert.rejects(runner[action](plan.manifest),/plan_not_found/);
+ assert.equal((await f.p.root.listCollections()).length,0);
+});
+
+test('concurrent prepare/review/approve/step/cleanup/status serialize with finalization before private sweep',async()=>{
+ for(const action of ['prepare','review','approve','step','cancel','recover','restore','status']){
+  const f=await fixture(1);const plan=await f.prepare();await f.approve(plan);
+  if(action==='restore')await f.service(f.context,{action:'step',manifestHash:plan.manifestHash});
+  const input={action,scope:'all',budgetMicrousd:2753,expiresAt:Date.now()+60000,manifestHash:plan.manifestHash,consentVersion:plan.consentVersion,reviewedPayloadHashes:plan.manifest.records.map(r=>r.payloadHash)};
+  const results=await Promise.allSettled([f.service(f.context,input),(async()=>{
+   await db.runTransaction(async tx=>{await tx.get(f.p.user);tx.update(f.p.user,{accountStatus:'pending_deletion',deletionStartedAt:new Date()})});
+   await db.recursiveDelete(f.p.root);
+  })()]);
+  assert.equal(results[1].status,'fulfilled',action);
+  if(results[0].status==='rejected')assert.match(results[0].reason.message,/account_unavailable/,action);
+  assert.equal((await f.p.root.listCollections()).length,0,action);
  }
 });

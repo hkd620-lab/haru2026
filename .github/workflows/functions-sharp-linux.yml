@@ -56,3 +56,6 @@ jobs:
 
       - name: Verify AI classification with synthetic clients
         run: npm run test:ai-library-classification
+
+      - name: Verify account deletion with synthetic clients
+        run: npm run test:account-deletion-completeness

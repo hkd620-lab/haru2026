@@ -40,4 +40,15 @@ assert(src.includes('d.ref.set({ withdrawnAt: withdrawnAtIso }, { merge: true })
 assert(!/paymentReviews[\s\S]{0,200}\.delete\(\)/.test(src));
 assert(!/billingSubscriptions[^\n]*\.delete\(\)/.test(src));
 
+// Private classification trees must be swept even when their parent document is absent,
+// before Auth/users removal, and behind the irreversible owner claim.
+assert(src.includes('await db.recursiveDelete(db.collection(CLASSIFICATION_PRIVATE_ROOT).doc(uid))'));
+const scheduled = src.slice(src.indexOf('export const executeScheduledDeletion'));
+assert(scheduled.indexOf('deletionStartedAt: FieldValue.serverTimestamp()') < scheduled.indexOf('await db.recursiveDelete'));
+assert(scheduled.indexOf('await db.recursiveDelete') < scheduled.indexOf('await deleteAuthAccountIfExists'));
+assert(scheduled.indexOf('await deleteAuthAccountIfExists') < scheduled.indexOf('await docSnap.ref.delete()'));
+const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
+const userWriteKeys = rules.match(/function userAttributionAllowedKeys\(\) \{([\s\S]*?)\n    \}/)[1];
+for (const field of ['accountStatus', 'deletionStartedAt', 'deletionScheduledAt']) assert(!userWriteKeys.includes(field));
+
 console.log('accountDeletion completeness policy test passed');

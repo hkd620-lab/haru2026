@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { createClassificationService } from './aiLibraryClassificationService';
-import { classificationPaths } from './aiLibraryClassificationStore';
+import { classificationPaths, requireClassificationAccount } from './aiLibraryClassificationStore';
 import { classifyApprovedText } from './aiLibraryJevChoice';
 import { createJevChoiceHttpTransport } from './aiLibraryJevTransport';
 
@@ -13,8 +13,12 @@ const service = createClassificationService({ db: () => admin.firestore(), provi
     fetchImpl: fetch,
     getApiKey: async () => typesafeKey.value(),
     isRuntimePermitted: async () => {
-      const runtime = (await classificationPaths(admin.firestore(), owner).runtime.get()).data();
-      return runtime?.enabled === true && runtime?.credentialsReady === true;
+      const db = admin.firestore();
+      return db.runTransaction(async tx => {
+        await requireClassificationAccount(tx, db, owner);
+        const runtime = (await tx.get(classificationPaths(db, owner).runtime)).data();
+        return runtime?.enabled === true && runtime?.credentialsReady === true;
+      });
     },
   });
   return { model: 'jev-1.14.0', maxRequestCostMicrousd: 2753, classify: text => classifyApprovedText(text, transport) };

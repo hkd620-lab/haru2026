@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { ClassificationRunner, ClassificationProvider, ClassificationManifest, ClassificationRecord,
   CLASSIFICATION_MIN_RESERVATION_MICROUSD, classificationManifestHash, contentHash, planClassification,
   prepareClassificationPayload } from './aiLibraryClassification';
-import { classificationPaths, createClassificationStore } from './aiLibraryClassificationStore';
+import { classificationPaths, createClassificationStore, requireClassificationAccount } from './aiLibraryClassificationStore';
 
 export const CLASSIFICATION_CONSENT_VERSION = 'typesafe-reviewed-retention-v1';
 export const CLASSIFICATION_DESTINATION = 'TypeSafe AI / https://api.typesafe.ai/v1/systemone';
@@ -39,18 +39,22 @@ export function createClassificationService(options: ClassificationServiceOption
     if (!configured && !['cancel', 'recover', 'restore', 'status'].includes(String(action))) throw new Error('server_unconfigured');
     const db = options.db();
     const p = classificationPaths(db, owner);
+    const accountTransaction = <T>(work: (tx: FirebaseFirestore.Transaction) => Promise<T>) => db.runTransaction(async tx => {
+      await requireClassificationAccount(tx, db, owner);
+      return work(tx);
+    });
     const requireRuntime = async (tx: FirebaseFirestore.Transaction) => {
       const runtime = (await tx.get(p.runtime)).data();
       if (runtime?.enabled !== true || runtime?.credentialsReady !== true) throw new Error('runtime_disabled');
     };
-    if (action === 'capability') return db.runTransaction(async tx => { const runtime = (await tx.get(p.runtime)).data(); return { enabled: runtime?.enabled === true && runtime?.credentialsReady === true }; });
+    if (action === 'capability') return accountTransaction(async tx => { const runtime = (await tx.get(p.runtime)).data(); return { enabled: runtime?.enabled === true && runtime?.credentialsReady === true }; });
     if (action === 'prepare') {
       const ids = input.recordIds;
       const all = input.scope === 'all';
       if ((!all && (!Array.isArray(ids) || ids.length < 1 || ids.length > 1000 || !ids.every(validId) || new Set(ids).size !== ids.length)) ||
         !Number.isSafeInteger(input.budgetMicrousd) || (input.budgetMicrousd as number) < CLASSIFICATION_MIN_RESERVATION_MICROUSD || (input.budgetMicrousd as number) > 10000000 ||
         !Number.isSafeInteger(input.expiresAt) || (input.expiresAt as number) <= now() || (input.expiresAt as number) > now() + 86400000) throw new Error('invalid_plan');
-      return db.runTransaction(async tx => {
+      return accountTransaction(async tx => {
         await requireRuntime(tx);
         const scan = all ? await tx.get(db.collection('users').doc(owner).collection('records').where('type', '==', 'ai_log').select('type').limit(1001)) : undefined;
         if (scan && scan.size > 1000) throw new Error('scope_too_large');
@@ -74,7 +78,7 @@ export function createClassificationService(options: ClassificationServiceOption
     }
     if (typeof input.manifestHash !== 'string' || !/^[a-f0-9]{64}$/.test(input.manifestHash)) throw new Error('invalid_manifest');
     const key = input.manifestHash;
-    const manifest = await db.runTransaction(async tx => {
+    const manifest = await accountTransaction(async tx => {
       if (!['cancel', 'recover', 'restore', 'status'].includes(String(action))) await requireRuntime(tx);
       const plan = (await tx.get(p.plan(key))).data()?.manifest as ClassificationManifest | undefined;
       if (!plan || plan.owner !== owner || classificationManifestHash(plan) !== key) throw new Error('plan_not_found');
@@ -83,7 +87,7 @@ export function createClassificationService(options: ClassificationServiceOption
     if (action === 'review') {
       const offset = input.offset ?? 0;
       if (!Number.isInteger(offset) || (offset as number) < 0 || (offset as number) >= manifest.records.length) throw new Error('invalid_offset');
-      return db.runTransaction(async tx => {
+      return accountTransaction(async tx => {
         await requireRuntime(tx);
         if (manifest.expiresAt <= now()) throw new Error('expired');
         const rows = manifest.records.slice(offset as number, (offset as number) + 20);
@@ -101,7 +105,7 @@ export function createClassificationService(options: ClassificationServiceOption
         return { items, nextOffset: (offset as number) + rows.length < manifest.records.length ? (offset as number) + rows.length : null };
       });
     }
-    if (action === 'approve') return db.runTransaction(async tx => {
+    if (action === 'approve') return accountTransaction(async tx => {
       await requireRuntime(tx);
       if (manifest.expiresAt <= now() || input.consentVersion !== CLASSIFICATION_CONSENT_VERSION) throw new Error('consent_required');
       const expected = [...new Set(manifest.records.filter(r => !r.reason).map(r => r.payloadHash))].sort();
@@ -120,6 +124,6 @@ export function createClassificationService(options: ClassificationServiceOption
     if (action === 'restore') { const limit = input.limit ?? 25; if (!Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 25) throw new Error('invalid_restore_limit'); return runner.restore(manifest, limit as number); }
     if (action === 'cancel') { await runner.cancel(manifest); await p.approval(key).delete(); return { cancelled: true }; }
     if (action === 'recover') { await runner.recover(manifest); return { recovered: true }; }
-    return { manifestHash: key, job: (await p.job(key).get()).data() ?? null };
+    return { manifestHash: key, job: await store.transaction(async tx => await tx.getJob(key) ?? null) };
   };
 }
