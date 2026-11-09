@@ -5409,7 +5409,7 @@ export const googleCallback = onRequest(
 
 // ===== 🔔 테스트 알림 발송 =====
 export const sendTestNotification = onCall(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', memory: '512MiB' },
   async (request) => {
     // 로그인 여부 확인
     if (!request.auth) {
