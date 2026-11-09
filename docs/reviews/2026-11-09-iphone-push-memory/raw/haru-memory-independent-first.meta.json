@@ -1,0 +1,28 @@
+{
+  "startedAt": "2026-11-09T05:08:58.790617+00:00",
+  "cwd": "/private/tmp/haru-push-memory-20261109",
+  "head": "89fa9644f75cfaf28667f7ce04229603ea2e781c",
+  "pr": 365,
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "plan",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Bash",
+    "--disallowedTools",
+    "Edit,Write,NotebookEdit",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--add-dir",
+    "/private/tmp",
+    "--allowedTools",
+    "Read,Glob,Grep,Bash(git diff *),Bash(git show *),Bash(git log *),Bash(git status *),Bash(git rev-parse *),Bash(gh pr view *),Bash(gh api *),Bash(cat *),Bash(rg *),Bash(ls *),Bash(/opt/homebrew/opt/node@22/bin/node test/scheduledNotificationCore.test.js)"
+  ],
+  "exitCode": 0,
+  "finishedAt": "2026-11-09T05:11:11.776879+00:00"
+}

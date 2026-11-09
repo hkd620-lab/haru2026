@@ -1,0 +1,24 @@
+{
+  "startedAt": "2026-11-09T04:42:28.531556+00:00",
+  "cwd": "/private/tmp/haru-push-memory-20261109",
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "acceptEdits",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Bash,Edit,Write",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--add-dir",
+    "/private/tmp",
+    "--allowedTools",
+    "Read,Glob,Grep,Edit,Write,Bash(git *),Bash(gh api *),Bash(gh pr create *),Bash(gh pr view *),Bash(npm run *),Bash(npm --prefix functions run *),Bash(node *),Bash(/opt/homebrew/opt/node@22/bin/node *),Bash(cp *),Bash(cmp *),Bash(ln -s *),Bash(ls *),Bash(cat *),Bash(rg *),Bash(pwd),Bash(df *)"
+  ],
+  "exitCode": 0,
+  "finishedAt": "2026-11-09T04:47:10.049841+00:00"
+}
