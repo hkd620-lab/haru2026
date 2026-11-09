@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI 지식 수집기",
-  "version": "2.4",
+  "version": "2.9",
   "icons": {
     "128": "icon128.png"
   },
@@ -14,7 +14,13 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["activeTab", "scripting", "storage", "clipboardWrite", "tabs"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "clipboardWrite",
+    "tabs"
+  ],
   "host_permissions": [
     "https://chatgpt.com/*",
     "https://gemini.google.com/*",
@@ -32,7 +38,9 @@
         "https://claude.ai/*",
         "https://app.slack.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_end"
     },
     {
@@ -40,7 +48,9 @@
         "https://haru2026.com/ai-import*",
         "https://haru2026-8abb8.web.app/ai-import*"
       ],
-      "js": ["haru-bridge.js"],
+      "js": [
+        "haru-bridge.js"
+      ],
       "run_at": "document_start"
     }
   ],
@@ -51,5 +61,6 @@
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile"
     ]
-  }
+  },
+  "version_name": "2.9-purpose-folders-preview"
 }

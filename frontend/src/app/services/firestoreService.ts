@@ -1,3 +1,4 @@
+import { normalizeAiLibraryCategory, type AiLibraryBucket, type AiLibraryFolder } from '../utils/aiLibraryCategory';
 import { 
   collection, 
   addDoc,
@@ -42,6 +43,7 @@ import { ALL_REGISTERED_FORMATS, buildFormatKeyMap, getFormatKey } from '../reco
 export type RecordFormat = RecordFormatKorean;
 
 export interface HaruRecord {
+  aiCategory?: AiLibraryBucket;
   id: string;
   date: string;
   weather?: string;
@@ -2427,13 +2429,16 @@ class FirestoreService {
     }
   }
 
-  async getAiLogPage(cursor?: string): Promise<AiLibraryLogPage> {
+  async getAiLogPage(cursor?: string, category?: AiLibraryFolder): Promise<AiLibraryLogPage> {
     const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const callable = httpsCallable<{ cursor?: string }, AiLibraryLogPage>(
+    const callable = httpsCallable<{ cursor?: string; category?: AiLibraryBucket }, AiLibraryLogPage>(
       getFunctions(undefined, 'asia-northeast3'),
       'listAiLibraryLogs',
     );
-    const result = await callable(cursor ? { cursor } : {});
+    const result = await callable({
+      ...(cursor ? { cursor } : {}),
+      ...(category && category !== 'all' ? { category } : {}),
+    });
     if (!Array.isArray(result.data?.logs)) {
       throw new Error('AI 학습함 목록 응답이 올바르지 않습니다.');
     }
@@ -2444,6 +2449,19 @@ class FirestoreService {
       logs: result.data.logs,
       ...(result.data.nextCursor ? { nextCursor: result.data.nextCursor } : {}),
     };
+  }
+
+  async moveAiLibraryLog(id: string, category: AiLibraryBucket, expectedCategory: AiLibraryBucket) {
+    const callable = httpsCallable<
+      { id: string; category: AiLibraryBucket; expectedCategory: AiLibraryBucket },
+      { id: string; category: AiLibraryBucket }
+    >(getFunctions(undefined, 'asia-northeast3'), 'moveAiLibraryLog');
+    const result = await callable({ id, category, expectedCategory });
+    if (result.data?.id !== id || result.data.category !== category
+      || normalizeAiLibraryCategory(result.data.category) !== category) {
+      throw new Error('폴더 이동 응답이 올바르지 않습니다.');
+    }
+    return result.data;
   }
 
   // 비활성 레거시 호출부의 배열 계약을 유지한다.

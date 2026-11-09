@@ -41,12 +41,12 @@ test('Slack·김비서 출처 라벨과 필터를 기록 유무와 관계없이 
 });
 
 test('AI 학습함은 페이지 단위로 조회하고 더 불러온 기록을 누적한다', () => {
-  assert.match(firestoreService, /async getAiLogPage\(cursor\?: string\)/);
-  assert.match(library, /firestoreService\.getAiLogPage\(\)/);
-  assert.match(library, /firestoreService\.getAiLogPage\(cursor\)/);
+  assert.match(firestoreService, /async getAiLogPage\(cursor\?: string, category\?: AiLibraryFolder\)/);
+  assert.match(library, /firestoreService\.getAiLogPage\(undefined, folder\)/);
+  assert.match(library, /firestoreService\.getAiLogPage\(cursor, folder\)/);
   assert.match(library, /mergeAiLibraryLogs\(current, page\.logs\)/);
   assert.match(library, /더 불러오기/);
-  assert.match(library, /검색과 필터는 현재 불러온 기록에 적용됩니다/);
+  assert.match(library, /검색과 출처 필터는 현재 폴더에서 불러온 기록에 적용됩니다/);
   assert.match(library, /requestGuard\.startSession\(\)/);
   assert.match(library, /requestGuard\.startRequest\(generation, `next:\$\{cursor\}`\)/);
   assert.doesNotMatch(library, /const freshLogs = await firestoreService\.getAiLogs\(\)/);

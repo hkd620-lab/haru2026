@@ -9134,7 +9134,7 @@ export { analyzeFacebookZip, getSnsThumbnailData } from "./snsAnalyzer";
 export { convertSnsToDiary } from "./snsToDiary";
 export { generateLawsuitClaimReason } from "./generateLawsuitClaimReason";
 export { convertToBookMaterial } from "./bookMaterial";
-export { listAiLibraryLogs, saveAiLibraryImport, deleteAiLibraryLogs } from "./aiLibrary";
+export { listAiLibraryLogs, saveAiLibraryImport, deleteAiLibraryLogs, moveAiLibraryLog } from "./aiLibrary";
 export { gatherElderBookSources, buildElderBookOutline, assignElderBookSources, draftElderBookChapters, polishElderBookChapters } from "./elderBook";
 
 // ===== 단어 뜻 조회 =====

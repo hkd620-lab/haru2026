@@ -1,3 +1,4 @@
+import { AI_LIBRARY_BUCKETS, applyAiLibraryMoves, normalizeAiLibraryCategory, type AiLibraryFolder, type AiLibraryBucket } from '../utils/aiLibraryCategory';
 import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
@@ -342,6 +343,10 @@ function BookMaterialPanel({ log }: { log: HaruRecord }) {
 export function AiLibraryPage() {
   const { user } = useAuth();
   const [logs, setLogs] = useState<HaruRecord[]>([]);
+  const [folder, setFolder] = useState<AiLibraryFolder>('all');
+  const [moveBusy, setMoveBusy] = useState<Set<string>>(new Set());
+  const [loadError, setLoadError] = useState(false);
+  const movesRef = useRef(new Map<string, AiLibraryBucket>());
   const [filter, setFilter] = useState<SourceFilter>('all');
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(true);
@@ -359,6 +364,9 @@ export function AiLibraryPage() {
     const generation = requestGuard.startSession();
     requestGenerationRef.current = generation;
     setLogs([]);
+    movesRef.current.clear();
+    setMoveBusy(new Set());
+    setLoadError(false);
     setNextCursor(undefined);
     setSelectedIds(new Set());
     setExpandedId(null);
@@ -376,19 +384,20 @@ export function AiLibraryPage() {
       setLoading(false);
       return () => requestGuard.endSession(generation);
     }
-    firestoreService.getAiLogPage().then((page) => {
+    firestoreService.getAiLogPage(undefined, folder).then((page) => {
       if (!requestGuard.isCurrent(generation)) return;
       setLogs(page.logs);
       setNextCursor(page.nextCursor);
     }).catch((error) => {
       if (requestGuard.isCurrent(generation)) {
+        setLoadError(true);
         console.error('[AiLibraryPage] 조회 실패:', error);
       }
     }).finally(() => {
       if (requestGuard.finishRequest(ticket)) setLoading(false);
     });
     return () => requestGuard.endSession(generation);
-  }, [user?.uid, user?.email, user?.emailVerified]);
+  }, [user?.uid, user?.email, user?.emailVerified, folder]);
 
   const getSource = getAiLibrarySource;
 
@@ -435,9 +444,9 @@ export function AiLibraryPage() {
 
     setLoadingMore(true);
     try {
-      const page = await firestoreService.getAiLogPage(cursor);
+      const page = await firestoreService.getAiLogPage(cursor, folder);
       if (!requestGuard.isCurrent(generation)) return;
-      setLogs(current => mergeAiLibraryLogs(current, page.logs));
+      setLogs(current => applyAiLibraryMoves(mergeAiLibraryLogs(current, page.logs), folder, movesRef.current));
       setNextCursor(page.nextCursor);
     } catch (error) {
       if (requestGuard.isCurrent(generation)) {
@@ -445,6 +454,31 @@ export function AiLibraryPage() {
       }
     } finally {
       if (requestGuard.finishRequest(ticket)) setLoadingMore(false);
+    }
+  };
+
+  const handleMove = async (log: HaruRecord, category: AiLibraryBucket) => {
+    if (category === normalizeAiLibraryCategory(log.aiCategory)) return;
+    const guard = requestGuardRef.current;
+    const generation = requestGenerationRef.current;
+    const ticket = guard.startRequest(generation, `move:${log.id}`);
+    if (!ticket) return;
+    setMoveBusy(current => new Set(current).add(log.id));
+    try {
+      const result = await firestoreService.moveAiLibraryLog(log.id, category, normalizeAiLibraryCategory(log.aiCategory));
+      if (!guard.isCurrent(generation)) return;
+      movesRef.current.set(log.id, result.category);
+      setLogs(current => applyAiLibraryMoves(current, folder, movesRef.current));
+      setSelectedIds(current => { const next = new Set(current); next.delete(log.id); return next; });
+      if (folder !== 'all') setExpandedId(current => current === log.id ? null : current);
+    } catch (error) {
+      if (!guard.isCurrent(generation)) return;
+      console.error('[AiLibraryPage] 폴더 이동 실패:', error);
+      alert('폴더 이동 결과를 확인하지 못했습니다. 새로고침으로 현재 폴더를 확인한 뒤 다시 시도해주세요.');
+    } finally {
+      if (guard.finishRequest(ticket)) {
+        setMoveBusy(current => { const next = new Set(current); next.delete(log.id); return next; });
+      }
     }
   };
 
@@ -490,8 +524,10 @@ export function AiLibraryPage() {
       return;
     }
 
+    const generation = requestGenerationRef.current;
     try {
       const confirmedIds = await firestoreService.deleteAiLogs(new Set(selectedIds));
+      if (!requestGuardRef.current.isCurrent(generation)) return;
 
       // 서버가 요청 개수 전체를 확인한 경우에만 삭제된 항목을 화면에서 제거한다.
       setLogs(prevLogs => prevLogs.filter(log => !confirmedIds.has(log.id)));
@@ -502,6 +538,7 @@ export function AiLibraryPage() {
 
       alert('삭제되었습니다.');
     } catch (error) {
+      if (!requestGuardRef.current.isCurrent(generation)) return;
       console.error('[handleDeleteSelected] 삭제 실패:', error);
       alert('삭제 중 오류가 발생했습니다.');
     }
@@ -511,8 +548,10 @@ export function AiLibraryPage() {
     const title = log.title || '이 대화';
     if (!confirm(`'${title}' 기록을 삭제하시겠습니까?`)) return;
 
+    const generation = requestGenerationRef.current;
     try {
       const confirmedIds = await firestoreService.deleteAiLogs(new Set([log.id]));
+      if (!requestGuardRef.current.isCurrent(generation)) return;
       setLogs(prevLogs => prevLogs.filter(item => !confirmedIds.has(item.id)));
       setSelectedIds(prev => {
         const next = new Set(prev);
@@ -522,6 +561,7 @@ export function AiLibraryPage() {
       if (expandedId === log.id) setExpandedId(null);
       alert('삭제되었습니다.');
     } catch (error) {
+      if (!requestGuardRef.current.isCurrent(generation)) return;
       console.error('[handleDeleteOne] 삭제 실패:', error);
       alert('삭제 중 오류가 발생했습니다.');
     }
@@ -640,6 +680,25 @@ export function AiLibraryPage() {
         </div>
       )}
 
+      <nav aria-label="목적 폴더" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+        {[{ value: 'all', label: '전체' }, ...AI_LIBRARY_BUCKETS].map(item => (
+          <button key={item.value} aria-pressed={folder === item.value}
+            onClick={() => {
+              if (folder === item.value) return;
+              // Invalidate immediately, before the next effect can start a new folder session.
+              requestGuardRef.current.endSession(requestGenerationRef.current);
+              setFolder(item.value as AiLibraryFolder);
+            }}
+            style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid #B8C7DC',
+              background: folder === item.value ? '#1A3C6E' : '#fff', color: folder === item.value ? '#fff' : '#1A3C6E', cursor: 'pointer' }}>
+            {item.label}
+          </button>
+        ))}
+      </nav>
+      <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 16px' }}>
+        자동 분류 준비 중 · 기존 자료는 미분류로 보존됩니다. 폴더를 직접 이동할 수 있습니다.
+      </p>
+      <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 8px' }}>수집 출처 (불러온 기록 기준)</p>
       {/* 필터 버튼 */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
         {filterButtons.map((btn) => (
@@ -676,7 +735,7 @@ export function AiLibraryPage() {
         }}
       />
       <p style={{ margin: '-8px 4px 14px', fontSize: 11, color: '#6B7280' }}>
-        검색과 필터는 현재 불러온 기록에 적용됩니다. 불러온 기록 {logs.length}개
+        검색과 출처 필터는 현재 폴더에서 불러온 기록에 적용됩니다. 불러온 기록 {logs.length}개
       </p>
 
       {/* 목록 */}
@@ -684,8 +743,9 @@ export function AiLibraryPage() {
         <p style={{ color: '#999', fontSize: '14px' }}>불러오는 중...</p>
       ) : filtered.length === 0 ? (
         <p style={{ color: '#999', fontSize: '14px' }}>
-          {logs.length === 0
-            ? '저장된 AI 학습 기록이 없습니다.'
+          {loadError ? '목록을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.'
+            : logs.length === 0
+            ? hasAiLibraryNextPage(nextCursor) ? '아직 이 폴더의 기록을 찾지 못했습니다. 더 불러오기를 눌러 계속 확인하세요.' : '이 폴더에 기록이 없습니다.'
             : '현재 불러온 기록 중 검색·필터 조건에 맞는 기록이 없습니다.'}
         </p>
       ) : (
@@ -759,6 +819,16 @@ export function AiLibraryPage() {
                   {formatDate(log.createdAt)}
                 </span>
               </div>
+              <label onClick={e => e.stopPropagation()} style={{ display: 'block', fontSize: 12, color: '#6B7280', marginBottom: 8 }}>
+                폴더 이동{' '}
+                <select aria-label={`${displayTitle} 폴더 이동`} value={normalizeAiLibraryCategory(log.aiCategory)}
+                  disabled={moveBusy.has(log.id) || deleteMode || isConverting}
+                  onChange={e => { void handleMove(log, e.target.value as AiLibraryBucket); }}
+                  style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #D7DEE8', background: '#fff' }}>
+                  {AI_LIBRARY_BUCKETS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+                {moveBusy.has(log.id) && ' 이동 중...'}
+              </label>
               <p style={{ fontSize: '15px', fontWeight: 700, color: '#222', margin: '0 0 4px', lineHeight: 1.35 }}>
                 {highlightKeyword(displayTitle, trimmedKeyword)}
               </p>
@@ -812,7 +882,7 @@ export function AiLibraryPage() {
                     e.stopPropagation();
                     handleConvertToBookMaterial(log);
                   }}
-                  disabled={isConverting}
+                  disabled={isConverting || moveBusy.has(log.id)}
                   style={{
                     background: material ? '#EEF3FB' : '#1A3C6E',
                     border: material ? '1px solid #B8C7DC' : '1px solid #1A3C6E',
@@ -848,6 +918,7 @@ export function AiLibraryPage() {
                     e.stopPropagation();
                     handleDeleteOne(log);
                   }}
+                  disabled={moveBusy.has(log.id)}
                   style={{
                     background: 'none', border: '1px solid #F1C4C4',
                     borderRadius: 6, padding: '4px 10px',
