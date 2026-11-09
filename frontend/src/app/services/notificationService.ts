@@ -9,6 +9,8 @@ import {
   type DevicePushEnvironment,
   type PushRegistrationResult,
 } from './pushDevice';
+import { getTokenWithMatchingSubscription, isValidVapidPublicKey } from './pushSubscriptionKey';
+import { updateFcmRegistrationAndWaitActive } from './fcmRegistrationUpdate';
 
 const FCM_TOKEN_KEY = 'haru_fcm_token';
 const FCM_SW_URL = '/firebase-messaging-sw.js';
@@ -108,10 +110,20 @@ export function registerThisDevice(userId: string): Promise<PushRegistrationResu
     getPermission: getDevicePermission,
     requestPermission: requestDevicePermission,
     isSupported,
-    getVapidKey: () => import.meta.env.VITE_FIREBASE_VAPID_KEY,
+    // 65바이트 공개키가 아니면 SW 등록·구독 변경 전에 설정 오류로 멈춘다.
+    getVapidKey: () => {
+      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+      return isValidVapidPublicKey(vapidKey) ? vapidKey : undefined;
+    },
     // firebase-messaging-sw.js에 명시적으로 바인딩하여 토큰 생성
-    getSwRegistration: getFcmSwRegistration,
-    getToken: (vapidKey, serviceWorkerRegistration) => getToken(getMessaging(), { vapidKey, serviceWorkerRegistration }),
+    // 등록 경로에서만 FCM SW를 update()하고 activated까지(제한시간) 기다린다. 실패하면 token 실패로 멈춘다.
+    getSwRegistration: async () => updateFcmRegistrationAndWaitActive(await getFcmSwRegistration()),
+    // 구독 공개키를 설정된 VAPID 키와 맞춘 뒤에만 토큰을 받는다(registration 없으면 SDK 기본 SW로 넘기지 않음).
+    getToken: (vapidKey, serviceWorkerRegistration) => getTokenWithMatchingSubscription(
+      vapidKey,
+      serviceWorkerRegistration,
+      (key, registration) => getToken(getMessaging(), { vapidKey: key, serviceWorkerRegistration: registration }),
+    ),
     saveToken: (token) => saveDeviceToken(userId, token),
     cacheToken: (token) => localStorage.setItem(FCM_TOKEN_KEY, token),
     onRegistered: () => { void installForegroundListener(); },

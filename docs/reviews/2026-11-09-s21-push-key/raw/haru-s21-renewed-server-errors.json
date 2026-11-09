@@ -1,0 +1,55 @@
+[
+  {
+    "timestamp": "2026-11-09T13:03:06.093131Z",
+    "status": 204,
+    "successCounts": []
+  },
+  {
+    "timestamp": "2026-11-09T13:03:10.104140Z",
+    "status": 200,
+    "successCounts": []
+  },
+  {
+    "timestamp": "2026-11-09T13:03:11.430132Z",
+    "sanitizedProviderError": "Error: FCM 발송 실패 — 토큰[0]: Error: Device unregistered.\n    at entryFromArgs ([IDENTIFIER])\n    at Object.error ([IDENTIFIER])\n    at [IDENTIFIER]\n    at Array.forEach (<anonymous>)\n    at [IDENTIFIER]\n    at [IDENTIFIER] ([IDENTIFIER])\n    at async [IDENTIFIER] "
+  },
+  {
+    "timestamp": "2026-11-09T13:03:11.430461Z",
+    "sanitizedProviderError": "Error: FCM 발송 실패 — 토큰[1]: Error: Device unregistered.\n    at entryFromArgs ([IDENTIFIER])\n    at Object.error ([IDENTIFIER])\n    at [IDENTIFIER]\n    at Array.forEach (<anonymous>)\n    at [IDENTIFIER]\n    at [IDENTIFIER] ([IDENTIFIER])\n    at async [IDENTIFIER] "
+  },
+  {
+    "timestamp": "2026-11-09T13:03:11.430664Z",
+    "sanitizedProviderError": "Error: FCM 발송 실패 — 토큰[3]: Error: NotRegistered\n    at entryFromArgs ([IDENTIFIER])\n    at Object.error ([IDENTIFIER])\n    at [IDENTIFIER]\n    at Array.forEach (<anonymous>)\n    at [IDENTIFIER]\n    at [IDENTIFIER] ([IDENTIFIER])\n    at async [IDENTIFIER] "
+  },
+  {
+    "timestamp": "2026-11-09T13:03:11.430758Z",
+    "sanitizedProviderError": "Error: FCM 발송 실패 — 토큰[4]: Error: Permission denied by the third party webpush service. Raw server response: \"{\"error\":{\"code\":403,\"message\":\"Permission denied by the third party webpush service.\",\"status\":\"PERMISSION_DENIED\",\"details\":[{\"@type\":\"[IDENTIFIER]\",\"errorCode\":\"[IDENTIFIER]\"}]}}\"\n    at entryFromArgs ([IDENTIFIER])\n    at Object.error ([IDENTIFIER])\n    at [IDENTIFIER]\n    at Array.forEach (<anonymous>)\n    at [IDENTIFIER]\n    at [IDENTIFIER] ([IDENTIFIER])\n    at async [IDENTIFIER] "
+  },
+  {
+    "timestamp": "2026-11-09T13:03:11.546090Z",
+    "status": null,
+    "successCounts": []
+  },
+  {
+    "timestamp": "2026-11-09T13:03:31.745337Z",
+    "status": 200,
+    "successCounts": []
+  },
+  {
+    "timestamp": "2026-11-09T13:03:32.124571Z",
+    "sanitizedProviderError": "Error: FCM 발송 실패 — 토큰[0]: Error: Device unregistered.\n    at entryFromArgs ([IDENTIFIER])\n    at Object.error ([IDENTIFIER])\n    at [IDENTIFIER]\n    at Array.forEach (<anonymous>)\n    at [IDENTIFIER]\n    at [IDENTIFIER] ([IDENTIFIER])\n    at async [IDENTIFIER] "
+  },
+  {
+    "timestamp": "2026-11-09T13:03:32.124854Z",
+    "sanitizedProviderError": "Error: FCM 발송 실패 — 토큰[1]: Error: Device unregistered.\n    at entryFromArgs ([IDENTIFIER])\n    at Object.error ([IDENTIFIER])\n    at [IDENTIFIER]\n    at Array.forEach (<anonymous>)\n    at [IDENTIFIER]\n    at [IDENTIFIER] ([IDENTIFIER])\n    at async [IDENTIFIER] "
+  },
+  {
+    "timestamp": "2026-11-09T13:03:32.124946Z",
+    "sanitizedProviderError": "Error: FCM 발송 실패 — 토큰[3]: Error: Permission denied by the third party webpush service. Raw server response: \"{\"error\":{\"code\":403,\"message\":\"Permission denied by the third party webpush service.\",\"status\":\"PERMISSION_DENIED\",\"details\":[{\"@type\":\"[IDENTIFIER]\",\"errorCode\":\"[IDENTIFIER]\"}]}}\"\n    at entryFromArgs ([IDENTIFIER])\n    at Object.error ([IDENTIFIER])\n    at [IDENTIFIER]\n    at Array.forEach (<anonymous>)\n    at [IDENTIFIER]\n    at [IDENTIFIER] ([IDENTIFIER])\n    at async [IDENTIFIER] "
+  },
+  {
+    "timestamp": "2026-11-09T13:03:32.125032Z",
+    "status": null,
+    "successCounts": []
+  }
+]

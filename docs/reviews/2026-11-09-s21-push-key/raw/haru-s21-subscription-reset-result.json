@@ -1,0 +1,11 @@
+{
+  "recordedAt": "2026-11-09T13:23:13.359Z",
+  "scope": "Execute only after explicit approval: reset one mismatched HARU messaging subscription; no login/records/site storage change; no endpoint/auth/token output",
+  "haruPageCount": 2,
+  "results": [
+    {
+      "removed": true,
+      "subscriptionAbsentAfter": true
+    }
+  ]
+}
