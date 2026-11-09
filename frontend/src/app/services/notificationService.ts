@@ -1,6 +1,14 @@
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 import { doc, setDoc, updateDoc, getDoc, arrayRemove } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import {
+  createForegroundListenerInstaller,
+  registerDeviceForPush,
+  showForegroundNotification,
+  type DevicePermission,
+  type DevicePushEnvironment,
+  type PushRegistrationResult,
+} from './pushDevice';
 
 const FCM_TOKEN_KEY = 'haru_fcm_token';
 const FCM_SW_URL = '/firebase-messaging-sw.js';
@@ -49,82 +57,97 @@ export async function cleanupDuplicateTokens(userId: string): Promise<void> {
   }
 }
 
-export async function requestNotificationPermission(userId: string): Promise<boolean> {
+// 이 기기의 알림 권한 상태. Notification API가 없으면(아이폰 Safari 탭 등) 'unsupported'.
+function getDevicePermission(): DevicePermission {
+  if (typeof Notification === 'undefined') return 'unsupported';
+  return Notification.permission;
+}
+
+function requestDevicePermission(): Promise<DevicePermission> {
+  return new Promise((resolve, reject) => {
+    try {
+      // 구형 Safari는 콜백 방식만 지원한다.
+      const result = Notification.requestPermission((permission) => resolve(permission));
+      if (result && typeof result.then === 'function') result.then(resolve, reject);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+function isIOSDevice(): boolean {
+  const ua = navigator.userAgent || '';
+  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function isStandaloneDisplay(): boolean {
+  const nav = navigator as Navigator & { standalone?: boolean };
+  return nav.standalone === true || window.matchMedia?.('(display-mode: standalone)').matches === true;
+}
+
+// 설정 화면 표시용: 이 기기의 지원·권한·설치 상태(Firestore를 읽지 않는다).
+export async function getThisDevicePushEnvironment(): Promise<DevicePushEnvironment> {
+  let supported = false;
   try {
-    const supported = await isSupported();
-    if (!supported) return false;
-
-    const permission = await Notification.requestPermission();
-
-    if (permission !== 'granted') {
-      console.log('알림 권한이 거부되었습니다.');
-      return false;
-    }
-
-    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
-    if (!vapidKey) {
-      console.error('VAPID 키가 설정되지 않았습니다.');
-      return false;
-    }
-
-    // firebase-messaging-sw.js에 명시적으로 바인딩하여 토큰 생성
-    const swRegistration = await getFcmSwRegistration();
-    const messaging = getMessaging();
-    const token = await getToken(messaging, {
-      vapidKey,
-      serviceWorkerRegistration: swRegistration,
-    });
-
-    if (!token) {
-      console.log('FCM 토큰 생성 실패');
-      return false;
-    }
-
-    console.log('FCM 토큰 생성 성공! (아래 토큰을 복사하세요):');
-    console.log(token);
-
-    const settingsRef = doc(db, `users/${userId}/settings/settings`);
-    const settingsDoc = await getDoc(settingsRef);
-    const existingTokens: string[] = settingsDoc.exists()
-      ? (settingsDoc.data().fcmTokens || [])
-      : [];
-
-    // 중복 완전 제거
-    const uniqueTokens = Array.from(new Set([...existingTokens, token]));
-
-    // 최대 5개 유지
-    const finalTokens = uniqueTokens.slice(-5);
-
-    // 시간대가 아직 없는 사용자(이 기능 전 가입)는 토큰 등록 때 기기 시간대를 채운다. 이미 있으면 덮어쓰지 않는다.
-    const deviceTimeZone = getDeviceTimeZone();
-    const hasTimeZone = settingsDoc.exists() && typeof settingsDoc.data().notificationTimeZone === 'string';
-    await setDoc(settingsRef, {
-      fcmTokens: finalTokens,
-      ...(deviceTimeZone && !hasTimeZone ? { notificationTimeZone: deviceTimeZone } : {}),
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
-
-    localStorage.setItem(FCM_TOKEN_KEY, token);
-
-    console.log(`✅ 토큰 저장 완료! 총 ${finalTokens.length}개 기기`);
-
-    onMessage(messaging, (payload) => {
-      console.log('[포그라운드] 메시지 수신:', payload);
-      const title = payload.notification?.title || 'HARU';
-      const body = payload.notification?.body || '';
-      new Notification(title, {
-        body: body,
-        icon: '/icons/icon-grape-v1-192.png',
-        badge: '/icons/badge-grape-v1-96.png',
-        tag: 'haru-notification',
-      });
-    });
-
-    return true;
-  } catch (error) {
-    console.error('알림 권한 요청 실패:', error);
-    return false;
+    supported = await isSupported();
+  } catch {
+    supported = false;
   }
+  return {
+    supported,
+    permission: getDevicePermission(),
+    isIOS: isIOSDevice(),
+    standalone: isStandaloneDisplay(),
+  };
+}
+
+// 이 기기를 계정의 알림 기기로 등록한다. 권한·토큰 발급·저장이 모두 끝나야 ok: true.
+// 버튼 클릭 핸들러에서 곧바로 호출해야 iOS 권한 창이 뜬다.
+export function registerThisDevice(userId: string): Promise<PushRegistrationResult> {
+  return registerDeviceForPush<ServiceWorkerRegistration>({
+    getPermission: getDevicePermission,
+    requestPermission: requestDevicePermission,
+    isSupported,
+    getVapidKey: () => import.meta.env.VITE_FIREBASE_VAPID_KEY,
+    // firebase-messaging-sw.js에 명시적으로 바인딩하여 토큰 생성
+    getSwRegistration: getFcmSwRegistration,
+    getToken: (vapidKey, serviceWorkerRegistration) => getToken(getMessaging(), { vapidKey, serviceWorkerRegistration }),
+    saveToken: (token) => saveDeviceToken(userId, token),
+    cacheToken: (token) => localStorage.setItem(FCM_TOKEN_KEY, token),
+    onRegistered: () => { void installForegroundListener(); },
+  });
+}
+
+export async function requestNotificationPermission(userId: string): Promise<boolean> {
+  const result = await registerThisDevice(userId);
+  if (!result.ok) console.log(`알림 기기 등록 실패: ${result.reason}`);
+  return result.ok;
+}
+
+// 토큰을 계정 settings의 fcmTokens에 저장한다(기존 저장 경로·최대 5개 규칙 유지). 실패하면 예외를 던진다.
+async function saveDeviceToken(userId: string, token: string): Promise<void> {
+  const settingsRef = doc(db, `users/${userId}/settings/settings`);
+  const settingsDoc = await getDoc(settingsRef);
+  const existingTokens: string[] = settingsDoc.exists()
+    ? (settingsDoc.data().fcmTokens || [])
+    : [];
+
+  // 중복 완전 제거
+  const uniqueTokens = Array.from(new Set([...existingTokens, token]));
+
+  // 최대 5개 유지
+  const finalTokens = uniqueTokens.slice(-5);
+
+  // 시간대가 아직 없는 사용자(이 기능 전 가입)는 토큰 등록 때 기기 시간대를 채운다. 이미 있으면 덮어쓰지 않는다.
+  const deviceTimeZone = getDeviceTimeZone();
+  const hasTimeZone = settingsDoc.exists() && typeof settingsDoc.data().notificationTimeZone === 'string';
+  await setDoc(settingsRef, {
+    fcmTokens: finalTokens,
+    ...(deviceTimeZone && !hasTimeZone ? { notificationTimeZone: deviceTimeZone } : {}),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+
+  console.log(`✅ 토큰 저장 완료! 총 ${finalTokens.length}개 기기`);
 }
 
 // 기기 시간대(IANA, 예: 'Asia/Seoul'). 기록 알림이 이 시간대의 시각·날짜로 판정된다(Functions scheduledNotificationCore).
@@ -186,21 +209,19 @@ export async function removeCurrentToken(userId: string): Promise<void> {
   }
 }
 
-// 포그라운드 메시지 수신 리스너 (앱이 켜져 있을 때)
+// 포그라운드 메시지 수신 리스너 (앱이 켜져 있을 때). onMessage는 한 번만 등록한다.
+// iOS 설치 PWA는 new Notification을 지원하지 않아 서비스워커 showNotification으로 표시한다.
+const installForegroundListener = createForegroundListenerInstaller({
+  isSupported,
+  subscribe: (handler) => { onMessage(getMessaging(), handler); },
+  show: (payload) => showForegroundNotification(payload, {
+    getPermission: getDevicePermission,
+    getRegistration: getFcmSwRegistration,
+    createWindowNotification: (title, options) => { new Notification(title, options); },
+  }),
+});
+
 export function setupForegroundMessageListener(): void {
-  isSupported().then((supported) => {
-    if (!supported) return;
-    const messaging = getMessaging();
-    onMessage(messaging, (payload) => {
-      console.log('[FCM] 포그라운드 메시지 수신:', payload);
-      const { title, body } = payload.notification || {};
-      if (Notification.permission === 'granted' && title) {
-        new Notification(title, {
-          body: body,
-          icon: '/favicon.ico',
-        });
-      }
-    });
-  }).catch(() => {});
+  void installForegroundListener();
 }
 

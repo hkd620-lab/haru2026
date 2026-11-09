@@ -1,0 +1,18 @@
+import pathlib,subprocess,json,datetime,sys
+pr=sys.argv[1]
+base=pathlib.Path('/private/tmp/haru-iphone-push-independent-'+sys.argv[2])
+cwd='/private/tmp/haru-iphone-push-repair-20261109'
+sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=cwd,text=True).strip()
+prompt=f'''독립 Claude 설계·완료 검토자입니다. 실행자와 별도 세션이며 파일 수정 금지. 저장소 {cwd}, PR https://github.com/hkd620-lab/haru2026/pull/{pr}, 검토 HEAD {sha}. 저장소 AGENTS.md·CLAUDE.md·docs/HARU2026_Slack_운영정책.md8.1과 PR diff/본문/검증 근거 docs/reviews/2026-11-09-iphone-push/ 및 링크를 읽고 독립적으로 검토하세요. 사용자 현재 범위는 아이폰 알림 미수신 원인 해결과 남은 실기기 검증3건 완료입니다. 변경의 정확성·기기 상태 오표시·사용자 제스처 권한 요청·실패와 재시도·계정 변경/토큰 캐시·포그라운드 수신과 중복·다른 사용자의 알림 발송 금지·기존 설정 보존·검증의 의미·규모 및 멈춤조건을 평가하세요. Router/home/Functions/Rules/인증/결제/로고/경로 변경 허용을 가정하지 마세요. 운영 실수신은 아직 후속 시험이며 코드만으로 운영완료 판정하지 마세요. 승인/수정 후 승인/재설계 중 하나를 첫 줄에 명시하고 근거·필수수정·검증한계·규모·멈춤조건을 보고하세요. 통과를 유도하는 재롤링 금지, 모든 결과 원문은 보존합니다. Bash는 read-only 조회/이미 있는 합성 테스트에만 쓰고 파일 수정·Git 변경·게시·배포 금지.'''
+if sys.argv[2]!='first':
+ prior=json.loads(pathlib.Path('/private/tmp/haru-iphone-push-independent-first.raw.json').read_text()).get('result','')
+ cc=json.loads(pathlib.Path('/private/tmp/haru-iphone-push-cc-2.raw.json').read_text()).get('result','')
+ prompt+='\n이전 판정 원문(보존, 변경 반영 재검토):\n'+prior+'\nCC 반영 내역 원문:\n'+cc+'\n상위 추가실패재현: /private/tmp/haru-push-rejection-probe.mjs. 6500eac8은 earlyUnhandledRejection:true, 보완본은 false. 실제파일과 새회귀시험으로 확인하세요. 상위 타입검사 baseline과 candidate는 각각 exit2/250줄이며 행번호정규화 진단multiset 동일. 전체타입검사통과로 오인하지말고 새오류여부만평가.'
+base.with_suffix('.prompt.txt').write_text(prompt)
+args=['claude','-p','--permission-mode','plan','--permission-prompts','none','--tools','Read,Glob,Grep,Bash','--disallowedTools','Edit,Write,NotebookEdit','--no-session-persistence','--strict-mcp-config','--output-format','json','--add-dir','/private/tmp','--allowedTools','Read,Glob,Grep,Bash(git diff *),Bash(git show *),Bash(git log *),Bash(git status *),Bash(git rev-parse *),Bash(gh pr view *),Bash(gh api *),Bash(cat *),Bash(rg *),Bash(ls *),Bash(node --test *)']
+meta={'startedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'cwd':cwd,'head':sha,'pr':pr,'command':args}
+base.with_suffix('.meta.json').write_text(json.dumps(meta,indent=2))
+with base.with_suffix('.raw.json').open('w') as o,base.with_suffix('.err.log').open('w') as e:
+ p=subprocess.run(args,input=prompt,text=True,cwd=cwd,stdout=o,stderr=e)
+meta.update(exitCode=p.returncode,finishedAt=datetime.datetime.now(datetime.timezone.utc).isoformat())
+base.with_suffix('.meta.json').write_text(json.dumps(meta,indent=2));print(json.dumps(meta))
