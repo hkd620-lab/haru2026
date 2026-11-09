@@ -3,6 +3,7 @@
   "description": "Cloud Functions for Firebase",
   "main": "lib/index.js",
   "scripts": {
+    "test:ai-library-classification": "node --test test/aiLibraryJevChoice.test.js test/aiLibraryClassification.test.js",
     "test:epub-content": "npm run build && node --test test/epubContent.test.js",
     "build": "tsc && mkdir -p lib/fonts && cp src/fonts/*.ttf lib/fonts/",
     "test:reading-ai": "npm run build && node --test test/readingAi.test.js",
