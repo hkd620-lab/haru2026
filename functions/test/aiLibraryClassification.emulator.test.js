@@ -73,3 +73,81 @@ test('delete/edit/manual-clear immediately before durable permit block transmiss
   assert.equal(job.reservedMicrousd,2753);await runner.step(plan.manifest,1);assert.equal(f.calls,0);
  }
 });
+
+test('exact durable restoration preserves absent/null and arbitrary supported Firestore metadata',async()=>{
+ const {Timestamp,GeoPoint}=require('firebase-admin/firestore');
+ for(const fields of [{},{aiCategory:null,aiCategorySource:null,aiCategoryAuto:null},{aiCategory:'legacy-value',aiCategorySource:'auto',aiCategoryAuto:{model:'old-model',nested:{empty:[],flag:false,nan:NaN},stamp:new Timestamp(123,456789),location:new GeoPoint(12,34),bytes:Buffer.from([0,3,255]),reference:db.doc('synthetic/reference')}}]){
+  const f=await fixture(1);await f.p.record('0').update({...fields,aiCategoryUpdatedAt:new Timestamp(50,20),book:{title:'Synthetic unchanged'},source:'fixture'});
+  const before=(await f.p.record('0').get()).data();const plan=await f.prepare();await f.approve(plan);
+  const applied=await f.service(f.context,{action:'step',manifestHash:plan.manifestHash});assert.equal(applied.items[0].status,'applied');
+  const changed=await f.p.record('0').get();const receiptDoc=await f.p.restoration(plan.manifestHash,'0').get();const receipt=receiptDoc.data();
+  assert.ok(changed.updateTime.isEqual(receiptDoc.createTime));assert.ok(receiptDoc.updateTime.isEqual(receiptDoc.createTime));assert.ok(changed.data().aiCategoryAuto.appliedAt.isEqual(receipt.appliedAt));assert.ok(receipt.applied.aiCategoryAuto.appliedAt.isEqual(receipt.appliedAt));
+  // Cleanup must not construct a provider or inspect credentials, even when a factory exists.
+  await f.p.runtime.set({enabled:false,credentialsReady:false});await f.p.approval(plan.manifestHash).delete();
+  const cleanup=createClassificationService({db:()=>db,providerForOwner:()=>{throw Error('provider factory must not be called')}});
+  const result=await cleanup(f.context,{action:'restore',manifestHash:plan.manifestHash});assert.equal(result.items[0].restoration.status,'restored');
+  assert.deepEqual((await f.p.record('0').get()).data(),before);
+  await cleanup(f.context,{action:'restore',manifestHash:plan.manifestHash});assert.deepEqual((await f.p.record('0').get()).data(),before);
+  assert.equal(result.reservedMicrousd,2753);assert.equal((await f.p.job(plan.manifestHash).parent.parent.collection('attempts').get()).size,1);assert.equal(f.calls,1);
+ }
+});
+test('durable restore skips manual move, new AI, changed/reverted content, deleted/recreated identical record',async()=>{
+ for(const kind of ['manual','new-auto','content','reverted-content','unrelated','delete','recreate']){
+  const f=await fixture(1);const plan=await f.prepare();await f.approve(plan);await f.service(f.context,{action:'step',manifestHash:plan.manifestHash});
+  const applied=(await f.p.record('0').get()).data();
+  if(kind==='manual')await f.p.record('0').update({aiCategory:'health',aiCategorySource:'manual',aiCategoryUpdatedAt:new Date()});
+  if(kind==='new-auto')await f.p.record('0').update({'aiCategoryAuto.manifestHash':'newer-job'});
+  if(kind==='content'||kind==='reverted-content'){await f.p.record('0').update({content:'Changed synthetic text'});if(kind==='reverted-content')await f.p.record('0').update({content:applied.content});}
+  if(kind==='unrelated')await f.p.record('0').update({book:{synthetic:true}});
+  if(kind==='delete'||kind==='recreate'){await f.p.record('0').delete();if(kind==='recreate')await f.p.record('0').set(applied);}
+  const before=(await f.p.record('0').get()).data();const result=await f.service(f.context,{action:'restore',manifestHash:plan.manifestHash});
+  assert.equal(result.items[0].restoration.status,'skipped',kind);assert.deepEqual((await f.p.record('0').get()).data(),before,kind);
+  const retry=await f.service(f.context,{action:'restore',manifestHash:plan.manifestHash});assert.deepEqual(retry.items[0].restoration,result.items[0].restoration);
+ }
+});
+test('final apply captures latest pre-state, while oversized metadata refuses application without truncation',async()=>{
+ const f=await fixture(1);const plan=await f.prepare();await f.approve(plan);
+ f.provider.classify=async()=>{await f.p.record('0').update({aiCategory:'life',aiCategorySource:'auto',aiCategoryAuto:{model:'intervening',extra:[null,{v:2}]}});return {decision:{status:'classified',category:'ai-tech',confidence:.95}}};
+ await f.service(f.context,{action:'step',manifestHash:plan.manifestHash});await f.service(f.context,{action:'restore',manifestHash:plan.manifestHash});
+ assert.deepEqual((await f.p.record('0').get()).data().aiCategoryAuto,{model:'intervening',extra:[null,{v:2}]});
+ const g=await fixture(1);await g.p.record('0').update({aiCategoryAuto:{oversized:'x'.repeat(32768)}});const before=(await g.p.record('0').get()).data();const big=await g.prepare();await g.approve(big);
+ const result=await g.service(g.context,{action:'step',manifestHash:big.manifestHash});assert.equal(result.items[0].reason,'restore_snapshot_unavailable');assert.deepEqual((await g.p.record('0').get()).data(),before);assert.equal((await g.p.restoration(big.manifestHash,'0').get()).exists,false);
+});
+test('legacy or missing durable snapshots explicitly unavailable; new owner cannot restore',async()=>{
+ for(const kind of ['legacy','missing','malformed']){const f=await fixture(1);const plan=await f.prepare();await f.approve(plan);await f.service(f.context,{action:'step',manifestHash:plan.manifestHash});
+  if(kind==='legacy'){const saved=(await f.p.job(plan.manifestHash).get()).data();delete saved.items[0].recordIdentity;saved.items[0].previous={category:null,source:null,auto:null};await f.p.job(plan.manifestHash).set(saved);}
+  if(kind==='missing')await f.p.restoration(plan.manifestHash,'0').delete();
+  if(kind==='malformed')await f.p.restoration(plan.manifestHash,'0').update({'before.aiCategory':{present:true}});
+  const before=(await f.p.record('0').get()).data();const result=await f.service(f.context,{action:'restore',manifestHash:plan.manifestHash});assert.equal(result.items[0].restoration.status,'unavailable');assert.deepEqual((await f.p.record('0').get()).data(),before);
+  await assert.rejects(f.service({...f.context,uid:'other-synthetic'},{action:'restore',manifestHash:plan.manifestHash}),/plan_not_found/);
+ }
+});
+test('partial interrupted restore is resumable and racing restore/cancel/recover never reclaims attempts',async()=>{
+ const f=await fixture(4);const plan=await f.prepare();await f.approve(plan);await f.service(f.context,{action:'step',manifestHash:plan.manifestHash,limit:5});
+ const base=createClassificationStore(db,f.owner);let transactions=0;
+ const interrupted={transaction:work=>{if(++transactions===3)throw Error('synthetic interruption');return base.transaction(work)}};
+ const runner=new ClassificationRunner(interrupted,{owner:async()=>f.owner},f.provider);
+ await assert.rejects(runner.restore(plan.manifest),/synthetic interruption/);
+ assert.equal((await f.p.job(plan.manifestHash).get()).data().items.filter(i=>i.restoration?.status==='restored').length,1);
+ await Promise.all([f.service(f.context,{action:'restore',manifestHash:plan.manifestHash,limit:2}),f.service(f.context,{action:'restore',manifestHash:plan.manifestHash,limit:2}),f.service(f.context,{action:'cancel',manifestHash:plan.manifestHash}),f.service(f.context,{action:'recover',manifestHash:plan.manifestHash})]);
+ const result=await f.service(f.context,{action:'restore',manifestHash:plan.manifestHash});assert.ok(result.items.every(i=>i.restoration.status==='restored'));assert.equal(result.reservedMicrousd,4*2753);
+ await f.p.runtime.set({enabled:true,credentialsReady:true});const next=await f.prepare();await f.approve(next);const subsequent=await f.service(f.context,{action:'step',manifestHash:next.manifestHash,limit:5});assert.equal(f.calls,4);assert.ok(subsequent.items.every(i=>i.reason==='prior_attempt_no_retry'));
+});
+test('restore in flight stops late apply; recreation before permit/result is fenced by creation identity',async()=>{
+ const f=await fixture(2);const plan=await f.prepare();await f.approve(plan);await f.service(f.context,{action:'step',manifestHash:plan.manifestHash});
+ let release;f.provider.classify=()=>new Promise(resolve=>release=resolve);
+ const pending=f.service(f.context,{action:'step',manifestHash:plan.manifestHash});while(!release)await new Promise(r=>setTimeout(r,1));
+ await f.service(f.context,{action:'restore',manifestHash:plan.manifestHash});release({decision:{status:'classified',category:'life',confidence:1}});const done=await pending;assert.equal(done.items[0].restoration.status,'restored');assert.notEqual(done.items[1].status,'applied');
+ for(const phase of ['permit','apply']){const g=await fixture(1);const plan=await g.prepare();await g.approve(plan);const replace=async()=>{const old=(await g.p.record('0').get()).data();await g.p.record('0').delete();await g.p.record('0').set(old)};
+  const base=createClassificationStore(db,g.owner);let count=0;const wrapped={transaction:async work=>{if(++count===3&&phase==='permit')await replace();return base.transaction(work)}};
+  if(phase==='apply')g.provider.classify=async()=>{await replace();return {decision:{status:'classified',category:'life',confidence:1}}};
+  const runner=new ClassificationRunner(wrapped,{owner:async()=>g.owner},g.provider);const job=await runner.step(plan.manifest);assert.equal(job.items[0].status,'skipped');assert.equal((await g.p.record('0').get()).data().aiCategory,undefined);
+ }
+});
+test('concurrent manual move always wins against category restoration',async()=>{
+ for(let i=0;i<3;i++){const f=await fixture(1);const plan=await f.prepare();await f.approve(plan);await f.service(f.context,{action:'step',manifestHash:plan.manifestHash});
+  await Promise.all([f.service(f.context,{action:'restore',manifestHash:plan.manifestHash}),f.p.record('0').update({aiCategory:'health',aiCategorySource:'manual'})]);
+  const current=(await f.p.record('0').get()).data();assert.equal(current.aiCategory,'health');assert.equal(current.aiCategorySource,'manual');
+  await f.service(f.context,{action:'restore',manifestHash:plan.manifestHash});assert.equal((await f.p.record('0').get()).data().aiCategory,'health');
+ }
+});

@@ -69,10 +69,19 @@ export interface ClassificationAuthority {
 export type ItemStatus = 'pending' | 'dispatched' | 'applied' | 'review' | 'skipped' | 'unknown';
 export interface ClassificationItem extends PlannedRecord {
   status: ItemStatus; dispatchedAt?: number; permittedAt?: number;
+  /** Creation identity at claim; do not apply to a deleted/recreated document. */
+  recordIdentity?: string;
+  restoration?: ClassificationRestoration;
+  /** Legacy lossy snapshots are never used for restoration. */
   previous?: { category: unknown; source: unknown; auto: unknown };
 }
+export interface ClassificationRestoration {
+  status: 'restored' | 'skipped' | 'unavailable'; reason?: string;
+}
+export type ClassificationCategoryPatch = Pick<ClassificationRecord, 'aiCategory' | 'aiCategorySource' | 'aiCategoryAuto'>;
 export interface ClassificationJob {
   manifestHash: string; owner: string; cancelled: boolean; reservedMicrousd: number; items: ClassificationItem[];
+  restoration?: { requested: true };
 }
 export interface ClassificationTransaction {
   /** Read server-private runtime/approval/revocation documents in THIS serializable transaction.
@@ -85,8 +94,11 @@ export interface ClassificationTransaction {
   getJob(key: string): Promise<ClassificationJob | undefined> | ClassificationJob | undefined;
   putJob(key: string, job: ClassificationJob): void;
   getRecord(owner: string, id: string): Promise<ClassificationRecord | undefined> | ClassificationRecord | undefined;
-  /** Patch ONLY these category fields; preserve body, date, source and book data. */
-  patchRecord(owner: string, id: string, patch: Pick<ClassificationRecord, 'aiCategory' | 'aiCategorySource' | 'aiCategoryAuto'>): void;
+  getRecordIdentity(owner: string, id: string): Promise<string | undefined> | string | undefined;
+  /** Snapshot exact category field presence/values and patch them atomically. False means no write. */
+  applyRecord(owner: string, id: string, manifestHash: string, patch: ClassificationCategoryPatch): Promise<boolean>;
+  /** Restore ONLY the three category fields if the original applied revision still owns the record. */
+  restoreRecord(owner: string, id: string, manifestHash: string, contentHash: string): Promise<ClassificationRestoration>;
 }
 export interface ClassificationStore {
   /** Durable SERIALIZABLE transaction. Resolve only after commit. No network calls in callback.
@@ -138,8 +150,9 @@ export class ClassificationRunner {
         const item = job.items.find(r => r.status === 'pending');
         if (!item) return null;
         const record = await tx.getRecord(manifest.owner, item.id);
+        const identity = await tx.getRecordIdentity(manifest.owner, item.id);
         const payload = record ? prepareClassificationPayload(record) : { text: '', reason: 'deleted' };
-        if (!record || contentHash(record) !== item.contentHash || payload.reason || hash(payload.text) !== item.payloadHash) {
+        if (!record || !identity || contentHash(record) !== item.contentHash || payload.reason || hash(payload.text) !== item.payloadHash) {
           item.status = 'skipped'; item.reason = payload.reason || 'content_changed'; tx.putJob(key, job); return { skip: true as const };
         }
         const attemptKey = hash(JSON.stringify([manifest.owner, item.id, item.contentHash, item.payloadHash, manifest.model, manifest.policy]));
@@ -150,12 +163,7 @@ export class ClassificationRunner {
         tx.putAttempt(attemptKey, { manifestHash: key });
         job.reservedMicrousd += this.provider.maxRequestCostMicrousd;
         item.status = 'dispatched'; item.dispatchedAt = this.now();
-        // Existing auto metadata is not duplicated here: only safe allowlisted primitives retained.
-        const old = record.aiCategoryAuto as Record<string, unknown> | undefined;
-        item.previous = { category: isAiLibraryCategory(record.aiCategory) ? record.aiCategory : null,
-          source: record.aiCategorySource === 'auto' ? 'auto' : null,
-          auto: old && typeof old === 'object' ? { model: old.model === CLASSIFICATION_MODEL ? old.model : null,
-            confidence: typeof old.confidence === 'number' && Number.isFinite(old.confidence) ? old.confidence : null } : null };
+        item.recordIdentity = identity;
         tx.putJob(key, job);
         return { skip: false as const, id: item.id, text: payload.text };
       });
@@ -175,7 +183,7 @@ export class ClassificationRunner {
           // content edit or manual decision before commit must stop transmission too.
           const current = await tx.getRecord(manifest.owner, item.id);
           const payload = current ? prepareClassificationPayload(current) : { text: '', reason: 'deleted' };
-          if (!current || current.aiCategorySource === 'manual' || contentHash(current) !== item.contentHash ||
+          if (!current || !item.recordIdentity || await tx.getRecordIdentity(manifest.owner, item.id) !== item.recordIdentity || current.aiCategorySource === 'manual' || contentHash(current) !== item.contentHash ||
               payload.reason || hash(payload.text) !== item.payloadHash) {
             item.status = 'skipped'; item.reason = 'record_changed_before_permit';
             // Keep the global attempt and conservative reservation. Never auto-retry.
@@ -196,7 +204,7 @@ export class ClassificationRunner {
         if (!authorized || !result || (result.decision.status === 'review' && ['transport_error', 'invalid_response'].includes(result.decision.reason))) { item.status = 'unknown'; item.reason = 'dispatch_outcome_unknown'; }
         else {
           const record = await tx.getRecord(manifest.owner, item.id);
-          if (job.cancelled || manifest.expiresAt <= this.now() || !record || record.aiCategorySource === 'manual' || contentHash(record) !== item.contentHash) {
+          if (job.cancelled || manifest.expiresAt <= this.now() || !record || !item.recordIdentity || await tx.getRecordIdentity(manifest.owner, item.id) !== item.recordIdentity || record.aiCategorySource === 'manual' || contentHash(record) !== item.contentHash) {
             item.status = 'skipped'; item.reason = job.cancelled ? 'cancelled' : 'record_changed';
           } else if (result.decision.status !== 'classified' || !isAiLibraryCategory(result.decision.category) ||
             !Number.isFinite(result.decision.confidence) || result.decision.confidence < 0.85 || result.decision.confidence > 1) {
@@ -204,10 +212,10 @@ export class ClassificationRunner {
               ['invalid_input', 'missing_transport', 'out_of_scope', 'low_confidence', 'ambiguous'].includes(result.decision.reason)
               ? result.decision.reason : 'classification_review';
           } else {
-            tx.patchRecord(manifest.owner, item.id, { aiCategory: result.decision.category, aiCategorySource: 'auto',
+            const applied = await tx.applyRecord(manifest.owner, item.id, key, { aiCategory: result.decision.category, aiCategorySource: 'auto',
               aiCategoryAuto: { model: manifest.model, policy: manifest.policy, confidence: result.decision.confidence,
                 contentHash: item.contentHash, manifestHash: key } });
-            item.status = 'applied'; item.reason = null;
+            item.status = applied ? 'applied' : 'review'; item.reason = applied ? null : 'restore_snapshot_unavailable';
           }
         }
         tx.putJob(key, job);
@@ -220,6 +228,39 @@ export class ClassificationRunner {
     if (await this.authority.owner() !== manifest.owner) throw new Error('approval_required');
     const key = classificationManifestHash(manifest);
     await this.store.transaction(async tx => { const job = await tx.getJob(key) ?? { manifestHash: key, owner: manifest.owner, cancelled: false, reservedMicrousd: 0, items: manifest.records.map(r => ({ ...r, status: 'pending' as const })) }; if (job) { if (job.owner !== manifest.owner) throw new Error('approval_required'); job.cancelled = true; tx.putJob(key, job); } });
+  }
+  /** Explicit category restoration also stops this job. It never recalls requests or refunds cost.
+   * Each item commits independently with its terminal outcome, so interruption/retry is safe.
+   */
+  async restore(input: ClassificationManifest, limit = 25): Promise<ClassificationJob> {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 25) throw new Error('invalid_restore_limit');
+    const manifest = JSON.parse(JSON.stringify(input)) as ClassificationManifest;
+    if (await this.authority.owner() !== manifest.owner) throw new Error('approval_required');
+    const key = classificationManifestHash(manifest);
+    await this.store.transaction(async tx => {
+      const job = await tx.getJob(key);
+      if (!job) throw new Error('job_not_found');
+      if (job.owner !== manifest.owner || job.manifestHash !== key) throw new Error('approval_required');
+      job.cancelled = true;
+      job.restoration = { requested: true };
+      tx.putJob(key, job);
+    });
+    for (let i = 0; i < limit; i++) {
+      const processed = await this.store.transaction(async tx => {
+        const job = await tx.getJob(key);
+        if (!job || job.owner !== manifest.owner || job.manifestHash !== key || !job.cancelled || !job.restoration?.requested) throw new Error('approval_required');
+        const item = job.items.find(row => row.status === 'applied' && !row.restoration);
+        if (!item) return false;
+        const planned = manifest.records.find(row => row.id === item.id);
+        item.restoration = !item.recordIdentity || !planned || planned.contentHash !== item.contentHash || planned.payloadHash !== item.payloadHash
+          ? { status: 'unavailable', reason: 'legacy_snapshot_unavailable' }
+          : await tx.restoreRecord(manifest.owner, item.id, key, item.contentHash);
+        tx.putJob(key, job);
+        return true;
+      });
+      if (!processed) break;
+    }
+    return this.store.transaction(async tx => (await tx.getJob(key))!);
   }
   /** Operator recovery only. Never resubmit possibly billed requests. No reservation refunds. */
   async recover(input: ClassificationManifest): Promise<void> {

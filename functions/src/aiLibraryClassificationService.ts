@@ -33,10 +33,10 @@ export function createClassificationService(options: ClassificationServiceOption
     const owner = assertClassificationContext(context, options.emulator);
     const action = input?.action;
     const configured = !!(options.provider || options.providerForOwner);
-    if (!['capability', 'prepare', 'review', 'approve', 'step', 'cancel', 'recover', 'status'].includes(String(action))) throw new Error('invalid_action');
+    if (!['capability', 'prepare', 'review', 'approve', 'step', 'cancel', 'recover', 'restore', 'status'].includes(String(action))) throw new Error('invalid_action');
     // Refuse record and credential access before constructing a database when unconfigured.
     if (action === 'capability' && !configured) return { enabled: false, reason: 'server_unconfigured' };
-    if (!configured && !['cancel', 'recover', 'status'].includes(String(action))) throw new Error('server_unconfigured');
+    if (!configured && !['cancel', 'recover', 'restore', 'status'].includes(String(action))) throw new Error('server_unconfigured');
     const db = options.db();
     const p = classificationPaths(db, owner);
     const requireRuntime = async (tx: FirebaseFirestore.Transaction) => {
@@ -75,7 +75,7 @@ export function createClassificationService(options: ClassificationServiceOption
     if (typeof input.manifestHash !== 'string' || !/^[a-f0-9]{64}$/.test(input.manifestHash)) throw new Error('invalid_manifest');
     const key = input.manifestHash;
     const manifest = await db.runTransaction(async tx => {
-      if (!['cancel', 'recover', 'status'].includes(String(action))) await requireRuntime(tx);
+      if (!['cancel', 'recover', 'restore', 'status'].includes(String(action))) await requireRuntime(tx);
       const plan = (await tx.get(p.plan(key))).data()?.manifest as ClassificationManifest | undefined;
       if (!plan || plan.owner !== owner || classificationManifestHash(plan) !== key) throw new Error('plan_not_found');
       return plan;
@@ -114,9 +114,10 @@ export function createClassificationService(options: ClassificationServiceOption
     });
     const store = createClassificationStore(db, owner);
     // Cleanup never calls this placeholder and remains available after runtime disable/revocation.
-    const provider: ClassificationProvider = options.provider ?? options.providerForOwner?.(owner) ?? { model: 'jev-1.14.0', maxRequestCostMicrousd: 2753, classify: async () => { throw new Error('server_unconfigured'); } };
+    const provider: ClassificationProvider = (action === 'step' ? options.provider ?? options.providerForOwner?.(owner) : undefined) ?? { model: 'jev-1.14.0', maxRequestCostMicrousd: 2753, classify: async () => { throw new Error('server_unconfigured'); } };
     const runner = new ClassificationRunner(store, { owner: async () => owner }, provider, now);
     if (action === 'step') { const limit = input.limit ?? 1; if (!Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 5) throw new Error('invalid_step_limit'); return runner.step(manifest, limit as number); }
+    if (action === 'restore') { const limit = input.limit ?? 25; if (!Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 25) throw new Error('invalid_restore_limit'); return runner.restore(manifest, limit as number); }
     if (action === 'cancel') { await runner.cancel(manifest); await p.approval(key).delete(); return { cancelled: true }; }
     if (action === 'recover') { await runner.recover(manifest); return { recovered: true }; }
     return { manifestHash: key, job: (await p.job(key).get()).data() ?? null };

@@ -4,7 +4,7 @@ export type ClassificationRecord = { id: string; contentHash: string; payloadHas
 export type ClassificationManifest = { owner: string; model: string; policy: string; expiresAt: number; budgetMicrousd: number; records: ClassificationRecord[] };
 export type ClassificationPlan = { manifestHash: string; manifest: ClassificationManifest; consentVersion: string; destination: string; retentionNotice: string; reservationMicrousd: number };
 export type ClassificationReview = { items: { id: string; payloadHash: string; text: string; reason: string | null }[]; nextOffset: number | null };
-export type ClassificationJob = { manifestHash: string; owner: string; cancelled: boolean; reservedMicrousd: number; items: (ClassificationRecord & { status: 'pending' | 'dispatched' | 'applied' | 'review' | 'skipped' | 'unknown' })[] };
+export type ClassificationJob = { manifestHash: string; owner: string; cancelled: boolean; reservedMicrousd: number; restoration?: { requested: true }; items: (ClassificationRecord & { status: 'pending' | 'dispatched' | 'applied' | 'review' | 'skipped' | 'unknown'; restoration?: { status: 'restored' | 'skipped' | 'unavailable'; reason?: string } })[] };
 export interface ClassificationApi {
   capability(): Promise<{ enabled: boolean }>;
   prepare(input: { scope?: 'all'; recordIds?: string[]; budgetMicrousd: number; expiresAt: number }): Promise<ClassificationPlan>;
@@ -14,6 +14,7 @@ export interface ClassificationApi {
   status(manifestHash: string): Promise<{ manifestHash: string; job: ClassificationJob | null }>;
   cancel(manifestHash: string): Promise<unknown>;
   recover(manifestHash: string): Promise<unknown>;
+  restore(manifestHash: string): Promise<ClassificationJob>;
 }
 // Only the production origin is eligible. Preview, local and alternate hosting domains
 // stay locked before any callable is created. Synthetic tests inject a separate fake API.
@@ -35,6 +36,7 @@ export const aiLibraryClassificationService: ClassificationApi = (() => {
     approve: (manifestHash, reviewedPayloadHashes, consentVersion) => call('approve', { manifestHash, reviewedPayloadHashes, consentVersion }),
     step: manifestHash => call('step', { manifestHash, limit: 1 }),
     status: manifestHash => call('status', { manifestHash }),
+    restore: manifestHash => call('restore', { manifestHash, limit: 25 }),
     cancel: manifestHash => call('cancel', { manifestHash }), recover: manifestHash => call('recover', { manifestHash }),
   };
 })();

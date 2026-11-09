@@ -24,3 +24,12 @@ test('missing/disabled/not-credential-ready private runtime stops before records
   assert.equal(factories,0);assert.equal(reads,2);
  }
 });
+test('snapshot codec preserves native values and refuses unsupported/oversize/deep values without truncation',()=>{
+ const {captureCategoryState}=load('aiLibraryClassificationRestore');const {Timestamp,GeoPoint}=require('firebase-admin/firestore');
+ const stamp=new Timestamp(1,2),location=new GeoPoint(3,4),bytes=Buffer.from([1,255]);
+ const saved=captureCategoryState({aiCategory:null,aiCategoryAuto:{stamp,location,bytes,nested:[NaN,null,false]}});
+ assert.deepEqual(saved.aiCategory,{present:true,value:null});assert.deepEqual(saved.aiCategorySource,{present:false});
+ assert.equal(saved.aiCategoryAuto.value.stamp,stamp);assert.equal(saved.aiCategoryAuto.value.location,location);assert.equal(saved.aiCategoryAuto.value.bytes,bytes);
+ for(const aiCategoryAuto of [undefined,new (class Unsupported {})(),{tooLarge:'x'.repeat(32768)}])assert.equal(captureCategoryState({aiCategoryAuto}),null);
+ let deep={};for(let i=0;i<20;i++)deep={deep};assert.equal(captureCategoryState({aiCategoryAuto:deep}),null);
+});

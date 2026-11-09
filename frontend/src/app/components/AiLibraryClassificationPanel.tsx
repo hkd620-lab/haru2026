@@ -2,13 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { aiLibraryClassificationService, classificationBudget, validateClassificationPlan, validateClassificationReview,
   type ClassificationApi, type ClassificationPlan, type ClassificationReview, type ClassificationJob } from '../services/aiLibraryClassificationService';
 
-const reasonLabels: Record<string, string> = { not_ai_log: 'AI 기록 아님', manual: '수동 분류 보호', empty: '본문 없음', long_text_review: '긴 본문 직접 검토 필요', sensitive_review: '민감정보 의심, 직접 검토 필요', deleted: '삭제된 기록', record_changed: '계획 이후 기록 변경', content_changed: '본문 변경', prior_attempt_no_retry: '이전 전송 시도 존재, 재전송하지 않음', dispatch_outcome_unknown: '전송 결과 확인 필요', recovery_unknown: '복구 후 결과 확인 필요' };
+const reasonLabels: Record<string, string> = { restore_snapshot_unavailable: '안전하게 복원할 수 없는 이전 상태', snapshot_unavailable: '이전 상태 없음', legacy_snapshot_unavailable: '과거 작업의 이전 상태 없음', record_replaced: '기록 교체됨', record_deleted: '기록 삭제됨', not_ai_log: 'AI 기록 아님', manual: '수동 분류 보호', empty: '본문 없음', long_text_review: '긴 본문 직접 검토 필요', sensitive_review: '민감정보 의심, 직접 검토 필요', deleted: '삭제된 기록', record_changed: '계획 이후 기록 변경', content_changed: '본문 변경', prior_attempt_no_retry: '이전 전송 시도 존재, 재전송하지 않음', dispatch_outcome_unknown: '전송 결과 확인 필요', recovery_unknown: '복구 후 결과 확인 필요' };
 const statusLabels = { pending: '대기', dispatched: '전송 중', applied: '반영', review: '검토', skipped: '제외', unknown: '확인 필요' };
 const storageKey = (uid: string) => `haru-classification-job:${uid}`;
+const historyKey = (uid: string) => `${storageKey(uid)}:history`;
+function savedHistory(uid: string): string[] { try { const values = JSON.parse(sessionStorage.getItem(historyKey(uid)) || '[]'); return Array.isArray(values) ? values.filter(value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)) : []; } catch { return []; } }
 function savedJob(uid: string) { try { return sessionStorage.getItem(storageKey(uid)) || ''; } catch { return ''; } }
 function saveJob(uid: string, hash: string) { try { sessionStorage.setItem(storageKey(uid), hash); } catch { /* Status remains available in this view. */ } }
 
 export function AiLibraryClassificationPanel({ uid, selectedIds = [], api = aiLibraryClassificationService }: { uid: string; selectedIds?: string[]; api?: ClassificationApi }) {
+  const [history, setHistory] = useState<string[]>([]);
   const [enabled, setEnabled] = useState(false);
   const [message, setMessage] = useState('실행 가능 여부 확인 중입니다.');
   const [busy, setBusy] = useState(false);
@@ -28,6 +31,8 @@ export function AiLibraryClassificationPanel({ uid, selectedIds = [], api = aiLi
   const [consent, setConsent] = useState(false);
   const [approved, setApproved] = useState(false);
   const [uncertain, setUncertain] = useState(false);
+  const [restoreConsent, setRestoreConsent] = useState(false);
+  const [restoreNeedsStatus, setRestoreNeedsStatus] = useState(false);
   const [job, setJob] = useState<ClassificationJob | null>(null);
 
   useEffect(() => {
@@ -35,6 +40,7 @@ export function AiLibraryClassificationPanel({ uid, selectedIds = [], api = aiLi
     running.current = false; cancelling.current = false; setExecuting(false);
     lock.current = false; setBusy(false); setEnabled(false); setPlan(null); setPage(null); setReviewed(new Set());
     setApproved(false); setConsent(false); setJob(null); setScope(''); setBudget(''); setHours('');
+    setRestoreConsent(false); setRestoreNeedsStatus(false); setHistory(savedHistory(uid));
     const restored = savedJob(uid); setHash(restored); setUncertain(!!restored);
     setMessage(restored ? '이전 작업이 있습니다. 상태를 확인하세요. 새로고침 후 자동 실행하지 않습니다.' : '실행 가능 여부 확인 중입니다.');
     api.capability().then(result => {
@@ -65,13 +71,17 @@ export function AiLibraryClassificationPanel({ uid, selectedIds = [], api = aiLi
   const candidates = plan?.manifest.records.filter(item => item.reason === null) || [];
   const allReviewed = !!plan && candidates.length > 0 && candidates.every(item => reviewed.has(item.payloadHash));
   const expired = !!plan && plan.manifest.expiresAt <= Date.now();
-  const canRun = enabled && approved && !uncertain && !busy && !expired && !job?.cancelled && (!job || !plan || job.reservedMicrousd + 2753 <= plan.manifest.budgetMicrousd) && (!job || job.items.some(item => item.status === 'pending'));
+  const canRun = enabled && approved && !uncertain && !busy && !expired && !job?.cancelled && !job?.restoration?.requested && (!job || !plan || job.reservedMicrousd + 2753 <= plan.manifest.budgetMicrousd) && (!job || job.items.some(item => item.status === 'pending'));
   const currentHashes = page?.items.filter(item => item.reason === null).map(item => item.payloadHash) || [];
   const pageChecked = currentHashes.length > 0 && currentHashes.every(value => reviewed.has(value));
   const style = { marginBottom: 16, padding: 12, border: '1px solid #d9e0e8', borderRadius: 8, fontSize: 13 };
   return <section aria-label="AI 자동 분류" style={style}>
     <strong>AI 자동 분류</strong>
     <p role="status">{message}</p>
+    {!hash && history.length > 0 && <details><summary>이 탭의 이전 작업 확인·복원</summary><p>작업을 선택한 뒤 상태 확인을 눌러 복원 결과와 남은 항목을 확인하세요. 자동 실행하지 않습니다.</p>{history.map(previous => <button key={previous} disabled={busy} style={{ overflowWrap: 'anywhere' }} onClick={() => {
+      setHash(previous); saveJob(uid, previous); setUncertain(true); setApproved(false); setJob(null); setRestoreConsent(false); setRestoreNeedsStatus(false);
+      setMessage('이전 작업을 선택했습니다. 상태 확인 후 필요하면 분류 되돌리기를 이용하세요.');
+    }}>이전 작업 {previous}</button>)}</details>}
     {enabled && !hash && <div>
       <p>TypeSafe AI의 Jev 1.14.0으로 목적 폴더를 분류합니다. URL·식별 메타데이터를 제외한 최소화 본문만 보냅니다. 규칙 기반 개인정보 검사는 완전한 제거를 보장하지 않습니다. 기본 계정의 무보관(ZDR)은 확인되지 않았습니다.</p>
       <label>분류 범위 <select aria-label="분류 범위" value={scope} disabled={busy} onChange={event => setScope(event.target.value)}><option value="">선택하세요</option><option value="all">전체 AI 기록 (최대 1,000개)</option><option value="selected">선택한 기록 ({selectedIds.length}개)</option></select></label><br />
@@ -122,10 +132,11 @@ export function AiLibraryClassificationPanel({ uid, selectedIds = [], api = aiLi
         await api.cancel(hash);
         if (!current()) return;
         running.current = false; cancelling.current = false;
-        try { sessionStorage.removeItem(storageKey(uid)); } catch { /* No stored text or credentials. */ }
+        const previousJobs = [...new Set([hash, ...savedHistory(uid)])]; setHistory(previousJobs);
+        try { sessionStorage.setItem(historyKey(uid), JSON.stringify(previousJobs)); sessionStorage.removeItem(storageKey(uid)); } catch { /* No stored text or credentials. */ }
         generation.current++; lock.current = false; setBusy(false); setExecuting(false);
         setHash(''); setPlan(null); setPage(null); setOffset(0); setReviewed(new Set());
-        setConsent(false); setApproved(false); setUncertain(false); setJob(null);
+        setConsent(false); setApproved(false); setUncertain(false); setJob(null); setRestoreConsent(false); setRestoreNeedsStatus(false);
         setScope(''); setBudget(''); setHours('');
         setMessage('이전 작업의 취소를 확인하고 새 계획을 준비합니다. 기존 결과·이력·발생했을 수 있는 비용은 되돌리지 않습니다.');
       }, true)}>작업 취소 후 새 계획</button>
@@ -157,6 +168,7 @@ export function AiLibraryClassificationPanel({ uid, selectedIds = [], api = aiLi
         const result = await api.status(hash); if (!current()) return;
         if (result.manifestHash !== hash) throw new Error('changed_status');
         setJob(result.job ? validJob(result.job, hash) : null);
+        setRestoreNeedsStatus(false);
         setMessage('서버 상태를 확인했습니다. 불확실한 요청은 다시 보내지 않습니다.');
       })}>상태 확인</button>
       <button disabled={job?.cancelled || cancelling.current} onClick={() => {
@@ -169,6 +181,29 @@ export function AiLibraryClassificationPanel({ uid, selectedIds = [], api = aiLi
       <button disabled={busy} onClick={() => action(async current => {
         await api.recover(hash); if (!current()) return; setApproved(false); setUncertain(true); setMessage('진행 중 항목을 확인 필요 상태로 정리했습니다. 재전송하거나 비용을 반환한 것이 아닙니다. 상태를 확인하세요.');
       }, true)}>불확실 상태 정리</button>
+      <fieldset disabled={busy || executing || !job || restoreNeedsStatus}>
+        <legend>이 작업의 분류 되돌리기</legend>
+        <p>먼저 상태를 확인하세요. 되돌리기를 시작하면 이 작업을 취소하여 이후 전송·반영을 막고, 이 작업이 반영한 폴더·분류 출처·자동 분류 정보를 이전 상태로 복원합니다. 수동 이동, 다른 AI 분류, 본문 변경 또는 이후 저장이 있는 기록은 건너뜁니다. 이전 상태가 없거나 안전한 복원을 지원하지 않는 작업은 복원할 수 없습니다.</p>
+        <p>작업 취소와 불확실 상태 정리만으로는 분류가 복원되지 않습니다. 이미 발생한 비용과 외부 전송은 되돌릴 수 없습니다.</p>
+        <label><input type="checkbox" aria-label="분류 되돌리기 확인" checked={restoreConsent} onChange={event => setRestoreConsent(event.target.checked)} />위 제한을 확인했으며 이 작업의 분류를 되돌립니다.</label>
+        <button disabled={!restoreConsent || !job?.items.some(item => item.status === 'applied' && !item.restoration)} onClick={() => action(async current => {
+          running.current = false; setApproved(false); setUncertain(true); setRestoreConsent(false); setRestoreNeedsStatus(true);
+          try {
+            const result = await api.restore(hash);
+            if (!current()) return;
+            const checked = validJob(result, hash);
+            if (!checked.cancelled || !checked.restoration?.requested) throw new Error('invalid_restoration');
+            setJob(checked); setRestoreNeedsStatus(false);
+            setMessage('최대 25개 분류의 복원 결과를 확인했습니다. 남은 항목은 다시 확인 후 되돌리기를 눌러 주세요. 새 분류는 자동 실행하지 않습니다.');
+          } catch {
+            if (current()) setMessage('되돌리기 결과 확인 필요. 자동 재시도하지 않습니다. 상태 확인 후 결과와 남은 항목을 확인하세요.');
+          }
+        })}>분류 되돌리기 (최대 25개)</button>
+      </fieldset>
+      {job && <div aria-label="분류 복원 상태">
+        <p>복원 {job.items.filter(item => item.restoration?.status === 'restored').length}개 · 복원 제외 {job.items.filter(item => item.restoration?.status === 'skipped').length}개 · 복원 불가 {job.items.filter(item => item.restoration?.status === 'unavailable').length}개 · 복원 미처리 {job.items.filter(item => item.status === 'applied' && !item.restoration).length}개</p>
+        {job.items.filter(item => item.restoration).map(item => <p key={item.id}>{item.id}: {{ restored: '복원 완료', skipped: '이후 변경 보호, 복원 제외', unavailable: '이전 상태 없음 또는 안전한 복원 미지원' }[item.restoration!.status]}{item.restoration?.reason ? ` (${reasonLabels[item.restoration.reason] || item.restoration.reason})` : ''}</p>)}
+      </div>}
       <p>승인 범위를 한 건씩 순서대로 처리합니다. 일시 중지는 다음 요청을 막습니다. 탭을 닫거나 계정을 바꿔도 이미 허가된 전송이 취소되지는 않습니다. 새로고침 후 자동 재개하지 않습니다.</p>
       {job && <div aria-label="분류 진행 상태"><p>{Object.entries(statusLabels).map(([key, label]) => `${label} ${job.items.filter(item => item.status === key).length}개`).join(' · ')}</p><p>확보된 실행 예산 ${(job.reservedMicrousd / 1e6).toFixed(6)} (실제 청구액 아님){job.cancelled ? ' · 취소됨' : ''}</p></div>}
     </div>}
