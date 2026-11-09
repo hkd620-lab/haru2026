@@ -363,6 +363,115 @@ export async function showForegroundNotification(
   }
 }
 
+// ===== 이 기기 알림 표시 시험 (서버 발송 없음) =====
+// 서버 푸시(FCM) 전달과 기기 표시를 나눠 보기 위해, 이미 등록된 서비스워커로 알림 표시만 요청한다.
+// 권한 요청·서비스워커 등록·토큰 발급·서버 호출·Firestore 쓰기를 하지 않는다.
+
+export const DEVICE_DISPLAY_TEST_TITLE = 'HARU 기기 표시 시험';
+
+export const DEVICE_DISPLAY_TEST_OPTIONS = {
+  body: '이 알림은 기기 표시만 확인합니다. 서버 푸시 수신 시험과는 다릅니다.',
+  icon: FOREGROUND_NOTIFICATION_OPTIONS.icon,
+  badge: FOREGROUND_NOTIFICATION_OPTIONS.badge,
+  tag: 'haru-device-display-test',
+} as const;
+
+// 'requested'는 showNotification 요청이 오류 없이 끝났다는 뜻일 뿐, 실제로 화면에 보였다는 보장이 아니다.
+export type DeviceDisplayTestResult = 'requested' | 'unsupported' | 'permission' | 'no-registration' | 'failed';
+
+export interface DeviceDisplayTestDeps {
+  hasServiceWorker: () => boolean;
+  getPermission: () => DevicePermission;
+  // 이미 등록돼 활성인 registration만 찾는다. 없으면 undefined(새로 등록하지 않는다).
+  findRegistration: () => Promise<ShowableRegistration | undefined>;
+}
+
+export async function requestDeviceDisplayTest(deps: DeviceDisplayTestDeps): Promise<DeviceDisplayTestResult> {
+  let permission: DevicePermission;
+  try {
+    if (!deps.hasServiceWorker()) return 'unsupported';
+    permission = deps.getPermission();
+  } catch {
+    return 'unsupported';
+  }
+  if (permission === 'unsupported') return 'unsupported';
+  if (permission !== 'granted') return 'permission';
+
+  let registration: ShowableRegistration | undefined;
+  try {
+    registration = await deps.findRegistration();
+  } catch {
+    return 'failed';
+  }
+  if (!registration) return 'no-registration';
+
+  try {
+    await registration.showNotification(DEVICE_DISPLAY_TEST_TITLE, { ...DEVICE_DISPLAY_TEST_OPTIONS });
+    return 'requested';
+  } catch {
+    return 'failed';
+  }
+}
+
+export function describeDeviceDisplayTestResult(result: DeviceDisplayTestResult): SelfTestView {
+  switch (result) {
+    case 'requested':
+      return {
+        tone: 'success',
+        text: '표시 요청이 완료됐습니다. 실제 알림이 왔는지 확인해 주세요. 서버 푸시 수신 확인은 아닙니다.',
+      };
+    case 'unsupported':
+      return { tone: 'error', text: '이 기기에서는 알림 표시 시험을 할 수 없습니다.' };
+    case 'permission':
+      return {
+        tone: 'error',
+        text: '이 기기의 알림 권한이 허용되지 않았습니다. 위 "이 기기에서 알림 받기" 또는 기기 설정에서 haru2026 알림을 허용해 주세요.',
+      };
+    case 'no-registration':
+      return {
+        tone: 'error',
+        text: '이 기기에 알림 준비가 아직 없습니다. 위 "이 기기에서 알림 받기" 또는 "이 기기 다시 등록하기"를 먼저 눌러 주세요.',
+      };
+    case 'failed':
+      return { tone: 'error', text: '이 기기에 알림 표시를 요청하지 못했습니다. 잠시 후 다시 시도해 주세요.' };
+  }
+}
+
+export interface DeviceDisplayTestFeedback {
+  setBusy: (busy: boolean) => void;
+  setResult: (view: SelfTestView | null) => void;
+}
+
+// 진행 중에 다시 누르면 무시한다. 예기치 못한 예외도 실패로 표시하고 busy는 항상 푼다.
+export async function runDeviceDisplayTest(
+  request: () => Promise<DeviceDisplayTestResult>,
+  ui: DeviceDisplayTestFeedback,
+  guard: { running: boolean },
+): Promise<void> {
+  if (guard.running) return;
+  guard.running = true;
+  try {
+    ui.setBusy(true);
+    ui.setResult(null);
+    let result: DeviceDisplayTestResult;
+    try {
+      result = await request();
+    } catch {
+      result = 'failed';
+    }
+    ui.setResult(describeDeviceDisplayTestResult(result));
+  } catch {
+    // 화면 갱신 실패는 무시한다.
+  } finally {
+    guard.running = false;
+    try {
+      ui.setBusy(false);
+    } catch {
+      // 화면 갱신 실패는 무시한다.
+    }
+  }
+}
+
 export interface ForegroundListenerDeps {
   isSupported: () => Promise<boolean>;
   subscribe: (handler: (payload: ForegroundPayload) => void) => void;

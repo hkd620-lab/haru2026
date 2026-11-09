@@ -1,0 +1,329 @@
+== node: v22.23.2
+== tests (신규 deviceDisplayTest + 기존 pushDevice/regression)
+TAP version 13
+# Subtest: 권한 허용 + 등록된 서비스워커가 있으면 별도 tag로 표시만 요청하고 requested를 돌려준다
+ok 1 - 권한 허용 + 등록된 서비스워커가 있으면 별도 tag로 표시만 요청하고 requested를 돌려준다
+  ---
+  duration_ms: 2.484625
+  type: 'test'
+  ...
+# Subtest: 권한 default·denied면 서비스워커를 찾지도 표시하지도 않고 permission (권한 요청 함수는 deps에 없음)
+ok 2 - 권한 default·denied면 서비스워커를 찾지도 표시하지도 않고 permission (권한 요청 함수는 deps에 없음)
+  ---
+  duration_ms: 0.394
+  type: 'test'
+  ...
+# Subtest: 서비스워커 미지원·Notification 미지원·판정 예외는 unsupported
+ok 3 - 서비스워커 미지원·Notification 미지원·판정 예외는 unsupported
+  ---
+  duration_ms: 0.2215
+  type: 'test'
+  ...
+# Subtest: 등록된 서비스워커가 없으면 새로 등록하지 않고 no-registration
+ok 4 - 등록된 서비스워커가 없으면 새로 등록하지 않고 no-registration
+  ---
+  duration_ms: 0.110583
+  type: 'test'
+  ...
+# Subtest: 서비스워커 조회 실패·showNotification 실패는 failed이며 예외가 새지 않는다
+ok 5 - 서비스워커 조회 실패·showNotification 실패는 failed이며 예외가 새지 않는다
+  ---
+  duration_ms: 0.458958
+  type: 'test'
+  ...
+# Subtest: 안내 문구: 성공은 표시 요청 완료일 뿐 실제 수신·서버 수신 확인이 아님을 밝히고, 오류는 정적 안내만
+ok 6 - 안내 문구: 성공은 표시 요청 완료일 뿐 실제 수신·서버 수신 확인이 아님을 밝히고, 오류는 정적 안내만
+  ---
+  duration_ms: 0.452541
+  type: 'test'
+  ...
+# Subtest: runDeviceDisplayTest: busy를 켰다가 항상 풀고, 진행 중 중복 클릭은 무시한다
+ok 7 - runDeviceDisplayTest: busy를 켰다가 항상 풀고, 진행 중 중복 클릭은 무시한다
+  ---
+  duration_ms: 0.52275
+  type: 'test'
+  ...
+# Subtest: runDeviceDisplayTest: 요청 예외·거부·화면 갱신 예외에도 busy가 풀리고 예외가 새지 않는다
+ok 8 - runDeviceDisplayTest: 요청 예외·거부·화면 갱신 예외에도 busy가 풀리고 예외가 새지 않는다
+  ---
+  duration_ms: 0.59325
+  type: 'test'
+  ...
+# Subtest: 서비스·설정 화면 연결: 서버 호출·권한 요청·SW 등록·토큰·Firestore 없음, 자동 실행 없음
+ok 9 - 서비스·설정 화면 연결: 서버 호출·권한 요청·SW 등록·토큰·Firestore 없음, 자동 실행 없음
+  ---
+  duration_ms: 3.019417
+  type: 'test'
+  ...
+# Subtest: 계정 알림이 켜져 있어도 이 기기 권한이 default면 등록 필요로 판정하고 등록 버튼을 보인다
+ok 10 - 계정 알림이 켜져 있어도 이 기기 권한이 default면 등록 필요로 판정하고 등록 버튼을 보인다
+  ---
+  duration_ms: 1.499542
+  type: 'test'
+  ...
+# Subtest: 권한 허용·토큰 캐시만으로 등록 완료로 단정하지 않는다
+ok 11 - 권한 허용·토큰 캐시만으로 등록 완료로 단정하지 않는다
+  ---
+  duration_ms: 0.107292
+  type: 'test'
+  ...
+# Subtest: denied·미지원·아이폰 미설치 PWA는 등록 버튼 없이 안내만 한다
+ok 12 - denied·미지원·아이폰 미설치 PWA는 등록 버튼 없이 안내만 한다
+  ---
+  duration_ms: 0.239333
+  type: 'test'
+  ...
+# Subtest: 사용자 제스처 경로: 다른 await보다 먼저(동기적으로) 권한 요청을 시작한다
+ok 13 - 사용자 제스처 경로: 다른 await보다 먼저(동기적으로) 권한 요청을 시작한다
+  ---
+  duration_ms: 1.344833
+  type: 'test'
+  ...
+# Subtest: 이미 granted면 권한 창 없이 재등록하고, denied면 권한 요청을 다시 띄우지 않는다
+ok 14 - 이미 granted면 권한 창 없이 재등록하고, denied면 권한 요청을 다시 띄우지 않는다
+  ---
+  duration_ms: 0.3685
+  type: 'test'
+  ...
+# Subtest: 권한 창을 닫거나 거부하면 성공으로 표시하지 않는다
+ok 15 - 권한 창을 닫거나 거부하면 성공으로 표시하지 않는다
+  ---
+  duration_ms: 0.532708
+  type: 'test'
+  ...
+# Subtest: 미지원·설정 누락·토큰 실패·저장 실패는 모두 실패이며 캐시·완료 처리를 하지 않는다
+ok 16 - 미지원·설정 누락·토큰 실패·저장 실패는 모두 실패이며 캐시·완료 처리를 하지 않는다
+  ---
+  duration_ms: 1.291292
+  type: 'test'
+  ...
+# Subtest: 내 기기 테스트 알림은 기존 sendTestNotification만 호출하고 uid·토큰·대상 지정 값을 보내지 않는다
+ok 17 - 내 기기 테스트 알림은 기존 sendTestNotification만 호출하고 uid·토큰·대상 지정 값을 보내지 않는다
+  ---
+  duration_ms: 0.323125
+  type: 'test'
+  ...
+# Subtest: 서버 성공과 실제 수신을 구분해 안내하고, 전부 실패·응답 이상·오류는 실패로 보인다
+ok 18 - 서버 성공과 실제 수신을 구분해 안내하고, 전부 실패·응답 이상·오류는 실패로 보인다
+  ---
+  duration_ms: 1.145458
+  type: 'test'
+  ...
+# Subtest: 포그라운드 알림은 서비스워커 showNotification을 우선 사용한다(iOS)
+ok 19 - 포그라운드 알림은 서비스워커 showNotification을 우선 사용한다(iOS)
+  ---
+  duration_ms: 0.750667
+  type: 'test'
+  ...
+# Subtest: 포그라운드: 서비스워커가 없거나 실패하면 창 알림으로, 그것도 실패하면 예외 없이 failed
+ok 20 - 포그라운드: 서비스워커가 없거나 실패하면 창 알림으로, 그것도 실패하면 예외 없이 failed
+  ---
+  duration_ms: 0.302667
+  type: 'test'
+  ...
+# Subtest: 포그라운드 리스너는 여러 번 설치를 요청해도 onMessage를 한 번만 등록한다
+ok 21 - 포그라운드 리스너는 여러 번 설치를 요청해도 onMessage를 한 번만 등록한다
+  ---
+  duration_ms: 9.706625
+  type: 'test'
+  ...
+# Subtest: 포그라운드 리스너: 표시 실패가 처리되지 않은 거부로 새지 않고, 지원 확인 오류 뒤에는 재시도할 수 있다
+ok 22 - 포그라운드 리스너: 표시 실패가 처리되지 않은 거부로 새지 않고, 지원 확인 오류 뒤에는 재시도할 수 있다
+  ---
+  duration_ms: 0.9095
+  type: 'test'
+  ...
+# Subtest: 서비스·설정 화면 연결
+ok 23 - 서비스·설정 화면 연결
+  ---
+  duration_ms: 1.021167
+  type: 'test'
+  ...
+# Subtest: 원본 재현: 권한 요청이 즉시 거부되고 지원 확인이 25ms 뒤 true여도 처리되지 않은 거부가 생기지 않는다
+ok 24 - 원본 재현: 권한 요청이 즉시 거부되고 지원 확인이 25ms 뒤 true여도 처리되지 않은 거부가 생기지 않는다
+  ---
+  duration_ms: 31.209542
+  type: 'test'
+  ...
+# Subtest: 권한 요청이 동기 예외를 던져도 dismissed로 끝나고, 요청은 지원 확인보다 먼저 동기적으로 시작된다
+ok 25 - 권한 요청이 동기 예외를 던져도 dismissed로 끝나고, 요청은 지원 확인보다 먼저 동기적으로 시작된다
+  ---
+  duration_ms: 12.522708
+  type: 'test'
+  ...
+# Subtest: 지원 확인이 오래 걸리는 동안 거부된 권한 요청도 동기 시작 순서를 지키고 누수 없이 dismissed
+ok 26 - 지원 확인이 오래 걸리는 동안 거부된 권한 요청도 동기 시작 순서를 지키고 누수 없이 dismissed
+  ---
+  duration_ms: 22.958875
+  type: 'test'
+  ...
+# Subtest: 미지원 기기에서 권한 요청이 거부돼도 unsupported로 끝나고 누수 없음
+ok 27 - 미지원 기기에서 권한 요청이 거부돼도 unsupported로 끝나고 누수 없음
+  ---
+  duration_ms: 13.006416
+  type: 'test'
+  ...
+# Subtest: 서버 저장 뒤 localStorage 캐시가 실패하면 서버 등록 성공(ok)과 cache 경고로 구분하고 예외를 내보내지 않는다
+ok 28 - 서버 저장 뒤 localStorage 캐시가 실패하면 서버 등록 성공(ok)과 cache 경고로 구분하고 예외를 내보내지 않는다
+  ---
+  duration_ms: 2.325458
+  type: 'test'
+  ...
+# Subtest: 서버 저장 뒤 onRegistered가 실패하면 ok와 listener 경고, 둘 다 실패하면 cache 경고를 우선한다
+ok 29 - 서버 저장 뒤 onRegistered가 실패하면 ok와 listener 경고, 둘 다 실패하면 cache 경고를 우선한다
+  ---
+  duration_ms: 0.295875
+  type: 'test'
+  ...
+# Subtest: 서버 저장 실패는 여전히 save 실패이며 캐시·완료 처리를 하지 않는다(경고로 바뀌지 않음)
+ok 30 - 서버 저장 실패는 여전히 save 실패이며 캐시·완료 처리를 하지 않는다(경고로 바뀌지 않음)
+  ---
+  duration_ms: 0.214333
+  type: 'test'
+  ...
+# Subtest: 설정 화면 등록 처리: register는 첫 await 전에 동기적으로 호출된다(제스처 유지)
+ok 31 - 설정 화면 등록 처리: register는 첫 await 전에 동기적으로 호출된다(제스처 유지)
+  ---
+  duration_ms: 0.213042
+  type: 'test'
+  ...
+# Subtest: 설정 화면 등록 처리: register가 동기 예외·거부를 내도 로딩이 풀리고 등록 완료로 표시하지 않으며 예외가 새지 않는다
+ok 32 - 설정 화면 등록 처리: register가 동기 예외·거부를 내도 로딩이 풀리고 등록 완료로 표시하지 않으며 예외가 새지 않는다
+  ---
+  duration_ms: 2.209458
+  type: 'test'
+  ...
+# Subtest: 설정 화면 등록 처리: 경고가 있는 성공은 등록 완료+경고 안내, 실패는 등록 완료 아님+실패 사유
+ok 33 - 설정 화면 등록 처리: 경고가 있는 성공은 등록 완료+경고 안내, 실패는 등록 완료 아님+실패 사유
+  ---
+  duration_ms: 0.990083
+  type: 'test'
+  ...
+# Subtest: 설정 화면 등록 처리: 안내 표시·상태 재확인 자체가 실패해도 로딩은 풀리고 예외가 새지 않는다
+ok 34 - 설정 화면 등록 처리: 안내 표시·상태 재확인 자체가 실패해도 로딩은 풀리고 예외가 새지 않는다
+  ---
+  duration_ms: 0.263417
+  type: 'test'
+  ...
+# Subtest: 설정 화면 연결: handleRegisterThisDevice는 runDeviceRegistration 안에서 registerThisDevice를 곧바로 호출한다
+ok 35 - 설정 화면 연결: handleRegisterThisDevice는 runDeviceRegistration 안에서 registerThisDevice를 곧바로 호출한다
+  ---
+  duration_ms: 0.832208
+  type: 'test'
+  ...
+1..35
+# tests 35
+# suites 0
+# pass 35
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 347.617125
+tests_exit=0
+== build (자리값 env, prebuild env 검증 통과용 — 실제 배포값 아님)
+
+> @figma/my-make-file@0.0.1 prebuild
+> npm run validate:build-env
+
+
+> @figma/my-make-file@0.0.1 validate:build-env
+> node scripts/validate-build-env.mjs
+
+Firebase build environment validation passed.
+
+> @figma/my-make-file@0.0.1 build
+> vite build
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.ts:30:47). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+plugin-legacy 'modernTargets' option overrode the builtin targets of modern chunks. Some versions of browsers between legacy and modern may not be supported.
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 3268 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/manifest.webmanifest                          0.68 kB
+dist/assets/pdf.worker.min-legacy-Cybx0agL.js      0.14 kB │ gzip:     0.13 kB
+dist/assets/index.esm-legacy-FSUhfh4T.js          28.61 kB │ gzip:     9.58 kB
+dist/assets/polyfills-legacy-B_Fkb3AJ.js         136.23 kB │ gzip:    49.23 kB
+dist/assets/xlsx-legacy-kBrBLGzQ.js              495.10 kB │ gzip:   161.46 kB
+dist/assets/pdf-legacy-vl5vYiF4.js               535.06 kB │ gzip:   163.82 kB
+dist/assets/index-legacy-Bq5DNtam.js           5,559.34 kB │ gzip: 1,513.79 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../haru-complete-pending-20261109/frontend/node_modules/firebase/firestore/dist/esm/index.esm.js is dynamically imported by src/app/pages/AdminChecklistPage.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../haru-complete-pending-20261109/frontend/node_modules/firebase/functions/dist/esm/index.esm.js is dynamically imported by src/app/services/firestoreService.ts but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, src/app/components/SayuModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/firebase.ts is dynamically imported by src/app/contexts/AuthContext.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/app/services/firestoreService.ts is dynamically imported by src/app/components/FormatModal.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/ResultChatModal.tsx, src/app/components/SayuModal.tsx, src/app/components/TimelineCollageModal.tsx, ..., dynamic import will not move module into another chunk.
+
+transforming...
+✓ 3268 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/manifest.webmanifest                    0.68 kB
+dist/assets/005에세이-BJ44_T9C.png              5.20 kB
+dist/assets/001메모-DDW2_6Sd.png               5.45 kB
+dist/assets/006-nUdkMhJ6.png                 6.09 kB
+dist/index.html                              7.40 kB │ gzip:     2.33 kB
+dist/assets/pdf.worker.min-Dkey6ZUl.mjs  1,321.30 kB
+dist/assets/index-C6VCQpx-.css             178.48 kB │ gzip:    31.68 kB
+dist/assets/pdf.worker.min-WWY7VKxM.js       0.06 kB │ gzip:     0.08 kB
+dist/assets/index.esm-BLt45krB.js           28.45 kB │ gzip:     9.45 kB
+dist/assets/xlsx-D0OjGUkV.js               494.77 kB │ gzip:   161.10 kB
+dist/assets/pdf-PD8dMyKW.js                532.48 kB │ gzip:   159.35 kB
+dist/assets/index-BfwJ35ER.js            5,360.32 kB │ gzip: 1,469.43 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../haru-complete-pending-20261109/frontend/node_modules/firebase/firestore/dist/esm/index.esm.js is dynamically imported by src/app/pages/AdminChecklistPage.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../haru-complete-pending-20261109/frontend/node_modules/firebase/functions/dist/esm/index.esm.js is dynamically imported by src/app/services/firestoreService.ts but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, src/app/components/SayuModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/firebase.ts is dynamically imported by src/app/contexts/AuthContext.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/app/services/firestoreService.ts is dynamically imported by src/app/components/FormatModal.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/ResultChatModal.tsx, src/app/components/SayuModal.tsx, src/app/components/TimelineCollageModal.tsx, ..., dynamic import will not move module into another chunk.
+
+✓ built in 45.22s
+
+PWA v1.3.0
+mode      generateSW
+precache  53 entries (16097.22 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-aade9d62.js
+[33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 45.2s. The build took 45.2s. Callbacks such as `closeBundle` run after the build ends, so callback time can be more than build time.
+The slowest callbacks, timed inside each callback (the wait before a callback starts is excluded, the time it awaits is included):
+  - plugin vite:legacy-post-process renderChunk (87%, 39.3s, 10 calls)
+  - plugin vite-plugin-pwa:build closeBundle (7%, 3.0s, 1 call)
+Additional callback time came from the callbacks below and from callbacks under 1s.
+2 callbacks are listed without a time. Their calls overlapped, so the time inside one call includes work from other calls. To find their cost, profile the build with `node --cpu-prof`:
+  - plugin vite:asset load (22 calls)
+  - plugin @tailwindcss/vite:generate:build transform (10 calls)
+See https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.
+
+build_exit=0
+== 변경 파일 타입 오류만 추출 (전체 tsc 통과 주장 아님, ExportModal 기존 구문오류 제외)
+tsc 없음(functions/node_modules 미설치) — 타입 확인 생략
+== git diff --stat
+ frontend/src/app/pages/SettingsPage.tsx          |  34 ++++++-
+ frontend/src/app/services/notificationService.ts |  18 ++++
+ frontend/src/app/services/pushDevice.ts          | 109 +++++++++++++++++++++++
+ 3 files changed, 159 insertions(+), 2 deletions(-)
+ M frontend/src/app/pages/SettingsPage.tsx
+ M frontend/src/app/services/notificationService.ts
+ M frontend/src/app/services/pushDevice.ts
+?? docs/reviews/2026-11-09-device-display-check/
+?? frontend/node_modules
+?? frontend/test/deviceDisplayTest.test.mjs

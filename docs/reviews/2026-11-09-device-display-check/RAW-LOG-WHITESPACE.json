@@ -1,0 +1,39 @@
+{
+  "recordedAt": "2026-11-09T08:19:49.142595+00:00",
+  "fullStagedDiffCheckExitCode": 2,
+  "frontendStagedDiffCheckExitCode": 0,
+  "findings": [
+    {
+      "file": "raw/haru-device-display-check-verify.log",
+      "lines": [
+        255,
+        285
+      ]
+    },
+    {
+      "file": "raw/haru-device-display-check-verify-final.log",
+      "lines": [
+        255,
+        285
+      ]
+    }
+  ],
+  "cause": "Vite 출력 원문의 [plugin builtin:vite-reporter] 뒤 공백 4곳. 원문 바이트/SHA 보존을 위해 수정하지 않음. 코드 공백 오류는 없음. 독립 검토자가 이 원문 보존 예외를 검토해야 함.",
+  "standaloneHelperStrictCommand": [
+    "/opt/homebrew/opt/node@22/bin/node",
+    "/private/tmp/haru-pending-major-deps-20261109/functions/node_modules/typescript/bin/tsc",
+    "--noEmit",
+    "--strict",
+    "--skipLibCheck",
+    "--target",
+    "ES2022",
+    "--module",
+    "ESNext",
+    "--moduleResolution",
+    "Bundler",
+    "--lib",
+    "ES2022,DOM",
+    "frontend/src/app/services/pushDevice.ts"
+  ],
+  "standaloneHelperStrictExitCode": 0
+}

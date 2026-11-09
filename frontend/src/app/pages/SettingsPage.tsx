@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone, Sparkles, CreditCard, Mail, UserX } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
-import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken, getDeviceTimeZone, backfillNotificationTimeZone, getThisDevicePushEnvironment, registerThisDevice } from '../services/notificationService';
+import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken, getDeviceTimeZone, backfillNotificationTimeZone, getThisDevicePushEnvironment, registerThisDevice, requestThisDeviceDisplayTest } from '../services/notificationService';
 import {
   describeDevicePushStatus,
   describeSelfTestError,
   describeSelfTestResult,
   resolveDevicePushStatus,
+  runDeviceDisplayTest,
   runDeviceRegistration,
   sendSelfTestNotification,
   type DevicePushEnvironment,
@@ -131,6 +132,9 @@ export function SettingsPage() {
   const [isRegisteringDevice, setIsRegisteringDevice] = useState(false);
   const [isSendingSelfTest, setIsSendingSelfTest] = useState(false);
   const [selfTestResult, setSelfTestResult] = useState<SelfTestView | null>(null);
+  const [isRunningDisplayTest, setIsRunningDisplayTest] = useState(false);
+  const [displayTestResult, setDisplayTestResult] = useState<SelfTestView | null>(null);
+  const displayTestGuard = useRef({ running: false });
 
   // 관리자 전체 알림 상태
   const [broadcastMessage, setBroadcastMessage] = useState('');
@@ -496,6 +500,14 @@ export function SettingsPage() {
     } finally {
       setIsSendingSelfTest(false);
     }
+  };
+
+  // 서버 발송 없이 이미 등록된 서비스워커로 이 기기에 알림 표시만 요청한다(권한 요청·기기 등록·토큰 발급 없음).
+  const handleDeviceDisplayTest = async () => {
+    await runDeviceDisplayTest(requestThisDeviceDisplayTest, {
+      setBusy: setIsRunningDisplayTest,
+      setResult: setDisplayTestResult,
+    }, displayTestGuard.current);
   };
 
   const devicePushStatus = resolveDevicePushStatus(devicePushEnv, deviceRegisteredNow);
@@ -1275,6 +1287,24 @@ export function SettingsPage() {
                       {selfTestResult.text}
                     </p>
                   )}
+                  <div className="pt-2 mt-1 border-t border-dashed border-gray-200 space-y-2">
+                    <button
+                      onClick={handleDeviceDisplayTest}
+                      disabled={isRunningDisplayTest}
+                      className="w-full px-3 py-2 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-50"
+                      style={{ border: '1px solid #9ca3af', color: '#4b5563', backgroundColor: '#fff' }}
+                    >
+                      {isRunningDisplayTest ? '표시 요청 중...' : '이 기기 알림 표시 시험'}
+                    </button>
+                    <p className="text-xs" style={{ color: '#999' }}>
+                      서버를 거치지 않고 이 기기 안에서만 알림 표시를 요청합니다. 서버 푸시 수신 시험과는 다릅니다.
+                    </p>
+                    {displayTestResult && (
+                      <p className="text-xs" style={{ color: displayTestResult.tone === 'error' ? '#dc2626' : '#4b5563' }}>
+                        {displayTestResult.text}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 

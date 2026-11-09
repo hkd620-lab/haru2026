@@ -4,7 +4,9 @@ import { db } from '../config/firebase';
 import {
   createForegroundListenerInstaller,
   registerDeviceForPush,
+  requestDeviceDisplayTest,
   showForegroundNotification,
+  type DeviceDisplayTestResult,
   type DevicePermission,
   type DevicePushEnvironment,
   type PushRegistrationResult,
@@ -223,5 +225,21 @@ const installForegroundListener = createForegroundListenerInstaller({
 
 export function setupForegroundMessageListener(): void {
   void installForegroundListener();
+}
+
+// 이미 등록돼 활성인 firebase-messaging-sw.js registration만 찾는다.
+// getFcmSwRegistration과 달리 없어도 새로 등록하지 않는다(표시 시험이 기기 상태를 바꾸지 않도록).
+async function findActiveFcmSwRegistration(): Promise<ServiceWorkerRegistration | undefined> {
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  return registrations.find(r => (r.active?.scriptURL ?? '').includes('firebase-messaging-sw.js'));
+}
+
+// 설정 화면 '이 기기 알림 표시 시험'. 서버 발송·권한 요청·토큰 발급·Firestore 쓰기 없음.
+export function requestThisDeviceDisplayTest(): Promise<DeviceDisplayTestResult> {
+  return requestDeviceDisplayTest({
+    hasServiceWorker: () => 'serviceWorker' in navigator,
+    getPermission: getDevicePermission,
+    findRegistration: findActiveFcmSwRegistration,
+  });
 }
 

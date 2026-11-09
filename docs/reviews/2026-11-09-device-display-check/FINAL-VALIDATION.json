@@ -1,0 +1,29 @@
+{
+  "recordedAt": "2026-11-09T08:18:53.359192+00:00",
+  "baseSha": "f38e0ddcad2c130e92333b0c5dd735972e09e5e8",
+  "node": "22.23.2",
+  "tests": {
+    "passed": 35,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "build": {
+    "exitCode": 0,
+    "environment": "synthetic placeholder values; local dist must not be deployed"
+  },
+  "standaloneHelperStrictTsc": {
+    "file": "frontend/src/app/services/pushDevice.ts",
+    "exitCode": 0,
+    "scope": "Node22 TypeScript compiler, strict/skipLibCheck ES2022 DOM; helper unchanged after check"
+  },
+  "wholeRepositoryTsc": "not passed; existing ExportModal syntax errors. Final runner skipped whole tsc because functions node_modules absent. Do not infer semantic pass from filtered zero.",
+  "sourceHashes": {
+    "frontend/src/app/pages/SettingsPage.tsx": "ff69798f5e39c151b2ef14e10a9bfe7f4fba75d32a73a4a14d33bb3cbb5be6df",
+    "frontend/src/app/services/notificationService.ts": "87a64445f2341413f7768461add12377fb711fd1666bd5cb5361e843d1cb4f9f",
+    "frontend/src/app/services/pushDevice.ts": "5e34d67817f5f1f651964915ecc5f8d92f64b5028e354cbe3b0d63ed4ca830b8",
+    "frontend/test/deviceDisplayTest.test.mjs": "b093eb4ed11396cc21e239e3b7f064f60e02e4624e7633b61dfb762a53200e2a"
+  },
+  "rawCopies": "cc2 and final runner/log byte-identical to /private/tmp originals",
+  "operatingScope": "draft only, no new Hosting approval, no deploy/real notification calls",
+  "actualPhoneReceipt": "all three previous FCM self tests unreceived by user; this local display test not yet tested on phone"
+}
