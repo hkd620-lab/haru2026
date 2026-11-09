@@ -1,0 +1,92 @@
+
+> @figma/my-make-file@0.0.1 prebuild
+> npm run validate:build-env
+
+
+> @figma/my-make-file@0.0.1 validate:build-env
+> node scripts/validate-build-env.mjs
+
+Firebase build environment validation passed.
+
+> @figma/my-make-file@0.0.1 build
+> vite build
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.ts:30:47). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+plugin-legacy 'modernTargets' option overrode the builtin targets of modern chunks. Some versions of browsers between legacy and modern may not be supported.
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 3265 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/manifest.webmanifest                          0.68 kB
+dist/assets/pdf.worker.min-legacy-Cybx0agL.js      0.14 kB │ gzip:     0.13 kB
+dist/assets/index.esm-legacy-FSUhfh4T.js          28.61 kB │ gzip:     9.58 kB
+dist/assets/polyfills-legacy-B_Fkb3AJ.js         136.23 kB │ gzip:    49.23 kB
+dist/assets/xlsx-legacy-kBrBLGzQ.js              495.10 kB │ gzip:   161.46 kB
+dist/assets/pdf-legacy-CYUEJ8K-.js               535.06 kB │ gzip:   163.82 kB
+dist/assets/index-legacy-BUr853Ys.js           5,545.47 kB │ gzip: 1,510.99 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../Users/heogyeongdae/Developer/HARU2026/frontend/node_modules/firebase/firestore/dist/esm/index.esm.js is dynamically imported by src/app/pages/AdminChecklistPage.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../Users/heogyeongdae/Developer/HARU2026/frontend/node_modules/firebase/functions/dist/esm/index.esm.js is dynamically imported by src/app/services/firestoreService.ts but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, src/app/components/SayuModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/firebase.ts is dynamically imported by src/app/contexts/AuthContext.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/app/services/firestoreService.ts is dynamically imported by src/app/components/FormatModal.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/ResultChatModal.tsx, src/app/components/SayuModal.tsx, src/app/components/TimelineCollageModal.tsx, ..., dynamic import will not move module into another chunk.
+
+transforming...
+✓ 3265 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/manifest.webmanifest                    0.68 kB
+dist/assets/005에세이-BJ44_T9C.png              5.20 kB
+dist/assets/001메모-DDW2_6Sd.png               5.45 kB
+dist/assets/006-nUdkMhJ6.png                 6.09 kB
+dist/index.html                              7.40 kB │ gzip:     2.33 kB
+dist/assets/pdf.worker.min-Dkey6ZUl.mjs  1,321.30 kB
+dist/assets/index-Vvh5jY3_.css             178.44 kB │ gzip:    31.66 kB
+dist/assets/pdf.worker.min-WWY7VKxM.js       0.06 kB │ gzip:     0.08 kB
+dist/assets/index.esm-BLt45krB.js           28.45 kB │ gzip:     9.45 kB
+dist/assets/xlsx-D0OjGUkV.js               494.77 kB │ gzip:   161.10 kB
+dist/assets/pdf-DRI2TAAS.js                532.48 kB │ gzip:   159.35 kB
+dist/assets/index-67CwRkfR.js            5,346.49 kB │ gzip: 1,465.29 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../Users/heogyeongdae/Developer/HARU2026/frontend/node_modules/firebase/firestore/dist/esm/index.esm.js is dynamically imported by src/app/pages/AdminChecklistPage.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0m../../../../Users/heogyeongdae/Developer/HARU2026/frontend/node_modules/firebase/functions/dist/esm/index.esm.js is dynamically imported by src/app/services/firestoreService.ts but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/FormatModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, src/app/components/SayuModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/firebase.ts is dynamically imported by src/app/contexts/AuthContext.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/BookPublishReviewModal.tsx, src/app/components/DiaryLearnModal.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/GrowthTimelineDocumentModal.tsx, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/app/services/firestoreService.ts is dynamically imported by src/app/components/FormatModal.tsx but also statically imported by src/app/assistants/haruLaw/HaruLawPanel.tsx, src/app/components/GrowthTimelineCreator.tsx, src/app/components/ResultChatModal.tsx, src/app/components/SayuModal.tsx, src/app/components/TimelineCollageModal.tsx, ..., dynamic import will not move module into another chunk.
+
+✓ built in 4m 12s
+
+PWA v1.3.0
+mode      generateSW
+precache  53 entries (16070.12 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-aade9d62.js
+[33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 248.4s of this 251.8s build (99%).
+The slowest callbacks, timed inside each callback (the wait before a callback starts is excluded, the time it awaits is included):
+  - plugin vite:legacy-post-process renderChunk (93%, 233.7s, 10 calls)
+  - plugin vite-plugin-pwa:build closeBundle (3%, 7.0s, 1 call)
+  - plugin vite:legacy-generate-polyfill-chunk generateBundle (1%, 1.4s, 2 calls)
+Additional callback time came from the callbacks below and from callbacks under 1s.
+2 callbacks are listed without a time. Their calls overlapped, so the time inside one call includes work from other calls. To find their cost, profile the build with `node --cpu-prof`:
+  - plugin vite:asset load (22 calls)
+  - plugin @tailwindcss/vite:generate:build transform (10 calls)
+See https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.
+
