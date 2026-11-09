@@ -1,0 +1,60 @@
+{
+  "capturedAt": "2026-11-09T01:58:44.755309+00:00",
+  "results": [
+    {
+      "cwd": "functions",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-deps-validation-0.log"
+    },
+    {
+      "cwd": "functions",
+      "command": [
+        "npm",
+        "run",
+        "test:sharp-pipelines"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-deps-validation-1.log"
+    },
+    {
+      "cwd": "frontend",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-deps-validation-2.log"
+    },
+    {
+      "cwd": "frontend",
+      "command": [
+        "node",
+        "--test",
+        "test/sayuPreviewInput.test.cjs"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-deps-validation-3.log"
+    },
+    {
+      "cwd": "frontend",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "test/haruLawAnswer.test.mjs",
+        "test/sayuAssistantAdapters.test.mjs"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-deps-validation-4.log"
+    }
+  ],
+  "runtime": "Node22",
+  "environment": "비밀없는 demo 환경값, 배포용 빌드 아님."
+}

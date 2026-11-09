@@ -1,0 +1,22 @@
+{
+  "startedAt": "2026-11-09T01:19:42.881446+00:00",
+  "cwd": "/private/tmp/haru-law-iphone-sayu-search-20261105",
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "plan",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Bash",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--disallowedTools",
+    "Edit,Write,NotebookEdit"
+  ],
+  "finishedAt": "2026-11-09T01:19:48.282968+00:00",
+  "exitCode": 1
+}

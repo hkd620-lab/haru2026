@@ -1,0 +1,118 @@
+TAP version 13
+# Subtest: daily: 직접 입력한 문장을 분야별 해석 없이 보존 — 오늘은 속상했다.
+ok 1 - daily: 직접 입력한 문장을 분야별 해석 없이 보존 — 오늘은 속상했다.
+  ---
+  duration_ms: 2.2715
+  type: 'test'
+  ...
+# Subtest: health: 직접 입력한 문장을 분야별 해석 없이 보존 — 오늘은 속상했다.
+ok 2 - health: 직접 입력한 문장을 분야별 해석 없이 보존 — 오늘은 속상했다.
+  ---
+  duration_ms: 0.28125
+  type: 'test'
+  ...
+# Subtest: daily: 직접 입력한 문장을 분야별 해석 없이 보존 — 영어 공부만 했다.
+ok 3 - daily: 직접 입력한 문장을 분야별 해석 없이 보존 — 영어 공부만 했다.
+  ---
+  duration_ms: 0.529583
+  type: 'test'
+  ...
+# Subtest: health: 직접 입력한 문장을 분야별 해석 없이 보존 — 영어 공부만 했다.
+ok 4 - health: 직접 입력한 문장을 분야별 해석 없이 보존 — 영어 공부만 했다.
+  ---
+  duration_ms: 0.274167
+  type: 'test'
+  ...
+# Subtest: daily: 직접 입력한 문장을 분야별 해석 없이 보존 — 호박꽃은 아직 피지 않았다.
+ok 5 - daily: 직접 입력한 문장을 분야별 해석 없이 보존 — 호박꽃은 아직 피지 않았다.
+  ---
+  duration_ms: 0.200125
+  type: 'test'
+  ...
+# Subtest: health: 직접 입력한 문장을 분야별 해석 없이 보존 — 호박꽃은 아직 피지 않았다.
+ok 6 - health: 직접 입력한 문장을 분야별 해석 없이 보존 — 호박꽃은 아직 피지 않았다.
+  ---
+  duration_ms: 0.091167
+  type: 'test'
+  ...
+# Subtest: 준비된 예시 선택: ""
+ok 7 - 준비된 예시 선택: ""
+  ---
+  duration_ms: 0.204917
+  type: 'test'
+  ...
+# Subtest: 준비된 예시 선택: "   "
+ok 8 - 준비된 예시 선택: "   "
+  ---
+  duration_ms: 0.20225
+  type: 'test'
+  ...
+# Subtest: 준비된 예시 선택: "오늘은 별일 없었다. 그래도 저녁에 아내와 산책했다."
+ok 9 - 준비된 예시 선택: "오늘은 별일 없었다. 그래도 저녁에 아내와 산책했다."
+  ---
+  duration_ms: 0.535875
+  type: 'test'
+  ...
+# Subtest: 기본 예시 버튼은 그 원문에 대응하는 준비된 결과를 표시한다
+ok 10 - 기본 예시 버튼은 그 원문에 대응하는 준비된 결과를 표시한다
+  ---
+  duration_ms: 1.097625
+  type: 'test'
+  ...
+# Subtest: 기본 문장을 둔 채 건강 탭으로 바꾸면 건강 예시의 원문과 결과가 함께 표시된다
+ok 11 - 기본 문장을 둔 채 건강 탭으로 바꾸면 건강 예시의 원문과 결과가 함께 표시된다
+  ---
+  duration_ms: 0.119292
+  type: 'test'
+  ...
+# Subtest: daily: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+ok 12 - daily: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+  ---
+  duration_ms: 0.119417
+  type: 'test'
+  ...
+# Subtest: health: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+ok 13 - health: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+  ---
+  duration_ms: 0.047667
+  type: 'test'
+  ...
+# Subtest: garden: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+ok 14 - garden: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+  ---
+  duration_ms: 0.044125
+  type: 'test'
+  ...
+# Subtest: travel: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+ok 15 - travel: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+  ---
+  duration_ms: 0.054209
+  type: 'test'
+  ...
+# Subtest: reading: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+ok 16 - reading: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+  ---
+  duration_ms: 0.041584
+  type: 'test'
+  ...
+# Subtest: family: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+ok 17 - family: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+  ---
+  duration_ms: 0.0405
+  type: 'test'
+  ...
+# Subtest: prayer: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+ok 18 - prayer: 체험 버튼을 누르기 전에는 실제 입력과 무관한 예시를 서로 짝지어 표시한다
+  ---
+  duration_ms: 0.040917
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1017.251167

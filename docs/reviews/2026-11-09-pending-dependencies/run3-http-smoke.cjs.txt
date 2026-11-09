@@ -1,0 +1,19 @@
+const assert=require('node:assert/strict');
+const {createRequire}=require('node:module');
+const req=createRequire('/private/tmp/haru-complete-pending-20261109/functions/package.json');
+const express=req('express');const bodyParser=req('body-parser');const qs=req('qs');const {http}=req('follow-redirects');
+const app=express();app.use(bodyParser.json());app.use(bodyParser.urlencoded({extended:true}));
+app.post('/echo',(request,response)=>response.json(request.body));app.get('/redirect',(r,s)=>s.redirect('/ok'));app.get('/ok',(r,s)=>s.json({ok:true}));
+app.use((error,request,response,next)=>response.status(error.status||500).json({error:'parse_error'}));
+const server=app.listen(0,'127.0.0.1',async()=>{
+ let checks=0;
+ try{
+  const port=server.address().port;const root='http://127.0.0.1:'+port;
+  let r=await fetch(root+'/echo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({note:'합성 시험',number:7})});assert.equal(r.status,200);assert.deepEqual(await r.json(),{note:'합성 시험',number:7});checks++;
+  r=await fetch(root+'/echo',{method:'POST',headers:{'content-type':'application/json'},body:'{bad'});assert.equal(r.status,400);checks++;
+  r=await fetch(root+'/echo',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:'record[title]=synthetic&tags[]=one&tags[]=two'});assert.equal(r.status,200);assert.deepEqual(await r.json(),{record:{title:'synthetic'},tags:['one','two']});checks++;
+  const parsed=qs.parse('__proto__[polluted]=true&constructor[prototype][polluted]=true&safe=value');assert.equal({}.polluted,undefined);assert.equal(parsed.safe,'value');checks++;
+  await new Promise((resolve,reject)=>http.get(root+'/redirect',response=>{let chunks=[];response.on('data',chunk=>chunks.push(chunk));response.on('end',()=>{try{assert.equal(response.statusCode,200);assert.deepEqual(JSON.parse(Buffer.concat(chunks)),{ok:true});resolve();}catch(e){reject(e);}})}).on('error',reject));checks++;
+  console.log(JSON.stringify({status:'passed',checks,externalRequests:0,productionWrites:0,runtime:process.version}));
+ }catch(e){console.error(e.stack);process.exitCode=1;}finally{server.close();}
+});server.on('error',e=>{console.error(e.code);process.exitCode=1});

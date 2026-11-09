@@ -1,0 +1,36 @@
+{
+  "capturedAt": "2026-11-09T01:50:50.163683+00:00",
+  "results": [
+    {
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "test/haruLawAnswer.test.mjs",
+        "test/sayuAssistantAdapters.test.mjs"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-343-validation-0.log"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "test/sayuPreviewInput.test.cjs"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-343-validation-1.log"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-343-validation-2.log"
+    }
+  ],
+  "environment": "비밀없는 demo 환경값, 배포용 빌드 아님."
+}
