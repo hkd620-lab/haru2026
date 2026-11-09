@@ -1,0 +1,28 @@
+{
+  "startedAt": "2026-11-09T04:15:11.525390+00:00",
+  "cwd": "/private/tmp/haru-law-attachment-labels-20261109",
+  "head": "312edde80d8f5171ab164a4ed68f8349855dbd28",
+  "pr": 364,
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "plan",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Bash",
+    "--disallowedTools",
+    "Edit,Write,NotebookEdit",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--add-dir",
+    "/private/tmp",
+    "--allowedTools",
+    "Read,Glob,Grep,Bash(git diff *),Bash(git show *),Bash(git log *),Bash(git status *),Bash(git rev-parse *),Bash(gh pr view *),Bash(gh api *),Bash(cat *),Bash(rg *),Bash(ls *),Bash(/opt/homebrew/opt/node@22/bin/node --test *)"
+  ],
+  "exitCode": 0,
+  "finishedAt": "2026-11-09T04:18:13.285431+00:00"
+}

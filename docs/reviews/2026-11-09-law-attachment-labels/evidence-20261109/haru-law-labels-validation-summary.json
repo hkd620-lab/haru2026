@@ -1,0 +1,36 @@
+{
+  "recordedAt": "2026-11-09T03:59:21.770180+00:00",
+  "head": "110c70e2dab09720b025c48f9deeec17df9e633d",
+  "results": [
+    {
+      "command": [
+        "node",
+        "--version"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-law-labels-validation-0.log"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-law-labels-validation-1.log"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "test/haruLawAttachmentLabels.test.js",
+        "test/haruLawAttachmentPipeline.test.js",
+        "test/haruLawErrorCore.test.js"
+      ],
+      "exitCode": 1,
+      "log": "/private/tmp/haru-law-labels-validation-2.log"
+    }
+  ],
+  "actualAIRequests": false,
+  "productionWrites": false
+}

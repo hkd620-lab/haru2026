@@ -1,0 +1,24 @@
+{
+  "startedAt": "2026-11-09T03:46:34.060930+00:00",
+  "cwd": "/private/tmp/haru-law-attachment-labels-20261109",
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "acceptEdits",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Bash,Edit,Write",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--add-dir",
+    "/private/tmp",
+    "--allowedTools",
+    "Read,Glob,Grep,Edit,Write,Bash(git *),Bash(gh pr create *),Bash(gh pr view *),Bash(gh api *),Bash(npm run *),Bash(node *),Bash(cmp *),Bash(ln -s *),Bash(pwd),Bash(ls *),Bash(cat *),Bash(rg *),Bash(df *)"
+  ],
+  "exitCode": 0,
+  "finishedAt": "2026-11-09T03:55:38.243646+00:00"
+}
