@@ -1,0 +1,22 @@
+{
+  "startedAt": "2026-11-09T02:31:53.344629+00:00",
+  "cwd": "/private/tmp/haru-pending-major-deps-20261109",
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "plan",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Bash",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--disallowedTools",
+    "Edit,Write,NotebookEdit"
+  ],
+  "finishedAt": "2026-11-09T02:35:30.762329+00:00",
+  "exitCode": 0
+}

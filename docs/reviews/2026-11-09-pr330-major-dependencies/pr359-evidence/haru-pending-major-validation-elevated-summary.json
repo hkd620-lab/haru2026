@@ -1,0 +1,70 @@
+{
+  "capturedAt": "2026-11-09T02:17:36.016600+00:00",
+  "head": "9f7cba687ace33a6550866d325ce435897082bd7",
+  "results": [
+    {
+      "command": [
+        "node",
+        "--version"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-major-validation-elevated-0.log"
+    },
+    {
+      "command": [
+        "npm",
+        "--version"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-major-validation-elevated-1.log"
+    },
+    {
+      "command": [
+        "npm",
+        "ci",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-major-validation-elevated-2.log"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-major-validation-elevated-3.log"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:sharp-pipelines"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-major-validation-elevated-4.log"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:ai-gateway"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-major-validation-elevated-5.log"
+    },
+    {
+      "command": [
+        "node",
+        "-e",
+        "const p=require(\"puppeteer\"); console.log(JSON.stringify({puppeteerRequire:typeof p.launch,version:require(\"puppeteer/package.json\").version,zodVersion:require(\"zod/package.json\").version,sdkOpenAI:typeof require(\"openai\").OpenAI,sdkAnthropic:typeof require(\"@anthropic-ai/sdk\").Anthropic})); const keys=Object.keys(require(\"./lib/index.js\")).sort();console.log(\"EXPORTS_JSON=\"+JSON.stringify(keys));"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-pending-major-validation-elevated-6.log"
+    }
+  ],
+  "actualAIRequests": false,
+  "productionWrites": false
+}
