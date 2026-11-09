@@ -8,10 +8,10 @@ import { toast } from 'sonner';
 import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken, getDeviceTimeZone, backfillNotificationTimeZone, getThisDevicePushEnvironment, registerThisDevice } from '../services/notificationService';
 import {
   describeDevicePushStatus,
-  describeRegistrationFailure,
   describeSelfTestError,
   describeSelfTestResult,
   resolveDevicePushStatus,
+  runDeviceRegistration,
   sendSelfTestNotification,
   type DevicePushEnvironment,
   type SelfTestView,
@@ -472,19 +472,15 @@ export function SettingsPage() {
   // 계정 알림은 켜 둔 채 이 기기만 권한 요청·재등록한다. 클릭 핸들러에서 곧바로 호출해야 iOS 권한 창이 뜬다.
   const handleRegisterThisDevice = async () => {
     if (!user?.uid) return;
-    setIsRegisteringDevice(true);
-    try {
-      const result = await registerThisDevice(user.uid);
-      setDeviceRegisteredNow(result.ok);
-      if (result.ok) {
-        toast.success('이 기기를 알림 받을 기기로 등록했습니다.');
-      } else {
-        toast.error(describeRegistrationFailure(result.reason));
-      }
-    } finally {
-      setIsRegisteringDevice(false);
-      void refreshDevicePush();
-    }
+    const uid = user.uid;
+    await runDeviceRegistration(() => registerThisDevice(uid), {
+      setBusy: setIsRegisteringDevice,
+      setRegistered: setDeviceRegisteredNow,
+      notifySuccess: (message) => { toast.success(message); },
+      notifyWarning: (message) => { toast.warning(message); },
+      notifyError: (message) => { toast.error(message); },
+      refresh: () => { void refreshDevicePush(); },
+    });
   };
 
   // 기존 sendTestNotification(요청자 본인의 등록 기기만 대상)으로 내 기기 테스트 알림을 보낸다.

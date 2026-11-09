@@ -98,8 +98,12 @@ export type PushRegistrationFailure =
   | 'token'
   | 'save';
 
+// 서버(fcmTokens) 저장은 끝났지만 그 뒤 기기 쪽 후처리가 실패한 경우.
+// cache: localStorage에 토큰을 기억하지 못함 / listener: 포그라운드 수신 준비 시작에 실패함.
+export type PushRegistrationWarning = 'cache' | 'listener';
+
 export type PushRegistrationResult =
-  | { ok: true }
+  | { ok: true; warning?: PushRegistrationWarning }
   | { ok: false; reason: PushRegistrationFailure };
 
 export interface PushRegistrationDeps<R> {
@@ -119,9 +123,20 @@ export interface PushRegistrationDeps<R> {
 export async function registerDeviceForPush<R>(deps: PushRegistrationDeps<R>): Promise<PushRegistrationResult> {
   const initialPermission = deps.getPermission();
   if (initialPermission === 'unsupported') return { ok: false, reason: 'unsupported' };
-  const permissionRequest = initialPermission === 'default'
-    ? deps.requestPermission()
-    : Promise.resolve(initialPermission);
+  // 요청은 여기서 동기적으로 시작하고, 지원 확인을 기다리기 전에 곧바로 거부 처리를 붙인다.
+  // (붙이지 않으면 isSupported를 기다리는 동안 거부가 처리되지 않은 거부로 먼저 보고된다.)
+  // 동기 예외도 같은 '창 닫힘'으로 처리한다.
+  let permissionRequest: Promise<DevicePermission>;
+  if (initialPermission === 'default') {
+    try {
+      permissionRequest = Promise.resolve(deps.requestPermission())
+        .catch((): DevicePermission => 'default');
+    } catch {
+      permissionRequest = Promise.resolve('default');
+    }
+  } else {
+    permissionRequest = Promise.resolve(initialPermission);
+  }
 
   let supported = false;
   try {
@@ -159,9 +174,73 @@ export async function registerDeviceForPush<R>(deps: PushRegistrationDeps<R>): P
     return { ok: false, reason: 'save' };
   }
 
-  deps.cacheToken(token);
-  deps.onRegistered?.();
-  return { ok: true };
+  // 여기부터는 서버 저장이 이미 성공했으므로 실패로 되돌리지 않는다. 후처리 오류는 warning으로만 알린다.
+  let warning: PushRegistrationWarning | undefined;
+  try {
+    deps.cacheToken(token);
+  } catch {
+    warning = 'cache';
+  }
+  try {
+    deps.onRegistered?.();
+  } catch {
+    warning = warning ?? 'listener';
+  }
+  return warning ? { ok: true, warning } : { ok: true };
+}
+
+export function describeRegistrationWarning(warning: PushRegistrationWarning): string {
+  switch (warning) {
+    case 'cache':
+      return '이 기기를 알림 받을 기기로 등록했습니다. 다만 이 기기에 등록 정보를 기억하지 못해, 나중에 알림을 꺼도 이 기기 등록이 자동으로 지워지지 않을 수 있습니다.';
+    case 'listener':
+      return '이 기기를 알림 받을 기기로 등록했습니다. 다만 앱이 열려 있을 때의 알림 표시 준비에 실패했습니다. 앱을 다시 열면 다시 준비합니다.';
+  }
+}
+
+export interface DeviceRegistrationFeedback {
+  setBusy: (busy: boolean) => void;
+  setRegistered: (registered: boolean) => void;
+  notifySuccess: (message: string) => void;
+  notifyWarning: (message: string) => void;
+  notifyError: (message: string) => void;
+  refresh: () => void;
+}
+
+export const UNEXPECTED_REGISTRATION_ERROR = '이 기기 등록 중 예기치 못한 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+
+// 설정 화면 '이 기기에서 알림 받기' 버튼 처리. register는 첫 await 전에 동기적으로 호출한다(제스처 유지).
+// 예기치 못한 예외·거부도 여기서 처리해 로딩이 풀리고, 등록 완료로 표시하지 않는다.
+export async function runDeviceRegistration(
+  register: () => Promise<PushRegistrationResult>,
+  ui: DeviceRegistrationFeedback,
+): Promise<void> {
+  ui.setBusy(true);
+  try {
+    const result = await register();
+    ui.setRegistered(result.ok);
+    if (!result.ok) {
+      ui.notifyError(describeRegistrationFailure(result.reason));
+    } else if (result.warning) {
+      ui.notifyWarning(describeRegistrationWarning(result.warning));
+    } else {
+      ui.notifySuccess('이 기기를 알림 받을 기기로 등록했습니다.');
+    }
+  } catch {
+    ui.setRegistered(false);
+    try {
+      ui.notifyError(UNEXPECTED_REGISTRATION_ERROR);
+    } catch {
+      // 안내 표시 실패는 무시한다.
+    }
+  } finally {
+    ui.setBusy(false);
+    try {
+      ui.refresh();
+    } catch {
+      // 상태 재확인 실패는 무시한다.
+    }
+  }
 }
 
 export function describeRegistrationFailure(reason: PushRegistrationFailure): string {
