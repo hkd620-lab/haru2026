@@ -1,0 +1,16 @@
+{
+  "recordedAt": "2026-11-09T20:41:50.785003+00:00",
+  "status": "Both own-account device actual receipts confirmed by one operator, 허대표님",
+  "clarifications": [
+    {
+      "source": "INDEX.md section6 and CC final Slack template",
+      "correction": "The one failure in the final aggregate count is an unidentified other registration. Calling it old/legacy is an inference, not proven by token-level attribution. Both S21 and16e actual receipt confirmed separately. No token cleanup performed."
+    },
+    {
+      "source": "INDEX.md section4.2 and raw merge CC result",
+      "correction": "Ready time about20:12Z is CC approximate recollection. Actual automatic Codex start20:11:56.393873Z and finish20:13:03.792239Z are from GitHub summary; exact Ready action timestamp not independently established here."
+    }
+  ],
+  "tooling": "One root function wrapper failed JavaScript parsing before any completion CC process launched; corrected wrapper ran the single recorded completion CC session. No review reroll.",
+  "recording": "Original INDEX, prompts, outputs and previous statuses preserved verbatim. This clarification supplements them. New evidence branch only; no product changes or additional deployment."
+}

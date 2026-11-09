@@ -1,0 +1,29 @@
+{
+  "recordedAt": "2026-11-09T20:24:02.358Z",
+  "scope": "User approved HARU PWA only read-only loaded bundle names and subscription public-key equality; no endpoint/auth/token/records read or saved",
+  "haruPageCount": 2,
+  "results": [
+    {
+      "page": {
+        "visibility": "visible",
+        "standalone": true
+      },
+      "scripts": [
+        "/assets/index-DxKFbrtf.js"
+      ],
+      "registrations": [
+        {
+          "scopePath": "/firebase-cloud-messaging-push-scope",
+          "scriptPath": "/firebase-messaging-sw.js",
+          "matchesDefaultBytes": false,
+          "matchesCurrentBytes": true,
+          "matchesPreviousBytes": false,
+          "hasSubscription": true,
+          "publicKeyBytes": 65,
+          "matchesFirebaseCurrent": true,
+          "matchesFirebasePrevious": false
+        }
+      ]
+    }
+  ]
+}

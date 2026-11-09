@@ -1,0 +1,24 @@
+{
+  "startedAt": "2026-11-09T20:38:31.920019+00:00",
+  "cwd": "/private/tmp/haru-pr368-delivery-evidence-20261110",
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "acceptEdits",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Edit,Write",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--add-dir",
+    "/private/tmp",
+    "--allowedTools",
+    "Read,Glob,Grep,Edit,Write"
+  ],
+  "exitCode": 0,
+  "finishedAt": "2026-11-09T20:40:35.320832+00:00"
+}

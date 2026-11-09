@@ -1,0 +1,26 @@
+{
+  "recordedAt": "2026-11-09T20:19:44.725183+00:00",
+  "hostingRun": 42690923623,
+  "mergeSha": "4e7e871e8f91d06408151fc18b774f5f9146d372",
+  "htmlStatus": 200,
+  "assets": [
+    {
+      "path": "/assets/index-DxKFbrtf.js",
+      "status": 200,
+      "sha256": "cee1929d219138abf984b6bae150ada33d7d319fbf1d92d9a4bde23be538ebb7",
+      "hasSubscriptionGuard": true,
+      "hasWorkerUpdateGuard": true
+    },
+    {
+      "path": "/assets/index-legacy-CLS0Skfk.js",
+      "status": 200,
+      "sha256": "52a04c647574249e13e40f4f6864cb2977d687ded1dd2df28820097da408c913",
+      "hasSubscriptionGuard": true,
+      "hasWorkerUpdateGuard": true
+    }
+  ],
+  "messagingSwStatus": 200,
+  "messagingSwSha256": "147b46cd74d9c8dd8bdc4a06d6eefb7f434ff4b7e2584b4c5abd80a1064c762b",
+  "messagingSwExactApprovedSource": true,
+  "noFunctionsRulesDeploy": true
+}

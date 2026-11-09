@@ -1,0 +1,7 @@
+{
+  "recordedAt": "2026-11-09T20:32:11.638315+00:00",
+  "userInstruction": "승인. PR #368 병합하고 Hosting에 배포한 뒤 S21과 16e에서 실제 알림 수신까지 확인하자.",
+  "allowed": "PR368 squash merge and automaticHosting deployment; own-account device test and receipt confirmation",
+  "excluded": "No furtherFunctions/Rulesdeploy, no all-user broadcast, no data/auth/storage-policy changes",
+  "current": "S21 user confirmed receipt; 16e not yet received; own-account reregister/selftest pending"
+}

@@ -1,0 +1,24 @@
+{
+  "startedAt": "2026-11-09T20:10:35.859777+00:00",
+  "cwd": "/private/tmp/haru-s21-push-key-fix-20261109",
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "acceptEdits",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Bash",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--add-dir",
+    "/private/tmp",
+    "--allowedTools",
+    "Read,Glob,Grep,Bash(git diff *),Bash(git show *),Bash(git status *),Bash(git rev-parse *),Bash(gh pr view *),Bash(gh pr checks *),Bash(gh pr ready 368 *),Bash(gh pr merge 368 *),Bash(gh api *),Bash(gh run list *),Bash(gh run view *),Bash(gh run watch *)"
+  ],
+  "exitCode": 0,
+  "finishedAt": "2026-11-09T20:15:39.738919+00:00"
+}

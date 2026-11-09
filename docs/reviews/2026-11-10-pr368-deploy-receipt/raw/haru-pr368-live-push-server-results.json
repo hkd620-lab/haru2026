@@ -1,0 +1,33 @@
+{
+  "recordedAt": "2026-11-09T20:29:32.397559+00:00",
+  "windowStart": "2026-11-09T20:27:20Z",
+  "entryCount": 10,
+  "httpRequests": [
+    {
+      "timestamp": "2026-11-09T20:27:30.481351Z",
+      "service": "sendtestnotification",
+      "revision": "sendtestnotification-00131-baq",
+      "status": 204,
+      "latency": "3.356019740s"
+    },
+    {
+      "timestamp": "2026-11-09T20:27:34.290694Z",
+      "service": "sendtestnotification",
+      "revision": "sendtestnotification-00131-baq",
+      "status": 200,
+      "latency": "1.164400955s"
+    }
+  ],
+  "notificationCompletions": [
+    {
+      "timestamp": "2026-11-09T20:27:35.455093Z",
+      "service": "sendtestnotification",
+      "revision": "sendtestnotification-00131-baq",
+      "succeeded": 2,
+      "failed": 3
+    }
+  ],
+  "memoryLimitErrors": [],
+  "messagingErrorCodes": [],
+  "privateFieldsSaved": false
+}

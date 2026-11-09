@@ -1,0 +1,18 @@
+{
+  "recordedAt": "2026-11-09T20:31:31.526325+00:00",
+  "testSentAt": "2026-11-09T20:27:29.595118+00:00",
+  "testSentAtKst": "2026-11-10T05:27:29.595118+09:00",
+  "humanAnswer": "S21만 받음",
+  "s21HumanReceiptConfirmed": true,
+  "iphone16eHumanReceiptConfirmed": false,
+  "s21SystemNotificationMatches": 2,
+  "s21CurrentKeyMatchesAfterRegistration": true,
+  "s21CurrentBundle": "index-DxKFbrtf.js",
+  "serverCounts": {
+    "succeeded": 2,
+    "failed": 3
+  },
+  "limit": "Aggregate successes cannot identify iPhone delivery. Old token failures remain separate from observed current S21 receipt.",
+  "next": "16e own-account registration/self-test requested; no new blind sends or all-user broadcast",
+  "mirroringAtTest": "process observed not running before send"
+}

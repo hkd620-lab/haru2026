@@ -1,0 +1,32 @@
+{
+  "recordedAt": "2026-11-09T20:34:22.930353+00:00",
+  "status": "✅ 승인 범위 완료: PR368 merge + Hosting + both own-account device actual receipt",
+  "pr": 368,
+  "mergeSha": "4e7e871e8f91d06408151fc18b774f5f9146d372",
+  "hostingRun": 42690923623,
+  "hostingResult": "success",
+  "productionAssets": [
+    "index-DxKFbrtf.js",
+    "index-legacy-CLS0Skfk.js"
+  ],
+  "productionSwMatchesApprovedSource": true,
+  "s21": {
+    "humanConfirmation": "S21만 받음 (first post-deploy own-account test)",
+    "actualSystemNotificationRecord": true,
+    "publicKeyCurrentAt20261109T202402Z": true,
+    "publicKeyCurrentAt20261109T203314Z": true,
+    "sdkDefaultKeyAtThoseChecks": false,
+    "result": "received"
+  },
+  "iphone16e": {
+    "firstPostDeployTest": "not received",
+    "followupStepsUserPerformed": "HARU close/reopen, notifications settings, reregister completed, own-device self-test, immediate home and lock; mirroring off",
+    "humanConfirmation": "16e에서도 받음",
+    "result": "received",
+    "scopeLimit": "Actual receipt confirmed by user. No programmatic reading of iPhone auth/token/records or subscription key."
+  },
+  "limit": "Own-account self-test notifications only. All-user developer broadcast and scheduled delivery were not exercised. Aggregate old registration failures are not reclassified as current-device failures.",
+  "functionsRules": "No extra deploy; lawSearch/sendTestNotification revisions from prior authorizeddeployment kept",
+  "originalSuccesses": "four-file AI/save-reopen/Kakao and earlier iPhone receipt remain valid",
+  "storage": "LaCie final copy/hash verification follows; internal originals preserved"
+}

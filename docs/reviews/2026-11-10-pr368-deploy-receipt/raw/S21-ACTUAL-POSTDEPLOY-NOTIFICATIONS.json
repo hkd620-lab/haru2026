@@ -1,0 +1,33 @@
+{
+  "recordedAt": "2026-11-09T20:28:20.266352+00:00",
+  "device": "Samsung Galaxy S21 SM-G991N",
+  "androidVersion": "15",
+  "scope": "read-only normal Android user0; no UI control/settings change/push sent/private profile access",
+  "target": "haru2026.com PWA plus Chrome delegated notifications",
+  "matchedActiveTestNotifications": [
+    {
+      "package": "org.chromium.webapk.a83a0ff22c3e27d08_v2",
+      "testTitleMatched": true,
+      "expectedSelfTestBodyMatched": true,
+      "timesUtc": [
+        "2026-11-09T20:27:35.731000+00:00",
+        "2026-11-09T20:27:36.338000+00:00",
+        "2026-11-09T20:27:36.350000+00:00"
+      ]
+    },
+    {
+      "package": "org.chromium.webapk.a83a0ff22c3e27d08_v2",
+      "testTitleMatched": true,
+      "expectedSelfTestBodyMatched": true,
+      "timesUtc": [
+        "2026-11-09T20:27:35.671000+00:00",
+        "2026-11-09T20:27:35.813000+00:00",
+        "2026-11-09T20:27:35.856000+00:00"
+      ]
+    }
+  ],
+  "matchedCount": 2,
+  "rawNotificationRecordsSaved": false,
+  "otherAppContentsPrinted": false,
+  "limit": "Active system notification records only, not notification history. Zero matches does not prove non-delivery."
+}
