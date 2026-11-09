@@ -1,0 +1,5 @@
+{
+  "extends": "/private/tmp/haru-iphone-push-repair-20261109/frontend/tsconfig.json",
+  "include": ["/private/tmp/haru-iphone-push-repair-20261109/frontend/src"],
+  "exclude": ["/private/tmp/haru-iphone-push-repair-20261109/frontend/src/app/components/ExportModal.tsx"]
+}

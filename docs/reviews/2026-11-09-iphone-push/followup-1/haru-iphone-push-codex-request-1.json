@@ -1,0 +1,1 @@
+{"body":"@codex review\n\n검토 대상 HEAD: 6500eac8584fec63a600f3579d01c6bb0511643d. 아이폰 알림 미수신 원인 해결 범위입니다. 계정 알림 설정과 현재 기기의 권한·등록 상태 구분, 사용자 제스처에서 직접 권한 요청, 기존 본인 계정 전용 callable을 통한 테스트 발송, iOS 포그라운드 showNotification 및 중복 리스너 방지를 검토해 주세요. 변경 및 검증 근거: docs/reviews/2026-11-09-iphone-push/README.md. 운영 실수신은 후속 시험이며 빌드 성공만으로 운영 완료를 선언하지 않습니다."}

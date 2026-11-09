@@ -1,0 +1,25 @@
+{
+  "currentTotal": 105,
+  "baselineTotal": 105,
+  "multisetEqual": true,
+  "onlyCurrent": [],
+  "onlyBaseline": [],
+  "perWatched": {
+    "src/app/services/pushDevice.ts": {
+      "current": [],
+      "baseline": []
+    },
+    "src/app/services/notificationService.ts": {
+      "current": [
+        "src/app/services/notificationService.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'."
+      ],
+      "baseline": [
+        "src/app/services/notificationService.ts: error TS2339: Property 'env' does not exist on type 'ImportMeta'."
+      ]
+    },
+    "src/app/pages/SettingsPage.tsx": {
+      "current": [],
+      "baseline": []
+    }
+  }
+}

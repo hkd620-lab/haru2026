@@ -1,0 +1,180 @@
+{
+  "allCopiesMatch": false,
+  "copies": [
+    {
+      "source": "/private/tmp/haru-iphone-push-independent-first.prompt.txt",
+      "copy": "haru-iphone-push-independent-first.prompt.txt",
+      "sha256": "122b6bfe613b1325442965d868c43099cd9d4696da3c4b42911a40bb741fdaa7",
+      "match": true,
+      "bytes": 1415
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-independent-first.meta.json",
+      "copy": "haru-iphone-push-independent-first.meta.json",
+      "sha256": "4f0c1acd7730687c9c6bc7f2a60452afe62c266fb1dc26fbe8b46e2075efede9",
+      "match": true,
+      "bytes": 821
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-independent-first.raw.json",
+      "copy": "haru-iphone-push-independent-first.raw.json",
+      "sha256": "1594047b0eacd54587924bc8583c8ee3aa4aa0d4b3d0f73280e7fe59c773064e",
+      "match": true,
+      "bytes": 8158
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-independent-first.err.log",
+      "copy": "haru-iphone-push-independent-first.err.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "match": true,
+      "bytes": 0
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-cc-1.prompt.txt",
+      "copy": "haru-iphone-push-cc-1.prompt.txt",
+      "sha256": "53bc06530c145bf213781efb969232ca93013aee65a3ff615844c8e076c3466c",
+      "match": true,
+      "bytes": 4408
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-cc-1.meta.json",
+      "copy": "haru-iphone-push-cc-1.meta.json",
+      "sha256": "146dd5b83c73dbb789bd2ee6637e83fcc8a72410faf0b35180461c83645d2f48",
+      "match": true,
+      "bytes": 723
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-cc-1.raw.json",
+      "copy": "haru-iphone-push-cc-1.raw.json",
+      "sha256": "9a33508f8bb11033ec3c7c0588cc23d0539725e5b839e0fc2be142a5a7b981de",
+      "match": true,
+      "bytes": 18675
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-cc-1.err.log",
+      "copy": "haru-iphone-push-cc-1.err.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "match": true,
+      "bytes": 0
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-cc-2.prompt.txt",
+      "copy": "haru-iphone-push-cc-2.prompt.txt",
+      "sha256": "49641db544dcdb55042ea76f4f358270b9bd7903273ed4770ae20c8c3800df2f",
+      "match": true,
+      "bytes": 2820
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-cc-2.meta.json",
+      "copy": "haru-iphone-push-cc-2.meta.json",
+      "sha256": "9e5b7b41883eb93bfc29d4b4e346f562796b41505d6af966a8d42f4908ff8fb2",
+      "match": true,
+      "bytes": 632
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-codex-request-1.json",
+      "copy": "haru-iphone-push-codex-request-1.json",
+      "sha256": "c0b63aaee84ee97c2b75c852e8e5811ef6642935ff0ea5a2ead5c813aabfd18d",
+      "match": true,
+      "bytes": 601
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-cc.py",
+      "copy": "haru-iphone-push-cc.py",
+      "sha256": "51680ee75c5a78504ee5183baab56f80a4f2e03addbf104caa457509f945e845",
+      "match": true,
+      "bytes": 5614
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-review.py",
+      "copy": "haru-iphone-push-review.py",
+      "sha256": "fa38553be5c797f6c2ff4c6595fefcd5fc72a4ff565c42d9bc71b7f10a4fc76e",
+      "match": false,
+      "bytes": 3438
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-fix2.py",
+      "copy": "haru-iphone-push-fix2.py",
+      "sha256": "1feb8d8666795a4f6487030ad01d2a2a9b9af042428b374231e84c880b063f83",
+      "match": true,
+      "bytes": 4002
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-tsc-first.log",
+      "copy": "haru-iphone-push-tsc-first.log",
+      "sha256": "e4d5ebce7e883da7fa416dff0e8d1af5c7258c8cdd173888389785c9bd0bd2c3",
+      "match": true,
+      "bytes": 800
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-tsc-second.log",
+      "copy": "haru-iphone-push-tsc-second.log",
+      "sha256": "20ed17a4f0c42607ac58d7e54214d9fc05c34f5d0c415ff8788e66359a88ed7b",
+      "match": true,
+      "bytes": 23706
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-tsc-baseline.log",
+      "copy": "haru-iphone-push-tsc-baseline.log",
+      "sha256": "20ed17a4f0c42607ac58d7e54214d9fc05c34f5d0c415ff8788e66359a88ed7b",
+      "match": true,
+      "bytes": 23706
+    },
+    {
+      "source": "/private/tmp/haru-iphone-push-build-20261109.log",
+      "copy": "haru-iphone-push-build-20261109.log",
+      "sha256": "a135bc1692063324cfdc33bf8429066259ce572d87e3d17251f42bdfa4b9856a",
+      "match": true,
+      "bytes": 7771
+    },
+    {
+      "source": "/private/tmp/haru-push-rejection-probe.mjs",
+      "copy": "haru-push-rejection-probe.mjs",
+      "sha256": "eaaba496fe7da527dc43d6feba27797a45a7dd28afc14f4d636afa18924f22af",
+      "match": true,
+      "bytes": 765
+    },
+    {
+      "source": "/private/tmp/haru-push-followup-oldcheck/run-old-check.mjs",
+      "copy": "run-old-check.mjs",
+      "sha256": "0eda8b70fc71710c6d5a842681a68710433a9bf89141b8aadea325990f99db54",
+      "match": true,
+      "bytes": 1980
+    },
+    {
+      "source": "/private/tmp/haru-push-followup-tsc/tsconfig.current.json",
+      "copy": "tsconfig.current.json",
+      "sha256": "542788de1866c5335fd000a2c6cc28d440c934047ff0debbcd45a2b8968643a8",
+      "match": true,
+      "bytes": 273
+    },
+    {
+      "source": "/private/tmp/haru-push-followup-tsc/tsconfig.baseline.json",
+      "copy": "tsconfig.baseline.json",
+      "sha256": "3383710e4e10d2d602c6fa447ca64d8ed37ffcda8c668b4c47c26321032f73ed",
+      "match": true,
+      "bytes": 267
+    },
+    {
+      "source": "/private/tmp/haru-push-followup-tsc/compare-diagnostics.mjs",
+      "copy": "compare-diagnostics.mjs",
+      "sha256": "4606e09ecb82f9882573964a1fe0b2ce72a634856eb3bd703bed2ad3fda529a4",
+      "match": true,
+      "bytes": 1890
+    },
+    {
+      "source": "/private/tmp/haru-push-followup-tsc/tsc-current-excl-exportmodal.log",
+      "copy": "tsc-current-excl-exportmodal.log",
+      "sha256": "1f4a8b6b100ed95b74893f0462765ed652569c6cd7ed20d90b4502c071ba9b91",
+      "match": true,
+      "bytes": 32813
+    },
+    {
+      "source": "/private/tmp/haru-push-followup-tsc/tsc-baseline-excl-exportmodal.log",
+      "copy": "tsc-baseline-excl-exportmodal.log",
+      "sha256": "6ffa8620c0f016f4fac7abcc51e8331ad9a45be11090964f648f51caa912d168",
+      "match": true,
+      "bytes": 36364
+    }
+  ]
+}

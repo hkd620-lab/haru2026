@@ -1,0 +1,22 @@
+{
+  "startedAt": "2026-11-09T03:41:31.879139+00:00",
+  "cwd": "/private/tmp/haru-iphone-push-repair-20261109",
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "acceptEdits",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Bash,Edit,Write",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--add-dir",
+    "/private/tmp",
+    "--allowedTools",
+    "Read,Glob,Grep,Edit,Write,Bash(git *),Bash(gh pr view *),Bash(gh pr edit 363 *),Bash(gh api *),Bash(npm run *),Bash(node *),Bash(cmp *),Bash(cp *),Bash(ls *),Bash(cat *),Bash(rg *)"
+  ]
+}

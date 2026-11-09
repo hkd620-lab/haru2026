@@ -1,0 +1,6 @@
+$ node --import /private/tmp/haru-iphone-push-repair-20261109/frontend/node_modules/tsx/dist/loader.mjs /private/tmp/haru-push-rejection-probe.mjs
+# 실행: 2026-11-09 12:42경(+0900), 대상 작업본 HEAD 6500eac8(수정 전), Node v26.8.2
+# 이 세션에서는 셸 리디렉션 없이 실행해 도구 출력에서 그대로 옮겨 적었다(출력 원문 변경 없음).
+(node:67498) PromiseRejectionHandledWarning: Promise rejection was handled asynchronously (rejection id: 1)
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"result":{"ok":false,"reason":"dismissed"},"earlyUnhandledRejection":true,"syntheticOnly":true}
