@@ -624,9 +624,11 @@ export function HaruLawPanel({ law, standalone = false }: { law: HaruLawState; s
               {standalone && <h2 id="law-question-label" style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>어떤 일이 있었나요?</h2>}
               {standalone && <p id="law-question-hint" style={{ fontSize: 13, color: '#666', lineHeight: 1.6, marginBottom: 12 }}>일어난 일과 궁금한 점을 적어 주세요. 이름·연락처 등 불필요한 개인정보는 제외해 주세요.</p>}
               <form onSubmit={handleLawSearch} style={{ marginBottom: 12 }}>
+                <label htmlFor="haru-law-question" style={{ display: 'block', marginBottom: 8, fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>하루LAW에게 질문 · 아래 글상자에 써 주세요</label>
                 <textarea
+                  id="haru-law-question"
+                  className="haru-writing-field"
                   rows={3}
-                  aria-label="하루LAW 질문"
                   aria-describedby={standalone ? "law-question-hint" : undefined}
                   value={lawQuery}
                   onChange={(e) => setLawQuery(e.target.value)}
@@ -636,8 +638,8 @@ export function HaruLawPanel({ law, standalone = false }: { law: HaruLawState; s
                     width: '100%',
                     boxSizing: 'border-box', resize: 'vertical',
                     padding: '10px 12px', fontSize: 16, lineHeight: '24px',
-                    border: '1.5px solid #1A3C6E', borderRadius: 8,
-                    outline: 'none', backgroundColor: '#FEFBE8',
+                    border: '2px solid #7187A5', borderRadius: 12,
+                    backgroundColor: '#F4F8FD',
                   }}
                 />
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>

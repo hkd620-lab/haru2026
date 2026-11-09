@@ -5,7 +5,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { transformSync } from 'esbuild';
 import { matchRoutes } from 'react-router';
-import { FORMAT_REGISTRY, getFormatKey } from '../src/app/records/formatRegistry.ts';
+import { FORMAT_REGISTRY, getFormatKey, STATS_MERGE_RECORD_FORMATS } from '../src/app/records/formatRegistry.ts';
 import { buildDraftEditorData, DRAFT_PICKER_FORMATS, WORK_ENTRY_FORMATS } from '../src/app/records/writeBeforeFormat.ts';
 
 const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app');
@@ -24,6 +24,7 @@ function loadTable(rel, name) {
 
 const RECORDS = loadTable('pages/HomePageV2.tsx', 'RECORDS');
 const AGENTS = loadTable('pages/HomePageV2.tsx', 'AGENTS');
+const LANDING_FORMATS = loadTable('pages/LandingPage.tsx', 'FORMATS');
 const DEV_TOOLS = loadTable('pages/DevConsolePage.tsx', 'DEV_TOOLS');
 const FORMAT_FIELDS = loadTable('components/FormatModal.tsx', 'FORMAT_FIELDS');
 
@@ -108,8 +109,17 @@ test('이름이 비슷한 하루식물탐정과 공용 영어일기는 메뉴부
   }
 });
 
-test('세 형식은 홈 기록 카드 하나로 일반 사용자에게 보이고 같은 화면의 중복 진입은 없다', () => {
-  for (const [format] of MOVED_FORMATS) {
+test('선교·일반보고는 홈 기록 카드 하나로 보이고 주식거래일지는 홈 비서(HARU주식관리)로 옮겨 같은 화면의 중복 진입은 없다', () => {
+  const stockAgents = AGENTS.filter((agent) => agent.state?.format === '주식거래일지');
+  assert.equal(stockAgents.length, 1, '주식 비서 카드는 하나');
+  assert.equal(stockAgents[0].label, 'HARU주식관리');
+  assert.equal(stockAgents[0].path, '/record');
+  assert.equal(stockAgents[0].selectionKey, 'path:/record:{"format":"주식거래일지"}', '저장되는 비서 선택 키는 고정');
+  assert.ok(!stockAgents[0].developerOnly);
+  assert.equal(RECORDS.filter((record) => record.format === '주식거래일지').length, 0, '홈 기록 카드에서 빠진다');
+  assert.ok(!WORK_ENTRY_FORMATS.includes('주식거래일지'), '업무 탭에서 빠진다');
+  assert.ok(!DRAFT_PICKER_FORMATS.includes('주식거래일지'), '먼저 쓰기 선택에서 빠진다');
+  for (const [format] of MOVED_FORMATS.filter(([movedFormat]) => movedFormat !== '주식거래일지')) {
     const cards = RECORDS.filter((record) => record.format === format);
     assert.equal(cards.length, 1, format);
     assert.ok(!cards[0].developerOnly, format);
@@ -125,13 +135,37 @@ test('세 형식은 홈 기록 카드 하나로 일반 사용자에게 보이고
   }
 });
 
+test('기록 형식 소개는 홈 기록 카드·먼저 쓰기 선택·랜딩이 통계·합본 대상과 같은 11종이다', () => {
+  const expected = [...STATS_MERGE_RECORD_FORMATS].sort();
+  assert.equal(expected.length, 11);
+  assert.deepEqual(RECORDS.map((record) => record.format).sort(), expected, '홈 기록 카드');
+  assert.deepEqual([...DRAFT_PICKER_FORMATS].sort(), expected, '먼저 쓰기 선택');
+  assert.deepEqual(LANDING_FORMATS.map((format) => format.name).sort(), expected, '랜딩 기록 형식 소개');
+});
+
 test('홈 카드의 형식이 기록 화면의 작성 모달까지 전달된다', () => {
-  assert.ok(read('pages/HomePageV2.tsx').includes("navigate('/record', { state: { format: r.format, from: '/v2' } })"));
+  // 실제 홈 클릭 핸들러의 빈 글·작성 중인 글 분기를 모두 실행한다.
+  const home = read('pages/HomePageV2.tsx');
+  const handler = home.match(/onClick=\{(\(\) => navigate\('\/record', \{ state: homeDraftContent[\s\S]*?\}\))\}\s*className="v2-rec"/);
+  assert.ok(handler, '홈 기록 카드 클릭 핸들러');
+  for (const card of RECORDS) {
+    for (const [content, uid] of [['', 'owner'], ['  ', 'owner'], ['작성 중인 글', 'owner'], ['다른 계정 글', null]]) {
+      let actual;
+      const click = new Function('navigate', 'homeDraftContent', 'currentUserUid', 'r', `return (${handler[1]});`)(
+        (route, options) => { actual = { route, ...options }; }, content, uid, card,
+      );
+      click();
+      assert.deepEqual(actual, { route: '/record', state: content.trim() && uid
+        ? { from: '/v2', homeWritingDraft: { ownerUid: uid, content, format: card.format } }
+        : { format: card.format, from: '/v2' } });
+    }
+  }
   const recordPage = read('pages/RecordPage.tsx');
   assert.match(recordPage, /const incomingFormat = \(location\.state as any\)\?\.format as string \| undefined;/);
   assert.match(recordPage, /openFormatDirectly\(incomingFormat as RecordFormat\);/);
   assert.match(recordPage, /selectedCategory === '업무' \? WORK_ENTRY_FORMATS/);
-  assert.match(recordPage, /DRAFT_PICKER_FORMATS\.map\(\(format\) => \(\s*<button key=\{format\} type="button" onClick=\{\(\) => openDraftEditorForFormat\(format\)\}/);
+  assert.match(recordPage, /<RecordFormatPicker[\s\S]*?onSelect=\{openDraftEditorForFormat\}/);
+  assert.match(read('components/RecordFormatPicker.tsx'), /DRAFT_PICKER_FORMATS\.map/);
 });
 
 test('먼저 쓴 글은 세 형식 편집창의 실제 입력칸과 기존 저장 접두어로 이어진다', () => {

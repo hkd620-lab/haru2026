@@ -1,0 +1,15 @@
+독립 설계·완료 검토 요청. 파일을 수정하지 말고 읽기 전용으로 검토한다.
+저장소: /private/tmp/haru2026-grape-brand
+검토 대상 HEAD: 16862b41 (origin/main 기준 diff)
+사용자 요구 원문: 서비스 화면 로고와 PWA 앱 아이콘도 포도송이로 교체해 줘. 이유는 호박은 하루lab공식 로고로 하고 앱마다 어울리는 로고를 사용하고자해 이사실은 슬랙에도 올려줘
+결정 근거: https://harulab-hq.slack.com/archives/C0C1LQ394JY/p1794052212306259
+변경 파일은 git diff origin/main...HEAD 로 확인한다. 기존 GrapeAnimation 및 공유 이미지와 포도송이 원본·배치 일치, PNG 실제 파일·크기·색·알파, manifest any/maskable 안전영역, 화면·파비콘·알림 연결, 하루lab 호박 보존, 지침 모순, 요구 범위와 위험을 검토한다.
+작업 규모와 멈춤 조건 해당 여부도 판단한다. 승인 / 수정 후 승인 / 재설계 중 하나로 판정하고 근거·실기기 검증 한계를 명시한다. 병합·운영 배포 권한을 부여하는 검토가 아니다. 비밀값·개인정보를 읽거나 기록하지 않는다.
+
+PR: https://github.com/hkd620-lab/haru2026/pull/356
+이전 검토 실행은 인증 만료로 API 0회·판정 없음이었다. 이전 원문을 반드시 확인: docs/reviews/2026-11-07-grape-brand-claude-b147953b-raw.json. 사용자 최신 지시: Claude 로그인 되어있어. 검토를 마친 뒤 PR #356 병합·운영 배포까지 진행해 줘. 완료되면 실제 서비스의 포도송이 로고와 PWA 아이콘을 확인하고 슬랙에도 기록해 줘.
+
+이후 검토 원문도 확인: docs/reviews/2026-11-07-pr356-claude-8bc4c321-raw.json (OAuth 실패·판정 없음). 사용자가 재로그인 완료를 알렸다. Codex 1차 지적: https://github.com/hkd620-lab/haru2026/pull/356#discussion_r4501687865. SAYU 회귀 테스트의 구 호박 로고 기대값이 실패한다는 P2 지적으로, 최신 커밋에서 포도송이 경로·alt로 갱신하고 원본 호박 SHA 검사를 보존했음. 수정 전 실패·수정 후 통과를 직접 재현함.
+
+이전 16862b41 인증 실패 실행 원문도 반드시 확인: docs/reviews/2026-11-07-pr356-claude-16862b41-raw.json. 이번 실행은 로그인 true 확인 후 새 독립 세션이다. Codex 최신 재검토 원문: https://github.com/hkd620-lab/haru2026/pull/356#issuecomment-6706923403 (16862b41, 지적 없음), 색인 docs/reviews/2026-11-07-pr356-codex-16862b41-index.md.
+최신 검토 대상은 16862b4191556cd980508dae6926dd05f812f311이다. 원문 결과 마지막에 승인 / 수정 후 승인 / 재설계 판정을 명시한다.

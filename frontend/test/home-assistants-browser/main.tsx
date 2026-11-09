@@ -3,6 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router';
 import { HomePageV2 } from '../../src/app/pages/HomePageV2';
+import { LandingPage } from '../../src/app/pages/LandingPage';
+import { RecordPage } from '../../src/app/pages/RecordPage';
+import { BottomNav } from '../../src/app/components/BottomNav';
+import { Toaster } from 'sonner';
 function Destination() {
   const location = useLocation();
   return <p>비서 실행: {location.pathname} {JSON.stringify(location.state)}</p>;
@@ -26,9 +30,11 @@ createRoot(document.getElementById('root')!).render(
       <output id="fixture-status">저장 없음</output>
       <Geometry />
     </aside>
-    <MemoryRouter initialEntries={['/v2']}><Routes>
+    <MemoryRouter initialEntries={[new URLSearchParams(location.search).get('page') === 'landing' ? '/landing' : '/v2']}><Routes>
+      <Route path="/landing" element={<LandingPage />} />
       <Route path="/v2" element={<HomePageV2 />} />
+      <Route path="/record" element={<RecordPage />} />
       <Route path="*" element={<Destination />} />
-    </Routes></MemoryRouter>
+    </Routes>{new URLSearchParams(location.search).get('page') !== 'landing' && <BottomNav />}<Toaster /></MemoryRouter>
   </>,
 );
