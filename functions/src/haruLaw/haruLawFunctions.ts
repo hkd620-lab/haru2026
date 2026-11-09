@@ -24,6 +24,7 @@ import {
   createHaruLawHttpsError,
   deleteTrackedHaruLawGeminiFiles,
   getHaruLawRemainingWorkMs,
+  labelHaruLawAttachmentFileParts,
   prepareHaruLawAttachments,
   readHaruLawAttachments,
   removePreparedHaruLawAttachments,
@@ -527,8 +528,8 @@ export const lawSearch = onCall(
           requestWorkDeadlineMs,
         )
         : [] as HaruLawGeminiFilePart[];
-      const summaryContents: any = fileParts.length > 0
-        ? [{ text: summaryPrompt }, ...fileParts]
+      const summaryContents: any = preparedAttachments && fileParts.length > 0
+        ? [{ text: summaryPrompt }, ...labelHaruLawAttachmentFileParts(preparedAttachments, fileParts)]
         : summaryPrompt;
       const summaryResult = preparedAttachments
         ? await runHaruLawModelBeforeDeadline(

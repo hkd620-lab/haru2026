@@ -1,0 +1,4 @@
+
+> build
+> tsc && mkdir -p lib/fonts && cp src/fonts/*.ttf lib/fonts/
+

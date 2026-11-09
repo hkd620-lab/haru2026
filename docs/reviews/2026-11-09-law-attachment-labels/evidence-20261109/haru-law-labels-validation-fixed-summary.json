@@ -1,0 +1,52 @@
+{
+  "recordedAt": "2026-11-09T04:07:51.172460+00:00",
+  "head": "312edde80d8f5171ab164a4ed68f8349855dbd28",
+  "results": [
+    {
+      "command": [
+        "node",
+        "--version"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-law-labels-validation-fixed-0.log"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-law-labels-validation-fixed-1.log"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "test/haruLawAttachmentLabels.test.js",
+        "test/haruLawAttachmentPipeline.test.js",
+        "test/haruLawErrorCore.test.js"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-law-labels-validation-fixed-2.log"
+    },
+    {
+      "command": [
+        "node",
+        "-e",
+        "console.log(\"EXPORTS_JSON=\"+JSON.stringify(Object.keys(require(\"./lib/index.js\")).sort()))"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-law-labels-validation-fixed-3.log"
+    }
+  ],
+  "actualAIRequests": false,
+  "productionWrites": false,
+  "exportsComparison": {
+    "baselineCount": 100,
+    "currentCount": 100,
+    "same": true,
+    "added": [],
+    "removed": []
+  }
+}

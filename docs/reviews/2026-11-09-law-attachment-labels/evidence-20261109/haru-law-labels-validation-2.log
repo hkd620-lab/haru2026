@@ -1,0 +1,81 @@
+TAP version 13
+# Subtest: 혼합 PDF·HWP·HWPX·TXT 첨부는 원래 이름·형식 표시 바로 다음에 해당 fileData가 같은 순서로 온다
+ok 1 - 혼합 PDF·HWP·HWPX·TXT 첨부는 원래 이름·형식 표시 바로 다음에 해당 fileData가 같은 순서로 온다
+  ---
+  duration_ms: 2484.28325
+  type: 'test'
+  ...
+# Subtest: 지시문·경계를 흉내 낸 파일 이름은 한 줄 JSON 문자열로만 표시된다
+not ok 2 - 지시문·경계를 흉내 낸 파일 이름은 한 줄 JSON 문자열로만 표시된다
+  ---
+  duration_ms: 21.03775
+  type: 'test'
+  location: '/private/tmp/haru-law-attachment-labels-20261109/functions/test/haruLawAttachmentLabels.test.js:68:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    2 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 2
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/private/tmp/haru-law-attachment-labels-20261109/functions/test/haruLawAttachmentLabels.test.js:72:9)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: 이미지 첨부는 형식만 표시하고 변환 문구를 붙이지 않으며 개수 불일치는 거부한다
+ok 3 - 이미지 첨부는 형식만 표시하고 변환 문구를 붙이지 않으며 개수 불일치는 거부한다
+  ---
+  duration_ms: 2.996375
+  type: 'test'
+  ...
+# Subtest: lawSearch는 요약 프롬프트 다음에 표시가 붙은 첨부 조각을 같은 요약 호출로 보낸다
+ok 4 - lawSearch는 요약 프롬프트 다음에 표시가 붙은 첨부 조각을 같은 요약 호출로 보낸다
+  ---
+  duration_ms: 1.345583
+  type: 'test'
+  ...
+# Subtest: 원본 문서 MIME·경로는 보존하고 추출한 한글 본문을 기존 Gemini File 경로에 전달한다
+ok 5 - 원본 문서 MIME·경로는 보존하고 추출한 한글 본문을 기존 Gemini File 경로에 전달한다
+  ---
+  duration_ms: 2350.140542
+  type: 'test'
+  ...
+# Subtest: 타인 경로·손상 문서·8MiB 초과 메타데이터는 AI 전송 전에 거부한다
+ok 6 - 타인 경로·손상 문서·8MiB 초과 메타데이터는 AI 전송 전에 거부한다
+  ---
+  duration_ms: 210.287083
+  type: 'test'
+  ...
+# Trying to parse invalid object: {"line":12,"column":16,"offset":1316})
+# Invalid object ref: 1 0 R
+# Trying to parse invalid object: {"line":22,"column":16,"offset":4879})
+# Invalid object ref: 3 0 R
+# Trying to parse invalid object: {"line":32,"column":16,"offset":5051})
+# Invalid object ref: 4 0 R
+# Trying to parse invalid object: {"line":4,"column":0,"offset":9})
+# Invalid object ref: 1 0 R
+# haruLAW error core tests passed
+# Subtest: test/haruLawErrorCore.test.js
+ok 3 - test/haruLawErrorCore.test.js
+  ---
+  duration_ms: 6504.211042
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 6
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 7607.636208
