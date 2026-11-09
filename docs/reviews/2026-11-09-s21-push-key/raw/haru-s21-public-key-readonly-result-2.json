@@ -1,0 +1,23 @@
+{
+  "recordedAt": "2026-11-09T13:18:10.585Z",
+  "scope": "User approved HARU PWA only read-only loaded bundle names and subscription public-key equality; no endpoint/auth/token/records read or saved",
+  "haruPageCount": 2,
+  "results": [
+    {
+      "scripts": [
+        "/assets/index-DowmElnr.js"
+      ],
+      "registrations": [
+        {
+          "hasSubscription": true,
+          "publicKeyBytes": 65,
+          "matchesFirebaseCurrent": false,
+          "matchesFirebasePrevious": false
+        }
+      ]
+    },
+    {
+      "readonlyQueryError": "Readonly query timed out"
+    }
+  ]
+}

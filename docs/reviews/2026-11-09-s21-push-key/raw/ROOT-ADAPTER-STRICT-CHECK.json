@@ -1,0 +1,9 @@
+{
+  "recordedAt": "2026-11-09T19:50:12.306635+00:00",
+  "command": "/opt/homebrew/opt/node@22/bin/node /private/tmp/haru-approved-two-functions-deploy-20261109/functions/node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target es2022 --module esnext --moduleResolution bundler --lib es2022,dom src/app/services/notificationService.ts node_modules/vite/client.d.ts",
+  "cwd": "frontend",
+  "exitCode": 0,
+  "stdout": "",
+  "scope": "Direct changed notificationService adapter and its imports strict compile passed; NOT entire app tsc; prior ExportModal baseline persists",
+  "codeSource": "CC1 plus CC2 working tree before source commit"
+}

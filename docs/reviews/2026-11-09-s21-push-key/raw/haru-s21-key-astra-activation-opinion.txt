@@ -1,0 +1,8 @@
+Astra final follow-up advisory, read-only, user requested model gpt-6-astra /root/astra_s21_push:
+명시적 재등록 경로에는 registration.update()와 제한시간 있는 활성화 대기를 넣는 것을 권고합니다. 후검증만으로 잘못된 저장은 막지만, 구버전 SW가 남아 복구가 계속 실패할 수 있습니다.
+업데이트 후 installing/waiting worker가 있으면 그 worker의 activated 상태까지 기다립니다. 기존 active의 상태만 확인하면 부족합니다.
+업데이트 실패·활성화 시간 초과·새 worker의 redundant 전환은 등록 실패로 처리합니다.
+skipWaiting()은 필수는 아닙니다. FCM 전용 scope는 앱 페이지를 제어하지 않아 보통 자동 활성화됩니다. 추가한다면 FCM worker에만 적용하고 clients.claim()은 추가하지 않습니다.
+새 worker가 없고 정상 active가 있으면 진행하되, 구독 키·동일성 후검증은 유지합니다.
+getFcmSwRegistration의 모든 호출에 업데이트를 넣지 말고 사용자가 기기 등록을 실행하는 경로에만 적용합니다. 포그라운드 알림 표시와 Workbox SW는 건드리지 않습니다.
+This is Astra design advice, NOT independent Claude policy approval and NOT deploy authorization.
