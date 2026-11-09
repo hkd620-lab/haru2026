@@ -13,6 +13,7 @@ export type ResultChatConfirmationType = 'web_search' | 'ambiguous';
 export type ResultChatSource = {
   title: string;
   uri: string;
+  citationId?: number;
 };
 
 export type ResultChatMessage = {
