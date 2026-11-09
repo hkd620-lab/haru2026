@@ -1,0 +1,36 @@
+import { AI_LIBRARY_DEVELOPER_EMAIL } from '../../src/app/utils/aiLibraryAccess';
+declare const __HOME_DEVELOPER_UID__: string;
+const params = new URLSearchParams(window.location.search);
+const law = 'path:/record:{"category":"하루LAW"}';
+let selection: any = params.get('scenario') === 'existing'
+  ? { personalized: true, assistantSelectionConfigured: true, selectedRecordFormats: ['메모'], selectedAgents: ['path:/legal-assistant:{}'] }
+  : params.get('scenario') === 'law-selected'
+    ? { personalized: true, assistantSelectionConfigured: true, selectedRecordFormats: ['메모'], selectedAgents: [law] }
+  : params.get('scenario') === 'legacy'
+    ? { personalized: true, selectedRecordFormats: ['HARU가계부', '메모'], selectedAgents: [law, 'path:/legal-assistant:{}'] }
+    : params.get('scenario') === 'empty'
+      ? { personalized: true, assistantSelectionConfigured: true, selectedRecordFormats: ['메모'], selectedAgents: [] }
+      : null;
+const fixtureUser = { uid: ['developer', 'developer-full'].includes(params.get('scenario') || '') ? __HOME_DEVELOPER_UID__ : 'fixture-user', email: ['library-developer', 'developer-full'].includes(params.get('scenario') || '') ? AI_LIBRARY_DEVELOPER_EMAIL : 'fixture@example.test', emailVerified: ['library-developer', 'developer-full'].includes(params.get('scenario') || '') };
+export function useAuth() { return { user: params.get('scenario') === 'guest' ? null : fixtureUser, loading: false }; }
+export const buildTimelineMeta = () => ({});
+export const firestoreService = {
+  async saveRecord(_uid: string, data: any) {
+    document.getElementById('fixture-status')!.textContent = JSON.stringify({ savedRecord: data });
+    return data.id;
+  },
+  async getHomePersonalization() { return selection; },
+  async saveHomePersonalization(_uid: string, data: any) {
+    if (params.get('scenario') === 'error') throw new Error('fixture-save-failure');
+    selection = { ...data, personalized: true, assistantSelectionConfigured: true };
+    document.getElementById('fixture-status')!.textContent = JSON.stringify(selection);
+  },
+};
+export async function shouldShowAssistantOnboarding() {
+  if (params.get('scenario') === 'onboarding-pending') return new Promise(() => {});
+  return params.get('scenario') === 'onboarding-new';
+}
+export function TimelineCollageModal() { return null; }
+export function beginLoginTrace() {}
+export function finishLoginTrace() {}
+export function markLoginTrace() {}

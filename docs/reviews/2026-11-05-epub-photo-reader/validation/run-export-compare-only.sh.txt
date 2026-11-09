@@ -1,0 +1,31 @@
+#!/bin/zsh
+# EPUB 사진 수정 검증 증거 수집 (코드 변경 없음). 각 명령의 stdout+stderr와 exit code 원문을 저장한다.
+set -u
+REPO=/private/tmp/haru-epub-photo-reader-fix
+OUT=$REPO/docs/reviews/2026-11-05-epub-photo-reader/validation
+BASE=a2db4665
+mkdir -p "$OUT"
+
+exports_of() { git -C $REPO show "${1}:functions/src/index.ts" | grep -nE '^export ' | sed -E 's/^[0-9]+://'; }
+{
+  echo "# UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "# HEAD: $(git -C $REPO rev-parse HEAD)  BASE: $(git -C $REPO rev-parse $BASE)"
+  echo "# method: functions/src/index.ts 의 '^export ' 줄(Cloud Functions 배포 목록 원천)을 BASE와 HEAD에서 추출해 diff"
+  echo "# BASE export 줄 수: $(exports_of $BASE | wc -l | tr -d ' ')"
+  echo "# HEAD export 줄 수: $(exports_of HEAD | wc -l | tr -d ' ')"
+  echo "# exportEpub 관련 줄(HEAD):"
+  exports_of HEAD | grep -n 'epubExport\|exportEpub'
+  echo "----- diff BASE vs HEAD (비어 있으면 변화 0개) -----"
+  diff <(exports_of $BASE) <(exports_of HEAD)
+  echo "----- diff exit code: $? -----"
+  echo
+  echo "# 참고: 변경된 모듈 functions/src/epubContent.ts 의 export 비교(모듈 내부용, index.ts 미노출)"
+  diff <(git -C $REPO show ${BASE}:functions/src/epubContent.ts | grep -E '^export ' | sed -E 's/\(.*//') \
+       <(git -C $REPO show HEAD:functions/src/epubContent.ts | grep -E '^export ' | sed -E 's/\(.*//')
+  echo "----- diff exit code: $? -----"
+  echo "# 참고: functions/src/epubExport.ts 의 export 비교"
+  diff <(git -C $REPO show ${BASE}:functions/src/epubExport.ts | grep -E '^export ') \
+       <(git -C $REPO show HEAD:functions/src/epubExport.ts | grep -E '^export ')
+  echo "----- diff exit code: $? -----"
+} > "$OUT/08-export-list-compare-fixed.log" 2>&1
+echo "08-export-list-compare-fixed.log written"

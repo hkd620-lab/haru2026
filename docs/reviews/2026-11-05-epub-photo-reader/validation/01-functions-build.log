@@ -1,0 +1,10 @@
+# UTC: 2026-11-05T05:32:08Z
+# HEAD: 90ca414ed40b3593422b204fb876c74f28982442
+# cwd: /private/tmp/haru-epub-photo-reader-fix/functions
+# command: npm run build
+----- output (stdout+stderr) -----
+
+> build
+> tsc && mkdir -p lib/fonts && cp src/fonts/*.ttf lib/fonts/
+
+----- exit code: 0 -----

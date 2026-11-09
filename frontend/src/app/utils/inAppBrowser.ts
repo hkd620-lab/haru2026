@@ -1,9 +1,18 @@
+import type { LoginProvider } from './loginProvider';
+
 export type InAppBrowserInfo = {
   isInAppBrowser: boolean;
   isAndroid: boolean;
   isIOS: boolean;
   appName: string | null;
 };
+
+export type InAppLoginProvider = Extract<LoginProvider, 'google' | 'kakao' | 'naver'>;
+
+export function needsExternalLoginBrowser(provider: InAppLoginProvider, info: InAppBrowserInfo): boolean {
+  // 카카오톡 안의 카카오 인증만 허용하고, 나머지 기존 외부 브라우저 안내는 유지한다.
+  return info.isInAppBrowser && !(provider === 'kakao' && info.appName === '카카오톡');
+}
 
 const IN_APP_RULES: Array<{ name: string; pattern: RegExp }> = [
   // KAKAOTALK/i : 구버전 대문자(KAKAOTALK), 신버전 혼합(KakaoTalk) 모두 매칭

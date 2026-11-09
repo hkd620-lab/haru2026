@@ -44,9 +44,9 @@ assert(
   'the reading document must have the asset frame, heading, and closing brand line',
 );
 assert(
-  readingSection.includes('src="/brand/haru-pumpkin-logo.png"')
-    && readingSection.includes('alt="하루lab 공식 호박 로고"'),
-  'the frame must use the accessible official pumpkin logo',
+  readingSection.includes('src="/brand/haru2026-grape-logo-v1.png"')
+    && readingSection.includes('alt="haru2026 포도송이 로고"'),
+  'the frame must use the accessible haru2026 grape logo',
 );
 assert(
   component.indexOf('function hideOnError(') >= 0
@@ -57,7 +57,7 @@ assert(
 assert.strictEqual(
   crypto.createHash('sha256').update(fs.readFileSync(logoPath)).digest('hex'),
   '5394b762c3d9475ee07b6f8b2f11a5872b17a73702e4b1ce19c553adb5545bc8',
-  'the logo bytes must match the approved original',
+  'the harulab pumpkin logo bytes must match the approved original',
 );
 assert(
   component.includes('max-width: 720px;')

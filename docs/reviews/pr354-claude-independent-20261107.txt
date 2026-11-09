@@ -1,0 +1,62 @@
+HARU2026 PR #354 독립 Claude 검토 결과 원문 (운영정책 8.1절)
+================================================================
+검토자: 독립 Claude 검토자 (Claude Code, claude-opus-5-5) — 읽기 전용. 파일 수정·Git·배포·Slack/PR 게시 하지 않음
+실행시각: 2026-11-07 20:20:06 KST 시작 (date 실측), 같은 날 20시대 종료
+대상 저장소: /private/tmp/haru-kakao-login-entry-20261107
+대상 PR: https://github.com/hkd620-lab/haru2026/pull/354 (OPEN, MERGEABLE, base main)
+대상 HEAD: 8fb775bd6bd26156f9aefe858eeaba869046da4a (로컬 HEAD = PR headRefOid 일치)
+merge-base(origin/main): e7a64ab5aa1226d223da89b5e2d1b486e63aba52
+이전 판정: 없음 (첫 검토)
+
+[질문 원문]
+독립 읽기 전용 검토 요청. 저장소 /private/tmp/haru-kakao-login-entry-20261107, PR https://github.com/hkd620-lab/haru2026/pull/354, HEAD 8fb775bd6bd26156f9aefe858eeaba869046da4a. 저장소 지침과 PR·diff·검증 근거만 직접 확인하여 운영정책 8.1절의 승인/수정 후 승인/재설계, 작업 규모, 멈춤 조건, E2E 미확인 범위를 판정해 주세요. 첫 검토이며 이전 판정 없음. 수정·Git·배포·Slack/PR 게시 금지. 결과 원문과 실행시각·HEAD를 이 대화와 새 파일 /private/tmp/haru-kakao-pr354-independent-review.txt에 보존해 주세요.
+
+[직접 확인한 근거]
+- 변경 파일 5개(+168/-20): InAppBrowserLoginGuide.tsx, LandingPage.tsx, LoginPage.tsx, utils/inAppBrowser.ts, test/inAppLogin.test.cjs(신규). Functions·Rules·Firestore 경로·라우터(App.tsx) 변경 없음.
+- 핵심 로직: needsExternalLoginBrowser(provider, info) = info.isInAppBrowser && !(provider==='kakao' && info.appName==='카카오톡').
+  appName '카카오톡'은 기존 IN_APP_RULES의 /KAKAOTALK|com\.kakao\.talk/i 매칭 결과와 일치. Google·네이버, 그리고 카카오톡 외 앱 내 브라우저의 안내는 유지됨.
+- LandingPage.goToLogin의 앱 내 브라우저 차단 제거 → /login 진입 허용. 소셜 버튼의 개별 guard는 남아 있음. LoginPage 이메일 로그인은 이전에도 guard가 없었으므로 새 노출 없음.
+- guard 호출처는 LandingPage·LoginPage 두 파일의 google/kakao/naver 핸들러 6곳뿐(grep 확인). 누락 호출처 없음.
+- 카카오 서버 흐름(functions/src/index.ts kakaoLoginStart/Callback): state를 Firestore oauth_states에 서버 저장, 콜백에서 customToken을 URL로 프론트에 전달 → 브라우저 쿠키·sessionStorage 의존 없음. 같은 웹뷰 안 리다이렉트 흐름에 구조적 장애 요인 확인 안 됨.
+- resolveLoginFrontendOrigin(functions/src/oauthStateCore.ts)은 haru2026.com과 Firebase preview 호스트 패턴을 허용 → PR 미리보기에서 카카오 왕복 시험 가능.
+- 직접 실행: `node --test test/inAppLogin.test.cjs` → tests 67, pass 67, fail 0 (HEAD 8fb775bd에서).
+  `npm run build`는 읽기 전용 원칙(빌드 산출물 생성)에 따라 검토자가 실행하지 않음. PR 본문에 CC의 build 통과·관련 정책 테스트(9/9 등) 통과 요약이 기재되어 있음.
+- PR CI: build_and_preview SUCCESS(2026-11-07T11:10:59Z), Deploy Preview SUCCESS — 최신 HEAD 8fb775b 기준.
+- Codex 리뷰: 8fb775b 대상 "Running since 2026-11-07T11:19:29Z (Draft marked ready)" 상태로 결과 미완료(검토 시점). 리뷰·지적 0건 표시는 미완료 때문이며 통과 아님.
+
+[코드 지적]
+치명·차단 지적 없음. 경미 사항(병합 차단 아님, 선택 반영):
+1. InAppBrowserLoginGuide: provider가 null이면 '카카오'로 표시하는 기본값. 실제로는 guide가 열릴 때 항상 provider가 있어 도달하지 않지만, null일 때 '소셜'처럼 중립 문구가 안전함.
+2. 테스트는 안내창 문구를 Google·네이버에 대해서만 검증. '인스타그램 등 카카오톡 외 앱 내 브라우저 + 카카오' 조합의 안내 문구("카카오 로그인은 기본 브라우저에서…") 렌더링 검증은 없음(분기 판단 자체는 handler 테스트로 검증됨).
+3. 테스트 하네스가 페이지 소스의 변수 선언을 AST로 잘라 실행하는 방식이라 핸들러 이름·의존 변수명이 바뀌면 깨지기 쉬움. 현재 동작 검증으로는 유효.
+
+[작업 규모]
+중규모 — 기존 컴포넌트(InAppBrowserLoginGuide)와 로그인 진입 2개 페이지 동작 수정. 새 기능·라우터 변경 아님.
+
+[멈춤 조건 판정]
+해당함 → 자동 판정①만으로 병합·배포하지 말고 허대표님 결정 필요.
+- (a) 홈화면 파일 변경: LandingPage.tsx는 App.tsx의 path="/" HomeOrLanding에서 비로그인 사용자에게 보이는 공개 홈이며, PR 본문도 '공개 홈'이라 부름. 8.1 "홈화면·라우터 파일을 바꾸는 작업은 화면이 동일한 구조 변경이라도 허대표님 허용 전까지 멈춤 대상"에 해당한다고 판단.
+- (b) 인증 정책 변경 성격: 2026-06(8c6fc8f4)부터 유지된 "앱 내 브라우저에서는 모든 소셜 로그인 차단" 정책을 "카카오톡 안의 카카오 로그인은 허용"으로 바꾸는 변경. OAuth state·토큰 교환·계정 통합 코드는 그대로지만, 로그인을 허용하는 환경의 범위를 바꾸므로 "결제·인증 정책 변경"에 해당할 소지가 있어 보수적으로 멈춤 대상으로 봄. PR 본문의 "인증 정책 자체는 변경하지 않습니다" 표현과 다르게 판단한 부분이므로 허대표님 확인 필요.
+- (c) 실기기 운영 E2E가 완료 조건인 작업: 카카오톡 실기기 로그인 성공이 이 PR의 목적이므로 "운영 완료" 판정은 AI가 대신할 수 없음.
+- 해당 없음: 모델·비용 변경, Rules, 저장 경로, Functions 리전, 커밋 메시지-변경 불일치(커밋 제목과 diff 일치 확인).
+
+[판정①(8.1) 충족 상태 — 검토 시점]
+1. 최신 HEAD CI 통과: 충족.
+2. 필수 검증 로그 PR 첨부: PR 본문에 명령·결과 요약 있음(build, inAppLogin 67/67, 관련 정책 테스트). 충족으로 봄. 검토자 재실행으로 inAppLogin 67/67 확인.
+3. Codex 지적 해결·최신 HEAD 재검토 완료: 미충족(실행 중). 결과 확인 전 판정① 불가.
+4. 독립 검토자 판정: 아래 "승인".
+※ 멈춤 조건 해당이므로 판정①이 갖춰져도 병합·배포는 허대표님 승인 후.
+
+[E2E 미확인 범위]
+- 카카오톡 iOS 앱 내 브라우저에서 카카오 로그인 → 카카오 인증(카카오톡 간편 인증 앱 전환 포함) → kakaoLoginCallback → /auth/callback 복귀 → 로그인 완료.
+- 카카오톡 Android(UA 'KAKAOTALK'·'com.kakao.talk'·wv 변형)에서 같은 왕복.
+- 로그인 후 같은 카카오톡 웹뷰 안에서 세션 유지, 재방문 시 상태, 기존 카카오 계정·계정 통합 사용자가 같은 uid로 들어가는지.
+- 카카오톡 안에서 Google·네이버 버튼 → 제공자명이 표시된 안내창, Safari로 열기/Chrome 열기·주소 복사 동작.
+- 인스타그램·네이버 앱·페이스북·라인 등 다른 앱 내 브라우저에서 /login 진입 허용과 소셜 버튼 안내 유지.
+- 일반 Safari·Chrome 회귀(세 제공자 로그인).
+- 카카오 개발자 콘솔의 redirect URI·도메인 설정이 웹뷰 경로에서도 그대로 통하는지(서버 경로 무변경이라 영향 낮을 것으로 보나 실측 아님).
+- 위 항목은 모두 PR 미리보기 또는 운영 실기기로만 확인 가능. 단위 테스트 통과를 실제 로그인 성공으로 보지 않음.
+
+[독립 검토자 판정]
+승인
+(코드는 의도대로 동작하고 범위가 좁으며 수정 필요 지적 없음. 다만 위 멈춤 조건 (a)(b)(c)에 해당하므로 CC는 자동 판정으로 병합·배포하지 말고 허대표님께 보고·승인을 받을 것. Codex 최신 HEAD 결과 확인 전에는 판정①을 기록하지 말 것.)

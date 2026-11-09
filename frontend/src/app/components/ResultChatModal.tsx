@@ -1,5 +1,5 @@
-import { readSelectedPhotoAttachments } from '../services/selectedRecordPhoto';
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { HARULAW_ATTACHMENT_ACCEPT, HARULAW_ATTACHMENT_TYPES, HARULAW_DOCUMENT_MAX_BYTES, getHaruLawAttachmentLabel, readHaruLawSelectedFiles } from '../utils/haruLawAttachment';
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { collection, doc, getDoc, getDocs, getDocsFromServer, limit, orderBy, query } from 'firebase/firestore';
 import { Paperclip, X } from 'lucide-react';
 import { deleteObject, ref as storageRef, uploadBytes } from 'firebase/storage';
@@ -183,14 +183,7 @@ type HaruLawErrorNotice = {
 };
 
 const HARULAW_ATTACH_MAX_FILES = 5;
-const HARULAW_ATTACH_ALLOWED_TYPES = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-  'application/pdf',
-]);
+const HARULAW_ATTACH_ALLOWED_TYPES = HARULAW_ATTACHMENT_TYPES;
 const HARULAW_ATTACH_MAX_IMAGE_BYTES = 7 * 1024 * 1024;
 
 async function deleteHaruLawAttachmentPath(storagePath: string): Promise<void> {
@@ -254,6 +247,7 @@ export function ResultChatModal({
   const pendingAttachmentsRef = useRef<HaruLawAttachmentRef[]>([]);
   const attemptedAttachmentPathsRef = useRef<Set<string>>(new Set());
 
+  const questionInputId = useId();
   const threadId = useMemo(() => getThreadId(config.sourceKey, sourceIndex), [config.sourceKey, sourceIndex]);
   const isHaruLaw = config.sourceKey === 'haruraw_sayu';
   const isPaidUser = subscription.status === 'active' && subscription.plan !== 'free';
@@ -470,7 +464,7 @@ export function ResultChatModal({
       return;
     }
 
-    const selectedAttachments = readSelectedPhotoAttachments(files.slice(0, remainingSlots));
+    const selectedAttachments = readHaruLawSelectedFiles(files.slice(0, remainingSlots));
     const uploaded: HaruLawAttachmentRef[] = [];
     const uploadScopeId = attachmentScopeRef.current;
     activeUploadScopeRef.current = uploadScopeId;
@@ -488,9 +482,9 @@ export function ResultChatModal({
         }
         const sizeLimit = file.type === 'application/pdf'
           ? HARULAW_ATTACH_MAX_PDF_BYTES
-          : HARULAW_ATTACH_MAX_IMAGE_BYTES;
+          : file.type.startsWith('image/') ? HARULAW_ATTACH_MAX_IMAGE_BYTES : HARULAW_DOCUMENT_MAX_BYTES;
         if (file.size > sizeLimit) {
-          toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB 이하)`);
+          toast.error(`${file.name}: 파일이 너무 큽니다. (이미지 7MB, PDF 50MB, 한글·텍스트 8MiB 이하)`);
           return;
         }
       }
@@ -561,7 +555,11 @@ export function ResultChatModal({
       uploadingAttachmentsRef.current = [];
       pendingAttachmentsRef.current = next;
       setPendingAttachments(next);
-    } catch {
+    } catch (error) {
+      if ((error as { name?: string })?.name === 'HaruLawDocumentSizeError') {
+        if (attachmentScopeRef.current === uploadScopeId) toast.error('한글·텍스트 파일은 8MiB 이하로 첨부해 주세요.');
+        return;
+      }
       console.error('하루LAW 첨부 업로드 실패');
       if (uploaded.length > 0) {
         await cleanupHaruLawAttachments(
@@ -848,7 +846,7 @@ export function ResultChatModal({
                   style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 8, border: '1px solid #CBD5E1', backgroundColor: '#F8FAFC', fontSize: 12, color: '#334155', maxWidth: 180 }}
                 >
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {att.mimeType === 'application/pdf' ? 'PDF' : '이미지'} · {att.fileName}
+                    {getHaruLawAttachmentLabel(att.mimeType)} · {att.fileName}
                   </span>
                   <button
                     type="button"
@@ -912,7 +910,7 @@ export function ResultChatModal({
                         style={{ maxWidth: 160, padding: '3px 7px', borderRadius: 999, backgroundColor: '#E0E7FF', color: '#1E3A8A', fontSize: 10.5, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                         title={att.fileName}
                       >
-                        {att.mimeType === 'application/pdf' ? 'PDF' : '이미지'} · {att.fileName}
+                        {getHaruLawAttachmentLabel(att.mimeType)} · {att.fileName}
                       </span>
                     ))}
                   </div>
@@ -1057,7 +1055,7 @@ export function ResultChatModal({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf"
+                accept={HARULAW_ATTACHMENT_ACCEPT}
                 multiple
                 style={{ display: 'none' }}
                 onChange={handleFileSelect}
@@ -1093,10 +1091,12 @@ export function ResultChatModal({
               )}
             </>
           )}
+          <label htmlFor={questionInputId} style={{ display: 'block', margin: '8px 0', fontSize: 16, fontWeight: 700, color: '#1A3C6E' }}>{isHaruLaw ? '하루LAW에게 질문' : 'AI에게 질문'} · 아래 글상자에 써 주세요</label>
           <div style={{ display: 'flex', gap: 8 }}>
             <textarea
+              id={questionInputId}
+              className="haru-writing-field"
               rows={3}
-              aria-label="기록·비서 AI 질문"
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
               disabled={loading || uploadingFiles || closingAttachments || isChoicePending}
@@ -1111,15 +1111,14 @@ export function ResultChatModal({
                 flex: 1,
                 minWidth: 0,
                 borderRadius: 10,
-                border: '1px solid #CBD5E1',
+                border: '2px solid #7187A5',
                 padding: '12px',
                 boxSizing: 'border-box',
                 resize: 'none',
                 lineHeight: '21px',
                 fontFamily: 'inherit',
-                fontSize: 14,
-                outline: 'none',
-                backgroundColor: '#FFFFFF',
+                fontSize: 16,
+                backgroundColor: '#F4F8FD',
               }}
             />
             <button

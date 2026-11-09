@@ -115,6 +115,10 @@ service firebase.storage {
             && request.resource.size < 7 * 1024 * 1024
           )
           || (
+            request.resource.contentType in ['application/x-hwp', 'application/vnd.hancom.hwpx', 'text/plain']
+            && request.resource.size <= 8 * 1024 * 1024
+          )
+          || (
             request.resource.contentType == 'application/pdf'
             && request.resource.size < 50 * 1024 * 1024
           )

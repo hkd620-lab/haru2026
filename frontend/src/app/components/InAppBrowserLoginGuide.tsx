@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import type { InAppBrowserInfo } from '../utils/inAppBrowser';
+import type { InAppBrowserInfo, InAppLoginProvider } from '../utils/inAppBrowser';
 import { copyCurrentPageUrl, openCurrentPageInChrome } from '../utils/inAppBrowser';
 
 type InAppBrowserLoginGuideProps = {
   open: boolean;
   browserInfo: InAppBrowserInfo | null;
+  provider: InAppLoginProvider | null;
   onClose: () => void;
 };
 
-export function InAppBrowserLoginGuide({ open, browserInfo, onClose }: InAppBrowserLoginGuideProps) {
+export function InAppBrowserLoginGuide({ open, browserInfo, provider, onClose }: InAppBrowserLoginGuideProps) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export function InAppBrowserLoginGuide({ open, browserInfo, onClose }: InAppBrow
           기본 브라우저에서 열어주세요
         </h2>
         <p style={{ margin: '12px 0 0', color: '#5F5749', fontSize: 14, lineHeight: 1.65 }}>
-          소셜 로그인은 카카오톡 내 브라우저에서 제한됩니다.
+          {provider === 'google' ? 'Google' : provider === 'naver' ? '네이버' : '카카오'} 로그인은 기본 브라우저에서 진행해 주세요.
           {browserInfo?.isIOS
             ? <><br />화면 하단 또는 오른쪽 위 <strong>···</strong> 메뉴 → <strong>Safari로 열기</strong>를 눌러주세요.</>
             : <><br />아래 버튼으로 Chrome에서 여시거나, 주소를 복사해 Chrome·기본 브라우저에 붙여넣어 주세요.</>

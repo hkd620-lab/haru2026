@@ -35,18 +35,25 @@ export function confirmEpubExport(): Promise<boolean> {
     steps.append(item);
   }
   dialog.append(title, summary, heading, steps);
+  if (guide.note) {
+    const note = document.createElement('p');
+    note.textContent = guide.note;
+    Object.assign(note.style, { fontSize: '12px', lineHeight: '1.6', color: '#64748B', margin: '0 0 16px' });
+    dialog.append(note);
+  }
   if (guide.linkUrl) {
     const install = document.createElement('a');
     install.textContent = `${guide.linkLabel} ↗`;
     install.href = guide.linkUrl;
     install.target = '_blank';
     install.rel = 'noopener noreferrer';
+    if (guide.linkAriaLabel) install.setAttribute('aria-label', guide.linkAriaLabel);
     Object.assign(install.style, {
       display: 'block', padding: '12px', border: '1px solid #1A3C6E', borderRadius: '8px',
       color: '#1A3C6E', textDecoration: 'none', textAlign: 'center', fontSize: '14px', fontWeight: '700',
     });
     const returnHint = document.createElement('p');
-    returnHint.textContent = '앱 설치가 필요하면 위 설치 화면을 이용한 뒤 이 창으로 돌아와 EPUB을 다운로드하세요. 이미 지원 앱이 있으면 바로 다운로드할 수 있습니다.';
+    returnHint.textContent = '설치 화면은 새 창으로 열립니다. 설치를 마치면 하루로 돌아와 아래 ‘EPUB 다운로드’를 누르세요. 이미 지원 앱이 있으면 바로 다운로드할 수 있습니다.';
     Object.assign(returnHint.style, { fontSize: '12px', lineHeight: '1.6', color: '#64748B' });
     dialog.append(install, returnHint);
   }

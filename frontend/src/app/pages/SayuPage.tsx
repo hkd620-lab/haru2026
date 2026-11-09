@@ -1,4 +1,6 @@
 import { readSelectedRecordPhoto } from '../services/selectedRecordPhoto';
+import { getHaruLawAttachmentLabel } from '../utils/haruLawAttachment';
+import { HaruLawAnswer, splitHaruLawAnswer } from '../components/HaruLawAnswer';
 import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -2600,25 +2602,32 @@ export function SayuPage() {
     if (!currentRecord) {
       if (sayuRouteStateLoadingRef.current === routeKey) return;
       sayuRouteStateLoadingRef.current = routeKey;
+      let cancelled = false;
       (async () => {
         try {
-          const data = await firestoreService.getRecords(user.uid);
-          if (currentRecordsUidRef.current !== user.uid) return;
-          setRecords(data);
-          setRecordsOwnerUid(user.uid);
-          if (!data.some((record) => record.id === openRecordId)) {
-            toast.error('저장한 메모를 찾지 못했습니다.');
+          const snapshot = await getDoc(doc(db, 'users', user.uid, 'records', openRecordId));
+          if (cancelled || currentRecordsUidRef.current !== user.uid) return;
+          if (!snapshot.exists()) {
+            toast.error('선택한 기록을 찾지 못했습니다.');
             navigate('/sayu', { replace: true, state: null });
+            return;
           }
+          const record = { ...snapshot.data(), id: snapshot.id } as HaruRecord;
+          // 단건 조회는 전체 목록의 소유/로딩 완료 상태를 바꾸지 않는다.
+          setRecords((prev) => [...prev.filter((item) => item.id !== record.id), record]);
         } catch (error) {
-          console.error('저장한 메모 불러오기 실패:', error);
-          toast.error('저장한 메모를 불러오지 못했습니다.');
+          if (cancelled || currentRecordsUidRef.current !== user.uid) return;
+          console.error('선택한 기록 불러오기 실패:', error);
+          toast.error('선택한 기록을 불러오지 못했습니다.');
           navigate('/sayu', { replace: true, state: null });
         } finally {
-          sayuRouteStateLoadingRef.current = '';
+          if (!cancelled && sayuRouteStateLoadingRef.current === routeKey) sayuRouteStateLoadingRef.current = '';
         }
       })();
-      return;
+      return () => {
+        cancelled = true;
+        if (sayuRouteStateLoadingRef.current === routeKey) sayuRouteStateLoadingRef.current = '';
+      };
     }
 
     const recordDate = String(currentRecord.date || '').slice(0, 10);
@@ -5879,12 +5888,7 @@ export function SayuPage() {
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}>✕</button>
             </div>
             {(() => {
-              const cleanedSummary = cleanHaruLawMarkdown(harurawModal.summary);
-              const summaryLines = cleanedSummary.split('\n').filter(Boolean);
-              const coreSummary = summaryLines[0] || '관련 조문을 바탕으로 검토가 필요합니다. 사례관계에 따라 실제 판단은 달라질 수 있습니다.';
-              const analysisLines = summaryLines.length > 1
-                ? summaryLines.slice(1)
-                : ['아래 관련 조문과 실제 사실관계를 함께 확인해야 합니다. 단정적인 결론보다 가능성, 주의점, 추가 확인 사항을 중심으로 검토하세요.'];
+              const answerParts = splitHaruLawAnswer(harurawModal.summary || '관련 조문을 바탕으로 검토가 필요합니다. 사례관계에 따라 실제 판단은 달라질 수 있습니다.');
               const lawArticles = parseHaruLawArticles(harurawModal.articles);
               const sectionStyle = {
                 padding: 16,
@@ -5929,7 +5933,7 @@ export function SayuPage() {
                               {isImage && url ? (
                                 <img src={url} alt={att.fileName} style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />
                               ) : (
-                                <span style={{ fontSize: 11, fontWeight: 900, color: '#1A3C6E' }}>PDF</span>
+                                <span style={{ fontSize: 11, fontWeight: 900, color: '#1A3C6E' }}>{getHaruLawAttachmentLabel(att.mimeType)}</span>
                               )}
                               <span style={{ fontSize: 12, color: '#1A3C6E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {att.fileName}
@@ -5941,12 +5945,10 @@ export function SayuPage() {
                     )}
                   </div>
 
-                  <div style={sectionStyle}>
+                  {answerParts.summary && <div style={sectionStyle}>
                     <p style={labelStyle}>핵심 답변</p>
-                    <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, margin: 0 }}>
-                      {coreSummary}
-                    </p>
-                  </div>
+                    <HaruLawAnswer text={answerParts.summary} />
+                  </div>}
 
                   {lawArticles.length > 0 && (
                     <div style={sectionStyle}>
@@ -5971,16 +5973,10 @@ export function SayuPage() {
                     </div>
                   )}
 
-                  <div style={sectionStyle}>
+                  {answerParts.analysis && <div style={sectionStyle}>
                     <p style={labelStyle}>AI 분석</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {analysisLines.map((line, idx) => (
-                        <p key={idx} style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.7, margin: 0 }}>
-                          {line}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
+                    <HaruLawAnswer text={answerParts.analysis} />
+                  </div>}
 
                   {/* 하루LAW 추가 질문 — 기존 결과물 AI 대화(ResultChatModal) 재사용 */}
                   {harurawModal.recordId && (() => {
