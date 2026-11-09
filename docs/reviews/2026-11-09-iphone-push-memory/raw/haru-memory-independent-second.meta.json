@@ -1,0 +1,27 @@
+{
+  "startedAt": "2026-11-09T05:23:14.868846+00:00",
+  "cwd": "/private/tmp/haru-push-memory-20261109",
+  "head": "d31dad21364295faf22c94f66261d2e18e2cb01b",
+  "command": [
+    "claude",
+    "-p",
+    "--permission-prompts",
+    "none",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--add-dir",
+    "/private/tmp",
+    "--permission-mode",
+    "plan",
+    "--tools",
+    "Read,Glob,Grep,Bash",
+    "--allowedTools",
+    "Read,Glob,Grep,Bash(git diff *),Bash(git show *),Bash(git log *),Bash(git status *),Bash(git rev-parse *),Bash(gh pr view *),Bash(gh api *),Bash(cat *),Bash(rg *),Bash(ls *)",
+    "--disallowedTools",
+    "Edit,Write,NotebookEdit"
+  ],
+  "exitCode": 0,
+  "finishedAt": "2026-11-09T05:25:04.628310+00:00"
+}

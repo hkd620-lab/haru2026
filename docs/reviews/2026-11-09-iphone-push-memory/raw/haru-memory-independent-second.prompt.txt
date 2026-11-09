@@ -1,0 +1,86 @@
+독립 Claude 재검토자. 파일수정·Gitfetch포함변경·게시·배포금지. PR365 https://github.com/hkd620-lab/haru2026/pull/365 HEADd31dad21364295faf22c94f66261d2e18e2cb01b, 저장소/private/tmp/haru-push-memory-20261109. canonicalAGENTS/Slack8.1와docs/reviews/2026-11-09-iphone-push-memory 근거를읽고이전수정후승인의필수문서3건이충족됐는지독립평가. 코드수정없어야함. 비용/백엔드배포는대표최종승인전이라ready/merge/배포금지유지. 판정첫줄승인/수정후승인/재설계. 모든질문/결과원문보존,통과유도재롤링금지. 이전판정원문:
+**판정: 수정 후 승인.** 코드 1줄은 그대로 승인합니다. 고칠 것은 근거 문서 보완뿐이고, 코드 수정은 필요 없습니다. 운영 배포에는 허대표님 비용 승인이 따로 필요합니다(8.1 멈춤 조건). 현재 PR #365는 draft·OPEN이고 HEAD는 `89fa9644`로 맞습니다.
+
+검토 결과를 계획 파일에 쓰려던 셸 명령은 권한이 거부되어 실행되지 않았습니다. 그래서 결과는 이 답변에만 있습니다. 저장소·PR·Slack에는 아무것도 쓰지 않았습니다. 다만 `git fetch origin`을 한 번 실행해 원격 추적 ref만 갱신했습니다. 파일 변경은 없지만 읽기만 한 것은 아니어서 밝혀 둡니다.
+
+## 확인 근거 (읽기만 함)
+- **변경 범위:** `origin/main`(6723b5d4) 대비 바뀐 것은 `functions/src/index.ts:5412`의 `{ region: 'asia-northeast3', memory: '512MiB' }` 1줄과 README뿐입니다. 같은 파일의 다른 함수 여러 개가 이미 같은 표기를 씁니다(2546·3039행 등).
+- **동작·안전성 불변:** `git log -L` 결과, 함수 본문은 2026-04-27(171de7e2) 이후 바뀐 적이 없습니다. 9월에 배포된 버전과 같은 본문이 다시 올라갑니다.
+  - 로그인하지 않으면 `unauthenticated` 오류를 냅니다.
+  - 발송 대상은 `request.auth.uid`의 `users/{uid}/settings/settings.fcmTokens`에서만 고릅니다.
+  - 받는 입력은 `title`·`body`뿐이라 다른 사람의 uid나 토큰을 지정할 방법이 없습니다.
+  - 리전, Firestore 경로, Rules, 인증·결제·모델은 바뀌지 않았습니다.
+- **검증 근거:**
+  - Node22 빌드 exit 0, `scheduledNotificationCore` 시험 exit 0.
+  - 첫 endpoint 비교는 exit 2로 실패했습니다. 인자 모드를 빠뜨린 사용법 오류이고, 원문이 `-3.log`에 남아 있습니다.
+  - 재실행에서는 export 100개 이름이 같고, 다른 endpoint 차이는 0입니다. `sendTestNotification`은 `availableMemoryMb`만 null→512로 바뀌었고 region은 같습니다. 원본 metadata는 저장하지 않았습니다.
+  - 기준선 92535da2와 6723b5d4는 `functions/src` 차이가 0이고 package.json·lock만 다릅니다. 메타데이터 비교에는 영향이 없고, summary에 이 한계가 적혀 있습니다.
+
+## 필수 수정 (문서만)
+1. **README가 미실행 상태로 남아 있음.** README 6.2·8절은 아직 "빌드·endpoint 비교 미실행"입니다. root가 실행한 결과를 새 파일이나 PR 본문으로 연결해 주세요. README 자체는 고치지 않는 원칙대로 둡니다. 실패한 첫 실행(exit 2)과 재실행 통과를 둘 다 원문 그대로 보존해야 합니다.
+2. **재발 가능성 명시.** 함수 본문은 아주 작아서, 259MiB의 대부분은 커다란 `index.js` 모듈 전체를 시작할 때 불러오기 때문으로 보입니다(pdfkit·sharp 등을 바로 불러옴). 이는 추정이라고 표기해 주세요.
+   - 배포하면 9월 이후의 main 의존성(major 업그레이드 포함)과 다른 모듈 코드가 함께 올라가므로, 시작 시 메모리가 달라질 수 있습니다. 이는 측정하지 않았습니다.
+   - 512MiB는 약 2배 여유지만, 충분한지는 배포 후 실측해야 확정됩니다.
+3. **원인 범위 한정 유지.** 이 근거는 256MiB 한도에서 실패한 실기기 1회에 대한 것입니다. 과거 미수신 전체의 원인으로 단정하지 않는다는 문구를 PR 본문에도 유지해 주세요.
+
+## 비용·성능
+- 바뀌는 것은 RAM 할당 256→512 하나입니다. 정확한 청구액은 측정하지 않았으며 추정하지 않습니다.
+- CPU 1과 timeout 60은 변경하지 않을 계획입니다. 비교 결과의 null은 "소스에서 지정하지 않음"이라는 뜻일 뿐 운영 실측값이 아니므로, 배포 후 운영에서 다시 확인해야 합니다.
+
+## 규모와 멈춤 조건
+- **규모:** 소규모 설정 변경이지만, 비용이 늘어나므로 멈춤 조건에 해당합니다.
+- **멈춤:** 허대표님이 비용과 백엔드 배포 범위를 승인하기 전에는 ready 전환·merge·배포를 하지 않습니다.
+- **배포 범위:** `functions:sendTestNotification` 하나만 배포합니다. 그래도 현재 main의 전체 lib과 의존성이 함께 패키징된다는 점을 승인 자료에 적어 주세요.
+- **롤백:** (a) 256 설정 코드로 같은 함수만 재배포하거나, (b) 직전 revision `sendtestnotification-00130-tah`로 트래픽 100%를 되돌립니다. 둘 다 별도 승인이 필요합니다. 배포 직후 새 revision 이름을 기록해 두세요.
+
+## 범위 밖 관찰 (수정 권고 아님)
+- `request.data`가 비어 있으면 `const { title, body } = request.data`에서 500이 날 수 있습니다. 프런트(`SettingsPage.tsx:586`)는 항상 title/body를 보내므로 기존 동작 그대로 둡니다.
+
+## 운영 확인 (배포 후)
+1. gcloud 실측: memory 512Mi, asia-northeast3, CPU 1, timeout 60, nodejs22, 새 revision.
+2. 같은 계정 아이폰 실기기에서 1회 시험: HTTP 200, succeeded ≥ 1, 실제 수신 확인.
+3. 같은 시각 로그에 "Memory limit exceeded"가 없는지 확인합니다. 가능하면 최대 메모리 사용량도 봅니다. 토큰·UID 원문은 수집하지 않습니다.
+4. 그래도 수신되지 않으면 메모리 외 원인(APNs·토큰 등)은 이 PR과 별도로 조사합니다.
+
+실제 수신은 아직 후속 실기기 검증을 기다리는 상태라, 이 검토로 미수신 문제가 해결됐다고 판정하지는 않습니다.
+CC반영내역원문:
+PR #365의 문서 보완을 마쳤습니다. 최종 HEAD는 `d31dad21364295faf22c94f66261d2e18e2cb01b`이고, 이 HEAD에서 CI 3개가 모두 통과했습니다. 코드는 바꾸지 않았고 PR은 draft 그대로입니다. ready 전환·merge·배포는 하지 않았습니다.
+
+## 바뀐 것
+- **커밋 `d31dad21`** (한국어, push 완료): `git diff --name-status 89fa9644..HEAD` 결과 24개 항목이 모두 `A docs/reviews/2026-11-09-iphone-push-memory/…`입니다. 수정·삭제된 파일은 없습니다.
+- **새 문서 3개** (README는 고치지 않았습니다)
+  - `SUPPLEMENT-1.md`: 필수 1~3 반영.
+    - 검증 원문: 첫 endpoint 비교 실패(exit 2, 모드 인자 누락)와 재실행 통과를 모두 담았습니다.
+    - 기준선 한계: 92535da2와 6723b5d4는 `functions/src` 차이 0이고, 의존성 차이(puppeteer major와 lock)가 있습니다.
+    - metadata의 `null`은 소스에 지정하지 않았다는 뜻이며, 운영 실측 256Mi/CPU 1/60초와는 다릅니다.
+    - 재발 원인은 추정으로 적었고, 512MiB가 충분한지는 배포 후에 확인한다고 적었습니다.
+    - 원인은 이번 1회 OOM으로만 한정했습니다.
+    - 그 밖에 실수신 미확인, 비용, 경로·리전·Rules·인증·결제 변경 없음, 대상 함수 하나, 롤백(별도 승인 필요)을 기록했습니다.
+  - `CODEX-INDEX-1.md`: 1회 실행을 색인했습니다.
+    - 요청 6732506701(04:49:28Z, 대상 89fa9644) → 결과 6732523114(04:50:48Z, 지적 없음), 요약 6732509134 완료 04:50:49.694630Z.
+    - CC 1차의 `@codex review` 게시는 권한 거부로 게시되지 않았습니다. 이 사실을 원문 그대로 남기고 실행 번호에서는 뺐습니다.
+  - `INDEPENDENT-REVIEW-1.md`: 1차 판정 "수정 후 승인"(3회 상한 중 1회째) 원문 인용과 반영 내역입니다.
+    - 검토자가 기록한 근거 "핸들러 본문 4/27 이후 동일"은 지적 이력으로만 남기고, 이번 새 근거와 섞지 않았습니다.
+- **`raw/` 원문 21개**
+  - `/private/tmp` 원본 18개: 독립 검토 1차, CC1, `validate.py`, 검증 summary와 로그 0~3, `endpoints-verify.py`와 그 summary, Codex 요청 본문, 기존 `endpoint-compare.js`.
+  - Codex API 응답 3개.
+  - 18개 모두 원본과 사본이 `cmp`로 바이트 일치하고 SHA-256도 같습니다. 값은 SUPPLEMENT 9절에 표로 적었습니다.
+- **PR 본문 갱신**: 검증 결과, 1회 한정 문구, 재발 위험, 실수신 미확인, 비용, 롤백을 반영했습니다.
+
+## 검증과 한계
+- **CI**: `build_and_preview`, `Deploy Preview`, `linux_x64_node22` 모두 pass이고, 실행 커밋은 `d31dad21`입니다. Hosting은 PR preview 채널에만 올라갔습니다.
+- **`git diff --check`**: exit 2로 끝났습니다. 지적은 `raw/haru-memory-validation-1.log`의 "new blank line at EOF" 1건뿐입니다. npm 출력 원본 끝의 빈 줄이라 원문 보존을 위해 고치지 않았고, 이 사실을 SUPPLEMENT에 적었습니다.
+- **권한 거부**: `shasum`, `openssl`, 변수가 들어간 명령, `git ls-remote`, 원래 계획한 비교 명령 일부가 세션 권한으로 거부됐습니다. 우회하지 않았습니다. 대신 `cmp`와 `/private/tmp/haru-memory-docs-sha256.js`(새로 만든 읽기 전용 해시 스크립트)를 기본 `node`(v26)로 실행해 SHA-256을 대조했습니다.
+- **보존한 것**: `functions/lib/index.js`, `functions/lib/snsToDiary.js`는 미커밋 상태 그대로이고 `functions/node_modules`도 그대로 두었습니다. 셋 다 stage하지 않았습니다.
+- **이 실행의 기록**: `haru-memory-prepare-1.*`는 실행 중이라 비어 있었고, 실패가 아니어서 커밋에 넣지 않았습니다. 끝난 뒤 보존은 root 담당입니다.
+- **작업 위치**: 이 작업은 지시받은 `/private/tmp` worktree에서 했습니다. CLAUDE.md의 기준 경로가 아닙니다.
+
+## 남은 일 (제가 하지 않은 것)
+- 다른 세션에서 독립 재검토. 1차 판정 원문과 반영 내역을 함께 넘깁니다. 저는 승인하지 않았습니다.
+- 비용과 단일 함수 배포 범위에 대한 허대표님 최종 확인.
+- 승인 후 배포, gcloud로 실측(512Mi/CPU 1/60초/asia-northeast3/nodejs22/새 revision), 같은 계정 아이폰 실기기 수신 재시험.
+- Slack 기록. Slack이나 다른 메시지는 보내지 않았습니다.
+
+**Slack 기록용 확정 요약** (게시하지 않았습니다)
+> [haru2026] PR #365 draft 문서 보완. HEAD `d31dad21`, 89fa9644 이후 변경은 `A docs/reviews`만. 독립 검토 1차 "수정 후 승인"의 필수 문서 3개를 반영했습니다. 검증: Node 22.23.2 빌드와 알림 시험 0, 첫 endpoint 비교 exit 2(사용법 실패), 재실행에서 export 100개 같음 / 다른 99개 차이 0 / availableMemoryMb null→512만 변경. Codex 6732523114 지적 없음. CI 3개 pass. 실수신 미확인, 비용 미측정. ready·merge·배포는 허대표님 확인 전 금지. 다음 단계는 다른 세션의 독립 재검토입니다.
+root실행근거 /private/tmp/haru-memory-validation-summary.json (1회사용법오류포함)과 /private/tmp/haru-memory-endpoints-verified-summary.json (재실행통과), 각각runner실제내용·새문서·PR본문을대조. 운영실수신아직미확인. 이번진행중본인의출력raw는완료전0바이트일수있으니과거무응답으로오인하지말것. 읽기전용조회/이미존재하는합성시험만허용.
