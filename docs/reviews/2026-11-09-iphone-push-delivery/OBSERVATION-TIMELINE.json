@@ -1,0 +1,54 @@
+{
+  "recordedAt": "2026-11-09T07:59:29.556088+00:00",
+  "clarification": "독립 진단은07:35~07:38Z에 시행됐고 그당시 실제 증거는07:27Z foreground시험이었다. INDEX의BG사용자확인은진단후추가관측이며 진단의입력근거에소급포함하지않는다.",
+  "diagnosis": {
+    "startedAt": "2026-11-09T07:35:20.421624Z",
+    "finishedAt": "2026-11-09T07:38:29.098573Z",
+    "verdict": "읽기 전용 진단, 원인 미확정, 새 제품 승인 아님"
+  },
+  "events": [
+    {
+      "at": "2026-11-09T07:27:15Z",
+      "condition": "foreground",
+      "server": "HTTP200,2success/2fail",
+      "userReceipt": "어느 기기에서도 못 받았습니다"
+    },
+    {
+      "at": "2026-11-09T07:41:37Z",
+      "condition": "interrupted UI attempt",
+      "server": "요청 없음",
+      "result": "시험 실행으로 세지 않음"
+    },
+    {
+      "at": "2026-11-09T07:45:38Z",
+      "condition": "background",
+      "server": "HTTP200,2success/0fail",
+      "userReceipt": "어느 기기에서도 못 받았습니다"
+    },
+    {
+      "condition": "iOS settings observed",
+      "allowNotifications": true,
+      "lockScreen": true,
+      "notificationCenter": true,
+      "banners": true,
+      "sound": true,
+      "changedByAgent": false
+    },
+    {
+      "condition": "Focus user reply",
+      "firstReply": "집중 모드가 켜져 있습니다",
+      "afterTemporaryOffRequest": "끔",
+      "scope": "사용자 보고. 활성 모드 해제 여부를 에이전트가 제어센터에서 별도 실측하지 않음."
+    },
+    {
+      "at": "2026-11-09T07:54:02Z",
+      "condition": "background, focus off reported by user",
+      "server": "HTTP200,2success/0fail",
+      "userReceipt": "답변 대기"
+    }
+  ],
+  "productChangesAfterDeploy": false,
+  "additionalDeploymentAfterDeploy": false,
+  "sourceSha": "f38e0ddcad2c130e92333b0c5dd735972e09e5e8",
+  "privacy": "토큰·UID·개인정보·원본서버로그 없음"
+}
