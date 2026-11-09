@@ -128,7 +128,11 @@
 
 ## 6. Codex 재검토 요청 (이 실행)
 
-요청 댓글 링크·시각·대상 HEAD는 `codex-request-2.md`에 기록한다(요청 뒤 추가 커밋).
+- 요청 댓글 6731864352: <https://github.com/hkd620-lab/haru2026/pull/363#issuecomment-6731864352>
+- 게시 시각 2026-11-09T03:57:04Z, 대상 HEAD `1588d57a31204356a15099db135e2ad1d4962c4d`
+- 상세와 원문은 `codex-request-2.md`, `codex-request-6731864352.comment.json`, `codex-request-2-body.md`에 있다.
+- PR 본문 갱신 원문은 `pr363-body-followup1.md`.
+- 이 기록은 요청 뒤 문서 전용 커밋으로 추가했다. 그래서 PR 최신 HEAD는 요청 대상보다 한 커밋 앞서고, 그 커밋에 코드 변경은 없다.
 
 ## 7. 남은 위험·후속 (상위 작업자)
 
