@@ -1,0 +1,46 @@
+{
+  "recordedAt": "2026-11-09T04:48:30.193300+00:00",
+  "head": "89fa9644f75cfaf28667f7ce04229603ea2e781c",
+  "results": [
+    {
+      "command": [
+        "node",
+        "--version"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-memory-validation-0.log"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-memory-validation-1.log"
+    },
+    {
+      "command": [
+        "node",
+        "test/scheduledNotificationCore.test.js"
+      ],
+      "exitCode": 0,
+      "log": "/private/tmp/haru-memory-validation-2.log"
+    },
+    {
+      "command": [
+        "node",
+        "/private/tmp/haru-push-memory-verify-20261109/endpoint-compare.js",
+        "/private/tmp/haru-deploy-chatwithresult-20261109/functions/lib/index.js",
+        "/private/tmp/haru-push-memory-20261109/functions/lib/index.js"
+      ],
+      "exitCode": 2,
+      "log": "/private/tmp/haru-memory-validation-3.log"
+    }
+  ],
+  "actualAIRequests": false,
+  "productionWrites": false,
+  "fcmSent": false,
+  "baselineSourceSha": "92535da23e3bfdbee66b833217748da461b1689c",
+  "baselineLimit": "Functions src identical between 92535da2 and main6723b5d4; dependency major upgrade differs, runtime endpoint metadata only compared."
+}

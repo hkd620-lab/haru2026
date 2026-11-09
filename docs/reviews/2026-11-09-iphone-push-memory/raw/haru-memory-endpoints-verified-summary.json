@@ -1,0 +1,34 @@
+{
+  "recordedAt": "2026-11-09T04:48:42.381823+00:00",
+  "baselineExportCount": 100,
+  "candidateExportCount": 100,
+  "exportNamesEqual": true,
+  "otherEndpointDifferences": [],
+  "sendTestNotification": {
+    "before": {
+      "platform": "gcfv2",
+      "region": [
+        "asia-northeast3"
+      ],
+      "availableMemoryMb": null,
+      "cpu": null,
+      "timeoutSeconds": null
+    },
+    "after": {
+      "platform": "gcfv2",
+      "region": [
+        "asia-northeast3"
+      ],
+      "availableMemoryMb": 512,
+      "cpu": null,
+      "timeoutSeconds": null
+    },
+    "changedFields": [
+      "availableMemoryMb"
+    ]
+  },
+  "rawMetadataPersisted": false,
+  "actualAIRequests": false,
+  "productionWrites": false,
+  "fcmSent": false
+}
