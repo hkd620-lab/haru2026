@@ -1,0 +1,59 @@
+'use strict';
+const fs=require('fs'),cp=require('child_process'),crypto=require('crypto'),assert=require('assert/strict');
+const {database}=require('/private/tmp/haru-all-classify.cjs');
+const req=require('module').createRequire('/private/tmp/haru-ai-library-auto-new-20261110/functions/package.json');
+const {FieldValue}=req('firebase-admin/firestore');
+const src='/private/tmp/haru-harulab-existing-snapshot-v3.json',planSrc='/private/tmp/haru-harulab-plan-v3.json',marker='/private/tmp/haru-harulab-existing-v3-folder.txt';
+const sha=s=>crypto.createHash('sha256').update(s).digest('hex');
+const canonical=v=>JSON.stringify(JSON.parse(JSON.stringify(v)),(_,x)=>x&&typeof x==='object'&&!Array.isArray(x)&&Object.getPrototypeOf(x)===Object.prototype?Object.fromEntries(Object.entries(x).sort(([a],[b])=>a.localeCompare(b))):x);
+const categoryFields=['aiCategory','aiCategorySource','aiCategoryUpdatedAt'];
+const preserved=r=>sha(canonical(Object.fromEntries(Object.entries(r).filter(([k])=>!categoryFields.includes(k)))));
+const equalVersion=(s,p)=>s.updateTime.seconds===p.version.seconds&&s.updateTime.nanoseconds===p.version.nanoseconds&&s.createTime.seconds===p.identity.seconds&&s.createTime.nanoseconds===p.identity.nanoseconds;
+function guard(current,original,versionSame){if(!current)return 'deleted';if(current.type!=='ai_log')return 'type_changed';if(current.aiCategorySource==='manual')return 'manual_preserved';if(current.aiCategory==='harulab')return 'already_harulab';if(!versionSame||preserved(current)!==preserved(original))return 'changed_preserved';return 'eligible';}
+function volume(){assert(cp.execFileSync('diskutil',['info','/Volumes/LaCie'],{encoding:'utf8'}).includes('06827F85-BF9F-465C-9C30-E39085839975'));}
+function writeNew(file,obj){fs.writeFileSync(file,JSON.stringify(obj,null,2)+'\n',{flag:'wx',mode:0o600});}
+async function main(){
+ const mode=process.argv[2];assert(!process.env.FIRESTORE_EMULATOR_HOST);assert.notEqual(process.env.NODE_TLS_REJECT_UNAUTHORIZED,'0');
+ const snapshot=JSON.parse(fs.readFileSync(src)),plan=JSON.parse(fs.readFileSync(planSrc));
+ const map=new Map(snapshot.rows.map(r=>[r.id,r]));assert.equal(new Set(plan.selectedIds).size,plan.selectedIds.length);assert(plan.selectedIds.length>0&&plan.selectedIds.length<snapshot.rows.length);
+ for(const id of plan.selectedIds){assert(typeof id==='string'&&!id.includes('/'));assert(map.has(id));assert.notEqual(map.get(id).data.aiCategorySource,'manual');}
+ if(mode==='prepare'){
+  volume();assert(!fs.existsSync(marker));const folder='/Volumes/LaCie/Mac_작업/완료자료/HARU2026/20261110_기존앱자료_harulab_'+Date.now();fs.mkdirSync(folder);
+  for(const [from,name] of [[src,'이동전_전체자료.json'],[planSrc,'이동대상_검토목록.json'],[__filename,'실행_보존검증_스크립트.cjs']]){const target=folder+'/'+name;fs.copyFileSync(from,target,fs.constants.COPYFILE_EXCL);fs.chmodSync(target,0o600);assert.equal(sha(fs.readFileSync(from)),sha(fs.readFileSync(target)));}
+  writeNew(folder+'/백업_SHA256.json',{snapshot:sha(fs.readFileSync(src)),plan:sha(fs.readFileSync(planSrc)),script:sha(fs.readFileSync(__filename))});
+  fs.writeFileSync(marker,folder,{flag:'wx'});console.log(JSON.stringify({prepared:true,folder,total:snapshot.rows.length,selected:plan.selectedIds.length,manualExcluded:plan.manualExcludedIndices.length}));return;
+ }
+ const folder=fs.readFileSync(marker,'utf8').trim(),hashes=JSON.parse(fs.readFileSync(folder+'/백업_SHA256.json'));
+ volume();assert.equal(sha(fs.readFileSync(src)),hashes.snapshot);assert.equal(sha(fs.readFileSync(planSrc)),hashes.plan);assert.equal(sha(fs.readFileSync(folder+'/이동전_전체자료.json')),hashes.snapshot);assert.equal(sha(fs.readFileSync(folder+'/이동대상_검토목록.json')),hashes.plan);assert.equal(sha(fs.readFileSync(__filename)),hashes.script);
+ const {db,uid}=await database();assert.equal(uid,snapshot.uid);assert.equal(db.projectId,'haru2026-8abb8');
+ const batchId=folder.split('/').pop(),audit=db.doc('aiLibraryClassificationPrivate/'+uid+'/manualBatches/'+batchId);
+ try{
+  if(mode==='preflight'){const counts={};for(let i=0;i<plan.selectedIds.length;i+=40){const ids=plan.selectedIds.slice(i,i+40),docs=await db.getAll(...ids.map(id=>db.doc('users/'+uid+'/records/'+id)));docs.forEach((d,j)=>{const old=map.get(ids[j]),g=guard(d.exists?d.data():null,old.data,d.exists&&equalVersion(d,old));counts[g]=(counts[g]||0)+1;});}let manualExact=0;for(const old of snapshot.rows.filter(r=>r.data.aiCategorySource==='manual')){const d=await db.doc('users/'+uid+'/records/'+old.id).get();if(d.exists&&canonical(d.data())===canonical(old.data))manualExact++;}console.log(JSON.stringify({preflight:counts,manualExact}));assert.equal(manualExact,plan.manualExcludedIndices.length);assert.equal(counts.eligible,plan.selectedIds.length);return;}
+  if(mode==='execute'){
+   const root=await audit.get();if(root.exists)assert.equal(root.get('planHash'),hashes.plan);else await audit.create({kind:'user-directed-harulab',planHash:hashes.plan,snapshotHash:hashes.snapshot,selected:plan.selectedIds.length,createdAt:FieldValue.serverTimestamp()});
+   const results=[];
+   for(let start=0;start<plan.selectedIds.length;start+=8){
+    volume();const ids=plan.selectedIds.slice(start,start+8);const settled=await Promise.allSettled(ids.map(async id=>{const prior=map.get(id),ref=db.doc('users/'+uid+'/records/'+id),receipt=audit.collection('items').doc(id);
+     return db.runTransaction(async tx=>{const [s,a]=await tx.getAll(ref,receipt);if(a.exists)return {id,status:'already_recorded'};const decision=guard(s.exists?s.data():null,prior.data,s.exists&&equalVersion(s,prior));if(decision!=='eligible')return {id,status:decision};
+      const before=Object.fromEntries(categoryFields.map(k=>[k,Object.hasOwn(s.data(),k)?{present:true,value:s.get(k)}:{present:false}]));
+      tx.create(receipt,{id,before,recordIdentity:prior.identity,beforeVersion:prior.version,preservedHash:preserved(s.data()),planHash:hashes.plan,appliedCategory:'harulab',appliedSource:'manual',appliedAt:FieldValue.serverTimestamp()});
+      tx.update(ref,{aiCategory:'harulab',aiCategorySource:'manual',aiCategoryUpdatedAt:FieldValue.serverTimestamp()});return {id,status:'moved'};});
+    }));const group=settled.map((r,i)=>r.status==='fulfilled'?r.value:{id:ids[i],status:'error',code:typeof r.reason?.code==='number'?r.reason.code:null});results.push(...group);const fd=fs.openSync(folder+'/실행기록.jsonl','a',0o600);fs.writeSync(fd,JSON.stringify({at:new Date().toISOString(),rows:group})+'\n');fs.fsyncSync(fd);fs.closeSync(fd);if(group.some(r=>r.status==='error'))throw Error('group_failed_audited');if((start+8)%80===0)console.log(JSON.stringify({processed:results.length,total:plan.selectedIds.length}));
+   }
+   writeNew(folder+'/이동결과_'+Date.now()+'.json',{results,at:new Date().toISOString()});console.log(JSON.stringify({executed:results.length,statuses:results.reduce((a,r)=>(a[r.status]=(a[r.status]||0)+1,a),{})}));return;
+  }
+  if(mode==='verify'){
+   let preservedCount=0,manualPreserved=0,moved=0,untouched=0;const differences=[],actualMoved=[],notMoved=[];
+   for(let start=0;start<snapshot.rows.length;start+=40){const rows=snapshot.rows.slice(start,start+40),docs=await db.getAll(...rows.map(r=>db.doc('users/'+uid+'/records/'+r.id))),receipts=await db.getAll(...rows.map(r=>audit.collection('items').doc(r.id)));
+    docs.forEach((d,j)=>{const old=rows[j],r=d.data();if(!r){differences.push({id:old.id,reason:'missing'});return;}if(preserved(r)===preserved(old.data))preservedCount++;else differences.push({id:old.id,reason:'non_category_changed'});
+     if(old.data.aiCategorySource==='manual'){if(canonical(r)===canonical(old.data))manualPreserved++;else differences.push({id:old.id,reason:'manual_changed'});}
+     if(receipts[j].exists){if(r.aiCategory==='harulab'&&r.aiCategorySource==='manual'&&preserved(r)===receipts[j].get('preservedHash')){moved++;actualMoved.push(old.id);}else differences.push({id:old.id,reason:'receipt_no_longer_matches'});}
+     else {if(canonical(r)===canonical(old.data))untouched++;if(plan.selectedIds.includes(old.id))notMoved.push({id:old.id,reason:guard(r,old.data,equalVersion(d,old))});}
+    });
+   }
+   const proof={originalTotal:snapshot.rows.length,selected:plan.selectedIds.length,movedVerified:moved,allNonCategoryFieldsPreserved:preservedCount,manualOriginal:plan.manualExcludedIndices.length,manualPreserved,unmovedExactlyUnchanged:untouched,differences,actualMoved,notMoved,providerCalls:0,verifiedAt:new Date().toISOString()};writeNew(folder+'/검증결과_'+Date.now()+'.json',proof);console.log(JSON.stringify({...proof,actualMoved:undefined}));assert.equal(differences.length,0);assert.equal(preservedCount,snapshot.rows.length);assert.equal(manualPreserved,plan.manualExcludedIndices.length);assert.equal(moved+notMoved.length,plan.selectedIds.length);assert(notMoved.every(r=>['manual_preserved','changed_preserved','already_harulab'].includes(r.reason)));assert(moved>0);await audit.update({verifiedAt:FieldValue.serverTimestamp(),movedVerified:moved,status:moved===plan.selectedIds.length?'verified':'verified_partial'});return;
+  }
+  throw Error('invalid mode');
+ }finally{await db.terminate();}
+}
+module.exports={guard,preserved};if(require.main===module)main().catch(e=>{console.error(JSON.stringify({failed:true,name:e.name,code:typeof e.code==='number'?e.code:null}));process.exitCode=1;});
