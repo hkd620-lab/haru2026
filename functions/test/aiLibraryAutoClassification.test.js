@@ -11,3 +11,15 @@ test('uncertain paid response held without retries; body edit during provider ne
 
 test('concurrent new documents cannot exceed remaining daily budget',async()=>{const h=harness();h.rows.set('users/owner/records/second',{...h.event.record});h.rows.set('aiLibraryClassificationPrivate/owner/autoBudgets/1970-01-01',{reservedMicrousd:997247});let calls=0;const run=createNewAiLogClassifier(h.db,async()=>{calls++;return confident;},()=>100000);await Promise.all([run(h.event),run({...h.event,id:'second'})]);assert.equal(calls,1);assert.equal(h.rows.get('aiLibraryClassificationPrivate/owner/autoBudgets/1970-01-01').reservedMicrousd,1000000);});
 test('a runtime pause during provider prevents automatic folder mutation',async()=>{const h=harness();await createNewAiLogClassifier(h.db,async()=>{h.rows.get(h.configPath).enabled=false;return confident;},()=>100000)(h.event);assert.equal(h.rows.get(h.recordPath).aiCategory,undefined);assert.equal(h.rows.get(h.reviewPath).recommendation,'life');});
+
+for (const category of ['harulab', 'health']) test(`confident ${category} preserves originals; ambiguous harulab is only a recommendation`,async()=>{
+ const h=harness(), before=structuredClone(h.rows.get(h.recordPath));
+ await createNewAiLogClassifier(h.db,async()=>({...confident,decision:{status:'classified',category,confidence:.99},recommendation:category}),()=>100000)(h.event);
+ assert.equal(h.rows.get(h.recordPath).aiCategory,category);
+ for(const k of Object.keys(before))assert.deepEqual(h.rows.get(h.recordPath)[k],before[k]);
+ const j=harness();await createNewAiLogClassifier(j.db,async()=>({decision:{status:'review',reason:'ambiguous'},usage:null,recommendation:'harulab'}),()=>100000)(j.event);
+ assert.deepEqual(j.rows.get(j.recordPath),before);assert.equal(j.rows.get(j.reviewPath).recommendation,'harulab');
+});
+test('manual folders survive late confident harulab response',async()=>{
+ for(const category of ['harulab','health']){const h=harness();await createNewAiLogClassifier(h.db,async()=>{h.rows.set(h.recordPath,{...h.event.record,aiCategory:category,aiCategorySource:'manual'});return {...confident,decision:{status:'classified',category:'harulab',confidence:.99},recommendation:'harulab'};},()=>100000)(h.event);assert.equal(h.rows.get(h.recordPath).aiCategory,category);assert.equal(h.rows.get(h.recordPath).aiCategorySource,'manual');}
+});

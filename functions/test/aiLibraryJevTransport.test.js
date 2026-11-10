@@ -142,7 +142,7 @@ test('pre-abort prevents key/fetch; in-flight external abort propagates without 
 test('valid structured Choice/Noul response reaches existing adapter unchanged', async () => {
   const body = { model: 'jev-1.14.0', answers: {
     category: { type: 'choice', choice: 'ai-tech', confidence: 0.97,
-      probabilities: { 'medical-tech': 0.01, health: 0.01, life: 0.01, investment: 0.01, 'ai-tech': 0.96 } },
+      probabilities: { 'medical-tech': 0.01, health: 0.01, life: 0.01, investment: 0.01, 'ai-tech': 0.95, harulab: 0.01 } },
     in_scope: { type: 'noul', noul: 0.99 },
   }, usage: { input_tokens: 120, output_tokens: 12 } };
   const f = fixture({ fetchImpl: async () => json(JSON.stringify(body)) });

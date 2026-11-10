@@ -22,11 +22,11 @@ const {
   JEV_MODEL, JEV_MAX_TEXT_BYTES, JEV_MAX_INPUT_TOKENS, JEV_MAX_OUTPUT_TOKENS,
   buildJevChoiceRequest, parseJevChoiceResponse, classifyApprovedText,
 } = loadSource('aiLibraryJevChoice');
-const categories = ['medical-tech', 'health', 'life', 'investment', 'ai-tech'];
+const categories = ['medical-tech', 'health', 'life', 'investment', 'ai-tech', 'harulab'];
 function response(choice = 'health') {
   return { model: JEV_MODEL, answers: {
     category: { type: 'choice', choice, confidence: 0.95,
-      probabilities: Object.fromEntries(categories.map(key => [key, key === choice ? 0.96 : 0.01])) },
+      probabilities: Object.fromEntries(categories.map(key => [key, key === choice ? 0.95 : 0.01])) },
     in_scope: { type: 'noul', noul: 0.99 },
   }, usage: { input_tokens: 1000, output_tokens: 100 } };
 }
@@ -96,10 +96,10 @@ test('usage bounds accept only finite nonnegative integers and preserve usage on
   const r = response(); r.answers.category.choice = 'bad';
   assert.deepEqual(parseJevChoiceResponse(r).usage, {inputTokens:1000,outputTokens:100});
 });
-test('manual harulab folder does not change the existing model taxonomy', () => {
-  assert.deepEqual(Object.keys(buildJevChoiceRequest('Synthetic app notes').questions.category.criteria), categories);
-  const r = response(); r.answers.category.choice = 'harulab';
-  assert.equal(parseJevChoiceResponse(r).decision.reason, 'invalid_response');
+test('uncertainty between current-app work and general AI stays pending', () => {
+  const r = response('harulab');
+  r.answers.category.probabilities = {'medical-tech':0.01,health:0.01,life:0.01,investment:0.01,'ai-tech':0.47,harulab:0.49};
+  assert.equal(parseJevChoiceResponse(r).decision.reason, 'ambiguous');
 });
 test('scope, uncertain confidence and ambiguous primary purpose go to review', () => {
   const out = response(); out.answers.in_scope.noul = 0.1;
@@ -108,7 +108,7 @@ test('scope, uncertain confidence and ambiguous primary purpose go to review', (
     const r = response(); mutate(r);
     assert.equal(parseJevChoiceResponse(r).decision.reason, 'low_confidence');
   }
-  const mixed = response(); mixed.answers.category.probabilities = {'medical-tech':0.01,health:0.48,life:0.48,investment:0.02,'ai-tech':0.01};
+  const mixed = response(); mixed.answers.category.probabilities = {'medical-tech':0.01,health:0.48,life:0.48,investment:0.02,'ai-tech':0.01,harulab:0};
   assert.equal(parseJevChoiceResponse(mixed).decision.reason, 'ambiguous');
 });
 test('no injected transport means no call; errors never echo text or retry or log', async () => {
