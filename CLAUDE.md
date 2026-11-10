@@ -376,3 +376,10 @@ Cowork(claude-opus-5) 세션에서 로컬 폴더 구조를 실측 조사하고 �
 - 이 결정은 위 「브랜드 로고 및 호박 상징 원칙」의 앱 아이콘 브랜드 변경에 대한 허대표님 승인이다. 포도 로고의 다른 사용처와 랜딩·명함용 호박 원본은 이 결정으로 바뀌지 않는다.
 - 기존 `icons/icon-192.png`·`icon-512.png`는 알림(`notificationService.ts`) 등에서 아직 참조하므로 삭제하지 않는다. 교체 여부는 별도 결정.
 - (2026-10-25 추가) 알림 아이콘도 v2로 교체: 알림 본문 아이콘 `icons/icon-v2-192.png`, Android 상태바 배지 `icons/badge-v2-96.png`(흰색 실루엣·투명 배경 — Android는 배지의 모양만 사용). 적용 위치 `frontend/src/app/services/notificationService.ts`(앱 열림), `frontend/public/firebase-messaging-sw.js`(백그라운드 푸시, 기존 경로 `/icon-192.png`는 없는 파일이었음).
+
+## 브라우저 화면 점검 도구 (2026-11-11 추가)
+
+- 2026-11-11 허대표님 지시로 AI 작업자가 브라우저를 직접 열어 화면을 확인하는 도구 `agent-browser`(Vercel Labs, Apache-2.0)를 도입했다.
+- 절차·점검 대상·금지 사항의 단일 원본은 `.agents/skills/haru2026-browser-qa/SKILL.md`이다. 위 「점검 순서」 3단계와 PR preview 확인에서 브라우저 확인이 필요하면 이 문서를 먼저 읽는다.
+- 이 점검은 보조 수단이다. `npm run build` 등 필수 검증과 실기기 운영 E2E를 대신하지 않는다.
+- 운영 `https://haru2026.com`은 읽기 전용으로만 확인하고, 결제·환불·회원탈퇴·실사용자 기록 변경은 실행하지 않는다.
