@@ -69,6 +69,15 @@ function App() {
       await folder('건강상식');
       check(page().textContent?.includes('합성 미분류 대화'), '추천 이동 후 새 폴더에서 확인');
       await folder('보류'); check(!page().textContent?.includes('합성 미분류 대화'), '다시 보류로 돌아와도 수동 이동 유지');
+      reset(); setRevision(n => n + 1); await wait(); await folder('보류');
+      button('미분류로 확정').click();
+      await waitFor(() => !page().textContent?.includes('합성 미분류 대화'), '미분류 수동 확정');
+      check(state.calls.some(call => call.name === 'move' && call.category === 'unclassified'), '같은 미분류도 수동 확정 요청');
+      await folder('미분류'); check(page().textContent?.includes('합성 미분류 대화'), '미분류 확정 후 원문 보존');
+      reset('health'); setRevision(n => n + 1); await wait(); await folder('보류');
+      button('추천 폴더로 이동').click();
+      await waitFor(() => !page().textContent?.includes('합성 미분류 대화'), '같은 추천 폴더 확정');
+      check(state.calls.some(call => call.name === 'move' && call.category === 'health' && call.expectedCategory === 'health'), '현재 폴더와 추천이 같아도 수동 확정');
       report.push('ALL PASSED');
     } catch (error) { report.push('FAIL ' + (error as Error).message); }
     setResults([...report]); setRunning(false);

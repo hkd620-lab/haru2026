@@ -1,0 +1,7 @@
+const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto');
+const {planReviews}=require('../scripts/importAiLibraryReviews.cjs');
+const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+const canonical=x=>JSON.stringify(x,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
+function fixture(){const m={owner:'synthetic',rows:[{id:'a',contentHash:'a'.repeat(64),text:'text',payloadHash:hash('text')},{id:'b',contentHash:'b'.repeat(64),text:'',payloadHash:hash('')}]};return [m,{status:'completed',manifestHash:hash(canonical(m)),rows:[{id:'a',payloadHash:hash('text'),status:'review',recommendation:'health',reason:'low_confidence'},{id:'b',payloadHash:hash(''),status:'not_sent_review',recommendation:null,reason:'sensitive_review'}]}];}
+test('import plans exact metadata without text/title; excluded records have no invented recommendation',()=>{const [m,r]=fixture();const rows=planReviews(m,r);assert.equal(rows.length,2);assert.equal(rows[0].data.recommendation,'health');assert.equal(rows[1].data.recommendation,null);assert(!JSON.stringify(rows).includes('"text"'));});
+test('tampered manifest, duplicate IDs, missing rows and invented recommendations are rejected',()=>{for(const mutate of [(m,r)=>m.owner='other',(m,r)=>r.rows.pop(),(m,r)=>r.rows[1]=r.rows[0],(m,r)=>r.rows[1].recommendation='life',(m,r)=>r.rows[0].recommendation='not-category']){const [m,r]=fixture();mutate(m,r);assert.throws(()=>planReviews(m,r));}});

@@ -58,7 +58,7 @@ jobs:
         run: npm run test:ai-library-classification
 
       - name: Verify AI folders and pending review with synthetic clients
-        run: node --test test/aiLibraryCategory.behavior.test.js test/aiLibraryReviews.test.js
+        run: node --test test/aiLibraryCategory.behavior.test.js test/aiLibraryReviews.test.js test/aiLibraryReviewImport.test.js
 
       - name: Verify account deletion with synthetic clients
         run: npm run test:account-deletion-completeness

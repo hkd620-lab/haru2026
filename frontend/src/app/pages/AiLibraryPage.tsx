@@ -458,7 +458,7 @@ export function AiLibraryPage() {
   };
 
   const handleMove = async (log: HaruRecord, category: AiLibraryBucket) => {
-    if (category === normalizeAiLibraryCategory(log.aiCategory)) return;
+    if (category === normalizeAiLibraryCategory(log.aiCategory) && folder !== 'review') return;
     const guard = requestGuardRef.current;
     const generation = requestGenerationRef.current;
     const ticket = guard.startRequest(generation, `move:${log.id}`);
@@ -835,6 +835,11 @@ export function AiLibraryPage() {
                 style={{ background: '#FFF8E6', borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 13 }}>
                 <strong>보류 · 추천: {AI_LIBRARY_BUCKETS.find(item => item.value === log.aiReview?.recommendation)?.label || '추천 없음'}</strong>
                 <p style={{ margin: '4px 0' }}>{({ low_confidence: '자동으로 확정하기에는 확신이 부족합니다.', ambiguous: '여러 분류에 걸쳐 있어 직접 선택이 필요합니다.', out_of_scope: '다섯 분류의 범위 밖으로 판단했습니다. 추천은 참고 후보입니다.', sensitive_review: '전송 전 표현 검사로 보류했습니다. AI 추천 없이 직접 폴더를 골라주세요.', classification_review: '자동 확정 기준을 충족하지 못했습니다.' } as Record<string, string>)[log.aiReview.reason] || '내용을 확인하고 폴더를 직접 선택해 주세요.'}</p>
+                <button disabled={moveBusy.has(log.id)}
+                  onClick={() => void handleMove(log, normalizeAiLibraryCategory(log.aiCategory))}
+                  style={{ border: '1px solid #C7A955', borderRadius: 6, padding: '6px 10px', background: '#fff', marginRight: 8, cursor: 'pointer' }}>
+                  {normalizeAiLibraryCategory(log.aiCategory) === 'unclassified' ? '미분류로 확정' : '현재 폴더로 확정'}
+                </button>
                 {log.aiReview.recommendation && <button disabled={moveBusy.has(log.id)}
                   onClick={() => void handleMove(log, log.aiReview!.recommendation!)}
                   style={{ border: '1px solid #C7A955', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>
