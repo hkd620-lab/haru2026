@@ -48,7 +48,8 @@ export function buildJevChoiceRequest(text: string): JevChoiceRequest {
     health: '건강상식: everyday health, prevention, nutrition, exercise and wellness information. Not new clinical technology or personal medical records.',
     life: '생활정보: general practical daily living information, household tips, travel and consumer guidance. Not a catch-all for unrelated topics or personal diary entries.',
     investment: '투자정보: financial markets, securities, assets and investing decisions. Includes AI or medical companies when the primary purpose is investing.',
-    'ai-tech': 'AI신기술: AI models, tools, software engineering and technical capabilities. Not primarily clinical application, investment advice or ordinary non-AI household tips.',
+    'ai-tech': 'AI신기술: AI models, tools, software engineering and technical capabilities. Not primarily clinical application, investment advice, ordinary non-AI household tips, or direct work on HaruLab current apps (harulab takes priority for that work).',
+    harulab: 'harulab 앱개발: substantive planning, implementation, debugging, testing, deployment, operation or app-specific marketing of the owner HaruLab current apps: haru2026 (HARU web/PWA), HARU Flutter, HEL, EEB (Easy English Bible). Direct work on those apps takes priority over topic categories, including AI features. Require an explicit app identity AND a substantive connection to its development or operation. Mere HaruLab branding, greetings, a passing app mention, generic coding/AI tutorials, public technology news, unrelated apps or Bible study content without app development context do not qualify. If the current-app connection is uncertain, spread category probabilities and leave it for review; never infer the connection from generic technical terms alone.',
   };
   const request: JevChoiceRequest = {
     model: JEV_MODEL,

@@ -42,7 +42,8 @@ test('synthetic provenance, balanced category coverage and human-designed expect
   assert.equal(fixture.cases.length, 20);
   assert.equal(new Set(fixture.cases.map(c => c.id)).size, 20);
   assert.equal(new Set(fixture.cases.map(c => c.text)).size, 20);
-  for (const category of categories) {
+  // Original five-topic corpus remains immutable; new harulab scenarios are tested separately.
+  for (const category of categories.filter(c => c !== 'harulab')) {
     assert.equal(fixture.cases.filter(c => c.expected.category === category).length, 3);
   }
   assert.equal(fixture.cases.filter(c => c.expected.status === 'review').length, 5);
@@ -84,7 +85,7 @@ test('minimization strips synthetic routing metadata, and oversized text stays l
 function fakeResponse(choice) {
   return { model: adapter.JEV_MODEL, answers: {
     category: { type: 'choice', choice, confidence: 0.95,
-      probabilities: Object.fromEntries(categories.map(c => [c, c === choice ? 0.96 : 0.01])) },
+      probabilities: Object.fromEntries(categories.map(c => [c, c === choice ? 0.95 : 0.01])) },
     in_scope: { type: 'noul', noul: 0.99 },
   }, usage: { input_tokens: 0, output_tokens: 0 } };
 }
@@ -96,7 +97,7 @@ test('fabricated wire responses obey category/review contract, NOT model quality
   for (const [reason, mutate] of [
     ['out_of_scope', r => { r.answers.in_scope.noul = 0.1; }],
     ['low_confidence', r => { r.answers.category.confidence = 0.5; }],
-    ['ambiguous', r => { r.answers.category.probabilities = { 'medical-tech': 0.01, health: 0.48, life: 0.48, investment: 0.02, 'ai-tech': 0.01 }; }],
+    ['ambiguous', r => { r.answers.category.probabilities = { 'medical-tech': 0.01, health: 0.48, life: 0.48, investment: 0.02, 'ai-tech': 0.01, harulab: 0 }; }],
   ]) {
     const response = fakeResponse('health'); mutate(response);
     assert.deepEqual(plain(adapter.parseJevChoiceResponse(inRealm(response)).decision), { status: 'review', reason });
