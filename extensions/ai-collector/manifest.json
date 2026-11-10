@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI 지식 수집기",
-  "version": "2.9",
+  "version": "3.0",
   "icons": {
     "128": "icon128.png"
   },

@@ -5,6 +5,7 @@ export const AI_LIBRARY_CATEGORIES = [
   { value: 'life', label: '생활정보' },
   { value: 'investment', label: '투자정보' },
   { value: 'ai-tech', label: 'AI신기술' },
+  { value: 'harulab', label: 'harulab' },
 ] as const;
 export type AiLibraryCategory = typeof AI_LIBRARY_CATEGORIES[number]['value'];
 export type AiLibraryBucket = AiLibraryCategory | 'unclassified';

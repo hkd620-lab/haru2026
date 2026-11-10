@@ -13023,3 +13023,5 @@ export {
 export { aiLibraryClassification } from "./aiLibraryClassificationCallable";
 
 export { listAiLibraryReviews } from "./aiLibraryReviews";
+
+export { classifyNewAiLibraryLog } from "./aiLibraryAutoTrigger";

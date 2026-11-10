@@ -1,3 +1,4 @@
+import { aiLibraryReadingParagraphs, aiLibraryReadingHeading, aiLibraryReadingCode } from '../utils/aiLibraryReading';
 import { AI_LIBRARY_BUCKETS, applyAiLibraryMoves, normalizeAiLibraryCategory, type AiLibraryFolder, type AiLibraryBucket } from '../utils/aiLibraryCategory';
 import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -351,6 +352,7 @@ export function AiLibraryPage() {
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [nextCursor, setNextCursor] = useState<string | undefined>();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteMode, setDeleteMode] = useState(false);
@@ -397,7 +399,7 @@ export function AiLibraryPage() {
       if (requestGuard.finishRequest(ticket)) setLoading(false);
     });
     return () => requestGuard.endSession(generation);
-  }, [user?.uid, user?.email, user?.emailVerified, folder]);
+  }, [user?.uid, user?.email, user?.emailVerified, folder, refreshKey]);
 
   const getSource = getAiLibrarySource;
 
@@ -630,6 +632,11 @@ export function AiLibraryPage() {
           AI 학습함
         </h2>
         <button
+          onClick={() => setRefreshKey(value => value + 1)}
+          disabled={loading || loadingMore || moveBusy.size > 0 || bookMaterialBusy.size > 0 || deleteMode}
+          style={{ marginLeft: 'auto', marginRight: '8px', padding: '6px 10px', borderRadius: '16px', border: '1px solid #cbd5e1', background: '#fff', color: '#1A3C6E', fontSize: '12px', cursor: 'pointer' }}
+        >목록 새로고침</button>
+        <button
           onClick={handleToggleDeleteMode}
           style={{
             padding: '6px 12px',
@@ -834,7 +841,7 @@ export function AiLibraryPage() {
               {log.aiReview && <div aria-label="보류 분류 안내" onClick={event => event.stopPropagation()}
                 style={{ background: '#FFF8E6', borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 13 }}>
                 <strong>보류 · 추천: {AI_LIBRARY_BUCKETS.find(item => item.value === log.aiReview?.recommendation)?.label || '추천 없음'}</strong>
-                <p style={{ margin: '4px 0' }}>{({ low_confidence: '자동으로 확정하기에는 확신이 부족합니다.', ambiguous: '여러 분류에 걸쳐 있어 직접 선택이 필요합니다.', out_of_scope: '다섯 분류의 범위 밖으로 판단했습니다. 추천은 참고 후보입니다.', sensitive_review: '전송 전 표현 검사로 보류했습니다. AI 추천 없이 직접 폴더를 골라주세요.', classification_review: '자동 확정 기준을 충족하지 못했습니다.' } as Record<string, string>)[log.aiReview.reason] || '내용을 확인하고 폴더를 직접 선택해 주세요.'}</p>
+                <p style={{ margin: '4px 0' }}>{({ low_confidence: '자동으로 확정하기에는 확신이 부족합니다.', ambiguous: '여러 분류에 걸쳐 있어 직접 선택이 필요합니다.', out_of_scope: '다섯 분류의 범위 밖으로 판단했습니다. 추천은 참고 후보입니다.', sensitive_review: '전송 전 표현 검사로 보류했습니다. AI 추천 없이 직접 폴더를 골라주세요.', classification_review: '자동 확정 기준을 충족하지 못했습니다.', daily_budget: '오늘 자동 분류 한도에 도달했습니다. 폴더를 직접 선택해 주세요.', auto_processing: '자동 분류를 확인 중이거나 응답을 받지 못했습니다. 폴더를 직접 선택할 수 있습니다.', transport_error: '자동 분류 응답을 확인하지 못했습니다. 재전송하지 않았으니 폴더를 직접 골라주세요.', invalid_response: '자동 분류 응답을 확인하지 못했습니다. 폴더를 직접 골라주세요.', long_text_review: '긴 본문이라 자동 전송하지 않았습니다. 폴더를 직접 골라주세요.' } as Record<string, string>)[log.aiReview.reason] || '내용을 확인하고 폴더를 직접 선택해 주세요.'}</p>
                 <button disabled={moveBusy.has(log.id)}
                   onClick={() => void handleMove(log, normalizeAiLibraryCategory(log.aiCategory))}
                   style={{ border: '1px solid #C7A955', borderRadius: 6, padding: '6px 10px', background: '#fff', marginRight: 8, cursor: 'pointer' }}>
@@ -864,11 +871,11 @@ export function AiLibraryPage() {
                   )}
                 </p>
               )}
-              <p
+              <div
                 style={{
-                  fontSize: '13px',
+                  fontSize: isExpanded ? '14px' : '13px',
                   color: material ? '#1F2937' : '#555',
-                  lineHeight: '1.55',
+                  lineHeight: isExpanded ? '1.9' : '1.55',
                   whiteSpace: 'pre-wrap',
                   margin: material ? '8px 0 4px' : undefined,
                   padding: material ? '10px' : undefined,
@@ -877,8 +884,15 @@ export function AiLibraryPage() {
                   border: material ? '1px solid #F0E4C2' : undefined,
                 }}
               >
-                {highlightKeyword(displayText, trimmedKeyword)}
-              </p>
+                {(isExpanded ? aiLibraryReadingParagraphs(displayText) : [displayText]).map((paragraph, index) => (
+                  isExpanded && aiLibraryReadingCode(paragraph)
+                    ? <pre key={index} style={{ margin: '0 0 0.85em', padding: '10px', borderRadius: '6px', background: '#f3f4f6', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: '13px' }}>{paragraph}</pre>
+                    : <p key={index} style={{ margin: isExpanded ? '0 0 0.85em' : 0,
+                    textIndent: isExpanded && !aiLibraryReadingHeading(paragraph) ? '1em' : 0,
+                    fontWeight: isExpanded && aiLibraryReadingHeading(paragraph) ? 600 : undefined,
+                    overflowWrap: 'anywhere' }}>{highlightKeyword(paragraph, trimmedKeyword)}</p>
+                ))}
+              </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: '8px', flexWrap: 'wrap' }}>
                 <button
                   onClick={(e) => {

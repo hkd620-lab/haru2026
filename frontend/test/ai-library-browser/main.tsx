@@ -27,6 +27,7 @@ function App() {
     try {
       reset(); setRevision(n => n + 1); await wait();
       check(['의료신기술','건강상식','생활정보','투자정보','AI신기술','미분류'].every(name => button(name, page().querySelector('nav')!)), '목적 폴더 5개와 별도 미분류');
+      check(!!button('harulab', page().querySelector('nav')!), '앱 개발용 harulab 폴더');
       check(['선택 삭제','▼ 펼치기','📚 책소재 변환','📋 복사','삭제'].every(name => button(name)), '기존 작업 버튼 보존');
       button('Slack').click(); await wait();
       check(page().textContent?.includes('합성 미분류 대화') && !page().textContent?.includes('합성 건강 자료'), '출처 필터 유지');
@@ -54,6 +55,11 @@ function App() {
       button('더 불러오기').click(); await wait();
       check(page().textContent?.includes('합성 건강 자료'), '빈 페이지 다음 커서로 기록 조회');
       button('▼ 펼치기').click(); await wait(); check(!!button('▲ 접기'), '펼치기 유지');
+      const reading = Array.from(page().querySelectorAll('p')).filter(el => el.textContent === '합성 건강 자료의 원문입니다.' || el.textContent === '두 번째 문단도 그대로 보존합니다.');
+      check(reading.length === 2 && reading.every(el => getComputedStyle(el).textIndent === '14px'), '원문 두 문단 표시와 첫 줄 들여쓰기');
+      const listsBefore = state.calls.filter(call => call.name === 'list').length;
+      state.bounded = false; button('목록 새로고침').click(); await wait();
+      check(state.calls.filter(call => call.name === 'list').length === listsBefore + 1 && page().textContent?.includes('합성 건강 자료'), '목록 새로고침으로 분류 결과 다시 조회');
       button('📚 책소재 변환').click(); await wait(); check(page().textContent?.includes('합성 책소재 요약'), '모의 책소재 변환 유지');
       button('선택 삭제').click(); await wait(); check(page().textContent?.includes('0개 선택됨'), '선택 모드 유지');
       await folder('전체'); check(!!button('선택 삭제') && !page().textContent?.includes('0개 선택됨'), '폴더 전환 시 선택 모드 초기화');
@@ -78,6 +84,9 @@ function App() {
       button('추천 폴더로 이동').click();
       await waitFor(() => !page().textContent?.includes('합성 미분류 대화'), '같은 추천 폴더 확정');
       check(state.calls.some(call => call.name === 'move' && call.category === 'health' && call.expectedCategory === 'health'), '현재 폴더와 추천이 같아도 수동 확정');
+      await folder('건강상식'); select('합성 미분류 대화', 'harulab');
+      await waitFor(() => !page().textContent?.includes('합성 미분류 대화'), 'harulab 이동 완료');
+      await folder('harulab'); check(page().textContent?.includes('합성 미분류 대화'), 'harulab 수동 이동과 폴더 조회');
       report.push('ALL PASSED');
     } catch (error) { report.push('FAIL ' + (error as Error).message); }
     setResults([...report]); setRunning(false);

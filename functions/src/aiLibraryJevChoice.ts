@@ -1,4 +1,6 @@
-import { AI_LIBRARY_CATEGORIES, AiLibraryCategory, isAiLibraryCategory } from './aiLibraryCategory';
+import { AI_LIBRARY_AUTO_CATEGORIES as AI_LIBRARY_CATEGORIES } from './aiLibraryCategory';
+type AiLibraryCategory = typeof AI_LIBRARY_CATEGORIES[number];
+const isAiLibraryCategory = (value: unknown): value is AiLibraryCategory => typeof value === 'string' && (AI_LIBRARY_CATEGORIES as readonly string[]).includes(value);
 
 /** Wire contract verified 2026-11-09:
  * https://docs.typesafe.ai/models

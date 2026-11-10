@@ -9,6 +9,7 @@ const AI_CATEGORY_LABELS = Object.freeze({
   life: '생활정보',
   investment: '투자정보',
   'ai-tech': 'AI신기술',
+  harulab: 'harulab',
 });
 
 function normalizeCollectorCategory(value) {
@@ -72,7 +73,7 @@ function extractFromPage() {
 }
 
 async function checkPopupConnection() {
-  const build = '2.9-purpose-folders-1';
+  const build = '3.0-auto-folders-1';
   const status = document.getElementById('connectionStatus');
   const show = text => { if (status) status.textContent = text; };
   show(`연결 확인 중 · ${build}`);
@@ -141,7 +142,7 @@ async function saveToDestinations(content, source, category, sourceUrl = '') {
   const capturedAt = new Date().toISOString();
   const importId = await sha256(`${source}\n${sourceUrl || ''}\n${content.trim()}`);
   const results = await Promise.allSettled([
-    saveToAiArchive(content, source, selectedCategory || 'general', capturedAt, importId),
+    saveToAiArchive(content, source, selectedCategory || 'unclassified', capturedAt, importId),
     queueHaruImport(content, source, sourceUrl, capturedAt, importId, selectedCategory),
   ]);
   const fire = results[0].status === 'fulfilled';
@@ -154,7 +155,7 @@ async function saveToDestinations(content, source, category, sourceUrl = '') {
 function downloadAsFile(content, source, category) {
   const timestamp = new Date().toLocaleString();
   const filename = `AI_Knowledge_${new Date().toISOString().slice(0, 10)}_${Date.now()}.md`;
-  const categoryLabel = AI_CATEGORY_LABELS[normalizeCollectorCategory(category)] || '미분류';
+  const categoryLabel = AI_CATEGORY_LABELS[normalizeCollectorCategory(category)] || '자동 분류';
   const markdownContent = `# AI Knowledge Collector\n\n- **Date**: ${timestamp}\n- **Source**: ${source}\n- **Category**: ${categoryLabel}\n\n---\n\n${content}`;
   const blob = new Blob([markdownContent], { type: 'text/markdown' });
   const url = URL.createObjectURL(blob);
@@ -213,7 +214,7 @@ if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded
     const currentWrite = categoryWrite;
     currentWrite.then(() => {
       if (currentWrite !== categoryWrite) return;
-      categoryStatus.textContent = `${AI_CATEGORY_LABELS[category] || '미분류'}에 저장합니다. 답변 옆 저장 버튼에도 적용됩니다. Jev 자동 분류는 아직 실행되지 않습니다.`;
+      categoryStatus.textContent = category ? `${AI_CATEGORY_LABELS[category]}에 직접 저장합니다. 답변 옆 저장 버튼에도 적용되며 자동 분류가 바꾸지 않습니다.` : 'Jev로 자동 분류합니다. 확실한 결과는 폴더에, 애매한 결과는 추천과 함께 보류에 모읍니다.';
       extractButton.disabled = false;
     }).catch(() => {
       if (currentWrite !== categoryWrite) return;

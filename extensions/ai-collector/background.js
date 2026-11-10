@@ -1,6 +1,6 @@
 importScripts('popup.js');
 
-const AI_COLLECTOR_HEALTH_BUILD = '2.9-purpose-folders-1';
+const AI_COLLECTOR_HEALTH_BUILD = '3.0-auto-folders-1';
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Health requests carry no conversation data and never enter a save path.

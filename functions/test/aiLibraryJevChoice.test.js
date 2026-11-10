@@ -96,6 +96,11 @@ test('usage bounds accept only finite nonnegative integers and preserve usage on
   const r = response(); r.answers.category.choice = 'bad';
   assert.deepEqual(parseJevChoiceResponse(r).usage, {inputTokens:1000,outputTokens:100});
 });
+test('manual harulab folder does not change the existing model taxonomy', () => {
+  assert.deepEqual(Object.keys(buildJevChoiceRequest('Synthetic app notes').questions.category.criteria), categories);
+  const r = response(); r.answers.category.choice = 'harulab';
+  assert.equal(parseJevChoiceResponse(r).decision.reason, 'invalid_response');
+});
 test('scope, uncertain confidence and ambiguous primary purpose go to review', () => {
   const out = response(); out.answers.in_scope.noul = 0.1;
   assert.equal(parseJevChoiceResponse(out).decision.reason, 'out_of_scope');

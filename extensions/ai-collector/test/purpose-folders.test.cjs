@@ -7,7 +7,7 @@ const { webcrypto } = require('node:crypto');
 
 const popup = readFileSync(new URL('../popup.js', `file://${__filename}`), 'utf8');
 const background = readFileSync(new URL('../background.js', `file://${__filename}`), 'utf8');
-const categories = ['medical-tech', 'health', 'life', 'investment', 'ai-tech'];
+const categories = ['medical-tech', 'health', 'life', 'investment', 'ai-tech', 'harulab'];
 
 function harness(selected, { storageFails = false, popupUi = false } = {}) {
   const stored = new Map(selected ? [['aiCollectorCategory', selected]] : []);
@@ -41,7 +41,7 @@ function harness(selected, { storageFails = false, popupUi = false } = {}) {
   return { context, stored, calls, opened, listeners, element, domListeners };
 }
 
-test('five purpose categories travel to HARU and archive without changing body, source URL or hash', async () => {
+test('purpose and harulab categories travel to HARU and archive without changing body, source URL or hash', async () => {
   const ids = [];
   for (const category of categories) {
     const h = harness(category);
@@ -98,7 +98,7 @@ test('health-only check and invalid page origin never send contents', async () =
   const h = harness('health');
   let health;
   h.listeners[0]({ action: 'collectorHealth' }, {}, result => { health = result; });
-  assert.equal(health.build, '2.9-purpose-folders-1');
+  assert.equal(health.build, '3.0-auto-folders-1');
   const bad = await new Promise(resolve => h.listeners[0](
     { action: 'saveAiMessage', content: 'synthetic', sourceUrl: 'https://attacker.test/fixture' },
     { url: 'https://chatgpt.com/c/fixture' }, resolve));
@@ -125,12 +125,12 @@ test('popup restores the last selected folder and persists manual changes', asyn
 
 test('preview extension keeps original host/permissions and contains no AI provider access', () => {
   const manifest = JSON.parse(readFileSync(new URL('../manifest.json', `file://${__filename}`), 'utf8'));
-  assert.equal(manifest.version, '2.9');
+  assert.equal(manifest.version, '3.0');
   assert.equal(manifest.host_permissions.some(host => /typesafe|openai|anthropic/.test(host)), false);
   for (const permission of ['cookies', 'webRequest', 'declarativeNetRequest']) assert.equal(manifest.permissions.includes(permission), false);
   const html = readFileSync(new URL('../popup.html', `file://${__filename}`), 'utf8');
   for (const category of categories) assert.ok(html.includes(`value="${category}"`));
   const content = readFileSync(new URL('../content.js', `file://${__filename}`), 'utf8');
-  assert.match(content, /2\.9-purpose-folders-1/);
+  assert.match(content, /3\.0-auto-folders-1/);
   assert.match(content, /sourceUrl: window\.location\.href/);
 });

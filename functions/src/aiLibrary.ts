@@ -272,7 +272,9 @@ export const moveAiLibraryLog = onCall({ region: 'asia-northeast3' }, async (req
     if (!snap.exists || snap.data()?.type !== 'ai_log') {
       throw new HttpsError('failed-precondition', '본인의 AI 학습함 기록만 이동할 수 있습니다.');
     }
-    if (normalizeAiLibraryCategory(snap.data()?.aiCategory) !== expectedCategory) {
+    // A classification finishing after the screen loaded must not defeat the user's choice.
+    if (normalizeAiLibraryCategory(snap.data()?.aiCategory) !== expectedCategory
+      && snap.data()?.aiCategorySource !== 'auto') {
       throw new HttpsError('aborted', '분류가 변경되었습니다. 새로고침한 후 다시 이동해 주세요.');
     }
     transaction.update(ref, {

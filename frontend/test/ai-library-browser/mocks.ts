@@ -2,7 +2,7 @@ export type HaruRecord = any;
 export const state = { reviewCategory: undefined as string | undefined, failMove: false, deferMove: false, finishMove: null as (() => void) | null, delayed: false, bounded: false, calls: [] as any[], alerts: [] as string[] };
 const seed = (): HaruRecord[] => [
   { id: 'legacy', aiCategory: state.reviewCategory, aiReview: { recommendation: 'health', reason: 'low_confidence' }, title: '합성 미분류 대화', content: '합성 원문입니다. 실제 사용자 자료가 아닙니다.', source: 'slack', createdAt: '2026-11-09T01:00:00Z' },
-  { id: 'health', title: '합성 건강 자료', content: '합성 건강 자료의 원문입니다.', aiCategory: 'health', source: 'chatgpt.com', createdAt: '2026-11-08T01:00:00Z' },
+  { id: 'health', title: '합성 건강 자료', content: '합성 건강 자료의 원문입니다.\n\n두 번째 문단도 그대로 보존합니다.', aiCategory: 'health', source: 'chatgpt.com', createdAt: '2026-11-08T01:00:00Z' },
   { id: 'ai', title: '합성 AI 자료', content: '합성 AI 자료의 원문입니다.', aiCategory: 'ai-tech', source: 'claude.ai', createdAt: '2026-11-07T01:00:00Z' },
 ];
 let records = seed();
