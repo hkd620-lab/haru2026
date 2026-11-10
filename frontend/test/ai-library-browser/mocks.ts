@@ -1,7 +1,7 @@
 export type HaruRecord = any;
 export const state = { failMove: false, deferMove: false, finishMove: null as (() => void) | null, delayed: false, bounded: false, calls: [] as any[], alerts: [] as string[] };
-const seed = () => [
-  { id: 'legacy', title: '합성 미분류 대화', content: '합성 원문입니다. 실제 사용자 자료가 아닙니다.', source: 'slack', createdAt: '2026-11-09T01:00:00Z' },
+const seed = (): HaruRecord[] => [
+  { id: 'legacy', aiReview: { recommendation: 'health', reason: 'low_confidence' }, title: '합성 미분류 대화', content: '합성 원문입니다. 실제 사용자 자료가 아닙니다.', source: 'slack', createdAt: '2026-11-09T01:00:00Z' },
   { id: 'health', title: '합성 건강 자료', content: '합성 건강 자료의 원문입니다.', aiCategory: 'health', source: 'chatgpt.com', createdAt: '2026-11-08T01:00:00Z' },
   { id: 'ai', title: '합성 AI 자료', content: '합성 AI 자료의 원문입니다.', aiCategory: 'ai-tech', source: 'claude.ai', createdAt: '2026-11-07T01:00:00Z' },
 ];
@@ -14,7 +14,7 @@ export const httpsCallable = (_: unknown, name: string) => async (data: unknown)
 export const firestoreService = {
   async getAiLogPage(cursor?: string, category = 'all') {
     state.calls.push({ name: 'list', category, cursor });
-    const logs = records.filter(row => category === 'all' || (row.aiCategory || 'unclassified') === category).map(row => ({ ...row }));
+    const logs = records.filter(row => category === 'all' || (category === 'review' ? !!row.aiReview && row.aiCategorySource !== 'manual' : (row.aiCategory || 'unclassified') === category)).map(row => ({ ...row }));
     if (state.delayed && category === 'health') await new Promise(resolve => setTimeout(resolve, 700));
     if (state.bounded && category === 'health' && !cursor) return { logs: [], nextCursor: 'synthetic-scan' };
     return { logs };
@@ -24,7 +24,7 @@ export const firestoreService = {
     if (state.deferMove) await new Promise<void>(resolve => { state.finishMove = resolve; });
     else await new Promise(resolve => setTimeout(resolve, 30));
     if (state.failMove) throw new Error('Synthetic move failure');
-    records = records.map(row => row.id === id ? { ...row, aiCategory: category } : row);
+    records = records.map(row => row.id === id ? { ...row, aiCategory: category, aiCategorySource: 'manual' } : row);
     return { id, category };
   },
   async deleteAiLogs(ids: Set<string>) { records = records.filter(row => !ids.has(row.id)); return ids; },

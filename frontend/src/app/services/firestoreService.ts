@@ -44,6 +44,7 @@ export type RecordFormat = RecordFormatKorean;
 
 export interface HaruRecord {
   aiCategory?: AiLibraryBucket;
+  aiReview?: { recommendation: AiLibraryBucket | null; reason: string };
   id: string;
   date: string;
   weather?: string;
@@ -2433,11 +2434,11 @@ class FirestoreService {
     const { getFunctions, httpsCallable } = await import('firebase/functions');
     const callable = httpsCallable<{ cursor?: string; category?: AiLibraryBucket }, AiLibraryLogPage>(
       getFunctions(undefined, 'asia-northeast3'),
-      'listAiLibraryLogs',
+      category === 'review' ? 'listAiLibraryReviews' : 'listAiLibraryLogs',
     );
     const result = await callable({
       ...(cursor ? { cursor } : {}),
-      ...(category && category !== 'all' ? { category } : {}),
+      ...(category && category !== 'all' && category !== 'review' ? { category } : {}),
     });
     if (!Array.isArray(result.data?.logs)) {
       throw new Error('AI 학습함 목록 응답이 올바르지 않습니다.');

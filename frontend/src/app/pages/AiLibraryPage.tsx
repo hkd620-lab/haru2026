@@ -1,4 +1,3 @@
-import { AiLibraryClassificationPanel } from '../components/AiLibraryClassificationPanel';
 import { AI_LIBRARY_BUCKETS, applyAiLibraryMoves, normalizeAiLibraryCategory, type AiLibraryFolder, type AiLibraryBucket } from '../utils/aiLibraryCategory';
 import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -647,7 +646,7 @@ export function AiLibraryPage() {
         </button>
       </div>
 
-      {user && <AiLibraryClassificationPanel key={user.uid} uid={user.uid} selectedIds={[...selectedIds]} />}
+
 
       {/* 선택 삭제 모드일 때 선택 바 */}
       {deleteMode && (
@@ -684,7 +683,7 @@ export function AiLibraryPage() {
       )}
 
       <nav aria-label="목적 폴더" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-        {[{ value: 'all', label: '전체' }, ...AI_LIBRARY_BUCKETS].map(item => (
+        {[{ value: 'all', label: '전체' }, ...AI_LIBRARY_BUCKETS, { value: 'review', label: '보류' }].map(item => (
           <button key={item.value} aria-pressed={folder === item.value}
             onClick={() => {
               if (folder === item.value) return;
@@ -699,7 +698,7 @@ export function AiLibraryPage() {
         ))}
       </nav>
       <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 16px' }}>
-        자동 분류 준비 중 · 기존 자료는 미분류로 보존됩니다. 폴더를 직접 이동할 수 있습니다.
+        분류된 자료는 목적 폴더에서, 검토가 필요한 자료는 보류에서 확인하세요. 직접 옮긴 분류는 보호됩니다.
       </p>
       <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 8px' }}>수집 출처 (불러온 기록 기준)</p>
       {/* 필터 버튼 */}
@@ -832,6 +831,16 @@ export function AiLibraryPage() {
                 </select>
                 {moveBusy.has(log.id) && ' 이동 중...'}
               </label>
+              {log.aiReview && <div aria-label="보류 분류 안내" onClick={event => event.stopPropagation()}
+                style={{ background: '#FFF8E6', borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 13 }}>
+                <strong>보류 · 추천: {AI_LIBRARY_BUCKETS.find(item => item.value === log.aiReview?.recommendation)?.label || '추천 없음'}</strong>
+                <p style={{ margin: '4px 0' }}>{({ low_confidence: '자동으로 확정하기에는 확신이 부족합니다.', ambiguous: '여러 분류에 걸쳐 있어 직접 선택이 필요합니다.', out_of_scope: '다섯 분류의 범위 밖으로 판단했습니다. 추천은 참고 후보입니다.', sensitive_review: '전송 전 표현 검사로 보류했습니다. AI 추천 없이 직접 폴더를 골라주세요.', classification_review: '자동 확정 기준을 충족하지 못했습니다.' } as Record<string, string>)[log.aiReview.reason] || '내용을 확인하고 폴더를 직접 선택해 주세요.'}</p>
+                {log.aiReview.recommendation && <button disabled={moveBusy.has(log.id)}
+                  onClick={() => void handleMove(log, log.aiReview!.recommendation!)}
+                  style={{ border: '1px solid #C7A955', borderRadius: 6, padding: '6px 10px', background: '#fff', cursor: 'pointer' }}>
+                  추천 폴더로 이동
+                </button>}
+              </div>}
               <p style={{ fontSize: '15px', fontWeight: 700, color: '#222', margin: '0 0 4px', lineHeight: 1.35 }}>
                 {highlightKeyword(displayTitle, trimmedKeyword)}
               </p>

@@ -57,6 +57,18 @@ function App() {
       button('📚 책소재 변환').click(); await wait(); check(page().textContent?.includes('합성 책소재 요약'), '모의 책소재 변환 유지');
       button('선택 삭제').click(); await wait(); check(page().textContent?.includes('0개 선택됨'), '선택 모드 유지');
       await folder('전체'); check(!!button('선택 삭제') && !page().textContent?.includes('0개 선택됨'), '폴더 전환 시 선택 모드 초기화');
+      reset(); setRevision(n => n + 1); await wait();
+      await folder('보류');
+      check(page().textContent?.includes('보류 · 추천: 건강상식'), '보류 목록 추천 표시');
+      check(page().textContent?.includes('자동으로 확정하기에는 확신이 부족합니다.'), '보류 이유 표시');
+      button('▼ 펼치기').click(); await wait();
+      check(page().textContent?.includes('합성 원문입니다.'), '보류에서도 원문 펼치기');
+      button('추천 폴더로 이동').click();
+      await waitFor(() => !page().textContent?.includes('합성 미분류 대화'), '추천 이동 후 보류 제거');
+      check(!page().textContent?.includes('합성 미분류 대화'), '추천 수동 이동 후 보류 목록에서 제거');
+      await folder('건강상식');
+      check(page().textContent?.includes('합성 미분류 대화'), '추천 이동 후 새 폴더에서 확인');
+      await folder('보류'); check(!page().textContent?.includes('합성 미분류 대화'), '다시 보류로 돌아와도 수동 이동 유지');
       report.push('ALL PASSED');
     } catch (error) { report.push('FAIL ' + (error as Error).message); }
     setResults([...report]); setRunning(false);

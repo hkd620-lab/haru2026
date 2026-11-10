@@ -54,6 +54,12 @@ test('empty bounded page still supports load more and retained original actions'
   assert.equal(hasAiLibraryNextPage('scan-cursor'), true);
   assert.match(page, /!loading && hasAiLibraryNextPage\(nextCursor\)/);
   for (const name of ['handleDeleteSelected', 'handleDeleteOne', 'handleConvertToBookMaterial', 'handleCardClick', 'BookMaterialPanel', 'navigator.clipboard.writeText', 'formatDate(log.createdAt)']) assert.ok(page.includes(name));
-  assert.match(page, /자동 분류 준비 중/);
-  assert.match(page, /기존 자료는 미분류로 보존/);
+  assert.match(page, /검토가 필요한 자료는 보류/);
+  assert.match(page, /추천 폴더로 이동/);
+});
+
+test('confirmed manual move leaves review list and stale pages cannot resurrect moved rows', () => {
+  const rows = [{ id: 'a', aiReview: { recommendation: 'health' }, content: 'original' }, { id: 'b' }];
+  assert.deepEqual(applyAiLibraryMoves(rows, 'review', new Map([['a', 'health']])), [rows[1]]);
+  assert.equal(applyAiLibraryMoves(rows, 'review', new Map()).length, 2);
 });

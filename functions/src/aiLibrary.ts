@@ -107,7 +107,7 @@ export function hasAiLibraryDeveloperEmail(email: unknown, emailVerified: unknow
     && emailVerified === true;
 }
 
-function requireAiLibraryDeveloper(request: { auth?: { uid: string; token: Record<string, unknown> } | null }): string {
+export function requireAiLibraryDeveloper(request: { auth?: { uid: string; token: Record<string, unknown> } | null }): string {
   if (!request.auth) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
   if (!hasAiLibraryDeveloperEmail(
     request.auth.token.email,
