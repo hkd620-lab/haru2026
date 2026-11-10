@@ -1,0 +1,25 @@
+{
+  "purpose": "Read-only snapshot of existing v2.8 local runtime. Installed directory was not changed. Folder feature work is staged here only.",
+  "files": [
+    {
+      "file": "popup.js",
+      "installed_baseline_sha256": "91169f8fbf824b6d1606b1a66e70f308aaee316e7e08e7698a6c3e664bb874fc"
+    },
+    {
+      "file": "popup.html",
+      "installed_baseline_sha256": "57bad1894510a4494f1806332278f137b67d083e0008a6892567b3f4960bbfa5"
+    },
+    {
+      "file": "background.js",
+      "installed_baseline_sha256": "e7bc16c9cdb6e0b9b70301dee684242c625fc778881228bc2035711906665d24"
+    },
+    {
+      "file": "content.js",
+      "installed_baseline_sha256": "f1f241b0ad5c040b3a1092df6685dc8348549684108633c3e6d418a8ed4cefee"
+    },
+    {
+      "file": "manifest.json",
+      "installed_baseline_sha256": "a61df19073b84e85a7a215f589abab980af82149457a4daa52e8374808405d46"
+    }
+  ]
+}

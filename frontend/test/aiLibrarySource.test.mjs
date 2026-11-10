@@ -19,3 +19,28 @@ test('일반 ChatGPT, 다른 출처, 레거시·유사 주소를 보존한다', 
   assert.equal(getAiLibrarySource({title:'[legacy] original'}), 'legacy');
   assert.equal(getAiLibrarySource({source:'chatgpt.com',sourceUrl:'https://chatgpt.com/dots?x=1'}), 'chatgpt.com/dots');
 });
+
+test('dynamic legacy records retain valid source and title fallback without mutation', () => {
+  const rows = [
+    [{ id: 'synthetic', date: '2026-11-09', formats: [] }, ''],
+    [{ source: 'slack', title: '[Claude] synthetic' }, 'slack'],
+    [{ title: '[Claude] synthetic' }, 'Claude'],
+    [{ source: 'chatgpt.com', sourceUrl: 'https://chatgpt.com/dots/synthetic' }, 'chatgpt.com/dots'],
+    [{ source: 'chatgpt.com', sourceUrl: 'https://chatgpt.com.evil.invalid/dots/synthetic' }, 'chatgpt.com'],
+  ];
+  for (const [row, expected] of rows) {
+    const before = structuredClone(row);
+    assert.equal(getAiLibrarySource(row), expected);
+    assert.deepEqual(row, before);
+  }
+});
+
+test('malformed legacy metadata is ignored rather than coerced or executed', () => {
+  for (const invalid of [null, false, 3, [], {}]) {
+    assert.equal(getAiLibrarySource({ source: invalid, title: invalid, sourceUrl: invalid }), '');
+    assert.equal(getAiLibrarySource({ source: invalid, title: '[slack] synthetic' }), 'slack');
+    assert.equal(getAiLibrarySource({ source: 'chatgpt.com', sourceUrl: invalid }), 'chatgpt.com');
+  }
+  const value = { toString() { throw Error('must not coerce'); }, match() { throw Error('must not call'); } };
+  assert.equal(getAiLibrarySource({ source: value, title: value, sourceUrl: value }), '');
+});

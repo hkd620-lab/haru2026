@@ -1,18 +1,21 @@
 import * as admin from 'firebase-admin';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { AiLibraryCategoryBucket, isAiLibraryCategory, normalizeAiLibraryCategory } from './aiLibraryCategory';
 
 const AI_LIBRARY_DEVELOPER_EMAIL = 'hkd620@gmail.com';
 const IMPORT_ID_PATTERN = /^[a-f0-9]{64}$/;
 const ALLOWED_SOURCES = new Set(['slack', 'chatgpt.com', 'claude.ai', 'gemini.google.com']);
 const AI_LIBRARY_PAGE_SIZE = 10;
 const AI_LIBRARY_CURSOR_VERSION = 1;
+const AI_LIBRARY_FILTER_SCAN_LIMIT = 100;
 const AI_LIBRARY_CURSOR_MAX_LENGTH = 4_096;
 const FIRESTORE_MIN_SECONDS = -62_135_596_800;
 const FIRESTORE_MAX_SECONDS = 253_402_300_799;
 export const AI_LIBRARY_DELETE_LIMIT = 10;
 
 type AiLibraryCursor = {
-  v: typeof AI_LIBRARY_CURSOR_VERSION;
+  v: 1 | 2;
+  category?: AiLibraryCategoryBucket;
   seconds: number;
   nanoseconds: number;
   id: string;
@@ -22,7 +25,7 @@ function invalidAiLibraryCursor(): never {
   throw new HttpsError('invalid-argument', '페이지 커서가 올바르지 않습니다.');
 }
 
-function decodeAiLibraryCursor(value: unknown): AiLibraryCursor | undefined {
+function decodeAiLibraryCursor(value: unknown, category?: AiLibraryCategoryBucket): AiLibraryCursor | undefined {
   if (value === undefined) return undefined;
   if (
     typeof value !== 'string'
@@ -43,12 +46,13 @@ function decodeAiLibraryCursor(value: unknown): AiLibraryCursor | undefined {
       return invalidAiLibraryCursor();
     }
     const keys = Object.keys(parsed).sort();
-    if (keys.join(',') !== 'id,nanoseconds,seconds,v') {
+    if (keys.join(',') !== (category === undefined ? 'id,nanoseconds,seconds,v' : 'category,id,nanoseconds,seconds,v')) {
       return invalidAiLibraryCursor();
     }
     const { v, seconds, nanoseconds, id } = parsed;
     if (
-      v !== AI_LIBRARY_CURSOR_VERSION
+      v !== (category === undefined ? 1 : 2)
+      || (category !== undefined && parsed.category !== category)
       || !Number.isInteger(seconds)
       || (seconds as number) < FIRESTORE_MIN_SECONDS
       || (seconds as number) > FIRESTORE_MAX_SECONDS
@@ -66,7 +70,8 @@ function decodeAiLibraryCursor(value: unknown): AiLibraryCursor | undefined {
       return invalidAiLibraryCursor();
     }
     return {
-      v: AI_LIBRARY_CURSOR_VERSION,
+      v: category === undefined ? 1 : 2,
+      ...(category !== undefined ? { category } : {}),
       seconds: seconds as number,
       nanoseconds: nanoseconds as number,
       id,
@@ -77,7 +82,7 @@ function decodeAiLibraryCursor(value: unknown): AiLibraryCursor | undefined {
   }
 }
 
-function encodeAiLibraryCursor(doc: admin.firestore.QueryDocumentSnapshot): string {
+function encodeAiLibraryCursor(doc: admin.firestore.QueryDocumentSnapshot, category?: AiLibraryCategoryBucket): string {
   const createdAt = doc.get('createdAt');
   if (
     !createdAt
@@ -87,7 +92,8 @@ function encodeAiLibraryCursor(doc: admin.firestore.QueryDocumentSnapshot): stri
     throw new HttpsError('data-loss', '학습함 기록의 생성 시각이 올바르지 않습니다.');
   }
   const cursor: AiLibraryCursor = {
-    v: AI_LIBRARY_CURSOR_VERSION,
+    v: category === undefined ? AI_LIBRARY_CURSOR_VERSION : 2,
+    ...(category !== undefined ? { category } : {}),
     seconds: createdAt.seconds,
     nanoseconds: createdAt.nanoseconds,
     id: doc.id,
@@ -101,7 +107,7 @@ export function hasAiLibraryDeveloperEmail(email: unknown, emailVerified: unknow
     && emailVerified === true;
 }
 
-function requireAiLibraryDeveloper(request: { auth?: { uid: string; token: Record<string, unknown> } | null }): string {
+export function requireAiLibraryDeveloper(request: { auth?: { uid: string; token: Record<string, unknown> } | null }): string {
   if (!request.auth) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
   if (!hasAiLibraryDeveloperEmail(
     request.auth.token.email,
@@ -114,7 +120,11 @@ function requireAiLibraryDeveloper(request: { auth?: { uid: string; token: Recor
 
 export const listAiLibraryLogs = onCall({ region: 'asia-northeast3' }, async (request) => {
   const uid = requireAiLibraryDeveloper(request);
-  const cursor = decodeAiLibraryCursor(request.data?.cursor);
+  const category = request.data?.category;
+  if (category !== undefined && category !== 'unclassified' && !isAiLibraryCategory(category)) {
+    throw new HttpsError('invalid-argument', '분류가 올바르지 않습니다.');
+  }
+  const cursor = decodeAiLibraryCursor(request.data?.cursor, category);
   const records = admin.firestore().collection(`users/${uid}/records`);
   let query = records
     .where('type', '==', 'ai_log')
@@ -126,14 +136,37 @@ export const listAiLibraryLogs = onCall({ region: 'asia-northeast3' }, async (re
       records.doc(cursor.id),
     );
   }
-  const snap = await query.limit(AI_LIBRARY_PAGE_SIZE + 1).get();
-  const hasNextPage = snap.docs.length > AI_LIBRARY_PAGE_SIZE;
-  const pageDocs = snap.docs.slice(0, AI_LIBRARY_PAGE_SIZE);
+  let pageDocs: admin.firestore.QueryDocumentSnapshot[];
+  let nextCursor: string | undefined;
+  if (category === undefined) {
+    const snap = await query.limit(AI_LIBRARY_PAGE_SIZE + 1).get();
+    pageDocs = snap.docs.slice(0, AI_LIBRARY_PAGE_SIZE);
+    if (snap.docs.length > AI_LIBRARY_PAGE_SIZE) {
+      nextCursor = encodeAiLibraryCursor(pageDocs[pageDocs.length - 1]);
+    }
+  } else {
+    // Scan the existing indexed query; legacy missing fields need no new index.
+    // Stop at the tenth match, not the last fetched document, to avoid skipping matches.
+    const snap = await query.limit(AI_LIBRARY_FILTER_SCAN_LIMIT).get();
+    pageDocs = [];
+    let scanned = 0;
+    for (const doc of snap.docs) {
+      scanned += 1;
+      if (normalizeAiLibraryCategory(doc.get('aiCategory')) === category) pageDocs.push(doc);
+      if (pageDocs.length === AI_LIBRARY_PAGE_SIZE) break;
+    }
+    // A full scan may have more data, including when there were zero matches.
+    // An extra terminal empty page is safe and keeps the read bound at 100.
+    if (scanned > 0 && (scanned < snap.docs.length || snap.docs.length === AI_LIBRARY_FILTER_SCAN_LIMIT)) {
+      nextCursor = encodeAiLibraryCursor(snap.docs[scanned - 1], category);
+    }
+  }
   const logs = pageDocs.map((doc) => {
     const data = doc.data();
     return {
       ...data,
       id: doc.id,
+      aiCategory: normalizeAiLibraryCategory(data.aiCategory),
       createdAt: data.createdAt?.toDate?.().toISOString?.() ?? data.createdAt ?? '',
       updatedAt: data.updatedAt?.toDate?.().toISOString?.() ?? data.updatedAt ?? '',
       importedAt: data.importedAt?.toDate?.().toISOString?.() ?? data.importedAt ?? '',
@@ -141,13 +174,17 @@ export const listAiLibraryLogs = onCall({ region: 'asia-northeast3' }, async (re
   });
   return {
     logs,
-    ...(hasNextPage ? { nextCursor: encodeAiLibraryCursor(pageDocs[pageDocs.length - 1]) } : {}),
+    ...(nextCursor ? { nextCursor } : {}),
   };
 });
 
 export const saveAiLibraryImport = onCall({ region: 'asia-northeast3' }, async (request) => {
   const uid = requireAiLibraryDeveloper(request);
   const data = (request.data || {}) as Record<string, unknown>;
+  const category = data.category;
+  if (category !== undefined && !isAiLibraryCategory(category)) {
+    throw new HttpsError('invalid-argument', '분류가 올바르지 않습니다.');
+  }
   const importId = typeof data.importId === 'string' ? data.importId : '';
   const content = typeof data.content === 'string' ? data.content.trim() : '';
   const source = typeof data.source === 'string' ? data.source : '';
@@ -181,6 +218,11 @@ export const saveAiLibraryImport = onCall({ region: 'asia-northeast3' }, async (
       importedAt: admin.firestore.FieldValue.serverTimestamp(),
       externalImportId: importId,
       ...(sourceUrl ? { sourceUrl } : {}),
+      ...(category !== undefined ? {
+        aiCategory: category,
+        aiCategorySource: 'manual',
+        aiCategoryUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      } : {}),
     });
   });
   return { recordId, duplicate };
@@ -212,4 +254,32 @@ export const deleteAiLibraryLogs = onCall({ region: 'asia-northeast3' }, async (
     refs.forEach((ref) => transaction.delete(ref));
   });
   return { deleted: refs.length };
+});
+
+export const moveAiLibraryLog = onCall({ region: 'asia-northeast3' }, async (request) => {
+  const uid = requireAiLibraryDeveloper(request);
+  const { id, category, expectedCategory } = request.data || {};
+  if (typeof id !== 'string' || !id || id === '.' || id === '..' || id.includes('/')
+    || /^__.*__$/.test(id) || Buffer.byteLength(id, 'utf8') > 1_500
+    || (category !== 'unclassified' && !isAiLibraryCategory(category))
+    || (expectedCategory !== 'unclassified' && !isAiLibraryCategory(expectedCategory))) {
+    throw new HttpsError('invalid-argument', '기록 또는 분류가 올바르지 않습니다.');
+  }
+  // UID comes exclusively from verified auth, never from the caller's payload.
+  const ref = admin.firestore().doc(`users/${uid}/records/${id}`);
+  await admin.firestore().runTransaction(async (transaction) => {
+    const snap = await transaction.get(ref);
+    if (!snap.exists || snap.data()?.type !== 'ai_log') {
+      throw new HttpsError('failed-precondition', '본인의 AI 학습함 기록만 이동할 수 있습니다.');
+    }
+    if (normalizeAiLibraryCategory(snap.data()?.aiCategory) !== expectedCategory) {
+      throw new HttpsError('aborted', '분류가 변경되었습니다. 새로고침한 후 다시 이동해 주세요.');
+    }
+    transaction.update(ref, {
+      aiCategory: category === 'unclassified' ? admin.firestore.FieldValue.delete() : category,
+      aiCategorySource: 'manual',
+      aiCategoryUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+  return { id, category };
 });

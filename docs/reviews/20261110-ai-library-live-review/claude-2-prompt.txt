@@ -1,0 +1,9 @@
+독립 Claude 재검토 요청. 대상 HEAD 111cc956, 저장소 /private/tmp/haru-ai-library-live-review-20261110, PR #367, base origin/main. 읽기 전용이며 파일 수정·운영 데이터 조회·외부게시·유료호출 금지.
+이전 판정은 수정 후 승인(누적 1회)이며 원문 전체를 반드시 읽으세요:
+- docs/reviews/20261110-ai-library-live-review/claude-1-prompt.txt
+- docs/reviews/20261110-ai-library-live-review/claude-1-raw.json (result)
+- docs/reviews/20261110-ai-library-live-review/response-1.md
+이전 baeb0375 대비 111cc956 변경과 전체 PR diff를 확인하세요. 이전 판정을 숨기지 말고 지적 해소 여부를 판단하세요.
+보완: 같은 분류도 수동 확정, 미분류 확정 버튼, 브라우저 합성24개 통과. 재현 가능한 private metadata 연결 스크립트와 시험2개 추가. --dry-run 525개/쓰기0/네트워크0, --verify 실제 기존525개 모두 확인/추가쓰기0/본문쓰기0/AI호출0. 이전 사용자 전체 분류 승인과 현재 화면 연결 배포 승인에 따라 이미 준비된 결과를 표시하는 작업이며 추가 AI 호출은 없습니다.
+Functions 빌드와 대상시험 통과, 프런트 회귀32+2 및 실제React24 통과. 최신CI와 Codex 재검토 진행중: 통과 가정 금지. Functions4개 먼저, 그 뒤 main/Hosting. 회원탈퇴·AI실행·Rules 배포 제외.
+최종 판정 승인/수정 후 승인/재설계, 작업규모, 멈춤조건 해당 및 사용자 승인범위 충족여부를 명시하세요. 저장소 코드로 확인되는 실제 결함을 지적하세요.

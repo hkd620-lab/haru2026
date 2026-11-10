@@ -1,3 +1,4 @@
+import { isAiLibraryCategory, type AiLibraryCategory } from '../utils/aiLibraryCategory';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 export const AI_IMPORT_REQUEST_EVENT = 'haru:ai-import-request';
@@ -10,6 +11,7 @@ export type AiImportPayload = {
   source: 'slack' | 'chatgpt.com' | 'claude.ai' | 'gemini.google.com';
   capturedAt: string;
   sourceUrl?: string;
+  category?: AiLibraryCategory;
 };
 
 const IMPORT_ID_PATTERN = /^[a-f0-9]{64}$/;
@@ -38,7 +40,11 @@ export function parseAiImportPayload(value: unknown, expectedImportId: string): 
   if (candidate.sourceUrl && (!candidate.sourceUrl.startsWith('https://') || candidate.sourceUrl.length > 2_000)) {
     throw new Error('출처 주소가 올바르지 않습니다.');
   }
+  if (candidate.category !== undefined && !isAiLibraryCategory(candidate.category)) {
+    throw new Error('지원하지 않는 목적 폴더입니다.');
+  }
   return {
+    ...(candidate.category !== undefined ? { category: candidate.category } : {}),
     importId: candidate.importId,
     content: candidate.content.trim(),
     source: candidate.source,

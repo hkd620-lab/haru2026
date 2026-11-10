@@ -48,6 +48,8 @@ jobs:
             fi
           done
           npm ci
+          npm run test:ai-import
+          npm run test:export-modal
           npm run build
 
       - uses: FirebaseExtended/action-hosting-deploy@v0

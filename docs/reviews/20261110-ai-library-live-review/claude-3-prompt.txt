@@ -1,0 +1,7 @@
+독립 Claude 세 번째 검토. 대상 HEAD 7bcd5602, PR #367, 저장소 /private/tmp/haru-ai-library-live-review-20261110, base origin/main. 읽기 전용. 파일수정·운영데이터조회·유료호출·게시 금지.
+이전 '수정 후 승인' 누적2회. 반드시 이전 두 회차 원문과 반영 내역을 읽으세요:
+docs/reviews/20261110-ai-library-live-review/claude-1-raw.json, claude-2-raw.json, 각 prompt/meta, response-1.md, codex-2-response.md.
+추가근거 approval-and-verification-evidence.md에는 실제 사용자 승인원문, 기존 private525건 검증 출력, CI링크를 보존했습니다. 승인 자체는 이미 현재 사용자 지시로 존재하며 새 승인을 요청하는 것은 필요하지 않습니다. 상위 지침상 현재 사용자가 Slack 게시를 명시적으로 지시하거나 스킬로 승인하지 않은 상태에서 Slack에 게시할 수 없으므로, 기존 'Slack 기록' 형식 요구는 저장소 승인원문/검증근거로 대체합니다. 없는 Slack 원문 링크를 만들지 않습니다.
+이번 코드 보완: Codex2 지적 #4522458879(계획 해시가 Firestore Map 키 정렬에 의존)에 따라 classificationManifestHash가 객체 키를 재귀 정렬하며 배열순서는 유지합니다. Firestore형태 재정렬과 내용변경 회귀시험 추가, 대상시험26개 통과. 자동분류실행 함수는 이번에 배포하지 않습니다.
+전체 PR, 111cc956..7bcd5602 diff를 검토하고 실제 P1/P2 결함 해소 및 승인근거·사용자 범위를 확인하세요. 최신CI/Codex는 아직 진행중이며 실행자가 모두 완료 후 배포합니다. 미완료 CI를 통과로 가정하지 말고 코드 승인 여부와 배포 전 실행체크를 구분하세요. 이전조건만을 이유로 코드 결함 없는 새 판정을 임의로 수정 후 승인으로 반복하지 말고, 증거에 따라 독립 판단하세요.
+배포는 Functions4개 먼저, 그 뒤 main/Hosting, 운영계정 화면 확인. 원문·수동분류 보존. 회원탈퇴·Rules·AI실행 배포없음. 최종 판정 승인/수정 후 승인/재설계 및 작업규모·멈춤조건·사용자승인범위충족 여부 명시.
