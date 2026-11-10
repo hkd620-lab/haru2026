@@ -1,0 +1,11 @@
+Independent read-only review of HARU2026 change. Repository /private/tmp/haru-harulab-auto-20261111 target HEAD 4a36ecb755b6e7fe5c3ab6f34b0a0d758f4ff589, compare origin/main. Read source/test files with Read only, do not execute commands, edit files, access credentials/private user records or network. Read .git not necessary; changed files listed below. User request: newly collected current app development materials should automatically go into harulab; uncertain content pending with recommendation; manual categories and original text remain unchanged. Existing deployed auto mechanism already classifies future ai_log using Jev with five categories, manual/transaction protections and at-most-once attempts. Change adds sixth category and prompts requiring explicit current app + substantive development/operations relevance; general AI/news/tutorials should not become app notes. No per-record extra call or model/budget change. Existing record migration not in scope. Check safety/correctness, runtime/transport six-key symmetry, tests including uncertain harulab/manual race, request byte caps, older attempt dedup keys unchanged. Comment on work size and any stop condition; current user authorizes this auto classification behavior as continuation of deployed collector. Functions build passed; classification83 and auto13 tests passed; source export list unchanged. Files:
+functions/src/aiLibraryCategory.ts
+functions/src/aiLibraryJevChoice.ts
+functions/src/aiLibraryAutoClassification.ts
+functions/src/aiLibraryAutoTrigger.ts
+functions/src/aiLibraryJevTransport.ts
+functions/test/aiLibraryJevChoice.test.js
+functions/test/aiLibraryJevTransport.test.js
+functions/test/aiLibraryAutoClassification.test.js
+functions/test/aiLibraryJevKorean.synthetic.test.js
+Reply Korean with actionable findings then exact verdict 승인 / 수정 후 승인 / 재설계. Do not assert model accuracy from fabricated tests; real synthetic production samples will be checked after approved deployment.
