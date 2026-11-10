@@ -1,5 +1,21 @@
 /** Display-only whitespace layout. Never use this output for storage, hashes, or copying. */
+function hasUnfencedIndent(text: string): boolean {
+  let fence = '';
+  for (const line of text.split('\n')) {
+    if (fence) {
+      if (new RegExp('^ {0,3}' + fence[0] + '{' + fence.length + ',}\\s*$').test(line)) fence = '';
+      continue;
+    }
+    const opening = line.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (opening) { fence = opening[1]; continue; }
+    if (/^[ \t]+\S/.test(line)) return true;
+  }
+  return false;
+}
 export function aiLibraryReadingParagraphs(text: string): string[] {
+  text = text.replace(/\r\n?/g, '\n');
+  // Rendered AI code often has no Markdown fence. Preserve its complete whitespace structure.
+  if (hasUnfencedIndent(text)) return [text];
   const result: string[] = [];
   let code: string[] | null = null;
   let fence = '';
@@ -27,5 +43,5 @@ export function aiLibraryReadingParagraphs(text: string): string[] {
   if (code) result.push(code.join('\n'));
   return result;
 }
-export const aiLibraryReadingCode = (text: string): boolean => /^ {0,3}(?:`{3,}|~{3,})/.test(text);
+export const aiLibraryReadingCode = (text: string): boolean => /^ {0,3}(?:`{3,}|~{3,})/.test(text) || hasUnfencedIndent(text);
 export const aiLibraryReadingHeading = (text: string): boolean => /^(?:👤|🤖|#{1,6}\s|\d+[.)]\s|[-*•]\s|[①-⑳])/.test(text);
