@@ -30,7 +30,7 @@ function loadSource(name) {
 }
 const adapter = loadSource('aiLibraryJevChoice');
 const core = loadSource('aiLibraryClassification');
-const { AI_LIBRARY_CATEGORIES: categories } = loadSource('aiLibraryCategory');
+const { AI_LIBRARY_AUTO_CATEGORIES: categories } = loadSource('aiLibraryCategory');
 const plain = value => JSON.parse(JSON.stringify(value));
 // Parse JSON into the adapter's realm so strict own-property/prototype checks are retained.
 const inRealm = value => vm.runInContext(`JSON.parse(${JSON.stringify(JSON.stringify(value))})`, context);
