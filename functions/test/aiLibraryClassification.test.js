@@ -235,3 +235,14 @@ test('replaced identical record before permit or result cannot be classified',as
   const job=await f.runner.step(f.manifest);assert.equal(job.items[0].status,'skipped');assert.equal(f.calls,phase==='permit'?0:1);assert.equal(f.records.get('0').aiCategory,undefined);
  }
 });
+
+
+test('manifest hash survives Firestore map key ordering, including record keys', () => {
+  const core = require('./aiLibraryClassificationSource')('aiLibraryClassification');
+  const manifest = core.planClassification('owner', [{ id: 'a', record: { type: 'ai_log', content: '공개 텃밭 정보' } }], 2000000000000, 55060);
+  const sorted = value => Array.isArray(value) ? value.map(sorted) : value && typeof value === 'object'
+    ? Object.fromEntries(Object.entries(value).sort(([a],[b]) => a.localeCompare(b)).map(([key, item]) => [key, sorted(item)])) : value;
+  assert.equal(core.classificationManifestHash(manifest), core.classificationManifestHash(sorted(manifest)));
+  const modified = JSON.parse(JSON.stringify(manifest)); modified.records[0].payloadHash = 'f'.repeat(64);
+  assert.notEqual(core.classificationManifestHash(manifest), core.classificationManifestHash(modified));
+});

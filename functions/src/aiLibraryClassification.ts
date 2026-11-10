@@ -56,7 +56,11 @@ export function planClassification(owner: string, records: ReadonlyArray<{ id: s
       return { id, contentHash: contentHash(record), payloadHash: hash(payload.text), reason: payload.reason };
     }).sort((a, b) => a.id.localeCompare(b.id)) };
 }
-export function classificationManifestHash(manifest: ClassificationManifest): string { return hash(JSON.stringify(manifest)); }
+/** Firestore maps may be read back in a different key order. Array order remains significant. */
+export function classificationManifestHash(manifest: ClassificationManifest): string {
+  return hash(JSON.stringify(manifest, (_key, value) => value && typeof value === 'object' && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : value));
+}
 export interface TrustedClassificationApproval {
   manifestHash: string; owner: string; expiresAt: number;
   /** Immutable server-side review ledger: exact payload hashes reviewed for this destination. */
