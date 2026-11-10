@@ -1,0 +1,32 @@
+{
+  "recordedAt": "2026-11-09T13:41:20.557Z",
+  "scope": "User approved HARU PWA only read-only loaded bundle names and subscription public-key equality; no endpoint/auth/token/records read or saved",
+  "haruPageCount": 2,
+  "results": [
+    {
+      "page": {
+        "visibility": "visible",
+        "standalone": true
+      },
+      "scripts": [
+        "/assets/index-DowmElnr.js"
+      ],
+      "registrations": [
+        {
+          "scopePath": "/firebase-cloud-messaging-push-scope",
+          "scriptPath": "/firebase-messaging-sw.js",
+          "matchesDefaultBytes": true,
+          "matchesCurrentBytes": false,
+          "matchesPreviousBytes": false,
+          "hasSubscription": true,
+          "publicKeyBytes": 65,
+          "matchesFirebaseCurrent": false,
+          "matchesFirebasePrevious": false
+        }
+      ]
+    },
+    {
+      "readonlyQueryError": "Readonly query timed out"
+    }
+  ]
+}

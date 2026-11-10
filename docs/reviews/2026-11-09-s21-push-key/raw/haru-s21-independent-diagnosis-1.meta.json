@@ -1,0 +1,24 @@
+{
+  "startedAt": "2026-11-09T13:06:05.491253+00:00",
+  "cwd": "/private/tmp/haru-approved-two-functions-deploy-20261109",
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "plan",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Bash",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--add-dir",
+    "/private/tmp",
+    "--allowedTools",
+    "Read,Glob,Grep,Bash(git diff *),Bash(git show *),Bash(git log *),Bash(git status *),Bash(git rev-parse *),Bash(cat *),Bash(rg *),Bash(ls *)"
+  ],
+  "exitCode": 0,
+  "finishedAt": "2026-11-09T13:07:49.609976+00:00"
+}

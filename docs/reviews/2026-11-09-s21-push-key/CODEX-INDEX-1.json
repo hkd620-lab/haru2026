@@ -1,0 +1,29 @@
+{
+  "execution": 1,
+  "targetHeadAtRequest": "0688d8da26179ff4ebe187cfa441ff915565d04f",
+  "requestedReviewHeadSame": true,
+  "request": {
+    "id": 6749939932,
+    "url": "https://github.com/hkd620-lab/haru2026/pull/368#issuecomment-6749939932",
+    "createdAt": "2026-11-09T19:56:02Z",
+    "kind": "manual @codex review"
+  },
+  "startedAt": "2026-11-09T19:56:23.668610Z",
+  "completedAt": "2026-11-09T19:57:43.769057Z",
+  "result": {
+    "type": "issue comment receipt; no PR review submission object",
+    "id": 6749974464,
+    "url": "https://github.com/hkd620-lab/haru2026/pull/368#issuecomment-6749974464",
+    "text": "Codex Review: Didn't find any major issues.",
+    "hasAnyFindings": false,
+    "hasUnresolvedFindings": false
+  },
+  "summary": {
+    "id": 6749947914,
+    "url": "https://github.com/hkd620-lab/haru2026/pull/368#issuecomment-6749947914",
+    "status": "completed"
+  },
+  "findings": [],
+  "otherExecutions": "No other actual execution observed; draft PR opening had no observed automatic review. Do not invent an execution. Ready not requested.",
+  "recordedAt": "2026-11-09T19:59:19.705899+00:00"
+}

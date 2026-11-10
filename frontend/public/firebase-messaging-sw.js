@@ -4,12 +4,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-comp
 
 // Firebase 설정 (firebase.ts와 동일하게)
 const firebaseConfig = {
-  apiKey: "AIzaSyDYlku7iBNAWTKqOyV2S1xUSlYK_jRo2Q8",
+  apiKey: "AIzaSyAfX4Chb3wYewrFmbLHCb2yqbmbWPUEEgQ",
   authDomain: "haru2026-8abb8.firebaseapp.com",
   projectId: "haru2026-8abb8",
   storageBucket: "haru2026-8abb8.firebasestorage.app",
   messagingSenderId: "398138267500",
-  appId: "1:398138267500:web:24f2f7c5d04b4e62dd9652",
+  appId: "1:398138267500:web:7009366654c6ecea828549",
   measurementId: "G-MHDVJ2RJM6"
 };
 

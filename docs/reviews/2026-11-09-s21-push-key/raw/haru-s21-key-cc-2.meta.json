@@ -1,0 +1,24 @@
+{
+  "startedAt": "2026-11-09T14:25:41.557818+00:00",
+  "cwd": "/private/tmp/haru-s21-push-key-fix-20261109",
+  "command": [
+    "claude",
+    "-p",
+    "--permission-mode",
+    "acceptEdits",
+    "--permission-prompts",
+    "none",
+    "--tools",
+    "Read,Glob,Grep,Edit,Write",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--output-format",
+    "json",
+    "--add-dir",
+    "/private/tmp",
+    "--allowedTools",
+    "Read,Glob,Grep,Edit,Write"
+  ],
+  "exitCode": 0,
+  "finishedAt": "2026-11-09T14:30:46.224261+00:00"
+}

@@ -1,0 +1,26 @@
+{
+  "recordedAt": "2026-11-09T13:49:29.652426+00:00",
+  "requestedModel": "gpt-6-astra",
+  "agentTask": "/root/astra_s21_push",
+  "proven": [
+    "Production Firebase page and FCM SW appId and public apiKey differ; project/sender/domain/bucket match",
+    "SDK tokenDetails lookup keyed by appId; SW subscription-change fallback uses default VAPID if cached key missing",
+    "Actual visible standalone S21 current bundle FCMSW subscription matches SDK default key bytes, not Firebase current or previous",
+    "Readonly comparison code synthetic current-key selfcheck passed",
+    "Single user-approved push-subscription reset and UI registration recreated SDK default-key subscription"
+  ],
+  "inferred": [
+    "Observed settings inconsistency plus SDK fallback path explains default-key recurrence; exact past pushsubscriptionchange event not captured"
+  ],
+  "minimalDesign": [
+    "Align SW public Firebase apiKey and appId with current production page without changing other behavior",
+    "Explicit registration path only update FCM SW and bounded wait for new worker activation",
+    "Compare actual applicationServerKey before/after getToken; on mismatch reset only this registration and retry once; fail without save/cache/success on persistent mismatch/race"
+  ],
+  "unchanged": [
+    "No Functions/Rules/auth policy/payment/model/other-device data changes or extra deploy"
+  ],
+  "priorIndependentReview": "haru-s21-independent-diagnosis-1 raw output preserved; it was read-only diagnosis not policy implementation approval",
+  "evidence": "haru-s21-astra-key-context-result.json",
+  "activationAdvisory": "haru-s21-key-astra-activation-opinion.txt"
+}

@@ -1,0 +1,18 @@
+{
+  "recordedAt": "2026-11-09T19:50:36.881142+00:00",
+  "sourceBase": "f38e0ddcad2c130e92333b0c5dd735972e09e5e8",
+  "tests": {
+    "pass": 57,
+    "fail": 0
+  },
+  "node": "22.23.2",
+  "npmRunBuildExit": 0,
+  "distMessagingSwEqualsPublic": true,
+  "helperStrictWithBrowserFixtureExit": 0,
+  "adapterStrictExit": 0,
+  "wholeAppTsc": "NOT PASSED: existing ExportModal parse errors; project tsc exit2, not used as pass evidence",
+  "fullWhitespaceCheck": "tracked and untracked clean before stage; staged check follows",
+  "deploy": "NOT AUTHORIZED / NOT EXECUTED",
+  "actualS21Receipt": "NOT VERIFIED",
+  "executor": "CC authored source/tests/runner; root executed runner with formal escalation because CC1 Bash denied; all denials preserved"
+}
