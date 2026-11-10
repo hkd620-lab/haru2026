@@ -1,4 +1,4 @@
-import { aiLibraryReadingParagraphs, aiLibraryReadingHeading } from '../utils/aiLibraryReading';
+import { aiLibraryReadingParagraphs, aiLibraryReadingHeading, aiLibraryReadingCode } from '../utils/aiLibraryReading';
 import { AI_LIBRARY_BUCKETS, applyAiLibraryMoves, normalizeAiLibraryCategory, type AiLibraryFolder, type AiLibraryBucket } from '../utils/aiLibraryCategory';
 import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -841,7 +841,7 @@ export function AiLibraryPage() {
               {log.aiReview && <div aria-label="보류 분류 안내" onClick={event => event.stopPropagation()}
                 style={{ background: '#FFF8E6', borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 13 }}>
                 <strong>보류 · 추천: {AI_LIBRARY_BUCKETS.find(item => item.value === log.aiReview?.recommendation)?.label || '추천 없음'}</strong>
-                <p style={{ margin: '4px 0' }}>{({ low_confidence: '자동으로 확정하기에는 확신이 부족합니다.', ambiguous: '여러 분류에 걸쳐 있어 직접 선택이 필요합니다.', out_of_scope: '다섯 분류의 범위 밖으로 판단했습니다. 추천은 참고 후보입니다.', sensitive_review: '전송 전 표현 검사로 보류했습니다. AI 추천 없이 직접 폴더를 골라주세요.', classification_review: '자동 확정 기준을 충족하지 못했습니다.', daily_budget: '오늘 자동 분류 한도에 도달했습니다. 폴더를 직접 선택해 주세요.', auto_processing: '자동 분류 결과를 확인 중입니다. 직접 선택한 폴더가 우선합니다.', transport_error: '자동 분류 응답을 확인하지 못했습니다. 재전송하지 않았으니 폴더를 직접 골라주세요.', invalid_response: '자동 분류 응답을 확인하지 못했습니다. 폴더를 직접 골라주세요.', long_text_review: '긴 본문이라 자동 전송하지 않았습니다. 폴더를 직접 골라주세요.' } as Record<string, string>)[log.aiReview.reason] || '내용을 확인하고 폴더를 직접 선택해 주세요.'}</p>
+                <p style={{ margin: '4px 0' }}>{({ low_confidence: '자동으로 확정하기에는 확신이 부족합니다.', ambiguous: '여러 분류에 걸쳐 있어 직접 선택이 필요합니다.', out_of_scope: '다섯 분류의 범위 밖으로 판단했습니다. 추천은 참고 후보입니다.', sensitive_review: '전송 전 표현 검사로 보류했습니다. AI 추천 없이 직접 폴더를 골라주세요.', classification_review: '자동 확정 기준을 충족하지 못했습니다.', daily_budget: '오늘 자동 분류 한도에 도달했습니다. 폴더를 직접 선택해 주세요.', auto_processing: '자동 분류를 확인 중이거나 응답을 받지 못했습니다. 폴더를 직접 선택할 수 있습니다.', transport_error: '자동 분류 응답을 확인하지 못했습니다. 재전송하지 않았으니 폴더를 직접 골라주세요.', invalid_response: '자동 분류 응답을 확인하지 못했습니다. 폴더를 직접 골라주세요.', long_text_review: '긴 본문이라 자동 전송하지 않았습니다. 폴더를 직접 골라주세요.' } as Record<string, string>)[log.aiReview.reason] || '내용을 확인하고 폴더를 직접 선택해 주세요.'}</p>
                 <button disabled={moveBusy.has(log.id)}
                   onClick={() => void handleMove(log, normalizeAiLibraryCategory(log.aiCategory))}
                   style={{ border: '1px solid #C7A955', borderRadius: 6, padding: '6px 10px', background: '#fff', marginRight: 8, cursor: 'pointer' }}>
@@ -885,7 +885,9 @@ export function AiLibraryPage() {
                 }}
               >
                 {(isExpanded ? aiLibraryReadingParagraphs(displayText) : [displayText]).map((paragraph, index) => (
-                  <p key={index} style={{ margin: isExpanded ? '0 0 0.85em' : 0,
+                  isExpanded && aiLibraryReadingCode(paragraph)
+                    ? <pre key={index} style={{ margin: '0 0 0.85em', padding: '10px', borderRadius: '6px', background: '#f3f4f6', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: '13px' }}>{paragraph}</pre>
+                    : <p key={index} style={{ margin: isExpanded ? '0 0 0.85em' : 0,
                     textIndent: isExpanded && !aiLibraryReadingHeading(paragraph) ? '1em' : 0,
                     fontWeight: isExpanded && aiLibraryReadingHeading(paragraph) ? 600 : undefined,
                     overflowWrap: 'anywhere' }}>{highlightKeyword(paragraph, trimmedKeyword)}</p>
