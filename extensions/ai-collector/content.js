@@ -46,10 +46,10 @@ if (window.location.hostname === 'app.slack.com') {
 // 💾 인라인 저장 버튼 시스템
 // ================================================================
 const SAVE_BTN_ATTR = 'data-ai-save-injected';
-const AI_COLLECTOR_BINDING_VERSION = 'v2.9-purpose-folders';
+const AI_COLLECTOR_BINDING_VERSION = 'v3.0-auto-folders';
 const PROJECT_ID_CS = "my-ai-library-74805";
 const chatGptTurnBindings = new WeakMap();
-const AI_COLLECTOR_HEALTH_BUILD = '2.9-purpose-folders-1';
+const AI_COLLECTOR_HEALTH_BUILD = '3.0-auto-folders-1';
 const collectorInstance = crypto.randomUUID();
 const collectorOwnedButtons = new WeakSet();
 const collectorRecovery = '수집기 연결이 끊겼습니다. 미전송 입력을 보관한 뒤 이 대화 탭만 새로고침하세요. 저장을 자동 재시도하지 않습니다.';

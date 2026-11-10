@@ -54,6 +54,11 @@ function App() {
       button('더 불러오기').click(); await wait();
       check(page().textContent?.includes('합성 건강 자료'), '빈 페이지 다음 커서로 기록 조회');
       button('▼ 펼치기').click(); await wait(); check(!!button('▲ 접기'), '펼치기 유지');
+      const reading = Array.from(page().querySelectorAll('p')).filter(el => el.textContent === '합성 건강 자료의 원문입니다.' || el.textContent === '두 번째 문단도 그대로 보존합니다.');
+      check(reading.length === 2 && reading.every(el => getComputedStyle(el).textIndent === '14px'), '원문 두 문단 표시와 첫 줄 들여쓰기');
+      const listsBefore = state.calls.filter(call => call.name === 'list').length;
+      state.bounded = false; button('목록 새로고침').click(); await wait();
+      check(state.calls.filter(call => call.name === 'list').length === listsBefore + 1 && page().textContent?.includes('합성 건강 자료'), '목록 새로고침으로 분류 결과 다시 조회');
       button('📚 책소재 변환').click(); await wait(); check(page().textContent?.includes('합성 책소재 요약'), '모의 책소재 변환 유지');
       button('선택 삭제').click(); await wait(); check(page().textContent?.includes('0개 선택됨'), '선택 모드 유지');
       await folder('전체'); check(!!button('선택 삭제') && !page().textContent?.includes('0개 선택됨'), '폴더 전환 시 선택 모드 초기화');

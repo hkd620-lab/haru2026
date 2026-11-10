@@ -46,7 +46,7 @@ test('failed move leaves records intact; component only applies a confirmed resu
   try { await Promise.reject(new Error('conflict')); logs = applyAiLibraryMoves(logs, 'all', new Map([['a', 'life']])); } catch {}
   assert.equal(logs, original);
   assert.match(page, /await firestoreService.moveAiLibraryLog[\s\S]*?if \(!guard.isCurrent\(generation\)\) return;[\s\S]*?movesRef.current.set/);
-  assert.match(page, /user\?\.emailVerified, folder\]/);
+  assert.match(page, /user\?\.emailVerified, folder, refreshKey\]/);
   assert.match(page, /setMoveBusy\(new Set\(\)\)/);
   assert.match(page, /setSelectedIds\(new Set\(\)\)/);
 });

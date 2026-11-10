@@ -166,6 +166,15 @@ test('manual move changes only classification, stale concurrent intent aborts, c
   assert.equal(h.helper.canAutomaticallyClassifyAiLibraryRecord({}), true);
 });
 
+test('manual choice wins over an automatic result newer than the displayed category', async () => {
+  const h = harness(); h.seed('record', 'health');
+  h.rows.get('users/owner/records/record').aiCategorySource = 'auto';
+  await h.call('moveAiLibraryLog', { id: 'record', category: 'life', expectedCategory: 'unclassified' });
+  assert.equal(h.rows.get('users/owner/records/record').aiCategory, 'life');
+  assert.equal(h.rows.get('users/owner/records/record').aiCategorySource, 'manual');
+  await rejects(h.call('moveAiLibraryLog', { id: 'record', category: 'investment', expectedCategory: 'unclassified' }), 'aborted');
+});
+
 test('ownership, type, verified email and max10 delete protections remain', async () => {
   const h = harness(); h.seed('foreign', 'health', 1, 'other'); h.seed('wrong', 'health', 1, 'owner', 'diary');
   for (const id of ['foreign', 'wrong']) await rejects(h.call('moveAiLibraryLog', { id, category: 'life', expectedCategory: 'health', uid: 'other' }), 'failed-precondition');
