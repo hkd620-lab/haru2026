@@ -7,7 +7,7 @@ const { webcrypto } = require('node:crypto');
 
 const popup = readFileSync(new URL('../popup.js', `file://${__filename}`), 'utf8');
 const background = readFileSync(new URL('../background.js', `file://${__filename}`), 'utf8');
-const categories = ['medical-tech', 'health', 'life', 'investment', 'ai-tech'];
+const categories = ['medical-tech', 'health', 'life', 'investment', 'ai-tech', 'harulab'];
 
 function harness(selected, { storageFails = false, popupUi = false } = {}) {
   const stored = new Map(selected ? [['aiCollectorCategory', selected]] : []);
@@ -41,7 +41,7 @@ function harness(selected, { storageFails = false, popupUi = false } = {}) {
   return { context, stored, calls, opened, listeners, element, domListeners };
 }
 
-test('five purpose categories travel to HARU and archive without changing body, source URL or hash', async () => {
+test('purpose and harulab categories travel to HARU and archive without changing body, source URL or hash', async () => {
   const ids = [];
   for (const category of categories) {
     const h = harness(category);

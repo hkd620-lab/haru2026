@@ -9,6 +9,7 @@ const AI_CATEGORY_LABELS = Object.freeze({
   life: '생활정보',
   investment: '투자정보',
   'ai-tech': 'AI신기술',
+  harulab: 'harulab',
 });
 
 function normalizeCollectorCategory(value) {

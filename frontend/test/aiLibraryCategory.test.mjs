@@ -6,8 +6,8 @@ import { AiLibraryPageRequestGuard, hasAiLibraryNextPage } from '../src/app/util
 import { parseAiImportPayload } from '../src/app/services/aiImportService.ts';
 const page = readFileSync(new URL('../src/app/pages/AiLibraryPage.tsx', import.meta.url), 'utf8');
 const payload = { importId: 'a'.repeat(64), content: 'synthetic content', source: 'slack', capturedAt: '2026-11-09T00:00:00Z' };
-test('five topic IDs and missing/invalid legacy categories use a separate bucket', () => {
-  assert.deepEqual(AI_LIBRARY_CATEGORIES.map(x => x.label), ['의료신기술', '건강상식', '생활정보', '투자정보', 'AI신기술']);
+test('topic and personal app folder IDs are separate from missing/invalid legacy categories', () => {
+  assert.deepEqual(AI_LIBRARY_CATEGORIES.map(x => x.label), ['의료신기술', '건강상식', '생활정보', '투자정보', 'AI신기술', 'harulab']);
   for (const value of [undefined, null, '', 'unknown', 'all', {}, 'unclassified']) assert.equal(normalizeAiLibraryCategory(value), 'unclassified');
   for (const { value } of AI_LIBRARY_CATEGORIES) assert.equal(normalizeAiLibraryCategory(value), value);
 });

@@ -175,6 +175,18 @@ test('manual choice wins over an automatic result newer than the displayed categ
   await rejects(h.call('moveAiLibraryLog', { id: 'record', category: 'investment', expectedCategory: 'unclassified' }), 'aborted');
 });
 
+test('harulab imports and moves remain manual and can be listed independently', async () => {
+  const h = harness();
+  const saved = await h.call('saveAiLibraryImport', { importId: 'c'.repeat(64), content: 'Synthetic app notes', source: 'slack', capturedAt: '2026-01-01T00:00:00Z', category: 'harulab' });
+  const row = h.rows.get(`users/owner/records/${saved.recordId}`);
+  assert.equal(row.aiCategory, 'harulab'); assert.equal(row.aiCategorySource, 'manual');
+  assert.equal(h.helper.canAutomaticallyClassifyAiLibraryRecord(row), false);
+  const page = await h.call('listAiLibraryLogs', { category: 'harulab' });
+  assert.equal(page.logs.length, 1); assert.equal(page.logs[0].id, saved.recordId);
+  await h.call('moveAiLibraryLog', { id: saved.recordId, category: 'health', expectedCategory: 'harulab' });
+  assert.equal(h.rows.get(`users/owner/records/${saved.recordId}`).aiCategory, 'health');
+});
+
 test('ownership, type, verified email and max10 delete protections remain', async () => {
   const h = harness(); h.seed('foreign', 'health', 1, 'other'); h.seed('wrong', 'health', 1, 'owner', 'diary');
   for (const id of ['foreign', 'wrong']) await rejects(h.call('moveAiLibraryLog', { id, category: 'life', expectedCategory: 'health', uid: 'other' }), 'failed-precondition');
