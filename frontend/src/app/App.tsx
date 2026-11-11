@@ -163,6 +163,9 @@ function SignedInRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return <SignInRedirect />;
+  if (user.providerIds?.includes('password') && user.emailVerified === false) {
+    return <EmailVerificationPage />;
+  }
   return children;
 }
 
