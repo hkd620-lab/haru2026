@@ -964,6 +964,12 @@ function RecordPageContent() {
         <section className="bg-white rounded-lg p-4 shadow-sm">
           <h2 className="text-base font-semibold" style={{ color: '#1A3C6E' }}>오늘의 기록</h2>
           <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 형식을 고르면 작성한 글과 사진으로 AI 도움을 받거나 그대로 저장할 수 있습니다.</p>
+          {!user && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-lg p-3 text-sm" style={{ backgroundColor: '#FEFBE8', color: '#4A5A2C', border: '1px solid #e5e5e5' }}>
+              <span>기록을 저장하려면 먼저 로그인해 주세요. 로그인 전에 쓴 글은 로그인 화면으로 이동하면 사라질 수 있어요.</span>
+              <button type="button" onClick={() => navigate('/login')} className="shrink-0 px-3 py-1.5 rounded text-sm font-semibold" style={{ backgroundColor: '#1A3C6E', color: '#fff' }}>로그인</button>
+            </div>
+          )}
           <label htmlFor="record-draft-content" className="block text-base font-semibold mb-2" style={{ color: '#4A5A2C' }}>기록 입력 · 아래 글상자에 써 주세요</label>
           <textarea
             id="record-draft-content"

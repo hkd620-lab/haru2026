@@ -104,7 +104,7 @@ const DEV_TOOLS: DevTool[] = [
 ];
 
 export function DevConsolePage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState<'tools' | 'ai-library'>('tools');
   const [backfillPreview, setBackfillPreview] = useState<LibraryBackfillPreview | null>(null);
@@ -116,9 +116,13 @@ export function DevConsolePage() {
   const canUseAiLibrary = hasAiLibraryAccess(user?.email, user?.emailVerified);
 
   useEffect(() => {
-    if (!user) return;
+    if (authLoading) return;
+    if (!user) {
+      navigate('/', { replace: true });
+      return;
+    }
     if (!isDeveloper && !canUseAiLibrary) navigate('/');
-  }, [user, isDeveloper, canUseAiLibrary, navigate]);
+  }, [authLoading, user, isDeveloper, canUseAiLibrary, navigate]);
 
   useEffect(() => {
     if (!isDeveloper) return;
