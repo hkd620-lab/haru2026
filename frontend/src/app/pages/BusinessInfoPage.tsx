@@ -1,11 +1,9 @@
 import { useNavigate } from 'react-router';
-import { useAuth } from '../contexts/AuthContext';
 import type { ReactNode } from 'react';
 import { BUSINESS_INFO } from '../components/BusinessInfoNotice';
 
 export function BusinessInfoPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const rows: { label: string; value: ReactNode; href?: string }[] = [
     { label: '상호명', value: '하루랩 (HaruLab)' },
     { label: '서비스명', value: 'HARU2026' },
@@ -37,7 +35,11 @@ export function BusinessInfoPage() {
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: '40px 20px', fontFamily: 'inherit' }}>
       <button
-        onClick={() => navigate(user ? '/settings' : '/')}
+        onClick={() => {
+          // 공개 화면이라 AuthProvider 밖에서도 그려진다(PublicLegalBoundary). 로그인 여부 대신 앱 내 이전 화면 유무로 닫는다.
+          if ((window.history.state?.idx ?? 0) > 0) navigate(-1);
+          else navigate('/');
+        }}
         style={{ position: 'fixed', top: '16px', right: '16px', width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#1A3C6E', color: 'white', fontSize: '18px', border: 'none', cursor: 'pointer', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >✕</button>
       <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1A3C6E', marginBottom: 24 }}>
