@@ -16,11 +16,11 @@ import { buildSocialLoginUrl } from '../utils/socialLoginUrls';
    ──────────────────────────────────────────────────────────── */
 
 const C = {
-  olive: '#7A8B4E', oliveDark: '#4A5A2C',
+  olive: '#596B36', oliveDark: '#4A5A2C',
   lilac: '#C9C0DE', lilacDark: '#5A4E7A', lilacLight: '#DDD0E8',
   lightGreen: '#D4DEA0', greenLight: '#E0E8B8',
-  terracotta: '#B85C2E', terracottaLight: '#F5E5DC', peach: '#E8B894',
-  fg: '#2C2C2A', fg2: '#7A6F5A', mute: '#888780',
+  terracotta: '#91411F', terracottaLight: '#F5E5DC', peach: '#E8B894',
+  fg: '#2C2C2A', fg2: '#665C49', mute: '#66665F',
   bg: '#F5F0E8', bg2: '#EDE8DC', card: '#FFFFFF', border: '#E5DFD0',
 };
 
@@ -221,7 +221,7 @@ function HaruPhone() {
           </div>
 
           <div className="ph-section">HARU 기록</div>
-          <div className="ph-grid">
+          <div className="ph-grid" tabIndex={0} role="region" aria-label="기록 형식 미리보기, 좌우로 스크롤">
             {PH_RECORDS.map((r) => (
               <div key={r.name} className="ph-cell">
                 <div className="ph-cell__ico" style={{ background: hueBg[r.hue] }}>
@@ -469,7 +469,7 @@ export function LandingPage() {
                 </button>
               ))}
             </div>
-            <div className="lp-value-cards" aria-label="HARU2026 핵심 가치">
+            <div className="lp-value-cards" role="group" aria-label="HARU2026 핵심 가치">
               <article className="lp-value-card">
                 <div className="lp-value-card__ico" style={{ background: hueBg.green }}>
                   <Icon name="bookbind" size={20} color={hueFg.green} sw={1.7} />
@@ -495,7 +495,7 @@ export function LandingPage() {
                 </div>
               </article>
             </div>
-            <div className="lp-mini-flow" aria-label="HARU2026 3단계 흐름">
+            <div className="lp-mini-flow" role="group" aria-label="HARU2026 3단계 흐름">
               <p className="lp-mini-flow__lead">
                 한 줄을 남기고, 필요하면 AI로 다듬은 뒤 내용을 확인해 저장해요.
               </p>
@@ -711,7 +711,7 @@ export function LandingPage() {
             <div className="lp-final__deco lp-final__deco--a" />
             <div className="lp-final__deco lp-final__deco--b" />
             <div style={{ position: 'relative', zIndex: 1 }}>
-              <div className="lp-cap" style={{ color: 'rgba(245,240,232,0.7)' }}>START TODAY</div>
+              <div className="lp-cap" style={{ color: 'var(--bg)' }}>START TODAY</div>
               <h2>오늘의 기록은,<br />내일의 나를 돕는 자료가 됩니다.</h2>
               <p>한 줄도 좋고, 사진 한 장의 메모도 좋습니다. 쌓이는 일은 HARU가 합니다.</p>
               <div className="lp-final__cta-row">
@@ -739,12 +739,12 @@ export function LandingPage() {
    ──────────────────────────────────────────────────────────── */
 const LP_CSS = `
 .lp-page {
-  --olive:#7A8B4E; --olive-dark:#4A5A2C;
+  --olive:#596B36; --olive-dark:#4A5A2C;
   --lilac:#C9C0DE; --lilac-dark:#5A4E7A; --lilac-light:#DDD0E8;
   --light-green:#D4DEA0; --green-light:#E0E8B8;
-  --terracotta:#B85C2E; --terracotta-light:#F5E5DC; --peach:#E8B894;
+  --terracotta:#91411F; --terracotta-light:#F5E5DC; --peach:#E8B894;
   --bg:#F5F0E8; --bg-2:#EDE8DC; --card:#FFFFFF; --border:#E5DFD0;
-  --fg:#2C2C2A; --fg-2:#7A6F5A; --fg-muted:#888780;
+  --fg:#2C2C2A; --fg-2:#665C49; --fg-muted:#66665F;
   --accent-active:#7A8B4E; --accent-active-dark:#4A5A2C;
   --lp-en:'Inter',system-ui,sans-serif;
   --lp-kr:'Pretendard','Pretendard Variable',-apple-system,system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
@@ -809,7 +809,7 @@ const LP_CSS = `
 .lp-onboarding__icon{width:40px;height:40px;border-radius:12px;background:rgba(245,240,232,.18);display:grid;place-items:center;flex:0 0 auto;}
 .lp-onboarding__copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;}
 .lp-onboarding__title{font-size:14px;font-weight:800;line-height:1.35;color:var(--bg);}
-.lp-onboarding__desc{font-size:11px;line-height:1.45;color:rgba(245,240,232,.84);}
+.lp-onboarding__desc{font-size:11px;line-height:1.45;color:var(--bg);}
 .lp-onboarding__cta{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:rgba(245,240,232,.2);padding:7px 13px;font-size:13px;font-weight:800;white-space:nowrap;flex:0 0 auto;}
 @media(max-width:640px){.lp-onboarding{padding:12px 14px 0;}.lp-onboarding__button{align-items:flex-start;padding:13px 14px;border-radius:16px;}.lp-onboarding__icon{width:36px;height:36px;border-radius:11px;}.lp-onboarding__cta{display:none;}.lp-onboarding__title{font-size:13px;}.lp-onboarding__desc{font-size:10.5px;}}
 
@@ -935,19 +935,19 @@ const LP_CSS = `
 .lp-plan--hl{background:var(--olive-dark);border-color:var(--olive-dark);color:var(--bg);}
 .lp-plan__badge{position:absolute;top:-12px;right:20px;background:var(--olive);color:#fff;font-size:10px;font-weight:800;letter-spacing:1.5px;padding:4px 10px;border-radius:999px;}
 .lp-plan__name{font-size:13px;font-weight:800;letter-spacing:2px;margin-bottom:12px;color:var(--olive-dark);}
-.lp-plan--hl .lp-plan__name{color:var(--peach);}
+.lp-plan--hl .lp-plan__name{color:#F4CFB5;}
 .lp-plan__price{font-size:clamp(28px,8vw,40px);font-weight:800;color:var(--fg);white-space:nowrap;}
 .lp-plan--hl .lp-plan__price{color:var(--bg);}
 .lp-plan__price span{font-size:14px;font-weight:500;color:var(--fg-muted);margin-left:4px;}
-.lp-plan--hl .lp-plan__price span{color:rgba(245,240,232,0.6);}
+.lp-plan--hl .lp-plan__price span{color:var(--bg);}
 .lp-plan__vat{font-size:12px;font-weight:700;color:var(--fg-muted);margin-top:4px;}
 .lp-plan--hl .lp-plan__vat{color:rgba(245,240,232,0.75);}
 .lp-plan__note{font-size:12px;color:var(--fg-muted);margin:6px 0 20px;}
-.lp-plan--hl .lp-plan__note{color:rgba(245,240,232,0.6);}
+.lp-plan--hl .lp-plan__note{color:var(--bg);}
 .lp-plan__list{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-direction:column;gap:8px;}
 .lp-plan__list li{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--fg-2);}
 .lp-plan--hl .lp-plan__list li{color:rgba(245,240,232,0.85);}
-.lp-plan--hl .lp-btn--primary{background:var(--olive);color:#fff;}
+.lp-plan--hl .lp-btn--primary{background:var(--olive);color:#fff;border:1px solid rgba(245,240,232,0.7);}
 .lp-plan--hl .lp-btn--primary:hover{background:#6b7a44;}
 .lp-plan__foot{color:var(--fg-muted);font-size:12px;margin-top:20px;}
 
@@ -987,6 +987,7 @@ const LP_CSS = `
 .ph-section{font-size:11px;font-weight:600;color:var(--fg);margin:6px 16px;}
 .ph-grid{margin:0 14px 12px;display:flex;flex-direction:row;gap:6px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;max-width:calc(100% - 28px);}
 .ph-grid::-webkit-scrollbar{display:none;}
+.ph-grid:focus-visible{outline:2px solid var(--olive-dark);outline-offset:2px;}
 .ph-cell{flex:0 0 68px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;}
 .ph-cell__ico{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;}
 .ph-cell__lbl{font-size:8px;font-weight:500;color:var(--fg);}
