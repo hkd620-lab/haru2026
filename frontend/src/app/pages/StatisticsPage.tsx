@@ -29,7 +29,7 @@ interface FormatSummary {
 
 export function StatisticsPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { subscription, loading: subscriptionLoading } = useSubscription();
   const [searchParams, setSearchParams] = useSearchParams();
   const tier = getStatsTier(subscription);
@@ -118,6 +118,11 @@ export function StatisticsPage() {
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm" style={{ color: '#999' }}>기록을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.</p>
                 <button type="button" onClick={() => setReloadKey((key) => key + 1)} className="shrink-0 px-3 py-1.5 rounded text-sm" style={{ border: '1px solid #1A3C6E', color: '#1A3C6E', backgroundColor: '#fff' }}>다시 불러오기</button>
+              </div>
+            ) : !user && !authLoading ? (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm" style={{ color: '#999' }}>로그인하면 내 기록 통계를 볼 수 있어요.</p>
+                <button type="button" onClick={() => navigate('/login')} className="shrink-0 px-3 py-1.5 rounded text-sm" style={{ border: '1px solid #1A3C6E', color: '#1A3C6E', backgroundColor: '#fff' }}>로그인</button>
               </div>
             ) : !totals ? (
               <p className="text-sm" style={{ color: '#999' }}>기록을 불러오는 중...</p>

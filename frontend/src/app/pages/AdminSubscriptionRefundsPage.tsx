@@ -75,7 +75,7 @@ export function AdminSubscriptionRefundsPage() {
   const isAdmin = user?.uid === ADMIN_UID;
 
   useEffect(() => {
-    if (!loading && user && !isAdmin) navigate('/');
+    if (!loading && (!user || !isAdmin)) navigate('/', { replace: true });
   }, [loading, user, isAdmin, navigate]);
 
   const loadRefunds = async () => {
