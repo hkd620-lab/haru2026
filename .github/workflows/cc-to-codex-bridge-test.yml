@@ -13,7 +13,7 @@ jobs:
       cancel-in-progress: false
     permissions:
       issues: write
-      pull-requests: read
+      pull-requests: write
     steps:
       - name: Request Codex follow-up for the current PR HEAD
         uses: actions/github-script@v7
