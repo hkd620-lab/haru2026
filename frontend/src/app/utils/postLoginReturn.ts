@@ -12,6 +12,11 @@ function getSessionStorage(): SessionStorageLike | null {
   }
 }
 
+function normalizeProtectedReturnPath(path: string): string {
+  const route = /^\/(settings|sayu)\/?$/i.exec(path)?.[1];
+  return route ? `/${route.toLowerCase()}` : path;
+}
+
 export function isAllowedPostLoginReturnPath(path: unknown): path is string {
   return typeof path === 'string' && (AI_IMPORT_RETURN_PATTERN.test(path) || SIGNED_IN_RETURN_PATHS.has(path));
 }
@@ -24,12 +29,26 @@ export function rememberPostLoginReturnPath(
   path: string,
   storage: SessionStorageLike | null = getSessionStorage(),
 ): boolean {
-  if (!storage || !isAllowedPostLoginReturnPath(path)) return false;
+  const normalizedPath = normalizeProtectedReturnPath(path);
+  if (!storage || !isAllowedPostLoginReturnPath(normalizedPath)) return false;
   try {
-    storage.setItem(POST_LOGIN_RETURN_KEY, path);
+    storage.setItem(POST_LOGIN_RETURN_KEY, normalizedPath);
     return true;
   } catch {
     return false;
+  }
+}
+
+export function clearProtectedPostLoginReturnPath(
+  storage: SessionStorageLike | null = getSessionStorage(),
+): void {
+  if (!storage) return;
+  try {
+    if (SIGNED_IN_RETURN_PATHS.has(storage.getItem(POST_LOGIN_RETURN_KEY) ?? '')) {
+      storage.removeItem(POST_LOGIN_RETURN_KEY);
+    }
+  } catch {
+    // Storage can be unavailable in restricted browsers.
   }
 }
 

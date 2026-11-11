@@ -1,5 +1,5 @@
-import { FormEvent, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { FormEvent, useEffect, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -10,13 +10,14 @@ import { getInAppBrowserInfo, needsExternalLoginBrowser, type InAppBrowserInfo, 
 import { db } from '../config/firebase';
 import { beginLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 import { buildSocialLoginUrl } from '../utils/socialLoginUrls';
-import { consumePostLoginReturnPath } from '../utils/postLoginReturn';
+import { clearProtectedPostLoginReturnPath, consumePostLoginReturnPath } from '../utils/postLoginReturn';
 
 // 회원가입 동의 시점에 기록해두는 약관/방침 버전 — 추후 개정 시 재동의 대상을 가려낼 때 사용
 const TERMS_VERSION = '2026-08-20';
 const PRIVACY_VERSION = '2026-08-20';
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { googleSignIn, signIn, signUp, resetPassword } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -38,6 +39,12 @@ export function LoginPage() {
   const requiredAgreementsChecked = agreeAge14 && agreeTerms && agreePrivacy && agreeOverseas;
   const allAgreementsChecked = requiredAgreementsChecked && agreeMarketing;
   const authTitle = emailMode === 'signup' ? '회원가입' : '로그인';
+
+  useEffect(() => {
+    if ((location.state as { fromProtectedRoute?: boolean } | null)?.fromProtectedRoute !== true) {
+      clearProtectedPostLoginReturnPath();
+    }
+  }, [location.key, location.state]);
 
   const handleToggleAgreeAll = (checked: boolean) => {
     setAgreeAge14(checked);

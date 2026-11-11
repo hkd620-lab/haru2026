@@ -5,6 +5,7 @@ import {
   isAllowedPostLoginReturnPath,
   rememberPostLoginReturnPath,
   requiresAiImportReload,
+  clearProtectedPostLoginReturnPath,
 } from '../src/app/utils/postLoginReturn.ts';
 
 function storageHarness() {
@@ -42,4 +43,19 @@ test('protected routes return once, while direct login keeps the home fallback',
     assert.equal(requiresAiImportReload(path), false);
   }
   assert.equal(requiresAiImportReload(`/ai-import#${'a'.repeat(64)}`), true);
+});
+
+test('protected return paths are canonical and abandoned login does not leave a stale target', () => {
+  const storage = storageHarness();
+  for (const path of ['/settings/', '/Settings', '/SAYU/']) {
+    assert.equal(rememberPostLoginReturnPath(path, storage), true);
+    assert.equal(consumePostLoginReturnPath('/', storage), path.toLowerCase().replace(/\/$/, ''));
+  }
+  rememberPostLoginReturnPath('/settings', storage);
+  clearProtectedPostLoginReturnPath(storage);
+  assert.equal(consumePostLoginReturnPath('/', storage), '/');
+  const importPath = `/ai-import#${'a'.repeat(64)}`;
+  rememberPostLoginReturnPath(importPath, storage);
+  clearProtectedPostLoginReturnPath(storage);
+  assert.equal(consumePostLoginReturnPath('/', storage), importPath);
 });

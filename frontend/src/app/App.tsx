@@ -174,7 +174,7 @@ function SignInRedirect() {
   const navigate = useNavigate();
   useEffect(() => {
     rememberPostLoginReturnPath(location.pathname);
-    navigate('/login', { replace: true });
+    navigate('/login', { replace: true, state: { fromProtectedRoute: true } });
   }, [location.pathname, navigate]);
   return null;
 }
