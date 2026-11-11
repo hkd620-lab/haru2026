@@ -809,7 +809,7 @@ const LP_CSS = `
 .lp-onboarding__icon{width:40px;height:40px;border-radius:12px;background:rgba(245,240,232,.18);display:grid;place-items:center;flex:0 0 auto;}
 .lp-onboarding__copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;}
 .lp-onboarding__title{font-size:14px;font-weight:800;line-height:1.35;color:var(--bg);}
-.lp-onboarding__desc{font-size:11px;line-height:1.45;color:rgba(245,240,232,.84);}
+.lp-onboarding__desc{font-size:11px;line-height:1.45;color:var(--bg);}
 .lp-onboarding__cta{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:rgba(245,240,232,.2);padding:7px 13px;font-size:13px;font-weight:800;white-space:nowrap;flex:0 0 auto;}
 @media(max-width:640px){.lp-onboarding{padding:12px 14px 0;}.lp-onboarding__button{align-items:flex-start;padding:13px 14px;border-radius:16px;}.lp-onboarding__icon{width:36px;height:36px;border-radius:11px;}.lp-onboarding__cta{display:none;}.lp-onboarding__title{font-size:13px;}.lp-onboarding__desc{font-size:10.5px;}}
 
