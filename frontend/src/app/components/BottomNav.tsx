@@ -58,9 +58,11 @@ export function BottomNav() {
                 key={item.path}
                 to={item.path}
                 onClick={item.path === '/sayu' ? scrollToSayuTop : undefined}
+                aria-current={isActive ? 'page' : undefined}
                 className="flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 transition-all"
                 style={{
                   color: isActive ? '#1A3C6E' : '#595959',
+                  fontWeight: isActive ? 700 : 400,
                   minHeight: 76,
                 }}
               >

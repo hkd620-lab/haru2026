@@ -947,7 +947,7 @@ const LP_CSS = `
 .lp-plan__list{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-direction:column;gap:8px;}
 .lp-plan__list li{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--fg-2);}
 .lp-plan--hl .lp-plan__list li{color:rgba(245,240,232,0.85);}
-.lp-plan--hl .lp-btn--primary{background:var(--olive);color:#fff;}
+.lp-plan--hl .lp-btn--primary{background:var(--olive);color:#fff;border:1px solid rgba(245,240,232,0.7);}
 .lp-plan--hl .lp-btn--primary:hover{background:#6b7a44;}
 .lp-plan__foot{color:var(--fg-muted);font-size:12px;margin-top:20px;}
 

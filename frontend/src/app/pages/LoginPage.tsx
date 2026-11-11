@@ -294,7 +294,7 @@ export function LoginPage() {
                   disabled={isLoading}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all hover:opacity-90"
                   style={{
-                    backgroundColor: '#00783A',
+                    backgroundColor: '#03A94D',
                     color: '#ffffff',
                     border: 'none',
                   }}

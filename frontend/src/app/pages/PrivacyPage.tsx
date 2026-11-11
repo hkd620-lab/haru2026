@@ -77,13 +77,15 @@ const sections = [
 ];
 
 import { useNavigate } from 'react-router';
+import { useAuth } from '../contexts/AuthContext';
 
 export function PrivacyPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '40px 20px', fontFamily: 'inherit' }}>
       <button
-        onClick={() => navigate('/settings')}
+        onClick={() => navigate(user ? '/settings' : '/')}
         style={{ position: 'fixed', top: '16px', right: '16px', width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#1A3C6E', color: 'white', fontSize: '18px', border: 'none', cursor: 'pointer', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >✕</button>
       <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>
