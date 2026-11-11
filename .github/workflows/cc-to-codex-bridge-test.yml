@@ -11,14 +11,22 @@ jobs:
     concurrency:
       group: cc-codex-${{ github.event.issue.number }}
       cancel-in-progress: false
-    permissions:
-      issues: write
-      pull-requests: write
+    permissions: {}
     steps:
       - name: Request Codex follow-up for the current PR HEAD
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.CC_CODEX_BRIDGE_GH_TOKEN }}
           script: |
+            if (process.env.CC_BRIDGE_TOKEN_PRESENT !== 'true') {
+              core.setFailed('CC_CODEX_BRIDGE_GH_TOKEN is required for this test');
+              return;
+            }
+            const { data: account } = await github.rest.users.getAuthenticated();
+            if (account.login !== 'hkd620-lab') {
+              core.setFailed('CC_CODEX_BRIDGE_GH_TOKEN must belong to hkd620-lab');
+              return;
+            }
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
             const body = context.payload.comment.body;
@@ -32,9 +40,11 @@ jobs:
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner, repo, issue_number, per_page: 100,
             });
-            if (comments.some(comment => comment.user?.login === 'github-actions[bot]' && comment.body?.includes(marker))) return;
+            if (comments.some(comment => comment.user?.login === 'hkd620-lab' && !comment.performed_via_github_app && comment.body?.includes(marker))) return;
 
             await github.rest.issues.createComment({
               owner, repo, issue_number,
               body: `${marker}\n@codex CC가 이 PR의 현재 HEAD를 독립 검토했습니다. 바로 위 CC 검토 댓글을 읽고 지적 사항을 코드와 대조해 주세요. 항목별로 반영 필요 또는 보류와 근거를 이 PR에 답해 주세요. 코드를 수정하거나 커밋·병합·배포하지 마세요.`,
             });
+        env:
+          CC_BRIDGE_TOKEN_PRESENT: ${{ secrets.CC_CODEX_BRIDGE_GH_TOKEN != '' }}
