@@ -7,6 +7,7 @@ import { getInAppBrowserInfo, needsExternalLoginBrowser, type InAppBrowserInfo, 
 import { GrapeAnimation } from '../components/GrapeAnimation';
 import { beginLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 import { buildSocialLoginUrl } from '../utils/socialLoginUrls';
+import { clearProtectedPostLoginReturnPath } from '../utils/postLoginReturn';
 
 /* ────────────────────────────────────────────────────────────
    HARU by HaruLab — 랜딩 (CD "Reposeful" 디자인 핸드오프 구현)
@@ -316,6 +317,7 @@ export function LandingPage() {
   const handleGoogleLogin = async () => {
     if (isLoginLoading) return;
     if (guardInAppBrowserLogin('google')) return;
+    clearProtectedPostLoginReturnPath();
     setIsLoading(true);
     setIsLoginLoading(true);
     beginLoginTrace('google');
@@ -340,6 +342,7 @@ export function LandingPage() {
   const handleKakaoLogin = () => {
     if (isLoginLoading) return;
     if (guardInAppBrowserLogin('kakao')) return;
+    clearProtectedPostLoginReturnPath();
     setIsLoading(true);
     setIsLoginLoading(true);
     beginLoginTrace('kakao');
@@ -350,6 +353,7 @@ export function LandingPage() {
   const handleNaverLogin = () => {
     if (isLoginLoading) return;
     if (guardInAppBrowserLogin('naver')) return;
+    clearProtectedPostLoginReturnPath();
     setIsLoading(true);
     setIsLoginLoading(true);
     beginLoginTrace('naver');
