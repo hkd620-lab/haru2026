@@ -45,7 +45,7 @@ export function BusinessInfoPage() {
       <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1A3C6E', marginBottom: 24 }}>
         사업자 정보
       </h1>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, tableLayout: 'fixed' }}>
         <tbody>
           {rows.map(({ label, value, href }) => (
             <tr key={label} style={{ borderBottom: '1px solid #e5e5e5' }}>
@@ -56,12 +56,12 @@ export function BusinessInfoPage() {
                   color: '#555',
                   backgroundColor: '#FEFBE8',
                   width: '35%',
-                  whiteSpace: 'nowrap',
+                  overflowWrap: 'anywhere',
                 }}
               >
                 {label}
               </td>
-              <td style={{ padding: '14px 16px', color: '#333' }}>
+              <td style={{ padding: '14px 16px', color: '#333', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                 {href ? (
                   <a
                     href={href}
