@@ -529,6 +529,7 @@ function RecordPageContent() {
         ) : customCount < 4 ? (
           <button
             onClick={() => setShowInput({ ...showInput, [type]: true })}
+            aria-label={`${type === 'weather' ? '날씨' : type === 'temperature' ? '체감기온' : '기분'} 태그 추가`}
             className="w-7 h-7 rounded-full flex items-center justify-center text-base font-bold"
             style={{ backgroundColor: '#e5e7eb', color: '#555' }}
           >+</button>
