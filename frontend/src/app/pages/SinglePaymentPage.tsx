@@ -280,9 +280,7 @@ export default function SinglePaymentPage() {
           <p className="text-xs font-bold text-[#4F46E5] mb-2">KG이니시스 일반결제</p>
           <h1 className="text-2xl font-black text-[#1A3C6E] mb-3">HARU2026 1개월 이용권</h1>
           <p className="text-sm font-bold text-gray-700 mb-5">결제는 로그인 후 이용할 수 있습니다.</p>
-          <p className="text-xs leading-5 text-gray-500 mb-5">
-            비회원 구매는 제공하지 않습니다. 심사자는 전달받은 테스트 계정으로 로그인 후 일반결제 흐름을 확인할 수 있습니다.
-          </p>
+          <p className="text-xs leading-5 text-gray-500 mb-5">비회원 구매는 제공하지 않습니다.</p>
           <Link
             to="/login"
             className="block w-full rounded-lg bg-[#1A3C6E] px-4 py-4 text-base font-black text-white transition-colors hover:bg-[#142f57]"

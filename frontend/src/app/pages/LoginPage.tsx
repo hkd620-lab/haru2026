@@ -1,5 +1,5 @@
-import { FormEvent, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { FormEvent, useEffect, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -10,13 +10,14 @@ import { getInAppBrowserInfo, needsExternalLoginBrowser, type InAppBrowserInfo, 
 import { db } from '../config/firebase';
 import { beginLoginTrace, markLoginTrace } from '../utils/loginPerformance';
 import { buildSocialLoginUrl } from '../utils/socialLoginUrls';
-import { consumePostLoginReturnPath } from '../utils/postLoginReturn';
+import { clearProtectedPostLoginReturnPath, consumePostLoginReturnPath } from '../utils/postLoginReturn';
 
 // 회원가입 동의 시점에 기록해두는 약관/방침 버전 — 추후 개정 시 재동의 대상을 가려낼 때 사용
 const TERMS_VERSION = '2026-08-20';
 const PRIVACY_VERSION = '2026-08-20';
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { googleSignIn, signIn, signUp, resetPassword } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -38,6 +39,12 @@ export function LoginPage() {
   const requiredAgreementsChecked = agreeAge14 && agreeTerms && agreePrivacy && agreeOverseas;
   const allAgreementsChecked = requiredAgreementsChecked && agreeMarketing;
   const authTitle = emailMode === 'signup' ? '회원가입' : '로그인';
+
+  useEffect(() => {
+    if ((location.state as { fromProtectedRoute?: boolean } | null)?.fromProtectedRoute !== true) {
+      clearProtectedPostLoginReturnPath();
+    }
+  }, [location.key, location.state]);
 
   const handleToggleAgreeAll = (checked: boolean) => {
     setAgreeAge14(checked);
@@ -302,7 +309,7 @@ export function LoginPage() {
                   <svg width="20" height="20" viewBox="0 0 24 24">
                     <path fill="#ffffff" d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727v12.845z"/>
                   </svg>
-                  <span className="font-medium">네이버로 계속하기</span>
+                  <span className="text-xl font-bold">네이버로 계속하기</span>
                 </button>
               </div>
 
