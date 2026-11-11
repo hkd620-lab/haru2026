@@ -60,7 +60,7 @@ export function BottomNav() {
                 onClick={item.path === '/sayu' ? scrollToSayuTop : undefined}
                 className="flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 transition-all"
                 style={{
-                  color: isActive ? '#1A3C6E' : '#999999',
+                  color: isActive ? '#1A3C6E' : '#595959',
                   minHeight: 76,
                 }}
               >

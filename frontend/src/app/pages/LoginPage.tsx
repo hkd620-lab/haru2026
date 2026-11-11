@@ -294,7 +294,7 @@ export function LoginPage() {
                   disabled={isLoading}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all hover:opacity-90"
                   style={{
-                    backgroundColor: '#03A94D',
+                    backgroundColor: '#00783A',
                     color: '#ffffff',
                     border: 'none',
                   }}
@@ -306,7 +306,7 @@ export function LoginPage() {
                 </button>
               </div>
 
-              <p className="mt-2 text-center text-xs" style={{ color: '#9CA3AF' }}>
+              <p className="mt-2 text-center text-xs" style={{ color: '#595F6A' }}>
                 {emailMode === 'signup'
                   ? '회원가입 시 이용약관 및 개인정보 처리 동의가 필요합니다.'
                   : '계정이 없다면 아래에서 회원가입으로 전환할 수 있습니다.'}
@@ -314,7 +314,7 @@ export function LoginPage() {
 
               <div className="flex items-center gap-3 my-6">
                 <div className="h-px flex-1" style={{ backgroundColor: '#E5E7EB' }} />
-                <span className="text-xs" style={{ color: '#999' }}>또는</span>
+                <span className="text-xs" style={{ color: '#595F6A' }}>또는</span>
                 <div className="h-px flex-1" style={{ backgroundColor: '#E5E7EB' }} />
               </div>
 
@@ -326,7 +326,7 @@ export function LoginPage() {
                     className="flex-1 rounded-md px-3 py-2 text-sm transition-all"
                     style={{
                       backgroundColor: emailMode === 'login' ? '#fff' : 'transparent',
-                      color: emailMode === 'login' ? '#1A3C6E' : '#6B7280',
+                      color: emailMode === 'login' ? '#1A3C6E' : '#555B65',
                       fontWeight: emailMode === 'login' ? 700 : 500,
                     }}
                   >
@@ -338,7 +338,7 @@ export function LoginPage() {
                     className="flex-1 rounded-md px-3 py-2 text-sm transition-all"
                     style={{
                       backgroundColor: emailMode === 'signup' ? '#fff' : 'transparent',
-                      color: emailMode === 'signup' ? '#1A3C6E' : '#6B7280',
+                      color: emailMode === 'signup' ? '#1A3C6E' : '#555B65',
                       fontWeight: emailMode === 'signup' ? 700 : 500,
                     }}
                   >
@@ -464,7 +464,7 @@ export function LoginPage() {
                           onChange={(event) => setAgreeMarketing(event.target.checked)}
                           disabled={isLoading}
                         />
-                        <span className="text-xs" style={{ color: '#374151' }}>마케팅 정보 수신에 동의합니다 <span style={{ color: '#9CA3AF' }}>(선택)</span></span>
+                        <span className="text-xs" style={{ color: '#374151' }}>마케팅 정보 수신에 동의합니다 <span style={{ color: '#595F6A' }}>(선택)</span></span>
                       </label>
                     </div>
                   </div>
@@ -502,7 +502,7 @@ export function LoginPage() {
               </form>
 
               <div className="mt-6 text-center">
-                <p className="text-xs" style={{ color: '#999' }}>
+                <p className="text-xs" style={{ color: '#595F6A' }}>
                   {emailMode === 'signup'
                     ? '회원가입 후 이메일 인증을 완료하면 서비스를 이용할 수 있습니다'
                     : '로그인 후 무료 이용 및 유료 구독 신청이 가능합니다'}

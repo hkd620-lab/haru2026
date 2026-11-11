@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, type CSSProperties, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -158,6 +158,13 @@ function AiLibraryRoute() {
   return <AiLibraryPage />;
 }
 
+function SignedInRoute({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
+
 const assistantEntryScrollResetLocationKeys = new Set<string>();
 
 function AssistantEntryScrollReset() {
@@ -217,11 +224,11 @@ function AppChrome() {
           <Route path="/record" element={<RecordPage />} />
           <Route path="/haru-law" element={<HaruLawPage />} />
           <Route path="/library" element={<LibraryPage />} />
-          <Route path="/sayu" element={<SayuPage />} />
+          <Route path="/sayu" element={<SignedInRoute><SayuPage /></SignedInRoute>} />
           <Route path="/sayu-together" element={<SayuTogetherPage />} />
           <Route path="/merge" element={<MergePage />} />
           <Route path="/merge-viewer" element={<MergeViewerPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings" element={<SignedInRoute><SettingsPage /></SignedInRoute>} />
           <Route path="/vault" element={<Navigate to="/settings" replace />} />
 
           {/* 통계 페이지 */}

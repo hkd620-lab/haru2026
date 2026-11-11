@@ -9,7 +9,7 @@ export function Footer() {
       borderTop: '1px solid rgba(0,0,0,0.08)',
       padding: '20px 16px',
       textAlign: 'center',
-      color: '#999',
+      color: '#595959',
       fontSize: '11px',
       lineHeight: 1.8,
       background: '#fff',
@@ -23,7 +23,7 @@ export function Footer() {
           href={BUSINESS_INFO.ftcUrl}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: '#777', textDecoration: 'underline' }}
+          style={{ color: '#595959', textDecoration: 'underline' }}
         >
           사업자정보확인
         </a>
@@ -35,21 +35,21 @@ export function Footer() {
         민원 담당자: 허경대 / 연락처: 010-6309-6107
       </p>
       <p>
-        <a href="/subscription" style={{ color: '#777', textDecoration: 'underline' }}>구독/요금</a>
+        <a href="/subscription" style={{ color: '#595959', textDecoration: 'underline' }}>구독/요금</a>
         &nbsp;|&nbsp;
-        <a href="/business-info" style={{ color: '#777', textDecoration: 'underline' }}>사업자 정보</a>
+        <a href="/business-info" style={{ color: '#595959', textDecoration: 'underline' }}>사업자 정보</a>
         &nbsp;|&nbsp;
-        <a href="/terms" style={{ color: '#777', textDecoration: 'underline' }}>이용약관</a>
+        <a href="/terms" style={{ color: '#595959', textDecoration: 'underline' }}>이용약관</a>
         &nbsp;|&nbsp;
-        <a href="/privacy" style={{ color: '#777', textDecoration: 'underline' }}>개인정보처리방침</a>
+        <a href="/privacy" style={{ color: '#595959', textDecoration: 'underline' }}>개인정보처리방침</a>
         &nbsp;|&nbsp;
-        <a href="/refund" style={{ color: '#777', textDecoration: 'underline' }}>환불정책</a>
+        <a href="/refund" style={{ color: '#595959', textDecoration: 'underline' }}>환불정책</a>
         &nbsp;|&nbsp;
         <a
           href={BUSINESS_INFO.ftcUrl}
           target="_blank"
           rel="noreferrer"
-          style={{ color: '#777', textDecoration: 'underline' }}
+          style={{ color: '#595959', textDecoration: 'underline' }}
         >
           공정위 사업자정보 확인
         </a>

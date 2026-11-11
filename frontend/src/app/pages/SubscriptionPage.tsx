@@ -818,10 +818,17 @@ export default function SubscriptionPage() {
       <div className="min-h-screen bg-[#EDE9F5] flex items-center justify-center p-4">
         <section className="w-full max-w-md rounded-2xl bg-white border border-gray-200 p-6 text-center shadow-sm">
           <h1 className="text-2xl font-black text-[#1A3C6E] mb-3">HARU 구독 플랜</h1>
-          <p className="text-sm font-bold text-gray-700 mb-5">결제는 로그인 후 이용할 수 있습니다.</p>
-          <p className="text-xs leading-5 text-gray-500 mb-5">
-            비회원 구매는 제공하지 않습니다. 심사자는 전달받은 테스트 계정으로 로그인 후 구독/결제 흐름을 확인할 수 있습니다.
-          </p>
+          <p className="text-sm text-gray-700 mb-5">구독은 로그인 후 신청할 수 있습니다.</p>
+          <div className="grid gap-3 mb-5 text-left">
+            <div className="rounded-xl border border-gray-200 p-4">
+              <h2 className="font-bold text-[#1A3C6E]">베이직 · 월 ₩4,000</h2>
+              <p className="mt-1 text-sm text-gray-700">1개월 단위 자동 갱신 · 모든 기록 형식과 AI 비서 이용</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 p-4">
+              <h2 className="font-bold text-[#1A3C6E]">프리미엄 · 월 ₩6,000</h2>
+              <p className="mt-1 text-sm text-gray-700">더 높은 사용량 한도 · 결제 준비 중</p>
+            </div>
+          </div>
           <Link
             to="/login?mode=signup&from=subscription"
             className="block w-full rounded-2xl bg-[#1A3C6E] px-4 py-4 text-base font-black text-white transition-colors hover:bg-[#142f57]"

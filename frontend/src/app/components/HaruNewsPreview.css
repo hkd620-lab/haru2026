@@ -48,7 +48,7 @@
 
 .haru-news-preview__date {
   font-size: 10px;
-  color: #7a7060;
+  color: #c8bda9;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -226,7 +226,7 @@
 
 .haru-news-preview__footer-text {
   font-size: 10px;
-  color: #7a7060;
+  color: #625a4d;
   letter-spacing: 0.04em;
   font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
 }
