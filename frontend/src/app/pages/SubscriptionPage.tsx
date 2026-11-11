@@ -820,14 +820,21 @@ export default function SubscriptionPage() {
           <h1 className="text-2xl font-black text-[#1A3C6E] mb-3">HARU 구독 플랜</h1>
           <p className="text-sm text-gray-700 mb-5">구독은 로그인 후 신청할 수 있습니다.</p>
           <div className="grid gap-3 mb-5 text-left">
-            <div className="rounded-xl border border-gray-200 p-4">
-              <h2 className="font-bold text-[#1A3C6E]">베이직 · 월 ₩4,000</h2>
-              <p className="mt-1 text-sm text-gray-700">1개월 단위 자동 갱신 · 모든 기록 형식과 AI 비서 이용</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 p-4">
-              <h2 className="font-bold text-[#1A3C6E]">프리미엄 · 월 ₩6,000</h2>
-              <p className="mt-1 text-sm text-gray-700">더 높은 사용량 한도 · 결제 준비 중</p>
-            </div>
+            {(['basic', 'premium'] as PaidPlan[]).map((planId) => {
+              const plan = PLANS[planId];
+              return (
+                <div key={planId} className="rounded-xl border border-gray-200 p-4">
+                  <h2 className="font-bold text-[#1A3C6E]">
+                    {plan.title} · 월 {plan.priceLabel}
+                    {plan.badge && <span className="ml-2 text-xs font-bold text-gray-700">{plan.badge}</span>}
+                  </h2>
+                  <p className="mt-1 text-xs text-gray-700">부가세 포함 · {plan.description}</p>
+                  <ul className="mt-2 list-disc pl-5 text-sm text-gray-700">
+                    {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
+                  </ul>
+                </div>
+              );
+            })}
           </div>
           <Link
             to="/login?mode=signup&from=subscription"
