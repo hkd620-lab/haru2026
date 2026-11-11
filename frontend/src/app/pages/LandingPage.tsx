@@ -119,7 +119,7 @@ const PRICING = [
     available: true, buttonLabel: '베이직 구독하기', href: '/subscription?plan=basic',
   },
   {
-    plan: '프리미엄', price: '₩6,000 예정', period: '/월',
+    plan: '프리미엄', price: '₩6,000', period: '/월 · 출시 예정',
     note: '준비 중인 확장 플랜',
     bullets: ['독서 OCR 월 300장 예정', '장기 범위 합본 준비 중', '장기 범위 통계 준비 중'],
     highlight: false, badge: '준비 중',

@@ -1127,7 +1127,7 @@ export function SettingsPage() {
                 <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
                   {stats.totalRecords}
                 </p>
-                <p className="text-xs" style={{ color: '#666' }}>총 기록</p>
+                <p className="text-xs" style={{ color: '#666' }}>전체 기록(비서 포함)</p>
               </div>
               <div
                 className="rounded-lg p-4 text-center"
