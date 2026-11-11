@@ -1,5 +1,6 @@
 const POST_LOGIN_RETURN_KEY = 'haru.postLoginReturnPath.v1';
 const AI_IMPORT_RETURN_PATTERN = /^\/ai-import#[a-f0-9]{64}$/;
+const SIGNED_IN_RETURN_PATHS = new Set(['/settings', '/sayu']);
 
 type SessionStorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
@@ -12,7 +13,11 @@ function getSessionStorage(): SessionStorageLike | null {
 }
 
 export function isAllowedPostLoginReturnPath(path: unknown): path is string {
-  return typeof path === 'string' && AI_IMPORT_RETURN_PATTERN.test(path);
+  return typeof path === 'string' && (AI_IMPORT_RETURN_PATTERN.test(path) || SIGNED_IN_RETURN_PATHS.has(path));
+}
+
+export function requiresAiImportReload(path: string): boolean {
+  return AI_IMPORT_RETURN_PATTERN.test(path);
 }
 
 export function rememberPostLoginReturnPath(

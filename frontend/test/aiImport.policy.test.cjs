@@ -22,7 +22,7 @@ test('/ai-import는 자체 안내를 렌더링하고 /ai-library만 개발자 gu
 
 test('OAuth 복귀 시 /ai-import는 확장 브리지 재주입을 위해 새 문서로 이동한다', () => {
   assert.match(authCallback, /const returnPath = consumePostLoginReturnPath\(\)/);
-  assert.match(authCallback, /if \(isAllowedPostLoginReturnPath\(returnPath\)\)/);
+  assert.match(authCallback, /if \(requiresAiImportReload\(returnPath\)\)/);
   assert.match(authCallback, /window\.location\.replace\(returnPath\)/);
   assert.match(authCallback, /navigate\(returnPath, \{ replace: true \}\)/);
 });

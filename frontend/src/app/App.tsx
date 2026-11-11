@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, type CSSProperties, type ReactNode } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LoadingProvider } from './contexts/LoadingContext';
 import { Toaster } from 'sonner';
 import { useAuth } from './contexts/AuthContext';
+import { rememberPostLoginReturnPath } from './utils/postLoginReturn';
 import { HomePageV2 } from './pages/HomePageV2';
 import { LandingPage } from './pages/LandingPage';
 import { OnboardingPreviewPage } from './pages/OnboardingPreviewPage';
@@ -161,8 +162,18 @@ function AiLibraryRoute() {
 function SignedInRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <SignInRedirect />;
   return children;
+}
+
+function SignInRedirect() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    rememberPostLoginReturnPath(location.pathname);
+    navigate('/login', { replace: true });
+  }, [location.pathname, navigate]);
+  return null;
 }
 
 const assistantEntryScrollResetLocationKeys = new Set<string>();
