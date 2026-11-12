@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { db, functions } from '../../firebase';
@@ -31,14 +31,17 @@ export function FunVideosPage() {
   const isDeveloper = user?.uid === DEVELOPER_UID;
   const canView = isDeveloper || entitlement.hasPaidAccess;
   const [videos, setVideos] = useState<Video[]>([]);
+  const [removedVideos, setRemovedVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [metadataStatus, setMetadataStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [saving, setSaving] = useState(false);
+  const [changingVideoId, setChangingVideoId] = useState<string | null>(null);
   const videoId = parseYoutubeId(url);
-  const isDuplicate = Boolean(videoId && videos.some(video => video.id === videoId));
+  const isRemovedDuplicate = Boolean(videoId && removedVideos.some(video => video.id === videoId));
+  const isDuplicate = Boolean(videoId && (videos.some(video => video.id === videoId) || isRemovedDuplicate));
 
   useEffect(() => {
     setTitle('');
@@ -64,11 +67,16 @@ export function FunVideosPage() {
     setLoading(true);
     setLoadError(false);
     if (isDeveloper) {
-      return onSnapshot(collection(db, 'funVideos'), snapshot => {
+      const unsubscribeVideos = onSnapshot(collection(db, 'funVideos'), snapshot => {
         setVideos(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Video))
           .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
         setLoading(false);
       }, () => { setLoading(false); setLoadError(true); });
+      const unsubscribeRemoved = onSnapshot(collection(db, 'funVideosTrash'), snapshot => {
+        setRemovedVideos(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as Video))
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      }, () => setLoadError(true));
+      return () => { unsubscribeVideos(); unsubscribeRemoved(); };
     }
     let cancelled = false;
     const load = httpsCallable<void, { videos: Video[] }>(functions, 'getFunVideos');
@@ -99,9 +107,37 @@ export function FunVideosPage() {
   };
 
   const remove = async (id: string) => {
-    if (!isDeveloper || !window.confirm('이 영상을 목록에서 내릴까요?')) return;
-    try { await deleteDoc(doc(db, 'funVideos', id)); toast.success('목록에서 내렸습니다.'); }
-    catch { toast.error('영상을 내리지 못했습니다.'); }
+    const video = videos.find(item => item.id === id);
+    if (!isDeveloper || !video || changingVideoId || !window.confirm('이 영상을 목록에서 삭제할까요? 나중에 복원할 수 있습니다.')) return;
+    setChangingVideoId(id);
+    try {
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'funVideosTrash', id), {
+        title: video.title, videoId: video.videoId, url: `https://www.youtube.com/watch?v=${video.videoId}`,
+        createdAt: video.createdAt, deletedAt: serverTimestamp(),
+      });
+      batch.delete(doc(db, 'funVideos', id));
+      await batch.commit();
+      toast.success('목록에서 삭제했습니다. 아래에서 복원할 수 있습니다.');
+    } catch { toast.error('영상을 삭제하지 못했습니다.'); }
+    finally { setChangingVideoId(null); }
+  };
+
+  const restore = async (id: string) => {
+    const video = removedVideos.find(item => item.id === id);
+    if (!isDeveloper || !video || changingVideoId) return;
+    setChangingVideoId(id);
+    try {
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'funVideos', id), {
+        title: video.title, videoId: video.videoId, url: `https://www.youtube.com/watch?v=${video.videoId}`,
+        createdAt: video.createdAt,
+      });
+      batch.delete(doc(db, 'funVideosTrash', id));
+      await batch.commit();
+      toast.success('영상을 목록에 복원했습니다.');
+    } catch { toast.error('영상을 복원하지 못했습니다.'); }
+    finally { setChangingVideoId(null); }
   };
 
   return <div className="min-h-screen bg-[#FEFBE8] px-4 pb-24 pt-8 text-[#27332e]">
@@ -121,7 +157,7 @@ export function FunVideosPage() {
         <label className="mt-5 block text-sm font-semibold" htmlFor="fun-video-url">유튜브 링크</label>
         <input id="fun-video-url" type="url" value={url} onChange={event => setUrl(event.target.value)} placeholder="https://youtube.com/shorts/..." className="mt-2 w-full rounded-xl border border-[#bccbb9] px-4 py-3 outline-offset-2" />
         {url && <p className={`mt-2 text-sm ${videoId ? 'text-[#285843]' : 'text-red-700'}`}>{videoId ? '유튜브 링크를 확인했습니다.' : '유튜브 영상 링크를 입력해주세요.'}</p>}
-        {isDuplicate && <p className="mt-2 text-sm text-red-700">이미 목록에 있는 영상입니다.</p>}
+        {isDuplicate && <p className="mt-2 text-sm text-red-700">{isRemovedDuplicate ? '삭제한 영상입니다. 아래에서 복원할 수 있습니다.' : '이미 목록에 있는 영상입니다.'}</p>}
         {videoId && <div className="mt-4 max-w-sm overflow-hidden rounded-xl border border-[#dce3d2]"><img src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`} alt="게시 전 영상 썸네일 미리보기" className="aspect-video w-full object-cover" /><a href={`https://www.youtube.com/watch?v=${videoId}`} target="_blank" rel="noopener noreferrer" className="block p-3 text-sm font-semibold underline">원본 영상 확인하기 ↗</a></div>}
         <label className="mt-5 block text-sm font-semibold" htmlFor="fun-video-title">목록에 표시할 제목</label>
         <input id="fun-video-title" value={title} maxLength={100} onChange={event => setTitle(event.target.value)} placeholder="영상 제목을 확인해 입력하세요" className="mt-2 w-full rounded-xl border border-[#bccbb9] px-4 py-3 outline-offset-2" />
@@ -139,8 +175,17 @@ export function FunVideosPage() {
               <img loading="lazy" src={`https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`} alt="" className="aspect-video w-full bg-[#dce6d1] object-cover" />
               <div className="p-5"><h3 className="min-h-14 text-lg font-bold">{video.title}</h3><span className="mt-3 inline-block rounded-xl bg-[#285843] px-4 py-2 text-sm font-bold text-white">유튜브에서 보기 ↗</span></div>
             </a>
-            {isDeveloper && <button type="button" onClick={() => remove(video.id)} className="mb-4 ml-5 text-sm text-red-700 underline">목록에서 내리기</button>}
+            {isDeveloper && <button type="button" disabled={changingVideoId === video.id} onClick={() => remove(video.id)} className="mb-4 ml-5 text-sm text-red-700 underline disabled:opacity-50">목록에서 삭제</button>}
           </article>)}</div>}
+      </section>}
+      {isDeveloper && <section className="mt-9">
+        <h2 className="mb-2 text-xl font-bold">삭제한 영상</h2>
+        <p className="mb-4 text-sm text-[#657268]">구독자에게 보이지 않습니다. 언제든 목록에 복원할 수 있습니다.</p>
+        {removedVideos.length === 0 ? <p className="rounded-2xl bg-white p-5 text-sm">삭제한 영상이 없습니다.</p> :
+          <div className="space-y-3">{removedVideos.map(video => <div key={video.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4">
+            <span className="font-semibold">{video.title}</span>
+            <button type="button" disabled={changingVideoId === video.id} onClick={() => restore(video.id)} className="rounded-xl bg-[#285843] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">복원</button>
+          </div>)}</div>}
       </section>}
       <p className="mt-8 text-sm text-[#657268]">영상은 유튜브에서 재생됩니다. 원본이 삭제되거나 공개가 제한되면 볼 수 없습니다.</p>
     </div>
