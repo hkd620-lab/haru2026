@@ -18,3 +18,17 @@ export function getAiLibrarySource(record: AiLibrarySourceRecord): string {
   const match = title.match(/^\[([^\]]+)\]/);
   return match ? match[1] : '';
 }
+
+export function getAiLibraryOriginalUrl(record: AiLibrarySourceRecord): string | null {
+  const content = typeof record.content === 'string' ? record.content : '';
+  const stored = typeof record.sourceUrl === 'string' ? record.sourceUrl : '';
+  const embedded = content.match(/https:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<>]+|youtube\.com\/(?:shorts|live)\/[^\s<>]+|youtu\.be\/[^\s<>]+)/i)?.[0];
+  for (const candidate of [stored, embedded]) {
+    if (!candidate) continue;
+    try {
+      const url = new URL(candidate);
+      if (url.protocol === 'https:' && !url.username && !url.password) return url.href;
+    } catch { /* Ignore invalid legacy links. */ }
+  }
+  return null;
+}

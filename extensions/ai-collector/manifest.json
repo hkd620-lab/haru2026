@@ -26,6 +26,10 @@
     "https://gemini.google.com/*",
     "https://claude.ai/*",
     "https://app.slack.com/*",
+    "https://www.youtube.com/*",
+    "https://youtube.com/*",
+    "https://m.youtube.com/*",
+    "https://youtu.be/*",
     "https://haru2026.com/*",
     "https://haru2026-8abb8.web.app/*",
     "https://firestore.googleapis.com/*"

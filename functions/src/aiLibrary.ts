@@ -4,7 +4,7 @@ import { AiLibraryCategoryBucket, isAiLibraryCategory, normalizeAiLibraryCategor
 
 const AI_LIBRARY_DEVELOPER_EMAIL = 'hkd620@gmail.com';
 const IMPORT_ID_PATTERN = /^[a-f0-9]{64}$/;
-const ALLOWED_SOURCES = new Set(['slack', 'chatgpt.com', 'claude.ai', 'gemini.google.com']);
+const ALLOWED_SOURCES = new Set(['slack', 'chatgpt.com', 'claude.ai', 'gemini.google.com', 'youtube']);
 const AI_LIBRARY_PAGE_SIZE = 10;
 const AI_LIBRARY_CURSOR_VERSION = 1;
 const AI_LIBRARY_FILTER_SCAN_LIMIT = 100;
@@ -226,6 +226,37 @@ export const saveAiLibraryImport = onCall({ region: 'asia-northeast3' }, async (
     });
   });
   return { recordId, duplicate };
+});
+
+function canonicalYouTubeUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > 2_000) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.port || url.username || url.password) return null;
+    const host = url.hostname.toLowerCase();
+    const id = host === 'youtu.be' ? url.pathname.slice(1)
+      : ['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(host)
+        ? url.pathname === '/watch' ? url.searchParams.get('v') : url.pathname.match(/^\/(?:shorts|live)\/([^/]+)\/?$/)?.[1]
+        : null;
+    return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? `https://www.youtube.com/watch?v=${id}` : null;
+  } catch { return null; }
+}
+
+export const attachAiLibraryYouTubeLink = onCall({ region: 'asia-northeast3' }, async (request) => {
+  const uid = requireAiLibraryDeveloper(request);
+  const recordId = request.data?.recordId;
+  const sourceUrl = canonicalYouTubeUrl(request.data?.sourceUrl);
+  if (typeof recordId !== 'string' || !/^[A-Za-z0-9_-]{1,150}$/.test(recordId) || !sourceUrl) {
+    throw new HttpsError('invalid-argument', '영상 주소나 기록 식별자가 올바르지 않습니다.');
+  }
+  const ref = admin.firestore().doc(`users/${uid}/records/${recordId}`);
+  await admin.firestore().runTransaction(async (transaction) => {
+    const snap = await transaction.get(ref);
+    if (!snap.exists || snap.data()?.type !== 'ai_log') throw new HttpsError('not-found', 'AI 학습함 기록을 찾을 수 없습니다.');
+    if (snap.data()?.sourceUrl) throw new HttpsError('failed-precondition', '이미 원본 링크가 저장된 기록입니다.');
+    transaction.update(ref, { sourceUrl, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+  });
+  return { sourceUrl };
 });
 
 export const deleteAiLibraryLogs = onCall({ region: 'asia-northeast3' }, async (request) => {

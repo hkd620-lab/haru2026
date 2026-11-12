@@ -55,6 +55,15 @@ function extractFromPage() {
     'claude.ai': ['.standard-markdown', '.font-claude-message', '[data-is-streaming]', '.whitespace-pre-wrap'],
   };
   const host = window.location.hostname;
+  if (['www.youtube.com', 'youtube.com', 'm.youtube.com', 'youtu.be'].includes(host)) {
+    const url = new URL(window.location.href);
+    const videoId = host === 'youtu.be' ? url.pathname.slice(1)
+      : url.pathname === '/watch' ? url.searchParams.get('v')
+        : url.pathname.match(/^\/(?:shorts|live)\/([^/]+)\/?$/)?.[1];
+    if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return { error: '유튜브 영상 페이지에서 다시 시도하세요.' };
+    const title = document.querySelector('meta[property="og:title"]')?.content || document.title;
+    return { data: `${title}\nhttps://www.youtube.com/watch?v=${videoId}`, source: 'youtube', sourceUrl: url.href };
+  }
   if (host === 'chatgpt.com' && /^\/dots(?:\/|$)/.test(window.location.pathname)) {
     const answers = [...document.querySelectorAll('.message-row:not(.self) .message-bubble-surface .message-text > [data-markdown-text-style="assistant-message"]')]
       .filter(el => !el.closest('.message-row').querySelector('.message-content-presentation, fieldset, [data-mcp-confirmation-chip], [data-orbit-thread-only]'));
@@ -63,7 +72,7 @@ function extractFromPage() {
     return { data: extractTextWithoutInjectedUi(last), source: 'chatgpt.com', sourceUrl: window.location.href };
   }
   const list = selectors[host];
-  if (!list) return { error: '지원되지 않는 사이트입니다.\nChatGPT / Gemini / Claude 에서 사용하세요.' };
+  if (!list) return { error: '지원되지 않는 사이트입니다.\nChatGPT / Gemini / Claude / YouTube 에서 사용하세요.' };
   for (const selector of list) {
     const elements = [...document.querySelectorAll(selector)].filter(el =>
       !el.closest('[data-message-author-role="user"], [data-user-message-bubble], .font-user-message, [data-testid="user-message"], [data-ai-save-injected]'));
@@ -223,7 +232,8 @@ if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded
   });
   document.getElementById('connectionBtn')?.addEventListener('click', () => checkPopupConnection());
   document.getElementById('extractBtn').addEventListener('click', async () => {
-    if (!await checkPopupConnection()) return;
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!/^https:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\//.test(activeTab?.url || '') && !await checkPopupConnection()) return;
     const response = await extract();
     if (!response?.data) return alert(response?.error || '저장할 내용을 찾지 못했습니다.');
     try {
