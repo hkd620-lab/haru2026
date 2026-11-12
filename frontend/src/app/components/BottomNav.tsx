@@ -1,4 +1,4 @@
-import { Home, Sparkles, Settings, Wrench, Users, CreditCard } from 'lucide-react';
+import { Home, Sparkles, Settings, Wrench, Users, CreditCard, Clapperboard } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { getOrigin } from '../services/v2Origin';
@@ -23,6 +23,7 @@ export function BottomNav() {
     { path: homePath, icon: Home, label: 'HARU' },
     { path: '/sayu', icon: Sparkles, label: 'SAYU·나의 기록' },
     { path: '/sayu-together', icon: Users, label: '공개 기록 함께읽기' },
+    { path: '/fun-videos', icon: Clapperboard, label: '재미 영상' },
     { path: '/subscription', icon: CreditCard, label: '구독' },
     { path: '/settings', icon: Settings, label: '설정' },
   ];
@@ -32,7 +33,7 @@ export function BottomNav() {
     ...(isDeveloper ? [{ path: '/admin/console', icon: Wrench, label: '개발자 콘솔' }] : []),
   ];
   const navItems = developerItems.length > 0
-    ? [...baseItems.slice(0, 4), ...developerItems, ...baseItems.slice(4)]
+    ? [...baseItems.slice(0, 5), ...developerItems, ...baseItems.slice(5)]
     : baseItems;
 
   if (loading || (!user && location.pathname === '/')) {
