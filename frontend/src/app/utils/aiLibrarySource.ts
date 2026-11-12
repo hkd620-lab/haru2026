@@ -18,3 +18,34 @@ export function getAiLibrarySource(record: AiLibrarySourceRecord): string {
   const match = title.match(/^\[([^\]]+)\]/);
   return match ? match[1] : '';
 }
+
+export function getAiLibraryOriginalUrl(record: AiLibrarySourceRecord): string | null {
+  const stored = typeof record.sourceUrl === 'string' ? record.sourceUrl : '';
+  if (stored) {
+    try {
+      const url = new URL(stored);
+      if (url.protocol === 'https:' && !url.username && !url.password) return url.href;
+    } catch { /* Ignore invalid legacy links. */ }
+  }
+  return getAiLibraryVideoUrl(record);
+}
+
+export function getAiLibraryVideoUrl(record: AiLibrarySourceRecord): string | null {
+  const content = typeof record.content === 'string' ? record.content : '';
+  const videoUrl = typeof record.videoUrl === 'string' ? record.videoUrl : '';
+  const sourceUrl = typeof record.sourceUrl === 'string' ? record.sourceUrl : '';
+  const embedded = content.match(/https:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?[^\s<>)\]]+|(?:shorts|live)\/[^\s<>)\]]+)|youtu\.be\/[^\s<>)\]]+)/i)?.[0];
+  for (const candidate of [videoUrl, sourceUrl, embedded]) {
+    if (!candidate) continue;
+    try {
+      const url = new URL(candidate);
+      const host = url.hostname.toLowerCase();
+      const id = host === 'youtu.be' ? url.pathname.slice(1)
+        : ['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(host)
+          ? url.pathname === '/watch' ? url.searchParams.get('v') : url.pathname.match(/^\/(?:shorts|live)\/([^/]+)\/?$/)?.[1]
+          : null;
+      if (url.protocol === 'https:' && id && /^[A-Za-z0-9_-]{11}$/.test(id)) return `https://www.youtube.com/watch?v=${id}`;
+    } catch { /* Ignore invalid legacy links. */ }
+  }
+  return null;
+}

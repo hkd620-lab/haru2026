@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
-import { getAiLibrarySource } from '../utils/aiLibrarySource';
+import { getAiLibrarySource, getAiLibraryOriginalUrl, getAiLibraryVideoUrl } from '../utils/aiLibrarySource';
 import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
 import { addAiLibrarySelection, AI_LIBRARY_DELETE_LIMIT } from '../utils/aiLibraryDeletion';
 import {
@@ -43,6 +43,7 @@ const SOURCE_LABELS: Record<string, string> = {
   'chatgpt.com': 'ChatGPT',
   'chatgpt.com/dots': '김비서',
   'slack': 'Slack',
+  'youtube': 'YouTube',
 };
 
 const PRIMARY_SOURCES = ['chatgpt.com', 'chatgpt.com/dots', 'claude.ai', 'gemini.google.com', 'slack'] as const;
@@ -358,6 +359,9 @@ export function AiLibraryPage() {
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bookMaterialBusy, setBookMaterialBusy] = useState<Set<string>>(new Set());
+  const [linkRecordId, setLinkRecordId] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [linkSaving, setLinkSaving] = useState(false);
   const requestGuardRef = useRef(new AiLibraryPageRequestGuard());
   const requestGenerationRef = useRef(0);
 
@@ -374,6 +378,8 @@ export function AiLibraryPage() {
     setExpandedId(null);
     setDeleteMode(false);
     setBookMaterialBusy(new Set());
+    setLinkRecordId(null);
+    setVideoUrl('');
     setLoading(true);
     setLoadingMore(false);
 
@@ -569,6 +575,26 @@ export function AiLibraryPage() {
     }
   };
 
+  const handleSaveVideoLink = async (recordId: string) => {
+    if (linkSaving) return;
+    const generation = requestGenerationRef.current;
+    setLinkSaving(true);
+    try {
+      const callable = httpsCallable<{ recordId: string; sourceUrl: string }, { videoUrl: string }>(
+        getFunctions(undefined, 'asia-northeast3'), 'attachAiLibraryYouTubeLink',
+      );
+      const result = await callable({ recordId, sourceUrl: videoUrl.trim() });
+      if (!requestGuardRef.current.isCurrent(generation)) return;
+      setLogs((current) => current.map((log) => log.id === recordId ? { ...log, videoUrl: result.data.videoUrl } : log));
+      setLinkRecordId(null);
+      setVideoUrl('');
+    } catch (error) {
+      if (requestGuardRef.current.isCurrent(generation)) alert(error instanceof Error ? error.message : '영상 링크 저장에 실패했습니다.');
+    } finally {
+      setLinkSaving(false);
+    }
+  };
+
   const handleConvertToBookMaterial = async (log: HaruRecord) => {
     const content = (log.content || '').trim();
     if (content.length < 10) {
@@ -760,6 +786,8 @@ export function AiLibraryPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map((log) => {
+            const originalUrl = getAiLibraryOriginalUrl(log);
+            const savedVideoUrl = getAiLibraryVideoUrl(log);
             const material = getBookMaterial(log);
             const isExpanded = expandedId === log.id;
             const isConverting = bookMaterialBusy.has(log.id);
@@ -893,6 +921,37 @@ export function AiLibraryPage() {
                     overflowWrap: 'anywhere' }}>{highlightKeyword(paragraph, trimmedKeyword)}</p>
                 ))}
               </div>
+              {originalUrl && (
+                <a href={originalUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                  style={{ display: 'inline-block', marginTop: 8, color: '#1A3C6E', fontSize: 13 }}>
+                  원본 링크 열기
+                </a>
+              )}
+              {savedVideoUrl && savedVideoUrl !== originalUrl && (
+                <a href={savedVideoUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                  style={{ display: 'inline-block', margin: '8px 0 0 12px', color: '#1A3C6E', fontSize: 13 }}>
+                  영상 링크 열기
+                </a>
+              )}
+              {!savedVideoUrl && !deleteMode && (
+                <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 8 }}>
+                  <button type="button" onClick={() => {
+                    setLinkRecordId(log.id);
+                    setVideoUrl('');
+                    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(displayTitle)}`, '_blank', 'noopener,noreferrer');
+                  }}>제목으로 유튜브 찾기</button>
+                  {linkRecordId === log.id && (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                      <input type="url" aria-label="확인한 유튜브 영상 주소" placeholder="확인한 영상 주소 붙여넣기"
+                        value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} onClick={(e) => e.stopPropagation()}
+                        style={{ flex: '1 1 210px', minWidth: 0, padding: '7px 8px' }} />
+                      <button type="button" disabled={!videoUrl.trim() || linkSaving} onClick={() => handleSaveVideoLink(log.id)}>
+                        {linkSaving ? '저장 중…' : '확인한 링크 저장'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: '8px', flexWrap: 'wrap' }}>
                 <button
                   onClick={(e) => {

@@ -55,6 +55,16 @@ function extractFromPage() {
     'claude.ai': ['.standard-markdown', '.font-claude-message', '[data-is-streaming]', '.whitespace-pre-wrap'],
   };
   const host = window.location.hostname;
+  if (['www.youtube.com', 'youtube.com', 'm.youtube.com', 'youtu.be'].includes(host)) {
+    const url = new URL(window.location.href);
+    const videoId = host === 'youtu.be' ? url.pathname.slice(1)
+      : url.pathname === '/watch' ? url.searchParams.get('v')
+        : url.pathname.match(/^\/(?:shorts|live)\/([^/]+)\/?$/)?.[1];
+    if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return { error: '유튜브 영상 페이지에서 다시 시도하세요.' };
+    const title = document.title.replace(/\s+- YouTube$/, '').trim()
+      || document.querySelector('meta[property="og:title"]')?.content || '유튜브 영상';
+    return { data: `${title}\nhttps://www.youtube.com/watch?v=${videoId}`, source: 'youtube', sourceUrl: url.href };
+  }
   if (host === 'chatgpt.com' && /^\/dots(?:\/|$)/.test(window.location.pathname)) {
     const answers = [...document.querySelectorAll('.message-row:not(.self) .message-bubble-surface .message-text > [data-markdown-text-style="assistant-message"]')]
       .filter(el => !el.closest('.message-row').querySelector('.message-content-presentation, fieldset, [data-mcp-confirmation-chip], [data-orbit-thread-only]'));
@@ -63,7 +73,7 @@ function extractFromPage() {
     return { data: extractTextWithoutInjectedUi(last), source: 'chatgpt.com', sourceUrl: window.location.href };
   }
   const list = selectors[host];
-  if (!list) return { error: '지원되지 않는 사이트입니다.\nChatGPT / Gemini / Claude 에서 사용하세요.' };
+  if (!list) return { error: '지원되지 않는 사이트입니다.\nChatGPT / Gemini / Claude / YouTube 에서 사용하세요.' };
   for (const selector of list) {
     const elements = [...document.querySelectorAll(selector)].filter(el =>
       !el.closest('[data-message-author-role="user"], [data-user-message-bubble], .font-user-message, [data-testid="user-message"], [data-ai-save-injected]'));
@@ -81,11 +91,12 @@ async function checkPopupConnection() {
   let diagnosis = '';
   try {
     const [tab] = await chrome.tabs.query({active:true, currentWindow:true});
+    const isYouTube = /^https:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\//.test(tab?.url || '');
     const extensionId = chrome.runtime.id;
     const result = await Promise.race([
       Promise.all([
         chrome.runtime.sendMessage({action:'collectorHealth'}),
-        chrome.tabs.sendMessage(tab.id, {action:'collectorPageHealth'}),
+        isYouTube ? Promise.resolve(null) : chrome.tabs.sendMessage(tab.id, {action:'collectorPageHealth'}),
       ]),
       new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('health timeout')), 6000); }),
     ]);
@@ -94,7 +105,7 @@ async function checkPopupConnection() {
       diagnosis = '확장 백그라운드 버전/응답이 맞지 않습니다. 지식수집기 확장을 새로고침한 뒤 해당 AI 대화 탭을 갱신하세요.';
       throw new Error('background health mismatch');
     }
-    if (!page?.ok || page.build !== build || page.extensionId !== extensionId || page.health !== 'connected') {
+    if (!isYouTube && (!page?.ok || page.build !== build || page.extensionId !== extensionId || page.health !== 'connected')) {
       diagnosis = '대화 탭의 수집기 버전/연결이 맞지 않습니다. 미전송 입력을 보관한 뒤 해당 대화 탭만 새로고침하세요.';
       throw new Error('page health mismatch');
     }
@@ -184,7 +195,7 @@ const extract = async () => {
     const results = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: extractFromPage });
     return results[0].result;
   } catch {
-    alert('페이지에 접근할 수 없습니다.\nChatGPT / Gemini / Claude / Slack 탭에서 사용하세요.');
+    alert('페이지에 접근할 수 없습니다.\nChatGPT / Gemini / Claude / Slack / YouTube 탭에서 사용하세요.');
     return null;
   }
 };

@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { getAiLibrarySource } from '../src/app/utils/aiLibrarySource.ts';
+import { getAiLibrarySource, getAiLibraryOriginalUrl, getAiLibraryVideoUrl } from '../src/app/utils/aiLibrarySource.ts';
+
+test('기존 주소와 본문 유튜브 주소를 표시하고 제목만으로는 링크를 만들지 않는다', () => {
+  assert.equal(getAiLibraryOriginalUrl({ sourceUrl: 'https://youtu.be/abcdefghijk' }), 'https://youtu.be/abcdefghijk');
+  assert.equal(getAiLibraryOriginalUrl({ content: '요약\nhttps://www.youtube.com/watch?v=abcdefghijk' }), 'https://www.youtube.com/watch?v=abcdefghijk');
+  assert.equal(getAiLibraryOriginalUrl({ content: '[영상](https://www.youtube.com/watch?v=abcdefghijk)' }), 'https://www.youtube.com/watch?v=abcdefghijk');
+  assert.equal(getAiLibraryOriginalUrl({ content: '[영상](https://youtu.be/abcdefghijk)' }), 'https://www.youtube.com/watch?v=abcdefghijk');
+  assert.equal(getAiLibraryOriginalUrl({ content: '영상 제목만 저장됨' }), null);
+  const aiNote = { source: 'chatgpt.com', sourceUrl: 'https://chatgpt.com/c/example', videoUrl: 'https://youtu.be/abcdefghijk' };
+  assert.equal(getAiLibraryOriginalUrl(aiNote), 'https://chatgpt.com/c/example');
+  assert.equal(getAiLibraryVideoUrl(aiNote), 'https://www.youtube.com/watch?v=abcdefghijk');
+});
 
 test('김비서 폴더는 기존 sourceUrl로 분류하며 원본 메타데이터를 바꾸지 않는다', () => {
   const record = Object.freeze({source: 'chatgpt.com', sourceUrl: 'https://chatgpt.com/dots/home', title: 'original'});

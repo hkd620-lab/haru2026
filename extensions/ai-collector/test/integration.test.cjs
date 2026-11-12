@@ -71,3 +71,23 @@ for (const sourceName of ['chatgpt.com', 'claude.ai', 'gemini.google.com']) {
     assert.equal([...harness.stored.values()][0].source, sourceName);
   });
 }
+
+for (const pageUrl of ['https://www.youtube.com/watch?v=abcdefghijk&list=playlist', 'https://m.youtube.com/shorts/abcdefghijk', 'https://youtu.be/abcdefghijk?t=20']) {
+  test(`유튜브 제목과 링크를 전달한다: ${pageUrl}`, async () => {
+    const harness = createHarness([200]);
+    harness.context.window = { location: new URL(pageUrl) };
+    harness.context.document = { title: '영상 제목 - YouTube', querySelector: () => ({ content: '영상 제목' }) };
+    const extracted = vm.runInContext('extractFromPage()', harness.context);
+    assert.equal(extracted.source, 'youtube');
+    assert.equal(extracted.data, '영상 제목\nhttps://www.youtube.com/watch?v=abcdefghijk');
+    await vm.runInContext(`saveToDestinations(${JSON.stringify(extracted.data)}, 'youtube', 'general', ${JSON.stringify(extracted.sourceUrl)})`, harness.context);
+    assert.equal([...harness.stored.values()][0].sourceUrl, pageUrl);
+  });
+}
+
+test('유튜브 내부 이동 뒤 현재 페이지 제목을 사용한다', () => {
+  const harness = createHarness();
+  harness.context.window = { location: new URL('https://www.youtube.com/watch?v=abcdefghijk') };
+  harness.context.document = { title: '현재 영상 - YouTube', querySelector: () => ({ content: '이전 영상' }) };
+  assert.equal(vm.runInContext('extractFromPage()', harness.context).data, '현재 영상\nhttps://www.youtube.com/watch?v=abcdefghijk');
+});

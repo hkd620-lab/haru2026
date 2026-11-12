@@ -8,7 +8,7 @@ export const AI_IMPORT_RESULT_EVENT = 'haru:ai-import-result';
 export type AiImportPayload = {
   importId: string;
   content: string;
-  source: 'slack' | 'chatgpt.com' | 'claude.ai' | 'gemini.google.com';
+  source: 'slack' | 'chatgpt.com' | 'claude.ai' | 'gemini.google.com' | 'youtube';
   capturedAt: string;
   sourceUrl?: string;
   category?: AiLibraryCategory;
@@ -20,6 +20,7 @@ const ALLOWED_SOURCES = new Set<AiImportPayload['source']>([
   'chatgpt.com',
   'claude.ai',
   'gemini.google.com',
+  'youtube',
 ]);
 
 export function parseAiImportPayload(value: unknown, expectedImportId: string): AiImportPayload {
