@@ -788,6 +788,8 @@ export function AiLibraryPage() {
           {filtered.map((log) => {
             const originalUrl = getAiLibraryOriginalUrl(log);
             const savedVideoUrl = getAiLibraryVideoUrl(log);
+            const originalIsVideo = !!(originalUrl && savedVideoUrl
+              && getAiLibraryVideoUrl({ sourceUrl: originalUrl }) === savedVideoUrl);
             const material = getBookMaterial(log);
             const isExpanded = expandedId === log.id;
             const isConverting = bookMaterialBusy.has(log.id);
@@ -921,15 +923,15 @@ export function AiLibraryPage() {
                     overflowWrap: 'anywhere' }}>{highlightKeyword(paragraph, trimmedKeyword)}</p>
                 ))}
               </div>
-              {originalUrl && (
+              {originalUrl && !originalIsVideo && (
                 <a href={originalUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
                   style={{ display: 'inline-block', marginTop: 8, color: '#1A3C6E', fontSize: 13 }}>
                   원본 링크 열기
                 </a>
               )}
-              {savedVideoUrl && savedVideoUrl !== originalUrl && (
+              {savedVideoUrl && (
                 <a href={savedVideoUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                  style={{ display: 'inline-block', margin: '8px 0 0 12px', color: '#1A3C6E', fontSize: 13 }}>
+                  style={{ display: 'inline-block', margin: originalIsVideo ? '8px 0 0' : '8px 0 0 12px', color: '#B91C1C', fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}>
                   영상 링크 열기
                 </a>
               )}
