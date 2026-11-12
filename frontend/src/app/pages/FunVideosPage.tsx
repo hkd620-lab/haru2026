@@ -135,7 +135,7 @@ export function FunVideosPage() {
         <h2 className="mb-4 text-2xl font-bold">재미 영상 모음</h2>
         {loading ? <p>영상을 불러오는 중입니다.</p> : loadError ? <div role="alert" className="rounded-2xl bg-white p-6">영상 목록을 불러오지 못했습니다. 잠시 후 다시 열어주세요.</div> : videos.length === 0 ? <div className="rounded-2xl border border-dashed border-[#bac9ae] bg-[#f7faed] p-8 text-center">아직 게시된 영상이 없습니다.</div> :
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{videos.map(video => <article key={video.id} className="overflow-hidden rounded-2xl border border-[#e5e8da] bg-white">
-            <a href={video.url} target="_blank" rel="noopener noreferrer" className="block focus-visible:outline focus-visible:outline-4 focus-visible:outline-[#e8ae45]">
+            <a href={`https://www.youtube.com/watch?v=${video.videoId}`} target="_blank" rel="noopener noreferrer" className="block focus-visible:outline focus-visible:outline-4 focus-visible:outline-[#e8ae45]">
               <img loading="lazy" src={`https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`} alt="" className="aspect-video w-full bg-[#dce6d1] object-cover" />
               <div className="p-5"><h3 className="min-h-14 text-lg font-bold">{video.title}</h3><span className="mt-3 inline-block rounded-xl bg-[#285843] px-4 py-2 text-sm font-bold text-white">유튜브에서 보기 ↗</span></div>
             </a>
