@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
-import { getAiLibrarySource, getAiLibraryOriginalUrl, getAiLibraryVideoUrl } from '../utils/aiLibrarySource';
+import { getAiLibrarySource, getAiLibraryOriginalUrl, getAiLibraryVideoUrl, getAiLibraryVideoDisplayUrl } from '../utils/aiLibrarySource';
 import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
 import { addAiLibrarySelection, AI_LIBRARY_DELETE_LIMIT } from '../utils/aiLibraryDeletion';
 import {
@@ -788,6 +788,8 @@ export function AiLibraryPage() {
           {filtered.map((log) => {
             const originalUrl = getAiLibraryOriginalUrl(log);
             const savedVideoUrl = getAiLibraryVideoUrl(log);
+            const videoDisplayUrl = getAiLibraryVideoDisplayUrl(log);
+            const originalIsVideo = !!(originalUrl && videoDisplayUrl === originalUrl);
             const material = getBookMaterial(log);
             const isExpanded = expandedId === log.id;
             const isConverting = bookMaterialBusy.has(log.id);
@@ -921,15 +923,15 @@ export function AiLibraryPage() {
                     overflowWrap: 'anywhere' }}>{highlightKeyword(paragraph, trimmedKeyword)}</p>
                 ))}
               </div>
-              {originalUrl && (
+              {originalUrl && !originalIsVideo && (
                 <a href={originalUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
                   style={{ display: 'inline-block', marginTop: 8, color: '#1A3C6E', fontSize: 13 }}>
                   원본 링크 열기
                 </a>
               )}
-              {savedVideoUrl && savedVideoUrl !== originalUrl && (
-                <a href={savedVideoUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                  style={{ display: 'inline-block', margin: '8px 0 0 12px', color: '#1A3C6E', fontSize: 13 }}>
+              {videoDisplayUrl && (
+                <a href={videoDisplayUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                  style={{ display: 'inline-block', margin: originalIsVideo ? '8px 0 0' : '8px 0 0 12px', color: '#B91C1C', fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}>
                   영상 링크 열기
                 </a>
               )}

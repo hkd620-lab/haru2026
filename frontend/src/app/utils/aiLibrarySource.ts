@@ -49,3 +49,12 @@ export function getAiLibraryVideoUrl(record: AiLibrarySourceRecord): string | nu
   }
   return null;
 }
+
+export function getAiLibraryVideoDisplayUrl(record: AiLibrarySourceRecord): string | null {
+  const videoUrl = getAiLibraryVideoUrl(record);
+  if (!videoUrl) return null;
+  const originalUrl = getAiLibraryOriginalUrl(record);
+  return originalUrl && getAiLibraryVideoUrl({ sourceUrl: originalUrl }) === videoUrl
+    ? originalUrl
+    : videoUrl;
+}
