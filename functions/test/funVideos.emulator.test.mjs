@@ -14,7 +14,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const frontendRequire = createRequire(path.resolve(here, '../../frontend/package.json'));
 const functionsRequire = createRequire(path.resolve(here, '../package.json'));
 const { initializeApp, deleteApp } = frontendRequire('firebase/app');
-const { connectFirestoreEmulator, doc, getDocFromServer, getFirestore, setDoc } = frontendRequire('firebase/firestore');
+const { connectFirestoreEmulator, doc, getDocFromServer, getFirestore, setDoc, writeBatch, serverTimestamp } = frontendRequire('firebase/firestore');
 const { initializeApp: initializeAdminApp, deleteApp: deleteAdminApp, getApps } = functionsRequire('firebase-admin/app');
 const { getFirestore: getAdminFirestore } = functionsRequire('firebase-admin/firestore');
 const { getFunVideos } = functionsRequire('./lib/funVideos.js');
@@ -89,4 +89,32 @@ test('getFunVideoMetadata is admin-only and validates video IDs before any netwo
     getFunVideoMetadata.run({ auth: { uid: ADMIN_UID }, data: { videoId: 'invalid-id' } }),
     (error) => error?.code === 'invalid-argument',
   );
+});
+
+test('admin can remove and restore a video while subscribers cannot access the trash', async () => {
+  const recoverId = 'dQw4w9WgXcQ';
+  const activeRef = doc(adminClient, `funVideos/${recoverId}`);
+  const trashRef = doc(adminClient, `funVideosTrash/${recoverId}`);
+  const video = { title: '복원 시험 영상', videoId: recoverId,
+    url: `https://www.youtube.com/watch?v=${recoverId}`, createdAt: new Date() };
+  await setDoc(activeRef, video);
+  const original = (await getDocFromServer(activeRef)).data();
+  const removeBatch = writeBatch(adminClient);
+  removeBatch.set(trashRef, { ...original, deletedAt: serverTimestamp() });
+  removeBatch.delete(activeRef);
+  await removeBatch.commit();
+  assert.equal((await getDocFromServer(activeRef)).exists(), false);
+  assert.equal((await getDocFromServer(trashRef)).data().title, video.title);
+  for (const db of [paidClient, freeClient, anonymousClient]) {
+    await denied(getDocFromServer(doc(db, `funVideosTrash/${recoverId}`)));
+    await denied(setDoc(doc(db, `funVideosTrash/${recoverId}`), { ...video, deletedAt: new Date() }));
+  }
+  assert.equal((await getFunVideos.run({ auth: { uid: ADMIN_UID } })).videos.some(item => item.videoId === recoverId), false);
+  const restoreBatch = writeBatch(adminClient);
+  restoreBatch.set(activeRef, original);
+  restoreBatch.delete(trashRef);
+  await restoreBatch.commit();
+  assert.equal((await getDocFromServer(trashRef)).exists(), false);
+  assert.equal((await getDocFromServer(activeRef)).data().title, video.title);
+  assert.equal((await getFunVideos.run({ auth: { uid: ADMIN_UID } })).videos.some(item => item.videoId === recoverId), true);
 });
