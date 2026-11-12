@@ -84,3 +84,10 @@ for (const pageUrl of ['https://www.youtube.com/watch?v=abcdefghijk&list=playlis
     assert.equal([...harness.stored.values()][0].sourceUrl, pageUrl);
   });
 }
+
+test('유튜브 내부 이동 뒤 현재 페이지 제목을 사용한다', () => {
+  const harness = createHarness();
+  harness.context.window = { location: new URL('https://www.youtube.com/watch?v=abcdefghijk') };
+  harness.context.document = { title: '현재 영상 - YouTube', querySelector: () => ({ content: '이전 영상' }) };
+  assert.equal(vm.runInContext('extractFromPage()', harness.context).data, '현재 영상\nhttps://www.youtube.com/watch?v=abcdefghijk');
+});

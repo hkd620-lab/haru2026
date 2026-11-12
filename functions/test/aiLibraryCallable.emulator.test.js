@@ -80,12 +80,13 @@ test('검증된 개발자 토큰은 본인 UID 경로에서 저장·조회·삭�
 test('확인한 유튜브 링크만 기존 AI 기록에 저장하고 재덮어쓰기를 막는다', async () => {
   const auth = { uid: 'video-link-developer', token: { email: 'hkd620@gmail.com', email_verified: true } };
   const ref = admin.firestore().doc(`users/${auth.uid}/records/video-note`);
-  await ref.set({ type: 'ai_log', content: '정리된 영상 내용', title: '영상 제목' });
+  await ref.set({ type: 'ai_log', source: 'chatgpt.com', sourceUrl: 'https://chatgpt.com/c/example', content: '정리된 영상 내용', title: '영상 제목' });
   await expectCode(attachVideoLink(callableRequest({ recordId: 'video-note', sourceUrl: 'https://youtube.com.evil.test/watch?v=abcdefghijk' }, auth)), 'invalid-argument');
   const result = await attachVideoLink(callableRequest({ recordId: 'video-note', sourceUrl: 'https://youtu.be/abcdefghijk?t=20' }, auth));
-  assert.equal(result.sourceUrl, 'https://www.youtube.com/watch?v=abcdefghijk');
+  assert.equal(result.videoUrl, 'https://www.youtube.com/watch?v=abcdefghijk');
   const saved = (await ref.get()).data();
-  assert.equal(saved.sourceUrl, result.sourceUrl);
+  assert.equal(saved.videoUrl, result.videoUrl);
+  assert.equal(saved.sourceUrl, 'https://chatgpt.com/c/example');
   assert.equal(saved.content, '정리된 영상 내용');
   await expectCode(attachVideoLink(callableRequest({ recordId: 'video-note', sourceUrl: 'https://youtu.be/12345678901' }, auth)), 'failed-precondition');
 });

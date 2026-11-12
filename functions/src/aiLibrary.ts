@@ -253,10 +253,10 @@ export const attachAiLibraryYouTubeLink = onCall({ region: 'asia-northeast3' }, 
   await admin.firestore().runTransaction(async (transaction) => {
     const snap = await transaction.get(ref);
     if (!snap.exists || snap.data()?.type !== 'ai_log') throw new HttpsError('not-found', 'AI 학습함 기록을 찾을 수 없습니다.');
-    if (snap.data()?.sourceUrl) throw new HttpsError('failed-precondition', '이미 원본 링크가 저장된 기록입니다.');
-    transaction.update(ref, { sourceUrl, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    if (snap.data()?.videoUrl) throw new HttpsError('failed-precondition', '이미 영상 링크가 저장된 기록입니다.');
+    transaction.update(ref, { videoUrl: sourceUrl, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
   });
-  return { sourceUrl };
+  return { videoUrl: sourceUrl };
 });
 
 export const deleteAiLibraryLogs = onCall({ region: 'asia-northeast3' }, async (request) => {

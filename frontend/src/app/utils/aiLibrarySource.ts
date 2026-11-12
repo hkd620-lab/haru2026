@@ -20,7 +20,6 @@ export function getAiLibrarySource(record: AiLibrarySourceRecord): string {
 }
 
 export function getAiLibraryOriginalUrl(record: AiLibrarySourceRecord): string | null {
-  const content = typeof record.content === 'string' ? record.content : '';
   const stored = typeof record.sourceUrl === 'string' ? record.sourceUrl : '';
   if (stored) {
     try {
@@ -28,10 +27,18 @@ export function getAiLibraryOriginalUrl(record: AiLibrarySourceRecord): string |
       if (url.protocol === 'https:' && !url.username && !url.password) return url.href;
     } catch { /* Ignore invalid legacy links. */ }
   }
+  return getAiLibraryVideoUrl(record);
+}
+
+export function getAiLibraryVideoUrl(record: AiLibrarySourceRecord): string | null {
+  const content = typeof record.content === 'string' ? record.content : '';
+  const videoUrl = typeof record.videoUrl === 'string' ? record.videoUrl : '';
+  const sourceUrl = typeof record.sourceUrl === 'string' ? record.sourceUrl : '';
   const embedded = content.match(/https:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?[^\s<>)\]]+|(?:shorts|live)\/[^\s<>)\]]+)|youtu\.be\/[^\s<>)\]]+)/i)?.[0];
-  if (embedded) {
+  for (const candidate of [videoUrl, sourceUrl, embedded]) {
+    if (!candidate) continue;
     try {
-      const url = new URL(embedded);
+      const url = new URL(candidate);
       const host = url.hostname.toLowerCase();
       const id = host === 'youtu.be' ? url.pathname.slice(1)
         : ['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(host)

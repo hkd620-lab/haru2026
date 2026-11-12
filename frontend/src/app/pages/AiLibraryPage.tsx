@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firestoreService, HaruRecord } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
-import { getAiLibrarySource, getAiLibraryOriginalUrl } from '../utils/aiLibrarySource';
+import { getAiLibrarySource, getAiLibraryOriginalUrl, getAiLibraryVideoUrl } from '../utils/aiLibrarySource';
 import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
 import { addAiLibrarySelection, AI_LIBRARY_DELETE_LIMIT } from '../utils/aiLibraryDeletion';
 import {
@@ -580,12 +580,12 @@ export function AiLibraryPage() {
     const generation = requestGenerationRef.current;
     setLinkSaving(true);
     try {
-      const callable = httpsCallable<{ recordId: string; sourceUrl: string }, { sourceUrl: string }>(
+      const callable = httpsCallable<{ recordId: string; sourceUrl: string }, { videoUrl: string }>(
         getFunctions(undefined, 'asia-northeast3'), 'attachAiLibraryYouTubeLink',
       );
       const result = await callable({ recordId, sourceUrl: videoUrl.trim() });
       if (!requestGuardRef.current.isCurrent(generation)) return;
-      setLogs((current) => current.map((log) => log.id === recordId ? { ...log, sourceUrl: result.data.sourceUrl } : log));
+      setLogs((current) => current.map((log) => log.id === recordId ? { ...log, videoUrl: result.data.videoUrl } : log));
       setLinkRecordId(null);
       setVideoUrl('');
     } catch (error) {
@@ -787,6 +787,7 @@ export function AiLibraryPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map((log) => {
             const originalUrl = getAiLibraryOriginalUrl(log);
+            const savedVideoUrl = getAiLibraryVideoUrl(log);
             const material = getBookMaterial(log);
             const isExpanded = expandedId === log.id;
             const isConverting = bookMaterialBusy.has(log.id);
@@ -926,7 +927,13 @@ export function AiLibraryPage() {
                   원본 링크 열기
                 </a>
               )}
-              {!originalUrl && !deleteMode && (
+              {savedVideoUrl && savedVideoUrl !== originalUrl && (
+                <a href={savedVideoUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                  style={{ display: 'inline-block', margin: '8px 0 0 12px', color: '#1A3C6E', fontSize: 13 }}>
+                  영상 링크 열기
+                </a>
+              )}
+              {!savedVideoUrl && !deleteMode && (
                 <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 8 }}>
                   <button type="button" onClick={() => {
                     setLinkRecordId(log.id);
