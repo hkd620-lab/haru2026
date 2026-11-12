@@ -20,6 +20,8 @@ import { aiSecretsFor, callAi } from './ai/aiGateway';
 import { buildFormatPrefixMap, formatPrefixesOf } from './formats/formatRegistry';
 import { getAiRoute } from './ai/aiModels';
 export { chatWithReadingContext } from './readingAi';
+export { getFunVideoMetadata } from './funVideoMetadata';
+export { getFunVideos } from './funVideos';
 import {
   cancelSubscriptionForUid,
   getSafePortOneBillingKeyRevocationError,

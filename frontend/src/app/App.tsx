@@ -38,6 +38,7 @@ import { BookStudio } from './pages/BookStudio';
 import { BookCreate } from './pages/BookCreate';
 import { BookReader } from './pages/BookReader';
 import { NewsPage } from './pages/NewsPage';
+import { FunVideosPage } from './pages/FunVideosPage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { AdminChecklistPage } from './pages/AdminChecklistPage';
 import { AdminHaruLawReviewPage } from './pages/AdminHaruLawReviewPage';
@@ -256,6 +257,7 @@ function AppChrome() {
           <Route path="/book-create" element={<BookCreate />} />
           <Route path="/book-reader/:bookId" element={<BookReader />} />
           <Route path="/news" element={<NewsPage />} />
+          <Route path="/fun-videos" element={<FunVideosPage />} />
           <Route path="/novel-studio" element={<NovelStudio />} />
           <Route path="/novel-synopsis" element={<NovelSynopsisPage />} />
           <Route path="/novel-story" element={<NovelStoryPage />} />
