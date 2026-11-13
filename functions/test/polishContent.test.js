@@ -106,12 +106,15 @@ test('강은 문단만 나누는 교정과 구분하고, 형식별 예시와 수
     const strong = fixture(); await strong.request({ mode: 'BASIC', format, strength: 'STRONG' });
     const prompt = strong.calls[0].systemInstruction;
     assert.match(prompt, /문단만 나누는 것은 강 다듬기가 아닙니다/);
+    assert.match(prompt, /여러 사실을 나열하면 이를 한 문장에 압축하지 말고/);
+    assert.match(prompt, /서로 다른 사실이 둘 이상 있으면 한 문장으로 압축하거나 누락하지 않습니다/);
     assert.match(prompt, expectedExample); assert.match(prompt, /예시 내용은 실제 결과에 섞지 않습니다/);
     assert.match(prompt, /정확한 수치에 '정도'나 '약'을 새로 붙이거나/);
     assert.match(prompt, /'안 된다'를 '어렵다'로 완화하거나/);
     assert.doesNotMatch(prompt, /원문이 짧으면 결과도 짧게 둡니다/);
     const weak = fixture(); await weak.request({ mode: 'BASIC', format, strength: 'WEAK' });
     assert.doesNotMatch(weak.calls[0].systemInstruction, /강 다듬기의 범위 예시/);
+    assert.doesNotMatch(weak.calls[0].systemInstruction, /서로 다른 사실이 둘 이상 있으면 한 문장으로 압축하거나 누락하지 않습니다/);
     assert.match(weak.calls[0].systemInstruction, /원문이 짧으면 결과도 짧게 둡니다/);
   }
 });
