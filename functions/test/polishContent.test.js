@@ -80,11 +80,13 @@ test('약·강 선택은 모든 일반 기록에서 내용 보존 지시와 함�
         if (strength === 'STRONG' && ['diary', 'essay', 'travel'].includes(format)) {
           assert.match(prompt, /원문에 없는 상황·분위기·감각·감정은 추정하여 창작적으로 묘사/);
           assert.match(prompt, /원문의 시간·장소·인물·사건 결과는 그대로 지킵니다/);
+          assert.match(prompt, /기억에 남았다/);
           assert.doesNotMatch(prompt, /분량을 맞추기 위해 창작하지 않습니다/);
         } else {
           assert.match(prompt, /감정의 정도를 그대로/);
           assert.match(prompt, /근거 없는 부분은 제거/);
           assert.doesNotMatch(prompt, /원문에 없는 상황·분위기·감각·감정은 추정하여 창작적으로 묘사/);
+          assert.doesNotMatch(prompt, /그날의 기억에 남았다/);
         }
         assert.match(prompt, strength === 'STRONG' ? /충분한 완결문과 문단으로 펼쳐/ : /문장 순서·연결·어휘·호흡/);
         assert.doesNotMatch(prompt, /문단 분리 금지|어색한 표현만 교정/);
