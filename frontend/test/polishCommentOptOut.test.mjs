@@ -71,7 +71,14 @@ for (const strength of ['WEAK', 'STRONG']) {
     assert.equal(request.includeAiComment, false);
     assert.match(request.text, /\[원문 시작\]\n직접 쓴 원문\n\[원문 끝\]/);
     assert.doesNotMatch(request.text, /어색한 표현만 수정/);
-    assert.match(request.text, /선택한 다듬기 정도에 맞춰 문장과 흐름/);
+    if (strength === 'STRONG') {
+      assert.match(request.text, /상황·분위기·감정을 문맥에 맞게 추정/);
+      assert.match(request.text, /원문의 사실·수치·부정·미정 표현이 그대로인지 확인/);
+      assert.doesNotMatch(request.text, /원문에 없는 사실, 감정, 배경, 원인, 결과를 절대 추가하지/);
+    } else {
+      assert.match(request.text, /선택한 다듬기 정도에 맞춰 문장과 흐름/);
+      assert.doesNotMatch(request.text, /상황·분위기·감정을 문맥에 맞게 추정/);
+    }
     assert.equal(f.state.strength, strength); assert.equal(f.state.showPolish, true);
     await f.call('handleSaveSayu')();
     assert.equal(f.state.saves[0].diary_sayu, '합성 본문');
