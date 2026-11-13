@@ -180,6 +180,28 @@
           font-size: 15px;
         }
       }
+
+      @media (orientation: landscape) and (max-height: 600px) {
+        body {
+          padding: 12px 14px;
+        }
+
+        .card-page {
+          justify-items: center;
+          gap: 8px;
+        }
+
+        /* Reserve space for page padding, the gap, and the side buttons. */
+        .card-frame {
+          width: min(100%, calc((100vh - 68px) * 1028 / 548));
+          width: min(100%, calc((100dvh - 68px) * 1028 / 548));
+        }
+
+        .card-frame[data-side="back"] {
+          width: min(100%, calc((100vh - 68px) * 1542 / 1005));
+          width: min(100%, calc((100dvh - 68px) * 1542 / 1005));
+        }
+      }
     </style>
   </head>
   <body>
