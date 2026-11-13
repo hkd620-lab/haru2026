@@ -25,7 +25,7 @@ export function PolishStrengthSelect({ value, onChange, disabled = false }: {
           </label>
         ))}
       </div>
-      <p style={{ fontSize: 12, lineHeight: 1.5, color: '#6B7280', margin: '8px 0 0' }}>둘 다 원문의 사실과 감정을 지키며, 없는 내용을 만들거나 덧붙이지 않아요.</p>
+      <p style={{ fontSize: 12, lineHeight: 1.5, color: '#6B7280', margin: '8px 0 0' }}>원문의 사실은 지킵니다. 강은 일기·에세이·여행기록에서 상황과 감정을 추정해 묘사할 수 있어요. 저장 전 내용을 확인해 주세요. 보고·관찰 기록은 사실을 중심으로 다듬습니다.</p>
     </fieldset>
   );
 }
