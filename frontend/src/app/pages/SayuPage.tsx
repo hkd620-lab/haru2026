@@ -869,6 +869,7 @@ export function SayuPage() {
     isOpen: boolean;
     content: string;
     originalData?: Record<string, string>;
+    isFinalReading?: boolean;
     format?: string;
     formatKey?: string;
     firestoreId?: string;
@@ -2489,6 +2490,7 @@ export function SayuPage() {
       isOpen: true,
       content: sayuContent,
       originalData,
+      isFinalReading: getResultChatSourceKey(formatKey, record) === 'reading_final_sayu',
       format: formatLabel,
       formatKey,
       firestoreId: record.id,
@@ -5414,6 +5416,7 @@ export function SayuPage() {
         onClose={(deleted?: boolean) => handleModalClose(deleted)}
         content={sayuModalState.content}
         originalData={sayuModalState.originalData}
+        isFinalReading={sayuModalState.isFinalReading}
         format={sayuModalState.format}
         dateLabel={sayuModalState.dateLabel}
         currentRating={sayuModalState.currentRating}

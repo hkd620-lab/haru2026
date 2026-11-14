@@ -21,6 +21,7 @@ import { exportRecordsToEpub } from '../services/epubExportService';
 import { getEpubReaderHint } from '../utils/epubReaderGuide';
 import GrapeLoadingMini from './GrapeLoadingMini';
 import { PolishStrengthSelect, type PolishStrength } from './PolishStrengthSelect';
+import { getSayuEditPolishOriginal } from '../records/sayuEditPolishSource';
 import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './GrowthTimelineDocumentModal';
 import { compressImage } from '../services/imageService';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
@@ -555,6 +556,7 @@ export interface SayuModalProps {
   onClose: (deleted?: boolean) => void;
   content: string;
   originalData?: Record<string, string>;
+  isFinalReading?: boolean;
   format?: string;
   dateLabel: string;
   currentRating?: number;
@@ -597,6 +599,7 @@ export function SayuModal({
   onClose,
   content,
   originalData,
+  isFinalReading = false,
   format,
   dateLabel,
   currentRating,
@@ -666,12 +669,7 @@ export function SayuModal({
   });
   const isGrowthTimeline = formatKey === 'growthTimeline';
   const isHouseholdSayu = formatKey === 'household' || format === 'HARU가계부' || Boolean(editedOriginalData.household_entries);
-  const editPolishOriginal = Object.entries(editedOriginalData)
-    .filter(([key]) => key.startsWith(`${formatKey}_`)
-      && !/_(sayu|polished|polishedAt|mode|style|stats|ai_comment|title|keywords|status|images|image_meta)$/.test(key))
-    .map(([, value]) => value)
-    .filter(value => typeof value === 'string' && value.trim())
-    .join('\n\n');
+  const editPolishOriginal = getSayuEditPolishOriginal(formatKey, editedOriginalData, isFinalReading);
   const editPolishSource = editPolishOriginal || savedDraftRef.current.content.trim();
   const canPolishEdit = Boolean(currentUser && firestoreId && formatKey && formatKey !== 'voiding'
     && !isGrowthTimeline && !isHouseholdSayu && editPolishSource && editPolishSource !== '내용 없음');
