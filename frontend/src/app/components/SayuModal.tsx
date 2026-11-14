@@ -3519,7 +3519,7 @@ export function SayuModal({
                     />
                     다듬는 중...
                   </>
-                ) : '✨ 다시 다듬기'}
+                ) : '✨ 다시 다듬기 · 즉시 저장'}
               </button>
             </div>
           </div>
