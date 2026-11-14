@@ -40,6 +40,7 @@ export function PolishStrengthSelect({ value, onChange, disabled = false, saveIm
         </div>
       </div>
     ), { id: GUIDE_TOAST_ID, duration: Infinity, position: 'top-center' });
+    return () => toast.dismiss(GUIDE_TOAST_ID);
   }, [saveImmediately]);
 
   return (

@@ -11,6 +11,7 @@ function fixture() {
   const data = new Map();
   const toasts = [];
   const dismissed = [];
+  const cleanups = [];
   const storage = {
     getItem: key => data.get(key) ?? null,
     setItem: (key, value) => data.set(key, value),
@@ -24,7 +25,7 @@ function fixture() {
   vm.runInNewContext(code, {
     module, exports: module.exports, window: { localStorage: storage },
     require: id => {
-      if (id === 'react') return { useEffect: callback => callback(), useId: () => 'strength-test' };
+      if (id === 'react') return { useEffect: callback => cleanups.push(callback()), useId: () => 'strength-test' };
       if (id === 'sonner') return { toast };
       if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
       throw new Error(`unexpected import: ${id}`);
@@ -33,7 +34,8 @@ function fixture() {
   const mount = saveImmediately => module.exports.PolishStrengthSelect({
     value: 'WEAK', onChange() {}, saveImmediately,
   });
-  return { data, toasts, dismissed, mount };
+  const unmount = () => cleanups.pop()?.();
+  return { data, toasts, dismissed, mount, unmount };
 }
 
 function walk(node, visit) {
@@ -81,4 +83,11 @@ test('즉시 저장 경로의 토스트는 결과가 바로 저장된다고 설�
     if (typeof node === 'string') words.push(node);
   });
   assert.match(words.join(' '), /다시 다듬기 결과는 바로 저장/);
+});
+
+test('선택 UI가 사라지면 화면에 남은 안내 토스트도 닫는다', () => {
+  const f = fixture();
+  f.mount(false);
+  f.unmount();
+  assert.deepEqual(f.dismissed, ['haru-polish-strength-guide']);
 });

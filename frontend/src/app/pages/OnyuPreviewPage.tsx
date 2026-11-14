@@ -56,7 +56,7 @@ const TERMS: { term: string; desc: string }[] = [
   },
   {
     term: 'SAYU(사유)',
-    desc: '내 기록을 다시 읽고 의미를 찾아주는 사유 공간. 내용은 바꾸지 않고 표현만 다듬습니다.',
+    desc: '내 기록을 다시 읽고 의미를 찾아주는 사유 공간. 선택한 정도에 맞춰 표현을 정돈하거나 풍성하게 풀어 씁니다.',
   },
   {
     term: '미래보기',
@@ -486,7 +486,7 @@ export function OnyuPreviewPage() {
 
   // 라이브 입력 → SAYU 정리 형태로 감싸기 (클라이언트 템플릿, 내용 보존)
   const liveSayu = trimmedLive
-    ? `${trimmedLive} 이 짧은 기록을 HARU2026이 읽기 좋게 정리하면, 그날의 장면과 그때의 마음이 함께 남습니다. 내용은 바꾸지 않고 표현만 다듬습니다.`
+    ? `${trimmedLive} 이 짧은 기록을 HARU2026이 읽기 좋게 정리하면, 그날의 장면과 그때의 마음이 함께 남습니다. SAYU에서는 다듬기 정도를 골라 문장을 정돈하거나 풍성하게 풀어 쓸 수 있습니다.`
     : '';
 
   return (
