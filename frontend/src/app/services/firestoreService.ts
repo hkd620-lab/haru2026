@@ -915,7 +915,9 @@ class FirestoreService {
     return formatsToCheck
       .map((format) => {
         const prefix = PUBLIC_FORMAT_PREFIX[format];
-        const sayuText = getCleanText(record[`${prefix}_sayu`]) || getCleanText(record[`${prefix}_final_sayu`]);
+        const draftText = getCleanText(record[`${prefix}_sayu`]);
+        const finalText = getCleanText(record[`${prefix}_final_sayu`]);
+        const sayuText = prefix === 'reading' ? finalText || draftText : draftText || finalText;
         if (!sayuText) return null;
         return {
           formatKey: prefix,

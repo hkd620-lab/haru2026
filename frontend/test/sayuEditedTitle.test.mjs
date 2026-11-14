@@ -8,7 +8,9 @@ const page = readFileSync(new URL('../src/app/pages/SayuPage.tsx', import.meta.u
 function handler(source, name, env) {
   const match = source.match(name === 'buildSearchText'
     ? /^  const buildSearchText = [\s\S]*?\.toLowerCase\(\);/m
-    : new RegExp(`^  const ${name} = [\\s\\S]*?^  };`, 'm'));
+    : name === 'getResultChatSourceKey'
+      ? /^function getResultChatSourceKey\([\s\S]*?^}/m
+      : new RegExp(`^  const ${name} = [\\s\\S]*?^  };`, 'm'));
   assert.ok(match, name);
   const { code } = transformSync(match[0], { loader: 'ts' });
   return new Function(...Object.keys(env), `${code}\nreturn ${name};`)(...Object.values(env));
@@ -19,6 +21,7 @@ const displayEnv = {
 };
 const displayTitle = handler(page, 'getRecordDisplayTitle', displayEnv);
 const buildSearchText = handler(page, 'buildSearchText', {});
+const getResultChatSourceKey = handler(page, 'getResultChatSourceKey', { GROWTH_TIMELINE_FORMAT_KEY: 'growthTimeline' });
 
 function fixture({
   prefix = 'diary', oldTitle = '이전 제목', aiTitle = '과거 AI 제목', editedTitle = '직접 수정한 제목',
@@ -33,6 +36,7 @@ function fixture({
     weather: '흐림', temperature: '추움', mood: '평온', isPublic, specialDays: { [prefix]: false },
   };
   if (aiTitle !== undefined) persisted[`${prefix}_ai_title`] = aiTitle;
+  if (prefix === 'reading') persisted.reading_final_sayu = '기존 최종 독서 기록';
   const state = {
     records: [structuredClone(persisted)], errors: [], warnings: [], successes: 0, refreshes: 0, writes: 0,
     editing: true, saving: false, remembered: false, published: null, saveFails, publishFails,
@@ -40,7 +44,7 @@ function fixture({
   const toast = { success: () => { state.successes++; }, error: value => state.errors.push(value), warning: value => state.warnings.push(value) };
   // 실제 부모 저장 handler도 실행해, 서버 데이터와 화면 records를 구분한다.
   const onSave = handler(page, 'handleSaveSayu', {
-    selectedDate, selectedDateFormats: [{ key: selectedKey, recordId: selectedRecordId }], records: state.records, user: pageUser, toast,
+    selectedDate, selectedDateFormats: [{ key: selectedKey, recordId: selectedRecordId }], records: state.records, user: pageUser, toast, getResultChatSourceKey,
     firestoreService: {
       // 실제 updateRecord처럼 null은 필드 삭제, 점 표기는 맵 하위 필드로 반영한다. 실패하면 아무 필드도 바뀌지 않는다.
       updateRecord: async (uid, id, update) => {
@@ -68,6 +72,14 @@ function fixture({
   });
   return { state, persisted, save, prefix };
 }
+
+test('독서사유 최종 기록을 수정하면 다시 열 때 표시하는 본문에 저장한다', async () => {
+  const { state, persisted, save } = fixture({ prefix: 'reading' });
+  await save();
+  assert.equal(persisted.reading_final_sayu, '합성 본문');
+  assert.equal(state.records[0].reading_final_sayu, '합성 본문');
+  assert.equal(persisted.reading_sayu, '이전 본문');
+});
 
 function assertSavedAll(f) {
   const { persisted, prefix } = f;

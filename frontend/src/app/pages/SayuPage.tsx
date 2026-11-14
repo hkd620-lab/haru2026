@@ -869,6 +869,7 @@ export function SayuPage() {
     isOpen: boolean;
     content: string;
     originalData?: Record<string, string>;
+    isFinalReading?: boolean;
     format?: string;
     formatKey?: string;
     firestoreId?: string;
@@ -2452,7 +2453,7 @@ export function SayuPage() {
     const resultChatSourceLabel = String((record as any).sourceLabel || '').trim()
       || (String((record as any).sourceKey || '') === 'haruraw_sayu' ? '하루LAW' : 'AI 답변');
     let sayuContent = isResultChatMemo
-      ? String((record as any).memo_content || '')
+      ? String(record[sayuKey] || (record as any).memo_content || '')
       : formatKey === 'reading'
         ? record[`${formatKey}_final_sayu`] || record[sayuKey] || ''
         : record[sayuKey] || record[`${formatKey}_final_sayu`] || '';
@@ -2489,6 +2490,7 @@ export function SayuPage() {
       isOpen: true,
       content: sayuContent,
       originalData,
+      isFinalReading: getResultChatSourceKey(formatKey, record) === 'reading_final_sayu',
       format: formatLabel,
       formatKey,
       firestoreId: record.id,
@@ -2731,7 +2733,7 @@ export function SayuPage() {
       return false;
     }
 
-    const sayuKey = `${formatKey}_sayu`;
+    const sayuKey = getResultChatSourceKey(formatKey, record);
     const ratingKey = `${formatKey}_rating`;
     // 특별한 날은 specialDays[형식 키]에 따로 둔다. 업무일지 Rating 칸(work_rating) 문장을 덮어쓰지 않기 위해서다.
     // (형식_special 은 반려동물 '특별한 일' 입력 칸 pet_special 과 겹쳐 맵으로 둔다.)
@@ -5414,6 +5416,7 @@ export function SayuPage() {
         onClose={(deleted?: boolean) => handleModalClose(deleted)}
         content={sayuModalState.content}
         originalData={sayuModalState.originalData}
+        isFinalReading={sayuModalState.isFinalReading}
         format={sayuModalState.format}
         dateLabel={sayuModalState.dateLabel}
         currentRating={sayuModalState.currentRating}
