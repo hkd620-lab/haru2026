@@ -151,8 +151,8 @@ for (const aiComment of ['새 한마디', '', undefined, 123]) {
   });
 }
 
-test('다시 다듬기는 강을 전달하고 배뇨 요약에서는 강도 필드를 아예 보내지 않는다', async () => {
-  for (const formatKey of ['memo', 'voiding']) {
+test('다시 다듬기는 표현형 강에만 추정 묘사를 안내하고 배뇨 요약에는 강도를 보내지 않는다', async () => {
+  for (const formatKey of ['memo', 'voiding', 'diary']) {
     const requests = [], writes = [];
     await handler('SayuModal', 'handleRepolish', {
       currentUser: { uid: 'synthetic-user' }, isRefining: false, polishStrength: 'STRONG', formatKey, format: '', recordDate: '2026-11-02', firestoreId: 'synthetic-record',
@@ -164,6 +164,8 @@ test('다시 다듬기는 강을 전달하고 배뇨 요약에서는 강도 필�
     assert.equal(requests.length, 1); assert.equal(requests[0].mode, 'PREMIUM');
     if (formatKey === 'voiding') assert.equal(Object.hasOwn(requests[0], 'strength'), false);
     else assert.equal(requests[0].strength, 'STRONG');
+    if (formatKey === 'diary') assert.match(requests[0].text, /상황과 감정은 문맥에 맞게 추정/);
+    else assert.doesNotMatch(requests[0].text, /상황과 감정은 문맥에 맞게 추정/);
     assert.match(requests[0].text, /\[원문 시작\]\n합성 원문\n\[원문 끝\]/);
     assert.deepEqual(writes, [{ [`${formatKey}_sayu`]: '다듬은 글' }]);
   }

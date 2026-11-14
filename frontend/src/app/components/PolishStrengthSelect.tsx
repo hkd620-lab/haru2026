@@ -2,10 +2,11 @@ import { useId } from 'react';
 
 export type PolishStrength = 'WEAK' | 'STRONG';
 
-export function PolishStrengthSelect({ value, onChange, disabled = false }: {
+export function PolishStrengthSelect({ value, onChange, disabled = false, saveImmediately = false }: {
   value: PolishStrength;
   onChange: (value: PolishStrength) => void;
   disabled?: boolean;
+  saveImmediately?: boolean;
 }) {
   const name = useId();
   return (
@@ -25,7 +26,7 @@ export function PolishStrengthSelect({ value, onChange, disabled = false }: {
           </label>
         ))}
       </div>
-      <p style={{ fontSize: 12, lineHeight: 1.5, color: '#6B7280', margin: '8px 0 0' }}>원문의 사실은 지킵니다. 강은 일기·에세이·여행기록에서 상황과 감정을 추정해 묘사할 수 있어요. 저장 전 내용을 확인해 주세요. 보고·관찰 기록은 사실을 중심으로 다듬습니다.</p>
+      <p style={{ fontSize: 12, lineHeight: 1.5, color: '#6B7280', margin: '8px 0 0' }}>원문의 사실은 지킵니다. 강은 일기·에세이·여행기록에서 상황과 감정을 추정해 묘사할 수 있어요. {saveImmediately ? '다시 다듬기는 즉시 저장되니 결과를 확인하고 필요하면 수정해 주세요.' : '저장 전 내용을 확인해 주세요.'} 보고·관찰 기록은 사실을 중심으로 다듬습니다.</p>
     </fieldset>
   );
 }
