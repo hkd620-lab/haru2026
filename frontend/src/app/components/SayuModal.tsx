@@ -639,6 +639,7 @@ export function SayuModal({
   const [isSavingOriginal, setIsSavingOriginal] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [polishStrength, setPolishStrength] = useState<PolishStrength>('WEAK');
+  const polishPreviewRef = useRef<string | null>(null);
   const [localAiComment, setLocalAiComment] = useState(aiComment);
   const [editedWeather, setEditedWeather] = useState(weather || '');
   const [editedTemperature, setEditedTemperature] = useState(temperature || '');
@@ -1330,6 +1331,7 @@ export function SayuModal({
       setViewMode('ai');
       setIsEditing(false);
       setIsPrinting(false);
+      polishPreviewRef.current = null;
       setShowDeleteDialog(false);
       setShowTimelineDocument(false);
       const baseData = originalData || {};
@@ -1736,7 +1738,7 @@ export function SayuModal({
   };
 
   // ✨ 다시 다듬기
-  const handleRepolish = async (draftSource?: string) => {
+  const handleRepolish = async (draftSource?: string, strength = polishStrength) => {
     if (isRefining || !currentUser || !formatKey || (!recordDate && !firestoreId)) return;
     const preview = draftSource !== undefined;
     const editor = preview ? mainEditorRef.current : null;
@@ -1752,12 +1754,12 @@ export function SayuModal({
         return;
       }
       const polishContentFunc = httpsCallable(functions, 'polishContent');
-      const allowCreativeRepolish = polishStrength === 'STRONG' && ['diary', 'essay', 'travel'].includes(formatKey);
+      const allowCreativeRepolish = strength === 'STRONG' && ['diary', 'essay', 'travel'].includes(formatKey);
       const result = await polishContentFunc({
         text: `다음은 "${format || formatKey}" 형식으로 작성된 기록입니다. ${allowCreativeRepolish ? '원문의 사실을 지키고, 상황과 감정은 문맥에 맞게 추정해 자연스럽게 묘사해 주세요. 원문에 없는 인물·장소·날씨·시간·수치·발언·원인·결정·결과·교훈·다짐을 확정하지 마세요.' : '원문의 사실과 감정을 지키며 다듬어주세요.'}\n\n[원문 시작]\n${contentValues}\n[원문 끝]`,
         format: formatKey,
         mode: 'PREMIUM',
-        ...(formatKey === 'voiding' ? {} : { strength: polishStrength }),
+        ...(formatKey === 'voiding' ? {} : { strength }),
         ...(preview ? { includeAiComment: false } : {}),
       });
       const responseData = result.data as { text: string; aiComment?: string };
@@ -1768,7 +1770,9 @@ export function SayuModal({
           toast.error('다듬기 결과가 비어 있습니다. 다시 시도해 주세요.');
           return;
         }
+        polishPreviewRef.current = polished;
         setEditedContent(polished);
+        toast.success(polished.trim() === editedContent.trim() ? '다듬기를 마쳤습니다. 본문은 그대로입니다.' : '다듬은 결과를 편집창에 반영했습니다.');
         return;
       }
       const newAiComment = typeof responseData.aiComment === 'string' ? responseData.aiComment : '';
@@ -2593,19 +2597,18 @@ export function SayuModal({
             <div>
               {canPolishEdit && (
                 <div style={{ marginBottom: 16 }}>
-                  <PolishStrengthSelect value={polishStrength} onChange={setPolishStrength} disabled={isSaving || isRefining} />
-                  <button
-                    type="button"
-                    className="rounded-lg border border-[#1A3C6E] px-4 py-2 font-semibold text-[#1A3C6E] disabled:opacity-50"
+                  <PolishStrengthSelect
+                    value={polishStrength}
                     disabled={isSaving || isRefining}
-                    onClick={() => {
+                    runOnClick
+                    onChange={(strength) => {
                       if (editedContent !== savedDraftRef.current.content
+                        && editedContent !== polishPreviewRef.current
                         && !window.confirm('편집 중인 본문을 다시 다듬기 결과로 바꿀까요?')) return;
-                      void handleRepolish(editPolishSource);
+                      void handleRepolish(editPolishSource, strength);
                     }}
-                  >
-                    {isRefining ? '다듬는 중…' : editPolishOriginal ? '원본으로 다시 다듬기' : '저장된 본문 다시 다듬기'}
-                  </button>
+                  />
+                  {isRefining && <p role="status" className="text-sm text-[#1A3C6E]">다듬는 중…</p>}
                 </div>
               )}
               {/* 제목 입력 */}
