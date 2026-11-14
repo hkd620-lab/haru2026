@@ -623,8 +623,7 @@ export function LandingPage() {
           <div className="lp-cap">SAYU · 사유, 사용자의 글을 위한 원칙</div>
           <h2 className="lp-h2">내 글을 바탕으로,<br />원하는 만큼 다듬습니다.</h2>
           <p className="lp-sayu__lead">
-            약은 원문의 문장과 흐름을 정돈합니다. 강은 글을 더 풍성하게 풀어 쓰며,
-            일기·에세이·여행기록에서는 상황과 감정을 문맥에 맞게 추정해 묘사할 수 있습니다.
+            약은 원문의 문장과 흐름을 정돈합니다. 강은 원문에 있는 사실과 감정만 더 풍성하게 풀어 씁니다.
             결과를 확인하고 필요한 부분을 고쳐 저장해 주세요.
           </p>
           <div className="lp-sayu__rules">
