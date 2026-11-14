@@ -668,7 +668,7 @@ export function SayuModal({
   const isHouseholdSayu = formatKey === 'household' || format === 'HARU가계부' || Boolean(editedOriginalData.household_entries);
   const editPolishOriginal = Object.entries(editedOriginalData)
     .filter(([key]) => key.startsWith(`${formatKey}_`)
-      && !/_(sayu|polished|polishedAt|mode|style|stats|ai_comment|ai_title|keywords|status|images|image_meta)$/.test(key))
+      && !/_(sayu|polished|polishedAt|mode|style|stats|ai_comment|title|keywords|status|images|image_meta)$/.test(key))
     .map(([, value]) => value)
     .filter(value => typeof value === 'string' && value.trim())
     .join('\n\n');
