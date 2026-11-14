@@ -1754,9 +1754,9 @@ export function SayuModal({
         return;
       }
       const polishContentFunc = httpsCallable(functions, 'polishContent');
-      const allowCreativeRepolish = strength === 'STRONG' && ['diary', 'essay', 'travel'].includes(formatKey);
+      const expressiveStrong = strength === 'STRONG' && ['diary', 'essay', 'travel'].includes(formatKey);
       const result = await polishContentFunc({
-        text: `다음은 "${format || formatKey}" 형식으로 작성된 기록입니다. ${allowCreativeRepolish ? '원문의 사실을 지키고, 상황과 감정은 문맥에 맞게 추정해 자연스럽게 묘사해 주세요. 원문에 없는 인물·장소·날씨·시간·수치·발언·원인·결정·결과·교훈·다짐을 확정하지 마세요.' : '원문의 사실과 감정을 지키며 다듬어주세요.'}\n\n[원문 시작]\n${contentValues}\n[원문 끝]`,
+        text: `다음은 "${format || formatKey}" 형식으로 작성된 기록입니다. ${expressiveStrong ? '원문에 있는 내용만 완결된 문장으로 풀고 어휘·문장 연결·문단으로 풍성하게 표현해 주세요. 원문에 없는 관찰·감정·행동·분위기·해석은 추측이나 가능성으로도 덧붙이지 마세요.' : '원문의 사실과 감정을 지키며 다듬어주세요.'}\n\n[원문 시작]\n${contentValues}\n[원문 끝]`,
         format: formatKey,
         mode: 'PREMIUM',
         ...(formatKey === 'voiding' ? {} : { strength }),

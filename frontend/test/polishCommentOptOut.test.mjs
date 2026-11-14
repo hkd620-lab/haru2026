@@ -71,13 +71,13 @@ for (const strength of ['WEAK', 'STRONG']) {
     assert.equal(request.includeAiComment, false);
     assert.match(request.text, /\[원문 시작\]\n직접 쓴 원문\n\[원문 끝\]/);
     assert.doesNotMatch(request.text, /어색한 표현만 수정/);
+    assert.match(request.text, /원문에 없는 사실, 감정, 배경, 원인, 결과를 절대 추가하지/);
+    assert.doesNotMatch(request.text, /상황·분위기·감정을 문맥에 맞게 추정/);
     if (strength === 'STRONG') {
-      assert.match(request.text, /상황·분위기·감정을 문맥에 맞게 추정/);
+      assert.match(request.text, /원문에 있는 내용만 완결된 문장으로 풀고/);
       assert.match(request.text, /원문의 사실·수치·부정·미정 표현이 그대로인지 확인/);
-      assert.doesNotMatch(request.text, /원문에 없는 사실, 감정, 배경, 원인, 결과를 절대 추가하지/);
     } else {
       assert.match(request.text, /선택한 다듬기 정도에 맞춰 문장과 흐름/);
-      assert.doesNotMatch(request.text, /상황·분위기·감정을 문맥에 맞게 추정/);
     }
     assert.equal(f.state.strength, strength); assert.equal(f.state.showPolish, true);
     await f.call('handleSaveSayu')();
@@ -151,7 +151,7 @@ for (const aiComment of ['새 한마디', '', undefined, 123]) {
   });
 }
 
-test('다시 다듬기는 표현형 강에만 추정 묘사를 안내하고 배뇨 요약에는 강도를 보내지 않는다', async () => {
+test('다시 다듬기는 표현형 강에서 원문만 풍성하게 표현하고 배뇨 요약에는 강도를 보내지 않는다', async () => {
   for (const formatKey of ['memo', 'voiding', 'diary']) {
     const requests = [], writes = [];
     await handler('SayuModal', 'handleRepolish', {
@@ -164,8 +164,8 @@ test('다시 다듬기는 표현형 강에만 추정 묘사를 안내하고 배�
     assert.equal(requests.length, 1); assert.equal(requests[0].mode, 'PREMIUM');
     if (formatKey === 'voiding') assert.equal(Object.hasOwn(requests[0], 'strength'), false);
     else assert.equal(requests[0].strength, 'STRONG');
-    if (formatKey === 'diary') assert.match(requests[0].text, /상황과 감정은 문맥에 맞게 추정/);
-    else assert.doesNotMatch(requests[0].text, /상황과 감정은 문맥에 맞게 추정/);
+    assert.doesNotMatch(requests[0].text, /상황과 감정은 문맥에 맞게 추정/);
+    if (formatKey === 'diary') assert.match(requests[0].text, /원문에 없는 관찰·감정·행동·분위기·해석은 추측이나 가능성으로도 덧붙이지 마세요/);
     assert.match(requests[0].text, /\[원문 시작\]\n합성 원문\n\[원문 끝\]/);
     assert.deepEqual(writes, [{ [`${formatKey}_sayu`]: '다듬은 글' }]);
   }
