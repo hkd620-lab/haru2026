@@ -5,11 +5,12 @@ export type PolishStrength = 'WEAK' | 'STRONG';
 const GUIDE_STORAGE_KEY = 'haru-polish-strength-guide-hidden-v1';
 const GUIDE_TOAST_ID = 'haru-polish-strength-guide';
 
-export function PolishStrengthSelect({ value, onChange, disabled = false, saveImmediately = false }: {
+export function PolishStrengthSelect({ value, onChange, disabled = false, saveImmediately = false, runOnClick = false }: {
   value: PolishStrength;
   onChange: (value: PolishStrength) => void;
   disabled?: boolean;
   saveImmediately?: boolean;
+  runOnClick?: boolean;
 }) {
   const name = useId();
   useEffect(() => {
@@ -50,7 +51,17 @@ export function PolishStrengthSelect({ value, onChange, disabled = false, saveIm
         {([
           ['WEAK', '약', '문장과 흐름을 자연스럽게'],
           ['STRONG', '강', '원문의 내용을 더 풍성하게'],
-        ] as const).map(([strength, label, description]) => (
+        ] as const).map(([strength, label, description]) => runOnClick ? (
+          <button
+            key={strength}
+            type="button"
+            onClick={() => onChange(strength)}
+            className="rounded-lg border border-[#93a9c2] bg-white p-3 text-left text-[#1A3C6E] disabled:opacity-50"
+          >
+            <span className="block font-bold">{label}</span>
+            <span className="mt-1 block text-xs text-[#4B5563]">{description}</span>
+          </button>
+        ) : (
           <label key={strength} style={{ display: 'block', padding: 12, border: `1px solid ${value === strength ? '#059669' : '#D1D5DB'}`, borderRadius: 8, background: value === strength ? '#ECFDF5' : '#fff', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, color: '#1A3C6E' }}>
               <input type="radio" name={name} value={strength} checked={value === strength} onChange={() => onChange(strength)} />
