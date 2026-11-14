@@ -666,6 +666,15 @@ export function SayuModal({
   });
   const isGrowthTimeline = formatKey === 'growthTimeline';
   const isHouseholdSayu = formatKey === 'household' || format === 'HARU가계부' || Boolean(editedOriginalData.household_entries);
+  const editPolishOriginal = Object.entries(editedOriginalData)
+    .filter(([key]) => key.startsWith(`${formatKey}_`)
+      && !/_(sayu|polished|polishedAt|mode|style|stats|ai_comment|ai_title|keywords|status|images|image_meta)$/.test(key))
+    .map(([, value]) => value)
+    .filter(value => typeof value === 'string' && value.trim())
+    .join('\n\n');
+  const editPolishSource = editPolishOriginal || savedDraftRef.current.content.trim();
+  const canPolishEdit = Boolean(currentUser && firestoreId && formatKey && formatKey !== 'voiding'
+    && !isGrowthTimeline && !isHouseholdSayu && editPolishSource && editPolishSource !== '내용 없음');
   const householdViewData = householdSayuViewData(householdRecord, editedOriginalData);
   const householdDetailEntries = isHouseholdSayu ? parseHouseholdEntriesForSayu(householdViewData) : [];
   const householdUserText = isHouseholdSayu && householdSayuIsUserText(householdViewData);
@@ -1729,12 +1738,15 @@ export function SayuModal({
   };
 
   // ✨ 다시 다듬기
-  const handleRepolish = async () => {
+  const handleRepolish = async (draftSource?: string) => {
     if (isRefining || !currentUser || !formatKey || (!recordDate && !firestoreId)) return;
+    const preview = draftSource !== undefined;
+    const editor = preview ? mainEditorRef.current : null;
+    if (preview && !editor) return;
     setIsRefining(true);
-    showLoading('AI가 다듬고 있습니다');
+    if (!preview) showLoading('AI가 다듬고 있습니다');
     try {
-      const contentValues = Object.values(editedOriginalData)
+      const contentValues = draftSource ?? Object.values(editedOriginalData)
         .filter(v => typeof v === 'string' && v.trim())
         .join('\n\n');
       if (!contentValues.trim()) {
@@ -1748,9 +1760,19 @@ export function SayuModal({
         format: formatKey,
         mode: 'PREMIUM',
         ...(formatKey === 'voiding' ? {} : { strength: polishStrength }),
+        ...(preview ? { includeAiComment: false } : {}),
       });
       const responseData = result.data as { text: string; aiComment?: string };
       const polished = responseData.text;
+      if (preview) {
+        if (editor !== mainEditorRef.current) return;
+        if (typeof polished !== 'string' || !polished.trim()) {
+          toast.error('다듬기 결과가 비어 있습니다. 다시 시도해 주세요.');
+          return;
+        }
+        setEditedContent(polished);
+        return;
+      }
       const newAiComment = typeof responseData.aiComment === 'string' ? responseData.aiComment : '';
       const docId = firestoreId || recordDate!;
       const recordRef = doc(db, 'users', currentUser.uid, 'records', docId);
@@ -1768,7 +1790,7 @@ export function SayuModal({
       toast.error('다시 다듬기에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsRefining(false);
-      hideLoading();
+      if (!preview) hideLoading();
     }
   };
 
@@ -2571,6 +2593,23 @@ export function SayuModal({
           {viewMode === 'ai' ? (
             isEditing ? (
             <div>
+              {canPolishEdit && (
+                <div style={{ marginBottom: 16 }}>
+                  <PolishStrengthSelect value={polishStrength} onChange={setPolishStrength} disabled={isSaving || isRefining} />
+                  <button
+                    type="button"
+                    className="rounded-lg border border-[#1A3C6E] px-4 py-2 font-semibold text-[#1A3C6E] disabled:opacity-50"
+                    disabled={isSaving || isRefining}
+                    onClick={() => {
+                      if (editedContent !== savedDraftRef.current.content
+                        && !window.confirm('편집 중인 본문을 다시 다듬기 결과로 바꿀까요?')) return;
+                      void handleRepolish(editPolishSource);
+                    }}
+                  >
+                    {isRefining ? '다듬는 중…' : editPolishOriginal ? '원본으로 다시 다듬기' : '저장된 본문 다시 다듬기'}
+                  </button>
+                </div>
+              )}
               {/* 제목 입력 */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6, fontWeight: 600 }}>
@@ -3081,6 +3120,7 @@ export function SayuModal({
               <textarea
                 ref={mainEditorRef}
                 value={editedContent}
+                readOnly={isRefining}
                 onChange={(e) => setEditedContent(e.target.value)}
                 style={{
                   width: '100%',
@@ -3382,7 +3422,7 @@ export function SayuModal({
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
             <button
               onClick={handleCancelEdit}
-              disabled={isSaving}
+              disabled={isSaving || isRefining}
               style={{
                 padding: '10px 20px',
                 fontSize: 14,
@@ -3399,7 +3439,7 @@ export function SayuModal({
             </button>
             <button
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || isRefining}
               style={{
                 padding: '10px 24px',
                 fontSize: 14,
@@ -3487,7 +3527,7 @@ export function SayuModal({
                 {isSavingOriginal ? '저장 중...' : '💾 저장'}
               </button>
               <button
-                onClick={handleRepolish}
+                onClick={() => void handleRepolish()}
                 disabled={isSavingOriginal || isRefining}
                 style={{
                   padding: '10px 20px',
