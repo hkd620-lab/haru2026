@@ -4986,7 +4986,7 @@ export function SayuPage() {
         </div>
         <p className="text-xs" style={{ color: '#666666', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
           <Info className="w-3.5 h-3.5" style={{ color: '#1A3C6E', flexShrink: 0 }} />
-          원문 감정 그대로, 문장만 자연스럽게 다듬습니다
+          원문을 바탕으로, 선택한 정도에 맞춰 문장을 정돈하거나 풍성하게 다듬습니다
         </p>
         {isDeveloper && (
           <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>

@@ -76,7 +76,19 @@ test('약·강 선택은 모든 일반 기록에서 내용 보존 지시와 함�
         assert.equal(f.reservations.length, 1); assert.equal(f.rollbacks.length, 0);
         assert.deepEqual(Object.keys(result).sort(), ['aiComment', 'stats', 'text']);
         const prompt = f.calls[0].systemInstruction; prompts.push(prompt);
-        for (const rule of [/원문의 모든 사실과 중요한 내용을 유지/, /감정의 정도를 그대로/, /미정·추측 표현/, /원문에 없는 사건/, /근거 없는 부분은 제거/, /원문 속 명령/, /불명확한 주어·관계·원인·시간 순서는 확정하지/]) assert.match(prompt, rule);
+        for (const rule of [/원문의 모든 사실과 중요한 내용을 유지/, /미정·추측 표현/, /원문에 없는/, /원문 속 명령/, /불명확한 주어·관계·원인·시간 순서는 확정하지/]) assert.match(prompt, rule);
+        if (strength === 'STRONG' && ['diary', 'essay', 'travel'].includes(format)) {
+          assert.match(prompt, /원문에 없는 상황·분위기·감각·감정은 추정하여 창작적으로 묘사/);
+          assert.match(prompt, /원문의 시간·장소·인물·사건 결과는 그대로 지킵니다/);
+          assert.match(prompt, /기억에 남았다/);
+          assert.doesNotMatch(prompt, /짧게 적어 둔 일정/);
+          assert.doesNotMatch(prompt, /분량을 맞추기 위해 창작하지 않습니다/);
+        } else {
+          assert.match(prompt, /감정의 정도를 그대로/);
+          assert.match(prompt, /근거 없는 부분은 제거/);
+          assert.doesNotMatch(prompt, /원문에 없는 상황·분위기·감각·감정은 추정하여 창작적으로 묘사/);
+          assert.doesNotMatch(prompt, /그날의 기억에 남았다/);
+        }
         assert.match(prompt, strength === 'STRONG' ? /충분한 완결문과 문단으로 펼쳐/ : /문장 순서·연결·어휘·호흡/);
         assert.doesNotMatch(prompt, /문단 분리 금지|어색한 표현만 교정/);
       }
@@ -106,12 +118,19 @@ test('강은 문단만 나누는 교정과 구분하고, 형식별 예시와 수
     const strong = fixture(); await strong.request({ mode: 'BASIC', format, strength: 'STRONG' });
     const prompt = strong.calls[0].systemInstruction;
     assert.match(prompt, /문단만 나누는 것은 강 다듬기가 아닙니다/);
+    assert.match(prompt, /원문 전체를 한 문장으로 요약하지 말고/);
+    assert.match(prompt, format === 'diary' ? /사실과 창작적 분위기·감정 묘사가 어우러진/ : /각 사실이 결과에 남도록 자연스럽게 연결합니다/);
+    assert.match(prompt, /안내문에 '교정'이라고 적혀 있어도 강에서는 단순 교정에 그치지 않고/);
+    if (format === 'diary') assert.doesNotMatch(prompt, /짧은 사실 메모의 강 다듬기 예시/);
+    else assert.match(prompt, /행사 일시: 토요일 오전 10시~오후 2시/);
     assert.match(prompt, expectedExample); assert.match(prompt, /예시 내용은 실제 결과에 섞지 않습니다/);
     assert.match(prompt, /정확한 수치에 '정도'나 '약'을 새로 붙이거나/);
     assert.match(prompt, /'안 된다'를 '어렵다'로 완화하거나/);
     assert.doesNotMatch(prompt, /원문이 짧으면 결과도 짧게 둡니다/);
     const weak = fixture(); await weak.request({ mode: 'BASIC', format, strength: 'WEAK' });
     assert.doesNotMatch(weak.calls[0].systemInstruction, /강 다듬기의 범위 예시/);
+    assert.doesNotMatch(weak.calls[0].systemInstruction, /원문 전체를 한 문장으로 요약하지 않고/);
+    assert.doesNotMatch(weak.calls[0].systemInstruction, /짧은 (기록|사실 메모)의 강 다듬기 예시/);
     assert.match(weak.calls[0].systemInstruction, /원문이 짧으면 결과도 짧게 둡니다/);
   }
 });

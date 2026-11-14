@@ -1742,8 +1742,9 @@ export function SayuModal({
         return;
       }
       const polishContentFunc = httpsCallable(functions, 'polishContent');
+      const allowCreativeRepolish = polishStrength === 'STRONG' && ['diary', 'essay', 'travel'].includes(formatKey);
       const result = await polishContentFunc({
-        text: `다음은 "${format || formatKey}" 형식으로 작성된 기록입니다. 원문의 사실과 감정을 지키며 다듬어주세요.\n\n[원문 시작]\n${contentValues}\n[원문 끝]`,
+        text: `다음은 "${format || formatKey}" 형식으로 작성된 기록입니다. ${allowCreativeRepolish ? '원문의 사실을 지키고, 상황과 감정은 문맥에 맞게 추정해 자연스럽게 묘사해 주세요. 원문에 없는 인물·장소·날씨·시간·수치·발언·원인·결정·결과·교훈·다짐을 확정하지 마세요.' : '원문의 사실과 감정을 지키며 다듬어주세요.'}\n\n[원문 시작]\n${contentValues}\n[원문 끝]`,
         format: formatKey,
         mode: 'PREMIUM',
         ...(formatKey === 'voiding' ? {} : { strength: polishStrength }),
@@ -3466,7 +3467,7 @@ export function SayuModal({
               backgroundColor: '#fff',
             }}
           >
-            {formatKey !== 'voiding' && <PolishStrengthSelect value={polishStrength} onChange={setPolishStrength} disabled={isSavingOriginal || isRefining} />}
+            {formatKey !== 'voiding' && <PolishStrengthSelect value={polishStrength} onChange={setPolishStrength} disabled={isSavingOriginal || isRefining} saveImmediately />}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button
                 onClick={handleSaveOriginal}
@@ -3518,7 +3519,7 @@ export function SayuModal({
                     />
                     다듬는 중...
                   </>
-                ) : '✨ 다시 다듬기'}
+                ) : '✨ 다시 다듬기 · 즉시 저장'}
               </button>
             </div>
           </div>
