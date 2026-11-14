@@ -91,7 +91,7 @@ const DOORS: { n: string; icon: string; hue: Hue; title: string; body: string; c
 
 const FLOW = [
   { n: '01', t: '기록 입력',   d: '오늘 있었던 일을 평소 말투로 자유롭게 적습니다.' },
-  { n: '02', t: 'AI 정리',     d: 'SAYU가 표현만 다듬어 읽기 좋은 글로 정돈합니다.' },
+  { n: '02', t: 'AI 정리',     d: 'SAYU가 선택한 다듬기 정도에 맞춰 글을 정돈합니다.' },
   { n: '03', t: '분류 · 검색', d: '형식과 날짜로 자동 분류되고, 키워드로 찾을 수 있습니다.' },
   { n: '04', t: '통계 · 모아보기', d: '월별·연도별로 흐름을 보여주고, 한 권으로 묶어 읽고 PDF·EPUB로 내려받습니다.' },
   { n: '05', t: '오래 남는 기록',   d: '책 소재가 되고, 회고 자료가 되고, 다음 세대에 남길 기록이 됩니다.' },
@@ -267,7 +267,7 @@ function HeroFloats() {
           <Icon name="spark" size={14} color={C.lilacDark} />
           <div style={{ fontSize: 11, fontWeight: 600, color: C.lilacDark, letterSpacing: '0.04em' }}>SAYU 정리됨</div>
         </div>
-        <div style={{ fontSize: 11, color: C.fg2, lineHeight: 1.5 }}>원문 감정 그대로, 표현만 다듬었어요.</div>
+        <div style={{ fontSize: 11, color: C.fg2, lineHeight: 1.5 }}>원문을 바탕으로 읽기 좋게 다듬었어요.</div>
       </div>
       <div className="lp-float lp-float--c" style={{ width: 160, padding: '12px 14px' }}>
         <div style={{ fontFamily: 'var(--lp-en)', fontSize: 9, letterSpacing: '2.5px', color: C.mute, textTransform: 'uppercase', marginBottom: 4 }}>이번 달 모아보기</div>
@@ -519,7 +519,7 @@ export function LandingPage() {
               </div>
             </div>
             <div className="lp-hero__trust">
-              <span><Icon name="shield" size={18} color={C.olive} />원문 감정 그대로</span>
+              <span><Icon name="shield" size={18} color={C.olive} />원문 사실 존중</span>
               <span><Icon name="user" size={18} color={C.olive} />오래 쓰도록 만든 설계</span>
               <span><Icon name="archive" size={18} color={C.olive} />기록 모아보기·내보내기</span>
             </div>
@@ -534,7 +534,7 @@ export function LandingPage() {
       {/* ───── Trust strip ───── */}
       <div className="lp-divider">
         <div className="lp-wrap lp-divider__inner">
-          <span><Icon name="shield" size={14} />원문 감정 보존</span>
+          <span><Icon name="shield" size={14} />원문 사실 존중</span>
           <span><Icon name="spark" size={14} />SAYU AI 정리</span>
           <span><Icon name="archive" size={14} />기록 자산화</span>
           <span><Icon name="bookbind" size={14} />모아보기 · 책 소재</span>
@@ -571,7 +571,7 @@ export function LandingPage() {
           <p className="lp-lead" style={{ marginBottom: 24 }}>두 장의 큰 잎이 호박을 키우듯, haru2026은 기록관리와 생활 비서로 일상을 돕습니다.</p>
           <p className="lp-lead" style={{ maxWidth: 660 }}>
             기록은 단순한 추억이 아니라, 나중에 나를 이해하고 돕는 자료가 됩니다.
-            HARU는 기록을 형식과 날짜로 정리하고, SAYU는 원문의 사실·감정을 유지하며 표현을 다듬습니다. AI 비서는 선택한 기능의 안내에 따라 생활 질문을 돕습니다.
+            HARU는 기록을 형식과 날짜로 정리하고, SAYU는 원문의 사실을 지키며 선택한 정도에 맞춰 글을 다듬습니다. AI 비서는 선택한 기능의 안내에 따라 생활 질문을 돕습니다.
             사용자는 네 개의 문으로 접근하고, 필요한 비서는 각 문 안에서 만납니다.
           </p>
           <div className="lp-doors">
@@ -621,26 +621,27 @@ export function LandingPage() {
       <section className="lp-section lp-sayu" id="sayu">
         <div className="lp-wrap">
           <div className="lp-cap">SAYU · 사유, 사용자의 글을 위한 원칙</div>
-          <h2 className="lp-h2">내 감정은 그대로,<br />표현만 더 아름답게.</h2>
+          <h2 className="lp-h2">내 글을 바탕으로,<br />원하는 만큼 다듬습니다.</h2>
           <p className="lp-sayu__lead">
-            AI가 사용자의 글에 새로운 이야기를 보태거나, 교훈을 덧붙이거나, 감정을 바꾸는 일은
-            하지 않습니다. SAYU는 문장만 자연스럽게 다듬어, 사용자 자신의 글로 남깁니다.
+            약은 원문의 문장과 흐름을 정돈합니다. 강은 글을 더 풍성하게 풀어 쓰며,
+            일기·에세이·여행기록에서는 상황과 감정을 문맥에 맞게 추정해 묘사할 수 있습니다.
+            결과를 확인하고 필요한 부분을 고쳐 저장해 주세요.
           </p>
           <div className="lp-sayu__rules">
             <div className="lp-rule">
               <div className="lp-rule__badge lp-rule__badge--no"><Icon name="x" size={22} sw={2.2} /></div>
-              <div className="lp-rule__title">재창작하지 않습니다</div>
-              <p className="lp-rule__desc">없던 사건이나 묘사를 만들어 넣지 않습니다. 원문이 짧으면 짧은 채로, 단정하게 정돈할 뿐입니다.</p>
+              <div className="lp-rule__title">원문 사실을 기준으로 합니다</div>
+              <p className="lp-rule__desc">인물·장소·시간·수치나 사건을 원문에 없는 사실로 단정하지 않도록 합니다.</p>
             </div>
             <div className="lp-rule">
               <div className="lp-rule__badge lp-rule__badge--no"><Icon name="x" size={22} sw={2.2} /></div>
-              <div className="lp-rule__title">교훈을 덧붙이지 않습니다</div>
-              <p className="lp-rule__desc">"오늘 하루도 감사하다" 같은 마무리를 임의로 더하지 않습니다. 의미는 사용자의 것이지, AI가 만들 영역이 아닙니다.</p>
+              <div className="lp-rule__title">원문에 없는 결론을 피합니다</div>
+              <p className="lp-rule__desc">원문에 없는 교훈이나 다짐을 임의로 덧붙이지 않도록 합니다.</p>
             </div>
             <div className="lp-rule">
               <div className="lp-rule__badge lp-rule__badge--yes"><Icon name="check" size={22} sw={2.4} /></div>
-              <div className="lp-rule__title">원문 감정을 보존합니다</div>
-              <p className="lp-rule__desc">기쁨은 기쁨대로, 답답함은 답답함대로. 표현이 거칠 때는 다듬지만, 감정의 결은 손대지 않습니다.</p>
+              <div className="lp-rule__title">다듬기 정도를 선택할 수 있습니다</div>
+              <p className="lp-rule__desc">약은 간결하게 정돈하고, 강은 형식에 맞춰 더 풍성하게 표현합니다.</p>
             </div>
           </div>
         </div>
