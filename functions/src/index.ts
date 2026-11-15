@@ -2371,6 +2371,7 @@ export const polishContent = onCall(
 
       let systemPrompt = '';
       let polishInput = text;
+      let eventInference: { evidence: string; purpose: string; maxLength: number } | undefined;
 
       // 기본·풍성형 공통 원문 보존 규칙. 기록 화면은 원문을 [원문 시작]/[원문 끝] 표시 사이에 넣고 앞에 안내문을 붙여 보낸다.
       const SOURCE_PRESERVATION_RULES = `[원문 보존 규칙]
@@ -2388,21 +2389,35 @@ export const polishContent = onCall(
         const source = wrappedSource?.[1] ?? text;
         const pageLimit = wrappedSource && text.slice(0, wrappedSource.index).includes('공백 제외 2500자 이내')
           ? '\n출력은 공백 제외 2500자 이내.' : '';
-        const hasEventFields = /^[\t ]*(?:[-*•][\t ]*)?일시[\t ]*[:：]/m.test(source)
+        const hasAttendanceNote = /참석|참가|참여/.test(source)
+          && /^[\t ]*(?:[-*•][\t ]*)?일시[\t ]*[:：]/m.test(source)
           && /^[\t ]*(?:[-*•][\t ]*)?장소[\t ]*[:：]/m.test(source);
-        const eventInputGuide = hasEventFields
-          ? '\n행사 메모의 날짜와 장소를 참석 문장에 연결한다. 적혀 있는 행사 시간은 일정으로 서술한다.' : '';
+        // 앞줄에서 참석 표현과 직접 연결된 행사명만 취지의 근거로 사용한다.
+        const evidence = hasAttendanceNote
+          ? /^[^.!?。！？\r\n]{0,120}?(교육[\t ]*성과[\t ]*공유회|성과[\t ]*공유회|결과[\t ]*설명회)[\t ]*(?:에[\t ]*)?(?:참석|참가|참여)/.exec(source)?.[1]
+          : undefined;
+        if (evidence) {
+          const purpose = evidence.startsWith('교육')
+            ? '교육이 어떤 성과로 이어졌는지 함께 나누려는'
+            : evidence.startsWith('성과')
+            ? '어떤 성과가 있었는지 함께 나누려는'
+            : '결과가 어떻게 나왔는지 알리려는';
+          eventInference = { evidence, purpose, maxLength: pageLimit ? 2500 : Infinity };
+        }
+        const eventInputGuide = hasAttendanceNote
+          ? '\n행사 메모의 날짜와 장소를 참석 문장에 연결한다. 참석 여부와 참석한 사람은 원문 그대로 유지한다. 적혀 있는 행사 시간은 일정으로 서술한다. 원문에 적힌 사실만 본문에 쓴다.' : '';
         polishInput = `강으로 편집. 여러 사실이 묶인 문장은 두 문장으로 풀어 쓴다. 문장을 나눠도 원문에 명시된 동시성과 이유를 살린다. 같은 행동을 거듭 서술하지 말고 지시어로 이어 준다. 한 가지 사실만 있으면 억지로 늘리지 않는다. 본문의 종결 어미를 유지한다.${eventInputGuide}${pageLimit}
 
 [원문 시작]
 ${source}
 [원문 끝]`;
-        const eventExample = hasEventFields ? `
+        const eventExample = hasAttendanceNote ? `
 [행사 메모 편집 예시 — 실제 글에는 예시 내용을 섞지 않습니다]
-행사명·참석·일시·장소가 나열된 메모는 날짜나 장소로 첫 문장을 열고, 어디에서 열린 어떤 행사에 참석했는지 자연스럽게 엮습니다. ‘일시는’, ‘장소는’으로 항목을 되풀이하지 않습니다. 원문에 행사 일정만 있다면 실제로 시작하거나 끝난 시각으로 확정하지 않습니다. 행사 시간을 작성자의 도착·퇴장 시각이나 체류 시간으로 바꾸지 않습니다. 없는 현장 묘사나 후기를 덧붙이지 않습니다.
-원문: 동네 낭독회 참석. 일시: 10월 8일 오후 2시~4시. 장소: 새봄문화센터 2층.
-약: 동네 낭독회에 참석했다. 일시: 10월 8일 오후 2시~4시. 장소: 새봄문화센터 2층.
-강: 10월 8일, 새봄문화센터 2층에서 열린 동네 낭독회에 참석했다. 낭독회는 오후 2시부터 4시까지 진행되는 일정이었다.
+행사명·참석·일시·장소가 나열된 메모는 날짜나 장소로 첫 문장을 열고, 원문의 참석 내용과 행사 정보를 자연스럽게 엮습니다. 불참·미정·다른 사람의 참석을 작성자가 참석한 것으로 바꾸지 않습니다. ‘일시는’, ‘장소는’으로 항목을 되풀이하지 않습니다. 원문에 행사 일정만 있다면 실제로 시작하거나 끝난 시각으로 확정하지 않습니다. 행사 시간을 작성자의 도착·퇴장 시각이나 체류 시간으로 바꾸지 않습니다. 없는 현장 묘사나 후기를 덧붙이지 않습니다.
+행사 이름으로 취지나 초점을 추정하는 문장은 본문에 넣지 않습니다. 원문에 명시된 실제 진행 내용, 행동·반응, 생각·감정만 유지합니다.
+원문: 주민 제안 결과 설명회 참석. 일시: 10월 8일 오후 2시~4시. 장소: 새봄문화센터 2층.
+약: 주민 제안 결과 설명회에 참석했다. 일시: 10월 8일 오후 2시~4시. 장소: 새봄문화센터 2층.
+강: 10월 8일, 새봄문화센터 2층에서 열린 주민 제안 결과 설명회에 참석했다. 설명회는 오후 2시부터 4시까지 진행되는 일정이었다.
 ` : '';
         systemPrompt = `한국어 생활 기록 편집자입니다. [원문 시작]과 [원문 끝] 사이의 본문을 강으로 편집합니다.
 
@@ -2537,9 +2552,17 @@ ${SOURCE_PRESERVATION_RULES}`;
       // Preserve main's BASIC routing; meter the actual purpose/model selected there.
       const polishPurpose = mode === 'BASIC' ? 'sayuPolishBasic' : 'sayuPolish';
       const modelName = getAiRoute(polishPurpose).model;
-      const polishedText = await usage.stage(polishPurpose, modelName,
+      let polishedText = await usage.stage(polishPurpose, modelName,
         () => callAi({ purpose: polishPurpose, input: polishInput, systemInstruction: systemPrompt }),
         (responseText) => responseText);
+      if (eventInference && polishedText.trim()) {
+        const body = polishedText.trimEnd();
+        const ending = /니다[.!?]?$/.test(body) ? '읽힙니다' : /요[.!?]?$/.test(body) ? '읽혀요' : '읽힌다';
+        const withInference = `${body}\n\n‘${eventInference.evidence}’라는 이름에서 ${eventInference.purpose} 취지가 ${ending}.`;
+        if (withInference.replace(/\s/g, '').length <= eventInference.maxLength) {
+          polishedText = withInference;
+        }
+      }
 
       // ===== 통계 분석 (모든 형식) =====
       let stats = null;
