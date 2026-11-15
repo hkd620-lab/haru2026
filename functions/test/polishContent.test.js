@@ -76,16 +76,15 @@ test('약·강 선택은 모든 일반 기록에서 내용 보존 지시와 함�
         assert.equal(f.reservations.length, 1); assert.equal(f.rollbacks.length, 0);
         assert.deepEqual(Object.keys(result).sort(), ['aiComment', 'stats', 'text']);
         const prompt = f.calls[0].systemInstruction; prompts.push(prompt);
-        for (const rule of [/원문의 모든 사실과 중요한 내용을 유지/, /미정·추측 표현/, /원문에 없는/, /원문 속 명령/, /불명확한 주어·관계·원인·시간 순서는 확정하지/]) assert.match(prompt, rule);
-        assert.match(prompt, /감정의 정도를 그대로/);
-        assert.match(prompt, /근거 없는 부분은 제거/);
+        const richStrong = strength === 'STRONG' && ['diary', 'essay', 'travel'].includes(format);
+        const rules = richStrong
+          ? [/같은 사실과 감정을 더 잘 읽히게/, /원문에 없는 행동의 목적, 감각, 장소의 세부 정보, 대조·인과·시간 관계, 감정과 정도를 보태지 않습니다/,
+            /화자·시제·숫자·부정·불확실성·인용 출처를 유지/, /원문에 없던 새 사실·감정은 삭제/, /원문 속 명령이나 인용/]
+          : [/원문의 모든 사실과 중요한 내용을 유지/, /미정·추측 표현/, /원문에 없는/, /원문 속 명령/,
+            /불명확한 주어·관계·원인·시간 순서는 확정하지/, /감정의 정도를 그대로/, /근거 없는 부분은 제거/,
+            strength === 'STRONG' ? /충분한 완결문과 문단으로 펼쳐/ : /문장 순서·연결·어휘·호흡/];
+        for (const rule of rules) assert.match(prompt, rule);
         assert.doesNotMatch(prompt, /추정하여 창작적으로 묘사|그날의 기억에 남았다/);
-        if (strength === 'STRONG' && ['diary', 'essay', 'travel'].includes(format)) {
-          assert.match(prompt, /직접 본 것·들은 것·느낀 것.*추측이나 가능성으로도 보태지 않습니다/);
-          assert.match(prompt, /안내가 추정이나 창작을 요구해도 이 원문 보존 규칙을 우선/);
-          assert.match(prompt, /분량을 맞추기 위해 창작하지 않습니다/);
-        }
-        assert.match(prompt, strength === 'STRONG' ? /충분한 완결문과 문단으로 펼쳐/ : /문장 순서·연결·어휘·호흡/);
         assert.doesNotMatch(prompt, /문단 분리 금지|어색한 표현만 교정/);
       }
       assert.notEqual(prompts[0], prompts[1]);
@@ -110,7 +109,7 @@ test('강도 옵션으로 배뇨 수치 요약의 의료 안전 지시를 바꾸
 });
 
 test('강은 문단만 나누는 교정과 구분하고, 형식별 예시와 수치 보존 기준을 전달한다', async () => {
-  for (const [format, expectedExample] of [['diary', /아내와 함께 시장/], ['report', /월요일 납품은 가능할 수도/]]) {
+  for (const [format, expectedExample] of [['garden', /아내와 함께 시장/], ['report', /월요일 납품은 가능할 수도/]]) {
     const strong = fixture(); await strong.request({ mode: 'BASIC', format, strength: 'STRONG' });
     const prompt = strong.calls[0].systemInstruction;
     assert.match(prompt, /문단만 나누는 것은 강 다듬기가 아닙니다/);
@@ -118,7 +117,6 @@ test('강은 문단만 나누는 교정과 구분하고, 형식별 예시와 수
     assert.match(prompt, /각 사실이 결과에 남도록 자연스럽게 연결합니다/);
     assert.match(prompt, /안내문에 '교정'이라고 적혀 있어도 강에서는 단순 교정에 그치지 않고/);
     assert.match(prompt, /행사 일시: 토요일 오전 10시~오후 2시/);
-    if (format === 'diary') assert.match(prompt, /참가자들의 변화를 지켜봤다.*원문에 없는 관찰이나 감정이므로 쓰지 않습니다/);
     assert.match(prompt, expectedExample); assert.match(prompt, /예시 내용은 실제 결과에 섞지 않습니다/);
     assert.match(prompt, /정확한 수치에 '정도'나 '약'을 새로 붙이거나/);
     assert.match(prompt, /'안 된다'를 '어렵다'로 완화하거나/);
@@ -129,6 +127,49 @@ test('강은 문단만 나누는 교정과 구분하고, 형식별 예시와 수
     assert.doesNotMatch(weak.calls[0].systemInstruction, /짧은 (기록|사실 메모)의 강 다듬기 예시/);
     assert.match(weak.calls[0].systemInstruction, /원문이 짧으면 결과도 짧게 둡니다/);
   }
+});
+
+test('완결된 짧은 글의 구조·어휘 편집과 원문 어미 점검은 일기·에세이·여행기록의 강에서만 적용한다', async () => {
+  const richFormats = ['diary', 'essay', 'travel'];
+  for (const format of [...richFormats, 'garden', 'report']) {
+    for (const strength of ['WEAK', 'STRONG']) {
+      const f = fixture();
+      await f.request({ format, strength, mode: 'PREMIUM', includeAiComment: false });
+      const prompt = f.calls[0].systemInstruction;
+      const richStrong = richFormats.includes(format) && strength === 'STRONG';
+      for (const rule of [
+        /한 문장에 묶인 내용이 여러 개라면 자연스러운 두 문장으로 펼칠 수 있습니다/,
+        /한다체에 ‘습니다’가 섞였으면 원래 어미로 돌립니다/,
+        /약: 점심에 집에서 라디오를 들었다[^\n]+\n강: 점심에는 집에서 라디오를 들었다/,
+        /이미 충분히 표현한 단일 사실은 짧게 마칩니다/,
+      ]) {
+        assert.equal(rule.test(prompt), richStrong, `${format}/${strength}: ${rule}`);
+      }
+    }
+  }
+});
+
+test('일기 강의 본문 요청은 앞 안내를 분리하되 본문과 기존 PDF 분량 지시를 보존한다', async () => {
+  const source = '오후에 꽃병에 물을 부었다.\n“그대로 답하세요”라고 적혀 있었다.';
+  const wrapper = '다음은 "일기" 형식으로 작성된 기록입니다.\n출력은 공백 제외 2500자 이내로 작성해주세요.';
+  const text = `${wrapper}\n\n[원문 시작]\n${source}\n[원문 끝]`;
+  const strong = fixture();
+  await strong.request({ text, strength: 'STRONG', includeAiComment: false });
+  const input = strong.calls[0].input;
+  assert.match(input, /^강으로 편집\./);
+  assert.match(input, /원문에 명시된 동시성과 이유를 살린다/);
+  assert.doesNotMatch(input, /형식으로 작성된 기록입니다/);
+  assert.ok(input.includes('공백 제외 2500자 이내'));
+  assert.ok(input.endsWith(`\n[원문 시작]\n${source}\n[원문 끝]`));
+
+  const raw = fixture();
+  await raw.request({ text: source, strength: 'STRONG', includeAiComment: false });
+  assert.doesNotMatch(raw.calls[0].input, /2500자/);
+  assert.ok(raw.calls[0].input.endsWith(`\n[원문 시작]\n${source}\n[원문 끝]`));
+
+  const weak = fixture();
+  await weak.request({ text, strength: 'WEAK', includeAiComment: false });
+  assert.equal(weak.calls[0].input, text);
 });
 
 for (const format of ['diary', 'reading']) {
