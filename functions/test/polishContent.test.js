@@ -26,7 +26,7 @@ const compiled = ts.transpileModule([
 const plain = value => JSON.parse(JSON.stringify(value));
 
 function fixture(options = {}) {
-  const calls = [], usage = [], paid = [], reservations = [], rollbacks = [], rateChecks = [];
+  const calls = [], usage = [], paid = [], reservations = [], rollbacks = [], rateChecks = [], warnings = [];
   class HttpsError extends Error { constructor(code, message) { super(message); this.code = code; } }
   const helperModule = { exports: {} };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../lib/polishUsage.js'), 'utf8'), {
@@ -39,7 +39,10 @@ function fixture(options = {}) {
     createPolishUsage: helperModule.exports.createPolishUsage,
     createAiUsageRequestId: () => `synthetic-request-${++requestSequence}`,
     HttpsError, formatPrefixesOf, getAiRoute, DEVELOPER_UIDS: new Set(), AI_USAGE_PLAN: 'beta',
-    console: { log() {}, warn() {}, error() {} }, logger: { warn() { if (options.failWarning) throw new Error('synthetic-warning-failure'); } },
+    console: { log() {}, warn() {}, error() {} }, logger: { warn(...args) {
+      if (options.failWarning) throw new Error('synthetic-warning-failure');
+      warnings.push(plain(args));
+    } },
     enforceRateLimit: async (...args) => { rateChecks.push(args); if (options.rateDenied) throw new HttpsError('resource-exhausted', 'synthetic-rate'); },
     reserveMonthlyAiQuota: async (...args) => {
       if (options.quotaDenied) throw new HttpsError('resource-exhausted', 'synthetic-quota');
@@ -61,7 +64,7 @@ function fixture(options = {}) {
       return { inputTokens: 11, outputTokens: 7, text: () => { if (options.failTextPurpose === request.purpose) throw new Error('synthetic-text-failure'); return text; } };
     },
   });
-  return { calls, usage, paid, reservations, rollbacks, rateChecks, run,
+  return { calls, usage, paid, reservations, rollbacks, rateChecks, warnings, run,
     request: (data = {}) => run({ auth: { uid: 'synthetic-user' }, data: { text: '합성 원문', format: 'diary', ...data } }),
   };
 }
@@ -215,7 +218,8 @@ test('일기·에세이·여행기록의 강은 원문에서 확인되는 근거
   }
 
   for (const interpretation of [null, { evidence: '수업을 들었다.', sentence }, { evidence, sentence: '부끄러웠다.' },
-    { evidence, sentence: `부끄러웠다. ${sentence}` }]) {
+    { evidence, sentence: `부끄러웠다. ${sentence}` }, { evidence, sentence: sentence.replace('읽힌다.', '읽힙니다.') },
+    { evidence, sentence: '친구가 도와줘 읽기가 즐거워진 것으로 읽힌다.' }]) {
     const f = fixture({ polishText: body, interpretation });
     const result = await f.request({ text, strength: 'STRONG', includeAiComment: false });
     assert.equal(result.text, body);
@@ -224,9 +228,29 @@ test('일기·에세이·여행기록의 강은 원문에서 확인되는 근거
   const weak = fixture({ polishText: body, interpretation: { evidence, sentence } });
   assert.equal((await weak.request({ text, strength: 'WEAK', includeAiComment: false })).text, body);
   assert.equal(weak.calls[0].generationConfig, undefined);
+  for (const [input, alreadyPolished] of [[text, `${body}\n\n${sentence}`],
+    [`공백 제외 2500자 이내\n[원문 시작]\n${text}\n[원문 끝]`, '가'.repeat(2500)]]) {
+    const f = fixture({ polishText: alreadyPolished, interpretation: { evidence, sentence } });
+    assert.equal((await f.request({ text: input, strength: 'STRONG', includeAiComment: false })).text, alreadyPolished);
+  }
+});
 
-  const invalid = fixture({ rawPolishText: '{"body":' });
-  assert.equal((await invalid.request({ text, strength: 'STRONG', includeAiComment: false })).text, text);
+test('행사 취지 목록에 없는 참석 메모는 일반 해석 경로로 넘어가지 않는다', async () => {
+  const text = '독서토론회 참석.\n일시: 5월 3일 오전 10시\n장소: 도서관';
+  const f = fixture({ polishText: '도서관에서 열린 독서토론회에 참석했다.' });
+  const result = await f.request({ text, strength: 'STRONG', includeAiComment: false });
+  assert.equal(result.text, '도서관에서 열린 독서토론회에 참석했다.');
+  assert.equal(f.calls[0].generationConfig, undefined);
+});
+
+test('모델 응답 형식이 다르면 원문을 반환하고 형식 오류만 기록한다', async () => {
+  const source = '시험 원문';
+  const text = `시험 안내\n[원문 시작]\n${source}\n[원문 끝]`;
+  for (const [raw, reason] of [['{"body":', 'invalid_json'], ['{"body":null}', 'invalid_body']]) {
+    const f = fixture({ rawPolishText: raw });
+    assert.equal((await f.request({ text, strength: 'STRONG', includeAiComment: false })).text, source);
+    assert.deepEqual(f.warnings, [['강 다듬기 응답 형식 불일치', { reason, responseLength: raw.length }]]);
+  }
 });
 
 test('해석에 원문에 없는 결과를 넣거나 시간 범위가 달라지면 본문만 반환한다', async () => {

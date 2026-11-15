@@ -2320,15 +2320,21 @@ function resolveGroundedPolish(raw: string, source: string, maxLength: number): 
   try {
     result = JSON.parse(raw);
   } catch {
+    logger.warn('강 다듬기 응답 형식 불일치', { reason: 'invalid_json', responseLength: raw.length });
     return source;
   }
-  if (typeof result?.body !== 'string' || !result.body.trim()) return source;
+  if (typeof result?.body !== 'string' || !result.body.trim()) {
+    logger.warn('강 다듬기 응답 형식 불일치', { reason: 'invalid_body', responseLength: raw.length });
+    return source;
+  }
 
   const body = result.body.trim();
   const evidence = result.interpretation?.evidence;
-  const sentence = result.interpretation?.sentence;
+  const candidate = result.interpretation?.sentence;
+  const sentence = typeof candidate === 'string' ? candidate.trim() : '';
+  const ending = /니다[.!?]?$/.test(body) ? '읽힙니다' : /요[.!?]?$/.test(body) ? '읽혀요' : '읽힌다';
   if (typeof evidence !== 'string' || !/[\p{L}\p{N}]/u.test(evidence)
-    || typeof sentence !== 'string' || !/^[^.!?。！？\r\n]+(?:읽힌다|읽혀요|읽힙니다)[.。]?$/.test(sentence)
+    || !/^[^.!?。！？\r\n]+[.。]?$/.test(sentence) || !sentence.replace(/[.。]$/, '').endsWith(ending)
     || body.includes(sentence)) {
     return body;
   }
@@ -2339,10 +2345,10 @@ function resolveGroundedPolish(raw: string, source: string, maxLength: number): 
   const endsAtBoundary = evidenceEnd === source.length || /[.!?。！？\n]\s*$/.test(evidence)
     || /^[\t ]*\r?\n/.test(source.slice(evidenceEnd));
   const timeOfDay = evidence.match(/오전|오후/g) ?? [];
-  const outcomeWords = sentence.match(/해결|성공|실패|효과|덕분|때문/g) ?? [];
+  const claims = sentence.match(/해결|성공|실패|효과|덕분|덕에|때문|좋아졌|나아졌|극복|도움|항상|습관|마다|즐거|뿌듯|후회|혼자/g) ?? [];
   if (evidenceStart < 0 || !startsAtBoundary || !endsAtBoundary
     || timeOfDay.some(period => !sentence.includes(period))
-    || outcomeWords.some(word => !evidence.includes(word))) {
+    || claims.some(word => !evidence.includes(word))) {
     return body;
   }
   const expanded = `${body}\n\n${sentence}`;
@@ -2439,7 +2445,7 @@ export const polishContent = onCall(
             : '결과가 어떻게 나왔는지 알리려는';
           eventInference = { evidence, purpose, maxLength: pageLimit ? 2500 : Infinity };
         }
-        if (!eventInference) {
+        if (!hasAttendanceNote) {
           groundedPolish = { source, maxLength: pageLimit ? 2500 : Infinity };
         }
         const eventInputGuide = hasAttendanceNote
@@ -2477,6 +2483,7 @@ ${eventExample}
           systemPrompt += `
 
 [강에서 원문 근거로 의미 풀기]
+본문에서 서로 다른 방문지를 같은 장소로 합치지 않습니다. 여러 장소를 차례로 들렀다는 글을 풀 때에는 ‘이어서’로 순서를 살릴 수 있습니다. 원문에서 같은 장소였다는 근거가 있을 때만 ‘그 자리에서’를 씁니다.
 원문의 사실과 이미 적은 감정은 "body"에 다듬습니다. 두 사실 사이에 비교나 반복, 변화가 보이면 먼저 그 관계를 뒷받침하는 연속된 원문을 문장이나 기록 줄의 처음부터 끝까지 "evidence"에 그대로 복사합니다. 그 범위 안에서 두 사실을 함께 읽었을 때 드러나는 의미를 "sentence" 한 문장으로 씁니다. 근거에 ‘오전’ 또는 ‘오후’가 있으면 해석 문장에도 해당 시간 범위를 명시합니다. ‘이번 주’, ‘세 번’ 같은 한정도 넓히지 않습니다. 몇 번 일어났다는 말을 며칠에 걸쳐 일어났다고 바꾸지 않습니다. 말투에 맞춰 ‘읽힌다’, ‘읽혀요’, ‘읽힙니다’ 중 하나로 끝냅니다.
 출력 전에 해석 문장에 쓰인 대상과 변화의 범위를 근거에 대조합니다. 그 표현이 사실이 아니어도 인용한 원문이 그대로 성립한다면 그 표현을 삭제합니다. 특히 일부 날에 있었던 일을 지속된 습관이나 전면적인 변화로 만들지 않습니다. 방문한 곳의 수를 속도나 여유로 해석하지 않습니다. 무엇을 했다는 기록에서 그 행동이 문제를 해결했다거나 좋은 결과를 냈다고 풀이하지 않습니다. 원문에서 확인되지 않는 동행 여부·원인·의도·감정·교훈을 쓰지 않습니다. 해석의 시기와 범위는 근거보다 넓혀 쓰지 않습니다.
 예시 1. ‘작년에는 토요일마다 집에서 영화를 봤다. 이번 달에는 두 토요일에 공연장에 갔다.’ → ‘이번 달에는 토요일을 보내는 방식에 공연을 보러 간 날도 있었다는 변화가 읽힌다.’ ‘영화 보는 습관을 버리고 외출을 즐기게 됐다’는 근거가 없습니다.
