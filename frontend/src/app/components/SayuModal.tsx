@@ -21,7 +21,7 @@ import { exportRecordsToEpub } from '../services/epubExportService';
 import { getEpubReaderHint } from '../utils/epubReaderGuide';
 import GrapeLoadingMini from './GrapeLoadingMini';
 import { PolishStrengthSelect, type PolishStrength } from './PolishStrengthSelect';
-import { getSayuEditPolishOriginal } from '../records/sayuEditPolishSource';
+import { getSayuEditPolishOriginal, supportsSayuOriginalPolishPreview } from '../records/sayuEditPolishSource';
 import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './GrowthTimelineDocumentModal';
 import { compressImage } from '../services/imageService';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
@@ -675,6 +675,7 @@ export function SayuModal({
   const editPolishSource = editPolishOriginal || savedDraftRef.current.content.trim();
   const canPolishEdit = Boolean(currentUser && firestoreId && formatKey && formatKey !== 'voiding'
     && !isGrowthTimeline && !isHouseholdSayu && editPolishSource && editPolishSource !== '내용 없음');
+  const canPolishOriginal = canPolishEdit && supportsSayuOriginalPolishPreview(formatKey);
   const householdViewData = householdSayuViewData(householdRecord, editedOriginalData);
   const householdDetailEntries = isHouseholdSayu ? parseHouseholdEntriesForSayu(householdViewData) : [];
   const householdUserText = isHouseholdSayu && householdSayuIsUserText(householdViewData);
@@ -3530,7 +3531,7 @@ export function SayuModal({
               backgroundColor: '#fff',
             }}
           >
-            {canPolishEdit ? (
+            {canPolishOriginal ? (
               <>
                 <PolishStrengthSelect value={polishStrength} onChange={handlePolishPreview} disabled={isSaving || isSavingOriginal || isRefining} runOnClick />
                 {isRefining && <p role="status" className="text-sm text-[#1A3C6E]">다듬는 중…</p>}
@@ -3556,7 +3557,7 @@ export function SayuModal({
               >
                 {isSavingOriginal ? '저장 중...' : '💾 저장'}
               </button>
-              {!canPolishEdit && <button
+              {!canPolishOriginal && <button
                 onClick={() => void handleRepolish()}
                 disabled={isSavingOriginal || isRefining}
                 style={{
