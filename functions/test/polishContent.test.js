@@ -53,7 +53,7 @@ function fixture(options = {}) {
       calls.push(plain(request));
       if (options.failPurpose === request.purpose) throw Object.assign(new Error('synthetic-provider-failure'), options.errorFields || {});
       const text = request.purpose === 'recordStats' ? options.statsText ?? '{"content_richness":4}'
-        : request.purpose === 'sayuPolishComment' ? options.commentText ?? '**합성 한마디**' : '합성 본문';
+        : request.purpose === 'sayuPolishComment' ? options.commentText ?? '**합성 한마디**' : options.polishText ?? '합성 본문';
       return { inputTokens: 11, outputTokens: 7, text: () => { if (options.failTextPurpose === request.purpose) throw new Error('synthetic-text-failure'); return text; } };
     },
   });
@@ -147,6 +147,51 @@ test('완결된 짧은 글의 구조·어휘 편집과 원문 어미 점검은 �
       }
     }
   }
+});
+
+test('참석 관련 표현과 일시·장소가 함께 있는 기록의 강만 행사 예시를 적용한다', async () => {
+  const text = '동네 전시회 참석.\n- 일시: 5월 3일 오전 10시~정오\n- 장소: 은행나무 도서관';
+  for (const [format, strength, source, usesEventGuide] of [
+    ['diary', 'STRONG', text, true],
+    ['diary', 'STRONG', text.replace('참석.', '참석 여부 미정.'), true],
+    ['diary', 'WEAK', text, false],
+    ['diary', 'STRONG', '동네 전시회 참석.\n- 장소: 은행나무 도서관', false],
+    ['diary', 'STRONG', '산책을 했다.\n일시: 5월 3일 오후 2시\n장소: 은행나무 도서관 앞', false],
+    ['report', 'STRONG', text, false],
+  ]) {
+    const f = fixture();
+    await f.request({ text: source, format, strength });
+    const { input, systemInstruction } = f.calls[0];
+    assert.equal(input.includes('적혀 있는 행사 시간은 일정으로 서술한다'), usesEventGuide);
+    assert.equal(systemInstruction.includes('행사 시간을 작성자의 도착·퇴장 시각이나 체류 시간으로 바꾸지 않습니다'), usesEventGuide);
+    assert.equal(systemInstruction.includes('불참·미정·다른 사람의 참석을 작성자가 참석한 것으로 바꾸지 않습니다'), usesEventGuide);
+    assert.equal(systemInstruction.includes('행사 이름으로 취지나 초점을 추정하는 문장은 본문에 넣지 않습니다'), usesEventGuide);
+  }
+});
+
+test('강의 행사 해석은 참석과 직접 연결된 행사명에서 읽을 수 있는 취지로만 덧붙인다', async () => {
+  const metadata = '\n- 일시: 5월 3일 오전 10시~정오\n- 장소: 도서관';
+  for (const [heading, strength, body, expected] of [
+    ['독서교육 성과공유회참석했다.', 'STRONG', '공유회에 참석했다.', '‘교육 성과공유회’라는 이름에서 교육이 어떤 성과로 이어졌는지 함께 나누려는 취지가 읽힌다.'],
+    ['주민 제안 결과 설명회에 참석했습니다.', 'STRONG', '설명회 일정입니다.', '‘결과 설명회’라는 이름에서 결과가 어떻게 나왔는지 알리려는 취지가 읽힙니다.'],
+    ['동네 성과 공유회 참석.', 'STRONG', '공유회에 참석했어요.', '‘성과 공유회’라는 이름에서 어떤 성과가 있었는지 함께 나누려는 취지가 읽혀요.'],
+    ['동네 전시회에 참석했다.', 'STRONG', '전시회에 참석했다.', ''],
+    ['성과공유회 안내를 받았다. 동네 전시회에 참석했다.', 'STRONG', '행사 안내를 받았다.', ''],
+    ['독서교육 성과공유회에 참석했다.', 'WEAK', '공유회에 참석했다.', ''],
+  ]) {
+    const f = fixture({ polishText: body });
+    const result = await f.request({ text: heading + metadata, strength, includeAiComment: false });
+    assert.equal(result.text, expected ? `${body}\n\n${expected}` : body);
+    assert.deepEqual(purposes(f), ['sayuPolish', 'recordStats']);
+  }
+});
+
+test('행사 해석을 붙여 PDF 분량 기준을 넘길 때는 본문을 보존한다', async () => {
+  const text = '공백 제외 2500자 이내\n[원문 시작]\n성과공유회 참석.\n일시: 5월 3일 오전 10시\n장소: 도서관\n[원문 끝]';
+  const body = '가'.repeat(2500);
+  const f = fixture({ polishText: body });
+  const result = await f.request({ text, strength: 'STRONG', includeAiComment: false });
+  assert.equal(result.text, body);
 });
 
 test('일기 강의 본문 요청은 앞 안내를 분리하되 본문과 기존 PDF 분량 지시를 보존한다', async () => {
