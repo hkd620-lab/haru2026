@@ -135,7 +135,7 @@ for (const aiComment of ['새 한마디', '', undefined, 123]) {
     const state = { requests: [], saved: { memo_ai_comment: '기존 한마디', memo_stats: { preserved: true } }, localComment: '기존 한마디', errors: [] };
     const env = {
       currentUser: { uid: 'synthetic-user' }, isRefining: false, polishStrength: 'WEAK', formatKey: 'memo', format: '메모', recordDate: '2026-10-22', firestoreId: 'synthetic-record',
-      editedOriginalData: { memo_simple: '합성 원문' }, setIsRefining() {}, showLoading() {}, hideLoading() {}, functions: {}, db: {},
+      editedOriginalData: { memo_simple: '합성 원문' }, repolishRequestRef: { current: null }, setIsRefining() {}, showLoading() {}, hideLoading() {}, functions: {}, db: {},
       httpsCallable: (_functions, name) => { assert.equal(name, 'polishContent'); return async request => { state.requests.push(request); return { data: { text: '새 본문', aiComment } }; }; },
       doc: (_db, ...segments) => { assert.deepEqual(segments, ['users', 'synthetic-user', 'records', 'synthetic-record']); return {}; },
       updateDoc: async (_ref, payload) => Object.assign(state.saved, payload), setEditedContent() {}, setViewMode() {},
@@ -156,7 +156,7 @@ test('다시 다듬기는 표현형 강에서 원문만 풍성하게 표현하�
     const requests = [], writes = [];
     await handler('SayuModal', 'handleRepolish', {
       currentUser: { uid: 'synthetic-user' }, isRefining: false, polishStrength: 'STRONG', formatKey, format: '', recordDate: '2026-11-02', firestoreId: 'synthetic-record',
-      editedOriginalData: { [`${formatKey}_simple`]: '합성 원문' }, setIsRefining() {}, showLoading() {}, hideLoading() {}, functions: {}, db: {},
+      editedOriginalData: { [`${formatKey}_simple`]: '합성 원문' }, repolishRequestRef: { current: null }, setIsRefining() {}, showLoading() {}, hideLoading() {}, functions: {}, db: {},
       httpsCallable: () => async request => { requests.push(request); return { data: { text: '다듬은 글' } }; },
       doc: () => ({}), updateDoc: async (_ref, payload) => writes.push(payload),
       setEditedContent() {}, setViewMode() {}, setLocalAiComment() {}, toast: { error: assert.fail, success() {} }, console,
@@ -168,5 +168,38 @@ test('다시 다듬기는 표현형 강에서 원문만 풍성하게 표현하�
     if (formatKey === 'diary') assert.match(requests[0].text, /원문에 없는 관찰·감정·행동·분위기·해석은 추측이나 가능성으로도 덧붙이지 마세요/);
     assert.match(requests[0].text, /\[원문 시작\]\n합성 원문\n\[원문 끝\]/);
     assert.deepEqual(writes, [{ [`${formatKey}_sayu`]: '다듬은 글' }]);
+  }
+});
+
+test('원본 탭에서 약과 강은 각각 한 번 실행되어 저장 없이 SAYU 편집창에 결과를 표시한다', async () => {
+  const requests = [];
+  const preview = { content: '', mode: 'original', editing: false, ref: { current: null } };
+  const repolish = handler('SayuModal', 'handleRepolish', {
+    currentUser: { uid: 'synthetic-user' }, formatKey: 'diary', format: '일기',
+    recordDate: '2026-11-02', firestoreId: 'synthetic-record', polishStrength: 'WEAK',
+    functions: {}, repolishRequestRef: { current: null }, setIsRefining() {},
+    httpsCallable: (_functions, name) => async request => {
+      assert.equal(name, 'polishContent');
+      requests.push(request);
+      return { data: { text: `${request.strength} 미리보기` } };
+    },
+    setEditedContent: value => { preview.content = value; },
+    setViewMode: value => { preview.mode = value; },
+    setIsEditing: value => { preview.editing = value; },
+    polishPreviewRef: preview.ref, editedContent: '저장된 본문',
+    updateDoc: assert.fail, toast: { error: assert.fail, success() {} }, console,
+  });
+
+  for (const strength of ['WEAK', 'STRONG']) {
+    await repolish('현재 원본 탭의 본문', strength);
+    assert.equal(preview.content, `${strength} 미리보기`);
+    assert.equal(preview.ref.current, preview.content);
+    assert.equal(preview.mode, 'ai');
+    assert.equal(preview.editing, true);
+  }
+  assert.deepEqual(requests.map(request => request.strength), ['WEAK', 'STRONG']);
+  for (const request of requests) {
+    assert.equal(request.includeAiComment, false);
+    assert.match(request.text, /\[원문 시작\]\n현재 원본 탭의 본문\n\[원문 끝\]/);
   }
 });

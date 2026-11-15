@@ -640,6 +640,7 @@ export function SayuModal({
   const [isRefining, setIsRefining] = useState(false);
   const [polishStrength, setPolishStrength] = useState<PolishStrength>('WEAK');
   const polishPreviewRef = useRef<string | null>(null);
+  const repolishRequestRef = useRef<symbol | null>(null);
   const [localAiComment, setLocalAiComment] = useState(aiComment);
   const [editedWeather, setEditedWeather] = useState(weather || '');
   const [editedTemperature, setEditedTemperature] = useState(temperature || '');
@@ -1359,6 +1360,13 @@ export function SayuModal({
     editor.style.height = `${Math.max(editor.scrollHeight, 400)}px`;
   }, [isOpen, isEditing, viewMode, editedContent]);
 
+  useEffect(() => {
+    setIsRefining(false);
+    return () => {
+      repolishRequestRef.current = null;
+    };
+  }, [isOpen, currentUser?.uid, firestoreId, recordDate, formatKey]);
+
   const handleCancelEdit = () => {
     const saved = savedDraftRef.current;
     setEditedContent(saved.content);
@@ -1739,10 +1747,10 @@ export function SayuModal({
 
   // ✨ 다시 다듬기
   const handleRepolish = async (draftSource?: string, strength = polishStrength) => {
-    if (isRefining || !currentUser || !formatKey || (!recordDate && !firestoreId)) return;
+    if (repolishRequestRef.current || !currentUser || !formatKey || (!recordDate && !firestoreId)) return;
     const preview = draftSource !== undefined;
-    const editor = preview ? mainEditorRef.current : null;
-    if (preview && !editor) return;
+    const request = Symbol();
+    repolishRequestRef.current = request;
     setIsRefining(true);
     if (!preview) showLoading('AI가 다듬고 있습니다');
     try {
@@ -1762,16 +1770,18 @@ export function SayuModal({
         ...(formatKey === 'voiding' ? {} : { strength }),
         ...(preview ? { includeAiComment: false } : {}),
       });
+      if (repolishRequestRef.current !== request) return;
       const responseData = result.data as { text: string; aiComment?: string };
       const polished = responseData.text;
       if (preview) {
-        if (editor !== mainEditorRef.current) return;
         if (typeof polished !== 'string' || !polished.trim()) {
           toast.error('다듬기 결과가 비어 있습니다. 다시 시도해 주세요.');
           return;
         }
         polishPreviewRef.current = polished;
         setEditedContent(polished);
+        setViewMode('ai');
+        setIsEditing(true);
         toast.success(polished.trim() === editedContent.trim() ? '다듬기를 마쳤습니다. 본문은 그대로입니다.' : '다듬은 결과를 편집창에 반영했습니다.');
         return;
       }
@@ -1783,17 +1793,30 @@ export function SayuModal({
         updatePayload[`${formatKey}_ai_comment`] = newAiComment;
       }
       await updateDoc(recordRef, updatePayload);
+      if (repolishRequestRef.current !== request) return;
       setEditedContent(polished);
       if (newAiComment) setLocalAiComment(newAiComment);
       setViewMode('ai');
       toast.success('✨ 다시 다듬기가 완료되었습니다!');
     } catch (error) {
+      if (repolishRequestRef.current !== request) return;
       console.error('다시 다듬기 실패:', error);
       toast.error('다시 다듬기에 실패했습니다. 다시 시도해주세요.');
     } finally {
-      setIsRefining(false);
+      if (repolishRequestRef.current === request) {
+        repolishRequestRef.current = null;
+        setIsRefining(false);
+      }
       if (!preview) hideLoading();
     }
+  };
+
+  const handlePolishPreview = (strength: PolishStrength) => {
+    if (isSaving || isSavingOriginal) return;
+    if (editedContent !== savedDraftRef.current.content
+      && editedContent !== polishPreviewRef.current
+      && !window.confirm('편집 중인 본문을 다시 다듬기 결과로 바꿀까요?')) return;
+    void handleRepolish(editPolishSource, strength);
   };
 
   const getEnvironmentHeader = () => {
@@ -1867,6 +1890,7 @@ export function SayuModal({
               {isTitle ? (
                 <input
                   value={value}
+                  readOnly={isRefining}
                   onChange={(e) => setEditedOriginalData(prev => ({ ...prev, [key]: e.target.value }))}
                   style={{
                     display: 'block',
@@ -1886,6 +1910,7 @@ export function SayuModal({
               ) : (
                 <textarea
                   value={value}
+                  readOnly={isRefining}
                   onChange={(e) => {
                     setEditedOriginalData(prev => ({ ...prev, [key]: e.target.value }));
                     e.target.style.height = 'auto';
@@ -2528,6 +2553,7 @@ export function SayuModal({
           >
             <button
               onClick={() => setViewMode('ai')}
+              disabled={isRefining}
               style={{
                 flex: 1,
                 padding: '12px',
@@ -2545,6 +2571,7 @@ export function SayuModal({
             </button>
             <button
               onClick={() => setViewMode('original')}
+              disabled={isRefining}
               style={{
                 flex: 1,
                 padding: '12px',
@@ -2599,14 +2626,9 @@ export function SayuModal({
                 <div style={{ marginBottom: 16 }}>
                   <PolishStrengthSelect
                     value={polishStrength}
-                    disabled={isSaving || isRefining}
+                    disabled={isSaving || isSavingOriginal || isRefining}
                     runOnClick
-                    onChange={(strength) => {
-                      if (editedContent !== savedDraftRef.current.content
-                        && editedContent !== polishPreviewRef.current
-                        && !window.confirm('편집 중인 본문을 다시 다듬기 결과로 바꿀까요?')) return;
-                      void handleRepolish(editPolishSource, strength);
-                    }}
+                    onChange={handlePolishPreview}
                   />
                   {isRefining && <p role="status" className="text-sm text-[#1A3C6E]">다듬는 중…</p>}
                 </div>
@@ -3508,7 +3530,14 @@ export function SayuModal({
               backgroundColor: '#fff',
             }}
           >
-            {formatKey !== 'voiding' && <PolishStrengthSelect value={polishStrength} onChange={setPolishStrength} disabled={isSavingOriginal || isRefining} saveImmediately />}
+            {canPolishEdit ? (
+              <>
+                <PolishStrengthSelect value={polishStrength} onChange={handlePolishPreview} disabled={isSaving || isSavingOriginal || isRefining} runOnClick />
+                {isRefining && <p role="status" className="text-sm text-[#1A3C6E]">다듬는 중…</p>}
+              </>
+            ) : formatKey !== 'voiding' && (
+              <PolishStrengthSelect value={polishStrength} onChange={setPolishStrength} disabled={isSavingOriginal || isRefining} saveImmediately />
+            )}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button
                 onClick={handleSaveOriginal}
@@ -3527,7 +3556,7 @@ export function SayuModal({
               >
                 {isSavingOriginal ? '저장 중...' : '💾 저장'}
               </button>
-              <button
+              {!canPolishEdit && <button
                 onClick={() => void handleRepolish()}
                 disabled={isSavingOriginal || isRefining}
                 style={{
@@ -3561,7 +3590,7 @@ export function SayuModal({
                     다듬는 중...
                   </>
                 ) : '✨ 다시 다듬기 · 즉시 저장'}
-              </button>
+              </button>}
             </div>
           </div>
         )}
