@@ -21,7 +21,7 @@ const fn = name => find(n => ts.isFunctionDeclaration(n) && n.name?.text === nam
 const handler = variable('polishContent').arguments.at(-1);
 const compiled = ts.transpileModule([
   `const STATS_PROMPTS = ${variable('STATS_PROMPTS').getText(ast)};`,
-  fn('analyzeStats'), fn('buildAiCommentPrompt'), `(${handler.getText(ast)});`,
+  fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('resolveGroundedPolish'), `(${handler.getText(ast)});`,
 ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2019 } }).outputText;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -52,8 +52,12 @@ function fixture(options = {}) {
     callAi: async request => {
       calls.push(plain(request));
       if (options.failPurpose === request.purpose) throw Object.assign(new Error('synthetic-provider-failure'), options.errorFields || {});
+      const body = options.polishText ?? '합성 본문';
+      const polishResponse = request.generationConfig?.responseMimeType === 'application/json'
+        ? options.rawPolishText ?? JSON.stringify({ body, interpretation: options.interpretation ?? null })
+        : body;
       const text = request.purpose === 'recordStats' ? options.statsText ?? '{"content_richness":4}'
-        : request.purpose === 'sayuPolishComment' ? options.commentText ?? '**합성 한마디**' : options.polishText ?? '합성 본문';
+        : request.purpose === 'sayuPolishComment' ? options.commentText ?? '**합성 한마디**' : polishResponse;
       return { inputTokens: 11, outputTokens: 7, text: () => { if (options.failTextPurpose === request.purpose) throw new Error('synthetic-text-failure'); return text; } };
     },
   });
@@ -192,6 +196,54 @@ test('행사 해석을 붙여 PDF 분량 기준을 넘길 때는 본문을 보�
   const f = fixture({ polishText: body });
   const result = await f.request({ text, strength: 'STRONG', includeAiComment: false });
   assert.equal(result.text, body);
+});
+
+test('일기·에세이·여행기록의 강은 원문에서 확인되는 근거를 가진 한 문장만 본문에 합친다', async () => {
+  const text = '지난주에는 문서만 읽었다. 이번에는 질문을 적으며 읽었다.';
+  const evidence = text;
+  const sentence = '이번 읽기에서는 질문을 정리하는 일까지 읽기의 일부가 된 것으로 읽힌다.';
+  const body = '지난주에는 문서를 읽기만 했다. 이번에는 질문도 적었다.';
+  for (const format of ['diary', 'essay', 'travel']) {
+    for (const mode of ['BASIC', 'PREMIUM']) {
+      const f = fixture({ polishText: body, interpretation: { evidence, sentence } });
+      const result = await f.request({ text, format, mode, strength: 'STRONG', includeAiComment: false });
+      assert.equal(result.text, `${body}\n\n${sentence}`);
+      assert.equal(f.calls[0].generationConfig.responseMimeType, 'application/json');
+      assert.equal(f.calls[0].purpose, mode === 'BASIC' ? 'sayuPolishBasic' : 'sayuPolish');
+      assert.deepEqual(purposes(f).slice(1), ['recordStats']);
+    }
+  }
+
+  for (const interpretation of [null, { evidence: '수업을 들었다.', sentence }, { evidence, sentence: '부끄러웠다.' },
+    { evidence, sentence: `부끄러웠다. ${sentence}` }]) {
+    const f = fixture({ polishText: body, interpretation });
+    const result = await f.request({ text, strength: 'STRONG', includeAiComment: false });
+    assert.equal(result.text, body);
+  }
+
+  const weak = fixture({ polishText: body, interpretation: { evidence, sentence } });
+  assert.equal((await weak.request({ text, strength: 'WEAK', includeAiComment: false })).text, body);
+  assert.equal(weak.calls[0].generationConfig, undefined);
+
+  const invalid = fixture({ rawPolishText: '{"body":' });
+  assert.equal((await invalid.request({ text, strength: 'STRONG', includeAiComment: false })).text, text);
+});
+
+test('해석에 원문에 없는 결과를 넣거나 시간 범위가 달라지면 본문만 반환한다', async () => {
+  const text = '첫날에는 시장과 박물관을 둘러봤다. 마지막 날에는 숙소 앞에서 오전을 보냈다.';
+  const sentence = '첫날과 마지막 날 오전에 둘러본 범위가 달랐다는 점이 읽힌다.';
+  const body = '첫날 시장과 박물관을 둘러봤다. 마지막 날에는 숙소 앞에서 오전을 보냈다.';
+  for (const [evidence, candidate, expected] of [
+    [text, sentence, `${body}\n\n${sentence}`],
+    [text, sentence.replace(' 오전', ''), body],
+    [text, '마지막 날 오전 산책으로 문제를 해결한 것으로 읽힌다.', body],
+    ['숙소 앞에서 오전을 보냈다.', sentence, body],
+    ['첫날에는 시장과 박물관을 둘러봤다. 마지막 날에는 숙소 앞에서', sentence, body],
+  ]) {
+    const f = fixture({ polishText: body, interpretation: { evidence, sentence: candidate } });
+    const result = await f.request({ text, format: 'travel', strength: 'STRONG', includeAiComment: false });
+    assert.equal(result.text, expected);
+  }
 });
 
 test('일기 강의 본문 요청은 앞 안내를 분리하되 본문과 기존 PDF 분량 지시를 보존한다', async () => {
