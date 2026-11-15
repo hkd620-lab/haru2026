@@ -1,3 +1,11 @@
+const originalPolishPreviewFormats = new Set([
+  'diary', 'essay', 'travel', 'reading', 'garden', 'pet', 'child', 'work', 'memo', 'mission', 'report',
+]);
+
+export function supportsSayuOriginalPolishPreview(formatKey: string | undefined): boolean {
+  return originalPolishPreviewFormats.has(formatKey ?? '');
+}
+
 export function getSayuEditPolishOriginal(formatKey: string | undefined, originalData: Record<string, string>, isFinalReading: boolean): string {
   if (formatKey === 'reading') {
     if (isFinalReading) return '';
