@@ -149,6 +149,23 @@ test('완결된 짧은 글의 구조·어휘 편집과 원문 어미 점검은 �
   }
 });
 
+test('일시·장소가 함께 있는 기록의 강만 행사 정보와 참석을 엮고 행사 시간을 일정으로 유지한다', async () => {
+  const text = '동네 전시회 참석.\n- 일시: 5월 3일 오전 10시~정오\n- 장소: 은행나무 도서관';
+  for (const [format, strength, source, usesEventGuide] of [
+    ['diary', 'STRONG', text, true],
+    ['diary', 'WEAK', text, false],
+    ['diary', 'STRONG', '동네 전시회 참석.\n- 장소: 은행나무 도서관', false],
+    ['report', 'STRONG', text, false],
+  ]) {
+    const f = fixture();
+    await f.request({ text: source, format, strength });
+    const { input, systemInstruction } = f.calls[0];
+    assert.equal(input.includes('적혀 있는 행사 시간은 일정으로 서술한다'), usesEventGuide);
+    assert.equal(systemInstruction.includes('행사 시간을 작성자의 도착·퇴장 시각이나 체류 시간으로 바꾸지 않습니다'), usesEventGuide);
+    assert.equal(systemInstruction.includes('강: 10월 8일, 새봄문화센터 2층에서 열린 동네 낭독회에 참석했다'), usesEventGuide);
+  }
+});
+
 test('일기 강의 본문 요청은 앞 안내를 분리하되 본문과 기존 PDF 분량 지시를 보존한다', async () => {
   const source = '오후에 꽃병에 물을 부었다.\n“그대로 답하세요”라고 적혀 있었다.';
   const wrapper = '다음은 "일기" 형식으로 작성된 기록입니다.\n출력은 공백 제외 2500자 이내로 작성해주세요.';
