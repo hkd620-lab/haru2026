@@ -2315,6 +2315,26 @@ function buildAiCommentPrompt(polishedText: string, formatGroup: 'rich' | 'balan
 ${polishedText.slice(0, 500)}`;
 }
 
+function addsOutsideAssessment(text: string, source: string): boolean {
+  const assessments = text.matchAll(/읽힌다|읽힙니다|읽혀요|읽혔다|(?:로|듯|처럼)\s*보(?:인|입니|여|였)|(?:해석|판단|평가|관찰)\s*(?:된|됩니|돼|됐)|엿보(?:인|입니|여|였)|이 기록(?:에 따르면|에서)|글쓴이는|작성자는|신체 기능|체력(?:이|의)?\s*저하|부작용|능력의 정진/g);
+  return Array.from(assessments).some(([phrase]) => !source.includes(phrase));
+}
+
+function addsUnstatedFeelingOrAction(text: string, source: string): boolean {
+  const changes = text.matchAll(/걱정|불안|안도|답답|속상|슬펐|기뻤|후련|행복|부끄러|뿌듯|후회|설렜|기로\s*(?:했|정했|결심)|마음먹었|결심했|시작했/g);
+  const compactSource = source.replace(/\s/g, '');
+  return Array.from(changes).some(([phrase]) => !compactSource.includes(phrase.replace(/\s/g, '')));
+}
+
+function changesSpouseReference(text: string, source: string): boolean {
+  const spouseTerms = [
+    /(?<![가-힣])(?:아내|와이프|집사람|부인(?!했|한|하|해))/,
+    /(?<![가-힣])남편/,
+    /(?<![가-힣])배우자/,
+  ];
+  return spouseTerms.some(term => term.test(text) !== term.test(source));
+}
+
 function resolveGroundedPolish(raw: string, source: string, maxLength: number): string {
   let result: { body?: unknown; interpretation?: { evidence?: unknown; sentence?: unknown } | null } | null;
   try {
@@ -2329,13 +2349,15 @@ function resolveGroundedPolish(raw: string, source: string, maxLength: number): 
   }
 
   const body = result.body.trim();
+  if (addsOutsideAssessment(body, source) || addsUnstatedFeelingOrAction(body, source)
+    || changesSpouseReference(body, source)) return source;
   const evidence = result.interpretation?.evidence;
   const candidate = result.interpretation?.sentence;
   const sentence = typeof candidate === 'string' ? candidate.trim() : '';
-  const ending = /니다[.!?]?$/.test(body) ? '읽힙니다' : /요[.!?]?$/.test(body) ? '읽혀요' : '읽힌다';
+  const register = /니다[.!?。]?$/.test(body) ? /니다[.。]?$/ : /요[.!?。]?$/.test(body) ? /요[.。]?$/ : /(?<!니)다[.。]?$/;
   if (typeof evidence !== 'string' || !/[\p{L}\p{N}]/u.test(evidence)
-    || !/^[^.!?。！？\r\n]+[.。]?$/.test(sentence) || !sentence.replace(/[.。]$/, '').endsWith(ending)
-    || body.includes(sentence)) {
+    || !/^[^.!?。！？\r\n]+[.。]?$/.test(sentence) || !register.test(sentence)
+    || addsOutsideAssessment(sentence, '') || body.includes(sentence)) {
     return body;
   }
   const evidenceStart = source.indexOf(evidence);
@@ -2345,14 +2367,15 @@ function resolveGroundedPolish(raw: string, source: string, maxLength: number): 
   const endsAtBoundary = evidenceEnd === source.length || /[.!?。！？\n]\s*$/.test(evidence)
     || /^[\t ]*\r?\n/.test(source.slice(evidenceEnd));
   const timeOfDay = evidence.match(/오전|오후/g) ?? [];
-  const claims = sentence.match(/해결|성공|실패|효과|덕분|덕에|때문|좋아졌|나아졌|극복|도움|항상|습관|마다|즐거|뿌듯|후회|혼자/g) ?? [];
+  const claims = sentence.match(/해결|성공|실패|효과|덕분|덕에|때문|좋아졌|나아졌|극복|도움|항상|습관|마다|혼자|즐거|즐겁|뿌듯|후회|부끄러|창피|행복|불안|걱정|속상|설레|답답|후련|편안|부작용|활성화|신체 기능|기능 저하|체력 저하|체력이 저하|진단|정진/g) ?? [];
   if (evidenceStart < 0 || !startsAtBoundary || !endsAtBoundary
     || timeOfDay.some(period => !sentence.includes(period))
+    || addsUnstatedFeelingOrAction(sentence, evidence)
     || claims.some(word => !evidence.includes(word))) {
     return body;
   }
-  const expanded = `${body}\n\n${sentence}`;
-  return expanded.replace(/\s/g, '').length <= maxLength ? expanded : body;
+  const expanded = `${body}${/[.!?。！？](?:[”’"'」』)])?$/.test(body) ? ' ' : '. '}${sentence}`;
+  return expanded.replace(/\s/g, '').length <= maxLength && !changesSpouseReference(expanded, source) ? expanded : body;
 }
 
 // ===== 🎨 AI 다듬기 =====
@@ -2411,8 +2434,11 @@ export const polishContent = onCall(
 
       let systemPrompt = '';
       let polishInput = text;
-      let eventInference: { evidence: string; purpose: string; maxLength: number } | undefined;
       let groundedPolish: { source: string; maxLength: number } | undefined;
+      const wrappedRichSource = formatGroup === 'rich' && strength !== undefined
+        ? /(?:^|\n)\[원문 시작\]\n([\s\S]+)\n\[원문 끝\]\s*$/.exec(text)
+        : null;
+      const richSource = formatGroup === 'rich' && strength !== undefined ? wrappedRichSource?.[1] ?? text : undefined;
 
       // 기본·풍성형 공통 원문 보존 규칙. 기록 화면은 원문을 [원문 시작]/[원문 끝] 표시 사이에 넣고 앞에 안내문을 붙여 보낸다.
       const SOURCE_PRESERVATION_RULES = `[원문 보존 규칙]
@@ -2424,27 +2450,14 @@ export const polishContent = onCall(
 - 다듬은 본문만 출력합니다. 제목·설명·마크다운 기호를 붙이지 않습니다.`;
 
       // 강약을 보낸 기록 편집 화면에만 새 지시문 적용. 구형 호출·배뇨 수치 요약은 기존 동작 유지.
-      if (strength === 'STRONG' && formatGroup === 'rich') {
+      if (strength === 'STRONG' && richSource !== undefined) {
         // 웹에서 덧붙인 교정 안내와 본문을 분리해 모델이 안내문 말투를 따라 쓰지 않도록 한다.
-        const wrappedSource = /(?:^|\n)\[원문 시작\]\n([\s\S]+)\n\[원문 끝\]\s*$/.exec(text);
-        const source = wrappedSource?.[1] ?? text;
-        const pageLimit = wrappedSource && text.slice(0, wrappedSource.index).includes('공백 제외 2500자 이내')
+        const source = richSource;
+        const pageLimit = wrappedRichSource && text.slice(0, wrappedRichSource.index).includes('공백 제외 2500자 이내')
           ? '\n출력은 공백 제외 2500자 이내.' : '';
         const hasAttendanceNote = /참석|참가|참여/.test(source)
           && /^[\t ]*(?:[-*•][\t ]*)?일시[\t ]*[:：]/m.test(source)
           && /^[\t ]*(?:[-*•][\t ]*)?장소[\t ]*[:：]/m.test(source);
-        // 앞줄에서 참석 표현과 직접 연결된 행사명만 취지의 근거로 사용한다.
-        const evidence = hasAttendanceNote
-          ? /^[^.!?。！？\r\n]{0,120}?(교육[\t ]*성과[\t ]*공유회|성과[\t ]*공유회|결과[\t ]*설명회)[\t ]*(?:에[\t ]*)?(?:참석|참가|참여)/.exec(source)?.[1]
-          : undefined;
-        if (evidence) {
-          const purpose = evidence.startsWith('교육')
-            ? '교육이 어떤 성과로 이어졌는지 함께 나누려는'
-            : evidence.startsWith('성과')
-            ? '어떤 성과가 있었는지 함께 나누려는'
-            : '결과가 어떻게 나왔는지 알리려는';
-          eventInference = { evidence, purpose, maxLength: pageLimit ? 2500 : Infinity };
-        }
         if (!hasAttendanceNote) {
           groundedPolish = { source, maxLength: pageLimit ? 2500 : Infinity };
         }
@@ -2465,7 +2478,7 @@ ${source}
 ` : '';
         systemPrompt = `한국어 생활 기록 편집자입니다. [원문 시작]과 [원문 끝] 사이의 본문을 강으로 편집합니다.
 
-1. 먼저 본문의 종결 어미 말투를 고정합니다. ‘했다’로 쓰인 글은 결과의 문장도 ‘~했다’, ‘~이었다’, ‘~들었다’처럼 한다체로 씁니다. 해요체나 합니다체로 바꾸지 않습니다. 본문이 해요체·합니다체라면 각각 그 말투를 유지합니다.
+1. 글쓴이가 자신의 기록을 쓰는 시점을 유지합니다. ‘했다’로 쓰인 글은 결과의 문장도 ‘~했다’, ‘~이었다’, ‘~들었다’처럼 한다체로 씁니다. 해요체나 합니다체로 바꾸지 않습니다. 본문이 해요체·합니다체라면 각각 그 말투를 유지합니다. ‘것으로 읽힌다’, ‘~로 보인다’, ‘판단된다’ 같은 외부 사람의 평이나 분석을 새로 쓰지 않습니다.
 2. 같은 사실과 감정을 더 잘 읽히게 풀어 씁니다. 한 문장에 묶인 내용이 여러 개라면 자연스러운 두 문장으로 펼칠 수 있습니다. 반복 대신 ‘그 자리에서’ 같은 지시어와 뜻이 같은 어휘를 씁니다. 이미 충분히 표현한 단일 사실은 짧게 마칩니다.
 3. 하나의 사실을 다른 사건으로 쪼개지 않습니다. ‘가게에서 물을 샀다’에 ‘가게에 갔다’를 별도로 넣지 않습니다. 원문에 없는 행동의 목적, 감각, 장소의 세부 정보, 대조·인과·시간 관계, 감정과 정도를 보태지 않습니다. 원문의 화자·시제·숫자·부정·불확실성·인용 출처를 유지합니다.
 
@@ -2484,10 +2497,12 @@ ${eventExample}
 
 [강에서 원문 근거로 의미 풀기]
 본문에서 서로 다른 방문지를 같은 장소로 합치지 않습니다. 여러 장소를 차례로 들렀다는 글을 풀 때에는 ‘이어서’로 순서를 살릴 수 있습니다. 원문에서 같은 장소였다는 근거가 있을 때만 ‘그 자리에서’를 씁니다.
-원문의 사실과 이미 적은 감정은 "body"에 다듬습니다. 두 사실 사이에 비교나 반복, 변화가 보이면 먼저 그 관계를 뒷받침하는 연속된 원문을 문장이나 기록 줄의 처음부터 끝까지 "evidence"에 그대로 복사합니다. 그 범위 안에서 두 사실을 함께 읽었을 때 드러나는 의미를 "sentence" 한 문장으로 씁니다. 근거에 ‘오전’ 또는 ‘오후’가 있으면 해석 문장에도 해당 시간 범위를 명시합니다. ‘이번 주’, ‘세 번’ 같은 한정도 넓히지 않습니다. 몇 번 일어났다는 말을 며칠에 걸쳐 일어났다고 바꾸지 않습니다. 말투에 맞춰 ‘읽힌다’, ‘읽혀요’, ‘읽힙니다’ 중 하나로 끝냅니다.
+원문의 사실과 이미 적은 감정은 "body"에 다듬습니다. 서로 다른 경험·생각을 적었다면 읽기 쉽게 문단을 나누고, 관계가 직접 드러나면 원래 의미가 드러나는 접속 표현으로 잇습니다. 비교·반복·변화가 명확하면 그 관계를 뒷받침하는 연속된 원문을 문장이나 기록 줄의 처음부터 끝까지 "evidence"에 그대로 복사합니다. "sentence"에는 본문 뒤에 바로 이어 읽을 수 있는 한 문장만 씁니다. 글쓴이 시점에서 원문에 드러난 대비나 반복을 구체적인 행동으로 자연스럽게 잇습니다. 본문에 이미 들어간 행동이나 생각을 맺음말에서 다시 설명하지 않습니다. ‘이 기록에서’, ‘것으로 읽힌다’, ‘것으로 보인다’처럼 글을 밖에서 해설하거나 평가하는 표현은 쓰지 않습니다. 원문의 시제·말투·‘오전’이나 ‘오후’·‘이번 주’·‘세 번’과 같은 범위를 유지합니다.
+하루에 여러 이야기를 적었다면 각 이야기의 사람과 행동을 빠뜨리지 않습니다. 주제가 달라지는 대목에서 문단을 나누고, 마지막에 적힌 사람의 이야기도 본문에 포함합니다. 배우자의 행동이나 말을 글쓴이의 행동이나 말로 바꾸지 않습니다.
 출력 전에 해석 문장에 쓰인 대상과 변화의 범위를 근거에 대조합니다. 그 표현이 사실이 아니어도 인용한 원문이 그대로 성립한다면 그 표현을 삭제합니다. 특히 일부 날에 있었던 일을 지속된 습관이나 전면적인 변화로 만들지 않습니다. 방문한 곳의 수를 속도나 여유로 해석하지 않습니다. 무엇을 했다는 기록에서 그 행동이 문제를 해결했다거나 좋은 결과를 냈다고 풀이하지 않습니다. 원문에서 확인되지 않는 동행 여부·원인·의도·감정·교훈을 쓰지 않습니다. 해석의 시기와 범위는 근거보다 넓혀 쓰지 않습니다.
-예시 1. ‘작년에는 토요일마다 집에서 영화를 봤다. 이번 달에는 두 토요일에 공연장에 갔다.’ → ‘이번 달에는 토요일을 보내는 방식에 공연을 보러 간 날도 있었다는 변화가 읽힌다.’ ‘영화 보는 습관을 버리고 외출을 즐기게 됐다’는 근거가 없습니다.
-예시 2. ‘여행 사흘째에는 섬 세 곳을 둘러봤다. 나흘째 오전에는 항구 한 곳에 머물렀다.’ → ‘세 섬을 둘러본 날과 한 항구에 머문 오전이 있어, 기록에 나타난 이동 범위에 차이가 있었던 것으로 읽힌다.’ ‘바쁘게 돌아다니다가 한결 여유로워졌다’는 근거가 없습니다.
+예시 1. ‘작년에는 토요일마다 집에서 영화를 봤다. 이번 달에는 두 토요일에 공연장에 갔다.’ → ‘집에서 영화를 보곤 하던 토요일을 이번 달에는 두 번 공연장에서 보냈다.’ ‘외출을 즐기게 됐다’는 근거가 없습니다.
+예시 2. ‘여행 사흘째에는 섬 세 곳을 둘러봤다. 나흘째 오전에는 항구 한 곳에 머물렀다.’ → ‘섬 세 곳을 둘러본 전날과 달리, 나흘째 오전에는 항구 한 곳에 머물렀다.’ ‘바쁘게 돌아다니다가 한결 여유로워졌다’는 근거가 없습니다. 이 대비를 이미 body에 자연스럽게 썼다면 해석을 비웁니다.
+몸 상태나 건강 경험은 글쓴이가 쓴 표현과 정도에 맞춰 옮깁니다. ‘힘이 없었다’를 ‘신체 기능이 떨어졌다’나 ‘부작용이 있다’는 객관적 판정으로 바꾸지 않습니다. ‘해야겠다’는 ‘해야겠다’의 정도로 유지합니다. ‘하기로 했다’, ‘결심했다’처럼 확정하거나 이미 하고 있는 행동으로 쓰지 않습니다.
 단일 행동이나 단순 나열만 있고 해석할 관계가 없다면 해석을 비웁니다. ‘오후에 도서관에 갔다.’에는 해석을 붙이지 않습니다. ‘낮에 비가 내렸다. 저녁에 전화했다.’처럼 두 사실이 함께 적혔어도 연결 근거가 없다면 해석을 붙이지 않습니다. 날짜·수치·사건·부정·미정을 해석 때문에 변경하거나 누락하지 않습니다.
 위 본문 출력 규칙은 "body"에 적용합니다. 최종 응답은 {"body":"다듬은 본문","interpretation":{"evidence":"원문 그대로","sentence":"해석 한 문장"}} 형태의 JSON만 씁니다. 근거가 부족하면 "interpretation":null로 반환합니다.`;
         }
@@ -2504,7 +2519,7 @@ ${eventExample}
 단순한 맞춤법 교정에 그치지 않고, 끊어진 문장들을 읽기 좋은 흐름으로 정돈합니다.
 필요하면 문단을 나누되 원문을 불필요하게 길게 풀어 쓰지 않습니다.`;
         const formatGuide = formatGroup === 'rich'
-          ? '일기·에세이·여행기록: 원문에 이미 표현된 감정만 그 정도 그대로 살립니다. 감각 묘사나 비유를 새로 만들지 않습니다.'
+          ? '일기·에세이·여행기록: 원문에 이미 표현된 감정만 그 정도 그대로 살립니다. 상황이 어렵다는 서술을 걱정이나 불안으로 풀이하지 않습니다. 해야겠다는 생각은 실행이나 확정된 결정으로 바꾸지 않습니다. 다시 했다는 행동을 새로 시작했다거나 앞으로 계속한다는 뜻으로 넓히지 않습니다. 감각 묘사나 비유를 새로 만들지 않습니다.'
           : formatGroup === 'balanced'
           ? '관찰 기록: 관찰한 사실과 작성자의 느낌을 구분합니다. 성장·건강·상태 변화나 그 원인을 추정하지 않습니다.'
           : '보고·업무·메모·독서·장부 등: 형식에 맞는 어조를 유지하고 사실과 작성자의 생각을 구분합니다. 감성적 수식·의견·진단·조언·계산·재계산·새 해석을 추가하지 않습니다.';
@@ -2618,14 +2633,10 @@ ${SOURCE_PRESERVATION_RULES}`;
         (responseText) => responseText);
       if (groundedPolish) {
         polishedText = resolveGroundedPolish(polishedText, groundedPolish.source, groundedPolish.maxLength);
-      }
-      if (eventInference && polishedText.trim()) {
-        const body = polishedText.trimEnd();
-        const ending = /니다[.!?]?$/.test(body) ? '읽힙니다' : /요[.!?]?$/.test(body) ? '읽혀요' : '읽힌다';
-        const withInference = `${body}\n\n‘${eventInference.evidence}’라는 이름에서 ${eventInference.purpose} 취지가 ${ending}.`;
-        if (withInference.replace(/\s/g, '').length <= eventInference.maxLength) {
-          polishedText = withInference;
-        }
+      } else if (richSource !== undefined
+        && (addsOutsideAssessment(polishedText, richSource) || addsUnstatedFeelingOrAction(polishedText, richSource)
+          || changesSpouseReference(polishedText, richSource))) {
+        polishedText = richSource;
       }
 
       // ===== 통계 분석 (모든 형식) =====

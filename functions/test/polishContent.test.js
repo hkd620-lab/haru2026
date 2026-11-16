@@ -21,7 +21,8 @@ const fn = name => find(n => ts.isFunctionDeclaration(n) && n.name?.text === nam
 const handler = variable('polishContent').arguments.at(-1);
 const compiled = ts.transpileModule([
   `const STATS_PROMPTS = ${variable('STATS_PROMPTS').getText(ast)};`,
-  fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('resolveGroundedPolish'), `(${handler.getText(ast)});`,
+  fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('addsOutsideAssessment'), fn('addsUnstatedFeelingOrAction'),
+  fn('changesSpouseReference'), fn('resolveGroundedPolish'), `(${handler.getText(ast)});`,
 ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2019 } }).outputText;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -176,24 +177,25 @@ test('참석 관련 표현과 일시·장소가 함께 있는 기록의 강만 �
   }
 });
 
-test('강의 행사 해석은 참석과 직접 연결된 행사명에서 읽을 수 있는 취지로만 덧붙인다', async () => {
+test('행사 메모의 강은 날짜·장소를 연결한 본문에 외부 판정 문장을 덧붙이지 않는다', async () => {
   const metadata = '\n- 일시: 5월 3일 오전 10시~정오\n- 장소: 도서관';
-  for (const [heading, strength, body, expected] of [
-    ['독서교육 성과공유회참석했다.', 'STRONG', '공유회에 참석했다.', '‘교육 성과공유회’라는 이름에서 교육이 어떤 성과로 이어졌는지 함께 나누려는 취지가 읽힌다.'],
-    ['주민 제안 결과 설명회에 참석했습니다.', 'STRONG', '설명회 일정입니다.', '‘결과 설명회’라는 이름에서 결과가 어떻게 나왔는지 알리려는 취지가 읽힙니다.'],
-    ['동네 성과 공유회 참석.', 'STRONG', '공유회에 참석했어요.', '‘성과 공유회’라는 이름에서 어떤 성과가 있었는지 함께 나누려는 취지가 읽혀요.'],
-    ['동네 전시회에 참석했다.', 'STRONG', '전시회에 참석했다.', ''],
-    ['성과공유회 안내를 받았다. 동네 전시회에 참석했다.', 'STRONG', '행사 안내를 받았다.', ''],
-    ['독서교육 성과공유회에 참석했다.', 'WEAK', '공유회에 참석했다.', ''],
+  for (const [heading, strength, body] of [
+    ['독서교육 성과공유회참석했다.', 'STRONG', '도서관에서 열린 독서교육 성과공유회에 참석했다.'],
+    ['주민 제안 결과 설명회에 참석했습니다.', 'STRONG', '도서관에서 열린 주민 제안 결과 설명회에 참석했습니다.'],
+    ['동네 성과 공유회 참석.', 'STRONG', '공유회에 참석했어요.'],
+    ['독서교육 성과공유회에 참석했다.', 'WEAK', '공유회에 참석했다.'],
   ]) {
     const f = fixture({ polishText: body });
     const result = await f.request({ text: heading + metadata, strength, includeAiComment: false });
-    assert.equal(result.text, expected ? `${body}\n\n${expected}` : body);
+    assert.equal(result.text, body);
     assert.deepEqual(purposes(f), ['sayuPolish', 'recordStats']);
   }
+  const source = '성과공유회 참석.' + metadata;
+  const invalid = fixture({ polishText: '공유회에 참석했다. 성과를 나누려는 취지로 보인다.' });
+  assert.equal((await invalid.request({ text: source, strength: 'STRONG', includeAiComment: false })).text, source);
 });
 
-test('행사 해석을 붙여 PDF 분량 기준을 넘길 때는 본문을 보존한다', async () => {
+test('행사 메모의 PDF 분량 기준과 본문을 유지한다', async () => {
   const text = '공백 제외 2500자 이내\n[원문 시작]\n성과공유회 참석.\n일시: 5월 3일 오전 10시\n장소: 도서관\n[원문 끝]';
   const body = '가'.repeat(2500);
   const f = fixture({ polishText: body });
@@ -204,13 +206,13 @@ test('행사 해석을 붙여 PDF 분량 기준을 넘길 때는 본문을 보�
 test('일기·에세이·여행기록의 강은 원문에서 확인되는 근거를 가진 한 문장만 본문에 합친다', async () => {
   const text = '지난주에는 문서만 읽었다. 이번에는 질문을 적으며 읽었다.';
   const evidence = text;
-  const sentence = '이번 읽기에서는 질문을 정리하는 일까지 읽기의 일부가 된 것으로 읽힌다.';
+  const sentence = '지난주와 달리 이번에는 읽는 동안 떠오른 질문을 함께 적었다.';
   const body = '지난주에는 문서를 읽기만 했다. 이번에는 질문도 적었다.';
   for (const format of ['diary', 'essay', 'travel']) {
     for (const mode of ['BASIC', 'PREMIUM']) {
       const f = fixture({ polishText: body, interpretation: { evidence, sentence } });
       const result = await f.request({ text, format, mode, strength: 'STRONG', includeAiComment: false });
-      assert.equal(result.text, `${body}\n\n${sentence}`);
+      assert.equal(result.text, `${body} ${sentence}`);
       assert.equal(f.calls[0].generationConfig.responseMimeType, 'application/json');
       assert.equal(f.calls[0].purpose, mode === 'BASIC' ? 'sayuPolishBasic' : 'sayuPolish');
       assert.deepEqual(purposes(f).slice(1), ['recordStats']);
@@ -218,8 +220,10 @@ test('일기·에세이·여행기록의 강은 원문에서 확인되는 근거
   }
 
   for (const interpretation of [null, { evidence: '수업을 들었다.', sentence }, { evidence, sentence: '부끄러웠다.' },
-    { evidence, sentence: `부끄러웠다. ${sentence}` }, { evidence, sentence: sentence.replace('읽힌다.', '읽힙니다.') },
-    { evidence, sentence: '친구가 도와줘 읽기가 즐거워진 것으로 읽힌다.' }]) {
+    { evidence, sentence: `부끄러웠다. ${sentence}` }, { evidence, sentence: sentence.replace('적었다.', '적었습니다.') },
+    { evidence, sentence: '읽기 방식이 달라진 것으로 읽힌다.' },
+    { evidence, sentence: '읽기 방식이 달라진 것으로 보인다.' },
+    { evidence, sentence: '친구가 도와줘 읽기가 즐거워졌다.' }]) {
     const f = fixture({ polishText: body, interpretation });
     const result = await f.request({ text, strength: 'STRONG', includeAiComment: false });
     assert.equal(result.text, body);
@@ -253,14 +257,52 @@ test('모델 응답 형식이 다르면 원문을 반환하고 형식 오류만 
   }
 });
 
+test('강의 본문에 외부 평가나 새 건강 판정이 섞이면 저자가 쓴 원문으로 돌아간다', async () => {
+  const text = '계단을 한 층 올랐다. 마지막에 힘이 없었다.';
+  for (const suffix of ['몸 상태가 나아진 것으로 평가된다.', '신체 기능이 활성화됐다.', '부작용이 생겼다.']) {
+    const f = fixture({ polishText: `${text} ${suffix}` });
+    assert.equal((await f.request({ text, strength: 'STRONG', includeAiComment: false })).text, text);
+  }
+  const quoted = '서평에서 “여행기로 읽힌다”라는 문장을 적어 뒀다.';
+  const body = '서평에서 “여행기로 읽힌다”라고 한 문장을 적어 뒀다.';
+  const f = fixture({ polishText: body });
+  assert.equal((await f.request({ text: quoted, strength: 'STRONG', includeAiComment: false })).text, body);
+});
+
+test('약과 강이 상황을 새 감정으로 바꾸거나 생각을 확정하면 원문의 표현을 보존한다', async () => {
+  const text = '오래 걷기가 어렵다. 내일은 시간을 줄여 봐야겠다.';
+  const body = '오래 걷기 어렵다. 내일은 시간을 줄여 봐야겠다.';
+  for (const strength of ['WEAK', 'STRONG']) {
+    for (const output of ['오래 걷기가 어려워 걱정됐다.', '내일은 시간을 줄이기로 했다.', '걷는 시간부터 줄이기 시작했다.']) {
+      const f = fixture({ polishText: output });
+      assert.equal((await f.request({ text, strength, includeAiComment: false })).text, text);
+    }
+  }
+  for (const sentence of ['내일도 오래 걸을까 봐 걱정됐다.', '내일은 걷는 시간을 줄이기로 했다.']) {
+    const f = fixture({ polishText: body, interpretation: { evidence: text, sentence } });
+    assert.equal((await f.request({ text, strength: 'STRONG', includeAiComment: false })).text, body);
+  }
+});
+
+test('약과 강에서 배우자가 등장하는 별도 이야기를 빠뜨리면 원문을 보존한다', async () => {
+  const text = '저녁에 걸었다.\n\n집에 돌아와 아내와 이야기를 나눴다.';
+  for (const strength of ['WEAK', 'STRONG']) {
+    const f = fixture({ polishText: '저녁에 걸었다.' });
+    assert.equal((await f.request({ text, strength, includeAiComment: false })).text, text);
+    const kept = '저녁에 걸었다.\n\n집에 와서 아내와 이야기를 나눴다.';
+    const good = fixture({ polishText: kept });
+    assert.equal((await good.request({ text, strength, includeAiComment: false })).text, kept);
+  }
+});
+
 test('해석에 원문에 없는 결과를 넣거나 시간 범위가 달라지면 본문만 반환한다', async () => {
   const text = '첫날에는 시장과 박물관을 둘러봤다. 마지막 날에는 숙소 앞에서 오전을 보냈다.';
-  const sentence = '첫날과 마지막 날 오전에 둘러본 범위가 달랐다는 점이 읽힌다.';
+  const sentence = '두 곳을 둘러본 첫날과 달리 마지막 날 오전은 숙소 앞 한 곳에서 보냈다.';
   const body = '첫날 시장과 박물관을 둘러봤다. 마지막 날에는 숙소 앞에서 오전을 보냈다.';
   for (const [evidence, candidate, expected] of [
-    [text, sentence, `${body}\n\n${sentence}`],
+    [text, sentence, `${body} ${sentence}`],
     [text, sentence.replace(' 오전', ''), body],
-    [text, '마지막 날 오전 산책으로 문제를 해결한 것으로 읽힌다.', body],
+    [text, '마지막 날 오전 산책으로 문제를 해결했다.', body],
     ['숙소 앞에서 오전을 보냈다.', sentence, body],
     ['첫날에는 시장과 박물관을 둘러봤다. 마지막 날에는 숙소 앞에서', sentence, body],
   ]) {

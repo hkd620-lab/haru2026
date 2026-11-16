@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getSayuEditPolishOriginal, supportsSayuOriginalPolishPreview } from '../src/app/records/sayuEditPolishSource.ts';
+import { getSayuEditPolishOriginal, selectSayuPolishSource, supportsSayuOriginalPolishPreview } from '../src/app/records/sayuEditPolishSource.ts';
 
 const reading = {
   reading_book_title: '합성 책',
@@ -32,4 +32,21 @@ test('원본 탭의 즉시 미리보기는 일반 기록에만 적용되고 구�
   for (const key of ['ledger', 'household', 'stock', 'voiding', 'growthTimeline', 'child_measure', 'haruraw', undefined]) {
     assert.equal(supportsSayuOriginalPolishPreview(key), false, key);
   }
+});
+
+test('SAYU 편집은 사용자가 보고 있는 본문, 원본 탭은 원본을 다시 다듬는다', () => {
+  const original = '저녁에 걸었다.';
+  const saved = '저녁에 걸었다. 집에 돌아와 아내와 이야기를 나눴다.';
+  const edited = `${saved} 내일 이야기도 정했다.`;
+  assert.equal(selectSayuPolishSource('ai', original, saved, saved, null), saved);
+  assert.equal(selectSayuPolishSource('ai', original, saved, edited, null), edited);
+  assert.equal(selectSayuPolishSource('original', original, saved, edited, null), original);
+  assert.equal(selectSayuPolishSource('ai', original, '내용 없음', '내용 없음', null), original);
+  assert.equal(selectSayuPolishSource('ai', original, saved, '', null), '');
+});
+
+test('편집하지 않은 미리보기에서 강도만 바꾸면 같은 본문으로 다시 실행한다', () => {
+  const preview = { text: '미리보기 결과', source: '아내와 이야기를 나눴다.' };
+  assert.equal(selectSayuPolishSource('ai', '예전 원본', '저장 본문', preview.text, preview), preview.source);
+  assert.equal(selectSayuPolishSource('ai', '예전 원본', '저장 본문', '다시 직접 고친 본문', preview), '다시 직접 고친 본문');
 });

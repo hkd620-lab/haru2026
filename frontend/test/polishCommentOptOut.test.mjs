@@ -193,7 +193,7 @@ test('원본 탭에서 약과 강은 각각 한 번 실행되어 저장 없이 S
   for (const strength of ['WEAK', 'STRONG']) {
     await repolish('현재 원본 탭의 본문', strength);
     assert.equal(preview.content, `${strength} 미리보기`);
-    assert.equal(preview.ref.current, preview.content);
+    assert.deepEqual(preview.ref.current, { text: preview.content, source: '현재 원본 탭의 본문' });
     assert.equal(preview.mode, 'ai');
     assert.equal(preview.editing, true);
   }
