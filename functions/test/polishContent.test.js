@@ -157,6 +157,30 @@ test('완결된 짧은 글의 구조·어휘 편집과 원문 어미 점검은 �
   }
 });
 
+test('일기·에세이·여행기록의 강만 근거가 충분할 때 풍성도 4와 가상 약·강 예시를 적용한다', async () => {
+  const richFormats = ['diary', 'essay', 'travel'];
+  for (const format of [...richFormats, 'garden', 'report']) {
+    for (const strength of ['WEAK', 'STRONG']) {
+      const f = fixture();
+      await f.request({ format, strength, mode: 'PREMIUM', includeAiComment: false });
+      const { systemInstruction: prompt, input } = f.calls[0];
+      const richStrong = richFormats.includes(format) && strength === 'STRONG';
+      for (const rule of [
+        /원문을 1로 볼 때 강은 풍성도 4를 목표로 합니다/,
+        /원문에 없는 사건, 구체적인 고생 장면, 걸린 시간이나 기간, 새로운 감정, 앞으로의 다짐은 만들지 않습니다/,
+        /단서가 적으면 풍성도 4에 못 미쳐도 그대로 짧게 마칩니다/,
+        /원문에 없는 구체적인 행동을 단정하지 않습니다\. 원문의 숫자나 같은 사실을 되풀이해 분량을 채우지 않습니다/,
+        /약: 오늘 베란다에서 화분 열두 개를 분갈이했다[^\n]+\n강: 오늘은 베란다에 있는 화분 열두 개를/,
+        /원문: 오후에 화분 하나에 물을 줬다\.\n강: 오후에 화분 하나에 물을 줬다\./,
+      ]) {
+        assert.equal(rule.test(prompt), richStrong, `${format}/${strength}: ${rule}`);
+      }
+      assert.equal(/풍성도 4를 목표로/.test(input), richStrong, `${format}/${strength}: input`);
+      if (richStrong) assert.match(input, /한 가지 사실만 있으면 억지로 늘리지 않는다/);
+    }
+  }
+});
+
 test('참석 관련 표현과 일시·장소가 함께 있는 기록의 강만 행사 예시를 적용한다', async () => {
   const text = '동네 전시회 참석.\n- 일시: 5월 3일 오전 10시~정오\n- 장소: 은행나무 도서관';
   for (const [format, strength, source, usesEventGuide] of [
