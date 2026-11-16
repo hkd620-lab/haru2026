@@ -63,6 +63,7 @@ function fixture({
     setRecords: update => { state.records = update(state.records); }, console: { error() {} },
   });
   const save = handler(modal, 'handleSave', {
+    repolishRequestRef: { current: null },
     currentUser: modalUser, firestoreId: 'fixture', formatKey: prefix, isGrowthTimeline: false,
     editedTitle, savedDraftRef: { current: { title: oldTitle } }, editedContent: '합성 본문',
     editedWeather: '쾌청', editedTemperature: '쾌적', editedMood: '', isSpecialDay: true, onSave,

@@ -487,14 +487,14 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [polishedContent, setPolishedContent] = useState('');
   const [showPolishModal, setShowPolishModal] = useState(false);
   const [sayuMode, setSayuMode] = useState<SayuMode>('PREMIUM');
-  const [showModeSelect, setShowModeSelect] = useState(false);
   const [polishStats, setPolishStats] = useState<any>(null);
   const [monthlyAiQuotaStatus, setMonthlyAiQuotaStatus] = useState<MonthlyAiQuotaStatus | null>(null);
   const [showMonthlyAiQuotaModal, setShowMonthlyAiQuotaModal] = useState(false);
   const [isLoadingMonthlyAiQuota, setIsLoadingMonthlyAiQuota] = useState(false);
   const [pendingPolishMode, setPendingPolishMode] = useState<SayuMode>('BASIC');
-  const [pendingPolishStrength, setPendingPolishStrength] = useState<PolishStrength>('WEAK');
   const [polishStrength, setPolishStrength] = useState<PolishStrength>('WEAK');
+  const polishRequestRef = useRef<number | null>(null);
+  const polishPreviewSourceRef = useRef<string | undefined>(undefined);
   
   // 사진 관련 state
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
@@ -517,6 +517,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const latestExpandedLedgerRowIdRef = useRef<string | null>(null);
   useEffect(() => {
     photoEditorSessionRef.current += 1;
+    polishRequestRef.current = null;
+    polishPreviewSourceRef.current = undefined;
+    setIsPolishing(false);
     // 편집창이 열린 채 화면을 벗어나(뒤로가기 등) 언마운트될 때도 세션을 바꿔 남은 '다시 시도'를 막는다.
     return () => { photoEditorSessionRef.current += 1; };
   }, [isOpen, format, recordId, user?.uid]);
@@ -865,7 +868,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setReadingReflectionAnswers({});
       setReadingEntriesSnapshot('');
       setReadingBookTextMode('photo');
-      setShowModeSelect(false);
       setReadingOcrUsedCount(null);
       setSelectedLedgerOcrFiles([]);
       setIsExtractingLedgerText(false);
@@ -1561,7 +1563,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
   const openMonthlyAiGuide = () => {
     setPendingPolishMode('BASIC');
-    setPendingPolishStrength('WEAK');
     setMonthlyAiQuotaStatus(null);
     setShowMonthlyAiQuotaModal(true);
     void fetchMonthlyAiQuotaStatus();
@@ -1577,7 +1578,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     openMonthlyAiGuide();
   };
 
-  const handleConfirmMonthlyAiPolish = () => {
+  const handleConfirmMonthlyAiPolish = (strength: PolishStrength) => {
     if (isPolishing || isSaving || isLoadingMonthlyAiQuota || !monthlyAiQuotaStatus || monthlyAiQuotaStatus.remaining <= 0) return;
     if (isUploadingRef.current || initialPhotoUploadFailedRef.current) {
       toast.warning('사진 업로드가 완료된 뒤 AI로 다듬어 주세요.');
@@ -1585,14 +1586,15 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
     const mode = pendingPolishMode;
     setShowMonthlyAiQuotaModal(false);
-    handlePolishWithMode(mode, pendingPolishStrength);
+    void handlePolishWithMode(mode, strength);
   };
 
-  const handlePolishWithMode = async (mode: SayuMode, strength: PolishStrength = 'WEAK') => {
-    if (isPolishing) return;
+  const handlePolishWithMode = async (mode: SayuMode, strength: PolishStrength = 'WEAK', previewSource?: string) => {
+    const session = photoEditorSessionRef.current;
+    if (isPolishing || isSaving || polishRequestRef.current === session) return;
+    polishRequestRef.current = session;
     setSayuMode(mode);
     setPolishStrength(strength);
-    setShowModeSelect(false);
     setIsPolishing(true);
     toast.info(`${format} AI 다듬기를 시작합니다... (${strength === 'STRONG' ? '강' : '약'})`);
 
@@ -1601,7 +1603,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       const polishContentFunc = httpsCallable(functions, 'polishContent');
 
       let contentValues: string;
-      if (recordStyle === 'simple') {
+      if (previewSource !== undefined) {
+        contentValues = previewSource;
+      } else if (recordStyle === 'simple') {
         contentValues = formData[`${prefix}_simple`] || '';
       } else if (format === '일기') {
         contentValues = DIARY_PREMIUM_FIELDS
@@ -1620,7 +1624,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
 
       if (!contentValues.trim()) {
         toast.error('다듬을 내용이 없습니다. 먼저 작성해주세요.');
-        setIsPolishing(false);
         return;
       }
 
@@ -1650,15 +1653,23 @@ ${contentValues}
         includeAiComment: false,
       });
 
-      const responseData = result.data as any;
+      if (session !== photoEditorSessionRef.current) return;
+      const responseData = result.data as { text: string; stats: unknown; originalPreserved?: true };
       const polished = responseData.text;
       const stats = responseData.stats;
-      
+      if (typeof polished !== 'string' || !polished.trim()) {
+        toast.error('다듬기 결과가 비어 있습니다. 다시 시도해 주세요.');
+        return;
+      }
+      polishPreviewSourceRef.current = contentValues;
       setPolishedContent(polished);
       setPolishStats(stats);
       setShowPolishModal(true);
-      toast.success('AI 다듬기 완료!');
+      toast.success(responseData.originalPreserved
+        ? '내용을 보존하기 위해 원문을 그대로 보여드립니다.'
+        : responseData.text.trim() === contentValues.trim() ? '다듬기를 마쳤습니다. 본문은 그대로입니다.' : 'AI 다듬기 완료!');
     } catch (error: any) {
+      if (session !== photoEditorSessionRef.current) return;
       console.error('AI 처리 실패:', error);
       const details = error?.details || error?.customData?._tokenResponse?.error;
       if (details?.reason === 'MONTHLY_AI_QUOTA_EXCEEDED') {
@@ -1672,7 +1683,10 @@ ${contentValues}
         toast.error('AI 연결에 실패했습니다.');
       }
     } finally {
-      setIsPolishing(false);
+      if (polishRequestRef.current === session) {
+        polishRequestRef.current = null;
+        if (session === photoEditorSessionRef.current) setIsPolishing(false);
+      }
     }
   };
 
@@ -7121,7 +7135,7 @@ ${contentValues.slice(0, 4100)}`,
             zIndex: 1100,
             padding: '20px',
           }}
-          onClick={() => setShowPolishModal(false)}
+          onClick={() => { if (!isPolishing) setShowPolishModal(false); }}
         >
           <div
             style={{
@@ -7152,9 +7166,18 @@ ${contentValues.slice(0, 4100)}`,
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+              <PolishStrengthSelect
+                onChange={(strength) => void handlePolishWithMode(sayuMode, strength, polishPreviewSourceRef.current ?? polishedContent)}
+                disabled={isPolishing || isSaving}
+                showGuide={false}
+              />
               <textarea
                 value={polishedContent}
-                onChange={(e) => setPolishedContent(e.target.value)}
+                readOnly={isPolishing}
+                onChange={(e) => {
+                  polishPreviewSourceRef.current = undefined;
+                  setPolishedContent(e.target.value);
+                }}
                 placeholder="AI가 다듬은 내용을 자유롭게 수정할 수 있습니다..."
                 style={{
                   width: '100%',
@@ -7189,6 +7212,7 @@ ${contentValues.slice(0, 4100)}`,
             >
               <button
                 onClick={() => setShowPolishModal(false)}
+                disabled={isPolishing}
                 style={{
                   padding: '12px 24px',
                   fontSize: 14,
@@ -7204,7 +7228,7 @@ ${contentValues.slice(0, 4100)}`,
               </button>
               <button
                 onClick={handleSaveSayu}
-                disabled={isSaving}
+                disabled={isSaving || isPolishing || !polishedContent.trim()}
                 style={{
                   padding: '12px 32px',
                   fontSize: 15,
@@ -7218,7 +7242,7 @@ ${contentValues.slice(0, 4100)}`,
                   letterSpacing: '0.05em',
                 }}
               >
-                {isSaving ? '저장 중...' : '💾 SAYU-나의기록 저장'}
+                {isSaving ? '저장 중...' : '💾 최종 저장'}
               </button>
             </div>
           </div>
@@ -7256,7 +7280,16 @@ ${contentValues.slice(0, 4100)}`,
             <h2 id="monthly-ai-guide-title" style={{ margin: 0, fontSize: 20, color: '#1A3C6E', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
               AI 도움 사용 안내
             </h2>
-            <PolishStrengthSelect value={pendingPolishStrength} onChange={setPendingPolishStrength} disabled={isPolishing || isSaving} />
+            <PolishStrengthSelect
+              onChange={handleConfirmMonthlyAiPolish}
+              disabled={isPolishing || isSaving || isLoadingMonthlyAiQuota || !monthlyAiQuotaStatus
+                || monthlyAiQuotaStatus.remaining <= 0 || isUploading || initialPhotoUploadFailed}
+            />
+            {(isUploading || initialPhotoUploadFailed) && (
+              <p role="status" style={{ fontSize: 14, color: '#374151' }}>
+                {isUploading ? '사진 업로드 중…' : '사진 업로드를 확인한 뒤 다듬어 주세요.'}
+              </p>
+            )}
             <div style={{ marginTop: 18, display: 'grid', gap: 8, fontSize: 14, color: '#374151', lineHeight: 1.6 }}>
               {isLoadingMonthlyAiQuota ? (
                 <div role="status" aria-live="polite" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '16px 0' }}>
@@ -7286,27 +7319,7 @@ ${contentValues.slice(0, 4100)}`,
               )}
             </div>
             <div style={{ marginTop: 22, display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              {monthlyAiQuotaStatus ? (
-                monthlyAiQuotaStatus.remaining > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleConfirmMonthlyAiPolish}
-                    disabled={isPolishing || isSaving || isUploading || initialPhotoUploadFailed}
-                    style={{
-                      padding: '10px 16px',
-                      border: 'none',
-                      borderRadius: 8,
-                      backgroundColor: '#10b981',
-                      color: '#fff',
-                      fontWeight: 700,
-                      cursor: (isPolishing || isSaving || isUploading || initialPhotoUploadFailed) ? 'not-allowed' : 'pointer',
-                      opacity: (isPolishing || isSaving || isUploading || initialPhotoUploadFailed) ? 0.7 : 1,
-                    }}
-                  >
-                    {isUploading ? '사진 업로드 중…' : initialPhotoUploadFailed ? '사진 업로드를 확인해 주세요' : 'AI로 다듬기'}
-                  </button>
-                )
-              ) : !isLoadingMonthlyAiQuota ? (
+              {!monthlyAiQuotaStatus && !isLoadingMonthlyAiQuota && (
                 <button
                   type="button"
                   onClick={fetchMonthlyAiQuotaStatus}
@@ -7322,7 +7335,7 @@ ${contentValues.slice(0, 4100)}`,
                 >
                   다시 시도
                 </button>
-              ) : null}
+              )}
               <a
                 href="/subscription"
                 target="_blank"
