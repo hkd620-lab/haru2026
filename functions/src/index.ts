@@ -2363,12 +2363,19 @@ function changesSpouseReference(text: string, source: string): boolean {
 }
 
 function changesTimeOfDay(text: string, source: string): boolean {
-  // 숫자로 시각을 쓴 아침·저녁 표현도 오전·오후에 해당할 수 있다.
-  const periods = [
-    /오전|아침(?=\s*(?:[1-9]|1[01])\s*시)/,
-    /오후|(?:저녁|밤)(?=\s*(?:[6-9]|1[01])\s*시)/,
-  ];
-  return periods.some(period => period.test(text) !== period.test(source));
+  const timeline = (value: string) => {
+    const facts = new Set<string>();
+    for (const [, label, hour, minute, half] of value.matchAll(/(오전|오후|아침|저녁|밤)(?:\s*(\d{1,2})\s*시(?:\s*(?:(\d{1,2})\s*분|(반)))?)?/g)) {
+      const time = Number(hour);
+      const period = label === '오전' || (label === '아침' && time >= 1 && time <= 11) ? '오전'
+        : label === '오후' || ((label === '저녁' || label === '밤') && time >= 6 && time <= 11) ? '오후' : '';
+      if (!period) continue;
+      facts.add(period);
+      if (hour !== undefined) facts.add(`${period}:${time}:${half ? 30 : Number(minute ?? 0)}`);
+    }
+    return [...facts].sort().join('|');
+  };
+  return timeline(text) !== timeline(source);
 }
 
 function resolveGroundedPolish(raw: string, source: string): string {

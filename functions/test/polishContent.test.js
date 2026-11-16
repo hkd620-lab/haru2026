@@ -197,7 +197,7 @@ test('행사 메모의 강은 날짜·장소를 연결한 본문에 외부 판�
 
 test('행사 메모의 PDF 분량 기준과 본문을 유지한다', async () => {
   const text = '공백 제외 2500자 이내\n[원문 시작]\n성과공유회 참석.\n일시: 5월 3일 오전 10시\n장소: 도서관\n[원문 끝]';
-  const body = '오전' + '가'.repeat(2498);
+  const body = '오전 10시 ' + '가'.repeat(2495);
   const f = fixture({ polishText: body });
   const result = await f.request({ text, strength: 'STRONG', includeAiComment: false });
   assert.equal(result.text, body);
@@ -327,6 +327,13 @@ test('오전·오후가 바뀌거나 빠지면 원문을 반환한다', async ()
     const sameTimeBody = '오전 9시에 산책했다. 오후 7시에 짐을 챙겼다.';
     const sameTime = fixture({ polishText: sameTimeBody });
     assert.equal((await sameTime.request({ text: sameTimeSource, format: 'travel', strength, includeAiComment: false })).text, sameTimeBody);
+    for (const [source, changed] of [
+      ['오전 9시에 산책했다.', '아침 10시에 산책했다.'],
+      ['오후 7시 10분에 짐을 챙겼다.', '저녁 7시 40분에 짐을 챙겼다.'],
+    ]) {
+      const changedTime = fixture({ polishText: changed });
+      assert.equal((await changedTime.request({ text: source, format: 'travel', strength, includeAiComment: false })).text, source);
+    }
   }
 });
 
