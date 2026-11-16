@@ -295,6 +295,15 @@ test('약과 강에서 배우자가 등장하는 별도 이야기를 빠뜨리�
   }
 });
 
+test('원문에 있는 감정의 같은 뜻 활용형을 새 감정으로 취급하지 않는다', async () => {
+  const text = '여행을 앞두고 설레었다. 짐을챙겼다. 사진을 보니 기쁨이 남았다.';
+  const body = '여행을 앞두고 설렜다. 짐을 챙겼다. 사진을 보니 기쁜 마음이 남았다.';
+  for (const strength of ['WEAK', 'STRONG']) {
+    const f = fixture({ polishText: body });
+    assert.equal((await f.request({ text, strength, includeAiComment: false })).text, body);
+  }
+});
+
 test('해석에 원문에 없는 결과를 넣거나 시간 범위가 달라지면 본문만 반환한다', async () => {
   const text = '첫날에는 시장과 박물관을 둘러봤다. 마지막 날에는 숙소 앞에서 오전을 보냈다.';
   const sentence = '두 곳을 둘러본 첫날과 달리 마지막 날 오전은 숙소 앞 한 곳에서 보냈다.';

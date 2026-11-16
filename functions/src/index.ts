@@ -2321,7 +2321,13 @@ function addsOutsideAssessment(text: string, source: string): boolean {
 }
 
 function addsUnstatedFeelingOrAction(text: string, source: string): boolean {
-  const changes = text.matchAll(/걱정|불안|안도|답답|속상|슬펐|기뻤|후련|행복|부끄러|뿌듯|후회|설렜|기로\s*(?:했|정했|결심)|마음먹었|결심했|시작했/g);
+  // 같은 감정의 활용형은 동일하게 취급한다. 예: 설레었다 → 설렜다.
+  const feelings = [
+    /걱정/, /불안/, /안도/, /답답/, /속상/, /슬[프픈퍼펐픔]/, /기[쁘쁜뻐뻤쁨]/,
+    /후련/, /행복/, /부끄[럽러]/, /뿌듯/, /후회/, /설레|설렜|설렘/,
+  ];
+  if (feelings.some(feeling => feeling.test(text) && !feeling.test(source))) return true;
+  const changes = text.matchAll(/기로\s*(?:했|정했|결심)|마음먹었|결심했|시작했/g);
   const compactSource = source.replace(/\s/g, '');
   return Array.from(changes).some(([phrase]) => !compactSource.includes(phrase.replace(/\s/g, '')));
 }
@@ -2367,7 +2373,7 @@ function resolveGroundedPolish(raw: string, source: string, maxLength: number): 
   const endsAtBoundary = evidenceEnd === source.length || /[.!?。！？\n]\s*$/.test(evidence)
     || /^[\t ]*\r?\n/.test(source.slice(evidenceEnd));
   const timeOfDay = evidence.match(/오전|오후/g) ?? [];
-  const claims = sentence.match(/해결|성공|실패|효과|덕분|덕에|때문|좋아졌|나아졌|극복|도움|항상|습관|마다|혼자|즐거|즐겁|뿌듯|후회|부끄러|창피|행복|불안|걱정|속상|설레|답답|후련|편안|부작용|활성화|신체 기능|기능 저하|체력 저하|체력이 저하|진단|정진/g) ?? [];
+  const claims = sentence.match(/해결|성공|실패|효과|덕분|덕에|때문|좋아졌|나아졌|극복|도움|항상|습관|마다|혼자|즐거|즐겁|창피|편안|부작용|활성화|신체 기능|기능 저하|체력 저하|체력이 저하|진단|정진/g) ?? [];
   if (evidenceStart < 0 || !startsAtBoundary || !endsAtBoundary
     || timeOfDay.some(period => !sentence.includes(period))
     || addsUnstatedFeelingOrAction(sentence, evidence)
