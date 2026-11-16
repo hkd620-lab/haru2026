@@ -2335,16 +2335,26 @@ function addsUnstatedFeelingOrAction(text: string, source: string): boolean {
 
 function changesSpouseReference(text: string, source: string): boolean {
   const spouseTerms = [
-    /(?<![가-힣])(?:아내|와이프|집사람|부인(?!했|한|하|해))/,
-    /(?<![가-힣])남편/,
-    /(?<![가-힣])배우자/,
+    /(?<![가-힣])(?:(?:우리|내|제)[ \t]*)?(?:아내|와이프|집사람|부인(?!했|한|하|해))/,
+    /(?<![가-힣])(?:(?:우리|내|제)[ \t]*)?남편/,
+    /(?<![가-힣])(?:(?:우리|내|제)[ \t]*)?배우자/,
   ];
   const originalPassages = source.split(/[.!?。！？\n]+/);
-  const polishedPassages = text.split(/[.!?。！？\n]+/);
+  const compactText = text.replace(/\s/g, '');
   return spouseTerms.some(term => {
-    const originalCount = originalPassages.filter(passage => term.test(passage)).length;
-    const polishedCount = polishedPassages.filter(passage => term.test(passage)).length;
-    return polishedCount < originalCount || (originalCount === 0 && polishedCount > 0);
+    const passages = originalPassages.filter(passage => term.test(passage));
+    if (term.test(text) !== (passages.length > 0)) return true;
+    if (passages.length < 2) return false;
+
+    // 문장이 합쳐져도 각각의 대목을 구분하던 말이 전체 결과에 남을 수 있다.
+    const anchors = passages.map(passage => (passage.replace(term, '').match(/[가-힣a-z\d]+/gi) ?? [])
+      .map(word => word.replace(/(?:으로부터|에게서|에서|에는|에게|으로|했다|했고|하다|하고|이랑|았다|었다|였다|[을를은는이가와과도에로만])$/, ''))
+      .filter(word => (word.length > 1 || /^[꽃밥집차책길약물말]$/.test(word))
+        && !/^(?:함께|같이|그리고|정말|아주|직접|했다|있다)$/.test(word)));
+    return anchors.some((words, index) => {
+      const distinct = words.filter(word => !anchors.some((other, otherIndex) => otherIndex !== index && other.includes(word)));
+      return distinct.length > 0 && distinct.every(word => !compactText.includes(word));
+    });
   });
 }
 

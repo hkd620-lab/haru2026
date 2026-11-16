@@ -282,6 +282,10 @@ test('약과 강에서 배우자가 등장하는 별도 이야기를 빠뜨리�
     const both = '점심은 아내와 함께 먹었다.\n\n저녁에는 아내에게서 직접 고른 꽃 이야기를 들었다.';
     const preservesBoth = fixture({ polishText: both });
     assert.equal((await preservesBoth.request({ text: separate, strength, includeAiComment: false })).text, both);
+    const sourceToMerge = '아내와 점심을 먹었다. 아내와 산책했다. 짐을챙겼다.';
+    const merged = '아내와 점심을 먹고 함께 산책했다. 짐을 챙겼다.';
+    const mergesSafely = fixture({ polishText: merged });
+    assert.equal((await mergesSafely.request({ text: sourceToMerge, strength, includeAiComment: false })).text, merged);
   }
 });
 
