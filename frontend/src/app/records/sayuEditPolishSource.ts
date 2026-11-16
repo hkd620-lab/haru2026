@@ -6,6 +6,22 @@ export function supportsSayuOriginalPolishPreview(formatKey: string | undefined)
   return originalPolishPreviewFormats.has(formatKey ?? '');
 }
 
+export function selectSayuPolishSource(
+  view: 'ai' | 'original',
+  original: string,
+  saved: string,
+  edited: string,
+  preview: { text: string; source: string } | null,
+): string {
+  const savedText = saved.trim();
+  const savedSource = savedText === '내용 없음' ? '' : savedText;
+  if (view === 'original') return original.trim() || savedSource;
+  if (preview && edited === preview.text) return preview.source;
+  const editedText = edited.trim();
+  if (edited !== saved) return editedText === '내용 없음' ? '' : editedText;
+  return savedSource || original.trim();
+}
+
 export function getSayuEditPolishOriginal(formatKey: string | undefined, originalData: Record<string, string>, isFinalReading: boolean): string {
   if (formatKey === 'reading') {
     if (isFinalReading) return '';

@@ -21,7 +21,7 @@ import { exportRecordsToEpub } from '../services/epubExportService';
 import { getEpubReaderHint } from '../utils/epubReaderGuide';
 import GrapeLoadingMini from './GrapeLoadingMini';
 import { PolishStrengthSelect, type PolishStrength } from './PolishStrengthSelect';
-import { getSayuEditPolishOriginal, supportsSayuOriginalPolishPreview } from '../records/sayuEditPolishSource';
+import { getSayuEditPolishOriginal, selectSayuPolishSource, supportsSayuOriginalPolishPreview } from '../records/sayuEditPolishSource';
 import { GrowthTimelineDocumentModal, type GrowthTimelineDocumentItem } from './GrowthTimelineDocumentModal';
 import { compressImage } from '../services/imageService';
 import { readOriginalImageMeta, type UploadedImageMeta } from '../services/photoMetadataService';
@@ -639,7 +639,7 @@ export function SayuModal({
   const [isSavingOriginal, setIsSavingOriginal] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [polishStrength, setPolishStrength] = useState<PolishStrength>('WEAK');
-  const polishPreviewRef = useRef<string | null>(null);
+  const polishPreviewRef = useRef<{ text: string; source: string } | null>(null);
   const repolishRequestRef = useRef<symbol | null>(null);
   const [localAiComment, setLocalAiComment] = useState(aiComment);
   const [editedWeather, setEditedWeather] = useState(weather || '');
@@ -672,7 +672,9 @@ export function SayuModal({
   const isGrowthTimeline = formatKey === 'growthTimeline';
   const isHouseholdSayu = formatKey === 'household' || format === 'HARU가계부' || Boolean(editedOriginalData.household_entries);
   const editPolishOriginal = getSayuEditPolishOriginal(formatKey, editedOriginalData, isFinalReading);
-  const editPolishSource = editPolishOriginal || savedDraftRef.current.content.trim();
+  const useCurrentDraftForPolish = viewMode === 'ai' && ['diary', 'essay', 'travel'].includes(formatKey ?? '');
+  const editPolishSource = selectSayuPolishSource(useCurrentDraftForPolish ? 'ai' : 'original',
+    editPolishOriginal, savedDraftRef.current.content, editedContent, polishPreviewRef.current);
   const canPolishEdit = Boolean(currentUser && firestoreId && formatKey && formatKey !== 'voiding'
     && !isGrowthTimeline && !isHouseholdSayu && editPolishSource && editPolishSource !== '내용 없음');
   const canPolishOriginal = canPolishEdit && supportsSayuOriginalPolishPreview(formatKey);
@@ -1370,6 +1372,7 @@ export function SayuModal({
 
   const handleCancelEdit = () => {
     const saved = savedDraftRef.current;
+    polishPreviewRef.current = null;
     setEditedContent(saved.content);
     setEditedTitle(saved.title);
     setEditedWeather(saved.weather);
@@ -1380,6 +1383,7 @@ export function SayuModal({
   };
 
   const rememberSavedEdit = (savedContent: string) => {
+    polishPreviewRef.current = null;
     savedDraftRef.current = {
       content: savedContent,
       title: editedTitle,
@@ -1779,7 +1783,7 @@ export function SayuModal({
           toast.error('다듬기 결과가 비어 있습니다. 다시 시도해 주세요.');
           return;
         }
-        polishPreviewRef.current = polished;
+        polishPreviewRef.current = { text: polished, source: draftSource };
         setEditedContent(polished);
         setViewMode('ai');
         setIsEditing(true);
@@ -1814,8 +1818,8 @@ export function SayuModal({
 
   const handlePolishPreview = (strength: PolishStrength) => {
     if (isSaving || isSavingOriginal) return;
-    if (editedContent !== savedDraftRef.current.content
-      && editedContent !== polishPreviewRef.current
+    if (!useCurrentDraftForPolish && editedContent !== savedDraftRef.current.content
+      && editedContent !== polishPreviewRef.current?.text
       && !window.confirm('편집 중인 본문을 다시 다듬기 결과로 바꿀까요?')) return;
     void handleRepolish(editPolishSource, strength);
   };
@@ -3145,7 +3149,10 @@ export function SayuModal({
                 ref={mainEditorRef}
                 value={editedContent}
                 readOnly={isRefining}
-                onChange={(e) => setEditedContent(e.target.value)}
+                onChange={(e) => {
+                  polishPreviewRef.current = null;
+                  setEditedContent(e.target.value);
+                }}
                 style={{
                   width: '100%',
                   minHeight: '400px',

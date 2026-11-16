@@ -21,7 +21,8 @@ const fn = name => find(n => ts.isFunctionDeclaration(n) && n.name?.text === nam
 const handler = variable('polishContent').arguments.at(-1);
 const compiled = ts.transpileModule([
   `const STATS_PROMPTS = ${variable('STATS_PROMPTS').getText(ast)};`,
-  fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('resolveGroundedPolish'), `(${handler.getText(ast)});`,
+  fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('addsOutsideAssessment'), fn('addsUnstatedFeelingOrAction'),
+  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('resolveGroundedPolish'), `(${handler.getText(ast)});`,
 ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2019 } }).outputText;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -176,70 +177,58 @@ test('참석 관련 표현과 일시·장소가 함께 있는 기록의 강만 �
   }
 });
 
-test('강의 행사 해석은 참석과 직접 연결된 행사명에서 읽을 수 있는 취지로만 덧붙인다', async () => {
+test('행사 메모의 강은 날짜·장소를 연결한 본문에 외부 판정 문장을 덧붙이지 않는다', async () => {
   const metadata = '\n- 일시: 5월 3일 오전 10시~정오\n- 장소: 도서관';
-  for (const [heading, strength, body, expected] of [
-    ['독서교육 성과공유회참석했다.', 'STRONG', '공유회에 참석했다.', '‘교육 성과공유회’라는 이름에서 교육이 어떤 성과로 이어졌는지 함께 나누려는 취지가 읽힌다.'],
-    ['주민 제안 결과 설명회에 참석했습니다.', 'STRONG', '설명회 일정입니다.', '‘결과 설명회’라는 이름에서 결과가 어떻게 나왔는지 알리려는 취지가 읽힙니다.'],
-    ['동네 성과 공유회 참석.', 'STRONG', '공유회에 참석했어요.', '‘성과 공유회’라는 이름에서 어떤 성과가 있었는지 함께 나누려는 취지가 읽혀요.'],
-    ['동네 전시회에 참석했다.', 'STRONG', '전시회에 참석했다.', ''],
-    ['성과공유회 안내를 받았다. 동네 전시회에 참석했다.', 'STRONG', '행사 안내를 받았다.', ''],
-    ['독서교육 성과공유회에 참석했다.', 'WEAK', '공유회에 참석했다.', ''],
+  for (const [heading, strength, body] of [
+    ['독서교육 성과공유회참석했다.', 'STRONG', '5월 3일 도서관에서 열린 독서교육 성과공유회에 참석했다. 오전 10시부터 정오까지 열리는 일정이었다.'],
+    ['주민 제안 결과 설명회에 참석했습니다.', 'STRONG', '5월 3일 도서관의 주민 제안 결과 설명회에 참석했습니다. 오전 10시부터 정오까지 열리는 일정이었습니다.'],
+    ['동네 성과 공유회 참석.', 'STRONG', '5월 3일 도서관에서 동네 성과 공유회에 참석했어요. 오전 10시부터 정오까지 열리는 일정이었어요.'],
+    ['독서교육 성과공유회에 참석했다.', 'WEAK', '독서교육 성과공유회에 참석했다. 5월 3일 오전 10시부터 정오까지 도서관에서 열리는 일정이었다.'],
   ]) {
     const f = fixture({ polishText: body });
     const result = await f.request({ text: heading + metadata, strength, includeAiComment: false });
-    assert.equal(result.text, expected ? `${body}\n\n${expected}` : body);
+    assert.equal(result.text, body);
     assert.deepEqual(purposes(f), ['sayuPolish', 'recordStats']);
   }
+  const source = '성과공유회 참석.' + metadata;
+  const invalid = fixture({ polishText: '도서관에서 성과공유회에 참석했다. 오전 10시부터 정오까지 열린 일정이다. 성과를 나누려는 취지로 보인다.' });
+  assert.equal((await invalid.request({ text: source, strength: 'STRONG', includeAiComment: false })).text, source);
 });
 
-test('행사 해석을 붙여 PDF 분량 기준을 넘길 때는 본문을 보존한다', async () => {
+test('행사 메모의 PDF 분량 기준과 본문을 유지한다', async () => {
   const text = '공백 제외 2500자 이내\n[원문 시작]\n성과공유회 참석.\n일시: 5월 3일 오전 10시\n장소: 도서관\n[원문 끝]';
-  const body = '가'.repeat(2500);
+  const body = '오전 10시 ' + '가'.repeat(2495);
   const f = fixture({ polishText: body });
   const result = await f.request({ text, strength: 'STRONG', includeAiComment: false });
   assert.equal(result.text, body);
 });
 
-test('일기·에세이·여행기록의 강은 원문에서 확인되는 근거를 가진 한 문장만 본문에 합친다', async () => {
-  const text = '지난주에는 문서만 읽었다. 이번에는 질문을 적으며 읽었다.';
-  const evidence = text;
-  const sentence = '이번 읽기에서는 질문을 정리하는 일까지 읽기의 일부가 된 것으로 읽힌다.';
-  const body = '지난주에는 문서를 읽기만 했다. 이번에는 질문도 적었다.';
+test('일기·에세이·여행기록의 강은 본문만 표시하고 별도 해석 문장을 합치지 않는다', async () => {
+  const text = '오전에 도서관에 갔다. 오후에는 집에서 책을 읽었다.';
+  const body = '오전에는 도서관에 갔고, 오후에는 집에서 책을 읽었다.';
+  const interpretation = { evidence: text, sentence: '오전에는 도서관에서 책 세 권을 빌렸고 오후에는 친구를 만났다.' };
   for (const format of ['diary', 'essay', 'travel']) {
     for (const mode of ['BASIC', 'PREMIUM']) {
-      const f = fixture({ polishText: body, interpretation: { evidence, sentence } });
+      const f = fixture({ polishText: body, interpretation });
       const result = await f.request({ text, format, mode, strength: 'STRONG', includeAiComment: false });
-      assert.equal(result.text, `${body}\n\n${sentence}`);
+      assert.equal(result.text, body);
       assert.equal(f.calls[0].generationConfig.responseMimeType, 'application/json');
       assert.equal(f.calls[0].purpose, mode === 'BASIC' ? 'sayuPolishBasic' : 'sayuPolish');
       assert.deepEqual(purposes(f).slice(1), ['recordStats']);
+      assert.match(f.calls[0].systemInstruction, /별도의 해석 문장이나 본문을 되풀이한 맺음말은 붙이지 않습니다/);
     }
   }
-
-  for (const interpretation of [null, { evidence: '수업을 들었다.', sentence }, { evidence, sentence: '부끄러웠다.' },
-    { evidence, sentence: `부끄러웠다. ${sentence}` }, { evidence, sentence: sentence.replace('읽힌다.', '읽힙니다.') },
-    { evidence, sentence: '친구가 도와줘 읽기가 즐거워진 것으로 읽힌다.' }]) {
-    const f = fixture({ polishText: body, interpretation });
-    const result = await f.request({ text, strength: 'STRONG', includeAiComment: false });
-    assert.equal(result.text, body);
-  }
-
-  const weak = fixture({ polishText: body, interpretation: { evidence, sentence } });
+  const weak = fixture({ polishText: body });
   assert.equal((await weak.request({ text, strength: 'WEAK', includeAiComment: false })).text, body);
   assert.equal(weak.calls[0].generationConfig, undefined);
-  for (const [input, alreadyPolished] of [[text, `${body}\n\n${sentence}`],
-    [`공백 제외 2500자 이내\n[원문 시작]\n${text}\n[원문 끝]`, '가'.repeat(2500)]]) {
-    const f = fixture({ polishText: alreadyPolished, interpretation: { evidence, sentence } });
-    assert.equal((await f.request({ text: input, strength: 'STRONG', includeAiComment: false })).text, alreadyPolished);
-  }
 });
 
 test('행사 취지 목록에 없는 참석 메모는 일반 해석 경로로 넘어가지 않는다', async () => {
   const text = '독서토론회 참석.\n일시: 5월 3일 오전 10시\n장소: 도서관';
-  const f = fixture({ polishText: '도서관에서 열린 독서토론회에 참석했다.' });
+  const body = '5월 3일 오전 10시에 도서관에서 열린 독서토론회에 참석했다.';
+  const f = fixture({ polishText: body });
   const result = await f.request({ text, strength: 'STRONG', includeAiComment: false });
-  assert.equal(result.text, '도서관에서 열린 독서토론회에 참석했다.');
+  assert.equal(result.text, body);
   assert.equal(f.calls[0].generationConfig, undefined);
 });
 
@@ -253,20 +242,104 @@ test('모델 응답 형식이 다르면 원문을 반환하고 형식 오류만 
   }
 });
 
-test('해석에 원문에 없는 결과를 넣거나 시간 범위가 달라지면 본문만 반환한다', async () => {
+test('강의 본문에 외부 평가나 새 건강 판정이 섞이면 저자가 쓴 원문으로 돌아간다', async () => {
+  const text = '계단을 한 층 올랐다. 마지막에 힘이 없었다.';
+  for (const suffix of ['몸 상태가 나아진 것으로 평가된다.', '나아진 것으로 읽힌다.', '나아지는 변화가 읽혔다.', '신체 기능이 활성화됐다.', '부작용이 생겼다.']) {
+    const f = fixture({ polishText: `${text} ${suffix}` });
+    assert.equal((await f.request({ text, strength: 'STRONG', includeAiComment: false })).text, text);
+  }
+  const quoted = '서평에서 “여행기로 읽힌다”라는 문장을 적어 뒀다.';
+  const body = '서평에서 “여행기로 읽힌다”라고 한 문장을 적어 뒀다.';
+  const f = fixture({ polishText: body });
+  assert.equal((await f.request({ text: quoted, strength: 'STRONG', includeAiComment: false })).text, body);
+  const visible = fixture({ polishText: '전망대에서 산이 손에 닿을 듯 보였다.' });
+  assert.equal((await visible.request({
+    text: '전망대에 섰다. 산이 손에 닿을 듯 가까워 보였다.', strength: 'STRONG', includeAiComment: false,
+  })).text, '전망대에서 산이 손에 닿을 듯 보였다.');
+  const novel = '소설을 막힘없이 읽었다. 짐을챙겼다.';
+  const literalReading = '소설이 막힘없이 읽혔다. 짐을 챙겼다.';
+  for (const strength of ['WEAK', 'STRONG']) {
+    const f = fixture({ polishText: literalReading });
+    assert.equal((await f.request({ text: novel, strength, includeAiComment: false })).text, literalReading);
+  }
+});
+
+test('약과 강이 상황을 새 감정으로 바꾸거나 생각을 확정하면 원문의 표현을 보존한다', async () => {
+  const text = '오래 걷기가 어렵다. 내일은 시간을 줄여 봐야겠다.';
+  for (const strength of ['WEAK', 'STRONG']) {
+    for (const output of ['오래 걷기가 어려워 걱정됐다.', '내일은 시간을 줄이기로 했다.', '걷는 시간부터 줄이기 시작했다.']) {
+      const f = fixture({ polishText: output });
+      assert.equal((await f.request({ text, strength, includeAiComment: false })).text, text);
+    }
+  }
+});
+
+test('약과 강에서 배우자가 등장하는 별도 이야기를 빠뜨리면 원문을 보존한다', async () => {
+  const text = '저녁에 걸었다.\n\n집에 돌아와 아내와 이야기를 나눴다.';
+  for (const strength of ['WEAK', 'STRONG']) {
+    const f = fixture({ polishText: '저녁에 걸었다.' });
+    assert.equal((await f.request({ text, strength, includeAiComment: false })).text, text);
+    const kept = '저녁에 걸었다.\n\n집에 와서 아내와 이야기를 나눴다.';
+    const good = fixture({ polishText: kept });
+    assert.equal((await good.request({ text, strength, includeAiComment: false })).text, kept);
+    const separate = '아내와 점심을 먹었다.\n\n저녁에는 아내가 직접 고른 꽃 이야기를 들려줬다.';
+    const oneOfTwo = fixture({ polishText: '아내와 점심을 먹었다.' });
+    assert.equal((await oneOfTwo.request({ text: separate, strength, includeAiComment: false })).text, separate);
+    const both = '점심은 아내와 함께 먹었다.\n\n저녁에는 아내에게서 직접 고른 꽃 이야기를 들었다.';
+    const preservesBoth = fixture({ polishText: both });
+    assert.equal((await preservesBoth.request({ text: separate, strength, includeAiComment: false })).text, both);
+    const sourceToMerge = '아내와 점심을 먹었다. 아내와 산책했다. 짐을챙겼다.';
+    const merged = '아내와 점심을 먹고 함께 산책했다. 짐을 챙겼다.';
+    const mergesSafely = fixture({ polishText: merged });
+    assert.equal((await mergesSafely.request({ text: sourceToMerge, strength, includeAiComment: false })).text, merged);
+    for (const [source, missing] of [
+      ['아내와 점심을 먹었다. 저녁에는 아내가 꽃을 골랐다. 저녁에는 혼자 운동했다.', '아내와 점심을 먹었다. 저녁에는 혼자 운동했다.'],
+      ['아내와 점심을 먹었다. 아내와 산책했다. 집에 돌아온 뒤 혼자 산책했다.', '아내와 점심을 먹었다. 집에 돌아온 뒤 혼자 산책했다.'],
+    ]) {
+      const unrelatedMatch = fixture({ polishText: missing });
+      assert.equal((await unrelatedMatch.request({ text: source, strength, includeAiComment: false })).text, source);
+    }
+  }
+});
+
+test('원문에 있는 감정의 같은 뜻 활용형을 새 감정으로 취급하지 않는다', async () => {
+  const text = '여행을 앞두고 설레었다. 짐을챙겼다. 사진을 보니 기쁨이 남았다.';
+  const body = '여행을 앞두고 설렜다. 짐을 챙겼다. 사진을 보니 기쁜 마음이 남았다.';
+  for (const strength of ['WEAK', 'STRONG']) {
+    const f = fixture({ polishText: body });
+    assert.equal((await f.request({ text, strength, includeAiComment: false })).text, body);
+  }
+});
+
+test('메모에 적힌 결정과 시작은 자연스러운 완결문으로 바꿀 수 있다', async () => {
+  const text = '내일부터 운동하기로 함. 물마시기 시작함. 짐을챙겼다.';
+  const body = '내일부터 운동하기로 했다. 물 마시기를 시작했다. 짐을 챙겼다.';
+  for (const strength of ['WEAK', 'STRONG']) {
+    const f = fixture({ polishText: body });
+    assert.equal((await f.request({ text, strength, includeAiComment: false })).text, body);
+  }
+});
+
+test('오전·오후가 바뀌거나 빠지면 원문을 반환한다', async () => {
   const text = '첫날에는 시장과 박물관을 둘러봤다. 마지막 날에는 숙소 앞에서 오전을 보냈다.';
-  const sentence = '첫날과 마지막 날 오전에 둘러본 범위가 달랐다는 점이 읽힌다.';
-  const body = '첫날 시장과 박물관을 둘러봤다. 마지막 날에는 숙소 앞에서 오전을 보냈다.';
-  for (const [evidence, candidate, expected] of [
-    [text, sentence, `${body}\n\n${sentence}`],
-    [text, sentence.replace(' 오전', ''), body],
-    [text, '마지막 날 오전 산책으로 문제를 해결한 것으로 읽힌다.', body],
-    ['숙소 앞에서 오전을 보냈다.', sentence, body],
-    ['첫날에는 시장과 박물관을 둘러봤다. 마지막 날에는 숙소 앞에서', sentence, body],
-  ]) {
-    const f = fixture({ polishText: body, interpretation: { evidence, sentence: candidate } });
-    const result = await f.request({ text, format: 'travel', strength: 'STRONG', includeAiComment: false });
-    assert.equal(result.text, expected);
+  const sentence = '시장과 박물관을 둘러본 첫날과 달리, 마지막 날 오전은 숙소 앞에서 보냈다.';
+  for (const strength of ['WEAK', 'STRONG']) {
+    for (const [body, expected] of [[sentence, sentence], [sentence.replace(' 오전', ''), text], [sentence.replace('오전', '오후'), text]]) {
+      const f = fixture({ polishText: body });
+      const result = await f.request({ text, format: 'travel', strength, includeAiComment: false });
+      assert.equal(result.text, expected);
+    }
+    const sameTimeSource = '아침 9시에 산책했다. 저녁 7시에 짐을챙겼다.';
+    const sameTimeBody = '오전 9시에 산책했다. 오후 7시에 짐을 챙겼다.';
+    const sameTime = fixture({ polishText: sameTimeBody });
+    assert.equal((await sameTime.request({ text: sameTimeSource, format: 'travel', strength, includeAiComment: false })).text, sameTimeBody);
+    for (const [source, changed] of [
+      ['오전 9시에 산책했다.', '아침 10시에 산책했다.'],
+      ['오후 7시 10분에 짐을 챙겼다.', '저녁 7시 40분에 짐을 챙겼다.'],
+    ]) {
+      const changedTime = fixture({ polishText: changed });
+      assert.equal((await changedTime.request({ text: source, format: 'travel', strength, includeAiComment: false })).text, source);
+    }
   }
 });
 
