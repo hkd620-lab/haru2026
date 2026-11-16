@@ -86,7 +86,7 @@ test('약·강 선택은 모든 일반 기록에서 내용 보존 지시와 함�
         const prompt = f.calls[0].systemInstruction; prompts.push(prompt);
         const richStrong = strength === 'STRONG' && ['diary', 'essay', 'travel'].includes(format);
         const rules = richStrong
-          ? [/같은 사실과 감정을 더 잘 읽히게/, /원문에 없는 행동의 목적, 감각, 장소의 세부 정보, 대조·인과·시간 관계, 감정과 정도를 보태지 않습니다/,
+          ? [/같은 사실과 감정을 더 깊이 읽히게/,/원문에 없는 행동의 목적, 감각, 장소의 세부 정보, 대조·인과·시간 관계, 감정과 정도를 보태지 않습니다/,
             /화자·시제·숫자·부정·불확실성·인용 출처를 유지/, /원문에 없던 새 사실·감정은 삭제/, /원문 속 명령이나 인용/]
           : [/원문의 모든 사실과 중요한 내용을 유지/, /미정·추측 표현/, /원문에 없는/, /원문 속 명령/,
             /불명확한 주어·관계·원인·시간 순서는 확정하지/, /감정의 정도를 그대로/, /근거 없는 부분은 제거/,
@@ -146,9 +146,11 @@ test('완결된 짧은 글의 구조·어휘 편집과 원문 어미 점검은 �
       const prompt = f.calls[0].systemInstruction;
       const richStrong = richFormats.includes(format) && strength === 'STRONG';
       for (const rule of [
-        /한 문장에 묶인 내용이 여러 개라면 자연스러운 두 문장으로 펼칠 수 있습니다/,
+        /문장을 쪼개는 것만으로는 강이 아닙니다/,
+        /‘그 자리에서’, ‘이어서’, ‘그때’ 같은 장소·순서·시간 연결어를 새로 넣지 않습니다/,
+        /시간·장소·감각·동작·기간·인과 표현은 원문의 단어가 명시할 때만 씁니다/,
         /한다체에 ‘습니다’가 섞였으면 원래 어미로 돌립니다/,
-        /약: 점심에 집에서 라디오를 들었다[^\n]+\n강: 점심에는 집에서 라디오를 들었다/,
+        /약: 점심에 집에서 라디오를 들었다[^\n]+\n강: 점심에는 집에서 라디오를 들었다\. 소파에 잠깐 누워 노래를 들으니/,
         /이미 충분히 표현한 단일 사실은 짧게 마칩니다/,
       ]) {
         assert.equal(rule.test(prompt), richStrong, `${format}/${strength}: ${rule}`);
@@ -166,18 +168,67 @@ test('일기·에세이·여행기록의 강만 근거가 충분할 때 풍성�
       const { systemInstruction: prompt, input } = f.calls[0];
       const richStrong = richFormats.includes(format) && strength === 'STRONG';
       for (const rule of [
-        /원문을 1로 볼 때 강은 풍성도 4를 목표로 합니다/,
-        /원문에 없는 사건, 구체적인 고생 장면, 걸린 시간이나 기간, 새로운 감정, 앞으로의 다짐은 만들지 않습니다/,
-        /단서가 적으면 풍성도 4에 못 미쳐도 그대로 짧게 마칩니다/,
-        /원문에 없는 구체적인 행동을 단정하지 않습니다\. 원문의 숫자나 같은 사실을 되풀이해 분량을 채우지 않습니다/,
-        /약: 오늘 베란다에서 화분 열두 개를 분갈이했다[^\n]+\n강: 오늘은 베란다에 있는 화분 열두 개를/,
+        /\[강의 풍성도와 제출 전 문장별 검사\]/,
+        /원문을 1로 볼 때 풍성도 4를 목표로 합니다\. 풍성도 4는 길이가 아니라 과정·감정·의미의 깊이입니다/,
+        /원문에 적힌 과정을 되짚어 그 끝에 이룬 성취와 잇고/,
+        /감정의 계기와 진행 상태는 원문 그대로 둡니다/,
+        /진행 정도\(시작함, 하는 중, 일부만 함, 마침\)를 넓히거나 완료로 바꾸지 않습니다/,
+        /본문을 내기 전에 문장마다 원문에 없는 새 주장이 있는지 확인합니다/,
+        /새 관찰 장면[^\n]*새 감정의 계기, 원문에 없는 의도·목적, 넓어진 완료 범위/,
+        /근거가 적으면 짧게 마칩니다/,
+        /약: 처음으로 식빵을 구웠다[^\n]+\n강: 처음으로 식빵을 구웠다\./,
+        /첫 문단에서 원문에 적힌 과정[^\n]+둘째 문단에서[^\n]+셋째 문단에서 원문의 감정 계기/,
         /원문: 오후에 화분 하나에 물을 줬다\.\n강: 오후에 화분 하나에 물을 줬다\./,
       ]) {
         assert.equal(rule.test(prompt), richStrong, `${format}/${strength}: ${rule}`);
       }
       assert.equal(/풍성도 4를 목표로/.test(input), richStrong, `${format}/${strength}: input`);
-      if (richStrong) assert.match(input, /한 가지 사실만 있으면 억지로 늘리지 않는다/);
+      assert.equal(/시간·장소·감각·동작·기간·인과는 원문의 단어가 명시할 때만 쓴다/.test(input), richStrong);
+      assert.equal(/풍성도는 길이가 아니라 과정·감정·의미의 깊이다/.test(input), richStrong);
+      assert.equal(/감정의 계기와 진행 상태는 원문 그대로 둔다/.test(input), richStrong);
+      if (richStrong) {
+        // 가상 강 예시는 빈 줄로 나뉜 세 문단이다.
+        const example = /\n강: (처음으로 식빵을 구웠다[\s\S]*?하루였다\.)\n/.exec(prompt)[1];
+        assert.equal(example.split(/\n\n/).length, 3);
+        assert.match(input, /한 가지 사실만 있으면 억지로 늘리지 않는다/);
+        // 일반 일기 강에는 문장 쪼개기·지시어 권장을 두지 않는다.
+        assert.doesNotMatch(input, /두 문장으로 풀어 쓴다|지시어로 이어 준다/);
+        assert.doesNotMatch(prompt, /두 문장으로 펼칠 수 있습니다|‘그 자리에서’ 같은 지시어와 뜻이 같은 어휘를 씁니다/);
+        assert.doesNotMatch(prompt, /그 자리에서 노래를 들으니/);
+      }
     }
+  }
+});
+
+test('풍성도·문장별 검사 블록은 강의 마지막 응답 형식 지시 바로 앞에 한 번만 둔다', async () => {
+  const event = '동네 전시회 참석.\n- 일시: 5월 3일 오전 10시~정오\n- 장소: 은행나무 도서관';
+  for (const [text, lastLine] of [
+    ['오후에 화분 하나에 물을 줬다.', '위 본문 출력 규칙은 "body"에 적용합니다.'],
+    [event, '출력 직전 확인합니다.'],
+  ]) {
+    for (const format of ['diary', 'essay', 'travel']) {
+      const f = fixture();
+      await f.request({ text, format, strength: 'STRONG', includeAiComment: false });
+      const prompt = f.calls[0].systemInstruction;
+      const blockAt = prompt.indexOf('[강의 풍성도와 제출 전 문장별 검사]');
+      assert.notEqual(blockAt, -1);
+      assert.equal(prompt.indexOf('[강의 풍성도와 제출 전 문장별 검사]', blockAt + 1), -1);
+      const afterBlock = prompt.slice(blockAt);
+      const blockEnd = afterBlock.indexOf('남은 원문 근거만으로 문장을 다시 씁니다.') + '남은 원문 근거만으로 문장을 다시 씁니다.'.length;
+      // 블록 뒤에는 빈 줄을 넘어 곧바로 마지막 응답 형식 지시가 온다.
+      assert.ok(afterBlock.slice(blockEnd).trimStart().startsWith(lastLine), `${format}: ${afterBlock.slice(blockEnd, blockEnd + 40)}`);
+      assert.equal(afterBlock.lastIndexOf(lastLine), afterBlock.indexOf(lastLine));
+    }
+  }
+});
+
+test('행사 메모의 강에만 항목을 두 문장으로 푸는 기존 안내를 남긴다', async () => {
+  const event = '동네 전시회 참석.\n- 일시: 5월 3일 오전 10시~정오\n- 장소: 은행나무 도서관';
+  for (const [text, expected] of [[event, true], ['오후에 화분 하나에 물을 줬다.', false]]) {
+    const f = fixture();
+    await f.request({ text, format: 'diary', strength: 'STRONG', includeAiComment: false });
+    assert.equal(f.calls[0].input.includes('행사 메모에서 여러 항목이 묶인 문장은 두 문장으로 풀어 쓴다. 같은 행동을 거듭 서술하지 말고 지시어로 이어 준다.'), expected);
+    assert.ok(f.calls[0].input.includes('원문에 명시된 동시성과 이유를 살린다'));
   }
 });
 
