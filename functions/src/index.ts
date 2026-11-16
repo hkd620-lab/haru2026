@@ -2362,6 +2362,15 @@ function changesSpouseReference(text: string, source: string): boolean {
   });
 }
 
+function changesTimeOfDay(text: string, source: string): boolean {
+  // 숫자로 시각을 쓴 아침·저녁 표현도 오전·오후에 해당할 수 있다.
+  const periods = [
+    /오전|아침(?=\s*(?:[1-9]|1[01])\s*시)/,
+    /오후|(?:저녁|밤)(?=\s*(?:[6-9]|1[01])\s*시)/,
+  ];
+  return periods.some(period => period.test(text) !== period.test(source));
+}
+
 function resolveGroundedPolish(raw: string, source: string): string {
   let result: { body?: unknown } | null;
   try {
@@ -2636,7 +2645,7 @@ ${SOURCE_PRESERVATION_RULES}`;
       }
       if (richSource !== undefined
         && (addsOutsideAssessment(polishedText, richSource) || addsUnstatedFeelingOrAction(polishedText, richSource)
-          || ['오전', '오후'].some(period => polishedText.includes(period) !== richSource.includes(period))
+          || changesTimeOfDay(polishedText, richSource)
           || changesSpouseReference(polishedText, richSource))) {
         polishedText = richSource;
       }

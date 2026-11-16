@@ -22,7 +22,7 @@ const handler = variable('polishContent').arguments.at(-1);
 const compiled = ts.transpileModule([
   `const STATS_PROMPTS = ${variable('STATS_PROMPTS').getText(ast)};`,
   fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('addsOutsideAssessment'), fn('addsUnstatedFeelingOrAction'),
-  fn('changesSpouseReference'), fn('resolveGroundedPolish'), `(${handler.getText(ast)});`,
+  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('resolveGroundedPolish'), `(${handler.getText(ast)});`,
 ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2019 } }).outputText;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -323,6 +323,10 @@ test('오전·오후가 바뀌거나 빠지면 원문을 반환한다', async ()
       const result = await f.request({ text, format: 'travel', strength, includeAiComment: false });
       assert.equal(result.text, expected);
     }
+    const sameTimeSource = '아침 9시에 산책했다. 저녁 7시에 짐을챙겼다.';
+    const sameTimeBody = '오전 9시에 산책했다. 오후 7시에 짐을 챙겼다.';
+    const sameTime = fixture({ polishText: sameTimeBody });
+    assert.equal((await sameTime.request({ text: sameTimeSource, format: 'travel', strength, includeAiComment: false })).text, sameTimeBody);
   }
 });
 
