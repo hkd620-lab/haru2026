@@ -247,6 +247,38 @@ test('원문에 같은 유형의 표현이 있거나 수고·감정·의미를 �
   }
 });
 
+test('의도 표현은 첫 음절이 아니라 동사 어간 전체로 원문과 대조하고, 고자는 어미 뒤 경계를 확인한다', async () => {
+  // 원문 ‘보려고’는 ‘보관하려고’의 근거가 아니다.
+  const lookSource = '오후에 사진을 보려고 앨범을 꺼냈다. 다 보고 나니 즐거웠다.';
+  const stemChanged = fixture({ polishText: '오후에 사진을 보관하려고 앨범을 꺼냈다. 다 보고 나니 즐거웠다.' });
+  const stemChangedResult = await stemChanged.request({ text: lookSource, strength: 'STRONG', includeAiComment: false });
+  assert.equal(stemChangedResult.text, lookSource);
+  assert.equal(stemChangedResult.originalPreserved, true);
+  // 같은 어간이면 다른 의도 어미로 바꿔도 통과한다.
+  const sameStemOutput = '오후에는 사진을 보기 위해 앨범을 꺼냈다. 다 보고 나니 즐거웠다.';
+  const sameStem = fixture({ polishText: sameStemOutput });
+  const sameStemResult = await sameStem.request({ text: lookSource, strength: 'STRONG', includeAiComment: false });
+  assert.equal(sameStemResult.text, sameStemOutput);
+  assert.equal('originalPreserved' in sameStemResult, false);
+
+  // ‘중고자전거’의 ‘고자’는 의도 어미가 아니다.
+  const bikeOutput = '오후에는 중고자전거를 샀다. 바퀴가 튼튼해서 마음에 들었다.';
+  const bike = fixture({ polishText: bikeOutput });
+  const bikeResult = await bike.request({ text: '오후에 중고 자전거를 샀다. 바퀴가 튼튼해서 마음에 들었다.', strength: 'STRONG', includeAiComment: false });
+  assert.equal(bikeResult.text, bikeOutput);
+  assert.equal('originalPreserved' in bikeResult, false);
+  // 어미로 쓰인 고자는 여전히 근거를 요구한다.
+  for (const output of [
+    '오전에 책 둘 곳을 넓히고자 책장을 정리했다. 책이 많아서 팔이 아팠다. 다 끝내니 후련했다.',
+    '오전에 책 둘 곳을 넓히고자했다. 책장을 정리했다. 책이 많아서 팔이 아팠다. 다 끝내니 후련했다.',
+  ]) {
+    const intended = fixture({ polishText: output });
+    const intendedResult = await intended.request({ text: SHELF_SOURCE, strength: 'STRONG', includeAiComment: false });
+    assert.equal(intendedResult.text, SHELF_SOURCE, output);
+    assert.equal(intendedResult.originalPreserved, true, output);
+  }
+});
+
 test('근거 없는 구체 표현 검사는 강의 원문 근거 경로에만 적용하고 약·행사 메모·다른 형식은 바꾸지 않는다', async () => {
   const [, output] = SHELF_UNGROUNDED[0];
   const weak = fixture({ polishText: output });

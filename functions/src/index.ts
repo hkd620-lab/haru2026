@@ -2385,10 +2385,12 @@ function changesTimeOfDay(text: string, source: string): boolean {
 // 보수적으로 찾는다. 재사용 가능한 한국어 표현 범주를 원문과 대조할 뿐이며 의미 전체를 검증하지는 않는다.
 // 원문에 같은 유형의 표현이 있으면 통과시키고, 수고·감정·의미를 원문 사실로 문장화한 표현은 범주에 넣지 않는다.
 function addsUngroundedSpecifics(text: string, source: string): boolean {
-  const syllable = (word = '') => word.replace(/[^가-힣]/g, '').slice(0, 1);
-  const intent = /([가-힣]*?)(?:으려(?:고|는|던|면)?|(?<![배고염우격장])려(?:고|는|던|면)|기\s?위(?:해서|하여|해|한)|고자|느라)/g;
+  // 의도 표현 앞의 동사 어간 전체(예: ‘보’, ‘보관하’). 첫 음절만 비교하면 ‘보려고’가 ‘보관하려고’를 근거로 통과시킨다.
+  const intentStem = (word = '') => word.replace(/[^가-힣]/g, '');
+  // 고자·느라는 ‘중고자전거’처럼 낱말 안에서도 나오므로 어미 뒤 경계(공백·문장부호·끝, 고자는 ‘하고자한다’의 하- 활용)를 확인한다.
+  const intent = /([가-힣]*?)(?:으려(?:고|는|던|면)?|(?<![배고염우격장])려(?:고|는|던|면)|기\s?위(?:해서|하여|해|한)|고자(?=[하한했합할]|[^가-힣]|$)|느라(?:고)?(?=[^가-힣]|$))/g;
   const observation = /([가-힣]+)\s?(?:것|모습|장면)[을를]\s?(?:보니|보며|보면서|보고|보자|바라보|지켜보)/g;
-  const sourceIntentStems = Array.from(source.matchAll(intent), match => syllable(match[1]));
+  const sourceIntentStems = Array.from(source.matchAll(intent), match => intentStem(match[1])).filter(Boolean);
   const checks: Array<[RegExp, (match: RegExpMatchArray) => boolean]> = [
     // 하나씩·한 장씩 같은 분배 방식
     [/(?:한|하나|두|세|네|몇|여러)\s?[가-힣]{0,2}씩/g, () => source.includes('씩')],
@@ -2399,7 +2401,7 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
     [/조심스럽|꼼꼼|차근차근|차례차례|하나하나|일일이|정성껏|정성스럽|공들여|천천히|세심|신중/g,
       match => source.includes(match[0].slice(0, 2))],
     // ~하려고·~하기 위해·~하느라 같은 의도·목적. 원문에 같은 동사 줄기의 의도 표현이 있으면 통과한다.
-    [intent, match => sourceIntentStems.includes(syllable(match[1]))],
+    [intent, match => sourceIntentStems.includes(intentStem(match[1]))],
     // 긴 시간·오랫동안 같은 기간
     [/(?:긴|오랜|많은|기나긴)\s?(?:시간|세월|기간|날들)|오랫동안|오래도록|한참|하루\s?종일|온종일|밤새|내내|꼬박|몇\s?(?:시간|날|주|달|해|년)/g,
       () => /(?:긴|오랜|많은|기나긴)\s?(?:시간|세월|기간|날들)|오랫동안|오래|한참|종일|밤새|내내|꼬박|며칠|몇\s?(?:시간|날|주|달|해|년)|\d+\s?(?:시간|분|일|주|개월|달|년)|(?:한|두|세|네|다섯|여러)\s?(?:시간|날|주|달|해)/.test(source)],
