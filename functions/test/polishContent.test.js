@@ -22,7 +22,7 @@ const handler = variable('polishContent').arguments.at(-1);
 const compiled = ts.transpileModule([
   `const STATS_PROMPTS = ${variable('STATS_PROMPTS').getText(ast)};`,
   fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('addsOutsideAssessment'), fn('addsUnstatedFeelingOrAction'),
-  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('addsUngroundedSpecifics'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), fn('failsGroundedParagraph'), `(${handler.getText(ast)});`,
+  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('addsUngroundedSpecifics'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), fn('failsGroundedParagraph'), fn('groundedSentenceTools'), fn('repeatsOtherParagraph'), fn('restoreGroundedSentences'), `(${handler.getText(ast)});`,
 ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2019 } }).outputText;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -412,6 +412,163 @@ test('원문에 없는 화면·지각 장면 묘사는 근거가 없으면 원�
     const f = fixture({ polishText: output });
     assert.equal((await f.request({ text: source, strength: 'STRONG', includeAiComment: false })).text, output);
   }
+});
+
+// 같은 결과를 강의 원문 근거 경로에 넣고 본문과 원문 유지 표시를 확인한다.
+const strongResult = async (source, output) => {
+  const f = fixture(Array.isArray(output) ? { polishParagraphs: output } : { polishText: output });
+  const result = await f.request({ text: source, strength: 'STRONG', includeAiComment: false });
+  return { text: result.text, preserved: 'originalPreserved' in result ? result.originalPreserved : undefined };
+};
+
+test('지각 표현은 원문과 결과를 같은 활용형 기준으로 대조한다', async () => {
+  for (const [source, output] of [
+    ['아침에 눈을 뜨면서 알람을 껐다.', '아침에는 눈을 뜨면서 알람을 껐다.'],
+    ['산책길에 옛 생각이 떠올라 걸음을 멈췄다.', '산책길에는 옛 생각이 떠올라서 걸음을 멈췄다.'],
+  ]) {
+    assert.deepEqual(await strongResult(source, output), { text: output, preserved: undefined }, output);
+  }
+  // 원문에 지각 표현이 없으면 같은 활용형도 새 장면이다.
+  const source = '아침에 알람을 껐다.';
+  assert.deepEqual(await strongResult(source, '아침에 눈을 뜨면서 알람을 껐다.'), { text: source, preserved: true });
+});
+
+test('원문에 없는 횟수·수량 구체화와 배타·한정 주장은 근거가 없으면 원문으로 돌아간다', async () => {
+  const countSource = '사진 스무 장의 배치를 여러 번 바꿨다.';
+  for (const output of [
+    '사진 스무 장의 배치를 수십 번 바꿨다.',
+    '사진 스무 장의 배치를 수없이 바꿨다.',
+    '사진 스무 장의 배치를 두 번 바꿨다.',
+    '사진 스무 장의 배치를 수많은 고민 끝에 여러 번 바꿨다.',
+  ]) {
+    assert.deepEqual(await strongResult(countSource, output), { text: countSource, preserved: true }, output);
+  }
+  const limitSource = '앱을 머릿속으로 구상해 왔다.';
+  for (const output of [
+    '앱을 머릿속으로만 구상해 왔다.',
+    '오직 머릿속으로 앱을 구상해 왔다.',
+    '앱을 머릿속으로 구상해 왔을 뿐이었다.',
+    '앱을 머릿속으로 구상하기만 했다.',
+  ]) {
+    assert.deepEqual(await strongResult(limitSource, output), { text: limitSource, preserved: true }, output);
+  }
+  // 원문에 같은 표현이 있으면 띄어쓰기·번/차례 차이는 통과한다. 흔한 ‘조금만’은 한정 주장으로 보지 않는다.
+  for (const [source, output] of [
+    [countSource, '사진 스무 장의 배치를 여러 차례 바꿨다.'],
+    ['배치를 수십 번 바꿨다.', '배치를 수십번 바꿨다.'],
+    ['주말에만 앱을 만들었다.', '주말에만 앱을 만들어 왔다.'],
+    ['오후에 조금 쉬었다.', '오후에는 조금만 쉬었다.'],
+  ]) {
+    assert.deepEqual(await strongResult(source, output), { text: output, preserved: undefined }, output);
+  }
+});
+
+// 문장 단위 복원. 원문 문단 하나에 문장이 셋이다.
+const EXHIBIT = [
+  '전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다.',
+  '마지막 장까지 자리를 잡고 나니 뿌듯했다.',
+  '오늘은 따로 찍어 둔 사진들이 하나의 이야기로 이어진 날이었다.',
+];
+const EXHIBIT_SOURCE = EXHIBIT.join(' ');
+const EXHIBIT_EDITED = [
+  '전시를 준비하면서 사진 스무 장의 배치를 여러 번 바꿨다.',
+  '수십 번의 고민 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다.',
+  '오늘은 따로 찍어 둔 사진들이 비로소 하나의 이야기로 이어진 날이었다.',
+];
+
+test('문제 문장이 원문 문장 하나와 확실히 대응되면 그 문장만 원문으로 돌리고 다른 문장 편집과 문단 나눔은 유지한다', async () => {
+  assert.deepEqual(await strongResult(EXHIBIT_SOURCE, EXHIBIT_EDITED.join(' ')),
+    { text: [EXHIBIT_EDITED[0], EXHIBIT[1], EXHIBIT_EDITED[2]].join(' '), preserved: undefined });
+  // 결과 문단 안의 빈 줄 나눔은 그대로 둔다.
+  const split = `${EXHIBIT_EDITED[0]}\n\n${EXHIBIT_EDITED[1]} ${EXHIBIT_EDITED[2]}`;
+  assert.deepEqual(await strongResult(EXHIBIT_SOURCE, split),
+    { text: `${EXHIBIT_EDITED[0]}\n\n${EXHIBIT[1]} ${EXHIBIT_EDITED[2]}`, preserved: undefined });
+  // 한정 주장 문장도 같은 방식으로 그 문장만 돌아간다.
+  const limited = [EXHIBIT_EDITED[0], EXHIBIT[1], '오늘은 따로 찍어 둔 사진들이 오직 하나의 이야기로만 이어진 날이었다.'];
+  assert.deepEqual(await strongResult(EXHIBIT_SOURCE, limited.join(' ')),
+    { text: [EXHIBIT_EDITED[0], EXHIBIT[1], EXHIBIT[2]].join(' '), preserved: undefined });
+  // 다른 문단과 함께여도 각 문단을 따로 판단한다.
+  const twoSource = `${EXHIBIT_SOURCE}\n\n저녁에는 일찍 잤다.`;
+  assert.deepEqual(await strongResult(twoSource, [EXHIBIT_EDITED.join(' '), '저녁에는 머릿속으로만 쉬다가 일찍 잤다.']),
+    { text: `${[EXHIBIT_EDITED[0], EXHIBIT[1], EXHIBIT_EDITED[2]].join(' ')}\n\n저녁에는 일찍 잤다.`, preserved: undefined });
+});
+
+test('문제 문장의 원문 대응이 불확실하거나 복원 뒤에도 문제가 남으면 문단 폴백을 유지한다', async () => {
+  const fallback = { text: EXHIBIT_SOURCE, preserved: true };
+  for (const [label, output] of [
+    // 원문 어느 문장과도 비슷하지 않은 새 문장
+    ['대응 없는 새 문장', [EXHIBIT_EDITED[0], '머릿속으로만 그리던 그림이었다.', EXHIBIT[1], EXHIBIT_EDITED[2]].join(' ')],
+    // 문장 순서가 원문과 다르다
+    ['순서 바뀜', [EXHIBIT_EDITED[2], EXHIBIT_EDITED[0], EXHIBIT_EDITED[1]].join(' ')],
+    // 같은 원문 문장에 결과 문장 둘이 대응한다
+    ['한 원문 문장에 두 결과 문장', [EXHIBIT_EDITED[0], '마지막 장까지 자리를 잡았다.', '수십 번의 고민 끝에 자리를 잡고 나니 뿌듯했다.', EXHIBIT_EDITED[2]].join(' ')],
+    // 문제 문장을 돌려도 다른 문장의 새 시간대가 남는다
+    ['복원 뒤 남은 문제', ['오전에 전시를 준비하면서 사진 스무 장의 배치를 여러 번 바꿨다.', EXHIBIT_EDITED[1], EXHIBIT_EDITED[2]].join(' ')],
+    // 문장을 합쳐 개수가 줄었다
+    ['문장 합침', `${EXHIBIT_EDITED[0]} 수십 번 고민한 끝에 마지막 장까지 자리를 잡았고, 따로 찍어 둔 사진들이 하나의 이야기로 이어져 뿌듯했다.`],
+  ]) {
+    assert.deepEqual(await strongResult(EXHIBIT_SOURCE, output), fallback, label);
+  }
+  // 한 문장짜리 원문 문단은 문장 복원 없이 문단 폴백이다.
+  assert.deepEqual(await strongResult('사진 배치를 바꿨다.', '사진 배치를 수십 번 바꿨다.'), { text: '사진 배치를 바꿨다.', preserved: true });
+});
+
+// 처음·최초 주장. 앱 원문은 ‘처음 실행했다’와 ‘첫걸음’만 처음으로 적었다.
+const APP_MILESTONE = [
+  '만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다.',
+  '정말 기뻤다.',
+  '정식 심사와 출시는 아직 남았다.',
+];
+const APP_MILESTONE_SOURCE = APP_MILESTONE.join(' ');
+
+test('원문의 처음·최초 주장이 가리키는 대상을 바꾸거나 없던 처음 주장을 더하면 그 문장만 원문으로 돌아간다', async () => {
+  // ‘처음 실행’을 ‘처음으로 만든 앱’으로 옮기면 처음인 대상이 바뀐다.
+  const shifted = ['처음으로 만든 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 실행했다.', '정말 기뻤다.', '정식 심사와 출시는 아직 남아 있다.'];
+  assert.deepEqual(await strongResult(APP_MILESTONE_SOURCE, shifted.join(' ')),
+    { text: [APP_MILESTONE[0], shifted[1], shifted[2]].join(' '), preserved: undefined });
+  // 원문에 처음 주장이 없는데 ‘처음으로’·‘가장 먼저’를 더한다.
+  const harbor = '오후에 항구를 걸었다. 바람이 시원했다.';
+  for (const first of ['오후에 처음으로 항구를 걸었다.', '오후에 가장 먼저 항구를 걸었다.']) {
+    assert.deepEqual(await strongResult(harbor, `${first} 바닷바람이 시원했다.`),
+      { text: '오후에 항구를 걸었다. 바닷바람이 시원했다.', preserved: undefined }, first);
+  }
+  // ‘첫 ~’도 가리키는 대상이 바뀌면 원문으로 돌아간다.
+  assert.deepEqual(await strongResult('첫 출근을 했다.', '첫 월급을 받았다.'), { text: '첫 출근을 했다.', preserved: true });
+});
+
+test('처음·최초 주장이 원문과 같은 대상을 가리키면 어순·활용이 달라도 통과한다', async () => {
+  for (const [source, output] of [
+    [APP_MILESTONE_SOURCE, [APP_MILESTONE[0].replace('처음 실행했다', '처음으로 실행해 봤다'), ...APP_MILESTONE.slice(1)].join(' ')],
+    ['구상해 온 앱을 실제로 써 보는 첫걸음이었다.', '구상해 온 앱을 실제로 써 보는, 뜻깊은 첫걸음이었다.'],
+    ['처음으로 김치를 담갔다. 허리가 아팠다.', '처음으로 김치를 담갔다. 처음 해 본 김치 담그기라 허리가 아팠다.'],
+    ['맨 처음 도착했다.', '맨 처음 도착해 자리에 앉았다.'],
+  ]) {
+    assert.deepEqual(await strongResult(source, output), { text: output, preserved: undefined }, output);
+  }
+});
+
+test('다른 원문 문단의 내용이나 앞 문단 문장을 되풀이한 문장은 그 문장만 돌리거나, 대응이 없으면 그 문단만 원문으로 돌린다', async () => {
+  // 3번 문단(한 문장 원문)이 1번 원문 문단의 내용을 되풀이한다 → 그 문단만 원문.
+  assert.deepEqual(await strongResult(THREE_SOURCE,
+    [THREE_GOOD[0], THREE_GOOD[1], '저녁에는 일찍 잠자리에 들었다. 책이 많아서 팔이 아팠던 하루였다.']),
+  { text: [THREE_GOOD[0], THREE_GOOD[1], THREE_PARAGRAPHS[2]].join('\n\n'), preserved: undefined });
+  // 2번 문단의 둘째 문장이 1번 원문 문단의 내용을 끌어온다 → 대응되는 원문 문장으로 그 문장만 돌린다.
+  assert.deepEqual(await strongResult(THREE_SOURCE,
+    [THREE_GOOD[0], '오후에는 새로 만든 앱을 휴대폰에 설치해 처음으로 실행했다. 책이 많아서 팔이 아팠지만 정말 기뻤다.', THREE_GOOD[2]]),
+  { text: [THREE_GOOD[0], '오후에는 새로 만든 앱을 휴대폰에 설치해 처음으로 실행했다. 정말 기뻤다.', THREE_GOOD[2]].join('\n\n'), preserved: undefined });
+  // 원문에 없는 맺음 문장을 앞 문단에서 그대로 되풀이한다 → 뒤 문단만 원문.
+  assert.deepEqual(await strongResult(THREE_SOURCE,
+    [`${THREE_GOOD[0]} 뜻깊은 하루였다.`, THREE_GOOD[1], '저녁에는 일찍 잠자리에 들었다. 뜻깊은 하루였다.']),
+  { text: [`${THREE_GOOD[0]} 뜻깊은 하루였다.`, THREE_GOOD[1], THREE_PARAGRAPHS[2]].join('\n\n'), preserved: undefined });
+});
+
+test('원문이 일부러 되풀이한 문장은 문단 간 되풀이로 보지 않는다', async () => {
+  const source = '아침에 공원을 걸었다. 오늘도 걷기를 해냈다.\n\n저녁에 다시 공원을 걸었다. 오늘도 걷기를 해냈다.';
+  const output = ['아침에는 공원을 걸었다. 오늘도 걷기를 해냈다.', '저녁에는 다시 공원을 걸었다. 오늘도 걷기를 해냈다.'];
+  assert.deepEqual(await strongResult(source, output), { text: output.join('\n\n'), preserved: undefined });
+  // 한 문단 원문은 문단 간 되풀이 판정을 하지 않는다.
+  const single = '공원을 걸었다. 오늘도 걷기를 해냈다. 오늘도 걷기를 해냈다.';
+  assert.deepEqual(await strongResult(single, single), { text: single, preserved: undefined });
 });
 
 test('문단 순번 요청은 강의 원문 근거 경로에만 쓰고 약·행사 메모·다른 형식의 호출은 바꾸지 않는다', async () => {

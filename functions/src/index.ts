@@ -2390,8 +2390,39 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
   // 고자·느라는 ‘중고자전거’처럼 낱말 안에서도 나오므로 어미 뒤 경계(공백·문장부호·끝, 고자는 ‘하고자한다’의 하- 활용)를 확인한다.
   const intent = /([가-힣]*?)(?:으려(?:고|는|던|면)?|(?<![배고염우격장])려(?:고|는|던|면)|기\s?위(?:해서|하여|해|한)|고자(?=[하한했합할]|[^가-힣]|$)|느라(?:고)?(?=[^가-힣]|$))/g;
   const observation = /([가-힣]+)\s?(?:것|모습|장면)[을를]\s?(?:보니|보며|보면서|보고|보자|바라보|지켜보)/g;
+  // 지각 장면 표현. 결과와 원문을 같은 활용형 기준으로 대조한다(예: 원문 ‘뜨면서’는 결과 ‘뜨면서’의 근거가 된다).
+  const perception = /떴|뜨(?:는|자|니|면서)|뜬(?=\s)|떠\s?(?:있|올)|나타나|나타났|보였|보이(?:는|자|니|고|며|면서|기)|펼쳐|눈에\s?(?:들어|띄)|눈앞에/g;
+  // 횟수·수량과 한정 표현은 띄어쓰기와 ‘번/차례’ 차이를 무시하고 원문과 대조한다.
+  const compact = (value: string) => value.replace(/\s/g, '').replace(/차례/g, '번');
+  const compactSource = compact(source);
   const sourceIntentStems = Array.from(source.matchAll(intent), match => intentStem(match[1])).filter(Boolean);
+  // ‘처음’·‘최초’·‘가장 먼저’·‘첫 ~’ 같은 처음·최초 주장과 그 주장이 가리키는 말.
+  // 가리키는 말은 같은 문장에서 주장 뒤 세 낱말(‘처음이었다’처럼 붙은 서술이면 앞 세 낱말)의 어간이다.
+  const firstClaim = /(?<![가-힣])(?:생애\s?)?(?:(?:맨|가장|제일)\s?(?:먼저|처음)|처음|최초)(이었|이다|이라|인|이)?(?:으로|으론|에는|엔|부터|에|의)?(?![가-힣])|(?<![가-힣])첫(?=\s?[가-힣])/g;
+  const endingSyllables = new Set('다고며서는은을를던든한했해하된됐돼되었았였어아여게기지니도에로으의이가와과본쳤친들'.split(''));
+  const lightStems = new Set(['하', '해', '한', '본', '보', '봤', '된', '되', '것', '수', '때', '번']);
+  const firstTargets = (match: RegExpMatchArray) => {
+    const value = match.input ?? '';
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    const before = value.slice(0, start).split(/[.!?。！？\n]/).at(-1) ?? '';
+    const after = value.slice(end).split(/[.!?。！？\n]/)[0] ?? '';
+    const words = match[1] ? (before.match(/[가-힣]+/g) ?? []).slice(-3) : (after.match(/[가-힣]+/g) ?? []).slice(0, 3);
+    return words.map(word => {
+      let stem = word;
+      while (stem.length > 1 && endingSyllables.has(stem.at(-1) ?? '')) stem = stem.slice(0, -1);
+      return stem;
+    }).filter(stem => !lightStems.has(stem));
+  };
+  const sourceFirstTargets = Array.from(source.matchAll(firstClaim), firstTargets);
   const checks: Array<[RegExp, (match: RegExpMatchArray) => boolean]> = [
+    // 처음·최초 주장은 원문에 같은 주장이 있고 가리키는 말이 원문 주장과 겹칠 때만 통과한다.
+    // 원문 ‘처음 실행했다’를 결과 ‘처음으로 만든 앱’으로 옮기면 처음인 대상이 바뀐 것이다.
+    [firstClaim, match => {
+      const targets = firstTargets(match);
+      return sourceFirstTargets.some(sourceTargets => targets.length === 0
+        || targets.some(target => sourceTargets.includes(target)));
+    }],
     // 하나씩·한 장씩 같은 분배 방식
     [/(?:한|하나|두|세|네|몇|여러)\s?[가-힣]{0,2}씩/g, () => source.includes('씩')],
     // ‘~아/어 가며’ 같은 점진·반복 방식. ‘학교에 가며’처럼 장소 뒤의 이동은 제외한다.
@@ -2412,10 +2443,15 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
       || (source.includes(match[1].slice(0, 2)) && /보(?:니|며|고|았|자|면서)|봤|바라보|지켜보/.test(source))],
     [/(?:바라|지켜)보(?:니|며|면서|았|고)/g, () => /바라보|지켜보/.test(source)],
     // ‘화면이 떴다’, ‘~가 보였다’, ‘눈앞에 펼쳐졌다’처럼 원문에 없는 지각·관찰 장면. 원문에 같은 지각 표현이 있을 때만 통과한다.
-    [/떴|뜨(?:는|자|니|면서)|뜬\s|떠\s?(?:있|올랐|오르)|나타나|나타났|보였|보이(?:는|자|니|고|며|면서|기)|펼쳐|눈에\s?(?:들어|띄)|눈앞에/g,
-      () => /떴|뜨(?:는|자|니)|뜬|떠\s?(?:있|올|오르)|나타|보였|보이|펼쳐|눈에|눈앞/.test(source)],
+    [perception, () => Array.from(source.matchAll(perception)).length > 0],
     // 화면·아이콘·버튼 같은 기기 화면 세부 묘사. 원문이 같은 대상을 적었을 때만 통과한다.
     [/화면|아이콘|버튼/g, match => source.includes(match[0])],
+    // ‘수십 번’, ‘수많은’, ‘두 차례’처럼 원문에 없는 횟수·수량 구체화. 원문에 같은 표현이 있을 때만 통과한다.
+    [/(?<![가-힣])(?:수|몇)\s?(?:십|백|천|만)(?:\s?번)?|수많|무수|수없이|셀\s?수\s?없|숱하|숱한|(?<![가-힣])(?:여러|몇|두|세|네|다섯|여섯|일곱|여덟|아홉|열|\d+)\s?(?:번|차례)(?!째|지|호|역|화|갈)/g,
+      match => compactSource.includes(compact(match[0]))],
+    // ‘머릿속으로만’, ‘오직’, ‘~뿐이었다’처럼 원문에 없는 배타·한정 주장. 원문에 같은 표현이 있을 때만 통과한다.
+    [/[가-힣]*(?:으로만|로만|에서만|에게만|한테만|에만)(?=$|[^가-힣]|[은이])|[가-힣]*기만\s?(?:했|하|할|한)|(?<![가-힣])(?:오직|오로지|단지|그저|고작|유일하게|유일한)|뿐(?!만)|밖에\s?(?:없|안|못)/g,
+      match => compactSource.includes(compact(match[0]))],
   ];
   return checks.some(([pattern, grounded]) => Array.from(text.matchAll(pattern)).some(match => !grounded(match)));
 }
@@ -2522,6 +2558,81 @@ function failsGroundedParagraph(text: string, source: string): boolean {
     || changesTimeOfDay(text, source) || changesSpouseReference(text, source)
     || addsUngroundedSpecifics(text, source)
     || (/\[문단 \d+\]/.test(text) && !/\[문단 \d+\]/.test(source));
+}
+
+// 강 문단의 문장 나누기와 문장 유사도(두 글자 조각의 겹침 비율). 문장 복원과 문단 간 되풀이 판정이 같은 기준을 쓴다.
+// split 결과의 짝수 칸은 문장, 홀수 칸은 문장 사이 공백·빈 줄이다.
+function groundedSentenceTools() {
+  const split = (value: string) => value.split(/((?<=[.!?。！？…]["'”’」)\]]{0,2})\s+|[ \t]*\n[ \t]*\n\s*)/);
+  const sentences = (value: string) => split(value.trim())
+    .filter((part, index) => index % 2 === 0 && part.trim()).map(part => part.trim());
+  const grams = (value: string) => {
+    const letters = value.replace(/[^가-힣a-zA-Z0-9]/g, '');
+    const set = new Set<string>();
+    for (let index = 0; index < letters.length - 1; index++) set.add(letters.slice(index, index + 2));
+    return set;
+  };
+  const similarity = (a: Set<string>, b: Set<string>) => {
+    if (!a.size || !b.size) return 0;
+    let shared = 0;
+    for (const gram of a) if (b.has(gram)) shared++;
+    return (2 * shared) / (a.size + b.size);
+  };
+  return { split, sentences, grams, similarity };
+}
+
+// 다듬은 문장이 같은 순번 원문 문단보다 다른 원문 문단의 문장에 뚜렷이 더 가깝거나, 앞 문단의 다듬은 문장을
+// 거의 그대로 되풀이하면 문단 간 되풀이로 본다. 같은 순번 원문 문단에도 그 내용이 있으면(원문이 일부러 되풀이) 통과한다.
+function repeatsOtherParagraph(sentence: string, ownSource: string, otherSources: string[], earlierOutputs: string[]): boolean {
+  const { sentences, grams, similarity } = groundedSentenceTools();
+  const own = grams(sentence);
+  const best = (value: string) => Math.max(0, ...sentences(value).map(other => similarity(own, grams(other))));
+  const ownScore = best(ownSource);
+  if (ownScore >= 0.45) return false;
+  const otherScore = Math.max(0, ...otherSources.map(best));
+  const earlierScore = Math.max(0, ...earlierOutputs.map(best));
+  return (otherScore >= 0.45 && otherScore - ownScore >= 0.15) || earlierScore >= 0.7;
+}
+
+// 검사에 걸린 문단 안에서, 새 주장을 더한 문장(또는 다른 문단을 되풀이한 문장)이 원문 문장 하나와 확실히 대응될 때만
+// 그 문장을 원문 문장으로 바꾼다. 대응이 불확실하면(문장 순서 바뀜, 같은 원문 문장에 여러 결과 문장, 유사도 부족)
+// null을 돌려 문단 폴백을 유지한다. 나머지 문장과 문장 사이 공백·빈 줄은 다듬은 그대로 둔다.
+// 복원 뒤 문단 전체를 다시 검사해 남은 문제가 있으면 null이다.
+function restoreGroundedSentences(text: string, source: string, repeats?: (sentence: string) => boolean): string | null {
+  const { split, sentences, grams, similarity } = groundedSentenceTools();
+  const sourceSentences = sentences(source);
+  // 한 문장짜리 원문 문단은 문장 복원이 곧 문단 폴백이다.
+  if (sourceSentences.length < 2) return null;
+  const parts = split(text.trim());
+  const sentenceIndexes = parts.map((part, index) => index).filter(index => index % 2 === 0 && parts[index].trim());
+  if (sentenceIndexes.length < 2) return null;
+
+  const sourceGrams = sourceSentences.map(grams);
+  // 결과 문장마다 가장 비슷한 원문 문장과, 그 대응이 2위와 확실히 구분되는지 기록한다.
+  const matches = sentenceIndexes.map(partIndex => {
+    const own = grams(parts[partIndex]);
+    const scores = sourceGrams.map(other => similarity(own, other));
+    const best = scores.indexOf(Math.max(...scores));
+    const runnerUp = Math.max(0, ...scores.filter((_, index) => index !== best));
+    return { partIndex, best, reliable: scores[best] >= 0.3 && scores[best] - runnerUp >= 0.1 };
+  });
+  // 확실한 대응의 순서가 원문 순서와 어긋나면 오배치 위험이 있으므로 복원하지 않는다.
+  const reliableOrder = matches.filter(match => match.reliable).map(match => match.best);
+  if (reliableOrder.some((best, index) => index > 0 && best < reliableOrder[index - 1])) return null;
+
+  const addsClaim = (sentence: string) => addsOutsideAssessment(sentence, source)
+    || addsUnstatedFeelingOrAction(sentence, source) || addsUngroundedSpecifics(sentence, source)
+    || (repeats?.(sentence.trim()) ?? false);
+  const failing = matches.filter(match => addsClaim(parts[match.partIndex]));
+  if (!failing.length) return null;
+  for (const match of failing) {
+    // 같은 원문 문장에 대응하는 결과 문장이 하나뿐일 때만 바꾼다. 그렇지 않으면 원문 문장이 겹치거나 빠질 수 있다.
+    if (!match.reliable || matches.filter(other => other.best === match.best).length !== 1) return null;
+    parts[match.partIndex] = sourceSentences[match.best];
+  }
+  const repaired = parts.join('');
+  return failsGroundedParagraph(repaired, source) || (repeats !== undefined && sentences(repaired).some(repeats))
+    ? null : repaired;
 }
 
 // ===== 🎨 AI 다듬기 =====
@@ -2837,11 +2948,22 @@ ${SOURCE_PRESERVATION_RULES}`;
         const texts = resolveGroundedPolish(polishedText,
           paragraphs.map(paragraph => paragraph.kept ? paragraph.text.trim() : null), protectedActors?.markerPrefix);
         let accepted = 0;
-        const merged = texts?.map((paragraphText, index) => {
+        const merged = texts?.map((paragraphText, index, all) => {
           const paragraph = paragraphs[index];
           if (paragraph.kept) return paragraph.original;
-          if (protectedActors?.hasActor(paragraphText) || failsGroundedParagraph(paragraphText, paragraph.original)) {
-            return paragraph.original;
+          if (protectedActors?.hasActor(paragraphText)) return paragraph.original;
+          // 다른 원문 문단의 내용이나 앞 문단의 다듬은 문장을 되풀이한 문장도 문제 문장으로 본다.
+          const otherSources = paragraphs.filter((other, otherIndex) => otherIndex !== index && !other.kept).map(other => other.original);
+          const earlierOutputs = all.slice(0, index).filter((_, otherIndex) => !paragraphs[otherIndex].kept);
+          const repeats = (sentence: string) => repeatsOtherParagraph(sentence, paragraph.original, otherSources, earlierOutputs);
+          if (failsGroundedParagraph(paragraphText, paragraph.original)
+            || groundedSentenceTools().sentences(paragraphText).some(repeats)) {
+            // 문제 문장만 확실히 원문 문장으로 되돌릴 수 있으면 그 문단의 나머지 편집을 살리고, 아니면 문단 폴백.
+            const repaired = restoreGroundedSentences(paragraphText, paragraph.original, repeats);
+            // 복원 결과가 원문 문단과 같으면 다듬은 편집이 남지 않은 것이므로 문단 폴백으로 센다.
+            if (repaired === null || repaired === paragraph.original.trim()) return paragraph.original;
+            accepted++;
+            return repaired;
           }
           accepted++;
           return paragraphText;
