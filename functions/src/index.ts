@@ -2411,6 +2411,11 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
     [observation, match => Array.from(source.matchAll(observation)).length > 0
       || (source.includes(match[1].slice(0, 2)) && /보(?:니|며|고|았|자|면서)|봤|바라보|지켜보/.test(source))],
     [/(?:바라|지켜)보(?:니|며|면서|았|고)/g, () => /바라보|지켜보/.test(source)],
+    // ‘화면이 떴다’, ‘~가 보였다’, ‘눈앞에 펼쳐졌다’처럼 원문에 없는 지각·관찰 장면. 원문에 같은 지각 표현이 있을 때만 통과한다.
+    [/떴|뜨(?:는|자|니|면서)|뜬\s|떠\s?(?:있|올랐|오르)|나타나|나타났|보였|보이(?:는|자|니|고|며|면서|기)|펼쳐|눈에\s?(?:들어|띄)|눈앞에/g,
+      () => /떴|뜨(?:는|자|니)|뜬|떠\s?(?:있|올|오르)|나타|보였|보이|펼쳐|눈에|눈앞/.test(source)],
+    // 화면·아이콘·버튼 같은 기기 화면 세부 묘사. 원문이 같은 대상을 적었을 때만 통과한다.
+    [/화면|아이콘|버튼/g, match => source.includes(match[0])],
   ];
   return checks.some(([pattern, grounded]) => Array.from(text.matchAll(pattern)).some(match => !grounded(match)));
 }
@@ -2428,14 +2433,18 @@ function protectPolishActorParagraphs(source: string) {
   while (source.includes(prefix)) prefix += '_';
   const kept: Array<{ marker: string; original: string }> = [];
   const editableSections = [false];
+  // 강의 문단 순번 경로가 쓰는 문단별 배치(모델에 보낼 글, 원문 문단, 보호 여부).
+  const paragraphs: Array<{ text: string; original: string; kept: boolean }> = [];
   const layout = source.split(paragraphBreak).map(paragraph => {
     if (!hasActor(paragraph)) {
       if (paragraph.trim()) editableSections[kept.length] = true;
+      paragraphs.push({ text: paragraph, original: paragraph, kept: false });
       return paragraph;
     }
     const marker = `${prefix}${kept.length + 1}]]`;
     kept.push({ marker, original: paragraph });
     editableSections.push(false);
+    paragraphs.push({ text: marker, original: paragraph, kept: true });
     return marker;
   });
   if (!kept.length) return null;
@@ -2443,6 +2452,9 @@ function protectPolishActorParagraphs(source: string) {
   return {
     text: layout.join('\n\n'),
     allProtected: !editableSections.some(Boolean),
+    paragraphs,
+    markerPrefix: prefix,
+    hasActor,
     restore(polished: string): string | null {
       let next = 0;
       let hasEditable = false;
@@ -2465,20 +2477,51 @@ function protectPolishActorParagraphs(source: string) {
   };
 }
 
-function resolveGroundedPolish(raw: string): string | null {
-  let result: { body?: unknown } | null;
+// 강의 원문 근거 경로 응답 {"paragraphs":[{"index":1,"text":"..."}]}를 원문 문단과 1:1로 엄격하게 검증한다.
+// expected[i]가 문자열이면 그 순번은 주체 보호 표시를 글자 그대로 돌려받아야 한다.
+// 개수·순번·타입·보호 표시 중 하나라도 어긋나면(누락·중복·교차 포함) null을 돌려 전체 원문으로 되돌린다.
+function resolveGroundedPolish(raw: string, expected: Array<string | null>, markerPrefix?: string): string[] | null {
+  const reject = (reason: string) => {
+    logger.warn('강 다듬기 응답 형식 불일치', { reason, responseLength: raw.length });
+    return null;
+  };
+  let result: unknown;
   try {
     result = JSON.parse(raw);
   } catch {
-    logger.warn('강 다듬기 응답 형식 불일치', { reason: 'invalid_json', responseLength: raw.length });
-    return null;
+    return reject('invalid_json');
   }
-  if (typeof result?.body !== 'string' || !result.body.trim()) {
-    logger.warn('강 다듬기 응답 형식 불일치', { reason: 'invalid_body', responseLength: raw.length });
-    return null;
+  const paragraphs = result !== null && typeof result === 'object' && !Array.isArray(result)
+    ? (result as { paragraphs?: unknown }).paragraphs : undefined;
+  if (!Array.isArray(paragraphs)) return reject('invalid_paragraphs');
+  if (paragraphs.length !== expected.length) return reject('paragraph_count');
+  const texts: string[] = [];
+  for (let index = 0; index < paragraphs.length; index++) {
+    const item = paragraphs[index] as { index?: unknown; text?: unknown } | null;
+    if (item === null || typeof item !== 'object' || Array.isArray(item)
+      || Object.keys(item).sort().join(',') !== 'index,text'
+      || typeof item.index !== 'number' || !Number.isInteger(item.index)
+      || typeof item.text !== 'string' || !item.text.trim()) {
+      return reject('paragraph_type');
+    }
+    if (item.index !== index + 1) return reject('paragraph_index');
+    const text = item.text.trim();
+    const marker = expected[index];
+    if (marker !== null ? text !== marker : markerPrefix !== undefined && text.includes(markerPrefix)) {
+      return reject('paragraph_marker');
+    }
+    texts.push(text);
   }
+  return texts;
+}
 
-  return result.body.trim();
+// 순번이 맞은 다듬은 문단 하나를 같은 순번의 원문 문단 하나와 대조한다. 기존 사실 보존 검사를 모두 적용한다.
+// 표현 범주 대조일 뿐이므로 모든 새 주장을 막는다고 보장하지 않는다.
+function failsGroundedParagraph(text: string, source: string): boolean {
+  return addsOutsideAssessment(text, source) || addsUnstatedFeelingOrAction(text, source)
+    || changesTimeOfDay(text, source) || changesSpouseReference(text, source)
+    || addsUngroundedSpecifics(text, source)
+    || (/\[문단 \d+\]/.test(text) && !/\[문단 \d+\]/.test(source));
 }
 
 // ===== 🎨 AI 다듬기 =====
@@ -2537,6 +2580,7 @@ export const polishContent = onCall(
       let systemPrompt = '';
       let polishInput = text;
       let groundedPolish: string | undefined;
+      let groundedParagraphs: Array<{ text: string; original: string; kept: boolean }> | undefined;
       const wrappedRichSource = strength !== undefined
         ? /(?:^|\n)\[원문 시작\]\n([\s\S]+)\n\[원문 끝\]\s*$/.exec(text)
         : null;
@@ -2574,13 +2618,21 @@ export const polishContent = onCall(
           && /^[\t ]*(?:[-*•][\t ]*)?장소[\t ]*[:：]/m.test(source);
         if (!hasAttendanceNote) {
           groundedPolish = source;
+          // 원문 근거 경로는 원문 문단마다 순번을 붙여 보내고, 같은 순번의 다듬은 문단을 1:1로 돌려받는다.
+          // 주체 보호 문단은 SAYU_KEEP 표시 그대로 순번에 넣는다. 빈 문단은 순번에서 뺀다.
+          groundedParagraphs = (protectedActors?.paragraphs
+            ?? source.split(/\r?\n(?:[ \t]*\r?\n)+/).map(paragraph => ({ text: paragraph, original: paragraph, kept: false })))
+            .filter(paragraph => paragraph.text.trim());
         }
+        const sourceBody = groundedParagraphs
+          ? groundedParagraphs.map((paragraph, index) => `[문단 ${index + 1}]\n${paragraph.text.trim()}`).join('\n\n')
+          : source;
         const eventInputGuide = hasAttendanceNote
           ? '\n행사 메모에서 여러 항목이 묶인 문장은 두 문장으로 풀어 쓴다. 같은 행동을 거듭 서술하지 말고 지시어로 이어 준다. 행사 메모의 날짜와 장소를 참석 문장에 연결한다. 참석 여부와 참석한 사람은 원문 그대로 유지한다. 적혀 있는 행사 시간은 일정으로 서술한다. 원문에 적힌 사실만 본문에 쓴다.' : '';
         polishInput = `강으로 편집. 문장을 쪼개는 것만으로 강을 만들지 않는다. 문장을 나누거나 이을 때 원문에 명시된 동시성과 이유를 살린다. 시간·장소·감각·동작·기간·인과는 원문의 단어가 명시할 때만 쓴다. 원문 근거가 충분하면 원문을 1로 볼 때 풍성도 4를 목표로 한다. 풍성도는 길이가 아니라 과정·감정·의미의 깊이다. 원문에 실제 적힌 과정과 성취를 이어 수고를 드러내고, 이미 적힌 감정과 그날의 의미를 글쓴이 시점으로 풀어 쓴다. 감정의 계기와 진행 상태는 원문 그대로 둔다. 한 가지 사실만 있으면 억지로 늘리지 않는다. 본문의 종결 어미를 유지한다.${eventInputGuide}${pageLimit}
 
 [원문 시작]
-${source}
+${sourceBody}
 [원문 끝]`;
         const eventExample = hasAttendanceNote ? `
 [행사 메모 편집 예시 — 실제 글에는 예시 내용을 섞지 않습니다]
@@ -2630,7 +2682,7 @@ ${eventExample}${groundedPolish === undefined ? `\n${strongRichnessBlock}\n` : '
 
 [강에서 원문 근거로 의미 풀기]
 본문에서 서로 다른 방문지를 같은 장소로 합치지 않습니다. 원문에 여러 장소를 차례로 들렀다는 순서가 적혀 있을 때만 ‘이어서’로 순서를 살릴 수 있습니다. 원문의 단어가 같은 장소임을 명시할 때만 ‘그 자리에서’를 씁니다.
-원문의 사실과 이미 적은 감정은 "body"에 다듬습니다. 서로 다른 경험·생각을 적었다면 읽기 쉽게 문단을 나눕니다. 비교·반복·변화가 원문에 명확하면 글쓴이 시점에서 원문에 적힌 행동을 한 흐름으로 잇습니다. 의미는 관련 문장을 배치하고 필요한 접속 표현을 써서 그 문단 안에서 드러나게 합니다. 별도의 해석 문장이나 본문을 되풀이한 맺음말은 붙이지 않습니다. ‘이 기록에서’, ‘것으로 읽힌다’, ‘것으로 보인다’처럼 글을 밖에서 해설하거나 평가하는 표현은 쓰지 않습니다. 원문의 시제·말투·‘오전’이나 ‘오후’·‘이번 주’·‘세 번’과 같은 범위를 유지합니다.
+원문의 사실과 이미 적은 감정은 같은 순번의 "text"에 다듬습니다. 서로 다른 경험·생각을 적었다면 읽기 쉽게 문단을 나눕니다. 비교·반복·변화가 원문에 명확하면 글쓴이 시점에서 원문에 적힌 행동을 한 흐름으로 잇습니다. 의미는 관련 문장을 배치하고 필요한 접속 표현을 써서 그 문단 안에서 드러나게 합니다. 별도의 해석 문장이나 본문을 되풀이한 맺음말은 붙이지 않습니다. ‘이 기록에서’, ‘것으로 읽힌다’, ‘것으로 보인다’처럼 글을 밖에서 해설하거나 평가하는 표현은 쓰지 않습니다. 원문의 시제·말투·‘오전’이나 ‘오후’·‘이번 주’·‘세 번’과 같은 범위를 유지합니다.
 하루에 여러 이야기를 적었다면 각 이야기의 사람과 행동을 빠뜨리지 않습니다. 주제가 달라지는 대목에서 문단을 나누고, 마지막에 적힌 사람의 이야기도 본문에 포함합니다. 배우자의 행동이나 말을 글쓴이의 행동이나 말로 바꾸지 않습니다.
 출력 전에 연결한 행동·사람·날짜·수치·장소와 변화의 범위를 원문에 대조합니다. 그 표현이 사실이 아니어도 원문이 그대로 성립한다면 그 표현을 삭제합니다. 일부 날의 일은 지속된 습관이나 전면적인 변화로 만들지 않습니다. 방문한 곳의 수를 속도나 여유로 해석하지 않습니다. 어떤 행동이 문제를 해결했다거나 좋은 결과를 냈다고 임의로 연결하지 않습니다. 원문에서 확인되지 않는 동행 여부·원인·의도·감정·교훈을 쓰지 않습니다.
 예시 1. ‘작년에는 토요일마다 집에서 영화를 봤다. 이번 달에는 두 토요일에 공연장에 갔다.’ → ‘집에서 영화를 보곤 하던 토요일을 이번 달에는 두 번 공연장에서 보냈다.’ ‘외출을 즐기게 됐다’는 근거가 없습니다.
@@ -2639,7 +2691,8 @@ ${eventExample}${groundedPolish === undefined ? `\n${strongRichnessBlock}\n` : '
 단일 행동이나 단순 나열만 있고 연결할 근거가 없다면 각각의 사실을 다듬는 데 그칩니다. 날짜·수치·사건·부정·미정을 바꾸거나 누락하지 않습니다.
 
 ${strongRichnessBlock}
-위 본문 출력 규칙은 "body"에 적용합니다. 최종 응답은 {"body":"다듬은 본문"} 형태의 JSON만 씁니다.`;
+위 본문 출력 규칙은 각 문단의 "text"에 적용합니다. 입력의 [문단 n]은 원문 문단의 순번입니다. 원문 문단 ${groundedParagraphs?.length ?? 0}개를 순번 1부터 차례로 하나씩 다듬어 같은 순번의 "text"에 씁니다. 문단을 빼거나 합치거나 순서를 바꾸지 않고, 한 원문 문단의 내용을 다른 순번으로 옮기지 않습니다. 한 원문 문단을 여러 문단으로 풀어 쓸 때는 그 "text" 안에서 빈 줄로 나눕니다. [문단 n] 표시는 "text"에 옮기지 않습니다.
+최종 응답은 {"paragraphs":[{"index":1,"text":"1번 원문 문단을 다듬은 글"}]} 형태의 JSON만 쓰고, "paragraphs"에는 정확히 ${groundedParagraphs?.length ?? 0}개를 씁니다.`;
         }
       } else if (strength !== undefined && normalizedFormat !== 'voiding') {
         const strengthGuide = strength === 'STRONG'
@@ -2755,7 +2808,10 @@ ${SOURCE_PRESERVATION_RULES}`;
 본문만 자연스럽게 이어지는 문단으로 작성하세요.`;
       }
 
-      if (protectedActors && explicitSource !== undefined) {
+      if (protectedActors && groundedParagraphs !== undefined) {
+        // 문단 순번 경로는 보호 표시를 이미 순번 문단으로 넣었으므로 입력을 다시 바꾸지 않는다.
+        systemPrompt += '\n원문의 대괄호 SAYU_KEEP 표시만 있는 문단은 보존할 문단 전체를 대신합니다. 그 순번의 "text"에는 표시를 글자 그대로 한 번만 적고, 다른 순번에는 표시를 쓰지 마세요. 표시 안의 내용을 추측하거나 설명하지 말고, 표시가 아닌 문단만 다듬으세요.';
+      } else if (protectedActors && explicitSource !== undefined) {
         const originalBlock = `[원문 시작]\n${explicitSource}\n[원문 끝]`;
         polishInput = polishInput.includes(originalBlock)
           ? polishInput.replace(originalBlock, () => `[원문 시작]\n${protectedActors.text}\n[원문 끝]`)
@@ -2775,8 +2831,28 @@ ${SOURCE_PRESERVATION_RULES}`;
         }),
         (responseText) => responseText);
       let originalPreserved = false;
-      if (explicitSource !== undefined) {
-        let edited: string | null = groundedPolish === undefined ? polishedText : resolveGroundedPolish(polishedText);
+      if (explicitSource !== undefined && groundedParagraphs !== undefined) {
+        // 강의 원문 근거 경로: 매핑이 어긋나면 전체 원문, 매핑이 맞으면 검사에 걸린 문단만 같은 순번의 원문 문단으로 되돌린다.
+        const paragraphs = groundedParagraphs;
+        const texts = resolveGroundedPolish(polishedText,
+          paragraphs.map(paragraph => paragraph.kept ? paragraph.text.trim() : null), protectedActors?.markerPrefix);
+        let accepted = 0;
+        const merged = texts?.map((paragraphText, index) => {
+          const paragraph = paragraphs[index];
+          if (paragraph.kept) return paragraph.original;
+          if (protectedActors?.hasActor(paragraphText) || failsGroundedParagraph(paragraphText, paragraph.original)) {
+            return paragraph.original;
+          }
+          accepted++;
+          return paragraphText;
+        });
+        // 다듬을 문단이 모두 원문으로 돌아가면 기존처럼 전체 원문 유지로 알린다.
+        const edited = merged && merged.length > 0 && (accepted > 0 || paragraphs.every(paragraph => paragraph.kept))
+          ? merged.join('\n\n') : null;
+        originalPreserved = edited === null;
+        polishedText = edited ?? explicitSource;
+      } else if (explicitSource !== undefined) {
+        let edited: string | null = polishedText;
         if (edited !== null && protectedActors) edited = protectedActors.restore(edited);
         if (edited !== null && richSource !== undefined
           && (addsOutsideAssessment(edited, richSource) || addsUnstatedFeelingOrAction(edited, richSource)

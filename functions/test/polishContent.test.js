@@ -22,7 +22,7 @@ const handler = variable('polishContent').arguments.at(-1);
 const compiled = ts.transpileModule([
   `const STATS_PROMPTS = ${variable('STATS_PROMPTS').getText(ast)};`,
   fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('addsOutsideAssessment'), fn('addsUnstatedFeelingOrAction'),
-  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('addsUngroundedSpecifics'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), `(${handler.getText(ast)});`,
+  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('addsUngroundedSpecifics'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), fn('failsGroundedParagraph'), `(${handler.getText(ast)});`,
 ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2019 } }).outputText;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -58,7 +58,11 @@ function fixture(options = {}) {
       if (options.failPurpose === request.purpose) throw Object.assign(new Error('synthetic-provider-failure'), options.errorFields || {});
       const body = options.polishText ?? '합성 본문';
       const polishResponse = request.generationConfig?.responseMimeType === 'application/json'
-        ? options.rawPolishText ?? JSON.stringify({ body, interpretation: options.interpretation ?? null })
+        // 강의 원문 근거 경로 응답: 원문 문단 순번별 다듬은 문단. polishParagraphs가 없으면 본문 하나를 1번 문단으로 둔다.
+        ? options.rawPolishText ?? JSON.stringify({
+          paragraphs: (options.polishParagraphs ?? [body]).map((text, index) => ({ index: index + 1, text })),
+          ...(options.interpretation !== undefined ? { interpretation: options.interpretation } : {}),
+        })
         : body;
       const text = request.purpose === 'recordStats' ? options.statsText ?? '{"content_richness":4}'
         : request.purpose === 'sayuPolishComment' ? options.commentText ?? '**합성 한마디**' : polishResponse;
@@ -279,6 +283,155 @@ test('의도 표현은 첫 음절이 아니라 동사 어간 전체로 원문과
   }
 });
 
+// 문단 부분 폴백. 합성 원문 세 문단을 순번으로 대조한다.
+const THREE_PARAGRAPHS = [
+  '오전에 책장을 정리했다. 책이 많아서 팔이 아팠다.',
+  '오후에 새로 만든 앱을 휴대폰에 설치해 처음 실행했다. 정말 기뻤다.',
+  '저녁에는 일찍 잤다.',
+];
+const THREE_SOURCE = THREE_PARAGRAPHS.join('\n\n');
+const THREE_GOOD = [
+  '오전에는 책장을 정리했다.\n\n책이 많아서 팔이 아팠다.',
+  '오후에는 새로 만든 앱을 휴대폰에 설치해 처음으로 실행했다. 정말 기뻤다.',
+  '저녁에는 일찍 잠자리에 들었다.',
+];
+
+test('강의 원문 근거 경로는 원문 문단마다 순번을 붙여 같은 개수의 JSON 문단을 요청한다', async () => {
+  const f = fixture({ polishParagraphs: THREE_GOOD });
+  const result = await f.request({ text: THREE_SOURCE, strength: 'STRONG', includeAiComment: false });
+  assert.equal(result.text, THREE_GOOD.join('\n\n'));
+  assert.equal('originalPreserved' in result, false);
+  const { input, systemInstruction, generationConfig } = f.calls[0];
+  assert.ok(input.endsWith(`[원문 시작]\n${THREE_PARAGRAPHS.map((p, i) => `[문단 ${i + 1}]\n${p}`).join('\n\n')}\n[원문 끝]`));
+  assert.match(systemInstruction, /원문 문단 3개를 순번 1부터 차례로 하나씩 다듬어/);
+  assert.match(systemInstruction, /"paragraphs"에는 정확히 3개를 씁니다/);
+  assert.doesNotMatch(systemInstruction, /"body"/);
+  assert.equal(generationConfig.responseMimeType, 'application/json');
+  // 외부 호출 수는 그대로다.
+  assert.deepEqual(purposes(f), ['sayuPolish', 'recordStats']);
+});
+
+test('순번이 맞으면 검사에 걸린 문단만 같은 순번의 원문 문단으로 돌아가고 나머지는 다듬은 글을 쓴다', async () => {
+  const f = fixture({ polishParagraphs: [
+    THREE_GOOD[0],
+    // 원문에 없는 화면 묘사·관찰 장면
+    '오후에 새로 만든 앱을 휴대폰에 설치해 처음 실행했다. 첫 화면이 뜨는 것을 보니 정말 기뻤다.',
+    // ‘기쁨’은 2번 원문 문단에만 있으므로 3번 문단의 근거가 아니다.
+    '저녁에는 기쁜 마음으로 일찍 잤다.',
+  ] });
+  const result = await f.request({ text: THREE_SOURCE, strength: 'STRONG', includeAiComment: false });
+  assert.equal(result.text, [THREE_GOOD[0], THREE_PARAGRAPHS[1], THREE_PARAGRAPHS[2]].join('\n\n'));
+  // 일부라도 다듬은 글이 쓰이면 원문 유지 표시를 넣지 않는다.
+  assert.equal('originalPreserved' in result, false);
+  assert.deepEqual(f.warnings, []);
+});
+
+test('순번이 맞아도 다듬을 문단이 모두 검사에 걸리면 전체 원문과 원문 유지 표시를 돌려준다', async () => {
+  const f = fixture({ polishParagraphs: [
+    '오전에 책장을 꼼꼼하게 정리했다. 책이 많아서 팔이 아팠다.',
+    '오후에 새로 만든 앱을 휴대폰에 설치해 처음 실행했다. 앱 아이콘을 누르니 정말 기뻤다.',
+    '오후에는 일찍 잤다.',
+  ] });
+  const result = await f.request({ text: THREE_SOURCE, strength: 'STRONG', includeAiComment: false });
+  assert.equal(result.text, THREE_SOURCE);
+  assert.equal(result.originalPreserved, true);
+});
+
+test('문단 누락·중복·교차·타입 오류는 전체 원문으로 돌아가고 형식 오류만 기록한다', async () => {
+  const item = (index, text = THREE_GOOD[index - 1]) => ({ index, text });
+  for (const [label, body, reason] of [
+    ['누락', { paragraphs: [item(1), item(2)] }, 'paragraph_count'],
+    ['초과', { paragraphs: [item(1), item(2), item(3), item(4, '추가 문단')] }, 'paragraph_count'],
+    ['중복 순번', { paragraphs: [item(1), item(1, THREE_GOOD[1]), item(2, THREE_GOOD[2])] }, 'paragraph_index'],
+    ['교차 순번', { paragraphs: [item(1), item(3), item(2)] }, 'paragraph_index'],
+    ['0부터 시작', { paragraphs: [item(0, THREE_GOOD[0]), item(1, THREE_GOOD[1]), item(2, THREE_GOOD[2])] }, 'paragraph_index'],
+    ['문자 순번', { paragraphs: [{ index: '1', text: THREE_GOOD[0] }, item(2), item(3)] }, 'paragraph_type'],
+    ['소수 순번', { paragraphs: [item(1.5, THREE_GOOD[0]), item(2), item(3)] }, 'paragraph_type'],
+    ['문자열 아닌 본문', { paragraphs: [item(1), { index: 2, text: ['목록'] }, item(3)] }, 'paragraph_type'],
+    ['빈 본문', { paragraphs: [item(1), item(2, '  '), item(3)] }, 'paragraph_type'],
+    ['추가 필드', { paragraphs: [item(1), { ...item(2), source: THREE_PARAGRAPHS[1] }, item(3)] }, 'paragraph_type'],
+    ['문단 아닌 항목', { paragraphs: [item(1), null, item(3)] }, 'paragraph_type'],
+    ['배열 응답', [item(1), item(2), item(3)], 'invalid_paragraphs'],
+    ['문단 배열 없음', { body: THREE_GOOD.join('\n\n') }, 'invalid_paragraphs'],
+  ]) {
+    const raw = JSON.stringify(body);
+    const f = fixture({ rawPolishText: raw });
+    const result = await f.request({ text: THREE_SOURCE, strength: 'STRONG', includeAiComment: false });
+    assert.equal(result.text, THREE_SOURCE, label);
+    assert.equal(result.originalPreserved, true, label);
+    assert.deepEqual(f.warnings, [['강 다듬기 응답 형식 불일치', { reason, responseLength: raw.length }]], label);
+  }
+});
+
+test('주체 보호 문단은 표시 그대로 순번에 넣고, 다른 문단의 실패는 그 문단만 원문으로 돌린다', async () => {
+  const actor = '집에서는 아내가 화분을 옮겨 주었다.';
+  const source = [THREE_PARAGRAPHS[0], actor, THREE_PARAGRAPHS[2]].join('\n\n');
+  const marker = '[[SAYU_KEEP_1]]';
+  const mixed = fixture({ polishParagraphs: [THREE_GOOD[0], marker, '저녁에는 후련한 마음으로 일찍 잤다.'] });
+  const mixedResult = await mixed.request({ text: source, strength: 'STRONG', includeAiComment: false });
+  assert.equal(mixedResult.text, [THREE_GOOD[0], actor, THREE_PARAGRAPHS[2]].join('\n\n'));
+  assert.equal('originalPreserved' in mixedResult, false);
+  assert.match(mixed.calls[0].input, /\[문단 2\]\n\[\[SAYU_KEEP_1\]\]/);
+  assert.doesNotMatch(mixed.calls[0].input, /아내|화분/);
+  assert.match(mixed.calls[0].systemInstruction, /그 순번의 "text"에는 표시를 글자 그대로 한 번만 적고/);
+  // 보호 대상이 아니던 문단에 사람을 새로 넣으면 그 문단만 원문으로 돌아간다.
+  const newActor = fixture({ polishParagraphs: ['오전에 친구가 책장 정리를 도와줬다.', marker, THREE_GOOD[2]] });
+  assert.equal((await newActor.request({ text: source, strength: 'STRONG', includeAiComment: false })).text,
+    [THREE_PARAGRAPHS[0], actor, THREE_GOOD[2]].join('\n\n'));
+  // 보호 표시가 다른 순번으로 옮겨지거나 바뀌면 매핑 오류로 전체 원문이다.
+  for (const [polishParagraphs, reason] of [
+    [[marker, THREE_GOOD[0], THREE_GOOD[2]], 'paragraph_marker'],
+    [[THREE_GOOD[0], '아내가 화분을 옮겼다.', THREE_GOOD[2]], 'paragraph_marker'],
+    [[`${THREE_GOOD[0]}\n\n${marker}`, marker, THREE_GOOD[2]], 'paragraph_marker'],
+  ]) {
+    const f = fixture({ polishParagraphs });
+    const result = await f.request({ text: source, strength: 'STRONG', includeAiComment: false });
+    assert.equal(result.text, source);
+    assert.equal(result.originalPreserved, true);
+    assert.equal(f.warnings[0][1].reason, reason);
+  }
+});
+
+test('원문에 없는 화면·지각 장면 묘사는 근거가 없으면 원문으로, 원문이 같은 대상을 적었으면 통과한다', async () => {
+  const appSource = '오후에 새로 만든 앱을 휴대폰에 설치해 처음 실행했다. 정말 기뻤다.';
+  for (const output of [
+    '오후에 새로 만든 앱을 휴대폰에 설치해 처음 실행했다. 첫 페이지가 나타났다. 정말 기뻤다.',
+    '오후에 새로 만든 앱을 휴대폰에 설치해 처음 실행했다. 화면 가득 기록 목록이 펼쳐져 정말 기뻤다.',
+    '오후에 새로 만든 앱을 휴대폰에 설치해 처음 실행했다. 내가 만든 이름이 눈에 들어와 정말 기뻤다.',
+    '오후에 새로 만든 앱을 휴대폰에 설치해 처음 실행했다. 버튼이 잘 눌려 정말 기뻤다.',
+  ]) {
+    const f = fixture({ polishText: output });
+    const result = await f.request({ text: appSource, strength: 'STRONG', includeAiComment: false });
+    assert.equal(result.text, appSource, output);
+    assert.equal(result.originalPreserved, true, output);
+  }
+  for (const [source, output] of [
+    ['오후에 앱 화면을 처음 열어 봤다. 기록 목록이 보였다. 기뻤다.', '오후에는 앱 화면을 처음으로 열어 봤다. 기록 목록이 보였고, 기뻤다.'],
+    ['전망대에 올랐다. 바다가 눈앞에 펼쳐졌다.', '전망대에 오르자 바다가 눈앞에 펼쳐졌다.'],
+  ]) {
+    const f = fixture({ polishText: output });
+    assert.equal((await f.request({ text: source, strength: 'STRONG', includeAiComment: false })).text, output);
+  }
+});
+
+test('문단 순번 요청은 강의 원문 근거 경로에만 쓰고 약·행사 메모·다른 형식의 호출은 바꾸지 않는다', async () => {
+  for (const [data, label] of [
+    [{ strength: 'WEAK' }, '약'],
+    [{ strength: 'STRONG', format: 'garden' }, '텃밭'],
+    [{ strength: 'STRONG', format: 'report' }, '보고'],
+    [{ strength: 'STRONG', text: '동네 전시회 참석.\n- 일시: 5월 3일 오전 10시~정오\n- 장소: 은행나무 도서관' }, '행사 메모'],
+  ]) {
+    // 기존 전체 대조 검사를 통과하도록 원문 사실은 그대로 둔 본문.
+    const body = (data.text ?? THREE_SOURCE).replace('오전에', '오전에는').replace('참석.', '참석했다.');
+    const f = fixture({ polishText: body });
+    const result = await f.request({ text: THREE_SOURCE, includeAiComment: false, ...data });
+    assert.equal(result.text, body, label);
+    assert.equal(f.calls[0].generationConfig, undefined, label);
+    assert.doesNotMatch(f.calls[0].input, /\[문단 \d+\]/, label);
+    assert.doesNotMatch(f.calls[0].systemInstruction, /"paragraphs"/, label);
+  }
+});
+
 test('근거 없는 구체 표현 검사는 강의 원문 근거 경로에만 적용하고 약·행사 메모·다른 형식은 바꾸지 않는다', async () => {
   const [, output] = SHELF_UNGROUNDED[0];
   const weak = fixture({ polishText: output });
@@ -298,7 +451,7 @@ test('근거 없는 구체 표현 검사는 강의 원문 근거 경로에만 �
 test('풍성도·문장별 검사 블록은 강의 마지막 응답 형식 지시 바로 앞에 한 번만 둔다', async () => {
   const event = '동네 전시회 참석.\n- 일시: 5월 3일 오전 10시~정오\n- 장소: 은행나무 도서관';
   for (const [text, lastLine] of [
-    ['오후에 화분 하나에 물을 줬다.', '위 본문 출력 규칙은 "body"에 적용합니다.'],
+    ['오후에 화분 하나에 물을 줬다.', '위 본문 출력 규칙은 각 문단의 "text"에 적용합니다.'],
     [event, '출력 직전 확인합니다.'],
   ]) {
     for (const format of ['diary', 'essay', 'travel']) {
@@ -405,7 +558,7 @@ test('행사 취지 목록에 없는 참석 메모는 일반 해석 경로로 �
 test('모델 응답 형식이 다르면 원문을 반환하고 형식 오류만 기록한다', async () => {
   const source = '시험 원문';
   const text = `시험 안내\n[원문 시작]\n${source}\n[원문 끝]`;
-  for (const [raw, reason] of [['{"body":', 'invalid_json'], ['{"body":null}', 'invalid_body']]) {
+  for (const [raw, reason] of [['{"body":', 'invalid_json'], ['{"body":"시험 본문"}', 'invalid_paragraphs']]) {
     const f = fixture({ rawPolishText: raw });
     assert.equal((await f.request({ text, strength: 'STRONG', includeAiComment: false })).text, source);
     assert.deepEqual(f.warnings, [['강 다듬기 응답 형식 불일치', { reason, responseLength: raw.length }]]);
@@ -476,20 +629,21 @@ test('강에서 배우자가 한 행동은 원문 위치에 그대로 두고 다
   const source = `아침에 산책했다. 바람이 불었다.\n\n${actorParagraph}`;
   const editedParagraph = '아침 산책길에는 바람이 불었다.';
   const marker = '[[SAYU_KEEP_1]]';
-  const good = fixture({ polishText: `${editedParagraph}\n\n${marker}` });
+  const good = fixture({ polishParagraphs: [editedParagraph, marker] });
   const answer = await good.request({ text: source, strength: 'STRONG', includeAiComment: false });
   assert.equal(answer.text, `${editedParagraph}\n\n${actorParagraph}`);
   assert.equal(answer.originalPreserved, undefined);
   assert.doesNotMatch(good.calls[0].input, /화분|아내/);
   assert.match(good.calls[0].input, /SAYU_KEEP_1/);
-  for (const polishText of [
-    editedParagraph,
-    `${marker}\n\n${editedParagraph}`,
-    `${editedParagraph}\n\n${marker}\n\n${marker}`,
-    `친구가 같이 걸었다.\n\n${marker}`,
-    `${editedParagraph}\n\n내가 화분을 옮겼다.`,
+  // 누락·교차·중복·보호 표시 바뀜은 전체 원문, 다듬을 문단이 모두 검사에 걸려도 전체 원문이다.
+  for (const polishParagraphs of [
+    [editedParagraph],
+    [marker, editedParagraph],
+    [editedParagraph, marker, marker],
+    ['친구가 같이 걸었다.', marker],
+    [editedParagraph, '내가 화분을 옮겼다.'],
   ]) {
-    const invalid = fixture({ polishText });
+    const invalid = fixture({ polishParagraphs });
     const fallback = await invalid.request({ text: source, strength: 'STRONG', includeAiComment: false });
     assert.equal(fallback.text, source);
     assert.equal(fallback.originalPreserved, true);
@@ -500,7 +654,7 @@ test('인물을 뜻하는 호칭과 조사가 붙은 문단은 보존하고, 남
   for (const paragraph of ['아내한테 전화했다.', '친구들이 집에 들렀다.', '팀장님에게 물었다.', '할머니께 말씀드렸다.', '민수가 와서 설거지했다.']) {
     const text = `길을 걸었다. 나무가 보였다.\n\n${paragraph}`;
     const expanded = '길을 걸었다.\n\n걷는 길에는 나무가 보였다.';
-    const f = fixture({ polishText: `${expanded}\n\n[[SAYU_KEEP_1]]` });
+    const f = fixture({ polishParagraphs: [expanded, '[[SAYU_KEEP_1]]'] });
     assert.equal((await f.request({ text, strength: 'STRONG', includeAiComment: false })).text, `${expanded}\n\n${paragraph}`);
   }
 });
@@ -574,12 +728,13 @@ test('일기 강의 본문 요청은 앞 안내를 분리하되 본문과 기존
   assert.match(input, /원문에 명시된 동시성과 이유를 살린다/);
   assert.doesNotMatch(input, /형식으로 작성된 기록입니다/);
   assert.ok(input.includes('공백 제외 2500자 이내'));
-  assert.ok(input.endsWith(`\n[원문 시작]\n${source}\n[원문 끝]`));
+  // 원문 근거 경로는 원문 문단마다 순번을 붙인다. 한 줄 바꿈은 같은 문단이다.
+  assert.ok(input.endsWith(`\n[원문 시작]\n[문단 1]\n${source}\n[원문 끝]`));
 
   const raw = fixture();
   await raw.request({ text: source, strength: 'STRONG', includeAiComment: false });
   assert.doesNotMatch(raw.calls[0].input, /2500자/);
-  assert.ok(raw.calls[0].input.endsWith(`\n[원문 시작]\n${source}\n[원문 끝]`));
+  assert.ok(raw.calls[0].input.endsWith(`\n[원문 시작]\n[문단 1]\n${source}\n[원문 끝]`));
 
   const weak = fixture();
   await weak.request({ text, strength: 'WEAK', includeAiComment: false });
