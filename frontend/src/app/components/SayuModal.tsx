@@ -3149,7 +3149,10 @@ export function SayuModal({
                 ref={mainEditorRef}
                 value={editedContent}
                 readOnly={isRefining}
-                onChange={(e) => setEditedContent(e.target.value)}
+                onChange={(e) => {
+                  polishPreviewRef.current = null;
+                  setEditedContent(e.target.value);
+                }}
                 style={{
                   width: '100%',
                   minHeight: '400px',
