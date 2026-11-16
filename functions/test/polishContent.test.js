@@ -244,7 +244,7 @@ test('모델 응답 형식이 다르면 원문을 반환하고 형식 오류만 
 
 test('강의 본문에 외부 평가나 새 건강 판정이 섞이면 저자가 쓴 원문으로 돌아간다', async () => {
   const text = '계단을 한 층 올랐다. 마지막에 힘이 없었다.';
-  for (const suffix of ['몸 상태가 나아진 것으로 평가된다.', '신체 기능이 활성화됐다.', '부작용이 생겼다.']) {
+  for (const suffix of ['몸 상태가 나아진 것으로 평가된다.', '나아진 것으로 읽힌다.', '나아지는 변화가 읽혔다.', '신체 기능이 활성화됐다.', '부작용이 생겼다.']) {
     const f = fixture({ polishText: `${text} ${suffix}` });
     assert.equal((await f.request({ text, strength: 'STRONG', includeAiComment: false })).text, text);
   }
@@ -256,6 +256,12 @@ test('강의 본문에 외부 평가나 새 건강 판정이 섞이면 저자가
   assert.equal((await visible.request({
     text: '전망대에 섰다. 산이 손에 닿을 듯 가까워 보였다.', strength: 'STRONG', includeAiComment: false,
   })).text, '전망대에서 산이 손에 닿을 듯 보였다.');
+  const novel = '소설을 막힘없이 읽었다. 짐을챙겼다.';
+  const literalReading = '소설이 막힘없이 읽혔다. 짐을 챙겼다.';
+  for (const strength of ['WEAK', 'STRONG']) {
+    const f = fixture({ polishText: literalReading });
+    assert.equal((await f.request({ text: novel, strength, includeAiComment: false })).text, literalReading);
+  }
 });
 
 test('약과 강이 상황을 새 감정으로 바꾸거나 생각을 확정하면 원문의 표현을 보존한다', async () => {

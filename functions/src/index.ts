@@ -2316,8 +2316,11 @@ ${polishedText.slice(0, 500)}`;
 }
 
 function addsOutsideAssessment(text: string, source: string): boolean {
-  const assessments = text.matchAll(/읽힌다|읽힙니다|읽혀요|읽혔다|(?:것|뜻|취지|의미|결과)로\s*보(?:인|입니|여|였)|(?:해석|판단|평가|관찰)\s*(?:된|됩니|돼|됐)|엿보(?:인|입니|여|였)|이 기록(?:에 따르면|에서)|글쓴이는|작성자는|신체 기능|체력(?:이|의)?\s*저하|부작용|능력의 정진/g);
-  return Array.from(assessments).some(([phrase]) => !source.includes(phrase));
+  const assessments = [
+    /(?:것으로|뜻으로|의미로|(?:의미|취지|변화|의도|있음|없음)[이가]|(?:다는|라는)\s*(?:점|뜻|의미)[이가])\s*읽(?:힌다|힙니다|혀요|혔다|혔어요|혔습니다)/g,
+    /(?:것|뜻|취지|의미|결과)로\s*보(?:인|입니|여|였)|(?:해석|판단|평가|관찰)\s*(?:된|됩니|돼|됐)|엿보(?:인|입니|여|였)|이 기록(?:에 따르면|에서)|글쓴이는|작성자는|신체 기능|체력(?:이|의)?\s*저하|부작용|능력의 정진/g,
+  ];
+  return assessments.some(pattern => Array.from(text.matchAll(pattern)).some(([phrase]) => !source.includes(phrase)));
 }
 
 function addsUnstatedFeelingOrAction(text: string, source: string): boolean {
