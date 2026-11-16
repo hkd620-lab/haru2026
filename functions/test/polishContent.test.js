@@ -22,7 +22,7 @@ const handler = variable('polishContent').arguments.at(-1);
 const compiled = ts.transpileModule([
   `const STATS_PROMPTS = ${variable('STATS_PROMPTS').getText(ast)};`,
   fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('addsOutsideAssessment'), fn('addsUnstatedFeelingOrAction'),
-  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), `(${handler.getText(ast)});`,
+  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('addsUngroundedSpecifics'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), `(${handler.getText(ast)});`,
 ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2019 } }).outputText;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -198,6 +198,69 @@ test('일기·에세이·여행기록의 강만 근거가 충분할 때 풍성�
       }
     }
   }
+});
+
+// 원문 근거 없는 구체 표현 검사. 실측 사례와 다른 합성 문장으로 표현 범주만 확인한다.
+const SHELF_SOURCE = '오전에 책장을 정리했다. 책이 많아서 팔이 아팠다. 다 끝내니 후련했다.';
+const SHELF_UNGROUNDED = [
+  ['분배 방식', '오전에 책을 한 권씩 꺼내 책장을 정리했다. 책이 많아서 팔이 아팠다. 다 끝내니 후련했다.'],
+  ['점진 방식', '오전에 책장을 순서대로 맞춰가며 정리했다. 책이 많아서 팔이 아팠다. 다 끝내니 후련했다.'],
+  ['행동 방식', '오전에 책장을 꼼꼼하게 정리했다. 책이 많아서 팔이 아팠다. 다 끝내니 후련했다.'],
+  ['의도', '오전에 책 둘 곳을 넓히려고 책장을 정리했다. 책이 많아서 팔이 아팠다. 다 끝내니 후련했다.'],
+  ['의도(으려)', '오전에 알맞은 배치를 찾으려 책장을 정리했다. 책이 많아서 팔이 아팠다. 다 끝내니 후련했다.'],
+  ['기간', '오전에 책장을 정리했다. 책이 많아서 팔이 아팠다. 오랜 시간 끝에 다 끝내니 후련했다.'],
+  ['단계', '오전에 미뤄 두던 정리 단계를 넘어 책장을 정리했다. 책이 많아서 팔이 아팠다. 다 끝내니 후련했다.'],
+  ['관찰 계기', '오전에 책장을 정리했다. 책이 많아서 팔이 아팠다. 책이 제자리를 찾은 것을 보니 후련했다.'],
+];
+
+test('일기·에세이·여행기록의 강은 원문 근거 없는 구체 방식·기간·단계·의도·관찰 계기가 있으면 원문으로 돌아간다', async () => {
+  for (const format of ['diary', 'essay', 'travel']) {
+    for (const [label, output] of SHELF_UNGROUNDED) {
+      const f = fixture({ polishText: output });
+      const result = await f.request({ text: SHELF_SOURCE, format, strength: 'STRONG', includeAiComment: false });
+      assert.equal(result.text, SHELF_SOURCE, `${format}/${label}`);
+      assert.equal(result.originalPreserved, true, `${format}/${label}`);
+      // 외부 호출·요청 계약은 그대로다.
+      assert.deepEqual(purposes(f), ['sayuPolish', 'recordStats']);
+      assert.equal(f.calls[0].generationConfig.responseMimeType, 'application/json');
+    }
+  }
+});
+
+test('원문에 같은 유형의 표현이 있거나 수고·감정·의미를 원문 사실로 풀면 강 결과를 통과시킨다', async () => {
+  for (const [label, source, output] of [
+    ['분배·점진 방식', '오전에 책을 한 권씩 꺼내 책장을 정리했다. 다 끝내니 후련했다.',
+      '오전에는 책을 한 권씩 꺼내 가며 책장을 정리했다. 다 끝내고 나니 후련했다.'],
+    ['기간·행동 방식·의도', '오전에 오랫동안 미뤄 둔 책장을 꼼꼼하게 정리했다. 책 둘 곳을 넓히려고 한 일이었다. 다 끝내니 후련했다.',
+      '오전에는 오랫동안 미뤄 둔 책장을 꼼꼼하게 정리했다. 책 둘 곳을 넓히려던 일이었고, 다 끝내고 나니 후련했다.'],
+    ['단계·관찰 계기', '오전에 이사 준비 단계로 짐을 쌌다. 상자가 가득 찬 것을 보니 마음이 놓였다.',
+      '오전에는 이사 준비 단계로 짐을 쌌다. 상자가 가득 찬 것을 보니 마음이 놓였다.'],
+    ['수고·감정·의미', '오전에 처음으로 김치를 담갔다. 배추를 절이느라 허리가 아팠다. 그래도 맛을 보니 괜찮았다. 내 손으로 담근 김치라 뿌듯했다.',
+      '오전에 처음으로 김치를 담갔다. 배추를 절이느라 허리가 아팠다.\n\n그래도 맛을 보니 괜찮았다. 허리가 아플 만큼 들인 수고 끝에 내 손으로 담근 김치였다.\n\n내 손으로 담근 김치라 뿌듯했다. 처음 해 본 김치 담그기를 내 손으로 마친 하루였다.'],
+    ['장소 이동·머묾', '오후에 학교에 들렀다. 항구 한 곳에 머물렀다.', '오후에는 학교에 가며 잠시 들렀고, 항구 한 곳에 머물렀다.'],
+  ]) {
+    const f = fixture({ polishText: output });
+    const result = await f.request({ text: source, strength: 'STRONG', includeAiComment: false });
+    assert.equal(result.text, output, label);
+    // 기존 반환 계약: 폴백하지 않으면 originalPreserved 필드를 넣지 않는다.
+    assert.equal('originalPreserved' in result, false, label);
+  }
+});
+
+test('근거 없는 구체 표현 검사는 강의 원문 근거 경로에만 적용하고 약·행사 메모·다른 형식은 바꾸지 않는다', async () => {
+  const [, output] = SHELF_UNGROUNDED[0];
+  const weak = fixture({ polishText: output });
+  assert.equal((await weak.request({ text: SHELF_SOURCE, strength: 'WEAK', includeAiComment: false })).text, output);
+  for (const format of ['garden', 'report']) {
+    const other = fixture({ polishText: output });
+    assert.equal((await other.request({ text: SHELF_SOURCE, format, strength: 'STRONG', includeAiComment: false })).text, output);
+  }
+  const event = '동네 전시회 참석.\n- 일시: 5월 3일 오전 10시~정오\n- 장소: 은행나무 도서관';
+  const eventBody = '5월 3일 오전 10시부터 정오까지 은행나무 도서관에서 열린 동네 전시회에 참석해 작품을 하나씩 둘러봤다.';
+  const eventRun = fixture({ polishText: eventBody });
+  const eventResult = await eventRun.request({ text: event, strength: 'STRONG', includeAiComment: false });
+  assert.equal(eventResult.text, eventBody);
+  assert.equal(eventRun.calls[0].generationConfig, undefined);
 });
 
 test('풍성도·문장별 검사 블록은 강의 마지막 응답 형식 지시 바로 앞에 한 번만 둔다', async () => {

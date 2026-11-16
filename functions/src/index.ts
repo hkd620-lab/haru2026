@@ -2381,6 +2381,38 @@ function changesTimeOfDay(text: string, source: string): boolean {
   return timeline(text) !== timeline(source);
 }
 
+// 일기·에세이·여행기록의 강(원문 근거 경로) 결과에서 원문에 근거 없는 구체적 방식·기간·단계·의도·관찰 계기를
+// 보수적으로 찾는다. 재사용 가능한 한국어 표현 범주를 원문과 대조할 뿐이며 의미 전체를 검증하지는 않는다.
+// 원문에 같은 유형의 표현이 있으면 통과시키고, 수고·감정·의미를 원문 사실로 문장화한 표현은 범주에 넣지 않는다.
+function addsUngroundedSpecifics(text: string, source: string): boolean {
+  const syllable = (word = '') => word.replace(/[^가-힣]/g, '').slice(0, 1);
+  const intent = /([가-힣]*?)(?:으려(?:고|는|던|면)?|(?<![배고염우격장])려(?:고|는|던|면)|기\s?위(?:해서|하여|해|한)|고자|느라)/g;
+  const observation = /([가-힣]+)\s?(?:것|모습|장면)[을를]\s?(?:보니|보며|보면서|보고|보자|바라보|지켜보)/g;
+  const sourceIntentStems = Array.from(source.matchAll(intent), match => syllable(match[1]));
+  const checks: Array<[RegExp, (match: RegExpMatchArray) => boolean]> = [
+    // 하나씩·한 장씩 같은 분배 방식
+    [/(?:한|하나|두|세|네|몇|여러)\s?[가-힣]{0,2}씩/g, () => source.includes('씩')],
+    // ‘~아/어 가며’ 같은 점진·반복 방식. ‘학교에 가며’처럼 장소 뒤의 이동은 제외한다.
+    [/([가-힣]+)\s?가(?:며|면서)(?=[\s,.!?]|$)/g, match => /[에로을를서도는은이가와과의]$/.test(match[1])
+      || /가(?:며|면서)|씩|여러\s?번|계속|거듭|반복|차례/.test(source)],
+    // 조심스럽게·꼼꼼히 같은 행동 방식
+    [/조심스럽|꼼꼼|차근차근|차례차례|하나하나|일일이|정성껏|정성스럽|공들여|천천히|세심|신중/g,
+      match => source.includes(match[0].slice(0, 2))],
+    // ~하려고·~하기 위해·~하느라 같은 의도·목적. 원문에 같은 동사 줄기의 의도 표현이 있으면 통과한다.
+    [intent, match => sourceIntentStems.includes(syllable(match[1]))],
+    // 긴 시간·오랫동안 같은 기간
+    [/(?:긴|오랜|많은|기나긴)\s?(?:시간|세월|기간|날들)|오랫동안|오래도록|한참|하루\s?종일|온종일|밤새|내내|꼬박|몇\s?(?:시간|날|주|달|해|년)/g,
+      () => /(?:긴|오랜|많은|기나긴)\s?(?:시간|세월|기간|날들)|오랫동안|오래|한참|종일|밤새|내내|꼬박|며칠|몇\s?(?:시간|날|주|달|해|년)|\d+\s?(?:시간|분|일|주|개월|달|년)|(?:한|두|세|네|다섯|여러)\s?(?:시간|날|주|달|해)/.test(source)],
+    // 구상 단계 같은 진행 단계
+    [/단계/g, () => source.includes('단계')],
+    // ‘~하는 것을 보니’처럼 관찰 장면을 감정의 계기로 세우는 표현
+    [observation, match => Array.from(source.matchAll(observation)).length > 0
+      || (source.includes(match[1].slice(0, 2)) && /보(?:니|며|고|았|자|면서)|봤|바라보|지켜보/.test(source))],
+    [/(?:바라|지켜)보(?:니|며|면서|았|고)/g, () => /바라보|지켜보/.test(source)],
+  ];
+  return checks.some(([pattern, grounded]) => Array.from(text.matchAll(pattern)).some(match => !grounded(match)));
+}
+
 function protectPolishActorParagraphs(source: string) {
   // 행위자가 드러난 대목은 모델이 주체나 행동을 바꾸지 못하게 원문으로 되돌린다.
   const relationship = '아내|남편|배우자|와이프|집사람|부인(?!했|한|하|해)|어머니|아버지|엄마|아빠|부모님|아들|딸|아이|자녀|손자|손녀|할머니|할아버지|이모|삼촌|누나|언니|오빠|형|동생|친구|동료|선생님|직원|팀장|사장|손님|선배|후배|의사|간호사';
@@ -2746,7 +2778,8 @@ ${SOURCE_PRESERVATION_RULES}`;
         if (edited !== null && protectedActors) edited = protectedActors.restore(edited);
         if (edited !== null && richSource !== undefined
           && (addsOutsideAssessment(edited, richSource) || addsUnstatedFeelingOrAction(edited, richSource)
-            || changesTimeOfDay(edited, richSource) || changesSpouseReference(edited, richSource))) {
+            || changesTimeOfDay(edited, richSource) || changesSpouseReference(edited, richSource)
+            || (groundedPolish !== undefined && addsUngroundedSpecifics(edited, richSource)))) {
           edited = null;
         }
         originalPreserved = edited === null;
