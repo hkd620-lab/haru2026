@@ -2381,17 +2381,67 @@ function changesTimeOfDay(text: string, source: string): boolean {
   return timeline(text) !== timeline(source);
 }
 
-function resolveGroundedPolish(raw: string, source: string): string {
+function protectPolishActorParagraphs(source: string) {
+  // 행위자가 드러난 대목은 모델이 주체나 행동을 바꾸지 못하게 원문으로 되돌린다.
+  const relationship = '아내|남편|배우자|와이프|집사람|부인(?!했|한|하|해)|어머니|아버지|엄마|아빠|부모님|아들|딸|아이|자녀|손자|손녀|할머니|할아버지|이모|삼촌|누나|언니|오빠|형|동생|친구|동료|선생님|직원|팀장|사장|손님|선배|후배|의사|간호사';
+  const particle = '(?=$|[^가-힣]|[이가은는와과를을의도만]|이랑|랑|에게|한테|부터|까지|보다|처럼|께|들)';
+  const person = new RegExp(`(?<![가-힣])(?:(?:(?:우리|내|제)[ \t]*)?(?:${relationship})(?:님|분)?|[가-힣]{2,4}[ \t]+(?:씨|님))${particle}`);
+  // 이름 뒤에 바로 조사가 붙고 같은 절에서 사람이 하는 행동이 이어지는 경우도 보호한다.
+  const namedAction = /(?<![가-힣])[가-힣]{2,4}(?:이가|가|이|는|은)[ \t]+[^.!?,\n]{0,36}(?:청소했|청소해|설거지했|설거지해|도와줬|도와주|부탁했|말했|말해|물었|골랐|고른|전해줬|전해주|가져왔|가져온|보내줬|보내주)/;
+  const hasActor = (paragraph: string) => person.test(paragraph) || namedAction.test(paragraph);
+  const paragraphBreak = /\r?\n(?:[ \t]*\r?\n)+/;
+  let prefix = '[[SAYU_KEEP_';
+  while (source.includes(prefix)) prefix += '_';
+  const kept: Array<{ marker: string; original: string }> = [];
+  const editableSections = [false];
+  const layout = source.split(paragraphBreak).map(paragraph => {
+    if (!hasActor(paragraph)) {
+      if (paragraph.trim()) editableSections[kept.length] = true;
+      return paragraph;
+    }
+    const marker = `${prefix}${kept.length + 1}]]`;
+    kept.push({ marker, original: paragraph });
+    editableSections.push(false);
+    return marker;
+  });
+  if (!kept.length) return null;
+
+  return {
+    text: layout.join('\n\n'),
+    allProtected: !editableSections.some(Boolean),
+    restore(polished: string): string | null {
+      let next = 0;
+      let hasEditable = false;
+      const paragraphs = polished.split(paragraphBreak);
+      for (let index = 0; index < paragraphs.length; index++) {
+        const paragraph = paragraphs[index].trim();
+        if (paragraph.includes(prefix)) {
+          const anchor = kept[next];
+          if (paragraph !== anchor?.marker || hasEditable !== editableSections[next]) return null;
+          paragraphs[index] = anchor.original;
+          next++;
+          hasEditable = false;
+        } else if (paragraph) {
+          if (hasActor(paragraph)) return null;
+          hasEditable = true;
+        }
+      }
+      return next === kept.length && hasEditable === editableSections[next] ? paragraphs.join('\n\n') : null;
+    },
+  };
+}
+
+function resolveGroundedPolish(raw: string): string | null {
   let result: { body?: unknown } | null;
   try {
     result = JSON.parse(raw);
   } catch {
     logger.warn('강 다듬기 응답 형식 불일치', { reason: 'invalid_json', responseLength: raw.length });
-    return source;
+    return null;
   }
   if (typeof result?.body !== 'string' || !result.body.trim()) {
     logger.warn('강 다듬기 응답 형식 불일치', { reason: 'invalid_body', responseLength: raw.length });
-    return source;
+    return null;
   }
 
   return result.body.trim();
@@ -2427,7 +2477,6 @@ export const polishContent = onCall(
       if (strength !== undefined && strength !== 'WEAK' && strength !== 'STRONG') {
         throw new HttpsError('invalid-argument', '다듬기 정도는 약 또는 강으로 선택해주세요.');
       }
-      monthlyQuotaReservation = await reserveMonthlyAiQuota(request.auth.uid, 'polishContent');
 
       // SAYU 형식별 3그룹 분기 (2026-05-13 도입)
       // 풍성형: 감성·문학 표현 환영
@@ -2454,10 +2503,22 @@ export const polishContent = onCall(
       let systemPrompt = '';
       let polishInput = text;
       let groundedPolish: string | undefined;
-      const wrappedRichSource = formatGroup === 'rich' && strength !== undefined
+      const wrappedRichSource = strength !== undefined
         ? /(?:^|\n)\[원문 시작\]\n([\s\S]+)\n\[원문 끝\]\s*$/.exec(text)
         : null;
-      const richSource = formatGroup === 'rich' && strength !== undefined ? wrappedRichSource?.[1] ?? text : undefined;
+      if (strength !== undefined && !wrappedRichSource && /^\[원문 (?:시작|끝)\]\r?$/m.test(text)) {
+        throw new HttpsError('invalid-argument', '원문 표시의 시작과 끝을 확인해주세요.');
+      }
+      const explicitSource = strength !== undefined ? wrappedRichSource?.[1] ?? text : undefined;
+      const richSource = formatGroup === 'rich' ? explicitSource : undefined;
+      const protectedActors = strength === 'STRONG' && normalizedFormat !== 'voiding' && explicitSource
+        ? protectPolishActorParagraphs(explicitSource) : null;
+
+      if (protectedActors?.allProtected && includeAiComment === false) {
+        return { text: explicitSource, stats: null, aiComment: '', originalPreserved: true };
+      }
+
+      monthlyQuotaReservation = await reserveMonthlyAiQuota(request.auth.uid, 'polishContent');
 
       // 기본·풍성형 공통 원문 보존 규칙. 기록 화면은 원문을 [원문 시작]/[원문 끝] 표시 사이에 넣고 앞에 안내문을 붙여 보낸다.
       const SOURCE_PRESERVATION_RULES = `[원문 보존 규칙]
@@ -2639,6 +2700,14 @@ ${SOURCE_PRESERVATION_RULES}`;
 본문만 자연스럽게 이어지는 문단으로 작성하세요.`;
       }
 
+      if (protectedActors && explicitSource !== undefined) {
+        const originalBlock = `[원문 시작]\n${explicitSource}\n[원문 끝]`;
+        polishInput = polishInput.includes(originalBlock)
+          ? polishInput.replace(originalBlock, () => `[원문 시작]\n${protectedActors.text}\n[원문 끝]`)
+          : protectedActors.text;
+        systemPrompt += '\n원문의 대괄호 SAYU_KEEP 표시는 보존할 문단 전체를 대신합니다. 각 표시를 원래 순서의 독립 문단에 그대로 한 번만 옮기세요. 표시 앞뒤의 원문은 같은 쪽에 남기되 여러 문단으로 나눌 수 있습니다. 문단 사이에는 빈 줄을 두세요. 표시 안의 내용을 추측하거나 설명하지 말고, 표시가 아닌 나머지 글만 다듬으세요.';
+      }
+
       // Preserve main's BASIC routing; meter the actual purpose/model selected there.
       const polishPurpose = mode === 'BASIC' ? 'sayuPolishBasic' : 'sayuPolish';
       const modelName = getAiRoute(polishPurpose).model;
@@ -2650,14 +2719,17 @@ ${SOURCE_PRESERVATION_RULES}`;
           ...(groundedPolish !== undefined ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
         }),
         (responseText) => responseText);
-      if (groundedPolish !== undefined) {
-        polishedText = resolveGroundedPolish(polishedText, groundedPolish);
-      }
-      if (richSource !== undefined
-        && (addsOutsideAssessment(polishedText, richSource) || addsUnstatedFeelingOrAction(polishedText, richSource)
-          || changesTimeOfDay(polishedText, richSource)
-          || changesSpouseReference(polishedText, richSource))) {
-        polishedText = richSource;
+      let originalPreserved = false;
+      if (explicitSource !== undefined) {
+        let edited: string | null = groundedPolish === undefined ? polishedText : resolveGroundedPolish(polishedText);
+        if (edited !== null && protectedActors) edited = protectedActors.restore(edited);
+        if (edited !== null && richSource !== undefined
+          && (addsOutsideAssessment(edited, richSource) || addsUnstatedFeelingOrAction(edited, richSource)
+            || changesTimeOfDay(edited, richSource) || changesSpouseReference(edited, richSource))) {
+          edited = null;
+        }
+        originalPreserved = edited === null;
+        polishedText = edited ?? explicitSource;
       }
 
       // ===== 통계 분석 (모든 형식) =====
@@ -2697,6 +2769,7 @@ ${SOURCE_PRESERVATION_RULES}`;
         text: polishedText,
         stats: stats,
         aiComment: aiComment,
+        ...(originalPreserved ? { originalPreserved: true } : {}),
       };
 
     } catch (error: any) {

@@ -19,8 +19,10 @@ function formatFixture(reading = false) {
     ? { reading_book_title: '합성 책', reading_author: '합성 저자', reading_journal: '직접 쓴 생각', reading_ai_comment: '기존 한마디' }
     : { diary_simple: '직접 쓴 원문', diary_title: '사용자 제목', diary_ai_comment: '기존 한마디' };
   const env = () => ({
-    format: reading ? '독서사유' : '일기', prefix, formData, user: { uid: 'synthetic-user' }, recordStyle: 'simple', isPolishing: false,
-    setSayuMode() {}, setPolishStrength: value => { state.strength = value; }, setShowModeSelect() {}, setIsPolishing: value => { state.busy = value; },
+    repolishRequestRef: { current: null },
+    format: reading ? '독서사유' : '일기', prefix, formData, user: { uid: 'synthetic-user' }, recordStyle: 'simple', isPolishing: false, isSaving: false,
+    photoEditorSessionRef: { current: 1 }, polishRequestRef: { current: null }, polishPreviewSourceRef: { current: undefined },
+    setSayuMode() {}, setPolishStrength: value => { state.strength = value; }, setIsPolishing: value => { state.busy = value; },
     toast: { info() {}, warning() {}, success() {}, error: value => state.errors.push(value) }, console: { error: error => state.errors.push(String(error)) },
     getFunctions: (_app, region) => { assert.equal(region, 'asia-northeast3'); return {}; },
     httpsCallable: (_functions, name) => { assert.equal(name, 'polishContent'); return async payload => {
@@ -92,26 +94,25 @@ for (const strength of ['WEAK', 'STRONG']) {
         isPolishing: blocked === 'busy', isSaving: blocked === 'saving', isLoadingMonthlyAiQuota: blocked === 'loading',
         monthlyAiQuotaStatus: blocked === 'unknown' ? null : { remaining: blocked === 'quota' ? 0 : 1 },
         isUploadingRef: { current: blocked === 'upload' }, initialPhotoUploadFailedRef: { current: blocked === 'uploadFailed' },
-        pendingPolishMode: 'BASIC', pendingPolishStrength: strength,
+        pendingPolishMode: 'BASIC',
         setShowMonthlyAiQuotaModal: value => calls.push(['modal', value]),
         handlePolishWithMode: (...args) => calls.push(args), toast: { warning() {} },
       };
-      handler('FormatModal', 'handleConfirmMonthlyAiPolish', env)();
+      handler('FormatModal', 'handleConfirmMonthlyAiPolish', env)(strength);
       assert.deepEqual(calls, blocked === 'none' ? [['modal', false], ['BASIC', strength]] : [], blocked);
     }
   });
 }
 
-test('새 다듬기 안내는 약으로 열고 사용량 조회를 유지한다', () => {
+test('새 다듬기 안내는 사용량 조회를 유지한다', () => {
   const state = {};
   handler('FormatModal', 'openMonthlyAiGuide', {
     setPendingPolishMode: value => { state.mode = value; },
-    setPendingPolishStrength: value => { state.strength = value; },
     setMonthlyAiQuotaStatus: value => { state.quota = value; },
     setShowMonthlyAiQuotaModal: value => { state.open = value; },
     fetchMonthlyAiQuotaStatus: () => { state.fetched = true; },
   })();
-  assert.deepEqual(state, { mode: 'BASIC', strength: 'WEAK', quota: null, open: true, fetched: true });
+  assert.deepEqual(state, { mode: 'BASIC', quota: null, open: true, fetched: true });
 });
 
 test('독서 마무리는 false를 보내고 분석 본문을 기존 미리보기에 전달한다', async () => {
@@ -130,44 +131,26 @@ test('중간 독서장은 false를 보내고 본문·기존 한마디를 저장 
   assert.equal(saved.entryType, 'readingNote'); assert.deepEqual(f.state.errors, []);
 });
 
-for (const aiComment of ['새 한마디', '', undefined, 123]) {
-  test(`SayuModal 대조군: 옵션 누락·한마디 ${JSON.stringify(aiComment)}의 기존 저장 계약 유지`, async () => {
-    const state = { requests: [], saved: { memo_ai_comment: '기존 한마디', memo_stats: { preserved: true } }, localComment: '기존 한마디', errors: [] };
-    const env = {
-      currentUser: { uid: 'synthetic-user' }, isRefining: false, polishStrength: 'WEAK', formatKey: 'memo', format: '메모', recordDate: '2026-10-22', firestoreId: 'synthetic-record',
-      editedOriginalData: { memo_simple: '합성 원문' }, repolishRequestRef: { current: null }, setIsRefining() {}, showLoading() {}, hideLoading() {}, functions: {}, db: {},
-      httpsCallable: (_functions, name) => { assert.equal(name, 'polishContent'); return async request => { state.requests.push(request); return { data: { text: '새 본문', aiComment } }; }; },
-      doc: (_db, ...segments) => { assert.deepEqual(segments, ['users', 'synthetic-user', 'records', 'synthetic-record']); return {}; },
-      updateDoc: async (_ref, payload) => Object.assign(state.saved, payload), setEditedContent() {}, setViewMode() {},
-      setLocalAiComment: value => { state.localComment = value; }, toast: { error: value => state.errors.push(value), success() {} }, console: { error: error => state.errors.push(String(error)) },
-    };
-    await handler('SayuModal', 'handleRepolish', env)();
-    assert.equal(state.requests.length, 1); assert.equal(Object.hasOwn(state.requests[0], 'includeAiComment'), false);
-    assert.equal(state.requests[0].strength, 'WEAK');
-    assert.equal(state.saved.memo_sayu, '새 본문');
-    const expected = typeof aiComment === 'string' && aiComment ? aiComment : '기존 한마디';
-    assert.equal(state.saved.memo_ai_comment, expected); assert.equal(state.localComment, expected);
-    assert.deepEqual(state.saved.memo_stats, { preserved: true }); assert.deepEqual(state.errors, []);
-  });
-}
-
-test('다시 다듬기는 표현형 강에서 원문만 풍성하게 표현하고 배뇨 요약에는 강도를 보내지 않는다', async () => {
+test('저장된 메모와 일기 다듬기는 미리보기만 제공하고 배뇨는 현재 전용 경로를 사용한다', async () => {
   for (const formatKey of ['memo', 'voiding', 'diary']) {
-    const requests = [], writes = [];
+    const requests = [];
+    const preview = { current: null };
     await handler('SayuModal', 'handleRepolish', {
-      currentUser: { uid: 'synthetic-user' }, isRefining: false, polishStrength: 'STRONG', formatKey, format: '', recordDate: '2026-11-02', firestoreId: 'synthetic-record',
-      editedOriginalData: { [`${formatKey}_simple`]: '합성 원문' }, repolishRequestRef: { current: null }, setIsRefining() {}, showLoading() {}, hideLoading() {}, functions: {}, db: {},
-      httpsCallable: () => async request => { requests.push(request); return { data: { text: '다듬은 글' } }; },
-      doc: () => ({}), updateDoc: async (_ref, payload) => writes.push(payload),
-      setEditedContent() {}, setViewMode() {}, setLocalAiComment() {}, toast: { error: assert.fail, success() {} }, console,
-    })();
-    assert.equal(requests.length, 1); assert.equal(requests[0].mode, 'PREMIUM');
-    if (formatKey === 'voiding') assert.equal(Object.hasOwn(requests[0], 'strength'), false);
-    else assert.equal(requests[0].strength, 'STRONG');
-    assert.doesNotMatch(requests[0].text, /상황과 감정은 문맥에 맞게 추정/);
+      isSaving: false, isSavingOriginal: false, currentUser: { uid: 'synthetic-user' }, formatKey, format: '', recordDate: undefined, firestoreId: 'synthetic-record',
+      repolishRequestRef: { current: null }, setIsRefining() {}, functions: {}, polishPreviewRef: preview,
+      httpsCallable: () => async request => { requests.push(request); return { data: { text: '다듬은 글', aiComment: '새 한마디' } }; },
+      updateDoc: assert.fail, setLocalAiComment: assert.fail, editedContent: '저장된 본문',
+      setEditedContent() {}, setViewMode() {}, setIsEditing() {}, toast: { error: assert.fail, success() {} }, console,
+    })('합성 원문', 'STRONG');
+    if (formatKey === 'voiding') {
+      assert.equal(requests.length, 0);
+      assert.equal(preview.current, null);
+      continue;
+    }
+    assert.deepEqual(requests.map(request => [request.mode, request.strength, request.includeAiComment]), [['PREMIUM', 'STRONG', false]]);
     if (formatKey === 'diary') assert.match(requests[0].text, /원문에 없는 관찰·감정·행동·분위기·해석은 추측이나 가능성으로도 덧붙이지 마세요/);
     assert.match(requests[0].text, /\[원문 시작\]\n합성 원문\n\[원문 끝\]/);
-    assert.deepEqual(writes, [{ [`${formatKey}_sayu`]: '다듬은 글' }]);
+    assert.deepEqual(preview.current, { text: '다듬은 글', source: '합성 원문' });
   }
 });
 
@@ -175,7 +158,7 @@ test('원본 탭에서 약과 강은 각각 한 번 실행되어 저장 없이 S
   const requests = [];
   const preview = { content: '', mode: 'original', editing: false, ref: { current: null } };
   const repolish = handler('SayuModal', 'handleRepolish', {
-    currentUser: { uid: 'synthetic-user' }, formatKey: 'diary', format: '일기',
+    isSaving: false, isSavingOriginal: false, currentUser: { uid: 'synthetic-user' }, formatKey: 'diary', format: '일기',
     recordDate: '2026-11-02', firestoreId: 'synthetic-record', polishStrength: 'WEAK',
     functions: {}, repolishRequestRef: { current: null }, setIsRefining() {},
     httpsCallable: (_functions, name) => async request => {

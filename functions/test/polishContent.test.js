@@ -22,7 +22,7 @@ const handler = variable('polishContent').arguments.at(-1);
 const compiled = ts.transpileModule([
   `const STATS_PROMPTS = ${variable('STATS_PROMPTS').getText(ast)};`,
   fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('addsOutsideAssessment'), fn('addsUnstatedFeelingOrAction'),
-  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('resolveGroundedPolish'), `(${handler.getText(ast)});`,
+  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), `(${handler.getText(ast)});`,
 ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2019 } }).outputText;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -274,32 +274,82 @@ test('약과 강이 상황을 새 감정으로 바꾸거나 생각을 확정하�
   }
 });
 
-test('약과 강에서 배우자가 등장하는 별도 이야기를 빠뜨리면 원문을 보존한다', async () => {
+test('약에서 배우자가 등장하는 별도 이야기를 빠뜨리면 원문을 보존한다', async () => {
   const text = '저녁에 걸었다.\n\n집에 돌아와 아내와 이야기를 나눴다.';
-  for (const strength of ['WEAK', 'STRONG']) {
-    const f = fixture({ polishText: '저녁에 걸었다.' });
-    assert.equal((await f.request({ text, strength, includeAiComment: false })).text, text);
-    const kept = '저녁에 걸었다.\n\n집에 와서 아내와 이야기를 나눴다.';
-    const good = fixture({ polishText: kept });
-    assert.equal((await good.request({ text, strength, includeAiComment: false })).text, kept);
-    const separate = '아내와 점심을 먹었다.\n\n저녁에는 아내가 직접 고른 꽃 이야기를 들려줬다.';
-    const oneOfTwo = fixture({ polishText: '아내와 점심을 먹었다.' });
-    assert.equal((await oneOfTwo.request({ text: separate, strength, includeAiComment: false })).text, separate);
-    const both = '점심은 아내와 함께 먹었다.\n\n저녁에는 아내에게서 직접 고른 꽃 이야기를 들었다.';
-    const preservesBoth = fixture({ polishText: both });
-    assert.equal((await preservesBoth.request({ text: separate, strength, includeAiComment: false })).text, both);
-    const sourceToMerge = '아내와 점심을 먹었다. 아내와 산책했다. 짐을챙겼다.';
-    const merged = '아내와 점심을 먹고 함께 산책했다. 짐을 챙겼다.';
-    const mergesSafely = fixture({ polishText: merged });
-    assert.equal((await mergesSafely.request({ text: sourceToMerge, strength, includeAiComment: false })).text, merged);
-    for (const [source, missing] of [
-      ['아내와 점심을 먹었다. 저녁에는 아내가 꽃을 골랐다. 저녁에는 혼자 운동했다.', '아내와 점심을 먹었다. 저녁에는 혼자 운동했다.'],
-      ['아내와 점심을 먹었다. 아내와 산책했다. 집에 돌아온 뒤 혼자 산책했다.', '아내와 점심을 먹었다. 집에 돌아온 뒤 혼자 산책했다.'],
-    ]) {
-      const unrelatedMatch = fixture({ polishText: missing });
-      assert.equal((await unrelatedMatch.request({ text: source, strength, includeAiComment: false })).text, source);
-    }
+  const strength = 'WEAK';
+  const f = fixture({ polishText: '저녁에 걸었다.' });
+  assert.equal((await f.request({ text, strength, includeAiComment: false })).text, text);
+  const kept = '저녁에 걸었다.\n\n집에 와서 아내와 이야기를 나눴다.';
+  const good = fixture({ polishText: kept });
+  assert.equal((await good.request({ text, strength, includeAiComment: false })).text, kept);
+  const separate = '아내와 점심을 먹었다.\n\n저녁에는 아내가 직접 고른 꽃 이야기를 들려줬다.';
+  const oneOfTwo = fixture({ polishText: '아내와 점심을 먹었다.' });
+  assert.equal((await oneOfTwo.request({ text: separate, strength, includeAiComment: false })).text, separate);
+  const both = '점심은 아내와 함께 먹었다.\n\n저녁에는 아내에게서 직접 고른 꽃 이야기를 들었다.';
+  const preservesBoth = fixture({ polishText: both });
+  assert.equal((await preservesBoth.request({ text: separate, strength, includeAiComment: false })).text, both);
+  const sourceToMerge = '아내와 점심을 먹었다. 아내와 산책했다. 짐을챙겼다.';
+  const merged = '아내와 점심을 먹고 함께 산책했다. 짐을 챙겼다.';
+  const mergesSafely = fixture({ polishText: merged });
+  assert.equal((await mergesSafely.request({ text: sourceToMerge, strength, includeAiComment: false })).text, merged);
+  for (const [source, missing] of [
+    ['아내와 점심을 먹었다. 저녁에는 아내가 꽃을 골랐다. 저녁에는 혼자 운동했다.', '아내와 점심을 먹었다. 저녁에는 혼자 운동했다.'],
+    ['아내와 점심을 먹었다. 아내와 산책했다. 집에 돌아온 뒤 혼자 산책했다.', '아내와 점심을 먹었다. 집에 돌아온 뒤 혼자 산책했다.'],
+  ]) {
+    const unrelatedMatch = fixture({ polishText: missing });
+    assert.equal((await unrelatedMatch.request({ text: source, strength, includeAiComment: false })).text, source);
   }
+});
+
+test('강에서 배우자가 한 행동은 원문 위치에 그대로 두고 다른 문단만 다듬는다', async () => {
+  const actorParagraph = '집에서는 아내가 화분을 옮겨 주었다. 아내가 물도 주었다.';
+  const source = `아침에 산책했다. 바람이 불었다.\n\n${actorParagraph}`;
+  const editedParagraph = '아침 산책길에는 바람이 불었다.';
+  const marker = '[[SAYU_KEEP_1]]';
+  const good = fixture({ polishText: `${editedParagraph}\n\n${marker}` });
+  const answer = await good.request({ text: source, strength: 'STRONG', includeAiComment: false });
+  assert.equal(answer.text, `${editedParagraph}\n\n${actorParagraph}`);
+  assert.equal(answer.originalPreserved, undefined);
+  assert.doesNotMatch(good.calls[0].input, /화분|아내/);
+  assert.match(good.calls[0].input, /SAYU_KEEP_1/);
+  for (const polishText of [
+    editedParagraph,
+    `${marker}\n\n${editedParagraph}`,
+    `${editedParagraph}\n\n${marker}\n\n${marker}`,
+    `친구가 같이 걸었다.\n\n${marker}`,
+    `${editedParagraph}\n\n내가 화분을 옮겼다.`,
+  ]) {
+    const invalid = fixture({ polishText });
+    const fallback = await invalid.request({ text: source, strength: 'STRONG', includeAiComment: false });
+    assert.equal(fallback.text, source);
+    assert.equal(fallback.originalPreserved, true);
+  }
+});
+
+test('인물을 뜻하는 호칭과 조사가 붙은 문단은 보존하고, 남은 문단은 나눌 수 있다', async () => {
+  for (const paragraph of ['아내한테 전화했다.', '친구들이 집에 들렀다.', '팀장님에게 물었다.', '할머니께 말씀드렸다.', '민수가 와서 설거지했다.']) {
+    const text = `길을 걸었다. 나무가 보였다.\n\n${paragraph}`;
+    const expanded = '길을 걸었다.\n\n걷는 길에는 나무가 보였다.';
+    const f = fixture({ polishText: `${expanded}\n\n[[SAYU_KEEP_1]]` });
+    assert.equal((await f.request({ text, strength: 'STRONG', includeAiComment: false })).text, `${expanded}\n\n${paragraph}`);
+  }
+});
+
+test('보호할 대목만 있으면 원문 안내를 반환하며 사용량이나 모델을 사용하지 않는다', async () => {
+  const text = '아내가 화분을 옮기고 남편이 물을 줬다.';
+  const f = fixture();
+  const answer = await f.request({ text, strength: 'STRONG', includeAiComment: false });
+  assert.equal(answer.text, text);
+  assert.equal(answer.originalPreserved, true);
+  assert.equal(f.reservations.length, 0);
+  assert.equal(f.calls.length, 0);
+});
+
+test('원문 표시가 일부만 있으면 안내문을 원문으로 반환하지 않는다', async () => {
+  const f = fixture();
+  await assert.rejects(f.request({ text: '편집 지시\n[원문 시작]\n원문', strength: 'STRONG' }), { code: 'invalid-argument' });
+  assert.equal(f.calls.length, 0);
+  assert.equal(f.reservations.length, 0);
 });
 
 test('원문에 있는 감정의 같은 뜻 활용형을 새 감정으로 취급하지 않는다', async () => {

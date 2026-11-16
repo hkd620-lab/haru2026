@@ -31,15 +31,20 @@ function fixture() {
       throw new Error(`unexpected import: ${id}`);
     },
   });
-  const mount = saveImmediately => module.exports.PolishStrengthSelect({
-    value: 'WEAK', onChange() {}, saveImmediately,
+  const choices = [];
+  const mount = (showGuide = true) => module.exports.PolishStrengthSelect({
+    onChange: choice => choices.push(choice), showGuide,
   });
   const unmount = () => cleanups.pop()?.();
-  return { data, toasts, dismissed, mount, unmount };
+  return { data, toasts, dismissed, mount, unmount, choices };
 }
 
 function walk(node, visit) {
   if (node == null) return;
+  if (Array.isArray(node)) {
+    node.forEach(child => walk(child, visit));
+    return;
+  }
   visit(node);
   if (typeof node !== 'object') return;
   const children = node.props?.children;
@@ -48,7 +53,7 @@ function walk(node, visit) {
 
 test('약·강 토스트의 다시 보지 않기 선택은 다음 열기에도 적용되고, 닫기만 하면 다시 나온다', () => {
   const f = fixture();
-  f.mount(false);
+  f.mount();
   assert.equal(f.toasts.length, 1);
   assert.equal(f.toasts[0].options.duration, Infinity);
   const firstToast = f.toasts[0].render('toast-1');
@@ -62,7 +67,7 @@ test('약·강 토스트의 다시 보지 않기 선택은 다음 열기에도 �
   assert.deepEqual(f.dismissed, ['toast-1']);
   assert.equal(f.data.size, 0);
 
-  f.mount(false);
+  f.mount();
   assert.equal(f.toasts.length, 2);
   const secondToast = f.toasts[1].render('toast-2');
   walk(secondToast, node => {
@@ -71,23 +76,35 @@ test('약·강 토스트의 다시 보지 않기 선택은 다음 열기에도 �
   checkbox.props.onChange({ target: { checked: true } });
   assert.equal([...f.data.values()][0], '1');
   assert.deepEqual(f.dismissed, ['toast-1', 'toast-2']);
-  f.mount(false);
+  f.mount();
   assert.equal(f.toasts.length, 2);
 });
 
-test('즉시 저장 경로의 토스트는 결과가 바로 저장된다고 설명한다', () => {
+test('토스트는 다듬은 결과를 확인한 뒤 저장하라고 설명한다', () => {
   const f = fixture();
-  f.mount(true);
+  f.mount();
   const words = [];
   walk(f.toasts[0].render('toast'), node => {
     if (typeof node === 'string') words.push(node);
   });
-  assert.match(words.join(' '), /다시 다듬기 결과는 바로 저장/);
+  assert.match(words.join(' '), /결과를 확인한 뒤 저장/);
 });
 
 test('선택 UI가 사라지면 화면에 남은 안내 토스트도 닫는다', () => {
   const f = fixture();
-  f.mount(false);
+  f.mount();
   f.unmount();
   assert.deepEqual(f.dismissed, ['haru-polish-strength-guide']);
+});
+
+test('미리보기에서 토스트를 다시 띄우지 않고 약·강을 각각 한 번에 실행한다', () => {
+  const f = fixture();
+  const buttons = [];
+  walk(f.mount(false), node => {
+    if (node.type === 'button') buttons.push(node);
+  });
+  assert.equal(f.toasts.length, 0);
+  assert.equal(buttons.length, 2);
+  for (const button of buttons) button.props.onClick();
+  assert.deepEqual(f.choices, ['WEAK', 'STRONG']);
 });

@@ -24,8 +24,8 @@ function fixture({ format = '일기', prefix = 'diary', formData = {}, fields = 
   const toast = Object.fromEntries(['info', 'success', 'error', 'warning'].map(level => [level, message => notices.push({ level, message })]));
   // 상태 값은 context 에 두어 다음 호출(다음 렌더)이 바뀐 값을 읽게 한다
   const context = {
-    isPolishing: false, pendingPolishMode: initialPendingMode, pendingPolishStrength: 'WEAK', format, prefix, formData, fields, selectedCrops, recordStyle, isStockFormat, isSaving: false, isLoadingMonthlyAiQuota: false, monthlyAiQuotaStatus: null,
-    photoEditorSessionRef: { current: 1 }, isUploadingRef: { current: false }, initialPhotoUploadFailedRef: { current: false },
+    isPolishing: false, pendingPolishMode: initialPendingMode, format, prefix, formData, fields, selectedCrops, recordStyle, isStockFormat, isSaving: false, isLoadingMonthlyAiQuota: false, monthlyAiQuotaStatus: null,
+    photoEditorSessionRef: { current: 1 }, polishRequestRef: { current: null }, polishPreviewSourceRef: { current: undefined }, isUploadingRef: { current: false }, initialPhotoUploadFailedRef: { current: false },
     polishedContent: '', polishStats: null, sayuMode: 'BASIC', uploadedImages: [],
     sayuKey: `${prefix}_sayu`, imagesKey: `${prefix}_images`, imageMetaKey: `${prefix}_imageMeta`,
     isCleaningSessionUploadsRef: { current: false }, getGrowthSaveFields: () => ({}),
@@ -34,8 +34,8 @@ function fixture({ format = '일기', prefix = 'diary', formData = {}, fields = 
     navigate: (path, options) => { state.navigation = { path, options }; },
     DIARY_PREMIUM_FIELDS: [{ key: 'diary_a' }, { key: 'diary_b' }],
     toast, console: { error() {} },
-    setSayuMode: v => { state.mode = v; context.sayuMode = v; }, setShowModeSelect: () => {}, setIsPolishing: v => { state.busy = v; context.isPolishing = v; },
-    setPolishStrength: v => { state.strength = v; }, setPendingPolishStrength: v => { context.pendingPolishStrength = v; },
+    setSayuMode: v => { state.mode = v; context.sayuMode = v; }, setIsPolishing: v => { state.busy = v; context.isPolishing = v; },
+    setPolishStrength: v => { state.strength = v; },
     setPolishedContent: v => { state.polished = v; context.polishedContent = v; }, setPolishStats: v => { state.stats = v; context.polishStats = v; }, setShowPolishModal: v => { state.modal = v; },
     setPendingPolishMode: v => { context.pendingPolishMode = v; }, setMonthlyAiQuotaStatus: v => { state.quota = v; context.monthlyAiQuotaStatus = v; },
     setShowMonthlyAiQuotaModal: v => { state.quotaModal = v; }, setIsLoadingMonthlyAiQuota: v => { state.quotaLoading = v; context.isLoadingMonthlyAiQuota = v; },
@@ -53,7 +53,7 @@ function fixture({ format = '일기', prefix = 'diary', formData = {}, fields = 
   };
   vm.runInNewContext(code, context);
   vm.runInNewContext(saveCode, context);
-  return { run: mode => context.runPolish(mode), click: () => context.runClick(), confirm: () => context.runConfirm(), requests, notices, state, context };
+  return { run: mode => context.runPolish(mode), click: () => context.runClick(), confirm: (strength = 'WEAK') => context.runConfirm(strength), requests, notices, state, context };
 }
 const polishRequests = f => f.requests.filter(r => r.name === 'polishContent');
 const between = text => text.slice(text.indexOf('[원문 시작]\n') + '[원문 시작]\n'.length, text.lastIndexOf('\n[원문 끝]'));
@@ -111,7 +111,7 @@ test('오류 안내(월 한도·5000자·그 밖)는 기존대로이고 진행 �
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
-test('일반 다듬기 버튼: 제목 확인 → 월 한도 모달 → 확인 순서로 BASIC 요청을 보낸다', async () => {
+test('일반 다듬기 버튼: 제목 확인 → 월 한도 모달 → 약을 한 번 눌러 BASIC 요청을 보낸다', async () => {
   assert.equal(initialPendingMode, 'BASIC');
   for (const [format, prefix, extra] of [['일기', 'diary', { diary_a: '오늘은 좋았어요' }], ['일반보고', 'report', { r1: '회의를 했습니다' }]]) {
     const f = fixture({ format, prefix, fields: [{ key: 'r1' }], formData: { [`${prefix}_title`]: ' 제목 ', ...extra } });
@@ -213,4 +213,18 @@ test('AI 안내에서 다듬은 뒤 실제 저장 handler는 원문·사진·메
   assert.equal(f.state.saved._recordId, 'draft-1');
   assert.equal(f.state.saved.essay_style, 'simple');
   assert.equal(f.state.navigation.options.state.openRecordId, 'draft-1');
+});
+
+test('새 기록 미리보기에서 강을 다시 누르면 약 결과 대신 원문으로 실행하고 저장하지 않는다', async () => {
+  const original = '밖에서 걸었다.';
+  const f = fixture({ formData: { diary_title: '제목', diary_a: original } });
+  f.click();
+  await settle();
+  f.confirm('WEAK');
+  await settle();
+  await f.context.runPolish(f.state.mode, 'STRONG', f.context.polishPreviewSourceRef.current);
+  assert.deepEqual(polishRequests(f).map(({ payload }) => [payload.strength, between(payload.text)]), [
+    ['WEAK', original], ['STRONG', original],
+  ]);
+  assert.equal(f.state.saved, undefined);
 });
