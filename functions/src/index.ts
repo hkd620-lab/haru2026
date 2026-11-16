@@ -2340,20 +2340,24 @@ function changesSpouseReference(text: string, source: string): boolean {
     /(?<![가-힣])(?:(?:우리|내|제)[ \t]*)?배우자/,
   ];
   const originalPassages = source.split(/[.!?。！？\n]+/);
-  const compactText = text.replace(/\s/g, '');
+  const polishedPassages = text.split(/[.!?。！？\n]+/);
   return spouseTerms.some(term => {
     const passages = originalPassages.filter(passage => term.test(passage));
-    if (term.test(text) !== (passages.length > 0)) return true;
+    const polished = polishedPassages.filter(passage => term.test(passage));
+    if ((polished.length > 0) !== (passages.length > 0)) return true;
     if (passages.length < 2) return false;
 
     // 문장이 합쳐져도 각각의 대목을 구분하던 말이 전체 결과에 남을 수 있다.
+    const connectedText = polished.join(' ').replace(/\s/g, '');
     const anchors = passages.map(passage => (passage.replace(term, '').match(/[가-힣a-z\d]+/gi) ?? [])
       .map(word => word.replace(/(?:으로부터|에게서|에서|에는|에게|으로|했다|했고|하다|하고|이랑|았다|었다|였다|[을를은는이가와과도에로만])$/, ''))
       .filter(word => (word.length > 1 || /^[꽃밥집차책길약물말]$/.test(word))
         && !/^(?:함께|같이|그리고|정말|아주|직접|했다|있다)$/.test(word)));
     return anchors.some((words, index) => {
       const distinct = words.filter(word => !anchors.some((other, otherIndex) => otherIndex !== index && other.includes(word)));
-      return distinct.length > 0 && distinct.every(word => !compactText.includes(word));
+      const activity = distinct.filter(word => !/^(?:오늘|어제|내일|아침|오전|정오|오후|저녁|밤|새벽|그때|\d+)$/.test(word));
+      const evidence = activity.length > 0 ? activity : distinct;
+      return evidence.length > 0 && evidence.every(word => !connectedText.includes(word));
     });
   });
 }

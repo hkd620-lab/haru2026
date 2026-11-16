@@ -286,6 +286,13 @@ test('약과 강에서 배우자가 등장하는 별도 이야기를 빠뜨리�
     const merged = '아내와 점심을 먹고 함께 산책했다. 짐을 챙겼다.';
     const mergesSafely = fixture({ polishText: merged });
     assert.equal((await mergesSafely.request({ text: sourceToMerge, strength, includeAiComment: false })).text, merged);
+    for (const [source, missing] of [
+      ['아내와 점심을 먹었다. 저녁에는 아내가 꽃을 골랐다. 저녁에는 혼자 운동했다.', '아내와 점심을 먹었다. 저녁에는 혼자 운동했다.'],
+      ['아내와 점심을 먹었다. 아내와 산책했다. 집에 돌아온 뒤 혼자 산책했다.', '아내와 점심을 먹었다. 집에 돌아온 뒤 혼자 산책했다.'],
+    ]) {
+      const unrelatedMatch = fixture({ polishText: missing });
+      assert.equal((await unrelatedMatch.request({ text: source, strength, includeAiComment: false })).text, source);
+    }
   }
 });
 
