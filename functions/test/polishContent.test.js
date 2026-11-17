@@ -2051,3 +2051,17 @@ test('Codex 3차 P2: 마무리 의무·시도 계획과 완료 의도를 실제 
     assert.deepEqual(await strongResult(source, '앱을 마무리했다.'), { text: '앱을 마무리했다.', preserved: undefined });
   }
 });
+
+test('Codex 4차 P2: 완료 보조동사의 축약형은 원문과 결과에서 같은 상태로 인식한다', async () => {
+  for (const ending of ['해 뒀다', '해 놨다', '해 두었다', '해 놓았다']) {
+    const completed = '앱의 마무리를 ' + ending + '.';
+    assert.deepEqual(await strongResult('앱을 만들었다.', completed), { text: '앱을 만들었다.', preserved: true });
+    assert.deepEqual(await strongResult(completed, '앱을 마무리했다.'), { text: '앱을 마무리했다.', preserved: undefined });
+  }
+});
+test('Codex 4차 P2: 뒤 절의 별도 계획은 앞 절의 완료를 계획으로 바꾸지 않는다', async () => {
+  const source = '앱을 마무리한 뒤 여행 계획을 세웠다.';
+  const edited = '앱을 완성한 뒤 여행 계획을 세웠다.';
+  assert.deepEqual(await strongResult(source, edited), { text: edited, preserved: undefined });
+  assert.deepEqual(await strongResult(edited, source), { text: source, preserved: undefined });
+});
