@@ -2418,6 +2418,19 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
   const venue = /(?<![가-힣])([가-힣]{1,5}(?:장|관|실|홀|센터|갤러리|스튜디오|극장|공원))(?=이라는\s?(?:공간|곳|장소)|(?:\s?안)?에서|에\s|에$)/g;
   // 장소 뒷말로 끝나지만 장소가 아닌 낱말(처지·주장·변화·사실·직함·글).
   const nonVenue = new Set(['입장', '주장', '성장', '등장', '연장', '문장', '사실', '진실', '현실', '결실', '확실', '사장', '부장', '과장', '회장', '원장', '관장', '실장', '반장', '통장']);
+  // 완료 어휘가 있어도 미완성·거의 완성·완료하지 못함은 완전한 완료의 근거가 아니다.
+  const completionClaim = /완성(?!도)|완료|마무리(?:했|한|된|되|지|해)|끝마(?:쳤|친|치)|다\s?만들(?:었|어)|다\s?만든/g;
+  const completionStatus = (match: RegExpMatchArray) => {
+    const value = match.input ?? '';
+    const start = match.index ?? 0;
+    const before = value.slice(0, start).split(/[.!?。！？\n,]/).at(-1) ?? '';
+    const after = value.slice(start + match[0].length).split(/[.!?。！？\n,]/)[0] ?? '';
+    if (/(?:미|불)$|(?:못|안)\s*$/.test(before)
+      || /^(?:하|되|시키)?(?:지|지는)\s*(?:않|못)|^(?:한|된)\s*(?:것|상태)?(?:은|이)?\s*아니/.test(after)) return 'negative';
+    if (/(?:거의|일부만|일부|부분적으로|부분만|절반만|절반|대부분|아직)\s*$/.test(before)) return 'partial';
+    return 'complete';
+  };
+  const sourceCompletionStates = new Set(Array.from(source.matchAll(completionClaim), completionStatus));
   // 횟수·수량과 한정 표현은 띄어쓰기와 ‘번/차례’ 차이를 무시하고 원문과 대조한다.
   const compact = (value: string) => value.replace(/\s/g, '').replace(/차례/g, '번');
   const compactSource = compact(source);
@@ -2493,8 +2506,7 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
     [/최선|최적/g, match => source.includes(match[0])],
     // ‘완성한 앱’, ‘다 만든 앱’처럼 만든 것이 끝났다는 상태 주장. 원문이 ‘만들어 온’·‘시험 설치’처럼 진행 중으로 적었으면
     // 완료로 넓힌 것이다. 원문에 같은 완료 표현(완성·완료·마무리·다 만든)이 있을 때만 통과한다. ‘설치를 마치고’ 같은 단계 끝은 다루지 않는다.
-    [/완성(?!도)|완료|마무리(?:했|한|된|되|지|해)|끝마(?:쳤|친|치)|다\s?만들(?:었|어)|다\s?만든/g,
-      match => /완성(?!도)|완료|마무리|끝마|다\s?만들|다\s?만든/.test(source)],
+    [completionClaim, match => sourceCompletionStates.has(completionStatus(match))],
     // ‘벅찰 만큼’, ‘무척’, ‘너무나’처럼 감정·평가의 정도를 높이는 말. 원문에 같은 말이 있을 때만 통과한다(감정 정도 유지).
     [/벅찰|벅차(?:오르|올랐|고|서|게|다|도록)|터질\s?듯|날아갈\s?듯|눈물이\s?날\s?(?:만큼|듯|정도)|뭉클|너무나|무척|몹시|굉장히|엄청|대단히|한없이|더없이|이루\s?말할\s?수\s?없|말할\s?수\s?없이|어느\s?때보다/g,
       match => compactSource.includes(compact(match[0]))],
@@ -2659,7 +2671,7 @@ function resolveGroundedPolish(raw: string, expected: Array<string | null>, mark
 function dateNegationMarks(value: string): { exact: Set<string>; kept: Set<string> } {
   const exact = new Set<string>();
   const kept = new Set<string>();
-  const day = /(?:월|화|수|목|금|토|일)요일|주말|평일|어젯밤|오늘|어제|내일|그제|그저께|모레|(?:지난|이번|다음)\s?(?:주|달|해)(?![가-힣])|\d{1,2}\s?월\s?\d{1,2}\s?일|\d{4}\s?년/g;
+  const day = /(?:월|화|수|목|금|토|일)요일|주말|평일|어젯밤|오늘|어제|내일|그제|그저께|모레|(?:지난|이번|다음)\s?(?:주|달|해)(?=$|[^가-힣]|(?:에는|에도|부터|까지|에|는|은|도|의|만)(?:는|도|만)?(?=$|[^가-힣]))|\d{1,2}\s?월\s?\d{1,2}\s?일|\d{4}\s?년/g;
   for (const match of value.matchAll(day)) exact.add(`날:${match[0].replace(/\s/g, '')}`);
   if (/않|(?<![가-힣])안\s/.test(value)) exact.add('부정:않');
   if (/(?<![가-힣])못(?:\s|했|한|하|해|하|갔|간|봤|본)/.test(value)) exact.add('부정:못');

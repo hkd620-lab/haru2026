@@ -2002,3 +2002,28 @@ test('다시 쓸 수 있다는 사실을 언제든 가능한 것으로 넓히지
   const edited = '녹음한 곡은 언제든 다시 들을 수 있다. 다만 정리는 아직 남아 있다.';
   assert.deepEqual(await strongResult(grounded, edited), { text: edited, preserved: undefined });
 });
+
+test('Codex P2: 상대 날짜의 조사 편집은 보존하고 다음 주로 바꾸면 복원한다', async () => {
+  for (const [source, edited] of [
+    ['이번 주 책을 읽었다.', '이번 주에는 책을 읽었다.'],
+    ['지난달에 책을 읽었다.', '지난달에는 책을 읽었다.'],
+    ['다음 주부터 책을 읽을 예정이다.', '다음 주부터는 책을 읽을 예정이다.'],
+  ]) assert.deepEqual(await strongResult(source, edited), { text: edited, preserved: undefined });
+  const source = '이번 주에는 책을 읽었다.';
+  assert.deepEqual(await strongResult(source, '다음 주에는 책을 읽었다.'), { text: source, preserved: true });
+});
+
+test('Codex P2: 미완성·거의 완성과 부정된 완료는 완전한 완료의 근거가 아니다', async () => {
+  for (const source of [
+    '미완성인 앱을 시험 실행했다.',
+    '거의 완성한 앱을 시험 실행했다.',
+    '일부만 완성한 앱을 시험 실행했다.',
+    '앱을 완성하지 못했다.',
+    '앱을 완료하지 않았다.',
+  ]) assert.deepEqual(await strongResult(source, '완성한 앱을 시험 실행했다.'), { text: source, preserved: true });
+  for (const [source, edited] of [
+    ['미완성인 앱을 시험 실행했다.', '미완성인 앱을 시험으로 실행했다.'],
+    ['거의 완성한 앱을 시험 실행했다.', '거의 완성한 앱을 시험으로 실행했다.'],
+    ['완성한 앱을 시험 실행했다.', '완성한 앱을 시험으로 실행했다.'],
+  ]) assert.deepEqual(await strongResult(source, edited), { text: edited, preserved: undefined });
+});
