@@ -2395,10 +2395,16 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
   // 횟수·수량과 한정 표현은 띄어쓰기와 ‘번/차례’ 차이를 무시하고 원문과 대조한다.
   const compact = (value: string) => value.replace(/\s/g, '').replace(/차례/g, '번');
   const compactSource = compact(source);
+  // 횟수 표현은 ‘열두 번’·‘12번’처럼 수량 전체를 한 덩어리로 뽑아 원문 수량과 통째로 대조한다.
+  // 부분 문자열로 대조하면 원문 ‘열두 번’ 안의 ‘두 번’, ‘12번’ 안의 ‘2번’이 근거로 통과한다.
+  const countClaim = /(?<![가-힣])(?:수|몇)\s?(?:십|백|천|만)(?:\s?번)?|수많|무수|수없이|셀\s?수\s?없|숱하|숱한|(?<![가-힣\d])(?:(?:열|스물|서른|마흔|쉰|예순|일흔|여든|아흔)(?:\s?(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉))?|스무|여러|몇|두|세|네|다섯|여섯|일곱|여덟|아홉|\d+)\s?(?:번|차례)(?!째|지|호|역|화|갈)/g;
+  const countKey = (value: string) => compact(value).replace(/번$/, '');
+  const sourceCounts = new Set(Array.from(source.matchAll(countClaim), match => countKey(match[0])));
   const sourceIntentStems = Array.from(source.matchAll(intent), match => intentStem(match[1])).filter(Boolean);
   // ‘처음’·‘최초’·‘가장 먼저’·‘첫 ~’ 같은 처음·최초 주장과 그 주장이 가리키는 말.
   // 가리키는 말은 같은 문장에서 주장 뒤 세 낱말(‘처음이었다’처럼 붙은 서술이면 앞 세 낱말)의 어간이다.
-  const firstClaim = /(?<![가-힣])(?:생애\s?)?(?:(?:맨|가장|제일)\s?(?:먼저|처음)|처음|최초)(이었|이다|이라|인|이)?(?:으로|으론|에는|엔|부터|에|의)?(?![가-힣])|(?<![가-힣])첫(?=\s?[가-힣])/g;
+  // 서술형은 ‘처음이었다’·‘처음이었던’·‘처음이라서’·‘최초였다’처럼 서술 어미까지 한 덩어리로 인식한다.
+  const firstClaim = /(?<![가-힣])(?:생애\s?)?(?:(?:맨|가장|제일)\s?(?:먼저|처음)|처음|최초)((?:이(?:었|였)?|였|인)(?:다|던|고|지만|는데|어서|으니|니|며|라서|라고|라는|라|기에|지)?)?(?:으로|으론|에는|엔|부터|에|의)?(?![가-힣])|(?<![가-힣])첫(?=\s?[가-힣])/g;
   const endingSyllables = new Set('다고며서는은을를던든한했해하된됐돼되었았였어아여게기지니도에로으의이가와과본쳤친들'.split(''));
   const lightStems = new Set(['하', '해', '한', '본', '보', '봤', '된', '되', '것', '수', '때', '번']);
   const firstTargets = (match: RegExpMatchArray) => {
@@ -2446,9 +2452,8 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
     [perception, () => Array.from(source.matchAll(perception)).length > 0],
     // 화면·아이콘·버튼 같은 기기 화면 세부 묘사. 원문이 같은 대상을 적었을 때만 통과한다.
     [/화면|아이콘|버튼/g, match => source.includes(match[0])],
-    // ‘수십 번’, ‘수많은’, ‘두 차례’처럼 원문에 없는 횟수·수량 구체화. 원문에 같은 표현이 있을 때만 통과한다.
-    [/(?<![가-힣])(?:수|몇)\s?(?:십|백|천|만)(?:\s?번)?|수많|무수|수없이|셀\s?수\s?없|숱하|숱한|(?<![가-힣])(?:여러|몇|두|세|네|다섯|여섯|일곱|여덟|아홉|열|\d+)\s?(?:번|차례)(?!째|지|호|역|화|갈)/g,
-      match => compactSource.includes(compact(match[0]))],
+    // ‘수십 번’, ‘수많은’, ‘두 차례’처럼 원문에 없는 횟수·수량 구체화. 원문에 같은 수량 전체가 있을 때만 통과한다.
+    [countClaim, match => sourceCounts.has(countKey(match[0]))],
     // ‘머릿속으로만’, ‘오직’, ‘~뿐이었다’처럼 원문에 없는 배타·한정 주장. 원문에 같은 표현이 있을 때만 통과한다.
     [/[가-힣]*(?:으로만|로만|에서만|에게만|한테만|에만)(?=$|[^가-힣]|[은이])|[가-힣]*기만\s?(?:했|하|할|한)|(?<![가-힣])(?:오직|오로지|단지|그저|고작|유일하게|유일한)|뿐(?!만)|밖에\s?(?:없|안|못)/g,
       match => compactSource.includes(compact(match[0]))],
@@ -2578,7 +2583,26 @@ function groundedSentenceTools() {
     for (const gram of a) if (b.has(gram)) shared++;
     return (2 * shared) / (a.size + b.size);
   };
-  return { split, sentences, grams, similarity };
+  // 남은 결과 문장이 원문 문장(같은 문장이 되풀이되면 한 번만)을 원문 순서대로 모두 담는지 본다.
+  // 결과 한 문장이 이어진 원문 문장 여럿을 합쳐 담아도 된다.
+  const covers = (outputs: string[], sourceSentences: string[]) => {
+    const outputGrams = outputs.map(grams);
+    const seen = new Set<string>();
+    let position = 0;
+    for (const sentence of sourceSentences) {
+      const key = sentence.replace(/[^가-힣a-zA-Z0-9]/g, '');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const own = grams(sentence);
+      while (position < outputGrams.length && similarity(own, outputGrams[position]) < 0.3) position++;
+      if (position >= outputGrams.length) return false;
+    }
+    return true;
+  };
+  // split 결과에서 남길 문장 칸만 이어 붙인다. 각 문장 앞에는 원래 그 문장 앞에 있던 공백·빈 줄을 둔다.
+  const joinKept = (parts: string[], kept: number[]) => kept
+    .map((partIndex, order) => (order === 0 ? '' : parts[partIndex - 1]) + parts[partIndex]).join('');
+  return { split, sentences, grams, similarity, covers, joinKept };
 }
 
 // 다듬은 문장이 같은 순번 원문 문단보다 다른 원문 문단의 문장에 뚜렷이 더 가깝거나, 앞 문단의 다듬은 문장을
@@ -2597,12 +2621,13 @@ function repeatsOtherParagraph(sentence: string, ownSource: string, otherSources
 // 검사에 걸린 문단 안에서, 새 주장을 더한 문장(또는 다른 문단을 되풀이한 문장)이 원문 문장 하나와 확실히 대응될 때만
 // 그 문장을 원문 문장으로 바꾼다. 대응이 불확실하면(문장 순서 바뀜, 같은 원문 문장에 여러 결과 문장, 유사도 부족)
 // null을 돌려 문단 폴백을 유지한다. 나머지 문장과 문장 사이 공백·빈 줄은 다듬은 그대로 둔다.
+// 원문 어느 문장과도 거의 겹치지 않는 문제 문장(대응 없는 덧붙임)은, 남은 문장이 원문 문장을 순서대로 모두 담을 때만
+// 그 문장을 빼고 나머지 편집을 살린다. 원문 문장이 하나라도 빠지면 null이다.
 // 복원 뒤 문단 전체를 다시 검사해 남은 문제가 있으면 null이다.
 function restoreGroundedSentences(text: string, source: string, repeats?: (sentence: string) => boolean): string | null {
-  const { split, sentences, grams, similarity } = groundedSentenceTools();
+  const { split, sentences, grams, similarity, covers, joinKept } = groundedSentenceTools();
   const sourceSentences = sentences(source);
-  // 한 문장짜리 원문 문단은 문장 복원이 곧 문단 폴백이다.
-  if (sourceSentences.length < 2) return null;
+  if (!sourceSentences.length) return null;
   const parts = split(text.trim());
   const sentenceIndexes = parts.map((part, index) => index).filter(index => index % 2 === 0 && parts[index].trim());
   if (sentenceIndexes.length < 2) return null;
@@ -2614,7 +2639,7 @@ function restoreGroundedSentences(text: string, source: string, repeats?: (sente
     const scores = sourceGrams.map(other => similarity(own, other));
     const best = scores.indexOf(Math.max(...scores));
     const runnerUp = Math.max(0, ...scores.filter((_, index) => index !== best));
-    return { partIndex, best, reliable: scores[best] >= 0.3 && scores[best] - runnerUp >= 0.1 };
+    return { partIndex, best, score: scores[best], reliable: scores[best] >= 0.3 && scores[best] - runnerUp >= 0.1 };
   });
   // 확실한 대응의 순서가 원문 순서와 어긋나면 오배치 위험이 있으므로 복원하지 않는다.
   const reliableOrder = matches.filter(match => match.reliable).map(match => match.best);
@@ -2625,14 +2650,57 @@ function restoreGroundedSentences(text: string, source: string, repeats?: (sente
     || (repeats?.(sentence.trim()) ?? false);
   const failing = matches.filter(match => addsClaim(parts[match.partIndex]));
   if (!failing.length) return null;
+  // 원문 어느 문장과도 유사도 0.2 미만인 문제 문장은 원문에 대응이 없는 덧붙임으로 보고 뺄 후보로 둔다.
+  const dropped = new Set(failing.filter(match => match.score < 0.2).map(match => match.partIndex));
   for (const match of failing) {
+    if (dropped.has(match.partIndex)) continue;
+    // 한 문장짜리 원문 문단은 문장 바꾸기가 곧 문단 폴백이다.
     // 같은 원문 문장에 대응하는 결과 문장이 하나뿐일 때만 바꾼다. 그렇지 않으면 원문 문장이 겹치거나 빠질 수 있다.
-    if (!match.reliable || matches.filter(other => other.best === match.best).length !== 1) return null;
+    if (sourceSentences.length < 2 || !match.reliable
+      || matches.filter(other => other.best === match.best && !dropped.has(other.partIndex)).length !== 1) return null;
     parts[match.partIndex] = sourceSentences[match.best];
   }
-  const repaired = parts.join('');
+  let repaired = parts.join('');
+  if (dropped.size) {
+    const kept = sentenceIndexes.filter(partIndex => !dropped.has(partIndex));
+    if (!kept.length || !covers(kept.map(partIndex => parts[partIndex]), sourceSentences)) return null;
+    repaired = joinKept(parts, kept);
+  }
   return failsGroundedParagraph(repaired, source) || (repeats !== undefined && sentences(repaired).some(repeats))
     ? null : repaired;
+}
+
+// 같은 문단 안에서 앞 문장을 거의 그대로 다시 쓴 뒤 문장만 지운다. 근거가 강할 때로 한정한다.
+// 두 문장 유사도 0.75 이상이고 뒤 문장의 두 글자 조각 85% 이상이 앞 문장에 있으며, 뒤 문장의 숫자·부정 표현이 앞 문장에도 있어야 한다.
+// 원문 문단에 그 문장과 비슷한 문장이 둘 이상이면 글쓴이가 일부러 되풀이한 것이므로 두고,
+// 지운 뒤에도 남은 문장이 원문 문장을 순서대로 모두 담을 때만 지운다. 지울 문장이 없거나 안전하지 않으면 null이다.
+function dropDuplicateGroundedSentences(text: string, source: string): string | null {
+  const { split, sentences, grams, similarity, covers, joinKept } = groundedSentenceTools();
+  const parts = split(text.trim());
+  const sentenceIndexes = parts.map((part, index) => index).filter(index => index % 2 === 0 && parts[index].trim());
+  if (sentenceIndexes.length < 2) return null;
+  const sourceSentences = sentences(source);
+  const sourceGrams = sourceSentences.map(grams);
+  const markers = (value: string): string[] => value.match(/\d+|않|못|없|안(?=\s)/g) ?? [];
+  const dropped = new Set<number>();
+  for (let later = 1; later < sentenceIndexes.length; later++) {
+    const laterText = parts[sentenceIndexes[later]];
+    const laterGrams = grams(laterText);
+    if (!laterGrams.size || sourceGrams.filter(other => similarity(laterGrams, other) >= 0.6).length >= 2) continue;
+    const duplicate = sentenceIndexes.slice(0, later).some(partIndex => {
+      if (dropped.has(partIndex)) return false;
+      const earlierGrams = grams(parts[partIndex]);
+      let shared = 0;
+      for (const gram of laterGrams) if (earlierGrams.has(gram)) shared++;
+      const earlierMarkers = markers(parts[partIndex]);
+      return similarity(laterGrams, earlierGrams) >= 0.75 && shared / laterGrams.size >= 0.85
+        && markers(laterText).every(marker => earlierMarkers.includes(marker));
+    });
+    if (duplicate) dropped.add(sentenceIndexes[later]);
+  }
+  if (!dropped.size) return null;
+  const kept = sentenceIndexes.filter(partIndex => !dropped.has(partIndex));
+  return covers(kept.map(partIndex => parts[partIndex]), sourceSentences) ? joinKept(parts, kept) : null;
 }
 
 // ===== 🎨 AI 다듬기 =====
@@ -2793,7 +2861,7 @@ ${eventExample}${groundedPolish === undefined ? `\n${strongRichnessBlock}\n` : '
 
 [강에서 원문 근거로 의미 풀기]
 본문에서 서로 다른 방문지를 같은 장소로 합치지 않습니다. 원문에 여러 장소를 차례로 들렀다는 순서가 적혀 있을 때만 ‘이어서’로 순서를 살릴 수 있습니다. 원문의 단어가 같은 장소임을 명시할 때만 ‘그 자리에서’를 씁니다.
-원문의 사실과 이미 적은 감정은 같은 순번의 "text"에 다듬습니다. 서로 다른 경험·생각을 적었다면 읽기 쉽게 문단을 나눕니다. 비교·반복·변화가 원문에 명확하면 글쓴이 시점에서 원문에 적힌 행동을 한 흐름으로 잇습니다. 의미는 관련 문장을 배치하고 필요한 접속 표현을 써서 그 문단 안에서 드러나게 합니다. 별도의 해석 문장이나 본문을 되풀이한 맺음말은 붙이지 않습니다. ‘이 기록에서’, ‘것으로 읽힌다’, ‘것으로 보인다’처럼 글을 밖에서 해설하거나 평가하는 표현은 쓰지 않습니다. 원문의 시제·말투·‘오전’이나 ‘오후’·‘이번 주’·‘세 번’과 같은 범위를 유지합니다.
+원문의 사실과 이미 적은 감정은 같은 순번의 "text"에 다듬습니다. 서로 다른 경험·생각을 적었다면 읽기 쉽게 문단을 나눕니다. 비교·반복·변화가 원문에 명확하면 글쓴이 시점에서 원문에 적힌 행동을 한 흐름으로 잇습니다. 의미는 관련 문장을 배치하고 필요한 접속 표현을 써서 그 문단 안에서 드러나게 합니다. 별도의 해석 문장이나 본문을 되풀이한 맺음말은 붙이지 않습니다. 한 생각·한 의미는 한 문장에 한 번만 씁니다. 이미 쓴 문장과 같은 뜻을 다른 말로 바꿔 다시 쓰지 않고, 같은 의미의 문장이 둘이 되면 하나만 남깁니다(예: ‘하루가 길게 느껴졌다’ 뒤에 ‘시간이 더디게 흐른 하루였다’를 다시 쓰지 않습니다). 원문이 일부러 되풀이한 문장과 서로 다른 사실은 각각 남깁니다. ‘이 기록에서’, ‘것으로 읽힌다’, ‘것으로 보인다’처럼 글을 밖에서 해설하거나 평가하는 표현은 쓰지 않습니다. 원문의 시제·말투·‘오전’이나 ‘오후’·‘이번 주’·‘세 번’과 같은 범위를 유지합니다.
 하루에 여러 이야기를 적었다면 각 이야기의 사람과 행동을 빠뜨리지 않습니다. 주제가 달라지는 대목에서 문단을 나누고, 마지막에 적힌 사람의 이야기도 본문에 포함합니다. 배우자의 행동이나 말을 글쓴이의 행동이나 말로 바꾸지 않습니다.
 출력 전에 연결한 행동·사람·날짜·수치·장소와 변화의 범위를 원문에 대조합니다. 그 표현이 사실이 아니어도 원문이 그대로 성립한다면 그 표현을 삭제합니다. 일부 날의 일은 지속된 습관이나 전면적인 변화로 만들지 않습니다. 방문한 곳의 수를 속도나 여유로 해석하지 않습니다. 어떤 행동이 문제를 해결했다거나 좋은 결과를 냈다고 임의로 연결하지 않습니다. 원문에서 확인되지 않는 동행 여부·원인·의도·감정·교훈을 쓰지 않습니다.
 예시 1. ‘작년에는 토요일마다 집에서 영화를 봤다. 이번 달에는 두 토요일에 공연장에 갔다.’ → ‘집에서 영화를 보곤 하던 토요일을 이번 달에는 두 번 공연장에서 보냈다.’ ‘외출을 즐기게 됐다’는 근거가 없습니다.
@@ -2948,10 +3016,12 @@ ${SOURCE_PRESERVATION_RULES}`;
         const texts = resolveGroundedPolish(polishedText,
           paragraphs.map(paragraph => paragraph.kept ? paragraph.text.trim() : null), protectedActors?.markerPrefix);
         let accepted = 0;
-        const merged = texts?.map((paragraphText, index, all) => {
+        const merged = texts?.map((responseText, index, all) => {
           const paragraph = paragraphs[index];
           if (paragraph.kept) return paragraph.original;
-          if (protectedActors?.hasActor(paragraphText)) return paragraph.original;
+          if (protectedActors?.hasActor(responseText)) return paragraph.original;
+          // 같은 문단 안에서 거의 같은 문장을 되풀이했으면, 근거가 강하고 원문 문장이 모두 남을 때만 뒤 문장을 지운다.
+          const paragraphText = dropDuplicateGroundedSentences(responseText, paragraph.original) ?? responseText;
           // 다른 원문 문단의 내용이나 앞 문단의 다듬은 문장을 되풀이한 문장도 문제 문장으로 본다.
           const otherSources = paragraphs.filter((other, otherIndex) => otherIndex !== index && !other.kept).map(other => other.original);
           const earlierOutputs = all.slice(0, index).filter((_, otherIndex) => !paragraphs[otherIndex].kept);
