@@ -2036,3 +2036,18 @@ test('Codex 재리뷰 P2: 마무리를 했다의 명사형 완료 근거를 유�
     assert.deepEqual(await strongResult(source, '앱을 마무리했다.'), { text: source, preserved: true });
   }
 });
+
+test('Codex 3차 P2: 마무리 의무·시도 계획과 완료 의도를 실제 완료의 근거로 쓰지 않는다', async () => {
+  for (const source of [
+    '앱의 마무리를 해야 한다.',
+    '앱의 마무리를 해 보려고 한다.',
+    '앱을 완성해야 한다.',
+    '앱을 완성할 예정이다.',
+    '앱을 완성하려고 한다.',
+    '앱을 완성하고 싶다.',
+    '앱을 완성하는 중이다.',
+  ]) assert.deepEqual(await strongResult(source, '앱을 마무리했다.'), { text: source, preserved: true });
+  for (const source of ['앱의 마무리를 해 냈다.', '앱의 마무리가 되었다.']) {
+    assert.deepEqual(await strongResult(source, '앱을 마무리했다.'), { text: '앱을 마무리했다.', preserved: undefined });
+  }
+});
