@@ -2419,7 +2419,7 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
   // 장소 뒷말로 끝나지만 장소가 아닌 낱말(처지·주장·변화·사실·직함·글).
   const nonVenue = new Set(['입장', '주장', '성장', '등장', '연장', '문장', '사실', '진실', '현실', '결실', '확실', '사장', '부장', '과장', '회장', '원장', '관장', '실장', '반장', '통장']);
   // 완료 어휘가 있어도 미완성·거의 완성·완료하지 못함은 완전한 완료의 근거가 아니다.
-  const completionClaim = /완성(?!도)|완료|마무리(?:했|한|된|되|지|해)|끝마(?:쳤|친|치)|다\s?만들(?:었|어)|다\s?만든/g;
+  const completionClaim = /완성(?!도)|완료|마무리(?:[를는도]\s*)?(?:했|한|된|되|지|해|하(?=지))|끝마(?:쳤|친|치)|다\s?만들(?:었|어)|다\s?만든/g;
   const completionStatus = (match: RegExpMatchArray) => {
     const value = match.input ?? '';
     const start = match.index ?? 0;

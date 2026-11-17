@@ -2027,3 +2027,12 @@ test('Codex P2: 미완성·거의 완성과 부정된 완료는 완전한 완료
     ['완성한 앱을 시험 실행했다.', '완성한 앱을 시험으로 실행했다.'],
   ]) assert.deepEqual(await strongResult(source, edited), { text: edited, preserved: undefined });
 });
+
+test('Codex 재리뷰 P2: 마무리를 했다의 명사형 완료 근거를 유지하고 부정·계획은 구별한다', async () => {
+  for (const source of ['앱의 마무리를 했다.', '앱의 마무리는 했다.']) {
+    assert.deepEqual(await strongResult(source, '앱을 마무리했다.'), { text: '앱을 마무리했다.', preserved: undefined });
+  }
+  for (const source of ['앱의 마무리를 하지 않았다.', '앱의 마무리 계획을 세웠다.']) {
+    assert.deepEqual(await strongResult(source, '앱을 마무리했다.'), { text: source, preserved: true });
+  }
+});
