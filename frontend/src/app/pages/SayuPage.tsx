@@ -1,3 +1,4 @@
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { readSelectedRecordPhoto } from '../services/selectedRecordPhoto';
 import { getHaruLawAttachmentLabel } from '../utils/haruLawAttachment';
 import { HaruLawAnswer, splitHaruLawAnswer } from '../components/HaruLawAnswer';
@@ -741,7 +742,7 @@ export function SayuPage() {
           const clean = trimmed.replace(/^###\s*/, '').replace(/\*\*/g, '');
           return (
             <p key={lineIdx} style={{
-              fontSize: 13, fontWeight: 700, color: '#4a2d7a',
+              fontSize: 13, fontWeight: 700, color: 'var(--haru-semantic-violet, #4a2d7a)',
               marginBottom: 6, marginTop: lineIdx > 0 ? 16 : 0,
               lineHeight: 1.6,
             }}>{clean}</p>
@@ -753,7 +754,7 @@ export function SayuPage() {
           const clean = trimmed.replace(/^##\s*/, '').replace(/\*\*/g, '');
           return (
             <p key={lineIdx} style={{
-              fontSize: 14, fontWeight: 800, color: '#2d1b4e',
+              fontSize: 14, fontWeight: 800, color: 'var(--haru-semantic-violet, #2d1b4e)',
               marginBottom: 8, marginTop: lineIdx > 0 ? 20 : 0,
               paddingLeft: 10, borderLeft: '3px solid #4a90d9',
               lineHeight: 1.5,
@@ -766,7 +767,7 @@ export function SayuPage() {
           const clean = trimmed.replace(/^#\s*/, '').replace(/\*\*/g, '');
           return (
             <p key={lineIdx} style={{
-              fontSize: 16, fontWeight: 900, color: '#1a0a2e',
+              fontSize: 16, fontWeight: 900, color: 'var(--haru-semantic-violet, #1a0a2e)',
               marginBottom: 10, marginTop: lineIdx > 0 ? 22 : 0,
               paddingLeft: 12, borderLeft: '4px solid #8B4789',
               lineHeight: 1.5,
@@ -779,7 +780,7 @@ export function SayuPage() {
           const clean = trimmed.replace(/\*\*/g, '');
           return (
             <p key={lineIdx} style={{
-              fontSize: 15, fontWeight: 800, color: '#2d1b4e',
+              fontSize: 15, fontWeight: 800, color: 'var(--haru-semantic-violet, #2d1b4e)',
               marginBottom: 10, marginTop: lineIdx > 0 ? 18 : 0,
               paddingLeft: 10, borderLeft: '3px solid #8B4789',
               lineHeight: 1.5,
@@ -792,7 +793,7 @@ export function SayuPage() {
           const clean = trimmed.replace(/\*\*/g, '');
           return (
             <p key={lineIdx} style={{
-              fontSize: 13, fontWeight: 700, color: '#4a2d7a',
+              fontSize: 13, fontWeight: 700, color: 'var(--haru-semantic-violet, #4a2d7a)',
               marginBottom: 6, marginTop: 14, lineHeight: 1.6,
             }}>{clean}</p>
           );
@@ -803,7 +804,7 @@ export function SayuPage() {
           const clean = trimmed.replace(/\*\*/g, '');
           return (
             <p key={lineIdx} style={{
-              fontSize: 13, fontWeight: 600, color: '#2d1b4e',
+              fontSize: 13, fontWeight: 600, color: 'var(--haru-semantic-violet, #2d1b4e)',
               marginBottom: 8, marginTop: lineIdx > 0 ? 14 : 0,
               lineHeight: 1.7,
             }}>{clean}</p>
@@ -2173,18 +2174,20 @@ export function SayuPage() {
   const fetchRecords = async () => {
     if (!user?.uid) {
       setLoading(false);
-      return;
+      return false;
     }
 
     setLoading(true);
     try {
       const data = await firestoreService.getRecords(user.uid);
-      if (currentRecordsUidRef.current !== user.uid) return;
+      if (currentRecordsUidRef.current !== user.uid) return false;
       setRecords(data);
       setRecordsOwnerUid(user.uid);
+      return true;
     } catch (error) {
       console.error('기록 불러오기 실패:', error);
       toast.error('기록을 불러오는데 실패했습니다.');
+      return false;
     } finally {
       setLoading(false);
     }
@@ -2337,7 +2340,7 @@ export function SayuPage() {
         );
         if (hasContent) {
           seen.add(prefix);
-          dots.push({ prefix, color: FORMAT_COLORS[prefix] ?? '#10b981' });
+          dots.push({ prefix, color: FORMAT_COLORS[prefix] ?? 'var(--haru-semantic-green, #10b981)' });
         }
       });
     });
@@ -3407,34 +3410,34 @@ export function SayuPage() {
     const fmtKrw = (n: number) => n.toLocaleString('ko-KR') + '원';
     return (
       <div style={{
-        backgroundColor: '#fff',
+        backgroundColor: 'var(--haru-surface, #fff)',
         borderRadius: 12,
         padding: '14px 16px',
         marginBottom: 10,
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--haru-border, #e5e7eb)',
         boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: '#7A6F5A', marginBottom: 10 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--haru-muted, #7A6F5A)', marginBottom: 10 }}>
           📒 이번 달 기장 요약
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
-          <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: '#f0fdf4', borderRadius: 8 }}>
-            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>수입</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981' }}>{fmtKrw(totalIncome)}</div>
+          <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: 'var(--haru-tint-green, #f0fdf4)', borderRadius: 8 }}>
+            <div style={{ fontSize: 11, color: 'var(--haru-muted, #6b7280)', marginBottom: 2 }}>수입</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--haru-semantic-green, #10b981)' }}>{fmtKrw(totalIncome)}</div>
           </div>
-          <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: '#fff5f5', borderRadius: 8 }}>
-            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>지출</div>
+          <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: 'var(--haru-tint-rose, #fff5f5)', borderRadius: 8 }}>
+            <div style={{ fontSize: 11, color: 'var(--haru-muted, #6b7280)', marginBottom: 2 }}>지출</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444' }}>{fmtKrw(totalExpense)}</div>
           </div>
-          <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: '#f8f9fa', borderRadius: 8 }}>
-            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>예상 잔액</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: balance >= 0 ? '#1A3C6E' : '#ef4444' }}>
+          <div style={{ textAlign: 'center', padding: '8px 4px', backgroundColor: 'var(--haru-tint-blue, #f8f9fa)', borderRadius: 8 }}>
+            <div style={{ fontSize: 11, color: 'var(--haru-muted, #6b7280)', marginBottom: 2 }}>예상 잔액</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: balance >= 0 ? 'var(--haru-link, #1A3C6E)' : '#ef4444' }}>
               {balance >= 0 ? '' : '-'}{fmtKrw(Math.abs(balance))}
             </div>
           </div>
         </div>
         {comment && (
-          <p style={{ margin: 0, fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>{comment}</p>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--haru-muted, #6b7280)', lineHeight: 1.5 }}>{comment}</p>
         )}
         <button
           onClick={() => {
@@ -3451,7 +3454,7 @@ export function SayuPage() {
             marginTop: 10,
             width: '100%',
             padding: '8px 0',
-            backgroundColor: '#1A3C6E',
+            backgroundColor: 'var(--haru-button-blue, #1A3C6E)',
             color: '#fff',
             border: 'none',
             borderRadius: 8,
@@ -3486,7 +3489,7 @@ export function SayuPage() {
         style={{
           width: '100%',
           padding: '10px 0',
-          backgroundColor: '#1A3C6E',
+          backgroundColor: 'var(--haru-button-blue, #1A3C6E)',
           color: '#fff',
           border: 'none',
           borderRadius: 8,
@@ -3825,18 +3828,18 @@ export function SayuPage() {
         <img
           src={imageUrl}
           alt={`${badge} 대표사진`}
-          style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e7eb', flexShrink: 0 }}
+          style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--haru-border, #e5e7eb)', flexShrink: 0 }}
         />
       ) : (
         <div
           aria-hidden="true"
-          style={{ width: 52, height: 52, borderRadius: 8, backgroundColor: '#ecfdf5', border: '1px solid #d1fae5', display: 'grid', placeItems: 'center', color: '#15803d', flexShrink: 0 }}
+          style={{ width: 52, height: 52, borderRadius: 8, backgroundColor: 'var(--haru-tint-green, #ecfdf5)', border: '1px solid var(--haru-border, #d1fae5)', display: 'grid', placeItems: 'center', color: 'var(--haru-semantic-green, #15803d)', flexShrink: 0 }}
         >
           <Leaf className="w-5 h-5" />
         </div>
       )}
       <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <span style={{ alignSelf: 'flex-start', borderRadius: 999, backgroundColor: '#ecfdf5', color: '#15803d', padding: '3px 8px', fontSize: 11, fontWeight: 800 }}>
+        <span style={{ alignSelf: 'flex-start', borderRadius: 999, backgroundColor: 'var(--haru-tint-green, #ecfdf5)', color: 'var(--haru-semantic-green, #15803d)', padding: '3px 8px', fontSize: 11, fontWeight: 800 }}>
           {badge}
         </span>
         {lines.filter(Boolean).slice(0, 2).map((line, idx) => (
@@ -3848,7 +3851,7 @@ export function SayuPage() {
       <button
         type="button"
         onClick={onOpen}
-        style={{ minHeight: 30, padding: '0 11px', borderRadius: 7, border: '1px solid #d8c98a', background: '#fff', color: '#4A5A2C', fontSize: 12, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}
+        style={{ minHeight: 30, padding: '0 11px', borderRadius: 7, border: '1px solid var(--haru-border, #d8c98a)', background: 'var(--haru-surface, #fff)', color: 'var(--haru-accent-ink, #4A5A2C)', fontSize: 12, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}
       >
         상세보기
       </button>
@@ -3860,12 +3863,12 @@ export function SayuPage() {
       <img
         src={entry.plantPreviewImageUrl}
         alt=""
-        style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e7eb', flex: '0 0 48px', backgroundColor: '#f9fafb' }}
+        style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--haru-border, #e5e7eb)', flex: '0 0 48px', backgroundColor: 'var(--haru-subtle, #f9fafb)' }}
       />
     ) : (
       <span
         aria-hidden="true"
-        style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: '#ecfdf5', border: '1px solid #d1fae5', display: 'grid', placeItems: 'center', color: '#15803d', flex: '0 0 48px' }}
+        style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: 'var(--haru-tint-green, #ecfdf5)', border: '1px solid var(--haru-border, #d1fae5)', display: 'grid', placeItems: 'center', color: 'var(--haru-semantic-green, #15803d)', flex: '0 0 48px' }}
       >
         <Leaf className="w-5 h-5" />
       </span>
@@ -3882,19 +3885,19 @@ export function SayuPage() {
   };
 
   const renderPlantListRow = (entry: FlatSayuEntry, idx: number, options?: { showTypeBadges?: boolean }) => (
-    <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0', display: 'flex', alignItems: 'stretch' }}>
+    <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: 'var(--haru-border, #f0f0f0)', display: 'flex', alignItems: 'stretch' }}>
       <button
         type="button"
         onClick={entry.onOpen}
         className="flex-1 flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
         style={{ minHeight: 64, paddingLeft: 18, minWidth: 0 }}
       >
-        <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 36 }}>
+        <span className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--haru-link, #1A3C6E)', minWidth: 36 }}>
           {formatListDate(entry.date)}
         </span>
         {renderPlantThumbnail(entry)}
         <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 3 }}>
-          <span className="text-sm truncate" style={{ color: '#333', minWidth: 0 }}>
+          <span className="text-sm truncate" style={{ color: 'var(--haru-ink, #333)', minWidth: 0 }}>
             {entry.title}
           </span>
           {options?.showTypeBadges && entry.plantTypeBadges && entry.plantTypeBadges.length > 0 && (
@@ -3904,8 +3907,8 @@ export function SayuPage() {
                   key={type}
                   style={{
                     borderRadius: 999,
-                    backgroundColor: '#ecfdf5',
-                    color: '#15803d',
+                    backgroundColor: 'var(--haru-tint-green, #ecfdf5)',
+                    color: 'var(--haru-semantic-green, #15803d)',
                     padding: '2px 7px',
                     fontSize: 10,
                     fontWeight: 800,
@@ -3939,8 +3942,8 @@ export function SayuPage() {
           borderRadius: 0,
           border: 'none',
           borderLeft: '1px solid #f0f0f0',
-          background: '#fff',
-          color: '#4A5A2C',
+          background: 'var(--haru-surface, #fff)',
+          color: 'var(--haru-accent-ink, #4A5A2C)',
           fontSize: 12,
           fontWeight: 800,
           cursor: 'pointer',
@@ -4124,9 +4127,9 @@ export function SayuPage() {
         <img
           src={preview.imageUrl}
           alt={`${GROWTH_TIMELINE_FORMAT_LABEL} 대표사진`}
-          style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid #e5e7eb', flexShrink: 0 }}
+          style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--haru-border, #e5e7eb)', flexShrink: 0 }}
         />
-        <span style={{ borderRadius: 999, backgroundColor: '#edf7f1', color: '#37644a', padding: '4px 9px', fontSize: 11, fontWeight: 800 }}>
+        <span style={{ borderRadius: 999, backgroundColor: 'var(--haru-tint-green, #edf7f1)', color: 'var(--haru-semantic-green, #37644a)', padding: '4px 9px', fontSize: 11, fontWeight: 800 }}>
           {GROWTH_TIMELINE_SAYU_LABEL}
         </span>
       </button>
@@ -4172,7 +4175,7 @@ export function SayuPage() {
                 label,
                 title: ledgerDisplay.title,
                 subtitle: ledgerDisplay.subtitle,
-                color: FORMAT_COLORS[prefix] ?? '#1A3C6E',
+                color: FORMAT_COLORS[prefix] ?? 'var(--haru-link, #1A3C6E)',
                 keywords: getRecordPreviewKeywords(record, prefix),
                 searchText: buildSearchText(label, ledgerDisplay.title, ledgerDisplay.subtitle, getRecordSourceText(record, prefix)),
                 onOpen: () => openFormatSayu(record.date, prefix, label, record.id),
@@ -4188,7 +4191,7 @@ export function SayuPage() {
                 label,
                 title: display.title,
                 subtitle: display.subtitle,
-                color: FORMAT_COLORS[prefix] ?? '#1A3C6E',
+                color: FORMAT_COLORS[prefix] ?? 'var(--haru-link, #1A3C6E)',
                 keywords: [] as string[],
                 searchText: buildSearchText(label, display.title, display.subtitle),
                 onOpen: () => openFormatSayu(record.date, prefix, label, record.id),
@@ -4207,7 +4210,7 @@ export function SayuPage() {
             label,
             title,
             subtitle,
-            color: FORMAT_COLORS[prefix] ?? '#1A3C6E',
+            color: FORMAT_COLORS[prefix] ?? 'var(--haru-link, #1A3C6E)',
             keywords,
             searchText: buildSearchText(label, title, subtitle, keywords, getRecordSourceText(record, prefix)),
             onOpen: openEntry,
@@ -4358,7 +4361,7 @@ export function SayuPage() {
       role="tablist"
       style={{
         display: 'flex', gap: 4, padding: 4, borderRadius: 12,
-        backgroundColor: '#F1EADB', marginBottom: 16,
+        backgroundColor: 'var(--haru-subtle, #F1EADB)', marginBottom: 16,
         position: 'relative', zIndex: 2,
       }}
     >
@@ -4370,8 +4373,8 @@ export function SayuPage() {
         style={{
           flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
           border: 'none', cursor: 'pointer', pointerEvents: 'auto',
-          backgroundColor: viewMode === 'list' ? '#FFFFFF' : 'transparent',
-          color: viewMode === 'list' ? '#1A3C6E' : '#7A6A4F',
+          backgroundColor: viewMode === 'list' ? 'var(--haru-surface, #FFFFFF)' : 'transparent',
+          color: viewMode === 'list' ? 'var(--haru-link, #1A3C6E)' : 'var(--haru-muted, #7A6A4F)',
           fontSize: 13, fontWeight: viewMode === 'list' ? 700 : 500,
           boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
           transition: 'background-color 0.15s, color 0.15s',
@@ -4387,8 +4390,8 @@ export function SayuPage() {
         style={{
           flex: 1, minHeight: 36, padding: '6px 0', borderRadius: 8,
           border: 'none', cursor: 'pointer', pointerEvents: 'auto',
-          backgroundColor: viewMode === 'calendar' ? '#FFFFFF' : 'transparent',
-          color: viewMode === 'calendar' ? '#1A3C6E' : '#7A6A4F',
+          backgroundColor: viewMode === 'calendar' ? 'var(--haru-surface, #FFFFFF)' : 'transparent',
+          color: viewMode === 'calendar' ? 'var(--haru-link, #1A3C6E)' : 'var(--haru-muted, #7A6A4F)',
           fontSize: 13, fontWeight: viewMode === 'calendar' ? 700 : 500,
           boxShadow: viewMode === 'calendar' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
           transition: 'background-color 0.15s, color 0.15s',
@@ -4408,7 +4411,7 @@ export function SayuPage() {
         gap: 6,
         padding: 4,
         borderRadius: 12,
-        backgroundColor: '#F1EADB',
+        backgroundColor: 'var(--haru-subtle, #F1EADB)',
         marginBottom: 12,
       }}
     >
@@ -4430,8 +4433,8 @@ export function SayuPage() {
               padding: '7px 10px',
               borderRadius: 8,
               border: 'none',
-              backgroundColor: active ? '#FFFFFF' : 'transparent',
-              color: active ? '#1A3C6E' : '#7A6A4F',
+              backgroundColor: active ? 'var(--haru-surface, #FFFFFF)' : 'transparent',
+              color: active ? 'var(--haru-link, #1A3C6E)' : 'var(--haru-muted, #7A6A4F)',
               fontSize: 13,
               fontWeight: active ? 800 : 700,
               cursor: 'pointer',
@@ -4449,7 +4452,7 @@ export function SayuPage() {
     if (sayuLabelOptions.length === 0) return null;
     const allCount = activeEntries.length;
     const options = [
-      { label: '', displayLabel: '전체', color: '#1A3C6E', count: allCount },
+      { label: '', displayLabel: '전체', color: 'var(--haru-link, #1A3C6E)', count: allCount },
       ...sayuLabelOptions.map((option) => ({
         ...option,
         displayLabel: getSayuDisplayLabel(option.label),
@@ -4475,8 +4478,8 @@ export function SayuPage() {
                 padding: '0 11px',
                 borderRadius: 999,
                 border: active ? `1px solid ${option.color}` : '1px solid #D9D2EC',
-                backgroundColor: active ? '#FFFFFF' : '#F8F7FC',
-                color: active ? '#1A3C6E' : '#6B7280',
+                backgroundColor: active ? 'var(--haru-surface, #FFFFFF)' : 'var(--haru-subtle, #F8F7FC)',
+                color: active ? 'var(--haru-link, #1A3C6E)' : 'var(--haru-muted, #6B7280)',
                 fontSize: 12,
                 fontWeight: active ? 800 : 700,
                 cursor: 'pointer',
@@ -4501,12 +4504,12 @@ export function SayuPage() {
         minHeight: 44,
         padding: '0 12px',
         borderRadius: 10,
-        border: '1px solid #D9D2EC',
-        backgroundColor: '#FFFFFF',
+        border: '1px solid var(--haru-border, #D9D2EC)',
+        backgroundColor: 'var(--haru-surface, #FFFFFF)',
         marginBottom: 14,
       }}
     >
-      <Search className="w-4 h-4" aria-hidden="true" style={{ color: '#7A6A4F', flexShrink: 0 }} />
+      <Search className="w-4 h-4" aria-hidden="true" style={{ color: 'var(--haru-muted, #7A6A4F)', flexShrink: 0 }} />
       <input
         type="search"
         aria-label="SAYU 결과 검색"
@@ -4520,7 +4523,7 @@ export function SayuPage() {
           border: 'none',
           outline: 'none',
           backgroundColor: 'transparent',
-          color: '#1F2937',
+          color: 'var(--haru-ink, #1F2937)',
           fontSize: 16,
         }}
       />
@@ -4532,13 +4535,13 @@ export function SayuPage() {
 
   const renderGroupedEntryList = (entries: FlatSayuEntry[]) => {
     if (loading && sayuTab === 'records') {
-      return <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>;
+      return <p className="text-center py-8 text-sm" style={{ color: 'var(--haru-muted, #999)' }}>불러오는 중...</p>;
     }
     const rangeLabel = sayuScope === 'all' ? '전체' : '이 달의';
     if (entries.length === 0) {
       return (
         <div className="bg-white rounded-lg p-8 shadow-sm text-center">
-          <p className="text-sm" style={{ color: '#999' }}>
+          <p className="text-sm" style={{ color: 'var(--haru-muted, #999)' }}>
             {debouncedSayuSearch
               ? '검색 결과가 없습니다'
               : sayuTab === 'records' ? `${rangeLabel} 사유 기록이 없습니다` : `${rangeLabel} 사유비서 결과가 없습니다`}
@@ -4635,10 +4638,10 @@ export function SayuPage() {
                 <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: group.color, flexShrink: 0 }} />
                 <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minWidth: 0 }}>
-                    <span className="text-base font-semibold truncate" style={{ color: '#1A3C6E', minWidth: 0 }}>
+                    <span className="text-base font-semibold truncate" style={{ color: 'var(--haru-link, #1A3C6E)', minWidth: 0 }}>
                       {groupCopy.title}
                     </span>
-                    <span style={{ color: '#6B7280', fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    <span style={{ color: 'var(--haru-muted, #6B7280)', fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
                       {formatCountLabel(groupCount)}
                     </span>
                   </span>
@@ -4662,12 +4665,12 @@ export function SayuPage() {
               </button>
 
               {isExpanded && (
-                <div style={{ borderTop: '1px solid #f0f0f0' }}>
+                <div style={{ borderTop: '1px solid var(--haru-border, #f0f0f0)' }}>
                   {isPlantGroup && (
                     <div
                       role="tablist"
                       aria-label="하루식물탐정 세부 필터"
-                      style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '12px 14px', borderBottom: '1px solid #f0f0f0' }}
+                      style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '12px 14px', borderBottom: '1px solid var(--haru-border, #f0f0f0)' }}
                     >
                       {PLANT_SAYU_FILTERS.map((filter) => {
                         const active = plantSayuFilter === filter.key;
@@ -4683,8 +4686,8 @@ export function SayuPage() {
                               padding: '0 11px',
                               borderRadius: 999,
                               border: active ? '1px solid #15803d' : '1px solid #d1fae5',
-                              backgroundColor: active ? '#15803d' : '#f0fdf4',
-                              color: active ? '#fff' : '#166534',
+                              backgroundColor: active ? '#15803d' : 'var(--haru-tint-green, #f0fdf4)',
+                              color: active ? '#fff' : 'var(--haru-semantic-green, #166534)',
                               fontSize: 12,
                               fontWeight: 800,
                               whiteSpace: 'nowrap',
@@ -4703,7 +4706,7 @@ export function SayuPage() {
                     </div>
                   )}
                   {visibleGroupEntries.map((entry, idx) => isPlantGroup ? renderPlantListRow(entry, idx, { showTypeBadges: plantSayuFilter === 'all' }) : (
-                    <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0' }}>
+                    <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: 'var(--haru-border, #f0f0f0)' }}>
                       <div style={{ display: 'flex', alignItems: 'stretch' }}>
                         <button
                           type="button"
@@ -4711,11 +4714,11 @@ export function SayuPage() {
                           className="flex-1 flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
                           style={{ minHeight: 56, paddingLeft: 18, minWidth: 0 }}
                         >
-                          <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 36 }}>
+                          <span className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--haru-link, #1A3C6E)', minWidth: 36 }}>
                             {formatListDate(entry.date)}
                           </span>
                           <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
-                            <span className="text-sm truncate" style={{ color: '#333' }}>{entry.title}</span>
+                            <span className="text-sm truncate" style={{ color: 'var(--haru-ink, #333)' }}>{entry.title}</span>
                             {isPlantGroup && plantSayuFilter === 'all' && entry.plantTypeBadges && entry.plantTypeBadges.length > 0 && (
                               <span style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingTop: 2 }}>
                                 {entry.plantTypeBadges.map((type) => (
@@ -4723,8 +4726,8 @@ export function SayuPage() {
                                     key={type}
                                     style={{
                                       borderRadius: 999,
-                                      backgroundColor: '#ecfdf5',
-                                      color: '#15803d',
+                                      backgroundColor: 'var(--haru-tint-green, #ecfdf5)',
+                                      color: 'var(--haru-semantic-green, #15803d)',
                                       padding: '2px 7px',
                                       fontSize: 10,
                                       fontWeight: 800,
@@ -4775,13 +4778,13 @@ export function SayuPage() {
 
   const renderFlatEntryList = (entries: FlatSayuEntry[]) => {
     if (loading && sayuTab === 'records') {
-      return <p className="text-center py-8 text-sm" style={{ color: '#999' }}>불러오는 중...</p>;
+      return <p className="text-center py-8 text-sm" style={{ color: 'var(--haru-muted, #999)' }}>불러오는 중...</p>;
     }
     const rangeLabel = sayuScope === 'all' ? '전체' : '이 달의';
     if (entries.length === 0) {
       return (
         <div className="bg-white rounded-lg p-8 shadow-sm text-center">
-          <p className="text-sm" style={{ color: '#999' }}>
+          <p className="text-sm" style={{ color: 'var(--haru-muted, #999)' }}>
             {debouncedSayuSearch
               ? '검색 결과가 없습니다'
               : sayuTab === 'records' ? `${rangeLabel} 사유 기록이 없습니다` : `${rangeLabel} 사유비서 결과가 없습니다`}
@@ -4792,7 +4795,7 @@ export function SayuPage() {
     return (
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         {entries.map((entry, idx) => entry.label === '하루식물탐정' ? renderPlantListRow(entry, idx) : (
-          <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: '#f0f0f0' }}>
+          <div key={entry.id} className={idx > 0 ? 'border-t' : ''} style={{ borderColor: 'var(--haru-border, #f0f0f0)' }}>
             <div style={{ display: 'flex', alignItems: 'stretch' }}>
               <button
                 type="button"
@@ -4800,14 +4803,14 @@ export function SayuPage() {
                 className="flex-1 flex items-center gap-3 px-4 text-left hover:bg-yellow-50 transition-colors"
                 style={{ minHeight: 56, minWidth: 0 }}
               >
-                <span className="text-xs font-medium flex-shrink-0" style={{ color: '#1A3C6E', minWidth: 36 }}>
+                <span className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--haru-link, #1A3C6E)', minWidth: 36 }}>
                   {formatListDate(entry.date)}
                 </span>
                 <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: entry.color, flexShrink: 0 }} />
                 <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
                   <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
-                    <span className="text-sm truncate" style={{ color: '#333', flex: '1 1 auto', minWidth: 0 }}>{entry.title}</span>
-                    <span style={{ color: '#999', fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}>{entry.label}</span>
+                    <span className="text-sm truncate" style={{ color: 'var(--haru-ink, #333)', flex: '1 1 auto', minWidth: 0 }}>{entry.title}</span>
+                    <span style={{ color: 'var(--haru-muted, #999)', fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}>{entry.label}</span>
                   </span>
                   {entry.subtitle && (
                     <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
@@ -4849,7 +4852,7 @@ export function SayuPage() {
             <div
               key={idx}
               className="text-center text-xs font-semibold py-2"
-              style={{ color: idx === 0 ? '#ef4444' : idx === 6 ? '#3b82f6' : '#666' }}
+              style={{ color: idx === 0 ? '#ef4444' : idx === 6 ? '#3b82f6' : 'var(--haru-muted, #666)' }}
             >
               {day}
             </div>
@@ -4909,7 +4912,7 @@ export function SayuPage() {
                           width: '5px',
                           height: '5px',
                           borderRadius: '50%',
-                          backgroundColor: isSelected ? '#FEFBE8' : dot.color,
+                          backgroundColor: isSelected ? 'var(--haru-bg, #FEFBE8)' : dot.color,
                           display: 'inline-block',
                           flexShrink: 0,
                         }}
@@ -4925,7 +4928,7 @@ export function SayuPage() {
 
       {activeSelectedDate && activeSelectedEntries.length > 0 && (
         <div className="mt-4 bg-white rounded-lg p-4 shadow-sm">
-          <p className="text-xs font-semibold mb-2" style={{ color: '#1A3C6E' }}>
+          <p className="text-xs font-semibold mb-2" style={{ color: 'var(--haru-link, #1A3C6E)' }}>
             {new Date(activeSelectedDate + 'T00:00:00').toLocaleDateString('ko-KR', {
               month: 'long',
               day: 'numeric',
@@ -4939,8 +4942,8 @@ export function SayuPage() {
                 onClick={entry.onOpen}
                 className="px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-80 hover:shadow-md cursor-pointer"
                 style={{
-                  backgroundColor: '#FDF6C3',
-                  color: '#1A3C6E',
+                  backgroundColor: 'var(--haru-subtle, #FDF6C3)',
+                  color: 'var(--haru-link, #1A3C6E)',
                   border: `1px solid ${entry.color}`,
                 }}
               >
@@ -4955,6 +4958,8 @@ export function SayuPage() {
 
   const listData = getMonthListData();
   const hasMonthRecords = listData.length > 0;
+
+  const pullRefresh = usePullToRefresh(fetchRecords, loading || viewMode !== 'list' || sayuModalState.isOpen || formatStatModal.isOpen || !!structuredRecord);
 
   const printStyle = `
     @media print {
@@ -4979,15 +4984,19 @@ export function SayuPage() {
     <>
     <style>{printStyle}</style>
 
-    <div className="sayu-page-container no-print max-w-4xl mx-auto" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)', padding: 20 }}>
+    <div ref={pullRefresh.ref} className="sayu-page-container no-print max-w-4xl mx-auto" style={{ backgroundColor: 'var(--haru-bg, #EDE9F5)', minHeight: 'calc(100vh - 56px - 80px)', padding: 20 }}>
       <PageHeaderActions />
+      <div className="haru-refresh-row">
+        <span role="status" aria-live="polite">{pullRefresh.refreshing ? '목록을 불러오는 중…' : pullRefresh.distance >= 72 ? '놓으면 새로고침해요' : pullRefresh.distance > 0 ? '조금 더 당겨 주세요' : pullRefresh.message}</span>
+        <button type="button" className="haru-secondary-button" disabled={loading || pullRefresh.refreshing} onClick={() => void pullRefresh.refresh()}>목록 새로고침</button>
+      </div>
       {/* 타이틀 + 가이드 */}
       <div className="mb-4">
         <div className="flex items-start justify-between mb-2">
           <SayuTitleAnimation />
         </div>
-        <p className="text-xs" style={{ color: '#666666', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-          <Info className="w-3.5 h-3.5" style={{ color: '#1A3C6E', flexShrink: 0 }} />
+        <p className="text-xs" style={{ color: 'var(--haru-muted, #666666)', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+          <Info className="w-3.5 h-3.5" style={{ color: 'var(--haru-link, #1A3C6E)', flexShrink: 0 }} />
           원문을 바탕으로, 선택한 정도에 맞춰 문장을 정돈하거나 풍성하게 다듬습니다
         </p>
         {isDeveloper && (
@@ -5021,8 +5030,8 @@ export function SayuPage() {
               }}
               style={{
                 fontSize: 11, padding: '4px 10px', borderRadius: 8,
-                border: '1px solid #D9D2EC', backgroundColor: '#fff',
-                color: '#1A3C6E', cursor: 'pointer',
+                border: '1px solid var(--haru-border, #D9D2EC)', backgroundColor: 'var(--haru-surface, #fff)',
+                color: 'var(--haru-link, #1A3C6E)', cursor: 'pointer',
               }}
               title="개발자 전용 — 모든 record의 keywords 필드 삭제 후 새 프롬프트로 재추출"
             >🧹 키워드 캐시 청소</button>
@@ -5038,7 +5047,7 @@ export function SayuPage() {
           gap: 6,
           padding: 4,
           borderRadius: 12,
-          backgroundColor: '#E5E7EB',
+          backgroundColor: 'var(--haru-tint-blue, #E5E7EB)',
           marginBottom: 14,
         }}
       >
@@ -5062,8 +5071,8 @@ export function SayuPage() {
                 padding: '9px 12px',
                 borderRadius: 9,
                 border: 'none',
-                backgroundColor: active ? '#1A3C6E' : '#F3F4F6',
-                color: active ? '#FFFFFF' : '#6B7280',
+                backgroundColor: active ? 'var(--haru-button-blue, #1A3C6E)' : 'var(--haru-subtle, #F3F4F6)',
+                color: active ? '#FFFFFF' : 'var(--haru-muted, #6B7280)',
                 fontSize: 14,
                 fontWeight: active ? 800 : 700,
                 cursor: 'pointer',
@@ -5080,7 +5089,7 @@ export function SayuPage() {
       {renderSayuScopeTabs()}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1A3C6E', margin: 0, lineHeight: 1.25 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--haru-link, #1A3C6E)', margin: 0, lineHeight: 1.25 }}>
           {currentViewTitle}
         </h2>
         {sayuScope === 'month' && (
@@ -5091,8 +5100,8 @@ export function SayuPage() {
               aria-label="이전 달"
               style={{
                 width: 32, height: 32, borderRadius: 999,
-                border: '1px solid rgba(26,60,110,0.18)', background: '#fff',
-                color: '#1A3C6E', cursor: 'pointer',
+                border: '1px solid rgba(26,60,110,0.18)', background: 'var(--haru-surface, #fff)',
+                color: 'var(--haru-link, #1A3C6E)', cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
@@ -5105,8 +5114,8 @@ export function SayuPage() {
               aria-label="다음 달"
               style={{
                 width: 32, height: 32, borderRadius: 999,
-                border: '1px solid rgba(26,60,110,0.18)', background: '#fff',
-                color: '#1A3C6E', cursor: isNextMonthDisabled ? 'not-allowed' : 'pointer',
+                border: '1px solid rgba(26,60,110,0.18)', background: 'var(--haru-surface, #fff)',
+                color: 'var(--haru-link, #1A3C6E)', cursor: isNextMonthDisabled ? 'not-allowed' : 'pointer',
                 opacity: isNextMonthDisabled ? 0.3 : 1,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               }}
@@ -5145,7 +5154,7 @@ export function SayuPage() {
                 <div
                   key={idx}
                   className="text-center text-xs font-semibold py-2"
-                  style={{ color: idx === 0 ? '#ef4444' : idx === 6 ? '#3b82f6' : '#666' }}
+                  style={{ color: idx === 0 ? '#ef4444' : idx === 6 ? '#3b82f6' : 'var(--haru-muted, #666)' }}
                 >
                   {day}
                 </div>
@@ -5197,7 +5206,7 @@ export function SayuPage() {
                               width: '5px',
                               height: '5px',
                               borderRadius: '50%',
-                              backgroundColor: isSelected ? '#FEFBE8' : dot.color,
+                              backgroundColor: isSelected ? 'var(--haru-bg, #FEFBE8)' : dot.color,
                               display: 'inline-block',
                               flexShrink: 0,
                             }}
@@ -5213,7 +5222,7 @@ export function SayuPage() {
 
           {selectedDate && selectedDateFormats.length > 0 && (
             <div className="mt-4 bg-white rounded-lg p-4 shadow-sm">
-              <p className="text-xs font-semibold mb-2" style={{ color: '#1A3C6E' }}>
+              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--haru-link, #1A3C6E)' }}>
                 {new Date(selectedDate + 'T00:00:00').toLocaleDateString('ko-KR', {
                   month: 'long',
                   day: 'numeric',
@@ -5227,28 +5236,28 @@ export function SayuPage() {
                     onClick={() => handleFormatClick(formatInfo.key, formatInfo.label, formatInfo.recordId)}
                     className="px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-80 hover:shadow-md cursor-pointer"
                     style={{
-                      backgroundColor: '#FDF6C3',
-                      color: '#1A3C6E',
-                      border: '1px solid #1A3C6E',
+                      backgroundColor: 'var(--haru-subtle, #FDF6C3)',
+                      color: 'var(--haru-link, #1A3C6E)',
+                      border: '1px solid var(--haru-border, #1A3C6E)',
                     }}
                   >
                     {formatInfo.label}
                   </button>
                 ))}
               </div>
-              <p className="text-xs mt-2" style={{ color: '#999' }}>
+              <p className="text-xs mt-2" style={{ color: 'var(--haru-muted, #999)' }}>
                 💡 형식을 클릭하면 해당 SAYU를 볼 수 있습니다
               </p>
             </div>
           )}
 
-          <div className="mt-4 flex flex-col gap-2 text-sm" style={{ color: '#999' }}>
+          <div className="mt-4 flex flex-col gap-2 text-sm" style={{ color: 'var(--haru-muted, #999)' }}>
             <div className="flex items-center gap-2">
               <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#10b981', boxShadow: '0 0 0 1.5px rgba(16,185,129,0.3)' }} />
               <span>원본 저장</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: '#1A3C6E', boxShadow: '0 0 0 1.5px rgba(26,60,110,0.25)' }} />
+              <div className="rounded-full flex-shrink-0" style={{ width: '8px', height: '8px', backgroundColor: 'var(--haru-button-blue, #1A3C6E)', boxShadow: '0 0 0 1.5px rgba(26,60,110,0.25)' }} />
               <span>SAYU-나의기록 저장</span>
             </div>
             <div className="flex items-center gap-2">
@@ -5268,15 +5277,15 @@ export function SayuPage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: '100%', maxHeight: '80vh', backgroundColor: '#fff', borderRadius: '16px 16px 0 0', padding: 20, overflowY: 'auto' }}
+            style={{ width: '100%', maxHeight: '80vh', backgroundColor: 'var(--haru-surface, #fff)', borderRadius: '16px 16px 0 0', padding: 20, overflowY: 'auto' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E' }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--haru-link, #1A3C6E)' }}>
                 📋 {formatStatModal.format} 기록 관리
               </p>
               <button
                 onClick={() => setFormatStatModal(prev => ({ ...prev, isOpen: false }))}
-                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}
+                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--haru-muted, #999)' }}
               >✕</button>
             </div>
 
@@ -5288,8 +5297,8 @@ export function SayuPage() {
                   style={{
                     flex: 1, padding: '10px 0', borderRadius: 10, border: 'none',
                     fontWeight: 600, fontSize: 13, cursor: 'pointer',
-                    backgroundColor: formatStatModal.tab === tab ? '#1A3C6E' : '#f3f4f6',
-                    color: formatStatModal.tab === tab ? '#fff' : '#6B7280',
+                    backgroundColor: formatStatModal.tab === tab ? 'var(--haru-button-blue, #1A3C6E)' : 'var(--haru-subtle, #f3f4f6)',
+                    color: formatStatModal.tab === tab ? '#fff' : 'var(--haru-muted, #6B7280)',
                   }}
                 >
                   {tab === 'stat' ? '📊 통계' : '📎 합치기'}
@@ -5316,13 +5325,13 @@ export function SayuPage() {
                 <div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
                     {[
-                      { label: '전체 기록', value: `${total}건`, color: '#1A3C6E' },
-                      { label: 'SAYU 완료', value: `${withSayu}건`, color: '#10b981' },
+                      { label: '전체 기록', value: `${total}건`, color: 'var(--haru-link, #1A3C6E)' },
+                      { label: 'SAYU 완료', value: `${withSayu}건`, color: 'var(--haru-semantic-green, #10b981)' },
                       { label: 'SAYU 비율', value: total > 0 ? `${Math.round(withSayu / total * 100)}%` : '0%', color: '#7C3AED' },
-                      { label: '기록 월수', value: `${Object.keys(months).length}개월`, color: '#F59E0B' },
+                      { label: '기록 월수', value: `${Object.keys(months).length}개월`, color: 'var(--haru-semantic-orange, #F59E0B)' },
                     ].map(card => (
-                      <div key={card.label} style={{ backgroundColor: '#f9fafb', borderRadius: 10, padding: '12px 14px', border: '1px solid #f0f0f0' }}>
-                        <div style={{ fontSize: 11, color: '#999', marginBottom: 4 }}>{card.label}</div>
+                      <div key={card.label} style={{ backgroundColor: 'var(--haru-subtle, #f9fafb)', borderRadius: 10, padding: '12px 14px', border: '1px solid var(--haru-border, #f0f0f0)' }}>
+                        <div style={{ fontSize: 11, color: 'var(--haru-muted, #999)', marginBottom: 4 }}>{card.label}</div>
                         <div style={{ fontSize: 20, fontWeight: 700, color: card.color }}>{card.value}</div>
                       </div>
                     ))}
@@ -5330,18 +5339,18 @@ export function SayuPage() {
 
                   {sortedMonths.length > 0 && (
                     <div>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: '#333', marginBottom: 10 }}>📅 월별 기록 수</p>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--haru-ink, #333)', marginBottom: 10 }}>📅 월별 기록 수</p>
                       {sortedMonths.map(([month, count]) => (
                         <div key={month} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                          <span style={{ fontSize: 11, color: '#666', width: 52, flexShrink: 0 }}>{month.slice(5)}월</span>
-                          <div style={{ flex: 1, backgroundColor: '#f3f4f6', borderRadius: 4, height: 18, overflow: 'hidden' }}>
+                          <span style={{ fontSize: 11, color: 'var(--haru-muted, #666)', width: 52, flexShrink: 0 }}>{month.slice(5)}월</span>
+                          <div style={{ flex: 1, backgroundColor: 'var(--haru-subtle, #f3f4f6)', borderRadius: 4, height: 18, overflow: 'hidden' }}>
                             <div style={{
                               width: `${(count / maxCount) * 100}%`,
-                              backgroundColor: '#1A3C6E', height: '100%', borderRadius: 4,
+                              backgroundColor: 'var(--haru-button-blue, #1A3C6E)', height: '100%', borderRadius: 4,
                               transition: 'width 0.4s ease',
                             }} />
                           </div>
-                          <span style={{ fontSize: 11, color: '#1A3C6E', fontWeight: 600, width: 24, textAlign: 'right' }}>{count}</span>
+                          <span style={{ fontSize: 11, color: 'var(--haru-link, #1A3C6E)', fontWeight: 600, width: 24, textAlign: 'right' }}>{count}</span>
                         </div>
                       ))}
                     </div>
@@ -5381,21 +5390,21 @@ export function SayuPage() {
 
               return (
                 <div>
-                  <p style={{ fontSize: 13, color: '#666', marginBottom: 16, lineHeight: 1.6 }}>
-                    <strong style={{ color: '#1A3C6E' }}>{formatStatModal.format}</strong> 기록 {sorted.length}개를 날짜순으로 합쳐서 클립보드에 복사합니다.
+                  <p style={{ fontSize: 13, color: 'var(--haru-muted, #666)', marginBottom: 16, lineHeight: 1.6 }}>
+                    <strong style={{ color: 'var(--haru-link, #1A3C6E)' }}>{formatStatModal.format}</strong> 기록 {sorted.length}개를 날짜순으로 합쳐서 클립보드에 복사합니다.
                   </p>
-                  <div style={{ backgroundColor: '#f0f4ff', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, color: '#4B5563', lineHeight: 1.7 }}>
+                  <div style={{ backgroundColor: 'var(--haru-tint-blue, #f0f4ff)', borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 12, color: '#4B5563', lineHeight: 1.7 }}>
                     📌 합치기 형식 예시:<br />
-                    <span style={{ color: '#1A3C6E', fontWeight: 600 }}>[ 2026년 1월 1일 — AI제목 ]</span><br />
+                    <span style={{ color: 'var(--haru-link, #1A3C6E)', fontWeight: 600 }}>[ 2026년 1월 1일 — AI제목 ]</span><br />
                     본문 내용...<br /><br />
-                    <span style={{ color: '#1A3C6E', fontWeight: 600 }}>[ 2026년 1월 2일 ]</span><br />
+                    <span style={{ color: 'var(--haru-link, #1A3C6E)', fontWeight: 600 }}>[ 2026년 1월 2일 ]</span><br />
                     본문 내용...
                   </div>
                   <button
                     onClick={handleMerge}
                     style={{
                       width: '100%', padding: '14px 0', borderRadius: 12, border: 'none',
-                      backgroundColor: '#1A3C6E', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                      backgroundColor: 'var(--haru-button-blue, #1A3C6E)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
                     }}
                   >
                     📎 {sorted.length}개 기록 합쳐서 복사하기
@@ -5450,16 +5459,16 @@ export function SayuPage() {
               style={{
                 padding: 14,
                 borderRadius: 10,
-                border: '1px solid #D1FAE5',
-                backgroundColor: isPublic ? '#ECFDF5' : '#FFFFFF',
+                border: '1px solid var(--haru-border, #D1FAE5)',
+                backgroundColor: isPublic ? 'var(--haru-tint-green, #ECFDF5)' : 'var(--haru-surface, #FFFFFF)',
               }}
             >
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0, flex: '1 1 220px' }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#0F766E' }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: 'var(--haru-semantic-cyan, #0F766E)' }}>
                     SAYU-함께보기 공개
                   </p>
-                  <p style={{ margin: '4px 0 0', fontSize: 12, lineHeight: 1.5, color: publishable ? '#64748B' : '#B42318' }}>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, lineHeight: 1.5, color: publishable ? '#64748B' : 'var(--haru-semantic-rose, #B42318)' }}>
                     {publishable
                       ? isGrowthTimelineRecord(record)
                         ? '날짜별 메모와 사진(최대 12장)이 공개됩니다. 촬영 위치·이메일·UID는 공개되지 않습니다.'
@@ -5476,7 +5485,7 @@ export function SayuPage() {
                     padding: '0 14px',
                     borderRadius: 999,
                     border: 'none',
-                    backgroundColor: isPublic ? '#B42318' : publishable ? '#0F766E' : '#CBD5E1',
+                    backgroundColor: isPublic ? '#B42318' : publishable ? '#0F766E' : 'var(--haru-tint-blue, #CBD5E1)',
                     color: '#FFFFFF',
                     fontSize: 12,
                     fontWeight: 800,
@@ -5532,17 +5541,17 @@ export function SayuPage() {
                 />
               )}
               {linkedMemos.length > 0 && (
-                <section style={{ borderRadius: 14, border: '1px solid #e5e7eb', backgroundColor: '#fafafa', padding: 14 }}>
-                  <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: '#1A3C6E' }}>
+                <section style={{ borderRadius: 14, border: '1px solid var(--haru-border, #e5e7eb)', backgroundColor: 'var(--haru-tint-neutral, #fafafa)', padding: 14 }}>
+                  <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: 'var(--haru-link, #1A3C6E)' }}>
                     이 기록의 AI 대화 메모 {linkedMemos.length}개
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                     {linkedMemos.map((m) => (
-                      <div key={m.id} style={{ borderRadius: 10, padding: '10px 11px', backgroundColor: '#fff', border: '1px solid #eef2f7' }}>
+                      <div key={m.id} style={{ borderRadius: 10, padding: '10px 11px', backgroundColor: 'var(--haru-surface, #fff)', border: '1px solid var(--haru-border, #eef2f7)' }}>
                         <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 900, color: '#94a3b8' }}>
                           {formatKoreanDate((m as any).date || sayuModalState.recordDate || '')}
                         </p>
-                        <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                        <p style={{ margin: 0, fontSize: 13, color: 'var(--haru-ink, #374151)', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
                           {(m as any).memo_content || ''}
                         </p>
                       </div>
@@ -5587,7 +5596,7 @@ export function SayuPage() {
               width: '100%',
               maxWidth: plantDetailIsWide ? 760 : '100%',
               maxHeight: plantDetailIsWide ? '86vh' : '82vh',
-              backgroundColor: '#fff',
+              backgroundColor: 'var(--haru-surface, #fff)',
               borderRadius: plantDetailIsWide ? 18 : '16px 16px 0 0',
               padding: plantDetailIsWide ? 24 : 18,
               overflowY: 'auto',
@@ -5597,13 +5606,13 @@ export function SayuPage() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 18 }}>
               <div style={{ minWidth: 0 }}>
-                <span style={{ display: 'inline-flex', borderRadius: 999, backgroundColor: '#ecfdf5', color: '#15803d', padding: '4px 10px', fontSize: 11, fontWeight: 900, marginBottom: 9, border: '1px solid #bbf7d0' }}>
+                <span style={{ display: 'inline-flex', borderRadius: 999, backgroundColor: 'var(--haru-tint-green, #ecfdf5)', color: 'var(--haru-semantic-green, #15803d)', padding: '4px 10px', fontSize: 11, fontWeight: 900, marginBottom: 9, border: '1px solid var(--haru-border, #bbf7d0)' }}>
                   {PLANT_SAYU_TYPE_LABEL[plantReadOnlyDetail.type]}
                 </span>
-                <p style={{ margin: 0, fontSize: plantDetailIsWide ? 22 : 19, fontWeight: 900, color: '#1A3C6E', lineHeight: 1.34, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                <p style={{ margin: 0, fontSize: plantDetailIsWide ? 22 : 19, fontWeight: 900, color: 'var(--haru-link, #1A3C6E)', lineHeight: 1.34, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
                   {plantReadOnlyDetail.title}
                 </p>
-                <p style={{ margin: '5px 0 0', fontSize: 12, color: '#6B7280' }}>
+                <p style={{ margin: '5px 0 0', fontSize: 12, color: 'var(--haru-muted, #6B7280)' }}>
                   {formatKoreanDate(plantReadOnlyDetail.date)}
                   {plantReadOnlyDetail.subtitle ? ` · ${plantReadOnlyDetail.subtitle}` : ''}
                 </p>
@@ -5612,27 +5621,27 @@ export function SayuPage() {
                 type="button"
                 onClick={() => setPlantReadOnlyDetail(null)}
                 aria-label="닫기"
-                style={{ width: 34, height: 34, borderRadius: 999, border: '1px solid #e5e7eb', background: '#fff', color: '#6B7280', cursor: 'pointer', flexShrink: 0 }}
+                style={{ width: 34, height: 34, borderRadius: 999, border: '1px solid var(--haru-border, #e5e7eb)', background: 'var(--haru-surface, #fff)', color: 'var(--haru-muted, #6B7280)', cursor: 'pointer', flexShrink: 0 }}
               >
                 ✕
               </button>
             </div>
 
-            <section style={{ borderRadius: 14, border: '1px solid #d1fae5', backgroundColor: '#f0fdf4', padding: 15, marginBottom: 14 }}>
-              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: '#166534' }}>핵심정보</p>
+            <section style={{ borderRadius: 14, border: '1px solid var(--haru-border, #d1fae5)', backgroundColor: 'var(--haru-tint-green, #f0fdf4)', padding: 15, marginBottom: 14 }}>
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: 'var(--haru-semantic-green, #166534)' }}>핵심정보</p>
               {plantReadOnlyDetail.coreFields.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: plantDetailIsWide ? 'repeat(4, minmax(0, 1fr))' : '1fr', gap: 9 }}>
                   {plantReadOnlyDetail.coreFields.map((field) => (
                     <div key={field.label} style={{ minWidth: 0 }}>
-                      <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 900, color: '#16a34a' }}>{field.label}</p>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#1f2937', lineHeight: 1.45, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                      <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 900, color: 'var(--haru-semantic-green, #16a34a)' }}>{field.label}</p>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: 'var(--haru-ink, #1f2937)', lineHeight: 1.45, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
                         {field.value}
                       </p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p style={{ margin: 0, fontSize: 13, color: '#6B7280' }}>핵심정보가 아직 없습니다.</p>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--haru-muted, #6B7280)' }}>핵심정보가 아직 없습니다.</p>
               )}
             </section>
 
@@ -5642,7 +5651,7 @@ export function SayuPage() {
                 type="button"
                 disabled={plantDetectivePhotoBusy}
                 onClick={handleEditPlantDetectiveRecord}
-                style={{ marginTop: 14, padding: '10px 16px', borderRadius: 10, border: '1px solid #4A5A2C', background: '#fffdf4', color: '#4A5A2C', fontWeight: 800 }}
+                style={{ marginTop: 14, padding: '10px 16px', borderRadius: 10, border: '1px solid var(--haru-border, #4A5A2C)', background: 'var(--haru-tint-amber, #fffdf4)', color: 'var(--haru-accent-ink, #4A5A2C)', fontWeight: 800 }}
               >
                 기록 편집
               </button>
@@ -5651,7 +5660,7 @@ export function SayuPage() {
             {plantReadOnlyDetail.type === 'detective'
               && plantReadOnlyDetail.recordId
               && typeof plantReadOnlyDetail.entryIdx === 'number' && (
-              <section style={{ borderRadius: 14, border: '1px solid #d1fae5', backgroundColor: '#f0fdf4', padding: 14, marginBottom: 14 }}>
+              <section style={{ borderRadius: 14, border: '1px solid var(--haru-border, #d1fae5)', backgroundColor: 'var(--haru-tint-green, #f0fdf4)', padding: 14, marginBottom: 14 }}>
                 {(() => {
                   const detectiveImages = (Array.isArray(plantReadOnlyDetail.imageUrls) ? plantReadOnlyDetail.imageUrls : [])
                     .map((url) => String(url || '').trim())
@@ -5659,8 +5668,8 @@ export function SayuPage() {
                   return (
                     <>
                       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
-                        <p style={{ margin: 0, fontSize: 12, fontWeight: 900, color: '#166534' }}>현재 판독 사진</p>
-                        <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: '#047857' }}>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 900, color: 'var(--haru-semantic-green, #166534)' }}>현재 판독 사진</p>
+                        <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: 'var(--haru-semantic-green, #047857)' }}>
                           판독에 사용된 사진 {detectiveImages.length}장
                         </p>
                       </div>
@@ -5681,8 +5690,8 @@ export function SayuPage() {
                                 aspectRatio: '1 / 1',
                                 borderRadius: 8,
                                 overflow: 'hidden',
-                                border: '1px solid #bbf7d0',
-                                backgroundColor: '#fff',
+                                border: '1px solid var(--haru-border, #bbf7d0)',
+                                backgroundColor: 'var(--haru-surface, #fff)',
                               }}
                             >
                               <img
@@ -5751,7 +5760,7 @@ export function SayuPage() {
                     minHeight: 40,
                     padding: '0 18px',
                     borderRadius: 10,
-                    border: '1px solid #15803d',
+                    border: '1px solid var(--haru-border, #15803d)',
                     background: plantDetectivePhotoBusy ? '#86efac' : '#15803d',
                     color: '#fff',
                     fontSize: 13,
@@ -5761,29 +5770,29 @@ export function SayuPage() {
                 >
                   {plantDetectivePhotoBusy ? '사진 처리 중...' : '사진 추가 · 다시 판독'}
                 </button>
-                <p style={{ margin: '9px 0 0', fontSize: 11, color: '#6B7280' }}>
+                <p style={{ margin: '9px 0 0', fontSize: 11, color: 'var(--haru-muted, #6B7280)' }}>
                   새 사진은 기존 판독 사진과 함께 다시 분석되어 해당 기록에 반영됩니다.
                 </p>
               </section>
             )}
 
             {plantReadOnlyDetail.summary && (
-              <section style={{ borderRadius: 12, border: '1px solid #e5e7eb', backgroundColor: '#fffdf4', padding: '12px 14px', marginBottom: 14 }}>
-                <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 900, color: '#92400e' }}>기록 요약</p>
-                <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+              <section style={{ borderRadius: 12, border: '1px solid var(--haru-border, #e5e7eb)', backgroundColor: 'var(--haru-tint-amber, #fffdf4)', padding: '12px 14px', marginBottom: 14 }}>
+                <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 900, color: 'var(--haru-semantic-orange, #92400e)' }}>기록 요약</p>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--haru-ink, #374151)', lineHeight: 1.65, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
                   {plantReadOnlyDetail.summary}
                 </p>
               </section>
             )}
 
-            <section style={{ borderRadius: 14, border: '1px solid #edf2f7', backgroundColor: '#ffffff', padding: 14 }}>
-              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: '#1A3C6E' }}>상세정보</p>
+            <section style={{ borderRadius: 14, border: '1px solid var(--haru-border, #edf2f7)', backgroundColor: 'var(--haru-surface, #ffffff)', padding: 14 }}>
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: 'var(--haru-link, #1A3C6E)' }}>상세정보</p>
               {plantReadOnlyDetail.detailSections.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                   {plantReadOnlyDetail.detailSections.map((section) => (
-                    <div key={section.label} style={{ borderRadius: 10, padding: '10px 11px', backgroundColor: '#f8fafc', border: '1px solid #eef2f7' }}>
+                    <div key={section.label} style={{ borderRadius: 10, padding: '10px 11px', backgroundColor: 'var(--haru-tint-blue, #f8fafc)', border: '1px solid var(--haru-border, #eef2f7)' }}>
                       <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 900, color: '#64748B' }}>{section.label}</p>
-                      <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--haru-ink, #374151)', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
                         {section.value}
                       </p>
                     </div>
@@ -5832,17 +5841,17 @@ export function SayuPage() {
                   .sort((a, b) => String((b as any).createdAt || '').localeCompare(String((a as any).createdAt || '')));
                 if (linkedMemos.length === 0) return null;
                 return (
-                  <section style={{ borderRadius: 14, border: '1px solid #e5e7eb', backgroundColor: '#fafafa', padding: 14, marginTop: 14 }}>
-                    <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: '#1A3C6E' }}>
+                  <section style={{ borderRadius: 14, border: '1px solid var(--haru-border, #e5e7eb)', backgroundColor: 'var(--haru-tint-neutral, #fafafa)', padding: 14, marginTop: 14 }}>
+                    <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 900, color: 'var(--haru-link, #1A3C6E)' }}>
                       이 판독의 AI 대화 메모 {linkedMemos.length}개
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                       {linkedMemos.map((m) => (
-                        <div key={m.id} style={{ borderRadius: 10, padding: '10px 11px', backgroundColor: '#fff', border: '1px solid #eef2f7' }}>
+                        <div key={m.id} style={{ borderRadius: 10, padding: '10px 11px', backgroundColor: 'var(--haru-surface, #fff)', border: '1px solid var(--haru-border, #eef2f7)' }}>
                           <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 900, color: '#94a3b8' }}>
                             {formatKoreanDate((m as any).date || plantReadOnlyDetail.date)}
                           </p>
-                          <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+                          <p style={{ margin: 0, fontSize: 13, color: 'var(--haru-ink, #374151)', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
                             {(m as any).memo_content || ''}
                           </p>
                         </div>
@@ -5860,9 +5869,9 @@ export function SayuPage() {
                   minHeight: 40,
                   padding: '0 22px',
                   borderRadius: 999,
-                  border: '1px solid #d8c98a',
-                  background: '#fff',
-                  color: '#4A5A2C',
+                  border: '1px solid var(--haru-border, #d8c98a)',
+                  background: 'var(--haru-surface, #fff)',
+                  color: 'var(--haru-accent-ink, #4A5A2C)',
                   fontSize: 13,
                   fontWeight: 900,
                   cursor: 'pointer',
@@ -5883,12 +5892,12 @@ export function SayuPage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: 1040, maxHeight: '86vh', margin: '0 auto', backgroundColor: '#fff', borderRadius: 16, padding: 20, overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.22)' }}
+            style={{ width: '100%', maxWidth: 1040, maxHeight: '86vh', margin: '0 auto', backgroundColor: 'var(--haru-surface, #fff)', borderRadius: 16, padding: 20, overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.22)' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', display: 'flex', alignItems: 'center', gap: 6 }}><Scale className="w-4 h-4" /> 하루LAW 분석 기록</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--haru-link, #1A3C6E)', display: 'flex', alignItems: 'center', gap: 6 }}><Scale className="w-4 h-4" /> 하루LAW 분석 기록</p>
               <button onClick={() => { setHarurawModal({ isOpen: false, query: '', summary: '', articles: '', recordId: '', shareStatus: '', attachments: [] }); setHaruLawShareState({ step: 'idle' }); }}
-                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}>✕</button>
+                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--haru-muted, #999)' }}>✕</button>
             </div>
             {(() => {
               const answerParts = splitHaruLawAnswer(harurawModal.summary || '관련 조문을 바탕으로 검토가 필요합니다. 사례관계에 따라 실제 판단은 달라질 수 있습니다.');
@@ -5896,16 +5905,16 @@ export function SayuPage() {
               const sectionStyle = {
                 padding: 16,
                 borderRadius: 12,
-                border: '1px solid #E5E7EB',
-                backgroundColor: '#fff',
+                border: '1px solid var(--haru-border, #E5E7EB)',
+                backgroundColor: 'var(--haru-surface, #fff)',
                 marginBottom: 12,
               };
-              const labelStyle = { fontSize: 12, color: '#6B7280', fontWeight: 800, marginBottom: 8 };
+              const labelStyle = { fontSize: 12, color: 'var(--haru-muted, #6B7280)', fontWeight: 800, marginBottom: 8 };
               return (
                 <>
-                  <div style={{ ...sectionStyle, backgroundColor: '#F0F4FF', borderColor: '#C7D9F8' }}>
+                  <div style={{ ...sectionStyle, backgroundColor: 'var(--haru-tint-blue, #F0F4FF)', borderColor: 'var(--haru-border, #C7D9F8)' }}>
                     <p style={labelStyle}>질문</p>
-                    <p style={{ fontSize: 15, color: '#1A3C6E', fontWeight: 700, lineHeight: 1.6, margin: harurawModal.attachments.length > 0 ? '0 0 12px' : 0 }}>{harurawModal.query}</p>
+                    <p style={{ fontSize: 15, color: 'var(--haru-link, #1A3C6E)', fontWeight: 700, lineHeight: 1.6, margin: harurawModal.attachments.length > 0 ? '0 0 12px' : 0 }}>{harurawModal.query}</p>
                     {harurawModal.attachments.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                         {harurawModal.attachments.map((att) => {
@@ -5927,8 +5936,8 @@ export function SayuPage() {
                                 maxWidth: 190,
                                 padding: isImage && url ? 4 : '6px 10px',
                                 borderRadius: 8,
-                                border: '1px solid #C7D9F8',
-                                backgroundColor: '#FFFFFF',
+                                border: '1px solid var(--haru-border, #C7D9F8)',
+                                backgroundColor: 'var(--haru-surface, #FFFFFF)',
                                 cursor: url ? 'pointer' : 'default',
                                 overflow: 'hidden',
                               }}
@@ -5936,9 +5945,9 @@ export function SayuPage() {
                               {isImage && url ? (
                                 <img src={url} alt={att.fileName} style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />
                               ) : (
-                                <span style={{ fontSize: 11, fontWeight: 900, color: '#1A3C6E' }}>{getHaruLawAttachmentLabel(att.mimeType)}</span>
+                                <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--haru-link, #1A3C6E)' }}>{getHaruLawAttachmentLabel(att.mimeType)}</span>
                               )}
-                              <span style={{ fontSize: 12, color: '#1A3C6E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <span style={{ fontSize: 12, color: 'var(--haru-link, #1A3C6E)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {att.fileName}
                               </span>
                             </button>
@@ -5958,11 +5967,11 @@ export function SayuPage() {
                       <p style={labelStyle}>관련 법조문</p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {lawArticles.map((article, idx) => (
-                          <div key={`${article.lawName}_${article.articleStr}_${idx}`} style={{ padding: 12, borderRadius: 10, backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}>
-                            <p style={{ fontSize: 13, fontWeight: 800, color: '#1A3C6E', marginBottom: 6 }}>
+                          <div key={`${article.lawName}_${article.articleStr}_${idx}`} style={{ padding: 12, borderRadius: 10, backgroundColor: 'var(--haru-subtle, #F9FAFB)', border: '1px solid var(--haru-border, #E5E7EB)' }}>
+                            <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--haru-link, #1A3C6E)', marginBottom: 6 }}>
                               {getLawEasySummary(article.title, `${article.lawName} ${article.articleStr}`, article.content)}
                             </p>
-                            <p style={{ fontSize: 13, fontWeight: 800, color: '#111827', marginBottom: article.content ? 6 : 0 }}>
+                            <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--haru-semantic-blue, #111827)', marginBottom: article.content ? 6 : 0 }}>
                               {[article.lawName, article.articleStr, article.title].filter(Boolean).join(' · ')}
                             </p>
                             {article.content && (
@@ -6002,15 +6011,15 @@ export function SayuPage() {
 
                   <div style={sectionStyle}>
                     <p style={labelStyle}>실무 조언</p>
-                    <ul style={{ margin: 0, paddingLeft: 18, color: '#374151', fontSize: 13, lineHeight: 1.7 }}>
+                    <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--haru-ink, #374151)', fontSize: 13, lineHeight: 1.7 }}>
                       <li>관련 계약서, 영수증, 문자, 이메일 등 사실관계를 보여주는 자료를 함께 보관하세요.</li>
                       <li>언제, 어디서, 누구와, 어떤 이유로 발생한 일인지 기록해 두면 나중에 판단하기 쉽습니다.</li>
                     </ul>
                   </div>
 
-                  <div style={{ ...sectionStyle, backgroundColor: '#FFFBEB', borderColor: '#FDE68A', marginBottom: 12 }}>
+                  <div style={{ ...sectionStyle, backgroundColor: 'var(--haru-tint-amber, #FFFBEB)', borderColor: 'var(--haru-border, #FDE68A)', marginBottom: 12 }}>
                     <p style={labelStyle}>주의사항</p>
-                    <p style={{ fontSize: 12, color: '#92400E', lineHeight: 1.7, margin: 0 }}>
+                    <p style={{ fontSize: 12, color: 'var(--haru-semantic-orange, #92400E)', lineHeight: 1.7, margin: 0 }}>
                       본 내용은 법령 정보 제공 목적이며, 전문적인 법률 자문을 대체하지 않습니다. 구체적인 사건은 관련 자료를 가지고 전문가 상담을 받으시기 바랍니다.
                     </p>
                   </div>
@@ -6020,16 +6029,16 @@ export function SayuPage() {
 
                     if (haruLawShareState.step === 'loading') {
                       return (
-                        <div style={{ ...sectionStyle, backgroundColor: '#F0F4FF', borderColor: '#C7D9F8', marginBottom: 0, textAlign: 'center' }}>
-                          <p style={{ fontSize: 13, color: '#1A3C6E', margin: 0 }}>개인정보 익명화 중... (약 20~40초)</p>
+                        <div style={{ ...sectionStyle, backgroundColor: 'var(--haru-tint-blue, #F0F4FF)', borderColor: 'var(--haru-border, #C7D9F8)', marginBottom: 0, textAlign: 'center' }}>
+                          <p style={{ fontSize: 13, color: 'var(--haru-link, #1A3C6E)', margin: 0 }}>개인정보 익명화 중... (약 20~40초)</p>
                         </div>
                       );
                     }
 
                     if (haruLawShareState.step === 'publishing') {
                       return (
-                        <div style={{ ...sectionStyle, backgroundColor: '#F0F4FF', borderColor: '#C7D9F8', marginBottom: 0, textAlign: 'center' }}>
-                          <p style={{ fontSize: 13, color: '#1A3C6E', margin: 0 }}>공유 신청 중...</p>
+                        <div style={{ ...sectionStyle, backgroundColor: 'var(--haru-tint-blue, #F0F4FF)', borderColor: 'var(--haru-border, #C7D9F8)', marginBottom: 0, textAlign: 'center' }}>
+                          <p style={{ fontSize: 13, color: 'var(--haru-link, #1A3C6E)', margin: 0 }}>공유 신청 중...</p>
                         </div>
                       );
                     }
@@ -6039,13 +6048,13 @@ export function SayuPage() {
                       const judgmentColors: Record<string, string> = { possible: '#059669', caution: '#D97706', need_check: '#2563EB' };
                       const judgmentLabels: Record<string, string> = { possible: '가능성 있음', caution: '주의 필요', need_check: '추가 확인 필요' };
                       return (
-                        <div style={{ ...sectionStyle, backgroundColor: '#F0FDF4', borderColor: '#A7F3D0', marginBottom: 0 }}>
-                          <p style={{ ...labelStyle, color: '#065F46' }}>익명 공유 미리보기 — 이 내용이 함께보기에 공개됩니다</p>
-                          <p style={{ fontSize: 14, fontWeight: 700, color: '#064E3B', marginBottom: 6 }}>{pv.title}</p>
-                          <p style={{ fontSize: 13, color: '#374151', marginBottom: 6, lineHeight: 1.6 }}>{pv.anonymizedQuestion}</p>
-                          <p style={{ fontSize: 13, color: '#374151', marginBottom: 8, lineHeight: 1.6 }}>{pv.summary}</p>
+                        <div style={{ ...sectionStyle, backgroundColor: 'var(--haru-tint-green, #F0FDF4)', borderColor: 'var(--haru-border, #A7F3D0)', marginBottom: 0 }}>
+                          <p style={{ ...labelStyle, color: 'var(--haru-semantic-green, #065F46)' }}>익명 공유 미리보기 — 이 내용이 함께보기에 공개됩니다</p>
+                          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--haru-semantic-green, #064E3B)', marginBottom: 6 }}>{pv.title}</p>
+                          <p style={{ fontSize: 13, color: 'var(--haru-ink, #374151)', marginBottom: 6, lineHeight: 1.6 }}>{pv.anonymizedQuestion}</p>
+                          <p style={{ fontSize: 13, color: 'var(--haru-ink, #374151)', marginBottom: 8, lineHeight: 1.6 }}>{pv.summary}</p>
                           {pv.judgmentType && (
-                            <p style={{ fontSize: 12, fontWeight: 700, color: judgmentColors[pv.judgmentType] || '#374151', marginBottom: 8 }}>
+                            <p style={{ fontSize: 12, fontWeight: 700, color: judgmentColors[pv.judgmentType] || 'var(--haru-ink, #374151)', marginBottom: 8 }}>
                               판단 유형: {judgmentLabels[pv.judgmentType] || pv.judgmentType}
                             </p>
                           )}
@@ -6056,7 +6065,7 @@ export function SayuPage() {
                               ))}
                             </ul>
                           )}
-                          <p style={{ fontSize: 11, color: '#6B7280', marginBottom: 10 }}>※ 개인정보는 AI로 익명화 처리되었습니다. 위 내용을 확인 후 공유 신청하세요.</p>
+                          <p style={{ fontSize: 11, color: 'var(--haru-muted, #6B7280)', marginBottom: 10 }}>※ 개인정보는 AI로 익명화 처리되었습니다. 위 내용을 확인 후 공유 신청하세요.</p>
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button
                               onClick={handleHaruLawPublish}
@@ -6066,7 +6075,7 @@ export function SayuPage() {
                             </button>
                             <button
                               onClick={() => setHaruLawShareState({ step: 'idle' })}
-                              style={{ padding: '10px 16px', backgroundColor: '#F3F4F6', color: '#374151', border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}
+                              style={{ padding: '10px 16px', backgroundColor: 'var(--haru-subtle, #F3F4F6)', color: 'var(--haru-ink, #374151)', border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}
                             >
                               취소
                             </button>
@@ -6077,11 +6086,11 @@ export function SayuPage() {
 
                     if (ss === 'pending') {
                       return (
-                        <div style={{ ...sectionStyle, backgroundColor: '#F0FDF4', borderColor: '#A7F3D0', marginBottom: 0 }}>
+                        <div style={{ ...sectionStyle, backgroundColor: 'var(--haru-tint-green, #F0FDF4)', borderColor: 'var(--haru-border, #A7F3D0)', marginBottom: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                             <div>
-                              <p style={{ fontSize: 13, fontWeight: 700, color: '#065F46', margin: '0 0 4px' }}>⏳ 공유 검수 중</p>
-                              <p style={{ fontSize: 12, color: '#047857', lineHeight: 1.7, margin: 0 }}>
+                              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--haru-semantic-green, #065F46)', margin: '0 0 4px' }}>⏳ 공유 검수 중</p>
+                              <p style={{ fontSize: 12, color: 'var(--haru-semantic-green, #047857)', lineHeight: 1.7, margin: 0 }}>
                                 익명 공유 신청이 접수되었습니다.<br />
                                 관리자가 개인정보 노출과 게시 적합성을 확인한 후 승인하면 SAYU·함께보기에 게시됩니다.
                               </p>
@@ -6098,7 +6107,7 @@ export function SayuPage() {
                               )}
                               <button
                                 onClick={handleHaruLawUnpublish}
-                                style={{ padding: '6px 12px', backgroundColor: '#FEE2E2', color: '#991B1B', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                style={{ padding: '6px 12px', backgroundColor: 'var(--haru-tint-rose, #FEE2E2)', color: 'var(--haru-semantic-rose, #991B1B)', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}
                               >
                                 공유 취소
                               </button>
@@ -6110,17 +6119,17 @@ export function SayuPage() {
 
                     if (ss === 'published') {
                       return (
-                        <div style={{ ...sectionStyle, backgroundColor: '#F0FDF4', borderColor: '#A7F3D0', marginBottom: 0 }}>
+                        <div style={{ ...sectionStyle, backgroundColor: 'var(--haru-tint-green, #F0FDF4)', borderColor: 'var(--haru-border, #A7F3D0)', marginBottom: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                             <div>
-                              <p style={{ fontSize: 13, fontWeight: 700, color: '#065F46', margin: '0 0 4px' }}>✅ 공유 승인됨</p>
-                              <p style={{ fontSize: 12, color: '#047857', lineHeight: 1.7, margin: 0 }}>
+                              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--haru-semantic-green, #065F46)', margin: '0 0 4px' }}>✅ 공유 승인됨</p>
+                              <p style={{ fontSize: 12, color: 'var(--haru-semantic-green, #047857)', lineHeight: 1.7, margin: 0 }}>
                                 익명 공유가 승인되어 SAYU·함께보기에 게시되었습니다.
                               </p>
                             </div>
                             <button
                               onClick={handleHaruLawUnpublish}
-                              style={{ padding: '6px 12px', backgroundColor: '#FEE2E2', color: '#991B1B', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              style={{ padding: '6px 12px', backgroundColor: 'var(--haru-tint-rose, #FEE2E2)', color: 'var(--haru-semantic-rose, #991B1B)', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}
                             >
                               공유 취소
                             </button>
@@ -6138,20 +6147,20 @@ export function SayuPage() {
                     if (ss === 'rejected') {
                       const rejectedReason = String((records.find((item) => item.id === harurawModal.recordId) as any)?.haruLawShareRejectedReason || '').trim();
                       return (
-                        <div style={{ ...sectionStyle, backgroundColor: '#FEF2F2', borderColor: '#FECACA', marginBottom: 0 }}>
-                          <p style={{ fontSize: 13, fontWeight: 700, color: '#991B1B', margin: '0 0 4px' }}>익명 공유가 승인되지 않았습니다</p>
+                        <div style={{ ...sectionStyle, backgroundColor: 'var(--haru-tint-rose, #FEF2F2)', borderColor: '#FECACA', marginBottom: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--haru-semantic-rose, #991B1B)', margin: '0 0 4px' }}>익명 공유가 승인되지 않았습니다</p>
                           {rejectedReason ? (
-                            <p style={{ fontSize: 12, color: '#B42318', lineHeight: 1.7, margin: '0 0 10px' }}>
+                            <p style={{ fontSize: 12, color: 'var(--haru-semantic-rose, #B42318)', lineHeight: 1.7, margin: '0 0 10px' }}>
                               사유: {rejectedReason}
                             </p>
                           ) : (
-                            <p style={{ fontSize: 12, color: '#B42318', lineHeight: 1.7, margin: '0 0 10px' }}>
+                            <p style={{ fontSize: 12, color: 'var(--haru-semantic-rose, #B42318)', lineHeight: 1.7, margin: '0 0 10px' }}>
                               내용을 수정한 뒤 다시 신청하실 수 있습니다.
                             </p>
                           )}
                           <button
                             onClick={handleHaruLawSharePreview}
-                            style={{ width: '100%', padding: '8px 12px', backgroundColor: '#1A3C6E', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                            style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--haru-button-blue, #1A3C6E)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                           >
                             다시 공유 신청
                           </button>
@@ -6160,14 +6169,14 @@ export function SayuPage() {
                     }
 
                     return (
-                      <div style={{ ...sectionStyle, backgroundColor: '#F0F4FF', borderColor: '#C7D9F8', marginBottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ ...sectionStyle, backgroundColor: 'var(--haru-tint-blue, #F0F4FF)', borderColor: 'var(--haru-border, #C7D9F8)', marginBottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div>
-                          <p style={{ fontSize: 13, fontWeight: 700, color: '#1A3C6E', margin: '0 0 2px' }}>익명 공유</p>
-                          <p style={{ fontSize: 11, color: '#6B7280', margin: 0 }}>개인정보를 AI로 제거 후 함께보기 사례로 공유합니다</p>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--haru-link, #1A3C6E)', margin: '0 0 2px' }}>익명 공유</p>
+                          <p style={{ fontSize: 11, color: 'var(--haru-muted, #6B7280)', margin: 0 }}>개인정보를 AI로 제거 후 함께보기 사례로 공유합니다</p>
                         </div>
                         <button
                           onClick={handleHaruLawSharePreview}
-                          style={{ padding: '8px 14px', backgroundColor: '#1A3C6E', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 12 }}
+                          style={{ padding: '8px 14px', backgroundColor: 'var(--haru-button-blue, #1A3C6E)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 12 }}
                         >
                           공유 준비
                         </button>
@@ -6183,8 +6192,8 @@ export function SayuPage() {
     </div>
 
     {/* 인쇄 전용 레이아웃 */}
-    <div className="print-show sayu-print-page" style={{ backgroundColor: 'white' }}>
-        <div className="sayu-print-header" style={{ backgroundColor: 'white' }}>
+    <div className="print-show sayu-print-page" style={{ backgroundColor: 'var(--haru-surface, white)' }}>
+        <div className="sayu-print-header" style={{ backgroundColor: 'var(--haru-surface, white)' }}>
           <h2>
             {sayuModalState.recordDate && new Date(sayuModalState.recordDate + 'T00:00:00').toLocaleDateString('ko-KR', {
               year: 'numeric',
@@ -6194,10 +6203,10 @@ export function SayuPage() {
             })}
           </h2>
           {(sayuModalState.title || sayuModalState.aiTitle) && (
-            <div style={{ marginTop: '6px', fontSize: '13pt', fontWeight: 600, color: '#1A3C6E' }}>
+            <div style={{ marginTop: '6px', fontSize: '13pt', fontWeight: 600, color: 'var(--haru-link, #1A3C6E)' }}>
               {sayuModalState.title || sayuModalState.aiTitle}
               {sayuModalState.aiTitle && sayuModalState.title && sayuModalState.aiTitle !== sayuModalState.title && (
-                <span style={{ fontSize: '10pt', color: '#999', fontWeight: 400, marginLeft: '6px' }}>
+                <span style={{ fontSize: '10pt', color: 'var(--haru-muted, #999)', fontWeight: 400, marginLeft: '6px' }}>
                   ({sayuModalState.aiTitle})
                 </span>
               )}
@@ -6206,22 +6215,22 @@ export function SayuPage() {
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
             {sayuModalState.currentRating && sayuModalState.currentRating > 0 && (
               <span style={{ fontSize: '10pt', padding: '4px 12px',
-                borderRadius: '12px', backgroundColor: '#FFF8F0', color: '#F59E0B' }}>
+                borderRadius: '12px', backgroundColor: 'var(--haru-tint-orange, #FFF8F0)', color: 'var(--haru-semantic-orange, #F59E0B)' }}>
                 ✨ 특별한 날
               </span>
             )}
             {sayuModalState.weather && (
-              <span style={{ fontSize: '9pt', padding: '3px 8px', borderRadius: '4px', backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>
+              <span style={{ fontSize: '9pt', padding: '3px 8px', borderRadius: '4px', backgroundColor: 'var(--haru-subtle, #FDF6C3)', color: 'var(--haru-link, #1A3C6E)' }}>
                 {sayuModalState.weather}
               </span>
             )}
             {sayuModalState.temperature && (
-              <span style={{ fontSize: '9pt', padding: '3px 8px', borderRadius: '4px', backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>
+              <span style={{ fontSize: '9pt', padding: '3px 8px', borderRadius: '4px', backgroundColor: 'var(--haru-subtle, #FDF6C3)', color: 'var(--haru-link, #1A3C6E)' }}>
                 {sayuModalState.temperature}
               </span>
             )}
             {sayuModalState.mood && (
-              <span style={{ fontSize: '9pt', padding: '3px 8px', borderRadius: '4px', backgroundColor: '#FDF6C3', color: '#1A3C6E' }}>
+              <span style={{ fontSize: '9pt', padding: '3px 8px', borderRadius: '4px', backgroundColor: 'var(--haru-subtle, #FDF6C3)', color: 'var(--haru-link, #1A3C6E)' }}>
                 {sayuModalState.mood}
               </span>
             )}
@@ -6232,35 +6241,35 @@ export function SayuPage() {
           const validImages = (sayuModalState.images || []).filter((img: string) => img && img !== '');
           if (validImages.length === 0) return null;
           return (
-            <div className="print-photos" style={{ marginBottom: '15px', backgroundColor: 'white' }}>
+            <div className="print-photos" style={{ marginBottom: '15px', backgroundColor: 'var(--haru-surface, white)' }}>
               {validImages.length === 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', backgroundColor: 'white' }}>
-                  <img src={validImages[0]} alt="사진" style={{ width: 'auto', maxWidth: '63mm', maxHeight: '80mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+                <div style={{ display: 'flex', justifyContent: 'center', backgroundColor: 'var(--haru-surface, white)' }}>
+                  <img src={validImages[0]} alt="사진" style={{ width: 'auto', maxWidth: '63mm', maxHeight: '80mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'var(--haru-surface, white)' }} />
                 </div>
               )}
               {validImages.length === 2 && (
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'white' }}>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'var(--haru-surface, white)' }}>
                   {validImages.map((img: string, idx: number) => (
-                    <img key={idx} src={img} alt={`사진 ${idx + 1}`} style={{ width: 'auto', maxWidth: '60mm', maxHeight: '75mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+                    <img key={idx} src={img} alt={`사진 ${idx + 1}`} style={{ width: 'auto', maxWidth: '60mm', maxHeight: '75mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'var(--haru-surface, white)' }} />
                   ))}
                 </div>
               )}
               {validImages.length >= 4 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px', backgroundColor: 'white' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px', backgroundColor: 'var(--haru-surface, white)' }}>
                   {validImages.map((img: string, idx: number) => (
                     <img key={idx} src={img} alt={`사진 ${idx + 1}`}
-                      style={{ width: '100%', minWidth: 0, maxHeight: '45mm', objectFit: 'contain', borderRadius: '8px', backgroundColor: 'white' }} />
+                      style={{ width: '100%', minWidth: 0, maxHeight: '45mm', objectFit: 'contain', borderRadius: '8px', backgroundColor: 'var(--haru-surface, white)' }} />
                   ))}
                 </div>
               )}
               {validImages.length === 3 && (
-                <div style={{ backgroundColor: 'white' }}>
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px', backgroundColor: 'white' }}>
-                    <img src={validImages[0]} alt="사진 1" style={{ width: 'auto', maxWidth: '84mm', maxHeight: '65mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+                <div style={{ backgroundColor: 'var(--haru-surface, white)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px', backgroundColor: 'var(--haru-surface, white)' }}>
+                    <img src={validImages[0]} alt="사진 1" style={{ width: 'auto', maxWidth: '84mm', maxHeight: '65mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'var(--haru-surface, white)' }} />
                   </div>
-                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'white' }}>
-                    <img src={validImages[1]} alt="사진 2" style={{ width: 'auto', maxWidth: '38mm', maxHeight: '38mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
-                    <img src={validImages[2]} alt="사진 3" style={{ width: 'auto', maxWidth: '38mm', maxHeight: '38mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'white' }} />
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', backgroundColor: 'var(--haru-surface, white)' }}>
+                    <img src={validImages[1]} alt="사진 2" style={{ width: 'auto', maxWidth: '38mm', maxHeight: '38mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'var(--haru-surface, white)' }} />
+                    <img src={validImages[2]} alt="사진 3" style={{ width: 'auto', maxWidth: '38mm', maxHeight: '38mm', objectFit: 'contain', height: 'auto', borderRadius: '8px', backgroundColor: 'var(--haru-surface, white)' }} />
                   </div>
                 </div>
               )}
@@ -6268,7 +6277,7 @@ export function SayuPage() {
           );
         })()}
 
-        <div className="sayu-print-content" style={{ backgroundColor: 'white' }}>
+        <div className="sayu-print-content" style={{ backgroundColor: 'var(--haru-surface, white)' }}>
           <p>{sayuModalState.content}</p>
         </div>
       </div>
@@ -6358,8 +6367,8 @@ function StockDashboard({
         display: 'inline-flex', alignItems: 'center', fontSize: 11,
         padding: '5px 10px', borderRadius: 20, margin: 3, cursor: 'pointer',
         border: `0.5px solid ${active ? '#1A3C6E' : '#e5e7eb'}`,
-        background: active ? '#1A3C6E' : '#fff',
-        color: active ? '#fff' : color || '#6B7280',
+        background: active ? 'var(--haru-button-blue, #1A3C6E)' : 'var(--haru-surface, #fff)',
+        color: active ? '#fff' : color || 'var(--haru-muted, #6B7280)',
       }}
     >{label}</button>
   );
@@ -6367,18 +6376,18 @@ function StockDashboard({
   const donutTotal = buyCount + sellCount || 1;
 
   return (
-    <div style={{ padding: '12px', background: '#f9fafb' }}>
+    <div style={{ padding: '12px', background: 'var(--haru-subtle, #f9fafb)' }}>
       {/* 통계 카드 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 8, marginBottom: 12 }}>
         {[
-          { label: '산 거래', term: '매수', val: `${buyCount}건`, color: '#27500A' },
-          { label: '판 거래', term: '매도', val: `${sellCount}건`, color: '#A32D2D' },
-          { label: '거래 종목', term: '', val: `${stockNames.length - 1}개`, color: '#1A3C6E' },
-          { label: '총 거래금액', term: '', val: `${Math.round(totalAmt / 10000).toLocaleString()}만원`, color: '#1A3C6E' },
-          { label: '거래소감', term: '', val: `${reflectionCount}건`, color: '#10B981' },
+          { label: '산 거래', term: '매수', val: `${buyCount}건`, color: 'var(--haru-semantic-green, #27500A)' },
+          { label: '판 거래', term: '매도', val: `${sellCount}건`, color: 'var(--haru-semantic-rose, #A32D2D)' },
+          { label: '거래 종목', term: '', val: `${stockNames.length - 1}개`, color: 'var(--haru-link, #1A3C6E)' },
+          { label: '총 거래금액', term: '', val: `${Math.round(totalAmt / 10000).toLocaleString()}만원`, color: 'var(--haru-link, #1A3C6E)' },
+          { label: '거래소감', term: '', val: `${reflectionCount}건`, color: 'var(--haru-semantic-green, #10B981)' },
         ].map((s) => (
-          <div key={s.label} style={{ background: '#fff', border: '0.5px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
-            <div style={{ fontSize: 11, color: '#6B7280' }}>
+          <div key={s.label} style={{ background: 'var(--haru-surface, #fff)', border: '0.5px solid var(--haru-border, #e5e7eb)', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ fontSize: 11, color: 'var(--haru-muted, #6B7280)' }}>
               {s.label} {s.term && <span style={{ fontSize: 10, opacity: 0.6 }}>{s.term}</span>}
             </div>
             <div style={{ fontSize: 16, fontWeight: 500, color: s.color, marginTop: 2 }}>{s.val}</div>
@@ -6387,7 +6396,7 @@ function StockDashboard({
       </div>
 
       {/* 도넛차트 */}
-      <div style={{ background: '#fff', border: '0.5px solid #e5e7eb', borderRadius: 12, padding: 14, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ background: 'var(--haru-surface, #fff)', border: '0.5px solid var(--haru-border, #e5e7eb)', borderRadius: 12, padding: 14, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 16 }}>
         <svg width="80" height="80" viewBox="0 0 80 80">
           <circle cx="40" cy="40" r="30" fill="none" stroke="#27500A" strokeWidth="18"
             strokeDasharray={`${(buyCount / donutTotal) * 188.4} 188.4`}
@@ -6405,8 +6414,8 @@ function StockDashboard({
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#27500A', flexShrink: 0 }} />
             <div>
-              <div style={{ fontSize: 12, color: '#374151' }}>산 거래 <span style={{ fontSize: 10, color: '#9CA3AF' }}>매수</span></div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: '#27500A' }}>
+              <div style={{ fontSize: 12, color: 'var(--haru-ink, #374151)' }}>산 거래 <span style={{ fontSize: 10, color: '#9CA3AF' }}>매수</span></div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--haru-semantic-green, #27500A)' }}>
                 {buyCount}건 · {buyCount + sellCount > 0 ? Math.round((buyCount / (buyCount + sellCount)) * 100) : 0}%
               </div>
             </div>
@@ -6414,8 +6423,8 @@ function StockDashboard({
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#A32D2D', flexShrink: 0 }} />
             <div>
-              <div style={{ fontSize: 12, color: '#374151' }}>판 거래 <span style={{ fontSize: 10, color: '#9CA3AF' }}>매도</span></div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: '#A32D2D' }}>
+              <div style={{ fontSize: 12, color: 'var(--haru-ink, #374151)' }}>판 거래 <span style={{ fontSize: 10, color: '#9CA3AF' }}>매도</span></div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--haru-semantic-rose, #A32D2D)' }}>
                 {sellCount}건 · {buyCount + sellCount > 0 ? Math.round((sellCount / (buyCount + sellCount)) * 100) : 0}%
               </div>
             </div>
@@ -6424,12 +6433,12 @@ function StockDashboard({
       </div>
 
       {/* 날짜 검색 */}
-      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', margin: '12px 0 6px' }}>날짜·기간으로 찾기</div>
+      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--haru-muted, #6B7280)', margin: '12px 0 6px' }}>날짜·기간으로 찾기</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 6, marginBottom: 8 }}>
         <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-          style={{ fontSize: 12, padding: '7px 10px', borderRadius: 8, border: '0.5px solid #d1d5db', width: '100%', boxSizing: 'border-box' }} />
+          style={{ fontSize: 12, padding: '7px 10px', borderRadius: 8, border: '0.5px solid var(--haru-border, #d1d5db)', width: '100%', boxSizing: 'border-box' }} />
         <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-          style={{ fontSize: 12, padding: '7px 10px', borderRadius: 8, border: '0.5px solid #d1d5db', width: '100%', boxSizing: 'border-box' }} />
+          style={{ fontSize: 12, padding: '7px 10px', borderRadius: 8, border: '0.5px solid var(--haru-border, #d1d5db)', width: '100%', boxSizing: 'border-box' }} />
       </div>
       <div style={{ marginBottom: 8 }}>
         {['전체기간', '오늘', '이번 주', '이번 달', '3개월'].map((p) => {
@@ -6447,14 +6456,14 @@ function StockDashboard({
               type="button"
               key={p}
               onClick={applyRange}
-              style={{ fontSize: 11, padding: '5px 10px', borderRadius: 20, margin: 3, cursor: 'pointer', border: '0.5px solid #e5e7eb', background: '#fff', color: '#6B7280' }}
+              style={{ fontSize: 11, padding: '5px 10px', borderRadius: 20, margin: 3, cursor: 'pointer', border: '0.5px solid var(--haru-border, #e5e7eb)', background: 'var(--haru-surface, #fff)', color: 'var(--haru-muted, #6B7280)' }}
             >{p}</button>
           );
         })}
       </div>
 
       {/* 거래종류 필터 */}
-      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', margin: '12px 0 6px' }}>거래 종류로 찾기</div>
+      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--haru-muted, #6B7280)', margin: '12px 0 6px' }}>거래 종류로 찾기</div>
       <div style={{ marginBottom: 8 }}>
         {chip('전체', filter === '전체', () => setFilter('전체'))}
         {chip('산 것만 매수', filter === '매수', () => setFilter('매수'))}
@@ -6462,13 +6471,13 @@ function StockDashboard({
       </div>
 
       {/* 종목 필터 */}
-      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', margin: '12px 0 6px' }}>종목으로 찾기</div>
+      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--haru-muted, #6B7280)', margin: '12px 0 6px' }}>종목으로 찾기</div>
       <div style={{ marginBottom: 8 }}>
         {stockNames.map((n) => chip(n, nameFilter === n, () => setNameFilter(n)))}
       </div>
 
       {/* 정렬 */}
-      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', margin: '12px 0 6px' }}>순서 정렬</div>
+      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--haru-muted, #6B7280)', margin: '12px 0 6px' }}>순서 정렬</div>
       <div style={{ marginBottom: 12 }}>
         {(['최신순', '오래된순', '금액높은순', '금액낮은순'] as const).map((s) =>
           chip(s, sort === s, () => setSort(s)),
@@ -6476,7 +6485,7 @@ function StockDashboard({
       </div>
 
       {/* 거래 목록 */}
-      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', margin: '12px 0 6px' }}>
+      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--haru-muted, #6B7280)', margin: '12px 0 6px' }}>
         거래 내역 ({filtered.length}건)
       </div>
       {filtered.length === 0 && (
@@ -6490,8 +6499,8 @@ function StockDashboard({
           style={{
             width: '100%',
             textAlign: 'left',
-            background: '#fff',
-            border: '0.5px solid #e5e7eb',
+            background: 'var(--haru-surface, #fff)',
+            border: '0.5px solid var(--haru-border, #e5e7eb)',
             borderRadius: 10,
             padding: '12px 14px',
             marginBottom: 8,
@@ -6500,21 +6509,21 @@ function StockDashboard({
           aria-label={`${t.stock_name} 거래 결과 열기`}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{t.stock_name}</span>
+            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--haru-semantic-blue, #111827)' }}>{t.stock_name}</span>
             <span style={{
               fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 500,
-              background: t.stock_type === '매수' ? '#EAF3DE' : '#FCEBEB',
-              color: t.stock_type === '매수' ? '#27500A' : '#A32D2D',
+              background: t.stock_type === '매수' ? 'var(--haru-tint-green, #EAF3DE)' : 'var(--haru-tint-rose, #FCEBEB)',
+              color: t.stock_type === '매수' ? 'var(--haru-semantic-green, #27500A)' : 'var(--haru-semantic-rose, #A32D2D)',
             }}>
               {t.stock_type === '매수' ? '산 것 · 매수' : '판 것 · 매도'}
             </span>
           </div>
-          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>
+          <div style={{ fontSize: 12, color: 'var(--haru-muted, #6B7280)', marginTop: 3 }}>
             {t.stock_quantity} · {t.stock_price} · 총 {t.stock_total}
           </div>
           <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{t.stock_date}</div>
           {String(t.stock_reflection || t.stock_sayu || '').trim() && (
-            <div style={{ fontSize: 12, color: '#374151', marginTop: 8, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+            <div style={{ fontSize: 12, color: 'var(--haru-ink, #374151)', marginTop: 8, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
               {String(t.stock_reflection || t.stock_sayu).trim()}
             </div>
           )}

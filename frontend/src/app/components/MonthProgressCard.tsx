@@ -6,14 +6,14 @@ import type { MonthProgressView } from '../records/monthProgressController';
 // 설계: docs/HARU2026_홈_이번달_기록현황_카드_설계.md 3절. 숫자는 서버 확정 뒤에만 보여 준다(view.hasConfirmed).
 
 const cardStyle = {
-  background: '#fff',
-  border: '1px solid #E5DFD0',
+  background: 'var(--haru-surface, #fff)',
+  border: '1px solid var(--haru-border, #E5DFD0)',
   borderRadius: 20,
   padding: 18,
   marginBottom: 28,
 } as const;
 
-const mutedText = { fontSize: 14, color: '#646B57', lineHeight: 1.55 } as const;
+const mutedText = { fontSize: 14, color: 'var(--haru-muted, #646B57)', lineHeight: 1.55 } as const;
 const buttonReset = { border: 0, background: 'transparent', cursor: 'pointer', font: 'inherit', color: 'inherit' } as const;
 
 function clock(ms: number | null): string {
@@ -40,9 +40,9 @@ function MonthProgressCardContent({ view, onOpenRecord, onRetry, onStartWriting 
       <section aria-labelledby="month-progress-title" aria-busy="true" style={cardStyle}>
         <h2 id="month-progress-title" className="sr-only">이번 달 기록</h2>
         <div role="status" aria-label="이번 달 기록 현황을 불러오는 중" style={{ display: 'grid', gap: 10 }}>
-          <div style={{ height: 22, width: '38%', borderRadius: 8, background: '#EFEADC' }} />
-          <div style={{ height: 16, width: '82%', borderRadius: 8, background: '#F3EFE3' }} />
-          <div style={{ height: 16, width: '70%', borderRadius: 8, background: '#F3EFE3' }} />
+          <div style={{ height: 22, width: '38%', borderRadius: 8, background: 'var(--haru-tint-orange, #EFEADC)' }} />
+          <div style={{ height: 16, width: '82%', borderRadius: 8, background: 'var(--haru-tint-amber, #F3EFE3)' }} />
+          <div style={{ height: 16, width: '70%', borderRadius: 8, background: 'var(--haru-tint-amber, #F3EFE3)' }} />
         </div>
       </section>
     );
@@ -51,9 +51,9 @@ function MonthProgressCardContent({ view, onOpenRecord, onRetry, onStartWriting 
   if (!hasConfirmed) {
     return (
       <section aria-labelledby="month-progress-title" style={cardStyle}>
-        <h2 id="month-progress-title" style={{ fontSize: 16, fontWeight: 800, margin: '0 0 8px', color: '#2C2C2A' }}>이번 달 기록</h2>
+        <h2 id="month-progress-title" style={{ fontSize: 16, fontWeight: 800, margin: '0 0 8px', color: 'var(--haru-ink, #2C2C2A)' }}>이번 달 기록</h2>
         <p role="alert" style={{ ...mutedText, margin: '0 0 12px' }}>기록 현황을 불러오지 못했어요.</p>
-        <button type="button" onClick={onRetry} style={{ ...buttonReset, padding: '10px 14px', minHeight: 44, borderRadius: 12, background: '#E9EFDA', color: '#4A5A2C', fontSize: 14, fontWeight: 700 }}>
+        <button type="button" onClick={onRetry} style={{ ...buttonReset, padding: '10px 14px', minHeight: 44, borderRadius: 12, background: 'var(--haru-subtle, #E9EFDA)', color: 'var(--haru-accent-ink, #4A5A2C)', fontSize: 14, fontWeight: 700 }}>
           다시 시도
         </button>
       </section>
@@ -71,23 +71,23 @@ function MonthProgressCardContent({ view, onOpenRecord, onRetry, onStartWriting 
   return (
     <section aria-labelledby="month-progress-title" style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <h2 id="month-progress-title" style={{ fontSize: 16, fontWeight: 800, margin: 0, color: '#2C2C2A' }}>이번 달 기록</h2>
-        <span style={{ fontSize: 14, color: '#646B57' }}>{monthRangeLabel(todayKey)}</span>
+        <h2 id="month-progress-title" style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--haru-ink, #2C2C2A)' }}>이번 달 기록</h2>
+        <span style={{ fontSize: 14, color: 'var(--haru-muted, #646B57)' }}>{monthRangeLabel(todayKey)}</span>
       </div>
 
       {count > 0 ? (
         <>
-          <p style={{ margin: '8px 0 12px', fontSize: 32, fontWeight: 800, color: '#4A5A2C', lineHeight: 1.2 }}>{count}편</p>
+          <p style={{ margin: '8px 0 12px', fontSize: 32, fontWeight: 800, color: 'var(--haru-accent-ink, #4A5A2C)', lineHeight: 1.2 }}>{count}편</p>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
             {recent.map((entry) => (
               <li key={entry.id} style={{ minWidth: 0 }}>
                 <button
                   type="button"
                   onClick={() => onOpenRecord(entry)}
-                  style={{ ...buttonReset, width: '100%', textAlign: 'left', padding: '10px 12px', minHeight: 44, borderRadius: 12, background: '#F8F5EC', display: 'flex', gap: 10, alignItems: 'baseline' }}
+                  style={{ ...buttonReset, width: '100%', textAlign: 'left', padding: '10px 12px', minHeight: 44, borderRadius: 12, background: 'var(--haru-subtle, #F8F5EC)', display: 'flex', gap: 10, alignItems: 'baseline' }}
                 >
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#4A5A2C', whiteSpace: 'nowrap' }}>{getRecordFormatLabel(entry.format)} · {shortDate(entry.date)}</span>
-                  <span style={{ fontSize: 15, color: '#2C2C2A', minWidth: 0, flex: '1 1 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.title}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--haru-accent-ink, #4A5A2C)', whiteSpace: 'nowrap' }}>{getRecordFormatLabel(entry.format)} · {shortDate(entry.date)}</span>
+                  <span style={{ fontSize: 15, color: 'var(--haru-ink, #2C2C2A)', minWidth: 0, flex: '1 1 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.title}</span>
                 </button>
               </li>
             ))}
@@ -96,7 +96,7 @@ function MonthProgressCardContent({ view, onOpenRecord, onRetry, onStartWriting 
       ) : (
         <div style={{ marginTop: 10 }}>
           <p style={{ ...mutedText, margin: '0 0 12px' }}>이번 달 아직 남긴 기록이 없어요. 오늘의 한 줄부터 시작해 보세요.</p>
-          <button type="button" onClick={onStartWriting} style={{ ...buttonReset, padding: '10px 14px', minHeight: 44, borderRadius: 12, background: '#E9EFDA', color: '#4A5A2C', fontSize: 14, fontWeight: 700 }}>
+          <button type="button" onClick={onStartWriting} style={{ ...buttonReset, padding: '10px 14px', minHeight: 44, borderRadius: 12, background: 'var(--haru-subtle, #E9EFDA)', color: 'var(--haru-accent-ink, #4A5A2C)', fontSize: 14, fontWeight: 700 }}>
             오늘의 한 줄 쓰기
           </button>
         </div>
@@ -106,7 +106,7 @@ function MonthProgressCardContent({ view, onOpenRecord, onRetry, onStartWriting 
         <p role={notice.role} style={{ ...mutedText, margin: '12px 0 0' }}>
           {notice.text}
           {notice.retry && (
-            <button type="button" onClick={onRetry} style={{ ...buttonReset, marginLeft: 8, padding: '6px 10px', minHeight: 44, textDecoration: 'underline', color: '#4A5A2C', fontWeight: 700 }}>다시 시도</button>
+            <button type="button" onClick={onRetry} style={{ ...buttonReset, marginLeft: 8, padding: '6px 10px', minHeight: 44, textDecoration: 'underline', color: 'var(--haru-accent-ink, #4A5A2C)', fontWeight: 700 }}>다시 시도</button>
           )}
         </p>
       )}

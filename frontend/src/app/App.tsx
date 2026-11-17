@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, type CSSProperties, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router';
 import { AuthProvider } from './contexts/AuthContext';
+import { PwaStatus } from './components/PwaStatus';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LoadingProvider } from './contexts/LoadingContext';
 import { Toaster } from 'sonner';
@@ -210,7 +211,7 @@ function AppChrome() {
     : undefined;
 
   return (
-    <div className="min-h-screen bg-[#FEFBE8] print:bg-white" style={appChromeStyle}>
+    <div className="haru-app-shell min-h-screen print:bg-white" style={appChromeStyle}>
       <main style={{ paddingBottom: 'var(--content-pb)' }}>
         <Routes>
           {/* 홈 화면 — 비로그인 시 랜딩, 로그인 시 홈 */}
@@ -342,6 +343,7 @@ function AppChrome() {
 function App() {
   return (
     <ThemeProvider>
+      <PwaStatus />
       <BrowserRouter>
         <PublicLegalBoundary>
           <AuthProvider>

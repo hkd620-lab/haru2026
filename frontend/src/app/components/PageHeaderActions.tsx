@@ -8,11 +8,11 @@ import { getOrigin } from '../services/v2Origin';
 export function PageHeaderActions({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
   const baseStyle: CSSProperties = {
-    background: '#fff',
-    border: '1px solid #e5e5e5',
+    background: 'var(--haru-surface, #fff)',
+    border: '1px solid var(--haru-border, #e5e5e5)',
     borderRadius: '50%',
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -31,8 +31,8 @@ export function PageHeaderActions({ onClose }: { onClose?: () => void }) {
     <div
       style={{
         position: 'fixed',
-        top: 12,
-        right: 12,
+        top: 'calc(12px + env(safe-area-inset-top, 0px))',
+        right: 'max(12px, env(safe-area-inset-right, 0px))',
         zIndex: 100,
         display: 'flex',
         gap: 6,
@@ -45,7 +45,7 @@ export function PageHeaderActions({ onClose }: { onClose?: () => void }) {
         onClick={handleBack}
         style={baseStyle}
       >
-        <ChevronLeft style={{ width: 18, height: 18, color: '#1A3C6E' }} />
+        <ChevronLeft style={{ width: 18, height: 18, color: 'var(--haru-link, #1A3C6E)' }} />
       </button>
       <button
         type="button"
@@ -54,7 +54,7 @@ export function PageHeaderActions({ onClose }: { onClose?: () => void }) {
         onClick={handleClose}
         style={baseStyle}
       >
-        <X style={{ width: 18, height: 18, color: '#1A3C6E' }} />
+        <X style={{ width: 18, height: 18, color: 'var(--haru-link, #1A3C6E)' }} />
       </button>
     </div>
   );

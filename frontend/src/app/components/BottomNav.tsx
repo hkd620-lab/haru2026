@@ -1,88 +1,58 @@
-import { Home, Sparkles, Settings, Wrench, Users, CreditCard, Clapperboard } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Home, Sparkles, Settings, Wrench, Users, CreditCard, Clapperboard, MoreHorizontal } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { getOrigin } from '../services/v2Origin';
 import { hasAiLibraryAccess } from '../utils/aiLibraryAccess';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
+import { InstallApp } from './InstallApp';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 
 export function BottomNav() {
   const location = useLocation();
   const { user, loading } = useAuth();
-  const isDeveloper = user?.uid === DEVELOPER_UID;
-  const canUseAiLibrary = hasAiLibraryAccess(user?.email, user?.emailVerified);
-
-  const scrollToSayuTop = () => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  };
-
-  // v2에서 진입한 세션이면 HARU 버튼이 v2 홈으로 향하도록
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [location.pathname]);
   const homePath = location.pathname === '/v2' ? '/v2' : getOrigin() || '/';
-
-  const baseItems = [
-    { path: homePath, icon: Home, label: 'HARU' },
-    { path: '/sayu', icon: Sparkles, label: 'SAYU·나의 기록' },
-    { path: '/sayu-together', icon: Users, label: '공개 기록 함께읽기' },
+  const primary = [
+    { path: homePath, icon: Home, label: '홈' },
+    { path: '/sayu', icon: Sparkles, label: '나의 기록' },
+    { path: '/sayu-together', icon: Users, label: '함께읽기' },
+  ];
+  const more = [
     { path: '/fun-videos', icon: Clapperboard, label: '재미 영상' },
-    { path: '/subscription', icon: CreditCard, label: '구독' },
+    { path: '/subscription', icon: CreditCard, label: '구독·요금' },
     { path: '/settings', icon: Settings, label: '설정' },
+    ...(hasAiLibraryAccess(user?.email, user?.emailVerified) ? [{ path: '/ai-library', icon: Wrench, label: 'AI 학습함' }] : []),
+    ...(user?.uid === DEVELOPER_UID ? [{ path: '/admin/console', icon: Wrench, label: '개발자 콘솔' }] : []),
   ];
-
-  const developerItems = [
-    ...(canUseAiLibrary ? [{ path: '/ai-library', icon: Wrench, label: 'AI 학습함' }] : []),
-    ...(isDeveloper ? [{ path: '/admin/console', icon: Wrench, label: '개발자 콘솔' }] : []),
-  ];
-  const navItems = developerItems.length > 0
-    ? [...baseItems.slice(0, 5), ...developerItems, ...baseItems.slice(5)]
-    : baseItems;
-
-  if (loading || (!user && location.pathname === '/')) {
-    return null;
-  }
-
-  return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 bg-white border-t z-50 no-print"
-      style={{ borderColor: '#e5e5e5', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-    >
-      <div className="mx-auto max-w-7xl px-1 sm:px-3">
-        <div
-          className="grid gap-0.5"
-          style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
-        >
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-            
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={item.path === '/sayu' ? scrollToSayuTop : undefined}
-                aria-current={isActive ? 'page' : undefined}
-                className="flex min-w-0 flex-col items-center justify-center px-0.5 py-2.5 transition-all"
-                style={{
-                  color: isActive ? '#1A3C6E' : '#595959',
-                  fontWeight: isActive ? 700 : 400,
-                  minHeight: 76,
-                }}
-              >
-                <Icon className="mb-1 h-5 w-5 shrink-0" strokeWidth={isActive ? 2.5 : 2} />
-                <span
-                  className="min-h-[24px] w-full min-w-0 max-w-full overflow-hidden text-center text-[10px] leading-[1.15] tracking-normal break-keep sm:text-xs"
-                  style={{
-                    display: '-webkit-box',
-                    WebkitBoxOrient: 'vertical',
-                    WebkitLineClamp: 2,
-                  }}
-                >
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
+  if (loading || (!user && location.pathname === '/')) return null;
+  const moreActive = more.some(item => location.pathname === item.path);
+  return <>
+    <nav className="haru-bottom-nav no-print" aria-label="주요 메뉴">
+      <div className="haru-nav-items">
+        {primary.map(({ path, icon: Icon, label }) => <Link key={path} to={path}
+          aria-current={location.pathname === path ? 'page' : undefined}
+          onClick={() => { setOpen(false); if (path === '/sayu') window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); }}>
+          <Icon size={22} aria-hidden="true" /><span>{label}</span>
+        </Link>)}
+        <button type="button" aria-haspopup="dialog" aria-expanded={open} data-active={moreActive || open} onClick={() => setOpen(true)}>
+          <MoreHorizontal size={22} aria-hidden="true" /><span>더보기</span>
+        </button>
       </div>
     </nav>
-  );
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="haru-more-sheet no-print">
+        <DialogTitle>더보기</DialogTitle>
+        <DialogDescription>필요한 기능과 앱 설정을 찾아보세요.</DialogDescription>
+        <div className="haru-more-links">{more.map(({ path, icon: Icon, label }) =>
+          <Link key={path} to={path} onClick={() => setOpen(false)} aria-current={location.pathname === path ? 'page' : undefined}>
+            <Icon size={22} aria-hidden="true" /><span>{label}</span>
+          </Link>
+        )}</div>
+        <InstallApp />
+      </DialogContent>
+    </Dialog>
+  </>;
 }

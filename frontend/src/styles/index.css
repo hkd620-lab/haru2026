@@ -1,15 +1,7 @@
-:root {
-  color-scheme: light;
-}
-
-html, body {
-  background-color: #EDE9F5 !important;
-  color: #1a1a1a !important;
-}
-
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+@import './app-shell.css';
 
 /* 기록·비서 질문칸은 입력 전에도 경계가 보이고, 포커스는 별도로 표시한다. */
 .haru-writing-field::placeholder { color: #626B72; opacity: 1; }

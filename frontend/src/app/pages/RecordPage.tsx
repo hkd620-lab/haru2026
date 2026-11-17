@@ -114,7 +114,7 @@ function SortableTagItem({
             aria-label="태그 이름 저장"
             onClick={onConfirmEdit}
             className="w-6 h-6 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: '#1A3C6E', color: '#FAF9F6' }}
+            style={{ backgroundColor: 'var(--haru-button-blue, #1A3C6E)', color: '#FAF9F6' }}
           >
             <Check className="w-3.5 h-3.5" />
           </button>
@@ -123,7 +123,7 @@ function SortableTagItem({
             aria-label="태그 이름 수정 취소"
             onClick={onCancelEdit}
             className="w-6 h-6 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: '#e5e7eb', color: '#555' }}
+            style={{ backgroundColor: 'var(--haru-tint-blue, #e5e7eb)', color: '#555' }}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -137,8 +137,8 @@ function SortableTagItem({
             {...listeners}
             className="px-2.5 py-1 rounded-lg text-xs transition-all select-none"
             style={{
-              backgroundColor: isSelected ? '#1A3C6E' : '#FEFBE8',
-              color: isSelected ? '#FAF9F6' : '#333333',
+              backgroundColor: isSelected ? 'var(--haru-button-blue, #1A3C6E)' : 'var(--haru-bg, #FEFBE8)',
+              color: isSelected ? '#FAF9F6' : 'var(--haru-ink, #333333)',
               border: isSelected ? 'none' : '1px solid #e5e5e5',
               cursor: 'grab',
             }}
@@ -152,7 +152,7 @@ function SortableTagItem({
               onClick={onStartEdit}
               onPointerDown={(e) => e.stopPropagation()}
               className="w-6 h-6 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: '#eef2f7', color: '#555' }}
+              style={{ backgroundColor: 'var(--haru-tint-blue, #eef2f7)', color: '#555' }}
             >
               <Pencil className="w-3 h-3" />
             </button>
@@ -522,16 +522,16 @@ function RecordPageContent() {
               }}
             />
             <button onClick={() => handleAddCustomTag(type)}
-              className="text-xs font-bold" style={{ color: '#1A3C6E' }}>확인</button>
+              className="text-xs font-bold" style={{ color: 'var(--haru-link, #1A3C6E)' }}>확인</button>
             <button onClick={() => setShowInput({ ...showInput, [type]: false })}
-              className="text-xs" style={{ color: '#999' }}>취소</button>
+              className="text-xs" style={{ color: 'var(--haru-muted, #999)' }}>취소</button>
           </div>
         ) : customCount < 4 ? (
           <button
             onClick={() => setShowInput({ ...showInput, [type]: true })}
             aria-label={`${type === 'weather' ? '날씨' : type === 'temperature' ? '체감기온' : '기분'} 태그 추가`}
             className="w-7 h-7 rounded-full flex items-center justify-center text-base font-bold"
-            style={{ backgroundColor: '#e5e7eb', color: '#555' }}
+            style={{ backgroundColor: 'var(--haru-tint-blue, #e5e7eb)', color: '#555' }}
           >+</button>
         ) : null}
       </>
@@ -954,7 +954,7 @@ function RecordPageContent() {
 
   return (
     <>
-    <div className="max-w-3xl mx-auto px-4 py-3" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
+    <div className="max-w-3xl mx-auto px-4 py-3" style={{ backgroundColor: 'var(--haru-bg, #EDE9F5)', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <PageHeaderActions onClose={closeToOrigin} />
       <div className="space-y-3">
         {/* Title Animation */}
@@ -963,15 +963,15 @@ function RecordPageContent() {
         </section>
 
         <section className="bg-white rounded-lg p-4 shadow-sm">
-          <h2 className="text-base font-semibold" style={{ color: '#1A3C6E' }}>오늘의 기록</h2>
-          <p className="text-xs mt-1 mb-3" style={{ color: '#666' }}>먼저 자유롭게 쓰세요. 형식을 고르면 작성한 글과 사진으로 AI 도움을 받거나 그대로 저장할 수 있습니다.</p>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--haru-link, #1A3C6E)' }}>오늘의 기록</h2>
+          <p className="text-xs mt-1 mb-3" style={{ color: 'var(--haru-muted, #666)' }}>먼저 자유롭게 쓰세요. 형식을 고르면 작성한 글과 사진으로 AI 도움을 받거나 그대로 저장할 수 있습니다.</p>
           {!user && (
-            <div className="mb-3 flex items-center justify-between gap-3 rounded-lg p-3 text-sm" style={{ backgroundColor: '#FEFBE8', color: '#4A5A2C', border: '1px solid #e5e5e5' }}>
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-lg p-3 text-sm" style={{ backgroundColor: 'var(--haru-bg, #FEFBE8)', color: 'var(--haru-accent-ink, #4A5A2C)', border: '1px solid #e5e5e5' }}>
               <span>기록을 저장하려면 먼저 로그인해 주세요. 로그인 전에 쓴 글은 로그인 화면으로 이동하면 사라질 수 있어요.</span>
-              <button type="button" onClick={() => navigate('/login')} className="shrink-0 px-3 py-1.5 rounded text-sm font-semibold" style={{ backgroundColor: '#1A3C6E', color: '#fff' }}>로그인</button>
+              <button type="button" onClick={() => navigate('/login')} className="shrink-0 px-3 py-1.5 rounded text-sm font-semibold" style={{ backgroundColor: 'var(--haru-button-blue, #1A3C6E)', color: '#fff' }}>로그인</button>
             </div>
           )}
-          <label htmlFor="record-draft-content" className="block text-base font-semibold mb-2" style={{ color: '#4A5A2C' }}>기록 입력 · 아래 글상자에 써 주세요</label>
+          <label htmlFor="record-draft-content" className="block text-base font-semibold mb-2" style={{ color: 'var(--haru-accent-ink, #4A5A2C)' }}>기록 입력 · 아래 글상자에 써 주세요</label>
           <textarea
             id="record-draft-content"
             value={draftContent}
@@ -979,10 +979,10 @@ function RecordPageContent() {
             placeholder="오늘 남기고 싶은 이야기를 적어 주세요..."
             rows={3}
             className="haru-writing-field w-full rounded-lg p-3 text-base"
-            style={{ resize: 'vertical', border: '2px solid #7B8962', background: '#F8FAF2' }}
+            style={{ resize: 'vertical', border: '2px solid #7B8962', background: 'var(--haru-subtle, #F8FAF2)' }}
           />
           <div className="mt-3 flex items-center justify-between gap-3">
-            <span className="text-sm font-medium" style={{ color: '#1A3C6E' }}>사진 {draftPhotos.length}/{COMMON_PHOTO_LIMIT}</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--haru-link, #1A3C6E)' }}>사진 {draftPhotos.length}/{COMMON_PHOTO_LIMIT}</span>
             <input
               ref={photoInputRef}
               type="file"
@@ -998,7 +998,7 @@ function RecordPageContent() {
               onClick={() => photoInputRef.current?.click()}
               disabled={photoReadBusy || draftPhotos.length >= COMMON_PHOTO_LIMIT}
               className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
-              style={{ color: '#1A3C6E' }}
+              style={{ color: 'var(--haru-link, #1A3C6E)' }}
             >
               <Camera className="h-4 w-4" />
               {photoReadBusy ? '사진 준비 중...' : '사진 추가'}
@@ -1033,7 +1033,7 @@ function RecordPageContent() {
             }}
             disabled={photoReadBusy}
             className="mt-3 w-full rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-50"
-            style={{ backgroundColor: '#1A3C6E' }}
+            style={{ backgroundColor: 'var(--haru-button-blue, #1A3C6E)' }}
           >
             저장하기
           </button>
@@ -1041,28 +1041,28 @@ function RecordPageContent() {
 
         {/* Date */}
         <section className="flex items-center justify-center gap-2 py-1">
-          <Calendar className="w-4 h-4" style={{ color: '#1A3C6E' }} />
-          <span className="text-sm tracking-wide" style={{ color: '#333333' }}>
+          <Calendar className="w-4 h-4" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
+          <span className="text-sm tracking-wide" style={{ color: 'var(--haru-ink, #333333)' }}>
             {formatDate(currentDate)}
           </span>
         </section>
 
         {/* Context Section */}
         <section className="bg-white rounded-lg p-3 shadow-sm">
-          <h2 className="text-xs mb-2 tracking-wider" style={{ color: '#666666' }}>
+          <h2 className="text-xs mb-2 tracking-wider" style={{ color: 'var(--haru-muted, #666666)' }}>
             오늘의 환경
           </h2>
           <div
             className={`transition-all duration-500 overflow-hidden ${showEnvToast ? 'max-h-10 opacity-100 mb-2' : 'max-h-0 opacity-0 mb-0'}`}
           >
-            <p className="text-xs flex items-center gap-1" style={{ color: '#10b981' }}>
+            <p className="text-xs flex items-center gap-1" style={{ color: 'var(--haru-semantic-green, #10b981)' }}>
               💡 + 버튼으로 나만의 태그를 추가할 수 있어요
             </p>
           </div>
           <div className="space-y-2">
             {/* Weather */}
             <div>
-              <p className="text-xs mb-1.5 tracking-wide" style={{ color: '#999999' }}>
+              <p className="text-xs mb-1.5 tracking-wide" style={{ color: 'var(--haru-muted, #999999)' }}>
                 날씨
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -1072,7 +1072,7 @@ function RecordPageContent() {
 
             {/* Temperature */}
             <div>
-              <p className="text-xs mb-1.5 tracking-wide" style={{ color: '#999999' }}>
+              <p className="text-xs mb-1.5 tracking-wide" style={{ color: 'var(--haru-muted, #999999)' }}>
                 체감기온
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -1082,7 +1082,7 @@ function RecordPageContent() {
 
             {/* Mood */}
             <div>
-              <p className="text-xs mb-1.5 tracking-wide" style={{ color: '#999999' }}>
+              <p className="text-xs mb-1.5 tracking-wide" style={{ color: 'var(--haru-muted, #999999)' }}>
                 기분
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -1096,7 +1096,7 @@ function RecordPageContent() {
           type="button"
           onClick={() => setShowOtherEntryMethods((open) => !open)}
           className="w-full rounded-lg border bg-white px-3 py-2 text-left text-xs"
-          style={{ color: '#1A3C6E' }}
+          style={{ color: 'var(--haru-link, #1A3C6E)' }}
         >
           {showOtherEntryMethods ? '기존 형식 입력창 닫기' : '기존 형식 입력창 · 하루LAW 열기'}
         </button>
@@ -1105,10 +1105,10 @@ function RecordPageContent() {
         {showOtherEntryMethods && (
         <section ref={lawEntrySectionRef} className="bg-white rounded-lg p-3 shadow-sm">
           <div className="mb-2">
-            <h2 className="text-xs tracking-wider" style={{ color: '#666666' }}>
+            <h2 className="text-xs tracking-wider" style={{ color: 'var(--haru-muted, #666666)' }}>
               형식별 작성
             </h2>
-            <p className="text-xs mt-0.5" style={{ color: '#999999' }}>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--haru-muted, #999999)' }}>
               기존 형식 입력창으로 바로 작성할 수도 있습니다.
             </p>
           </div>
@@ -1145,8 +1145,8 @@ function RecordPageContent() {
                 }}
                 className="px-4 py-2 rounded-lg text-xs transition-all whitespace-nowrap flex-shrink-0"
                 style={{
-                  backgroundColor: selectedCategory === category ? '#1A3C6E' : hoveredCategory === category ? '#1A3C6E' : '#FDF6C3',
-                  color: selectedCategory === category ? '#FAF9F6' : hoveredCategory === category ? '#FAF9F6' : '#1A3C6E',
+                  backgroundColor: selectedCategory === category ? 'var(--haru-button-blue, #1A3C6E)' : hoveredCategory === category ? 'var(--haru-button-blue, #1A3C6E)' : 'var(--haru-subtle, #FDF6C3)',
+                  color: selectedCategory === category ? '#FAF9F6' : hoveredCategory === category ? '#FAF9F6' : 'var(--haru-link, #1A3C6E)',
                   border: selectedCategory === category ? 'none' : hoveredCategory === category ? 'none' : '1px solid #d0dff0',
                   fontWeight: selectedCategory === category ? 600 : 500,
                   transition: 'background-color 0.2s, color 0.2s, border 0.2s',
@@ -1162,7 +1162,7 @@ function RecordPageContent() {
           {/* 형식 버튼 */}
           {selectedCategory === '하루학습' ? (
             <div style={{ padding: '20px 0' }}>
-              <p style={{ fontSize: 13, color: '#999', marginBottom: 16, textAlign: 'center' }}>
+              <p style={{ fontSize: 13, color: 'var(--haru-muted, #999)', marginBottom: 16, textAlign: 'center' }}>
                 학습할 형식을 선택하세요
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1172,17 +1172,17 @@ function RecordPageContent() {
                     display: 'flex', alignItems: 'center', gap: 16,
                     padding: '20px', borderRadius: 12,
                     border: '1.5px solid #d0dff0',
-                    backgroundColor: '#f8faff',
+                    backgroundColor: 'var(--haru-tint-blue, #f8faff)',
                     cursor: 'pointer', textAlign: 'left',
                   }}
                   onClick={() => navigate('/diary-learn')}
                 >
                   <span style={{ fontSize: 32 }}>✍️</span>
                   <div>
-                    <p style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', marginBottom: 4 }}>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--haru-link, #1A3C6E)', marginBottom: 4 }}>
                       영어일기작성
                     </p>
-                    <p style={{ fontSize: 12, color: '#999' }}>
+                    <p style={{ fontSize: 12, color: 'var(--haru-muted, #999)' }}>
                       영어로 일기 작성 · AI 교정/피드백
                     </p>
                   </div>
@@ -1202,9 +1202,9 @@ function RecordPageContent() {
                     onClick={() => openFormatDirectly(format)}
                     className="p-2.5 rounded-lg text-center transition-all text-xs"
                     style={{
-                      backgroundColor: '#FEFBE8',
+                      backgroundColor: 'var(--haru-bg, #FEFBE8)',
                       border: '1px solid #e5e5e5',
-                      color: '#333333',
+                      color: 'var(--haru-ink, #333333)',
                     }}
                   >
                     {format}
@@ -1214,7 +1214,7 @@ function RecordPageContent() {
             </div>
           ) : (
             <div className="text-center py-4">
-              <p className="text-xs" style={{ color: '#999' }}>
+              <p className="text-xs" style={{ color: 'var(--haru-muted, #999)' }}>
                 카테고리를 선택하세요
               </p>
             </div>
@@ -1278,28 +1278,28 @@ function RecordPageContent() {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              backgroundColor: '#fff', borderRadius: 20,
+              backgroundColor: 'var(--haru-surface, #fff)', borderRadius: 20,
               padding: '24px 22px 28px', width: '100%', maxWidth: 440,
               maxHeight: '90vh', overflowY: 'auto',
             }}
           >
             {/* 핸들 */}
-            <div style={{ width: 36, height: 4, backgroundColor: '#d1d5db', borderRadius: 2, margin: '0 auto 20px' }} />
+            <div style={{ width: 36, height: 4, backgroundColor: 'var(--haru-tint-blue, #d1d5db)', borderRadius: 2, margin: '0 auto 20px' }} />
 
             {/* 타이틀 */}
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
               <div style={{ fontSize: 36, marginBottom: 8, lineHeight: 1 }}>🔮</div>
-              <div style={{ fontSize: 20, fontWeight: 500, color: '#1A3C6E', marginBottom: 6 }}>HARU미래전망</div>
-              <div style={{ display: 'inline-block', background: '#E6F1FB', borderRadius: 99, padding: '3px 14px', marginBottom: 6 }}>
-                <span style={{ fontSize: 11, color: '#0C447C', fontWeight: 500 }}>사주보다 과학적인 접근</span>
+              <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--haru-link, #1A3C6E)', marginBottom: 6 }}>HARU미래전망</div>
+              <div style={{ display: 'inline-block', background: 'var(--haru-tint-blue, #E6F1FB)', borderRadius: 99, padding: '3px 14px', marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: 'var(--haru-semantic-blue, #0C447C)', fontWeight: 500 }}>사주보다 과학적인 접근</span>
               </div>
-              <div style={{ fontSize: 12, color: '#999', lineHeight: 1.7 }}>내 기록과 내 선택이 미래를 말합니다</div>
+              <div style={{ fontSize: 12, color: 'var(--haru-muted, #999)', lineHeight: 1.7 }}>내 기록과 내 선택이 미래를 말합니다</div>
             </div>
 
             {/* 트랙 1 — 내 기록으로 창작 */}
             <div
               onClick={() => { setShowNovelIntro(false); navigate('/record-prophecy'); }}
-              style={{ borderRadius: 14, border: '2px solid #185FA5', backgroundColor: '#1A3C6E', padding: '14px 16px', marginBottom: 8, cursor: 'pointer', transition: 'all 0.2s' }}
+              style={{ borderRadius: 14, border: '2px solid #185FA5', backgroundColor: 'var(--haru-button-blue, #1A3C6E)', padding: '14px 16px', marginBottom: 8, cursor: 'pointer', transition: 'all 0.2s' }}
               onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = '#0C447C'; (e.currentTarget as HTMLDivElement).style.borderColor = '#378ADD'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = '#1A3C6E'; (e.currentTarget as HTMLDivElement).style.borderColor = '#185FA5'; }}
             >
@@ -1312,10 +1312,10 @@ function RecordPageContent() {
                 한 기록을 선택하거나 합친 기록을 선택하여
               </p>
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 7 }}>
-                <span style={{ fontSize: 10, background: '#fff', color: '#1A3C6E', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>전망서</span>
+                <span style={{ fontSize: 10, background: 'var(--haru-surface, #fff)', color: 'var(--haru-link, #1A3C6E)', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>전망서</span>
                 <span style={{ fontSize: 10, background: 'transparent', color: '#B5D4F4', border: '0.5px solid #378ADD', borderRadius: 99, padding: '3px 10px' }}>나의 미래</span>
                 <span style={{ fontSize: 10, background: 'transparent', color: '#B5D4F4', border: '0.5px solid #378ADD', borderRadius: 99, padding: '3px 10px' }}>자녀의 미래</span>
-                <span style={{ fontSize: 10, background: '#fff', color: '#1A3C6E', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>나의 회고록</span>
+                <span style={{ fontSize: 10, background: 'var(--haru-surface, #fff)', color: 'var(--haru-link, #1A3C6E)', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>나의 회고록</span>
               </div>
               <p style={{ fontSize: 11, color: '#B5D4F4' }}>으로 확장합니다.</p>
             </div>
@@ -1335,33 +1335,33 @@ function RecordPageContent() {
                 9가지 나만의 선택으로
               </p>
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 7 }}>
-                <span style={{ fontSize: 10, background: '#fff', color: '#065f46', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>전망서</span>
+                <span style={{ fontSize: 10, background: 'var(--haru-surface, #fff)', color: 'var(--haru-semantic-green, #065f46)', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>전망서</span>
                 <span style={{ fontSize: 10, background: 'transparent', color: '#9FE1CB', border: '0.5px solid #5DCAA5', borderRadius: 99, padding: '3px 10px' }}>나의 미래</span>
                 <span style={{ fontSize: 10, background: 'transparent', color: '#9FE1CB', border: '0.5px solid #5DCAA5', borderRadius: 99, padding: '3px 10px' }}>자식의 미래</span>
-                <span style={{ fontSize: 10, background: '#fff', color: '#065f46', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>창작소설</span>
+                <span style={{ fontSize: 10, background: 'var(--haru-surface, #fff)', color: 'var(--haru-semantic-green, #065f46)', borderRadius: 99, padding: '3px 10px', fontWeight: 500 }}>창작소설</span>
               </div>
               <p style={{ fontSize: 11, color: '#9FE1CB' }}>나만의 소설가가 되어보세요.</p>
             </div>
 
             {/* 소개 박스 — 하단 */}
-            <div style={{ border: '0.5px solid #B5D4F4', borderRadius: 14, padding: 14, marginBottom: 12, backgroundColor: '#f8fbff' }}>
-              <div style={{ fontSize: 12, color: '#1A3C6E', lineHeight: 2.0, textAlign: 'center', marginBottom: 12 }}>
+            <div style={{ border: '0.5px solid #B5D4F4', borderRadius: 14, padding: 14, marginBottom: 12, backgroundColor: 'var(--haru-tint-blue, #f8fbff)' }}>
+              <div style={{ fontSize: 12, color: 'var(--haru-link, #1A3C6E)', lineHeight: 2.0, textAlign: 'center', marginBottom: 12 }}>
                 <div>내 과거의 선택을 <strong>다시</strong> 하고 싶나요?</div>
                 <div>내 인생을 <strong>다시 시작</strong>하고 싶나요?</div>
                 <div>내 자식의 <strong>미래</strong>가 궁금하나요?</div>
                 <div>소설가가 되어 <strong>이야기를 창작</strong>하고 싶나요?</div>
               </div>
               <div style={{ borderTop: '0.5px solid #B5D4F4', paddingTop: 12 }}>
-                <p style={{ fontSize: 10, color: '#185FA5', textAlign: 'center', marginBottom: 8, fontWeight: 500, letterSpacing: '0.5px' }}>9 가 지 설 정</p>
+                <p style={{ fontSize: 10, color: 'var(--haru-semantic-blue, #185FA5)', textAlign: 'center', marginBottom: 8, fontWeight: 500, letterSpacing: '0.5px' }}>9 가 지 설 정</p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, marginBottom: 10 }}>
                   {[['01','모티브'],['02','인물'],['03','탄생'],['04','욕망'],['05','족쇄'],['06','사건'],['07','운'],['08','불운'],['09','서사']].map(([num, label]) => (
-                    <div key={num} style={{ background: num === '09' ? '#E1F5EE' : '#E6F1FB', borderRadius: 6, padding: '4px 2px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 8, color: num === '09' ? '#1D9E75' : '#378ADD', marginBottom: 1 }}>{num}</div>
-                      <div style={{ fontSize: 10, color: num === '09' ? '#085041' : '#185FA5', fontWeight: 500 }}>{label}</div>
+                    <div key={num} style={{ background: num === '09' ? 'var(--haru-tint-green, #E1F5EE)' : 'var(--haru-tint-blue, #E6F1FB)', borderRadius: 6, padding: '4px 2px', textAlign: 'center' }}>
+                      <div style={{ fontSize: 8, color: num === '09' ? 'var(--haru-semantic-green, #1D9E75)' : 'var(--haru-semantic-blue, #378ADD)', marginBottom: 1 }}>{num}</div>
+                      <div style={{ fontSize: 10, color: num === '09' ? 'var(--haru-semantic-cyan, #085041)' : 'var(--haru-semantic-blue, #185FA5)', fontWeight: 500 }}>{label}</div>
                     </div>
                   ))}
                 </div>
-                <p style={{ fontSize: 11, color: '#185FA5', textAlign: 'center', lineHeight: 1.7 }}>
+                <p style={{ fontSize: 11, color: 'var(--haru-semantic-blue, #185FA5)', textAlign: 'center', lineHeight: 1.7 }}>
                   9가지 설정으로 <strong>미래를 예측</strong>하고<br /><strong>소설가</strong>도 되어 보세요
                 </p>
               </div>
@@ -1370,7 +1370,7 @@ function RecordPageContent() {
             {/* 닫기 */}
             <button
               onClick={() => setShowNovelIntro(false)}
-              style={{ width: '100%', padding: '12px', borderRadius: 10, backgroundColor: 'transparent', color: '#999', fontSize: 13, border: '0.5px solid #e5e5e5', cursor: 'pointer' }}
+              style={{ width: '100%', padding: '12px', borderRadius: 10, backgroundColor: 'transparent', color: 'var(--haru-muted, #999)', fontSize: 13, border: '0.5px solid #e5e5e5', cursor: 'pointer' }}
             >
               닫기
             </button>

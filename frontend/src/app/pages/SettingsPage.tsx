@@ -1,8 +1,9 @@
+import { ThemePicker } from '../components/ThemePicker';
+import { InstallApp } from '../components/InstallApp';
 import { useState, useEffect } from 'react';
 import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone, Sparkles, CreditCard, Mail, UserX } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { requestNotificationPermission, updateNotificationSettings, cleanupDuplicateTokens, removeCurrentToken, getDeviceTimeZone, backfillNotificationTimeZone, getThisDevicePushEnvironment, registerThisDevice } from '../services/notificationService';
@@ -98,7 +99,6 @@ function formatDateLabel(value: unknown): string {
 
 export function SettingsPage() {
   const { user, signOut, linkEmailPassword } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
   const {
     actualSubscription,
     entitlement,
@@ -834,15 +834,15 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" style={{ backgroundColor: '#EDE9F5', minHeight: 'calc(100vh - 56px - 80px)' }}>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" style={{ backgroundColor: 'var(--haru-bg, #EDE9F5)', minHeight: 'calc(100vh - 56px - 80px)' }}>
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
-          <Settings className="w-7 h-7" style={{ color: '#1A3C6E' }} />
-          <h1 className="text-2xl md:text-3xl tracking-wide" style={{ color: '#1A3C6E' }}>
+          <Settings className="w-7 h-7" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
+          <h1 className="text-2xl md:text-3xl tracking-wide" style={{ color: 'var(--haru-link, #1A3C6E)' }}>
             설정
           </h1>
         </div>
-        <p className="text-sm" style={{ color: '#666666' }}>
+        <p className="text-sm" style={{ color: 'var(--haru-muted, #666666)' }}>
           앱 설정 및 데이터를 관리하세요
         </p>
       </div>
@@ -875,25 +875,25 @@ export function SettingsPage() {
 
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
-            <CreditCard className="w-5 h-5" style={{ color: '#1A3C6E' }} />
-            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+            <CreditCard className="w-5 h-5" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
+            <h2 className="text-base tracking-wide" style={{ color: 'var(--haru-ink, #333)' }}>
               구독 관리
             </h2>
           </div>
 
           {subscriptionLoading ? (
-            <p className="text-sm" style={{ color: '#999' }}>구독 정보를 불러오는 중...</p>
+            <p className="text-sm" style={{ color: 'var(--haru-muted, #999)' }}>구독 정보를 불러오는 중...</p>
           ) : (
             <div className="space-y-3">
               <div
                 className="flex items-center justify-between gap-3 py-3 px-4 rounded-lg"
-                style={{ border: '1px solid #e5e5e5', backgroundColor: '#F9FAFB' }}
+                style={{ border: '1px solid var(--haru-border, #e5e5e5)', backgroundColor: 'var(--haru-subtle, #F9FAFB)' }}
               >
                 <div>
-                  <p className="text-sm" style={{ color: '#333', fontWeight: 700 }}>
+                  <p className="text-sm" style={{ color: 'var(--haru-ink, #333)', fontWeight: 700 }}>
                     {subscriptionPlanLabel} 플랜
                   </p>
-                  <p className="text-xs mt-0.5" style={{ color: '#666' }}>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--haru-muted, #666)' }}>
                     {subscriptionStatusLabel}
                     {subscriptionEndLabel ? ` · 이용 종료일 ${subscriptionEndLabel}` : ''}
                   </p>
@@ -902,7 +902,7 @@ export function SettingsPage() {
                   type="button"
                   onClick={handleGoToSubscription}
                   className="px-3 py-2 rounded-lg text-xs transition-all hover:opacity-90"
-                  style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 700 }}
+                  style={{ backgroundColor: 'var(--haru-button-blue, #1A3C6E)', color: '#fff', fontWeight: 700 }}
                 >
                   플랜 보기
                 </button>
@@ -915,16 +915,16 @@ export function SettingsPage() {
                   disabled={isCancellingSubscription}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left disabled:opacity-50"
                   style={{
-                    backgroundColor: '#FFF5F5',
+                    backgroundColor: 'var(--haru-tint-rose, #FFF5F5)',
                     border: '1px solid #fca5a5',
                   }}
                 >
-                  <Trash2 className="w-4 h-4 flex-shrink-0" style={{ color: '#dc2626' }} />
+                  <Trash2 className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--haru-semantic-rose, #dc2626)' }} />
                   <div>
-                    <p className="text-sm" style={{ color: '#dc2626', fontWeight: 600 }}>
+                    <p className="text-sm" style={{ color: 'var(--haru-semantic-rose, #dc2626)', fontWeight: 600 }}>
                       {isCancellingSubscription ? '구독 해지 처리 중...' : '구독 해지'}
                     </p>
-                    <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--haru-muted, #999)' }}>
                       다음 결제를 중단하고 남은 기간까지 이용합니다.
                     </p>
                   </div>
@@ -933,34 +933,34 @@ export function SettingsPage() {
 
               <div
                 className="rounded-lg px-4 py-3"
-                style={{ backgroundColor: '#F9FAFB', border: '1px solid #e5e5e5' }}
+                style={{ backgroundColor: 'var(--haru-subtle, #F9FAFB)', border: '1px solid var(--haru-border, #e5e5e5)' }}
               >
-                <div className="grid grid-cols-2 gap-3 text-xs" style={{ color: '#666' }}>
+                <div className="grid grid-cols-2 gap-3 text-xs" style={{ color: 'var(--haru-muted, #666)' }}>
                   <div>
-                    <p style={{ color: '#999' }}>결제일</p>
-                    <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
+                    <p style={{ color: 'var(--haru-muted, #999)' }}>결제일</p>
+                    <p className="mt-0.5" style={{ color: 'var(--haru-ink, #333)', fontWeight: 700 }}>
                       {formatDateLabel(latestRefundRequest?.paymentDate || refundPayment?.paymentDate)}
                     </p>
                   </div>
                   <div>
-                    <p style={{ color: '#999' }}>상품명</p>
-                    <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
+                    <p style={{ color: 'var(--haru-muted, #999)' }}>상품명</p>
+                    <p className="mt-0.5" style={{ color: 'var(--haru-ink, #333)', fontWeight: 700 }}>
                       {latestRefundRequest?.productName
                         || refundPayment?.productName
                         || (subscriptionDisplay.isDeveloperGrant ? '개발자 우대 플랜' : `${subscriptionPlanLabel} 정기구독`)}
                     </p>
                   </div>
                   <div>
-                    <p style={{ color: '#999' }}>결제금액</p>
-                    <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
+                    <p style={{ color: 'var(--haru-muted, #999)' }}>결제금액</p>
+                    <p className="mt-0.5" style={{ color: 'var(--haru-ink, #333)', fontWeight: 700 }}>
                       {latestRefundRequest
                         ? formatWon(latestRefundRequest.paidAmount)
                         : subscriptionDisplay.amountLabel}
                     </p>
                   </div>
                   <div>
-                    <p style={{ color: '#999' }}>환불 가능 예상금액</p>
-                    <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
+                    <p style={{ color: 'var(--haru-muted, #999)' }}>환불 가능 예상금액</p>
+                    <p className="mt-0.5" style={{ color: 'var(--haru-ink, #333)', fontWeight: 700 }}>
                       {latestRefundRequest
                         ? formatWon(latestRefundRequest.refundableAmount)
                         : isLoadingRefundEligibility
@@ -971,14 +971,14 @@ export function SettingsPage() {
                     </p>
                   </div>
                   <div>
-                    <p style={{ color: '#999' }}>현재 구독 상태</p>
-                    <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
+                    <p style={{ color: 'var(--haru-muted, #999)' }}>현재 구독 상태</p>
+                    <p className="mt-0.5" style={{ color: 'var(--haru-ink, #333)', fontWeight: 700 }}>
                       {subscriptionStatusLabel}
                     </p>
                   </div>
                   <div>
-                    <p style={{ color: '#999' }}>처리 상태</p>
-                    <p className="mt-0.5" style={{ color: '#333', fontWeight: 700 }}>
+                    <p style={{ color: 'var(--haru-muted, #999)' }}>처리 상태</p>
+                    <p className="mt-0.5" style={{ color: 'var(--haru-ink, #333)', fontWeight: 700 }}>
                       {latestRefundRequest
                         ? REFUND_STATUS_LABELS[latestRefundRequest.status]
                         : isLoadingRefundEligibility
@@ -988,15 +988,15 @@ export function SettingsPage() {
                   </div>
                 </div>
 
-                <p className="text-xs mt-3 leading-relaxed" style={{ color: '#666' }}>
+                <p className="text-xs mt-3 leading-relaxed" style={{ color: 'var(--haru-muted, #666)' }}>
                   환불 처리 기준: 결제 시각부터 7일(168시간) 이내 미사용은 전액 환불, 그 외에는 1개월 월간 구독의 잔여기간 기준으로 산정합니다. 일반 사유는 만료 7일 미만이면 환불이 어렵습니다.
                 </p>
-                <p className="text-xs mt-2 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: '#FFF3CD', color: '#856404' }}>
+                <p className="text-xs mt-2 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: 'var(--haru-tint-amber, #FFF3CD)', color: 'var(--haru-semantic-orange, #856404)' }}>
                   구독 해지는 다음 결제를 중단하는 기능이며, 이미 결제된 금액은 자동 환불되지 않습니다. 환불 요청이 접수되면 자동결제가 중단되며, 3~5영업일 이내 확인 후 환불 결과를 알려드립니다.
                 </p>
 
                 {latestRefundRequest?.publicMessage && (
-                  <p className="text-xs mt-2 leading-relaxed" style={{ color: '#1A3C6E', fontWeight: 700 }}>
+                  <p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--haru-link, #1A3C6E)', fontWeight: 700 }}>
                     {latestRefundRequest.publicMessage}
                   </p>
                 )}
@@ -1008,8 +1008,8 @@ export function SettingsPage() {
                     disabled={!canRequestSubscriptionRefund}
                     className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{
-                      backgroundColor: canRequestSubscriptionRefund ? '#1A3C6E' : '#E5E7EB',
-                      color: canRequestSubscriptionRefund ? '#fff' : '#6B7280',
+                      backgroundColor: canRequestSubscriptionRefund ? 'var(--haru-button-blue, #1A3C6E)' : '#E5E7EB',
+                      color: canRequestSubscriptionRefund ? '#fff' : 'var(--haru-muted, #6B7280)',
                       fontWeight: 700,
                     }}
                   >
@@ -1018,7 +1018,7 @@ export function SettingsPage() {
                   </button>
                 ) : (
                   <div className="mt-3 space-y-3">
-                    <label className="text-xs block" style={{ color: '#666', fontWeight: 700 }}>
+                    <label className="text-xs block" style={{ color: 'var(--haru-muted, #666)', fontWeight: 700 }}>
                       환불 사유 선택
                     </label>
                     <select
@@ -1026,7 +1026,7 @@ export function SettingsPage() {
                       onChange={(event) => setRefundReasonCode(event.target.value as RefundReasonCode)}
                       disabled={isRequestingRefund}
                       className="w-full px-3 py-2 rounded-lg text-sm"
-                      style={{ border: '1px solid #d0dff0', backgroundColor: '#fff', color: '#333' }}
+                      style={{ border: '1px solid var(--haru-border, #d0dff0)', backgroundColor: 'var(--haru-surface, #fff)', color: 'var(--haru-ink, #333)' }}
                     >
                       {REFUND_REASON_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -1035,7 +1035,7 @@ export function SettingsPage() {
                       ))}
                     </select>
 
-                    <label className="text-xs block" style={{ color: '#666', fontWeight: 700 }}>
+                    <label className="text-xs block" style={{ color: 'var(--haru-muted, #666)', fontWeight: 700 }}>
                       추가 설명
                     </label>
                     <textarea
@@ -1045,10 +1045,10 @@ export function SettingsPage() {
                       maxLength={1000}
                       disabled={isRequestingRefund}
                       className="w-full px-3 py-2 rounded-lg text-sm"
-                      style={{ border: '1px solid #d0dff0', backgroundColor: '#fff', color: '#333', resize: 'vertical' }}
+                      style={{ border: '1px solid var(--haru-border, #d0dff0)', backgroundColor: 'var(--haru-surface, #fff)', color: 'var(--haru-ink, #333)', resize: 'vertical' }}
                     />
 
-                    <label className="flex items-start gap-2 text-xs leading-relaxed" style={{ color: '#333' }}>
+                    <label className="flex items-start gap-2 text-xs leading-relaxed" style={{ color: 'var(--haru-ink, #333)' }}>
                       <input
                         type="checkbox"
                         checked={refundPolicyAgreed}
@@ -1065,7 +1065,7 @@ export function SettingsPage() {
                         onClick={() => setShowRefundForm(false)}
                         disabled={isRequestingRefund}
                         className="flex-1 px-4 py-2.5 rounded-lg text-sm"
-                        style={{ backgroundColor: '#fff', border: '1px solid #e5e5e5', color: '#666' }}
+                        style={{ backgroundColor: 'var(--haru-surface, #fff)', border: '1px solid var(--haru-border, #e5e5e5)', color: 'var(--haru-muted, #666)' }}
                       >
                         취소
                       </button>
@@ -1074,7 +1074,7 @@ export function SettingsPage() {
                         onClick={handleRequestSubscriptionRefund}
                         disabled={isRequestingRefund || !refundPolicyAgreed}
                         className="flex-1 px-4 py-2.5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 700 }}
+                        style={{ backgroundColor: 'var(--haru-button-blue, #1A3C6E)', color: '#fff', fontWeight: 700 }}
                       >
                         {isRequestingRefund ? '접수 중...' : '요청 접수'}
                       </button>
@@ -1084,20 +1084,20 @@ export function SettingsPage() {
               </div>
 
               {actualSubscription.status === 'cancelled' && (
-                <p className="text-xs leading-relaxed" style={{ color: '#999' }}>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--haru-muted, #999)' }}>
                   구독 해지가 예약되어 다음 결제는 진행되지 않습니다.
                 </p>
               )}
 
-              <div className="rounded-lg px-4 py-3" style={{ backgroundColor: '#F9FAFB', border: '1px solid #e5e5e5' }}>
-                <p className="text-xs leading-relaxed" style={{ color: '#666' }}>
+              <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--haru-subtle, #F9FAFB)', border: '1px solid var(--haru-border, #e5e5e5)' }}>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--haru-muted, #666)' }}>
                   구독은 언제든 해지할 수 있으며, 해지 후에는 다음 결제일부터 청구되지 않습니다. 이미 결제된 1개월 이용 기간은 종료일까지 사용할 수 있습니다.
                 </p>
                 <button
                   type="button"
                   onClick={() => navigate('/refund')}
                   className="mt-2 text-xs underline"
-                  style={{ color: '#1A3C6E', fontWeight: 700 }}
+                  style={{ color: 'var(--haru-link, #1A3C6E)', fontWeight: 700 }}
                 >
                   환불정책 확인
                 </button>
@@ -1108,44 +1108,44 @@ export function SettingsPage() {
 
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
-            <BarChart3 className="w-5 h-5" style={{ color: '#1A3C6E' }} />
-            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+            <BarChart3 className="w-5 h-5" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
+            <h2 className="text-base tracking-wide" style={{ color: 'var(--haru-ink, #333)' }}>
               내 기록 현황
             </h2>
           </div>
           
           {loadingStats ? (
             <div className="text-center py-8">
-              <p className="text-sm" style={{ color: '#999' }}>통계를 불러오는 중...</p>
+              <p className="text-sm" style={{ color: 'var(--haru-muted, #999)' }}>통계를 불러오는 중...</p>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
               <div
                 className="rounded-lg p-4 text-center"
-                style={{ backgroundColor: '#FDF6C3', border: '1px solid #d0dff0' }}
+                style={{ backgroundColor: 'var(--haru-subtle, #FDF6C3)', border: '1px solid var(--haru-border, #d0dff0)' }}
               >
-                <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
+                <p className="text-2xl mb-1" style={{ color: 'var(--haru-link, #1A3C6E)', fontWeight: 700 }}>
                   {stats.totalRecords}
                 </p>
-                <p className="text-xs" style={{ color: '#666' }}>전체 기록(비서 포함)</p>
+                <p className="text-xs" style={{ color: 'var(--haru-muted, #666)' }}>전체 기록(비서 포함)</p>
               </div>
               <div
                 className="rounded-lg p-4 text-center"
-                style={{ backgroundColor: '#FDF6C3', border: '1px solid #d0dff0' }}
+                style={{ backgroundColor: 'var(--haru-subtle, #FDF6C3)', border: '1px solid var(--haru-border, #d0dff0)' }}
               >
-                <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
+                <p className="text-2xl mb-1" style={{ color: 'var(--haru-link, #1A3C6E)', fontWeight: 700 }}>
                   {stats.polishedCount}
                 </p>
-                <p className="text-xs" style={{ color: '#666' }}>다듬기 완료</p>
+                <p className="text-xs" style={{ color: 'var(--haru-muted, #666)' }}>다듬기 완료</p>
               </div>
               <div
                 className="rounded-lg p-4 text-center"
-                style={{ backgroundColor: '#FDF6C3', border: '1px solid #d0dff0' }}
+                style={{ backgroundColor: 'var(--haru-subtle, #FDF6C3)', border: '1px solid var(--haru-border, #d0dff0)' }}
               >
-                <p className="text-2xl mb-1" style={{ color: '#1A3C6E', fontWeight: 700 }}>
+                <p className="text-2xl mb-1" style={{ color: 'var(--haru-link, #1A3C6E)', fontWeight: 700 }}>
                   {stats.sayuCount}
                 </p>
-                <p className="text-xs" style={{ color: '#666' }}>SAYU 완성</p>
+                <p className="text-xs" style={{ color: 'var(--haru-muted, #666)' }}>SAYU 완성</p>
               </div>
             </div>
           )}
@@ -1153,56 +1153,29 @@ export function SettingsPage() {
 
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
-            <Settings className="w-5 h-5" style={{ color: '#1A3C6E' }} />
-            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+            <Settings className="w-5 h-5" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
+            <h2 className="text-base tracking-wide" style={{ color: 'var(--haru-ink, #333)' }}>
               앱 설정
             </h2>
           </div>
           <div className="space-y-3">
-            <div 
-              className="flex items-center justify-between py-3 px-4 rounded-lg transition-all hover:bg-gray-50"
-              style={{ border: '1px solid #e5e5e5' }}
-            >
-              <div className="flex items-center gap-3">
-                {isDark ? (
-                  <Moon className="w-5 h-5" style={{ color: '#1A3C6E' }} />
-                ) : (
-                  <Sun className="w-5 h-5" style={{ color: '#1A3C6E' }} />
-                )}
-                <div>
-                  <span className="text-sm" style={{ color: '#333', fontWeight: 500 }}>다크 모드</span>
-                  <p className="text-xs" style={{ color: '#999' }}>
-                    {isDark ? '다크 모드 켜짐 🌙' : '라이트 모드 켜짐 ☀️'}
-                  </p>
-                </div>
-              </div>
-              
-              <button
-                onClick={toggleTheme}
-                className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-                style={{ backgroundColor: isDark ? '#1A3C6E' : '#d1d5db' }}
-              >
-                <span
-                  className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                  style={{ transform: isDark ? 'translateX(26px)' : 'translateX(4px)' }}
-                />
-              </button>
-            </div>
+            <ThemePicker />
+            <InstallApp />
 
             <div 
               className="py-3 px-4 rounded-lg"
-              style={{ border: '1px solid #e5e5e5' }}
+              style={{ border: '1px solid var(--haru-border, #e5e5e5)' }}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   {notificationEnabled ? (
-                    <Bell className="w-5 h-5" style={{ color: '#10b981' }} />
+                    <Bell className="w-5 h-5" style={{ color: 'var(--haru-semantic-green, #10b981)' }} />
                   ) : (
-                    <BellOff className="w-5 h-5" style={{ color: '#999' }} />
+                    <BellOff className="w-5 h-5" style={{ color: 'var(--haru-muted, #999)' }} />
                   )}
                   <div>
-                    <span className="text-sm" style={{ color: '#333', fontWeight: 500 }}>알림 받기</span>
-                    <p className="text-xs" style={{ color: '#999' }}>
+                    <span className="text-sm" style={{ color: 'var(--haru-ink, #333)', fontWeight: 500 }}>알림 받기</span>
+                    <p className="text-xs" style={{ color: 'var(--haru-muted, #999)' }}>
                       {notificationEnabled ? '✓ 계정 알림 켜짐' : '비활성화'}
                     </p>
                   </div>
@@ -1212,7 +1185,7 @@ export function SettingsPage() {
                   onClick={handleToggleNotification}
                   disabled={isLoadingNotification}
                   className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50"
-                  style={{ backgroundColor: notificationEnabled ? '#10b981' : '#d1d5db' }}
+                  style={{ backgroundColor: notificationEnabled ? '#10b981' : 'var(--haru-tint-blue, #d1d5db)' }}
                 >
                   <span
                     className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
@@ -1223,18 +1196,18 @@ export function SettingsPage() {
 
               {notificationEnabled && (
                 <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-200">
-                  <Clock className="w-4 h-4" style={{ color: '#666' }} />
+                  <Clock className="w-4 h-4" style={{ color: 'var(--haru-muted, #666)' }} />
                   <div className="flex-1">
-                    <label className="text-xs" style={{ color: '#666' }}>알림 시간</label>
+                    <label className="text-xs" style={{ color: 'var(--haru-muted, #666)' }}>알림 시간</label>
                     <input
                       type="time"
                       value={notificationTime}
                       onChange={(e) => handleTimeChange(e.target.value)}
                       className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
                       style={{
-                        border: '1px solid #e5e5e5',
-                        backgroundColor: '#F9FAFB',
-                        color: '#333',
+                        border: '1px solid var(--haru-border, #e5e5e5)',
+                        backgroundColor: 'var(--haru-subtle, #F9FAFB)',
+                        color: 'var(--haru-ink, #333)',
                       }}
                     />
                   </div>
@@ -1243,18 +1216,18 @@ export function SettingsPage() {
 
               {notificationEnabled && (
                 <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
-                  <p className="text-xs" style={{ color: devicePushStatus === 'registered' ? '#10b981' : '#333', fontWeight: 500 }}>
+                  <p className="text-xs" style={{ color: devicePushStatus === 'registered' ? 'var(--haru-semantic-green, #10b981)' : 'var(--haru-ink, #333)', fontWeight: 500 }}>
                     {devicePushView.label}
                   </p>
                   {devicePushView.hint && (
-                    <p className="text-xs" style={{ color: '#666' }}>{devicePushView.hint}</p>
+                    <p className="text-xs" style={{ color: 'var(--haru-muted, #666)' }}>{devicePushView.hint}</p>
                   )}
                   {devicePushView.canRegister && (
                     <button
                       onClick={handleRegisterThisDevice}
                       disabled={isRegisteringDevice}
                       className="w-full px-3 py-2 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-50"
-                      style={{ backgroundColor: '#1A3C6E', color: '#fff' }}
+                      style={{ backgroundColor: 'var(--haru-button-blue, #1A3C6E)', color: '#fff' }}
                     >
                       {isRegisteringDevice ? '등록 중...' : devicePushView.buttonLabel}
                     </button>
@@ -1263,22 +1236,22 @@ export function SettingsPage() {
                     onClick={handleSendSelfTest}
                     disabled={isSendingSelfTest}
                     className="w-full px-3 py-2 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-50"
-                    style={{ border: '1px solid #10b981', color: '#10b981', backgroundColor: '#fff' }}
+                    style={{ border: '1px solid var(--haru-border, #10b981)', color: 'var(--haru-semantic-green, #10b981)', backgroundColor: 'var(--haru-surface, #fff)' }}
                   >
                     {isSendingSelfTest ? '보내는 중...' : '내 기기에 테스트 알림 보내기'}
                   </button>
-                  <p className="text-xs" style={{ color: '#999' }}>
+                  <p className="text-xs" style={{ color: 'var(--haru-muted, #999)' }}>
                     이 계정에 등록된 내 기기 전체로 보내집니다. 다른 사용자에게는 보내지 않습니다.
                   </p>
                   {selfTestResult && (
-                    <p className="text-xs" style={{ color: selfTestResult.tone === 'error' ? '#dc2626' : '#10b981' }}>
+                    <p className="text-xs" style={{ color: selfTestResult.tone === 'error' ? 'var(--haru-semantic-rose, #dc2626)' : 'var(--haru-semantic-green, #10b981)' }}>
                       {selfTestResult.text}
                     </p>
                   )}
                 </div>
               )}
 
-              <p className="text-xs mt-3" style={{ color: '#999' }}>
+              <p className="text-xs mt-3" style={{ color: 'var(--haru-muted, #999)' }}>
                 💡 {notificationEnabled ? '당일 기록이 없으면 설정한 시간에 알림을 보냅니다. 시간은 재설정이 가능합니다.' : '알림을 켜면 매일 기록을 권장하는 알림을 받을 수 있습니다.'}
               </p>
             </div>
@@ -1287,13 +1260,13 @@ export function SettingsPage() {
 
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
-            <Sparkles className="w-5 h-5" style={{ color: '#1A3C6E' }} />
-            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+            <Sparkles className="w-5 h-5" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
+            <h2 className="text-base tracking-wide" style={{ color: 'var(--haru-ink, #333)' }}>
               명언 종류
             </h2>
           </div>
 
-          <p className="text-xs mb-4" style={{ color: '#666' }}>
+          <p className="text-xs mb-4" style={{ color: 'var(--haru-muted, #666)' }}>
             홈 화면 하단에 표시되는 오늘의 명언을 선택하세요
           </p>
 
@@ -1304,8 +1277,8 @@ export function SettingsPage() {
               disabled={isSavingQuoteType}
               className="flex items-center justify-center gap-2 py-3 px-3 rounded-lg text-sm transition-all disabled:opacity-50"
               style={{
-                backgroundColor: quoteType === 'classic' ? '#1A3C6E' : '#F9FAFB',
-                color: quoteType === 'classic' ? '#fff' : '#333',
+                backgroundColor: quoteType === 'classic' ? 'var(--haru-button-blue, #1A3C6E)' : 'var(--haru-subtle, #F9FAFB)',
+                color: quoteType === 'classic' ? '#fff' : 'var(--haru-ink, #333)',
                 border: quoteType === 'classic' ? '1px solid #1A3C6E' : '1px solid #e5e5e5',
                 fontWeight: quoteType === 'classic' ? 600 : 400,
               }}
@@ -1320,8 +1293,8 @@ export function SettingsPage() {
               disabled={isSavingQuoteType}
               className="flex items-center justify-center gap-2 py-3 px-3 rounded-lg text-sm transition-all disabled:opacity-50"
               style={{
-                backgroundColor: quoteType === 'bible' ? '#1A3C6E' : '#F9FAFB',
-                color: quoteType === 'bible' ? '#fff' : '#333',
+                backgroundColor: quoteType === 'bible' ? 'var(--haru-button-blue, #1A3C6E)' : 'var(--haru-subtle, #F9FAFB)',
+                color: quoteType === 'bible' ? '#fff' : 'var(--haru-ink, #333)',
                 border: quoteType === 'bible' ? '1px solid #1A3C6E' : '1px solid #e5e5e5',
                 fontWeight: quoteType === 'bible' ? 600 : 400,
               }}
@@ -1334,8 +1307,8 @@ export function SettingsPage() {
 
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
-            <Database className="w-5 h-5" style={{ color: '#1A3C6E' }} />
-            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+            <Database className="w-5 h-5" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
+            <h2 className="text-base tracking-wide" style={{ color: 'var(--haru-ink, #333)' }}>
               데이터 관리
             </h2>
           </div>
@@ -1345,16 +1318,16 @@ export function SettingsPage() {
               onClick={handleExportData}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left"
               style={{
-                backgroundColor: '#FDF6C3',
-                border: '1px solid #d0dff0',
+                backgroundColor: 'var(--haru-subtle, #FDF6C3)',
+                border: '1px solid var(--haru-border, #d0dff0)',
               }}
             >
-              <Download className="w-4 h-4" style={{ color: '#1A3C6E' }} />
+              <Download className="w-4 h-4" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
               <div>
-                <p className="text-sm" style={{ color: '#1A3C6E', fontWeight: 500 }}>
+                <p className="text-sm" style={{ color: 'var(--haru-link, #1A3C6E)', fontWeight: 500 }}>
                   데이터 내보내기 (JSON)
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--haru-muted, #999)' }}>
                   모든 기록을 날짜별로 정리한 JSON 파일로 저장합니다
                 </p>
               </div>
@@ -1365,16 +1338,16 @@ export function SettingsPage() {
               disabled={isExportingText}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left disabled:opacity-50"
               style={{
-                backgroundColor: '#FDF6C3',
-                border: '1px solid #d0dff0',
+                backgroundColor: 'var(--haru-subtle, #FDF6C3)',
+                border: '1px solid var(--haru-border, #d0dff0)',
               }}
             >
-              <Download className="w-4 h-4" style={{ color: '#1A3C6E' }} />
+              <Download className="w-4 h-4" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
               <div>
-                <p className="text-sm" style={{ color: '#1A3C6E', fontWeight: 500 }}>
+                <p className="text-sm" style={{ color: 'var(--haru-link, #1A3C6E)', fontWeight: 500 }}>
                   {isExportingText ? '내보내는 중...' : '기록 내보내기 (TXT)'}
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--haru-muted, #999)' }}>
                   내 기록을 날짜별로 읽기 쉬운 텍스트 파일로 저장합니다
                 </p>
               </div>
@@ -1386,16 +1359,16 @@ export function SettingsPage() {
                 disabled={isGeneratingTitles}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left disabled:opacity-50"
                 style={{
-                  backgroundColor: '#F0EBF9',
-                  border: '1px solid #c4b5e8',
+                  backgroundColor: 'var(--haru-tint-violet, #F0EBF9)',
+                  border: '1px solid var(--haru-border, #c4b5e8)',
                 }}
               >
-                <Sparkles className="w-4 h-4 flex-shrink-0" style={{ color: '#6B3FA0' }} />
+                <Sparkles className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--haru-semantic-violet, #6B3FA0)' }} />
                 <div>
-                  <p className="text-sm" style={{ color: '#6B3FA0', fontWeight: 500 }}>
+                  <p className="text-sm" style={{ color: 'var(--haru-semantic-violet, #6B3FA0)', fontWeight: 500 }}>
                     {isGeneratingTitles ? 'AI 제목 생성 중...' : '기존 기록 AI 제목 일괄 생성'}
                   </p>
-                  <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--haru-muted, #999)' }}>
                     제목이 없는 기존 기록에 AI가 제목을 자동 생성합니다
                   </p>
                 </div>
@@ -1407,16 +1380,16 @@ export function SettingsPage() {
                 onClick={() => setShowClearConfirm(true)}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left"
                 style={{
-                  backgroundColor: '#FFF5F5',
+                  backgroundColor: 'var(--haru-tint-rose, #FFF5F5)',
                   border: '1px solid #fca5a5',
                 }}
               >
-                <Trash2 className="w-4 h-4" style={{ color: '#dc2626' }} />
+                <Trash2 className="w-4 h-4" style={{ color: 'var(--haru-semantic-rose, #dc2626)' }} />
                 <div>
-                  <p className="text-sm" style={{ color: '#dc2626', fontWeight: 500 }}>
+                  <p className="text-sm" style={{ color: 'var(--haru-semantic-rose, #dc2626)', fontWeight: 500 }}>
                     기록 전체 삭제
                   </p>
-                  <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--haru-muted, #999)' }}>
                     되돌릴 수 없습니다. 신중하게 결정하세요.
                   </p>
                 </div>
@@ -1424,12 +1397,12 @@ export function SettingsPage() {
             ) : (
               <div
                 className="p-4 rounded-lg"
-                style={{ backgroundColor: '#FFF5F5', border: '1px solid #fca5a5' }}
+                style={{ backgroundColor: 'var(--haru-tint-rose, #FFF5F5)', border: '1px solid #fca5a5' }}
               >
-                <p className="text-sm mb-3" style={{ color: '#dc2626', fontWeight: 500 }}>
+                <p className="text-sm mb-3" style={{ color: 'var(--haru-semantic-rose, #dc2626)', fontWeight: 500 }}>
                   ⚠️ 정말로 기록 전체를 삭제하시겠습니까?
                 </p>
-                <p className="text-xs mb-4" style={{ color: '#666' }}>
+                <p className="text-xs mb-4" style={{ color: 'var(--haru-muted, #666)' }}>
                   작성하신 기록이 모두 삭제됩니다. 건강·법률·성장기록 등 다른 정보와 계정은 유지됩니다.
                 </p>
                 <div className="flex gap-2">
@@ -1437,9 +1410,9 @@ export function SettingsPage() {
                     onClick={() => setShowClearConfirm(false)}
                     className="flex-1 px-4 py-2 rounded-lg text-sm"
                     style={{
-                      backgroundColor: '#fff',
-                      border: '1px solid #e5e5e5',
-                      color: '#666',
+                      backgroundColor: 'var(--haru-surface, #fff)',
+                      border: '1px solid var(--haru-border, #e5e5e5)',
+                      color: 'var(--haru-muted, #666)',
                     }}
                   >
                     취소
@@ -1464,18 +1437,18 @@ export function SettingsPage() {
         {isAdmin && (
           <section
             className="bg-white rounded-lg p-6 shadow-sm"
-            style={{ border: '2px solid #10b981' }}
+            style={{ border: '2px solid var(--haru-border, #10b981)' }}
           >
             <div className="flex items-center gap-3 mb-5">
-              <Megaphone className="w-5 h-5" style={{ color: '#10b981' }} />
-              <h2 className="text-base tracking-wide" style={{ color: '#10b981' }}>
+              <Megaphone className="w-5 h-5" style={{ color: 'var(--haru-semantic-green, #10b981)' }} />
+              <h2 className="text-base tracking-wide" style={{ color: 'var(--haru-semantic-green, #10b981)' }}>
                 관리자 전체 알림
               </h2>
             </div>
 
             <div className="space-y-3">
               <div>
-                <label className="text-xs mb-2 block" style={{ color: '#666' }}>
+                <label className="text-xs mb-2 block" style={{ color: 'var(--haru-muted, #666)' }}>
                   알림 메시지
                 </label>
                 <textarea
@@ -1485,9 +1458,9 @@ export function SettingsPage() {
                   rows={4}
                   className="w-full px-4 py-3 rounded-lg text-sm"
                   style={{
-                    border: '1px solid #e5e5e5',
-                    backgroundColor: '#F9FAFB',
-                    color: '#333',
+                    border: '1px solid var(--haru-border, #e5e5e5)',
+                    backgroundColor: 'var(--haru-subtle, #F9FAFB)',
+                    color: 'var(--haru-ink, #333)',
                     resize: 'vertical',
                   }}
                 />
@@ -1506,7 +1479,7 @@ export function SettingsPage() {
                 {isSendingBroadcast ? '발송 중...' : '📢 전체 사용자에게 알림 보내기'}
               </button>
 
-              <p className="text-xs text-center" style={{ color: '#999' }}>
+              <p className="text-xs text-center" style={{ color: 'var(--haru-muted, #999)' }}>
                 ⚠️ 모든 사용자에게 푸시 알림이 전송됩니다
               </p>
             </div>
@@ -1516,16 +1489,16 @@ export function SettingsPage() {
         {isDevUser && (
           <section
             className="bg-white rounded-lg p-6 shadow-sm"
-            style={{ border: '2px dashed #1A3C6E' }}
+            style={{ border: '2px dashed var(--haru-border, #1A3C6E)' }}
           >
             <div className="flex items-center gap-3 mb-5">
               <span className="text-lg">🔧</span>
-              <h2 className="text-base tracking-wide" style={{ color: '#1A3C6E' }}>
+              <h2 className="text-base tracking-wide" style={{ color: 'var(--haru-link, #1A3C6E)' }}>
                 개발자 도구
               </h2>
               <span
                 className="text-xs px-2 py-0.5 rounded-full font-bold"
-                style={{ backgroundColor: '#1A3C6E', color: '#fff' }}
+                style={{ backgroundColor: 'var(--haru-button-blue, #1A3C6E)', color: '#fff' }}
               >
                 개발자 전용
               </span>
@@ -1533,27 +1506,27 @@ export function SettingsPage() {
 
             {/* FCM 토큰 목록 */}
             <div className="mb-5">
-              <p className="text-xs font-semibold mb-2" style={{ color: '#666' }}>
+              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--haru-muted, #666)' }}>
                 FCM 토큰 목록 ({fcmTokens.length}개)
               </p>
               {fcmTokens.length === 0 ? (
-                <p className="text-xs" style={{ color: '#999' }}>토큰 없음</p>
+                <p className="text-xs" style={{ color: 'var(--haru-muted, #999)' }}>토큰 없음</p>
               ) : (
                 <div className="space-y-2">
                   {fcmTokens.map((token, i) => (
                     <div
                       key={i}
                       className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                      style={{ backgroundColor: '#F9FAFB', border: '1px solid #e5e5e5' }}
+                      style={{ backgroundColor: 'var(--haru-subtle, #F9FAFB)', border: '1px solid var(--haru-border, #e5e5e5)' }}
                     >
-                      <span className="text-xs font-mono flex-1" style={{ color: '#333' }}>
+                      <span className="text-xs font-mono flex-1" style={{ color: 'var(--haru-ink, #333)' }}>
                         [{i + 1}] {token.substring(0, 20)}...
                       </span>
                       <button
                         onClick={() => handleCopyToken(token, i)}
                         className="text-xs px-2 py-1 rounded transition-all"
                         style={{
-                          backgroundColor: copiedIndex === i ? '#10b981' : '#1A3C6E',
+                          backgroundColor: copiedIndex === i ? '#10b981' : 'var(--haru-button-blue, #1A3C6E)',
                           color: '#fff',
                           minWidth: '52px',
                         }}
@@ -1569,25 +1542,25 @@ export function SettingsPage() {
             {/* 알림 제목 / 내용 입력창 */}
             <div className="space-y-3 mb-3">
               <div>
-                <label className="text-xs font-semibold block mb-1" style={{ color: '#666' }}>알림 제목</label>
+                <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--haru-muted, #666)' }}>알림 제목</label>
                 <input
                   type="text"
                   value={testTitle}
                   onChange={(e) => setTestTitle(e.target.value)}
                   placeholder="예) HARU 새 기능 안내"
                   className="w-full px-3 py-2 rounded-lg text-sm"
-                  style={{ border: '1px solid #e5e5e5', backgroundColor: '#F9FAFB', color: '#333' }}
+                  style={{ border: '1px solid var(--haru-border, #e5e5e5)', backgroundColor: 'var(--haru-subtle, #F9FAFB)', color: 'var(--haru-ink, #333)' }}
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold block mb-1" style={{ color: '#666' }}>알림 내용</label>
+                <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--haru-muted, #666)' }}>알림 내용</label>
                 <textarea
                   value={testBody}
                   onChange={(e) => setTestBody(e.target.value)}
                   placeholder="예) 새로운 기능이 추가되었습니다!"
                   rows={2}
                   className="w-full px-3 py-2 rounded-lg text-sm"
-                  style={{ border: '1px solid #e5e5e5', backgroundColor: '#F9FAFB', color: '#333', resize: 'vertical' }}
+                  style={{ border: '1px solid var(--haru-border, #e5e5e5)', backgroundColor: 'var(--haru-subtle, #F9FAFB)', color: 'var(--haru-ink, #333)', resize: 'vertical' }}
                 />
               </div>
             </div>
@@ -1603,7 +1576,7 @@ export function SettingsPage() {
             </button>
 
             {testResult && (
-              <p className="text-xs mt-2 text-center" style={{ color: testResult.startsWith('오류') ? '#dc2626' : '#10b981' }}>
+              <p className="text-xs mt-2 text-center" style={{ color: testResult.startsWith('오류') ? 'var(--haru-semantic-rose, #dc2626)' : 'var(--haru-semantic-green, #10b981)' }}>
                 {testResult}
               </p>
             )}
@@ -1612,14 +1585,14 @@ export function SettingsPage() {
 
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
-            <User className="w-5 h-5" style={{ color: '#1A3C6E' }} />
-            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+            <User className="w-5 h-5" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
+            <h2 className="text-base tracking-wide" style={{ color: 'var(--haru-ink, #333)' }}>
               내 정보
             </h2>
           </div>
 
           <div style={{ marginBottom: 20 }}>
-            <p className="text-sm mb-1" style={{ color: '#374151', fontWeight: 500 }}>
+            <p className="text-sm mb-1" style={{ color: 'var(--haru-ink, #374151)', fontWeight: 500 }}>
               본명 / 닉네임
             </p>
             <p className="text-xs mb-3" style={{ color: '#9CA3AF', lineHeight: 1.6 }}>
@@ -1633,9 +1606,9 @@ export function SettingsPage() {
                 onChange={(e) => setProfileRealName(e.target.value)}
                 placeholder="본명 (예: 허경대)"
                 style={{
-                  width: '100%', border: '1px solid #E5E7EB', borderRadius: 8,
+                  width: '100%', border: '1px solid var(--haru-border, #E5E7EB)', borderRadius: 8,
                   padding: '8px 10px', fontSize: 16, outline: 'none',
-                  fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                  fontFamily: 'inherit', color: 'var(--haru-ink, #374151)', boxSizing: 'border-box',
                 }}
               />
               <input
@@ -1645,9 +1618,9 @@ export function SettingsPage() {
                 onChange={(e) => setProfileNickname(e.target.value)}
                 placeholder="닉네임 (예: 허교장)"
                 style={{
-                  width: '100%', border: '1px solid #E5E7EB', borderRadius: 8,
+                  width: '100%', border: '1px solid var(--haru-border, #E5E7EB)', borderRadius: 8,
                   padding: '8px 10px', fontSize: 16, outline: 'none',
-                  fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                  fontFamily: 'inherit', color: 'var(--haru-ink, #374151)', boxSizing: 'border-box',
                 }}
               />
               <button
@@ -1655,7 +1628,7 @@ export function SettingsPage() {
                 disabled={isSavingName || (!profileRealName && !profileNickname)}
                 style={{
                   padding: '8px 16px', borderRadius: 8, border: 'none',
-                  background: (isSavingName || (!profileRealName && !profileNickname)) ? '#D1D5DB' : '#1A3C6E',
+                  background: (isSavingName || (!profileRealName && !profileNickname)) ? 'var(--haru-tint-blue, #D1D5DB)' : 'var(--haru-button-blue, #1A3C6E)',
                   color: '#fff', fontSize: 13, fontWeight: 500,
                   cursor: (isSavingName || (!profileRealName && !profileNickname)) ? 'not-allowed' : 'pointer',
                 }}
@@ -1666,7 +1639,7 @@ export function SettingsPage() {
           </div>
 
           <div>
-            <p className="text-sm mb-1" style={{ color: '#374151', fontWeight: 500 }}>
+            <p className="text-sm mb-1" style={{ color: 'var(--haru-ink, #374151)', fontWeight: 500 }}>
               현재 나이 (만)
             </p>
             <p className="text-xs mb-3" style={{ color: '#9CA3AF', lineHeight: 1.6 }}>
@@ -1682,9 +1655,9 @@ export function SettingsPage() {
                 onChange={(e) => setProfileAge(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="예) 65"
                 style={{
-                  flex: 1, border: '1px solid #E5E7EB', borderRadius: 8,
+                  flex: 1, border: '1px solid var(--haru-border, #E5E7EB)', borderRadius: 8,
                   padding: '8px 10px', fontSize: 16, outline: 'none',
-                  fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box',
+                  fontFamily: 'inherit', color: 'var(--haru-ink, #374151)', boxSizing: 'border-box',
                 }}
               />
               <button
@@ -1692,7 +1665,7 @@ export function SettingsPage() {
                 disabled={isSavingAge || !profileAge}
                 style={{
                   padding: '8px 16px', borderRadius: 8, border: 'none',
-                  background: isSavingAge || !profileAge ? '#D1D5DB' : '#1A3C6E',
+                  background: isSavingAge || !profileAge ? 'var(--haru-tint-blue, #D1D5DB)' : 'var(--haru-button-blue, #1A3C6E)',
                   color: '#fff', fontSize: 13, fontWeight: 500,
                   cursor: isSavingAge || !profileAge ? 'not-allowed' : 'pointer',
                 }}
@@ -1705,22 +1678,22 @@ export function SettingsPage() {
 
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-5">
-            <User className="w-5 h-5" style={{ color: '#1A3C6E' }} />
-            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+            <User className="w-5 h-5" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
+            <h2 className="text-base tracking-wide" style={{ color: 'var(--haru-ink, #333)' }}>
               계정 관리
             </h2>
           </div>
 
           <div
             className="mb-3 rounded-lg p-4"
-            style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}
+            style={{ backgroundColor: 'var(--haru-subtle, #F9FAFB)', border: '1px solid var(--haru-border, #E5E7EB)' }}
           >
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <p className="text-xs" style={{ color: '#9CA3AF', fontWeight: 700 }}>
                   현재 로그인 방식
                 </p>
-                <p className="text-sm mt-1" style={{ color: '#374151', fontWeight: 700 }}>
+                <p className="text-sm mt-1" style={{ color: 'var(--haru-ink, #374151)', fontWeight: 700 }}>
                   {loginProviderLabel}
                 </p>
               </div>
@@ -1728,7 +1701,7 @@ export function SettingsPage() {
                 <p className="text-xs" style={{ color: '#9CA3AF', fontWeight: 700 }}>
                   연락 이메일
                 </p>
-                <p className="text-sm mt-1 truncate" style={{ color: '#374151', fontWeight: 700 }}>
+                <p className="text-sm mt-1 truncate" style={{ color: 'var(--haru-ink, #374151)', fontWeight: 700 }}>
                   {contactEmailLabel}
                 </p>
               </div>
@@ -1737,12 +1710,12 @@ export function SettingsPage() {
 
           <div
             className="mb-3 rounded-lg p-4"
-            style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}
+            style={{ backgroundColor: 'var(--haru-subtle, #F9FAFB)', border: '1px solid var(--haru-border, #E5E7EB)' }}
           >
             <div className="flex items-start gap-3">
-              <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#1A3C6E' }} />
+              <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm" style={{ color: '#374151', fontWeight: 700 }}>
+                <p className="text-sm" style={{ color: 'var(--haru-ink, #374151)', fontWeight: 700 }}>
                   이메일 로그인
                 </p>
                 <p className="text-xs mt-0.5 leading-relaxed" style={{ color: '#9CA3AF' }}>
@@ -1768,7 +1741,7 @@ export function SettingsPage() {
                       placeholder="새 비밀번호"
                       disabled={isLinkingEmailLogin}
                       className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                      style={{ border: '1px solid #E5E7EB', color: '#374151' }}
+                      style={{ border: '1px solid var(--haru-border, #E5E7EB)', color: 'var(--haru-ink, #374151)' }}
                     />
                     <input
                       type="password"
@@ -1778,14 +1751,14 @@ export function SettingsPage() {
                       placeholder="새 비밀번호 확인"
                       disabled={isLinkingEmailLogin}
                       className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                      style={{ border: '1px solid #E5E7EB', color: '#374151' }}
+                      style={{ border: '1px solid var(--haru-border, #E5E7EB)', color: 'var(--haru-ink, #374151)' }}
                     />
                     <button
                       type="button"
                       onClick={handleLinkEmailLogin}
                       disabled={isLinkingEmailLogin}
                       className="w-full rounded-lg px-4 py-2 text-sm transition-all hover:opacity-90 disabled:opacity-50"
-                      style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 700 }}
+                      style={{ backgroundColor: 'var(--haru-button-blue, #1A3C6E)', color: '#fff', fontWeight: 700 }}
                     >
                       {isLinkingEmailLogin ? '추가 중...' : '이메일 로그인 추가'}
                     </button>
@@ -1799,13 +1772,13 @@ export function SettingsPage() {
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left"
             style={{
-              backgroundColor: '#F9FAFB',
-              border: '1px solid #E5E7EB',
+              backgroundColor: 'var(--haru-subtle, #F9FAFB)',
+              border: '1px solid var(--haru-border, #E5E7EB)',
             }}
           >
             <LogOut className="w-4 h-4" style={{ color: '#4B5563' }} />
             <div>
-              <p className="text-sm" style={{ color: '#374151', fontWeight: 500 }}>
+              <p className="text-sm" style={{ color: 'var(--haru-ink, #374151)', fontWeight: 500 }}>
                 로그아웃
               </p>
               <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>
@@ -1819,16 +1792,16 @@ export function SettingsPage() {
               onClick={() => setShowWithdrawalFlow(true)}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:opacity-80 text-left mt-3"
               style={{
-                backgroundColor: '#FFF5F5',
+                backgroundColor: 'var(--haru-tint-rose, #FFF5F5)',
                 border: '1px solid #fca5a5',
               }}
             >
-              <UserX className="w-4 h-4" style={{ color: '#dc2626' }} />
+              <UserX className="w-4 h-4" style={{ color: 'var(--haru-semantic-rose, #dc2626)' }} />
               <div>
-                <p className="text-sm" style={{ color: '#dc2626', fontWeight: 500 }}>
+                <p className="text-sm" style={{ color: 'var(--haru-semantic-rose, #dc2626)', fontWeight: 500 }}>
                   회원탈퇴
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: '#999' }}>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--haru-muted, #999)' }}>
                   계정과 모든 기록을 삭제합니다
                 </p>
               </div>
@@ -1836,14 +1809,14 @@ export function SettingsPage() {
           ) : (
             <div
               className="p-4 rounded-lg mt-3"
-              style={{ backgroundColor: '#FFF5F5', border: '1px solid #fca5a5' }}
+              style={{ backgroundColor: 'var(--haru-tint-rose, #FFF5F5)', border: '1px solid #fca5a5' }}
             >
-              <p className="text-sm mb-3" style={{ color: '#dc2626', fontWeight: 700 }}>
+              <p className="text-sm mb-3" style={{ color: 'var(--haru-semantic-rose, #dc2626)', fontWeight: 700 }}>
                 회원탈퇴를 하시면 다음과 같이 처리됩니다.
               </p>
               <ul
                 className="text-xs mb-4"
-                style={{ color: '#666', lineHeight: 1.8, paddingLeft: 16, listStyle: 'disc' }}
+                style={{ color: 'var(--haru-muted, #666)', lineHeight: 1.8, paddingLeft: 16, listStyle: 'disc' }}
               >
                 <li>정기결제가 즉시 해지됩니다</li>
                 <li>30일 동안 계정이 보관되며, 이 기간에 다시 로그인하시면 복구할 수 있습니다</li>
@@ -1851,15 +1824,15 @@ export function SettingsPage() {
                 <li>결제 기록은 법령에 따라 일정 기간 보관됩니다</li>
               </ul>
 
-              <p className="text-xs mb-3 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: '#FFF3CD', color: '#856404' }}>
+              <p className="text-xs mb-3 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: 'var(--haru-tint-amber, #FFF3CD)', color: 'var(--haru-semantic-orange, #856404)' }}>
                 회원탈퇴만으로 결제금액이 자동 환불되지는 않습니다. 환불이 필요한 결제가 있다면 탈퇴 전에 먼저 환불을 요청해 주세요.
               </p>
               {processingRefundRequest && (
-                <p className="text-xs mb-3 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: '#EEF2FF', color: '#1A3C6E', fontWeight: 700 }}>
+                <p className="text-xs mb-3 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: 'var(--haru-tint-blue, #EEF2FF)', color: 'var(--haru-link, #1A3C6E)', fontWeight: 700 }}>
                   처리 중인 환불 요청이 있습니다: {REFUND_STATUS_LABELS[processingRefundRequest.status]}
                 </p>
               )}
-              <p className="text-xs mb-3 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: '#FFF3CD', color: '#856404' }}>
+              <p className="text-xs mb-3 p-3 rounded-lg leading-relaxed" style={{ backgroundColor: 'var(--haru-tint-amber, #FFF3CD)', color: 'var(--haru-semantic-orange, #856404)' }}>
                 ⚠️ 사진·첨부파일은 JSON/TXT 파일에 직접 포함되지 않고 저장 위치 주소로 표시됩니다. 보관이 필요한 사진은 탈퇴 전에 직접 열어 저장해 주세요.
               </p>
               <div className="flex gap-2 mb-4">
@@ -1867,7 +1840,7 @@ export function SettingsPage() {
                   type="button"
                   onClick={handleExportData}
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-all hover:opacity-90"
-                  style={{ backgroundColor: '#1A3C6E', color: '#fff', fontWeight: 600 }}
+                  style={{ backgroundColor: 'var(--haru-button-blue, #1A3C6E)', color: '#fff', fontWeight: 600 }}
                 >
                   <Download className="w-4 h-4" />
                   탈퇴 전 내보내기 (JSON)
@@ -1884,7 +1857,7 @@ export function SettingsPage() {
                 </button>
               </div>
 
-              <label className="text-xs block mb-1" style={{ color: '#666' }}>
+              <label className="text-xs block mb-1" style={{ color: 'var(--haru-muted, #666)' }}>
                 계속하려면 "탈퇴"를 입력하세요
               </label>
               <input
@@ -1894,7 +1867,7 @@ export function SettingsPage() {
                 placeholder="탈퇴"
                 disabled={isRequestingWithdrawal}
                 className="w-full px-3 py-2 rounded-lg text-sm mb-3"
-                style={{ border: '1px solid #fca5a5', backgroundColor: '#fff', color: '#333' }}
+                style={{ border: '1px solid #fca5a5', backgroundColor: 'var(--haru-surface, #fff)', color: 'var(--haru-ink, #333)' }}
               />
 
               <div className="flex gap-2">
@@ -1906,9 +1879,9 @@ export function SettingsPage() {
                   disabled={isRequestingWithdrawal}
                   className="flex-1 px-4 py-2 rounded-lg text-sm"
                   style={{
-                    backgroundColor: '#fff',
-                    border: '1px solid #e5e5e5',
-                    color: '#666',
+                    backgroundColor: 'var(--haru-surface, #fff)',
+                    border: '1px solid var(--haru-border, #e5e5e5)',
+                    color: 'var(--haru-muted, #666)',
                   }}
                 >
                   취소
@@ -1935,7 +1908,7 @@ export function SettingsPage() {
           <p style={{ fontSize: '11px', color: '#888', fontWeight: 500, letterSpacing: '0.04em', marginBottom: '8px', paddingLeft: '2px' }}>
             서비스 정보
           </p>
-          <div style={{ background: '#FAF9F6', border: '0.5px solid #d8d5ce', borderRadius: '14px', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--haru-surface, #FAF9F6)', border: '0.5px solid var(--haru-border, #d8d5ce)', borderRadius: '14px', overflow: 'hidden' }}>
             {[
               { icon: '🏢', label: '사업자 정보', onClick: () => navigate('/business-info') },
               { icon: '📄', label: '이용약관', onClick: () => navigate('/terms') },
@@ -1955,7 +1928,7 @@ export function SettingsPage() {
                   <div style={{
                     width: '30px', height: '30px', borderRadius: '8px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '14px', border: '0.5px solid #e8e5de', background: '#fff', flexShrink: 0,
+                    fontSize: '14px', border: '0.5px solid var(--haru-border, #e8e5de)', background: 'var(--haru-surface, #fff)', flexShrink: 0,
                   }}>
                     {item.icon}
                   </div>
@@ -1969,18 +1942,18 @@ export function SettingsPage() {
 
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-4">
-            <User className="w-5 h-5" style={{ color: '#1A3C6E' }} />
-            <h2 className="text-base tracking-wide" style={{ color: '#333' }}>
+            <User className="w-5 h-5" style={{ color: 'var(--haru-link, #1A3C6E)' }} />
+            <h2 className="text-base tracking-wide" style={{ color: 'var(--haru-ink, #333)' }}>
               사업자 정보
             </h2>
           </div>
-          <p className="text-xs leading-6" style={{ color: '#666' }}>
+          <p className="text-xs leading-6" style={{ color: 'var(--haru-muted, #666)' }}>
             {BUSINESS_INFO_TEXT} | 사이트 {BUSINESS_INFO.site}
           </p>
         </section>
 
         <div className="text-center py-8">
-          <p className="text-xs mb-1" style={{ color: '#999' }}>
+          <p className="text-xs mb-1" style={{ color: 'var(--haru-muted, #999)' }}>
             HARU v1.0 by 조이L허경대
           </p>
           <p className="text-xs" style={{ color: '#ccc' }}>

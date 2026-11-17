@@ -1,3 +1,9 @@
+import { usePullToRefresh } from '../../src/app/hooks/usePullToRefresh';
+import { ThemeProvider } from '../../src/app/contexts/ThemeContext';
+import { ThemePicker } from '../../src/app/components/ThemePicker';
+import { PwaStatus } from '../../src/app/components/PwaStatus';
+import { Footer } from '../../src/app/components/Footer';
+import { startPwaState } from '../../src/app/utils/pwaState';
 import '../../src/styles/index.css';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -7,6 +13,29 @@ import { LandingPage } from '../../src/app/pages/LandingPage';
 import { RecordPage } from '../../src/app/pages/RecordPage';
 import { BottomNav } from '../../src/app/components/BottomNav';
 import { Toaster } from 'sonner';
+function PullRefreshFixture() {
+  const [count, setCount] = useState(0);
+  const [disabled, setDisabled] = useState(false);
+  const pull = usePullToRefresh(async () => { setCount(value => value + 1); return true; }, disabled);
+  const gesture = (distance: number, cancel = false) => {
+    const target = document.getElementById('pull-target')!;
+    const send = (type: string, y: number) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'touches', { value: type === 'touchend' || type === 'touchcancel' ? [] : [{ clientX: 100, clientY: y }] });
+      target.dispatchEvent(event);
+    };
+    send('touchstart', 10); send('touchmove', 10 + distance); send(cancel ? 'touchcancel' : 'touchend', 10 + distance);
+  };
+  return <div ref={pull.ref} style={{ padding: 20 }}>
+    <h1>목록 새로고침 격리 검증</h1>
+    <p id="pull-target">이 영역에서 당기기 동작을 검증해요.</p>
+    <output>새로고침 횟수 {count} · {pull.message}</output>
+    <div><button onClick={() => gesture(160)}>긴 당기기 시험</button> / <button onClick={() => gesture(40)}>짧은 당기기 시험</button> / <button onClick={() => gesture(160, true)}>취소 시험</button></div>
+    <label><input type="checkbox" checked={disabled} onChange={event => setDisabled(event.target.checked)} /> 편집 중</label>
+    <button onClick={() => void pull.refresh()}>목록 새로고침</button>
+    <textarea aria-label="입력 보존 시험" defaultValue="저장 전 테스트 글" />
+  </div>;
+}
 function Destination() {
   const location = useLocation();
   return <p>비서 실행: {location.pathname} {JSON.stringify(location.state)}</p>;
@@ -23,18 +52,22 @@ function Geometry() {
   }, []);
   return <output style={{ display: 'block' }}>{value}</output>;
 }
+startPwaState();
 createRoot(document.getElementById('root')!).render(
-  <>
+  <ThemeProvider><div className="haru-app-shell">
+    <PwaStatus />
     <aside style={{ padding: 8, background: '#eee', color: '#222', font: '12px sans-serif' }}>
       비서실 격리 검증 · 운영 연결 없음 · 시나리오: {new URLSearchParams(location.search).get('scenario') || 'new'}
       <output id="fixture-status">저장 없음</output>
-      <Geometry />
+      <Geometry /><ThemePicker />
+      <button onClick={() => window.dispatchEvent(new Event('offline'))}>연결 끊김 시험</button> / <button onClick={() => window.dispatchEvent(new Event('online'))}>재연결 시험</button>
     </aside>
-    <MemoryRouter initialEntries={[new URLSearchParams(location.search).get('page') === 'landing' ? '/landing' : '/v2']}><Routes>
+    <MemoryRouter initialEntries={[new URLSearchParams(location.search).get('page') === 'pwa' ? '/pwa-test' : new URLSearchParams(location.search).get('page') === 'landing' ? '/landing' : '/v2']}><Routes>
+      <Route path="/pwa-test" element={<PullRefreshFixture />} />
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/v2" element={<HomePageV2 />} />
       <Route path="/record" element={<RecordPage />} />
       <Route path="*" element={<Destination />} />
-    </Routes>{new URLSearchParams(location.search).get('page') !== 'landing' && <BottomNav />}<Toaster /></MemoryRouter>
-  </>,
+    </Routes>{new URLSearchParams(location.search).get('page') !== 'landing' && <><Footer /><BottomNav /></>}<Toaster /></MemoryRouter>
+  </div></ThemeProvider>,
 );
