@@ -2276,12 +2276,14 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
     source[0],
     '그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리하고 나니 뿌듯했다.',
     '다만 실제 발표는 아직 하지 않았다.',
-    '생각해 온 내용에 차례를 잡아, 설명할 때 무엇부터 어떻게 이어 갈지 흐름을 갖춘 날이었다.',
+    '생각해 온 내용을 정돈해, 무엇부터 설명하고 어떻게 이어 갈지 흐름을 갖춘 날이었다.',
   ];
   const guide = /\[발표 자료를 정리한 일기\]/;
   const f = fixture({ polishParagraphs: edited });
   const result = await f.request({ text: source.join('\n\n'), strength: 'STRONG', includeAiComment: false });
   assert.match(f.calls[0].systemInstruction, guide);
+  assert.match(f.calls[0].systemInstruction, /같은 배열을 ‘순서’와 ‘차례’로 겹쳐 말하지 않고/);
+  assert.ok(f.calls[0].systemInstruction.includes(edited[3]));
   assert.equal(result.text, edited.join('\n\n'));
 
   for (const prefix of ['그렇게 세 번에 걸쳐 순서를 바꾼 끝에', '그렇게 세 번의 고침 끝에', '그렇게 두 번에 걸쳐 순서를 바꾼 끝에']) {
@@ -2324,4 +2326,16 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
     await other.request({ ...request, includeAiComment: false });
     assert.doesNotMatch(other.calls[0].systemInstruction, guide);
   }
+});
+
+test('만족과 불만족은 서로 바꿔 쓰지 않는다', async () => {
+  for (const [source, output] of [
+    ['결과가 불만족스러웠다.', '결과가 만족스러웠다.'],
+    ['결과가 만족스러웠다.', '결과가 불만족스러웠다.'],
+  ]) {
+    assert.equal((await strongResult(source, output)).text, source);
+  }
+  const source = '결과가 다소 불만족스러웠다.';
+  const output = '결과는 다소 불만족스러웠다.';
+  assert.equal((await strongResult(source, output)).text, output);
 });
