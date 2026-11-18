@@ -2300,6 +2300,20 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
   const resultWithoutCount = await missingCount.request({ text: source.join('\n\n'), strength: 'STRONG', includeAiComment: false });
   assert.equal(resultWithoutCount.text.split('\n\n')[1], source[1]);
 
+  const withOwnCount = [...source];
+  withOwnCount[1] = '마지막 장을 두 번 정리하고 나니 뿌듯했다.';
+  for (const keepsOwnCount of [false, true]) {
+    const output = [...edited];
+    output[1] = '그렇게 세 번에 걸쳐 순서를 바꾼 끝에 마지막 장을 '
+      + (keepsOwnCount ? '두 번 ' : '') + '정리하고 나니 뿌듯했다.';
+    const run = fixture({ polishParagraphs: output });
+    const resultWithOwnCount = await run.request({ text: withOwnCount.join('\n\n'), strength: 'STRONG', includeAiComment: false });
+    const expected = keepsOwnCount
+      ? '그렇게 순서를 거듭 바꾼 끝에 마지막 장을 두 번 정리하고 나니 뿌듯했다.'
+      : withOwnCount[1];
+    assert.equal(resultWithOwnCount.text.split('\n\n')[1], expected);
+  }
+
   for (const request of [
     { text: source.join(' '), strength: 'STRONG' },
     { text: source.join('\n\n'), strength: 'WEAK' },

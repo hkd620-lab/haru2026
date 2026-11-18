@@ -3442,10 +3442,18 @@ ${SOURCE_PRESERVATION_RULES}`;
             const sourceCount = countKey(repeatedOrder.exec(previous.original.trim())?.[1]);
             const earlierCount = countKey(repeatedOrder.exec(all[index - 1].trim())?.[1]);
             if (sourceCount && sourceCount === earlierCount && !countKey(paragraph.original)?.includes(sourceCount)) {
-              candidateText = responseText.replace(
+              const withoutRepeatedCount = responseText.replace(
                 /^그렇게[ \t]+([가-힣0-9]+[ \t]*번)(?:에[ \t]*걸쳐[ \t]+순서를[ \t]*바꾼|의[ \t]*고침)[ \t]+끝에/,
                 (phrase, count: string) => countKey(count) === sourceCount ? '그렇게 순서를 거듭 바꾼 끝에' : phrase,
               );
+              if (withoutRepeatedCount !== responseText) {
+                // 뒤 문단에 원래 있던 별도 횟수·수량 등이 빠졌으면 중복 정리를 적용하지 않는다.
+                const { factMarkers } = groundedSentenceTools();
+                const remainingFacts = new Set(factMarkers(withoutRepeatedCount));
+                if (factMarkers(paragraph.original).every(marker => remainingFacts.has(marker))) {
+                  candidateText = withoutRepeatedCount;
+                }
+              }
             }
           }
           // 원문 근거를 남길 수 있으면 같은 문단 안에서 되풀이한 문장을 지운다.
