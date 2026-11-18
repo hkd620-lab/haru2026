@@ -74,6 +74,7 @@ export function HomePersonalizationModal({
 
   return (
     <div
+      className="haru-light-surface"
       role="dialog"
       aria-modal="true"
       aria-labelledby="home-personalization-title"

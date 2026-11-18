@@ -19,7 +19,7 @@
 .haru-law-answer {
   max-width: 68ch;
   min-width: 0;
-  color: #374151;
+  color: var(--haru-ink);
   font-size: 15px;
   line-height: 1.9;
   overflow-wrap: anywhere;
@@ -27,7 +27,7 @@
 .haru-law-answer p { margin: 0 0 1em; text-indent: 1em; }
 .haru-law-answer :is(h1, h2, h3, h4, h5, h6) {
   margin: 1.6em 0 .7em;
-  color: #1A3C6E;
+  color: var(--haru-link);
   font-size: 16px;
   font-weight: 700;
   line-height: 1.6;
@@ -40,12 +40,18 @@
 .haru-law-answer li + li { margin-top: .55em; }
 .haru-law-answer :is(li, blockquote) p { text-indent: 0; }
 .haru-law-answer li p { margin-bottom: .5em; }
-.haru-law-answer strong { font-weight: 700; color: #1f2937; }
-.haru-law-answer a { color: #1A3C6E; text-decoration: underline; }
-.haru-law-answer blockquote { margin: 1em 0; padding-left: 1em; border-left: 3px solid #C7D9F8; }
-.haru-law-answer code { font-size: .92em; background: #F3F4F6; border-radius: 4px; padding: .1em .25em; }
-.haru-law-answer pre { max-width: 100%; overflow-x: auto; margin: 1em 0; padding: .8em; background: #F3F4F6; }
+.haru-law-answer strong { font-weight: 700; color: var(--haru-ink); }
+.haru-law-answer a { color: var(--haru-link); text-decoration: underline; }
+.haru-law-answer blockquote { margin: 1em 0; padding-left: 1em; border-left: 3px solid var(--haru-border); }
+.haru-law-answer code { font-size: .92em; background: var(--haru-subtle); border-radius: 4px; padding: .1em .25em; }
+.haru-law-answer pre { max-width: 100%; overflow-x: auto; margin: 1em 0; padding: .8em; background: var(--haru-subtle); }
 .haru-law-answer pre code { white-space: pre; overflow-wrap: normal; padding: 0; }
 .haru-law-answer table { display: block; max-width: 100%; overflow-x: auto; margin: 1em 0; border-collapse: collapse; }
-.haru-law-answer :is(th, td) { min-width: 6em; padding: .5em .7em; border: 1px solid #D1D5DB; text-align: left; }
-.haru-law-answer hr { margin: 1.5em 0; border-top: 1px solid #E5E7EB; }
+.haru-law-answer :is(th, td) { min-width: 6em; padding: .5em .7em; border: 1px solid var(--haru-border); text-align: left; }
+.haru-law-answer hr { margin: 1.5em 0; border-top: 1px solid var(--haru-border); }
+
+@media print {
+  .haru-law-answer, .haru-law-answer strong { color: #374151; }
+  .haru-law-answer :is(h1,h2,h3,h4,h5,h6,a) { color: #1A3C6E; }
+  .haru-law-answer :is(code,pre) { background: #F3F4F6; }
+}

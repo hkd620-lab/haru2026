@@ -1,3 +1,4 @@
+import { HaruLawAnswer } from '../../src/app/components/HaruLawAnswer';
 import { TodayQuote } from '../../src/app/components/TodayQuote';
 import { HealthMedicationPage } from '../../src/app/pages/HealthMedicationPage';
 import { usePullToRefresh } from '../../src/app/hooks/usePullToRefresh';
@@ -38,6 +39,9 @@ function PullRefreshFixture() {
     <textarea aria-label="입력 보존 시험" defaultValue="저장 전 테스트 글" />
   </div>;
 }
+function LawAnswerFixture() {
+  return <section aria-label="하루LAW 답변 대비 검증" style={{padding:24,background:'var(--haru-surface)'}}><HaruLawAnswer text={'표시 확인용 문장입니다. 법률 안내가 아닙니다.\n\n## 검증 제목\n**강조 표시**와 일반 본문을 확인합니다.\n\n- 첫 번째 확인 항목\n- 두 번째 확인 항목\n\n`코드 표시`'} /></section>;
+}
 function Destination() {
   const location = useLocation();
   return <p>비서 실행: {location.pathname} {JSON.stringify(location.state)}</p>;
@@ -59,7 +63,7 @@ function FixtureTheme({ children }: { children: React.ReactNode }) {
   return <ThemeProvider pathname={pathname}>{children}</ThemeProvider>;
 }
 const page = new URLSearchParams(location.search).get('page');
-const initialPath = page === 'pwa' ? '/pwa-test' : page === 'landing' ? '/landing' : page === 'medication' ? '/sayu-health/drug' : page === 'footer' ? '/' : '/v2';
+const initialPath = page === 'law-answer' ? '/sayu' : page === 'pwa' ? '/pwa-test' : page === 'landing' ? '/landing' : page === 'medication' ? '/sayu-health/drug' : page === 'footer' ? '/' : '/v2';
 startPwaState();
 createRoot(document.getElementById('root')!).render(
   <MemoryRouter initialEntries={[initialPath]}><FixtureTheme><div className="haru-app-root">
@@ -76,6 +80,7 @@ createRoot(document.getElementById('root')!).render(
       <Route path="/pwa-test" element={<PullRefreshFixture />} />
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/v2" element={<HomePageV2 />} />
+      <Route path="/sayu" element={<LawAnswerFixture />} />
       <Route path="/record" element={<RecordPage />} />
       <Route path="/sayu-health/drug" element={<HealthMedicationPage />} />
       <Route path="*" element={<Destination />} />
