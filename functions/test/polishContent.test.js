@@ -2264,3 +2264,50 @@ test('발아 원문 밖 결말을 복원할 때 사실에 맞는 앞 문장 편�
     preserved: undefined,
   });
 });
+
+test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용하고 근거 있는 과정과 의미를 보존한다', async () => {
+  const source = [
+    '발표 자료 열 장의 순서를 세 번 바꿨다.',
+    '마지막 장까지 정리하고 나니 뿌듯했다.',
+    '실제 발표는 아직 하지 않았다.',
+    '생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.',
+  ];
+  const edited = [
+    source[0],
+    '그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리하고 나니 뿌듯했다.',
+    '다만 실제 발표는 아직 하지 않았다.',
+    '생각해 온 내용에 차례를 잡아, 설명할 때 무엇부터 어떻게 이어 갈지 흐름을 갖춘 날이었다.',
+  ];
+  const guide = /\[발표 자료를 정리한 일기\]/;
+  const f = fixture({ polishParagraphs: edited });
+  const result = await f.request({ text: source.join('\n\n'), strength: 'STRONG', includeAiComment: false });
+  assert.match(f.calls[0].systemInstruction, guide);
+  assert.equal(result.text, edited.join('\n\n'));
+
+  for (const prefix of ['그렇게 세 번에 걸쳐 순서를 바꾼 끝에', '그렇게 세 번의 고침 끝에', '그렇게 두 번에 걸쳐 순서를 바꾼 끝에']) {
+    const output = [...edited];
+    output[1] = prefix + ' 마지막 장까지 정리하고 나니 뿌듯했다.';
+    const run = fixture({ polishParagraphs: output });
+    const polished = await run.request({ text: source.join('\n\n'), strength: 'STRONG', includeAiComment: false });
+    const expected = prefix.includes('두 번') ? source[1] : edited[1];
+    assert.equal(polished.text.split('\n\n')[1], expected);
+  }
+
+  const duplicated = [...edited];
+  duplicated[0] = '발표 자료 열 장의 순서를 바꿨다.';
+  duplicated[1] = '그렇게 세 번에 걸쳐 순서를 바꾼 끝에 마지막 장까지 정리하고 나니 뿌듯했다.';
+  const missingCount = fixture({ polishParagraphs: duplicated });
+  const resultWithoutCount = await missingCount.request({ text: source.join('\n\n'), strength: 'STRONG', includeAiComment: false });
+  assert.equal(resultWithoutCount.text.split('\n\n')[1], source[1]);
+
+  for (const request of [
+    { text: source.join(' '), strength: 'STRONG' },
+    { text: source.join('\n\n'), strength: 'WEAK' },
+    { text: source.join('\n\n'), strength: 'STRONG', format: 'essay' },
+    { text: '사진의 배치를 세 번 바꿨다.\n\n끝내 마음에 드는 배치를 찾았다.', strength: 'STRONG' },
+  ]) {
+    const other = fixture();
+    await other.request({ ...request, includeAiComment: false });
+    assert.doesNotMatch(other.calls[0].systemInstruction, guide);
+  }
+});
