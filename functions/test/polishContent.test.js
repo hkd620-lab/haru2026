@@ -2149,3 +2149,42 @@ test('원문에 없는 스스로 정한 목표는 빼고 녹음의 의미 문장
   const explicit = '스스로 정한 곡의 끝까지 연주했다.';
   assert.equal((await strongResult(explicit, explicit)).text, explicit);
 });
+
+
+test('CC 재검토: 수만의 단위 과장은 차단하고 가능성의 수만은 보존한다', async () => {
+  for (const claim of ['수만 명이 찾았다.', '몇만 원이다.', '수만 개를 샀다.', '몇만 건을 처리했다.']) {
+    const source = '결과를 기록했다.';
+    assert.equal((await strongResult(source, claim)).text, source);
+  }
+  const source = '몇만 원을 썼다.';
+  assert.equal((await strongResult(source, source)).text, source);
+  const ability = '다시 들을 수 있다.';
+  assert.equal((await strongResult(ability, '다시 들을 수만 있다.')).text, '다시 들을 수만 있다.');
+});
+
+test('CC 재검토: 구어체 최초 주장과 부분 완료 정도 변경을 차단한다', async () => {
+  for (const ending of ['처음이네', '처음이에요', '처음이네요', '처음이었습니다']) {
+    const source = '이 곡을 녹음했다.';
+    assert.equal((await strongResult(source, `이 곡 녹음은 ${ending}.`)).text, source);
+  }
+  const source = '앱을 거의 완성했다.';
+  assert.equal((await strongResult(source, '앱을 절반만 완성했다.')).text, source);
+  assert.equal((await strongResult(source, '앱은 거의 완성했다.')).text, '앱은 거의 완성했다.');
+  assert.equal((await strongResult('앱을 절반만 완성했다.', '앱은 절반 완성했다.')).text, '앱은 절반 완성했다.');
+});
+
+
+test('Codex 재리뷰: 소비한 관형형 뒤의 부정도 완료 부정으로 대조한다', async () => {
+  const source = '앱을 마무리한 것은 아니다. 작업을 포기한 것은 아니다.';
+  assert.equal((await strongResult(source, '앱을 완성했다. 작업을 포기한 것은 아니다.')).text.includes('완성했다'), false);
+  const negative = '앱을 마무리한 것은 아니다.';
+  assert.equal((await strongResult(negative, '앱을 완성한 것은 아니다.')).text, '앱을 완성한 것은 아니다.');
+});
+
+test('Codex 재리뷰: 듣다·짓다·걷다의 의도 불규칙 활용은 보존하고 들다와 듣다는 구분한다', async () => {
+  for (const [source, edited] of [['음악을 들으려고 이어폰을 꼈다.', '음악을 듣기 위해 이어폰을 꼈다.'], ['집을 지으려고 땅을 샀다.', '집을 짓기 위해 땅을 샀다.'], ['길을 걸으려고 신발을 신었다.', '길을 걷기 위해 신발을 신었다.']]) {
+    assert.equal((await strongResult(source, edited)).text, edited);
+  }
+  const source = '상자를 들려고 준비했다.';
+  assert.equal((await strongResult(source, '상자를 듣기 위해 준비했다.')).text, source);
+});

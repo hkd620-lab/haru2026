@@ -2386,7 +2386,12 @@ function changesTimeOfDay(text: string, source: string): boolean {
 // 원문에 같은 유형의 표현이 있으면 통과시키고, 수고·감정·의미를 원문 사실로 문장화한 표현은 범주에 넣지 않는다.
 function addsUngroundedSpecifics(text: string, source: string): boolean {
   // 의도 표현 앞의 동사 어간 전체(예: ‘보’, ‘보관하’). 첫 음절만 비교하면 ‘보려고’가 ‘보관하려고’를 근거로 통과시킨다.
-  const intentStem = (word = '') => word.replace(/[^가-힣]/g, '');
+  const intentStem = (word = '', phrase = '') => {
+    const stem = word.replace(/[^가-힣]/g, '');
+    // 으려- 앞의 불규칙 어간만 정규화한다. ‘들려고(들다)’와 ‘들으려고(듣다)’는 구분한다.
+    const irregular: Record<string, string> = { 들: '듣', 지: '짓', 걸: '걷' };
+    return phrase.startsWith(`${word}으려`) ? (irregular[stem] ?? stem) : stem;
+  };
   // 고자·느라는 ‘중고자전거’처럼 낱말 안에서도 나오므로 어미 뒤 경계(공백·문장부호·끝, 고자는 ‘하고자한다’의 하- 활용)를 확인한다.
   const intent = /([가-힣]*?)(?:으려(?:고|는|던|면)?|(?<![배고염우격장])려(?:고|는|던|면)|기\s?위(?:해서|하여|해|한)|고자(?=[하한했합할]|[^가-힣]|$)|느라(?:고)?(?=[^가-힣]|$))/g;
   const observation = /([가-힣]+)\s?(?:것|모습|장면)[을를]\s?(?:보니|보며|보면서|보고|보자|바라보|지켜보)/g;
@@ -2425,9 +2430,12 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
     const start = match.index ?? 0;
     const before = value.slice(0, start).split(/[.!?。！？\n,]/).at(-1) ?? '';
     const after = value.slice(start + match[0].length).split(/[.!?。！？\n,]/)[0] ?? '';
+    const consumedNominal = /(?:한|된|낸|둔|놓은|친)$/.test(match[0]);
     if (/(?:미|불)$|(?:못|안)\s*$/.test(before)
+      || (consumedNominal && /^\s*(?:것|상태)(?:은|이)?\s*아니/.test(after))
       || /^(?:하|되|시키)?(?:지|지는)\s*(?:않|못)|^(?:한|된)\s*(?:것|상태)?(?:은|이)?\s*아니/.test(after)) return 'negative';
-    if (/(?:거의|일부만|일부|부분적으로|부분만|절반만|절반|대부분|아직)\s*$/.test(before)) return 'partial';
+    const degree = /(?:거의|일부만|일부|부분적으로|부분만|절반만|절반|대부분|아직)\s*$/.exec(before)?.[0].trim();
+    if (degree) return `partial:${degree.replace(/만$|적으로$/, '')}`;
     if (/^(?:하|되|해|돼)?(?:려|려고|려는|려던|고자|기\s*위|야|고\s*싶)|^(?:할|될|시킬|계획|예정)|^\s*보(?:려|려고|려는|고자)/.test(after)) return 'planned';
     if (/^(?:하|되)?는\s*(?:중|과정)/.test(after)) return 'partial';
 
@@ -2439,17 +2447,17 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
   const compactSource = compact(source);
   // 횟수 표현은 ‘열두 번’·‘12번’처럼 수량 전체를 한 덩어리로 뽑아 원문 수량과 통째로 대조한다.
   // 부분 문자열로 대조하면 원문 ‘열두 번’ 안의 ‘두 번’, ‘12번’ 안의 ‘2번’이 근거로 통과한다.
-  const countClaim = /(?<![가-힣])(?:수|몇)\s?(?:십|백|천)(?:\s?번)?|(?<![가-힣])(?:수|몇)\s?만\s?번|수많|무수|수없이|셀\s?수\s?없|숱하|숱한|(?<![가-힣\d])(?:(?:열|스물|서른|마흔|쉰|예순|일흔|여든|아흔)(?:\s?(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉))?|스무|여러|몇|두|세|네|다섯|여섯|일곱|여덟|아홉|\d+)\s?(?:번|차례)(?!째|지|호|역|화|갈)/g;
+  const countClaim = /(?<![가-힣])(?:수|몇)\s?(?:십|백|천)(?:\s?번)?|(?<![가-힣])(?:수|몇)\s?만\s?(?:번|명|원|개|건|배|장|곳)|수많|무수|수없이|셀\s?수\s?없|숱하|숱한|(?<![가-힣\d])(?:(?:열|스물|서른|마흔|쉰|예순|일흔|여든|아흔)(?:\s?(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉))?|스무|여러|몇|두|세|네|다섯|여섯|일곱|여덟|아홉|\d+)\s?(?:번|차례)(?!째|지|호|역|화|갈)/g;
   const countKey = (value: string) => compact(value).replace(/번$/, '');
   const sourceCounts = new Set(Array.from(source.matchAll(countClaim), match => countKey(match[0])));
-  const sourceIntentStems = Array.from(source.matchAll(intent), match => intentStem(match[1])).filter(Boolean);
+  const sourceIntentStems = Array.from(source.matchAll(intent), match => intentStem(match[1], match[0])).filter(Boolean);
   // 생각·궁리 과정과 흩어진 이동 방식의 갈래. 결과의 표현은 원문에 같은 갈래가 있을 때만 근거가 있다.
   const deliberation = /고민|고심|궁리|숙고|망설|머뭇|저울질|따져\s?보|헤아리|헤아려|되새기|되새겨|곱씹|씨름|신경(?:을)?\s?(?:쓰|썼|써)/g;
   const wandering = /이리\s?저리|요리조리|여기저기|이곳저곳|이쪽저쪽|구석구석|이것저것/g;
   // ‘처음’·‘최초’·‘가장 먼저’·‘첫 ~’ 같은 처음·최초 주장과 그 주장이 가리키는 말.
   // 가리키는 말은 같은 문장에서 주장 뒤 세 낱말(‘처음이었다’처럼 붙은 서술이면 앞 세 낱말)의 어간이다.
   // 서술형은 ‘처음이었다’·‘처음이었던’·‘처음이라서’·‘최초였다’처럼 서술 어미까지 한 덩어리로 인식한다.
-  const firstClaim = /(?<![가-힣])(?:생애\s?)?(?:(?:맨|가장|제일)\s?(?:먼저|처음)|처음|최초)((?:인데|입니다|이(?:었|였)?|였|인)(?:다|던|고|지만|는데|어서|으니|니|며|라서|라고|라는|라|기에|지)?)?(?:으로|으론|에는|엔|부터|에|의)?(?![가-힣])|(?<![가-힣])첫(?=\s?[가-힣])/g;
+  const firstClaim = /(?<![가-힣])(?:생애\s?)?(?:(?:맨|가장|제일)\s?(?:먼저|처음)|처음|최초)((?:인데|입니다|이에요|이네요|이네|이군요|이었어요|이었습니다|이(?:었|였)?|였|인)(?:다|던|고|지만|는데|어서|으니|니|며|라서|라고|라는|라|기에|지)?)?(?:으로|으론|에는|엔|부터|에|의)?(?![가-힣])|(?<![가-힣])첫(?=\s?[가-힣])/g;
   const endingSyllables = new Set('다고며서는은을를던든한했해하된됐돼되었았였어아여게기지니도에로으의이가와과본쳤친들'.split(''));
   const lightStems = new Set(['하', '해', '한', '본', '보', '봤', '된', '되', '것', '수', '때', '번']);
   const firstTargets = (match: RegExpMatchArray) => {
@@ -2482,13 +2490,13 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
       || new RegExp(`${match[2]}\\s?(?:씩|마다)`).test(source) || /하나하나|일일이/.test(source)],
     // ‘~아/어 가며’ 같은 점진·반복 방식. ‘학교에 가며’처럼 장소 뒤의 이동은 제외한다.
     [/([가-힣]+)\s?가(?:며|면서)(?=[\s,.!?]|$)/g, match => /[에로을를서도는은이가와과의]$/.test(match[1])
-      || new RegExp(`${match[1]}(?:에|로)?\\s?(?:가|갔|간|갈)`).test(source)
+      || (match[1].length >= 2 && new RegExp(`${match[1]}(?:에|로)?\\s?(?:가|갔|간|갈)`).test(source))
       || /가(?:며|면서)|씩|여러\s?번|계속|거듭|반복|차례/.test(source)],
     // 조심스럽게·꼼꼼히 같은 행동 방식
     [/조심스럽|꼼꼼|차근차근|차례차례|하나하나|일일이|정성껏|정성스럽|공들여|천천히|세심|신중/g,
       match => source.includes(match[0].slice(0, 2))],
     // ~하려고·~하기 위해·~하느라 같은 의도·목적. 원문에 같은 동사 줄기의 의도 표현이 있으면 통과한다.
-    [intent, match => sourceIntentStems.includes(intentStem(match[1]))],
+    [intent, match => sourceIntentStems.includes(intentStem(match[1], match[0]))],
     // 글쓴이가 목표·범위를 직접 정했다는 새 의도는 원문에 같은 설정 행동이 있을 때만 허용한다.
     [/(?:스스로|자신이|내가)\s?정(?:한|했|해)/g, () => /정하|정했|정한|정해/.test(source)],
     // ‘전시를 위해’ 같은 명사 뒤 목적. 원문에 ‘위해·위한·위하여’가 있을 때만 통과한다.
