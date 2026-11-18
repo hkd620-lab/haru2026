@@ -122,7 +122,8 @@ test('선교·일반보고는 홈 기록 카드 하나로 보이고 주식거래
   for (const [format] of MOVED_FORMATS.filter(([movedFormat]) => movedFormat !== '주식거래일지')) {
     const cards = RECORDS.filter((record) => record.format === format);
     assert.equal(cards.length, 1, format);
-    assert.ok(!cards[0].developerOnly, format);
+    // 일반보고는 2026-11-18 은퇴자 대상 메뉴 정리로 개발자 전용 카드가 됐다(표에는 남아 11종 일치 유지). 선교보고는 일반 회원에게 보인다.
+    assert.equal(Boolean(cards[0].developerOnly), format === '일반보고', format);
     assert.ok(WORK_ENTRY_FORMATS.includes(format), `업무 탭: ${format}`);
     assert.ok(DRAFT_PICKER_FORMATS.includes(format), `먼저 쓰기: ${format}`);
     for (const item of [...AGENTS, ...DEV_TOOLS]) assert.notEqual(item.state?.format, format, item.label);

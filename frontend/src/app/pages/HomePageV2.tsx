@@ -185,6 +185,7 @@ const RECORDS: RecordItem[] = [
     bg: '#E5DFD0',
     stroke: '#7A6F5A',
     format: '일반보고',
+    developerOnly: true, // 은퇴자 대상 메뉴 정리: 일반 회원 홈에서는 숨김(2026-11-18 허대표님 결정)
     icon: (
       <>
         <rect x="4" y="3" width="16" height="18" rx="2" />
@@ -199,6 +200,7 @@ const RECORDS: RecordItem[] = [
     bg: '#9BAA67',
     stroke: '#FFFFFF',
     format: '업무일지',
+    developerOnly: true, // 은퇴자 대상 메뉴 정리: 일반 회원 홈에서는 숨김(2026-11-18 허대표님 결정)
     icon: (
       <>
         <rect x="3" y="7" width="18" height="13" rx="2" />
