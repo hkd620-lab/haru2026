@@ -4315,7 +4315,7 @@ export function SayuPage() {
   const currentViewTitle = sayuScope === 'all' ? '전체 나의 기록' : `${monthName} 나의 기록`;
   const getSayuDisplayLabel = (label: string) => {
     if (label === '하루식물탐정') return '식물탐정';
-    return label;
+    return getFormatDisplayName(label);
   };
   const searchPlaceholder = effectiveSayuLabel
     ? `${getSayuDisplayLabel(effectiveSayuLabel)} 기록 검색`

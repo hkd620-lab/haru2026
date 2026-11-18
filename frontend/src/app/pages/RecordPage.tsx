@@ -1,3 +1,4 @@
+import { getFormatDisplayName } from '../records/recordFormatDescriptions';
 import { useState, useRef, useEffect, type ChangeEvent } from 'react';
 import { DiaryLearnModal } from '../components/DiaryLearnModal';
 import { Calendar, Camera, Check, Pencil, X } from 'lucide-react';
@@ -1208,7 +1209,7 @@ function RecordPageContent() {
                       color: '#333333',
                     }}
                   >
-                    {format}
+                    {getFormatDisplayName(format)}
                   </button>
                 );
               })}
