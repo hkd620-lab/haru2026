@@ -1703,7 +1703,7 @@ function HomeModeButton({
       style={{
         border: 'none',
         borderRadius: 999,
-        background: active ? 'var(--haru-accent-ink)' : 'transparent',
+        background: active ? 'var(--haru-accent)' : 'transparent',
         color: active ? '#F5F0E8' : 'var(--haru-muted, #7A6F5A)',
         padding: '8px 14px',
         fontSize: 12,
