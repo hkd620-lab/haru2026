@@ -151,7 +151,7 @@ const RECORDS: RecordItem[] = [
     ),
   },
   {
-    label: '육아일기',
+    label: '손주자람일기',
     sub: '자라남의 기록',
     bg: '#E9DEF1',
     stroke: '#5A4E7A',

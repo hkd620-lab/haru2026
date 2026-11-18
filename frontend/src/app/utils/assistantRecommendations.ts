@@ -134,7 +134,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     title: 'HARU 육아·교육 비서',
     category: 'childcare',
     description: '기록 속 자녀, 교육, 성장, 상담 고민을 정리하는 데 도움을 드립니다.',
-    actionLabel: '육아일기로 정리',
+    actionLabel: '손주자람일기로 정리',
     targetPath: '/record',
     keywords: ['아이', '자녀', '육아', '학교', '학생', '상담', '학습', '공부', '성장', '진로', '선생님', '친구', '교육'],
     weakKeywords: ['상담', '학습', '공부', '성장', '진로', '친구'],
