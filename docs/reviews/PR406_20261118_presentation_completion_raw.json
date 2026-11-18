@@ -1,0 +1,366 @@
+{
+  "code_head": "42edc3e68cf0e0e3f044f2e2712f3965935172c1",
+  "first_codex_request": {
+    "id": 6978977853,
+    "created_at": "2026-11-18T12:46:51Z",
+    "html_url": "https://github.com/hkd620-lab/haru2026/pull/406#issuecomment-6978977853",
+    "body": "@codex review\n\n검토 대상 `b93338643d3d18e3363855973b8e2fad83a7fd53`입니다. 기존 코드 검토는 https://github.com/hkd620-lab/haru2026/pull/406#issuecomment-6973322647, 직전 CC 기록 검토는 https://github.com/hkd620-lab/haru2026/pull/406#issuecomment-6978227346 입니다.\n\n발표 자료가 있는 다문단 일기의 강 다듬기에 한해 수고와 현재 갖춘 설명 흐름을 풀어 쓰는 지침을 추가했습니다. 원문과 앞 결과의 독립 문장에 같은 순서 변경 횟수가 있고 다음 원문 문단에 그 횟수가 없을 때, 다음 결과 문장 첫머리에 그대로 반복된 횟수만 ‘거듭’으로 정리한 뒤 종전 사실·중복 검사를 거칩니다. 근거와 횟수가 다른 경우는 복원 경로가 유지됩니다. 새 사실 통과, 순번·횟수 오인, 다른 기록 범위에 미치는 영향을 검토해 주세요.\n\nFunctions 빌드, polishContent 169/169 + aiGateway 16/16, diff check 통과. Gemini 기존 발표 가상 일기 3회 모두 열 장·세 번·뿌듯함·미발표와 설명할 흐름을 보존했고, 별도 발표 자료 여섯 장·두 번 사례도 보존했습니다. 최종 코드에서 발표 원응답 4건과 기존 회귀 12건 재생 결과 동일, 이전 중복 수치 3건을 재생해 수고 문장을 보존했습니다. 표본 한정 품질 판정입니다. 리전·Firestore 경로·인증·결제·환경변수·모델·앱 호출량·export 변경 없음. 병합·운영 배포 보류."
+  },
+  "first_codex_review": {
+    "id": 5956844849,
+    "node_id": "PRR_kwDORWOKJc8AAAABYw49MQ",
+    "user": {
+      "login": "chatgpt-codex-connector[bot]",
+      "id": 199175422,
+      "node_id": "BOT_kgDOC98s_g",
+      "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D",
+      "html_url": "https://github.com/apps/chatgpt-codex-connector",
+      "followers_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "<!-- codex-review-receipt:v1 -->\n\n\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `b93338643d`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nCodex can also answer questions or update the PR. Try commenting \"@codex address that feedback\".\n            \n</details>",
+    "state": "COMMENTED",
+    "html_url": "https://github.com/hkd620-lab/haru2026/pull/406#pullrequestreview-5956844849",
+    "pull_request_url": "https://api.github.com/repos/hkd620-lab/haru2026/pulls/406",
+    "author_association": "NONE",
+    "is_copilot_code_review": false,
+    "copilot_code_review_effort": null,
+    "_links": {
+      "html": {
+        "href": "https://github.com/hkd620-lab/haru2026/pull/406#pullrequestreview-5956844849"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/hkd620-lab/haru2026/pulls/406"
+      }
+    },
+    "submitted_at": "2026-11-18T12:49:47Z",
+    "commit_id": "b93338643d3d18e3363855973b8e2fad83a7fd53"
+  },
+  "first_codex_finding": {
+    "id": 4614153781,
+    "created_at": "2026-11-18T12:49:47Z",
+    "html_url": "https://github.com/hkd620-lab/haru2026/pull/406#discussion_r4614153781",
+    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  반복 횟수 정리 후 다음 문단의 고유 횟수도 보존하세요**\n\n다음 원문 문단에 앞 문단과 다른 횟수가 있으면, 새 치환으로 그 문단의 고유 횟수가 사라진 응답도 통과합니다. 실제 callable fixture에서 원문을 `발표 자료 열 장의 순서를 세 번 바꿨다.` / `마지막 장을 두 번 정리하고 나니 뿌듯했다.`로 두고 두 번째 응답을 `그렇게 세 번에 걸쳐 순서를 바꾼 끝에 마지막 장을 정리하고 나니 뿌듯했다.`로 주면, 현재 코드는 ‘세 번’을 ‘거듭’으로 바꾼 뒤 원문의 ‘두 번’이 빠진 결과를 반환합니다. 직전 커밋에서는 같은 응답을 원문으로 복원합니다. 치환 후 해당 문단 자체의 횟수가 보존되는지도 검사하고, 누락되면 기존 복원 경로로 보내야 합니다.\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->"
+  },
+  "codex_request": {
+    "id": 6979600695,
+    "created_at": "2026-11-18T13:13:06Z",
+    "html_url": "https://github.com/hkd620-lab/haru2026/pull/406#issuecomment-6979600695",
+    "body": "@codex review\n\n검토 대상 `42edc3e68cf0e0e3f044f2e2712f3965935172c1`입니다. 이전 리뷰 https://github.com/hkd620-lab/haru2026/pull/406#pullrequestreview-5956844849 의 P2 https://github.com/hkd620-lab/haru2026/pull/406#discussion_r4614153781 를 반영했습니다. 앞 문단의 중복 횟수를 ‘거듭’으로 바꾼 결과에 뒤 원문 문단 자체의 수량·사실 표지가 모두 있는지 확인합니다. 뒤의 ‘두 번’을 빠뜨린 응답은 치환하지 않아 기존 경로에서 복원되고, ‘두 번’을 유지한 응답은 중복만 정리합니다. 두 경우 모두 callable 회귀 테스트에서 확인했습니다.\n\nFunctions 빌드와 185/185 테스트 통과. 실모델 발표 원응답 4건과 기존 12건을 수정 후 재생해 동일 결과를 확인했습니다. 초기 중복 수치 3건도 수고와 감정 문장이 보존됩니다. 프롬프트·리전·경로·모델·호출량·인증·결제·export에는 이번 후속 수정이 없습니다. 병합·운영 배포 보류."
+  },
+  "codex_result": {
+    "id": 6979646524,
+    "created_at": "2026-11-18T13:15:02Z",
+    "html_url": "https://github.com/hkd620-lab/haru2026/pull/406#issuecomment-6979646524",
+    "body": "<!-- codex-review-receipt:v1 -->\n\nCodex Review: Didn't find any major issues. Already looking forward to the next diff.\n\n**Reviewed commit:** `42edc3e68c`\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nCodex can also answer questions or update the PR. Try commenting \"@codex address that feedback\".\n            \n</details>"
+  },
+  "cc_review": {
+    "id": 6979018173,
+    "created_at": "2026-11-18T12:48:38Z",
+    "html_url": "https://github.com/hkd620-lab/haru2026/pull/406#issuecomment-6979018173",
+    "body": "## 독립 재검토 — HEAD `b933386`\n\n**검토 상태:** 새로 생긴 버그·보안 문제·데이터 손실 위험은 찾지 못했습니다. P3 참고 3건이 있습니다.\n\n**확인 범위:** 지난 검토 대상(`bef1d15`) 뒤의 커밋 `b933386` 하나(`git diff bef1d15 b933386`)를 읽었습니다. 변경은 `functions/src/index.ts` +27/−3, `functions/test/polishContent.test.js` +47입니다.\n- 강·다문단·일기 형식에서, 다듬을 문단에 '발표 자료'가 있으면 프롬프트에 `[발표 자료를 정리한 일기]` 지침을 붙입니다(`index.ts:3261-3267`).\n- 서버 후처리를 추가했습니다(`index.ts:3435-3450`). 앞 문단의 원문과 응답이 같은 횟수로 '발표 자료…순서를 N 번 바꿨다.' 한 문장이면, 다음 문단 첫머리의 '그렇게 N 번에 걸쳐…/N 번의 고침 끝에'를 '그렇게 순서를 거듭 바꾼 끝에'로 바꿉니다. 그 뒤에는 기존 근거 검사를 그대로 받습니다.\n- Functions `npm ci` 후 `npm run build` 통과\n- `node --test test/polishContent.test.js test/aiGateway.test.js`: **185/185 통과**(직접 실행)\n- 리전(`asia-northeast3`), Firestore 경로, 모델, 호출 수, 반환 계약은 바뀌지 않았습니다.\n\n### 이전 검토 대비\n- **해결됨:** 없음(이번 커밋은 발표 표본을 겨냥한 보완).\n- **새 문제(버그):** 없음. 후처리는 횟수가 앞 문단에 남아 있을 때만 횟수를 '거듭'으로 바꿉니다. 앞 문단 응답에서 횟수가 빠지거나 횟수가 다르면 바꾸지 않고, 그 문장은 원문으로 복원됩니다(테스트로 확인). 앞 문단이 원문으로 되돌아가도 원문에 같은 횟수가 있으므로, 최종 글에서 '거듭'의 근거는 남습니다.\n- **참고(P3) 1 — 표본 맞춤:** 지침의 예문과 후처리 정규식(문장 전체 고정, 횟수는 두/세/네/숫자만)이 이번에 검증한 가상 발표 표본과 거의 같은 모양입니다. 새 테스트의 입력도 그 표본과 같은 구조입니다. 이 표본은 이제 독립 검증 표본으로 쓸 수 없습니다. 다른 표현의 발표 일기('다섯 번', '순서를 여러 차례 고쳤다', 한 문단 입력 등)에서 효과가 나는지는 아직 확인되지 않았습니다.\n- **참고(P3) 2 — 테스트 누락:** 후처리는 앞 문단의 최종 결과가 아니라 모델 원응답 `all[index-1]`과 비교합니다. 지금 규칙에서는 앞 문단이 원문으로 되돌아가도 횟수 근거가 남아 문제가 없습니다. 다만 '앞 문단 응답은 패턴과 맞지만 근거 검사에 걸려 원문으로 복원되는 경우'를 확인하는 테스트는 없습니다.\n- **참고(P3) 3 — PR 본문 갱신 안 됨:** 본문은 아직 검토 대상 코드를 `4f968af`(184/184)로 적고 있습니다. `b933386`의 코드 변경과 185개 테스트는 적혀 있지 않습니다. 이 HEAD에 대한 Codex 결과도 아직 없습니다(요청 댓글만 있음).\n- **미해결(그대로 남음):** 상추 씨앗 예시가 원문보다 앞서 읽힐 수 있다는 참고와 '불만족' 계열 표현에 대한 참고는 그대로입니다.\n\n검토 시점에 CI `linux_x64_node22`는 성공했고, Hosting preview 두 개는 진행 중이었습니다. PR 본문대로 배포 보류 상태입니다. 이 검토는 병합·승인 판단이 아닙니다.\n\n---\n_Generated by [Claude Code](https://claude.ai/code)_"
+  },
+  "cc_followup": {
+    "id": 6979631763,
+    "created_at": "2026-11-18T13:14:25Z",
+    "html_url": "https://github.com/hkd620-lab/haru2026/pull/406#issuecomment-6979631763",
+    "body": "## 독립 재검토 — HEAD `42edc3e`\n\n**검토 상태:** 새로 생긴 버그·보안 문제·데이터 손실 위험은 찾지 못했습니다. 지난 Codex P2는 해결됐습니다.\n\n**확인 범위:** 지난 검토 대상(`b933386`) 뒤의 커밋 `42edc3e` 하나(`git diff b933386 42edc3e`)를 읽었습니다. 변경은 `functions/src/index.ts` +9/−1(`:3445-3457`), `functions/test/polishContent.test.js` +14입니다.\n- 이제 '그렇게 N 번…끝에'를 '거듭'으로 바꾼 결과를 바로 쓰지 않습니다. 먼저 뒤 원문 문단의 사실 표지(`factMarkers`: 횟수·수량·때·부정·사람·장소)가 바꾼 결과에 모두 남았는지 확인합니다. 하나라도 빠지면 바꾸지 않은 응답이 기존 근거 검사로 갑니다.\n- Functions `npm ci` 후 `npm run build` 통과\n- `node --test test/polishContent.test.js test/aiGateway.test.js`: **185/185 통과**(직접 실행. 새 사례는 기존 테스트 안에 추가돼 테스트 개수는 그대로)\n- 리전(`asia-northeast3`), Firestore 경로, 모델, 호출 수, 반환 계약은 바뀌지 않았습니다.\n\n### 이전 검토 대비\n- **해결됨:** Codex P2(https://github.com/hkd620-lab/haru2026/pull/406#discussion_r4614153781). 뒤 문단의 고유 횟수('두 번')가 응답에서 빠지면 '거듭'으로 바꾸지 않습니다. 이때 응답의 '세 번'은 원문에 근거가 없어 문단이 원문으로 돌아갑니다. 응답에 '두 번'이 남아 있으면 바뀐 결과가 그대로 나옵니다. 두 경우 모두 테스트로 확인했습니다.\n- **새 문제:** 없음. 검사는 `paragraph.original` 기준이라 원문 표지가 '3번'이고 앞 횟수가 '세 번'처럼 표기만 다른 경우도 막습니다. 그 표지가 응답에 남아야 하기 때문입니다. 치환은 '거듭'만 넣고 새 사실 표지는 넣지 않습니다. 그 뒤 `failsGroundedParagraph`·반복 검사도 그대로 받습니다.\n- **미해결(P3, 그대로):** ① 지침 예문과 정규식이 검증한 가상 발표 표본에 맞춰져 있어, 다른 표현에서도 효과가 나는지는 아직 모릅니다. ② '앞 문단 응답은 패턴과 맞지만 원문으로 복원되는 경우'의 테스트가 없습니다(현재 규칙에서는 문제 없음). ③ PR 본문의 검토 대상 코드가 아직 `4f968af`(184)로 적혀 있습니다. ④ 상추 예시와 '불만족' 계열 표현에 대한 참고도 그대로입니다.\n\n검토 시점에 Hosting preview 2개는 성공했고 CI `linux_x64_node22`는 진행 중이었습니다. 이 HEAD에 대한 Codex 결과는 아직 없습니다(요청 댓글만 있음). PR 본문대로 배포 보류 상태입니다. 이 검토는 병합·승인 판단이 아닙니다.\n\n---\n_Generated by [Claude Code](https://claude.ai/code)_"
+  },
+  "test_count": 185,
+  "gemini_verified": {
+    "r1": [
+      {
+        "variant": "multi",
+        "name": "presentation",
+        "source": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n마지막 장까지 정리하고 나니 뿌듯했다.\n\n실제 발표는 아직 하지 않았다.\n\n생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.",
+        "model": "gemini-3.1-flash-lite",
+        "finish": "STOP",
+        "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"발표 자료 열 장의 순서를 세 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 실제 발표는 아직 하지 않았다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 생각해 온 내용을 설명할 순서로 엮어 냄으로써, 발표할 흐름을 갖추게 된 날이었다.\"\n    }\n  ]\n}",
+        "text": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 냄으로써, 발표할 흐름을 갖추게 된 날이었다.",
+        "preserved": false
+      }
+    ],
+    "r2": [
+      {
+        "variant": "multi",
+        "name": "presentation",
+        "source": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n마지막 장까지 정리하고 나니 뿌듯했다.\n\n실제 발표는 아직 하지 않았다.\n\n생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.",
+        "model": "gemini-3.1-flash-lite",
+        "finish": "STOP",
+        "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"발표 자료 열 장의 순서를 세 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 실제 발표는 아직 하지 않았다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 생각해 온 내용을 설명할 순서로 엮어 냄으로써, 설명할 흐름을 갖춘 날이었다.\"\n    }\n  ]\n}",
+        "text": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 냄으로써, 설명할 흐름을 갖춘 날이었다.",
+        "preserved": false
+      }
+    ],
+    "r3": [
+      {
+        "variant": "multi",
+        "name": "presentation",
+        "source": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n마지막 장까지 정리하고 나니 뿌듯했다.\n\n실제 발표는 아직 하지 않았다.\n\n생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.",
+        "model": "gemini-3.1-flash-lite",
+        "finish": "STOP",
+        "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"발표 자료 열 장의 순서를 세 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 실제 발표는 아직 하지 않았다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 생각해 온 내용을 설명할 순서로 엮어 냈고, 자료에 차례를 잡아 설명할 흐름을 갖춘 날이었다.\"\n    }\n  ]\n}",
+        "text": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 냈고, 자료에 차례를 잡아 설명할 흐름을 갖춘 날이었다.",
+        "preserved": false
+      }
+    ],
+    "transfer": [
+      {
+        "variant": "multi",
+        "name": "presentation_transfer",
+        "source": "발표 자료 여섯 장의 배열을 두 번 바꿨다.\n\n끝 장까지 순서를 정리하고 나니 마음이 놓였다.\n\n발표는 아직 하지 않았다.\n\n준비해 온 내용을 말할 차례에 맞춰 정리하니 설명의 흐름이 잡혔다.",
+        "model": "gemini-3.1-flash-lite",
+        "finish": "STOP",
+        "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"발표 자료 여섯 장의 배열을 두 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 배열을 거듭 바꾼 끝에 끝 장까지 순서를 정리하고 나니 마음이 놓였다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 발표는 아직 하지 않았다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 준비해 온 내용을 말할 차례에 맞춰 정리하니, 설명할 때 무엇을 먼저 꺼내고 이어 갈지 흐름이 잡힌 날이었다.\"\n    }\n  ]\n}",
+        "text": "발표 자료 여섯 장의 배열을 두 번 바꿨다.\n\n그렇게 배열을 거듭 바꾼 끝에 끝 장까지 순서를 정리하고 나니 마음이 놓였다.\n\n다만 발표는 아직 하지 않았다.\n\n그래도 준비해 온 내용을 말할 차례에 맞춰 정리하니, 설명할 때 무엇을 먼저 꺼내고 이어 갈지 흐름이 잡힌 날이었다.",
+        "preserved": false
+      }
+    ]
+  },
+  "final_replay": [
+    {
+      "variant": "multi",
+      "name": "presentation",
+      "source": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n마지막 장까지 정리하고 나니 뿌듯했다.\n\n실제 발표는 아직 하지 않았다.\n\n생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"발표 자료 열 장의 순서를 세 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 실제 발표는 아직 하지 않았다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 생각해 온 내용을 설명할 순서로 엮어 냄으로써, 발표할 흐름을 갖추게 된 날이었다.\"\n    }\n  ]\n}",
+      "text": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 냄으로써, 발표할 흐름을 갖추게 된 날이었다.",
+      "preserved": false,
+      "originalText": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 냄으로써, 발표할 흐름을 갖추게 된 날이었다.",
+      "round": 1
+    },
+    {
+      "variant": "multi",
+      "name": "presentation",
+      "source": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n마지막 장까지 정리하고 나니 뿌듯했다.\n\n실제 발표는 아직 하지 않았다.\n\n생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"발표 자료 열 장의 순서를 세 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 실제 발표는 아직 하지 않았다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 생각해 온 내용을 설명할 순서로 엮어 냄으로써, 설명할 흐름을 갖춘 날이었다.\"\n    }\n  ]\n}",
+      "text": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 냄으로써, 설명할 흐름을 갖춘 날이었다.",
+      "preserved": false,
+      "originalText": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 냄으로써, 설명할 흐름을 갖춘 날이었다.",
+      "round": 2
+    },
+    {
+      "variant": "multi",
+      "name": "presentation",
+      "source": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n마지막 장까지 정리하고 나니 뿌듯했다.\n\n실제 발표는 아직 하지 않았다.\n\n생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"발표 자료 열 장의 순서를 세 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 실제 발표는 아직 하지 않았다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 생각해 온 내용을 설명할 순서로 엮어 냈고, 자료에 차례를 잡아 설명할 흐름을 갖춘 날이었다.\"\n    }\n  ]\n}",
+      "text": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 냈고, 자료에 차례를 잡아 설명할 흐름을 갖춘 날이었다.",
+      "preserved": false,
+      "originalText": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 냈고, 자료에 차례를 잡아 설명할 흐름을 갖춘 날이었다.",
+      "round": 2
+    },
+    {
+      "variant": "multi",
+      "name": "presentation_transfer",
+      "source": "발표 자료 여섯 장의 배열을 두 번 바꿨다.\n\n끝 장까지 순서를 정리하고 나니 마음이 놓였다.\n\n발표는 아직 하지 않았다.\n\n준비해 온 내용을 말할 차례에 맞춰 정리하니 설명의 흐름이 잡혔다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"발표 자료 여섯 장의 배열을 두 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 배열을 거듭 바꾼 끝에 끝 장까지 순서를 정리하고 나니 마음이 놓였다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 발표는 아직 하지 않았다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 준비해 온 내용을 말할 차례에 맞춰 정리하니, 설명할 때 무엇을 먼저 꺼내고 이어 갈지 흐름이 잡힌 날이었다.\"\n    }\n  ]\n}",
+      "text": "발표 자료 여섯 장의 배열을 두 번 바꿨다.\n\n그렇게 배열을 거듭 바꾼 끝에 끝 장까지 순서를 정리하고 나니 마음이 놓였다.\n\n다만 발표는 아직 하지 않았다.\n\n그래도 준비해 온 내용을 말할 차례에 맞춰 정리하니, 설명할 때 무엇을 먼저 꺼내고 이어 갈지 흐름이 잡힌 날이었다.",
+      "preserved": false,
+      "originalText": "발표 자료 여섯 장의 배열을 두 번 바꿨다.\n\n그렇게 배열을 거듭 바꾼 끝에 끝 장까지 순서를 정리하고 나니 마음이 놓였다.\n\n다만 발표는 아직 하지 않았다.\n\n그래도 준비해 온 내용을 말할 차례에 맞춰 정리하니, 설명할 때 무엇을 먼저 꺼내고 이어 갈지 흐름이 잡힌 날이었다.",
+      "round": 2
+    }
+  ],
+  "core_replay": [
+    {
+      "variant": "single",
+      "name": "milestone",
+      "source": "만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다. 정말 기뻤다. 정식 심사와 출시는 아직 남았다. 구상해 온 앱을 실제로 사용할 수 있게 된 뜻깊은 첫걸음이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다. 정말 기뻤다.\\n\\n다만 정식 심사와 출시는 아직 남아 있다. 그래도 구상해 온 앱을 실제로 사용할 수 있게 된 것은, 만드는 일에서 쓰는 일로 이어진 뜻깊은 첫걸음이었다.\"\n    }\n  ]\n}",
+      "text": "만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다. 정말 기뻤다.\n\n다만 정식 심사와 출시는 아직 남아 있다. 그래도 구상해 온 앱을 실제로 사용할 수 있게 된 것은, 만드는 일에서 쓰는 일로 이어진 뜻깊은 첫걸음이었다.",
+      "preserved": false,
+      "originalText": "만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다. 정말 기뻤다.\n\n다만 정식 심사와 출시는 아직 남아 있다. 그래도 구상해 온 앱을 실제로 사용할 수 있게 된 것은, 만드는 일에서 쓰는 일로 이어진 뜻깊은 첫걸음이었다.",
+      "round": 1
+    },
+    {
+      "variant": "single",
+      "name": "effort",
+      "source": "전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다. 마지막 장까지 자리를 잡고 나니 뿌듯했다. 오늘은 따로 찍어 둔 사진들이 하나의 이야기로 이어진 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다. 그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다. 오늘은 따로 찍어 둔 사진들이 그 과정 끝에 하나의 이야기로 이어진 날이었다.\"\n    }\n  ]\n}",
+      "text": "전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다. 그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다. 오늘은 따로 찍어 둔 사진들이 그 과정 끝에 하나의 이야기로 이어진 날이었다.",
+      "preserved": false,
+      "originalText": "전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다. 그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다. 오늘은 따로 찍어 둔 사진들이 그 과정 끝에 하나의 이야기로 이어진 날이었다.",
+      "round": 1
+    },
+    {
+      "variant": "single",
+      "name": "recording",
+      "source": "연습해 온 곡을 오늘 처음 녹음했다. 긴장했지만 끝까지 연주해서 뿌듯했다. 음원 정리와 공개는 아직 남았다. 연습하던 곡이 다시 들을 수 있는 기록이 된 뜻깊은 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"연습해 온 곡을 오늘 처음 녹음했다. 긴장했지만 끝까지 연주해 낸 일은 뿌듯했다. 다만 음원을 정리하고 공개하는 일은 아직 남아 있다. 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 연습해 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.\"\n    }\n  ]\n}",
+      "text": "연습해 온 곡을 오늘 처음 녹음했다. 긴장했지만 끝까지 연주해 낸 일은 뿌듯했다. 다만 음원을 정리하고 공개하는 일은 아직 남아 있다. 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 연습해 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.",
+      "preserved": false,
+      "originalText": "연습해 온 곡을 오늘 처음 녹음했다. 긴장했지만 끝까지 연주해 낸 일은 뿌듯했다. 다만 음원을 정리하고 공개하는 일은 아직 남아 있다. 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 연습해 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.",
+      "round": 1
+    },
+    {
+      "variant": "multi",
+      "name": "milestone",
+      "source": "만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다.\n\n정말 기뻤다.\n\n정식 심사와 출시는 아직 남았다.\n\n구상해 온 앱을 실제로 사용할 수 있게 된 뜻깊은 첫걸음이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음으로 실행했다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"정말로 기뻤다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 정식 심사와 출시는 아직 남아 있다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 구상해 온 앱을 실제로 사용할 수 있게 된 것은, 만드는 일에서 쓰는 일로 이어진 뜻깊은 첫걸음이었다.\"\n    }\n  ]\n}",
+      "text": "만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음으로 실행했다.\n\n정말로 기뻤다.\n\n다만 정식 심사와 출시는 아직 남아 있다.\n\n그래도 구상해 온 앱을 실제로 사용할 수 있게 된 것은, 만드는 일에서 쓰는 일로 이어진 뜻깊은 첫걸음이었다.",
+      "preserved": false,
+      "originalText": "만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음으로 실행했다.\n\n정말로 기뻤다.\n\n다만 정식 심사와 출시는 아직 남아 있다.\n\n그래도 구상해 온 앱을 실제로 사용할 수 있게 된 것은, 만드는 일에서 쓰는 일로 이어진 뜻깊은 첫걸음이었다.",
+      "round": 1
+    },
+    {
+      "variant": "multi",
+      "name": "effort",
+      "source": "전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다.\n\n마지막 장까지 자리를 잡고 나니 뿌듯했다.\n\n오늘은 따로 찍어 둔 사진들이 하나의 이야기로 이어진 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 배치를 거듭 바꾼 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"오늘은 따로 찍어 둔 사진들이 그 과정 끝에 하나의 이야기로 이어진 날이었다.\"\n    }\n  ]\n}",
+      "text": "전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다.\n\n그렇게 배치를 거듭 바꾼 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다.\n\n오늘은 따로 찍어 둔 사진들이 그 과정 끝에 하나의 이야기로 이어진 날이었다.",
+      "preserved": false,
+      "originalText": "전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다.\n\n그렇게 배치를 거듭 바꾼 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다.\n\n오늘은 따로 찍어 둔 사진들이 그 과정 끝에 하나의 이야기로 이어진 날이었다.",
+      "round": 1
+    },
+    {
+      "variant": "multi",
+      "name": "recording",
+      "source": "연습해 온 곡을 오늘 처음 녹음했다.\n\n긴장했지만 끝까지 연주해서 뿌듯했다.\n\n음원 정리와 공개는 아직 남았다.\n\n연습하던 곡이 다시 들을 수 있는 기록이 된 뜻깊은 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"연습해 온 곡을 오늘 처음 녹음했다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"긴장했지만 곡의 끝까지 연주를 마쳤고, 스스로 정한 끝까지 다 연주해 낸 사실에 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 녹음한 음원을 정리하고 공개하는 일은 아직 남아 있다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 익혀 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.\"\n    }\n  ]\n}",
+      "text": "연습해 온 곡을 오늘 처음 녹음했다.\n\n긴장했지만 끝까지 연주해서 뿌듯했다.\n\n다만 녹음한 음원을 정리하고 공개하는 일은 아직 남아 있다.\n\n그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 익혀 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.",
+      "preserved": false,
+      "originalText": "연습해 온 곡을 오늘 처음 녹음했다.\n\n긴장했지만 곡의 끝까지 연주를 마쳤고, 스스로 정한 끝까지 다 연주해 낸 사실에 뿌듯했다.\n\n다만 녹음한 음원을 정리하고 공개하는 일은 아직 남아 있다.\n\n그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 익혀 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.",
+      "round": 1
+    },
+    {
+      "variant": "single",
+      "name": "milestone",
+      "source": "만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다. 정말 기뻤다. 정식 심사와 출시는 아직 남았다. 구상해 온 앱을 실제로 사용할 수 있게 된 뜻깊은 첫걸음이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다. 정말로 기뻤다.\\n\\n다만 정식 심사와 출시는 아직 남아 있다. 그래도 구상해 온 앱을 내 휴대폰에서 실제로 사용할 수 있게 된 것은, 기획에서 실행으로 이어진 뜻깊은 첫걸음이었다.\"\n    }\n  ]\n}",
+      "text": "만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다. 정말로 기뻤다.\n\n다만 정식 심사와 출시는 아직 남아 있다. 그래도 구상해 온 앱을 내 휴대폰에서 실제로 사용할 수 있게 된 것은, 기획에서 실행으로 이어진 뜻깊은 첫걸음이었다.",
+      "preserved": false,
+      "originalText": "만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다. 정말로 기뻤다.\n\n다만 정식 심사와 출시는 아직 남아 있다. 그래도 구상해 온 앱을 내 휴대폰에서 실제로 사용할 수 있게 된 것은, 기획에서 실행으로 이어진 뜻깊은 첫걸음이었다.",
+      "round": 2
+    },
+    {
+      "variant": "single",
+      "name": "effort",
+      "source": "전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다. 마지막 장까지 자리를 잡고 나니 뿌듯했다. 오늘은 따로 찍어 둔 사진들이 하나의 이야기로 이어진 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다. 그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다. 오늘은 따로 찍어 둔 사진들이 그 끝에 하나의 이야기로 이어진 날이었다.\"\n    }\n  ]\n}",
+      "text": "전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다. 그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다. 오늘은 따로 찍어 둔 사진들이 그 끝에 하나의 이야기로 이어진 날이었다.",
+      "preserved": false,
+      "originalText": "전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다. 그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다. 오늘은 따로 찍어 둔 사진들이 그 끝에 하나의 이야기로 이어진 날이었다.",
+      "round": 2
+    },
+    {
+      "variant": "single",
+      "name": "recording",
+      "source": "연습해 온 곡을 오늘 처음 녹음했다. 긴장했지만 끝까지 연주해서 뿌듯했다. 음원 정리와 공개는 아직 남았다. 연습하던 곡이 다시 들을 수 있는 기록이 된 뜻깊은 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"연습해 온 곡을 오늘 처음 녹음했다. 긴장했지만 끝까지 연주해서 뿌듯했다. 다만 음원을 정리하고 공개하는 일은 아직 남아 있다. 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 익혀 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.\"\n    }\n  ]\n}",
+      "text": "연습해 온 곡을 오늘 처음 녹음했다. 긴장했지만 끝까지 연주해서 뿌듯했다. 다만 음원을 정리하고 공개하는 일은 아직 남아 있다. 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 익혀 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.",
+      "preserved": false,
+      "originalText": "연습해 온 곡을 오늘 처음 녹음했다. 긴장했지만 끝까지 연주해서 뿌듯했다. 다만 음원을 정리하고 공개하는 일은 아직 남아 있다. 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 익혀 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.",
+      "round": 2
+    },
+    {
+      "variant": "multi",
+      "name": "milestone",
+      "source": "만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다.\n\n정말 기뻤다.\n\n정식 심사와 출시는 아직 남았다.\n\n구상해 온 앱을 실제로 사용할 수 있게 된 뜻깊은 첫걸음이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"정말로 기뻤다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 정식 심사와 출시는 아직 남아 있다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 구상해 온 앱을 실제로 사용할 수 있게 된 것은, 만드는 일에서 쓰는 일로 이어진 뜻깊은 첫걸음이었다.\"\n    }\n  ]\n}",
+      "text": "만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다.\n\n정말로 기뻤다.\n\n다만 정식 심사와 출시는 아직 남아 있다.\n\n그래도 구상해 온 앱을 실제로 사용할 수 있게 된 것은, 만드는 일에서 쓰는 일로 이어진 뜻깊은 첫걸음이었다.",
+      "preserved": false,
+      "originalText": "만들어 온 독서 기록 앱을 오늘 드디어 내 휴대폰에 시험 설치해 처음 실행했다.\n\n정말로 기뻤다.\n\n다만 정식 심사와 출시는 아직 남아 있다.\n\n그래도 구상해 온 앱을 실제로 사용할 수 있게 된 것은, 만드는 일에서 쓰는 일로 이어진 뜻깊은 첫걸음이었다.",
+      "round": 2
+    },
+    {
+      "variant": "multi",
+      "name": "effort",
+      "source": "전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다.\n\n마지막 장까지 자리를 잡고 나니 뿌듯했다.\n\n오늘은 따로 찍어 둔 사진들이 하나의 이야기로 이어진 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"오늘은 따로 찍어 둔 사진들이 그 과정 끝에 하나의 이야기로 이어진 날이었다.\"\n    }\n  ]\n}",
+      "text": "전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다.\n\n오늘은 따로 찍어 둔 사진들이 그 과정 끝에 하나의 이야기로 이어진 날이었다.",
+      "preserved": false,
+      "originalText": "전시를 준비하며 사진 스무 장의 배치를 여러 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 자리를 잡고 나니 뿌듯했다.\n\n오늘은 따로 찍어 둔 사진들이 그 과정 끝에 하나의 이야기로 이어진 날이었다.",
+      "round": 2
+    },
+    {
+      "variant": "multi",
+      "name": "recording",
+      "source": "연습해 온 곡을 오늘 처음 녹음했다.\n\n긴장했지만 끝까지 연주해서 뿌듯했다.\n\n음원 정리와 공개는 아직 남았다.\n\n연습하던 곡이 다시 들을 수 있는 기록이 된 뜻깊은 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"연습해 온 곡을 오늘 처음 녹음했다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"긴장했지만 끝까지 연주해 내어 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 음원을 정리하고 공개하는 일은 아직 남아 있다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 연주에서 기록으로 이어진 뜻깊은 날이었다.\"\n    }\n  ]\n}",
+      "text": "연습해 온 곡을 오늘 처음 녹음했다.\n\n긴장했지만 끝까지 연주해 내어 뿌듯했다.\n\n다만 음원을 정리하고 공개하는 일은 아직 남아 있다.\n\n그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 연주에서 기록으로 이어진 뜻깊은 날이었다.",
+      "preserved": false,
+      "originalText": "연습해 온 곡을 오늘 처음 녹음했다.\n\n긴장했지만 끝까지 연주해 내어 뿌듯했다.\n\n다만 음원을 정리하고 공개하는 일은 아직 남아 있다.\n\n그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 연주에서 기록으로 이어진 뜻깊은 날이었다.",
+      "round": 2
+    }
+  ],
+  "duplicate_count_replay": [
+    {
+      "variant": "multi",
+      "name": "presentation",
+      "source": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n마지막 장까지 정리하고 나니 뿌듯했다.\n\n실제 발표는 아직 하지 않았다.\n\n생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"발표 자료 열 장의 순서를 세 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 세 번에 걸쳐 순서를 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 실제 발표는 아직 하지 않았다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 생각해 온 내용을 설명할 순서로 엮어 내며, 무엇부터 어떻게 이어 갈지 흐름을 갖춘 날이었다.\"\n    }\n  ]\n}",
+      "text": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 내며, 무엇부터 어떻게 이어 갈지 흐름을 갖춘 날이었다.",
+      "preserved": false,
+      "originalText": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n마지막 장까지 정리하고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 내며, 무엇부터 어떻게 이어 갈지 흐름을 갖춘 날이었다.",
+      "round": 1
+    },
+    {
+      "variant": "multi",
+      "name": "presentation",
+      "source": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n마지막 장까지 정리하고 나니 뿌듯했다.\n\n실제 발표는 아직 하지 않았다.\n\n생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"발표 자료 열 장의 순서를 세 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 세 번에 걸쳐 순서를 바꾼 끝에 마지막 장까지 정리하고 나니 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 실제 발표는 아직 하지 않았다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.\"\n    }\n  ]\n}",
+      "text": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리하고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.",
+      "preserved": false,
+      "originalText": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n마지막 장까지 정리하고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.",
+      "round": 2
+    },
+    {
+      "variant": "multi",
+      "name": "presentation",
+      "source": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n마지막 장까지 정리하고 나니 뿌듯했다.\n\n실제 발표는 아직 하지 않았다.\n\n생각해 온 내용을 설명할 순서로 엮어 낸 날이었다.",
+      "model": "gemini-3.1-flash-lite",
+      "finish": "STOP",
+      "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"발표 자료 열 장의 순서를 세 번 바꿨다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"그렇게 세 번의 고침 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 실제 발표는 아직 하지 않았다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 생각해 온 내용을 설명할 순서로 엮어 내며, 정리한 흐름대로 내용을 이어갈 채비를 마친 날이었다.\"\n    }\n  ]\n}",
+      "text": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 내며, 정리한 흐름대로 내용을 이어갈 채비를 마친 날이었다.",
+      "preserved": false,
+      "originalText": "발표 자료 열 장의 순서를 세 번 바꿨다.\n\n마지막 장까지 정리하고 나니 뿌듯했다.\n\n다만 실제 발표는 아직 하지 않았다.\n\n그래도 생각해 온 내용을 설명할 순서로 엮어 내며, 정리한 흐름대로 내용을 이어갈 채비를 마친 날이었다.",
+      "round": 2
+    }
+  ]
+}
