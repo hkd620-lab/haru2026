@@ -2065,3 +2065,47 @@ test('Codex 4차 P2: 뒤 절의 별도 계획은 앞 절의 완료를 계획으�
   assert.deepEqual(await strongResult(source, edited), { text: edited, preserved: undefined });
   assert.deepEqual(await strongResult(edited, source), { text: source, preserved: undefined });
 });
+
+
+test('실제 Gemini 녹음 응답은 한 문단·다문단의 연습에서 기록으로 이어진 의미를 복원 없이 보존한다', async () => {
+  const cases = [
+  {
+    "variant": "multi",
+    "name": "recording",
+    "source": "연습해 온 곡을 오늘 처음 녹음했다.\n\n긴장했지만 끝까지 연주해서 뿌듯했다.\n\n음원 정리와 공개는 아직 남았다.\n\n연습하던 곡이 다시 들을 수 있는 기록이 된 뜻깊은 날이었다.",
+    "model": "gemini-3.1-flash-lite",
+    "finish": "STOP",
+    "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"연습해 온 곡을 오늘 처음 녹음했다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"연주하는 내내 긴장했지만, 끝까지 연주를 마쳤기에 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 음원을 정리하고 공개하는 일은 아직 남아 있다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 익혀 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.\"\n    }\n  ]\n}",
+    "text": "연습해 온 곡을 오늘 처음 녹음했다.\n\n긴장했지만 끝까지 연주해서 뿌듯했다.\n\n다만 음원을 정리하고 공개하는 일은 아직 남아 있다.\n\n그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 익혀 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.",
+    "preserved": false
+  },
+  {
+    "variant": "single",
+    "name": "recording",
+    "source": "연습해 온 곡을 오늘 처음 녹음했다. 긴장했지만 끝까지 연주해서 뿌듯했다. 음원 정리와 공개는 아직 남았다. 연습하던 곡이 다시 들을 수 있는 기록이 된 뜻깊은 날이었다.",
+    "model": "gemini-3.1-flash-lite",
+    "finish": "STOP",
+    "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"연습해 온 곡을 오늘 처음으로 녹음했다. 긴장했지만 끝까지 연주를 마쳐 뿌듯했다.\\n\\n다만 음원을 정리하고 공개하는 일은 아직 남아 있다. 그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 연주에서 기록으로 이어진 뜻깊은 날이었다.\"\n    }\n  ]\n}",
+    "text": "연습해 온 곡을 오늘 처음으로 녹음했다. 긴장했지만 끝까지 연주를 마쳐 뿌듯했다.\n\n다만 음원을 정리하고 공개하는 일은 아직 남아 있다. 그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 연주에서 기록으로 이어진 뜻깊은 날이었다.",
+    "preserved": false
+  },
+  {
+    "variant": "multi",
+    "name": "recording",
+    "source": "연습해 온 곡을 오늘 처음 녹음했다.\n\n긴장했지만 끝까지 연주해서 뿌듯했다.\n\n음원 정리와 공개는 아직 남았다.\n\n연습하던 곡이 다시 들을 수 있는 기록이 된 뜻깊은 날이었다.",
+    "model": "gemini-3.1-flash-lite",
+    "finish": "STOP",
+    "raw": "{\n  \"paragraphs\": [\n    {\n      \"index\": 1,\n      \"text\": \"연습해 온 곡을 오늘 처음 녹음했다.\"\n    },\n    {\n      \"index\": 2,\n      \"text\": \"긴장했지만 연주를 끝까지 마쳐서 뿌듯했다.\"\n    },\n    {\n      \"index\": 3,\n      \"text\": \"다만 음원을 정리하고 공개하는 일은 아직 남아 있다.\"\n    },\n    {\n      \"index\": 4,\n      \"text\": \"그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 연주에서 기록으로 이어진 뜻깊은 날이었다.\"\n    }\n  ]\n}",
+    "text": "연습해 온 곡을 오늘 처음 녹음했다.\n\n긴장했지만 연주를 끝까지 마쳐서 뿌듯했다.\n\n다만 음원을 정리하고 공개하는 일은 아직 남아 있다.\n\n그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 연주에서 기록으로 이어진 뜻깊은 날이었다.",
+    "preserved": false
+  }
+];
+  for (const item of cases) {
+    const f = fixture({ rawPolishText: item.raw });
+    const result = await f.request({ text: item.source, format: "diary", mode: "PREMIUM", strength: "STRONG", includeAiComment: false });
+    assert.equal(result.text, item.text, item.variant);
+    assert.match(result.text, /연주에서 기록으로 이어진/);
+    assert.match(result.text, /아직 남아/);
+    assert.doesNotMatch(result.text, /언제든|내내|오랜|수없이/);
+  }
+});
