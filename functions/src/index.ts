@@ -2538,7 +2538,7 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
     // 원문 ‘다시 들을 수 있다’를 ‘언제든 다시 들을 수 있다’처럼 무제한 이용·항상성으로 넓히지 않는다.
     [/언제든(?:지)?|어디서든(?:지)?|언제나|항상/g, match => source.includes(match[0])],
     // 씨앗의 발아를 생명의 시작·탄생으로 넓히거나 글 묶음을 단일 글로 바꾸지 않는다.
-    [/생명(?:이|의)\s?시작|생명(?:이|의)?\s?탄생|새(?:로운)?\s?생명/g, match => compactSource.replace(/새로운생명/g, '새생명').includes(compact(match[0]).replace(/새로운생명/g, '새생명'))],
+    [/생명(?:이|의)\s?시작|생명(?:이|의)?\s?탄생|새(?:로운)?\s?생명/g, match => compactSource.replace(/새로운생명/g, '새생명').replace(/생명(?:이|의)(?=시작|탄생)/g, '생명').includes(compact(match[0]).replace(/새로운생명/g, '새생명').replace(/생명(?:이|의)(?=시작|탄생)/g, '생명'))],
     [/하나의\s?글(?=$|[^가-힣]|(?:에서|으로|로|이|가|은|는|을|를|와|과|의|도)(?=$|[^가-힣]))/g, match => compactSource.includes(compact(match[0]))
       || /글(?:을|은|이)?\s?(?:한|1)\s?편|(?:한|1)\s?편(?:의)?\s?글|글\s?하나(?=$|[^가-힣]|(?:를|가|는|만|도|로)(?=$|[^가-힣]))/.test(source)],
     // ‘전시장이라는 공간 안에서’, ‘공연장에서’처럼 행사·활동에서 미루어 만든 구체적 장소. 원문 ‘전시를 준비하며’는 전시장을 뜻하지 않는다.

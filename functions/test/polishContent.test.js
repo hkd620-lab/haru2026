@@ -2245,3 +2245,12 @@ test('독립 검토: 글 하나하나는 단일 글 근거가 아니며 새 생�
   assert.equal((await strongResult(source, '여덟 편의 글을 하나의 글로 정리했다.')).text, source);
   assert.equal((await strongResult('새로운 생명이 태어났다.', '새 생명이 태어났다.')).text, '새 생명이 태어났다.');
 });
+
+
+test('Codex 재리뷰: 원문에 명시된 생명 시작·탄생의 조사·서술 변형은 보존한다', async () => {
+  for (const [source, edited] of [['생명의 시작을 기록했다.', '생명이 시작된 일을 기록했다.'], ['생명이 시작된 일을 기록했다.', '생명의 시작을 기록했다.'], ['생명의 탄생을 기록했다.', '생명이 탄생한 일을 기록했다.']]) {
+    assert.equal((await strongResult(source, edited)).text, edited);
+  }
+  const source = '씨앗이 싹을 틔웠다.';
+  assert.equal((await strongResult(source, '생명이 시작된 날이었다.')).text, source);
+});
