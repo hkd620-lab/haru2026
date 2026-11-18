@@ -1227,7 +1227,7 @@ function RecordPageContent() {
       </div>
     </div>
 
-    <RecordFormatPicker open={formatPickerOpen} afterWriting onClose={() => setFormatPickerOpen(false)} onSelect={openDraftEditorForFormat} />
+    <RecordFormatPicker open={formatPickerOpen} afterWriting isDeveloper={isDeveloperUid(user?.uid)} onClose={() => setFormatPickerOpen(false)} onSelect={openDraftEditorForFormat} />
 
     {diaryLearnOpen && <DiaryLearnModal onClose={() => setDiaryLearnOpen(false)} />}
     {savedFormat && (

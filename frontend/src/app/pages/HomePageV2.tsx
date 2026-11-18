@@ -1110,6 +1110,7 @@ export function HomePageV2() {
           content={homeDraftContent}
           signedIn={Boolean(currentUserUid)}
           ready={Boolean(currentUserUid) && onboardingGateReady}
+          isDeveloper={isDeveloper}
           onLogin={() => navigate('/login')}
           onContentChange={(content) => setHomeWriting({ ownerUid: currentUserUid, content })}
           onContinue={(content, format) => {

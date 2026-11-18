@@ -1,18 +1,16 @@
 import type { RecordFormat } from '../types/haruTypes';
 import { DRAFT_PICKER_FORMATS, filterFormatsForUser } from '../records/writeBeforeFormat';
-import { useAuth } from '../contexts/AuthContext';
-import { isDeveloperUid } from '../utils/developerAccount';
 import { RECORD_FORMAT_DESCRIPTIONS, getRecordFormatLabel } from '../records/recordFormatDescriptions';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 
-export function RecordFormatPicker({ open, afterWriting = false, onClose, onSelect }: {
+export function RecordFormatPicker({ open, afterWriting = false, isDeveloper = false, onClose, onSelect }: {
   open: boolean;
   afterWriting?: boolean;
+  isDeveloper?: boolean;
   onClose: () => void;
   onSelect: (format: RecordFormat) => void;
 }) {
-  const { user } = useAuth();
-  const formats = filterFormatsForUser(DRAFT_PICKER_FORMATS, isDeveloperUid(user?.uid));
+  const formats = filterFormatsForUser(DRAFT_PICKER_FORMATS, isDeveloper);
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <DialogContent className="max-h-[85dvh] overflow-y-auto" style={{ background: '#F5F0E8', color: '#2C2C2A' }}>
