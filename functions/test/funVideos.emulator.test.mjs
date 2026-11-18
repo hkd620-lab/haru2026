@@ -64,7 +64,7 @@ test('funVideos Rules allow only valid admin writes and block direct subscriber 
   await denied(setDoc(doc(adminClient, videoPath), { ...validVideo, extra: true }));
 });
 
-test('getFunVideos rejects expired, free and unauthenticated callers', async () => {
+test('getFunVideos serves every logged-in member including free and expired, and rejects unauthenticated callers', async () => {
   await adminDb.doc(videoPath).set(validVideo);
   await adminDb.doc('users/fun-video-paid/subscription/info').set({
     plan: 'basic', status: 'active', endDate: '2099-01-01T00:00:00.000Z',
@@ -74,8 +74,9 @@ test('getFunVideos rejects expired, free and unauthenticated callers', async () 
   });
   assert.equal((await getFunVideos.run({ auth: { uid: 'fun-video-paid' } })).videos.length, 1);
   assert.equal((await getFunVideos.run({ auth: { uid: ADMIN_UID } })).videos.length, 1);
+  // 2026-11-18 무료 공개: 만료·무료 회원도 로그인만 되어 있으면 목록을 받는다.
   for (const uid of ['fun-video-expired', 'fun-video-free']) {
-    await assert.rejects(getFunVideos.run({ auth: { uid } }), (error) => error?.code === 'permission-denied');
+    assert.equal((await getFunVideos.run({ auth: { uid } })).videos.length, 1);
   }
   await assert.rejects(getFunVideos.run({}), (error) => error?.code === 'unauthenticated');
 });
