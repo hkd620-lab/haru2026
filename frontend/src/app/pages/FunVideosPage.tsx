@@ -5,7 +5,6 @@ import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { db, functions } from '../../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { useSubscription } from '../hooks/useSubscription';
 
 const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 type Video = { id: string; title: string; url: string; videoId: string; createdAt?: { seconds: number } };
@@ -27,9 +26,9 @@ function parseYoutubeId(input: string): string | null {
 export function FunVideosPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { entitlement, loading: subscriptionLoading } = useSubscription();
   const isDeveloper = user?.uid === DEVELOPER_UID;
-  const canView = isDeveloper || entitlement.hasPaidAccess;
+  // 로그인한 모든 회원이 볼 수 있다(2026-11-18 무료 공개). 목록은 서버 함수 getFunVideos가 로그인만 확인하고 내려준다.
+  const canView = Boolean(user);
   const [videos, setVideos] = useState<Video[]>([]);
   const [removedVideos, setRemovedVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +62,7 @@ export function FunVideosPage() {
   }, [isDeveloper, videoId, isDuplicate]);
 
   useEffect(() => {
-    if (!user || subscriptionLoading || !canView) { setLoading(false); return; }
+    if (!user || !canView) { setLoading(false); return; }
     setLoading(true);
     setLoadError(false);
     if (isDeveloper) {
@@ -90,7 +89,7 @@ export function FunVideosPage() {
       setLoadError(true);
     });
     return () => { cancelled = true; };
-  }, [user, subscriptionLoading, canView, isDeveloper]);
+  }, [user, canView, isDeveloper]);
 
   const publish = async () => {
     if (!isDeveloper || !videoId || !title.trim() || isDuplicate) return;
@@ -149,7 +148,6 @@ export function FunVideosPage() {
       </div>
 
       {!user && <div className="mt-8 rounded-2xl bg-white p-6">로그인 후 영상을 볼 수 있습니다. <button type="button" className="font-bold underline" onClick={() => navigate('/login')}>로그인하기</button></div>}
-      {user && !subscriptionLoading && !canView && <div className="mt-8 rounded-2xl bg-white p-6">구독 중인 회원에게 제공되는 영상 모음입니다. <button type="button" className="font-bold underline" onClick={() => navigate('/subscription')}>구독 살펴보기</button></div>}
 
       {isDeveloper && <section className="mt-8 rounded-2xl border border-[#dce3d2] bg-white p-5 sm:p-6">
         <h2 className="text-xl font-bold">영상 링크 게시</h2>
@@ -180,7 +178,7 @@ export function FunVideosPage() {
       </section>}
       {isDeveloper && <section className="mt-9">
         <h2 className="mb-2 text-xl font-bold">삭제한 영상</h2>
-        <p className="mb-4 text-sm text-[#657268]">구독자에게 보이지 않습니다. 언제든 목록에 복원할 수 있습니다.</p>
+        <p className="mb-4 text-sm text-[#657268]">회원에게 보이지 않습니다. 언제든 목록에 복원할 수 있습니다.</p>
         {removedVideos.length === 0 ? <p className="rounded-2xl bg-white p-5 text-sm">삭제한 영상이 없습니다.</p> :
           <div className="space-y-3">{removedVideos.map(video => <div key={video.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4">
             <span className="font-semibold">{video.title}</span>

@@ -2,31 +2,13 @@ import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
-const ADMIN_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
-
-function hasCurrentSubscription(data: FirebaseFirestore.DocumentData | undefined): boolean {
-  if (!data || !['basic', 'premium'].includes(data.plan) || !['active', 'cancelled'].includes(data.status)) return false;
-  const endTime = typeof data.endDate === 'string'
-    ? Date.parse(data.endDate)
-    : typeof data.expiresAt?.toMillis === 'function'
-      ? data.expiresAt.toMillis()
-      : Number.NaN;
-  return Number.isFinite(endTime) && endTime > Date.now();
-}
-
 export const getFunVideos = onCall({ region: 'asia-northeast3' }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
   if (!getApps().length) initializeApp();
   const db = getFirestore();
 
-  if (uid !== ADMIN_UID) {
-    const subscription = await db.doc(`users/${uid}/subscription/info`).get();
-    if (!hasCurrentSubscription(subscription.data())) {
-      throw new HttpsError('permission-denied', '현재 구독 중인 회원만 볼 수 있습니다.');
-    }
-  }
-
+  // 2026-11-18 허대표님 결정: 재미 영상은 로그인한 모든 회원(무료 포함)이 볼 수 있다. 로그인 확인만 한다.
   const snapshot = await db.collection('funVideos').orderBy('createdAt', 'desc').limit(100).get();
   return { videos: snapshot.docs.flatMap((item) => {
     const data = item.data();
