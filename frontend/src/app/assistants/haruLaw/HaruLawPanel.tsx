@@ -618,7 +618,7 @@ export function HaruLawPanel({ law, standalone = false }: { law: HaruLawState; s
       </button>
     </div>
   ) : (
-            <div>
+            <div className="haru-light-surface" style={{ backgroundColor: 'var(--haru-bg)', borderRadius: 12, padding: 14 }}>
               {!standalone && renderSaveDate()}
               {/* 검색창 */}
               {standalone && <h2 id="law-question-label" style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>어떤 일이 있었나요?</h2>}

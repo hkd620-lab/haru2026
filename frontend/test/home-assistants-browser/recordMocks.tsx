@@ -28,3 +28,10 @@ export function FormatModal({ isOpen, format, initialData, onSave, onClose }: an
     <button onClick={async () => { await onSave(initialData); onClose(); }}>합성 기록 저장</button>
   </section>;
 }
+
+// 실제 하루LAW 표시 컴포넌트만 사용한다. 검색·첨부 API 실행은 차단한다.
+export const storage = {};
+export const getFunctions = () => ({});
+export const httpsCallable = () => async () => { throw new Error('QA: AI call forbidden'); };
+export const ref = () => ({});
+export const uploadBytes = async () => { throw new Error('QA: upload forbidden'); };

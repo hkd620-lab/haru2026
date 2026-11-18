@@ -1,3 +1,4 @@
+import { HaruLawPanel, type HaruLawState } from '../../src/app/assistants/haruLaw/HaruLawPanel';
 import { HaruLawAnswer } from '../../src/app/components/HaruLawAnswer';
 import { TodayQuote } from '../../src/app/components/TodayQuote';
 import { HealthMedicationPage } from '../../src/app/pages/HealthMedicationPage';
@@ -42,6 +43,17 @@ function PullRefreshFixture() {
 function LawAnswerFixture() {
   return <section aria-label="하루LAW 답변 대비 검증" style={{padding:24,background:'var(--haru-surface)'}}><HaruLawAnswer text={'표시 확인용 문장입니다. 법률 안내가 아닙니다.\n\n## 검증 제목\n**강조 표시**와 일반 본문을 확인합니다.\n\n- 첫 번째 확인 항목\n- 두 번째 확인 항목\n\n`코드 표시`'} /></section>;
 }
+function LawPanelFixture() {
+  // 합성 표시 상태만 전달한다. useHaruLaw나 검색·저장·AI 호출은 실행하지 않는다.
+  const law = {
+    lawQuery: '화면 대비 검증용 질문', activeLawQuery: '화면 대비 검증용 질문',
+    lawSaveDate: '2026-11-18', lawGuideConfirmed: true,
+    lawSummary: '표시 확인용 핵심 답변입니다. 법률 안내가 아닙니다.\n\n## 검증 제목\n**강조 표시**와 일반 본문을 확인합니다.',
+    lawResults: [{title:'합성 표시 항목',lawName:'표시 검증',articleStr:'시험',content:'비법률 합성 텍스트'}],
+    lawSearchHistory: {current: []}, lawAttachments: [], lawFileInputRef: {current: null},
+  } as unknown as HaruLawState;
+  return <section aria-label="하루LAW 질문 결과 대비 검증" style={{padding:24}}><HaruLawPanel law={law} /></section>;
+}
 function Destination() {
   const location = useLocation();
   return <p>비서 실행: {location.pathname} {JSON.stringify(location.state)}</p>;
@@ -63,7 +75,7 @@ function FixtureTheme({ children }: { children: React.ReactNode }) {
   return <ThemeProvider pathname={pathname}>{children}</ThemeProvider>;
 }
 const page = new URLSearchParams(location.search).get('page');
-const initialPath = page === 'law-answer' ? '/sayu' : page === 'pwa' ? '/pwa-test' : page === 'landing' ? '/landing' : page === 'medication' ? '/sayu-health/drug' : page === 'footer' ? '/' : '/v2';
+const initialPath = page === 'law-panel' ? '/record' : page === 'law-answer' ? '/sayu' : page === 'pwa' ? '/pwa-test' : page === 'landing' ? '/landing' : page === 'medication' ? '/sayu-health/drug' : page === 'footer' ? '/' : '/v2';
 startPwaState();
 createRoot(document.getElementById('root')!).render(
   <MemoryRouter initialEntries={[initialPath]}><FixtureTheme><div className="haru-app-root">
@@ -81,7 +93,7 @@ createRoot(document.getElementById('root')!).render(
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/v2" element={<HomePageV2 />} />
       <Route path="/sayu" element={<LawAnswerFixture />} />
-      <Route path="/record" element={<RecordPage />} />
+      <Route path="/record" element={page === 'law-panel' ? <LawPanelFixture /> : <RecordPage />} />
       <Route path="/sayu-health/drug" element={<HealthMedicationPage />} />
       <Route path="*" element={<Destination />} />
     </Routes>{page !== 'landing' && <><TodayQuote /><Footer /><BottomNav /></>}<Toaster />

@@ -16,6 +16,7 @@ export default defineConfig({
       if (source.startsWith('firebase/')) return path.join(root, 'recordMocks.tsx');
       if (!importer || !source.startsWith('.')) return;
       const resolved = path.resolve(path.dirname(importer.split('?')[0]), source);
+      if (/\/HaruLawPanel(\.tsx?)?$/.test(resolved) && importer.split('?')[0] === path.join(root, 'main.tsx')) return;
       if (/\/(firebase|FormatModal|HaruLawPanel|useSubscription|DiaryLearnModal|RecordTitleAnimation)(\.tsx?)?$/.test(resolved)) return path.join(root, 'recordMocks.tsx');
       if (/\/(AuthContext|firestoreService|assistantOnboardingService|TimelineCollageModal|loginPerformance|useSensitiveConsent|drugService)(\.tsx?)?$/.test(resolved)) {
         return path.join(root, 'mocks.tsx');
