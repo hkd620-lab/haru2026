@@ -2206,3 +2206,16 @@ test('Codex 재리뷰: 마무리의 계획·진행은 완성과 동의어 편집
     assert.equal((await strongResult(source, '앱을 완성했다.')).text, source);
   }
 });
+
+
+test('Codex 재리뷰: 마무리하기로 한 결정은 완료 근거가 아니다', async () => {
+  const source = '앱을 마무리하기로 했다.';
+  assert.equal((await strongResult(source, '앱을 완성했다.')).text, source);
+  assert.equal((await strongResult(source, '앱을 완성하기로 했다.')).text, '앱을 완성하기로 했다.');
+});
+
+test('Codex 재리뷰: 처음 구웠다와 구운 것은 처음이었다의 최초 대상은 같다', async () => {
+  for (const [source, edited] of [['빵을 처음 구웠다.', '빵을 구운 것은 처음이었다.'], ['빵을 구운 것은 처음이었다.', '빵을 처음 구웠다.']]) {
+    assert.equal((await strongResult(source, edited)).text, edited);
+  }
+});

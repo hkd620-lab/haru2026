@@ -2438,7 +2438,7 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
       || /^(?:하|되|시키)?(?:지|지는)\s*(?:않|못)|^(?:한|된)\s*(?:것|상태)?(?:은|이)?\s*아니/.test(after)) return 'negative';
     const degree = /(?:거의|일부만|일부|부분적으로|부분만|절반만|절반|대부분|아직)\s*$/.exec(before)?.[0].trim();
     if (degree) return `partial:${degree.replace(/만$|적으로$/, '')}`;
-    if (/^(?:하|되|해|돼)?(?:려|려고|려는|려던|고자|기\s*위|야|고\s*싶)|^(?:할|될|시킬|계획|예정)|^\s*보(?:려|려고|려는|고자)/.test(after)) return 'planned';
+    if (/^(?:하|되|해|돼)?(?:려|려고|려는|려던|고자|기로|기\s*위|야|고\s*싶)|^(?:할|될|시킬|계획|예정)|^\s*보(?:려|려고|려는|고자)/.test(after)) return 'planned';
     if (/^(?:하|되)?는\s*(?:중|과정)/.test(after)) return 'partial';
 
     return 'complete';
@@ -2470,7 +2470,8 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
     const after = value.slice(end).split(/[.!?。！？\n]/)[0] ?? '';
     const words = match[1] ? (before.match(/[가-힣]+/g) ?? []).slice(-3) : (after.match(/[가-힣]+/g) ?? []).slice(0, 3);
     return words.map(word => {
-      let stem = word;
+      // 굽다의 서술형·관형형은 같은 동사로 연결한다. 나머지 일반 어미는 아래에서 벗긴다.
+      let stem = word.replace(/^구(?:웠|운|워)/, '굽');
       while (stem.length > 1 && endingSyllables.has(stem.at(-1) ?? '')) stem = stem.slice(0, -1);
       return stem;
     }).filter(stem => !lightStems.has(stem));
