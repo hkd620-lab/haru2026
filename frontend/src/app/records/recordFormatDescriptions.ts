@@ -16,6 +16,11 @@ export const RECORD_FORMAT_DESCRIPTIONS: Partial<Record<RecordFormat, { label: s
   '메모': { label: '메모', description: '문득 떠오른 생각이나 잊지 않고 기억할 내용을 짧게 적어요.' },
 };
 
+// 저장·검색·통계에 쓰는 형식 키는 바꾸지 않고, 사람이 보는 화면에만 쓰는 이름. 형식이 아닌 문자열은 그대로 돌려준다.
+export function getFormatDisplayName(name: string): string {
+  return (RECORD_FORMAT_DESCRIPTIONS as Record<string, { label: string } | undefined>)[name]?.label ?? name;
+}
+
 export function getRecordFormatLabel(format: RecordFormat): string {
   return RECORD_FORMAT_DESCRIPTIONS[format]?.label ?? format;
 }

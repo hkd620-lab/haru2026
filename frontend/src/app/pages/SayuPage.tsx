@@ -1,3 +1,4 @@
+import { getFormatDisplayName } from '../records/recordFormatDescriptions';
 import { readSelectedRecordPhoto } from '../services/selectedRecordPhoto';
 import { getHaruLawAttachmentLabel } from '../utils/haruLawAttachment';
 import { HaruLawAnswer, splitHaruLawAnswer } from '../components/HaruLawAnswer';
@@ -4807,7 +4808,7 @@ export function SayuPage() {
                 <span className="flex-1" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
                   <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
                     <span className="text-sm truncate" style={{ color: '#333', flex: '1 1 auto', minWidth: 0 }}>{entry.title}</span>
-                    <span style={{ color: '#999', fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}>{entry.label}</span>
+                    <span style={{ color: '#999', fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}>{getFormatDisplayName(entry.label)}</span>
                   </span>
                   {entry.subtitle && (
                     <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4, overflowWrap: 'anywhere', wordBreak: 'keep-all', display: 'block' }}>
@@ -4944,7 +4945,7 @@ export function SayuPage() {
                   border: `1px solid ${entry.color}`,
                 }}
               >
-                {entry.label}
+                {getFormatDisplayName(entry.label)}
               </button>
             ))}
           </div>
@@ -5232,7 +5233,7 @@ export function SayuPage() {
                       border: '1px solid #1A3C6E',
                     }}
                   >
-                    {formatInfo.label}
+                    {getFormatDisplayName(formatInfo.label)}
                   </button>
                 ))}
               </div>

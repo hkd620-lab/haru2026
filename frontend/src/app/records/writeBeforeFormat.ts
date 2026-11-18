@@ -18,6 +18,12 @@ export const WRITABLE_FORMATS = WRITABLE_CANDIDATES.filter((format) => ![
 export const WORK_ENTRY_FORMATS: RecordFormat[] = [...CATEGORY_FORMATS['업무']];
 export const DRAFT_PICKER_FORMATS: RecordFormat[] = [...WRITABLE_FORMATS];
 
+// 은퇴자 대상 메뉴 정리(2026-11-18 허대표님 결정): 일반보고·업무일지는 개발자 계정에만 보인다. 표(위 두 목록)는 그대로 두고 화면에서만 거른다.
+export const DEVELOPER_ONLY_FORMATS: RecordFormat[] = ['일반보고', '업무일지'];
+export function filterFormatsForUser(formats: RecordFormat[], isDeveloper: boolean): RecordFormat[] {
+  return isDeveloper ? formats : formats.filter((format) => !DEVELOPER_ONLY_FORMATS.includes(format));
+}
+
 // 이전 화면에서 이미 넘겨진 주식 초안은 계속 받아 작성 화면으로 이어 준다(선택 목록과 별개).
 const ACCEPTED_DRAFT_FORMATS: RecordFormat[] = [...DRAFT_PICKER_FORMATS, '주식거래일지'];
 

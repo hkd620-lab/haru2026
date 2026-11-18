@@ -1,3 +1,4 @@
+import { getFormatDisplayName } from '../records/recordFormatDescriptions';
 import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
 import { isStockOcrQuotaExceeded, STOCK_OCR_QUOTA_NOTICE } from '../services/stockOcrQuota';
 import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText, Pencil } from 'lucide-react';
@@ -1596,7 +1597,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     setSayuMode(mode);
     setPolishStrength(strength);
     setIsPolishing(true);
-    toast.info(`${format} AI 다듬기를 시작합니다... (${strength === 'STRONG' ? '강' : '약'})`);
+    toast.info(`${getFormatDisplayName(format)} AI 다듬기를 시작합니다... (${strength === 'STRONG' ? '강' : '약'})`);
 
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
@@ -3981,7 +3982,7 @@ ${contentValues.slice(0, 4100)}`,
           >
             <div>
               <h2 style={{ fontSize: 18, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-                {format === '독서사유' ? (isEditingReadingEntry ? '독서장 회차 수정' : '독서장 작성') : `${format} 작성`}
+                {format === '독서사유' ? (isEditingReadingEntry ? '독서장 회차 수정' : '독서장 작성') : `${getFormatDisplayName(format)} 작성`}
               </h2>
               {existingSayu && (
                 <p style={{ fontSize: 12, color: '#10b981', margin: '4px 0 0 0' }}>
@@ -7158,7 +7159,7 @@ ${contentValues.slice(0, 4100)}`,
               }}
             >
               <h2 style={{ fontSize: 20, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
-                ✨ {format} SAYU ({polishStrength === 'STRONG' ? '강' : '약'})
+                ✨ {getFormatDisplayName(format)} SAYU ({polishStrength === 'STRONG' ? '강' : '약'})
               </h2>
               <p style={{ fontSize: 13, color: '#999', marginTop: 8, marginBottom: 0 }}>
                 AI가 다듬은 결과입니다

@@ -166,7 +166,10 @@ test('홈 카드의 형식이 기록 화면의 작성 모달까지 전달된다'
   assert.match(recordPage, /openFormatDirectly\(incomingFormat as RecordFormat\);/);
   assert.match(recordPage, /selectedCategory === '업무' \? WORK_ENTRY_FORMATS/);
   assert.match(recordPage, /<RecordFormatPicker[\s\S]*?onSelect=\{openDraftEditorForFormat\}/);
-  assert.match(read('components/RecordFormatPicker.tsx'), /DRAFT_PICKER_FORMATS\.map/);
+  // 먼저 쓰기 선택은 DRAFT_PICKER_FORMATS를 개발자 전용 형식만 거른 뒤 그린다(2026-11-18 은퇴자 대상 메뉴 정리).
+  const picker = read('components/RecordFormatPicker.tsx');
+  assert.match(picker, /filterFormatsForUser\(DRAFT_PICKER_FORMATS,/);
+  assert.match(picker, /formats\.map\(\(format\)/);
 });
 
 test('먼저 쓴 글은 세 형식 편집창의 실제 입력칸과 기존 저장 접두어로 이어진다', () => {

@@ -1,5 +1,7 @@
 import type { RecordFormat } from '../types/haruTypes';
-import { DRAFT_PICKER_FORMATS } from '../records/writeBeforeFormat';
+import { DRAFT_PICKER_FORMATS, filterFormatsForUser } from '../records/writeBeforeFormat';
+import { useAuth } from '../contexts/AuthContext';
+import { isDeveloperUid } from '../utils/developerAccount';
 import { RECORD_FORMAT_DESCRIPTIONS, getRecordFormatLabel } from '../records/recordFormatDescriptions';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
 
@@ -9,6 +11,8 @@ export function RecordFormatPicker({ open, afterWriting = false, onClose, onSele
   onClose: () => void;
   onSelect: (format: RecordFormat) => void;
 }) {
+  const { user } = useAuth();
+  const formats = filterFormatsForUser(DRAFT_PICKER_FORMATS, isDeveloperUid(user?.uid));
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <DialogContent className="max-h-[85dvh] overflow-y-auto" style={{ background: '#F5F0E8', color: '#2C2C2A' }}>
@@ -17,7 +21,7 @@ export function RecordFormatPicker({ open, afterWriting = false, onClose, onSele
           {afterWriting ? '작성한 내용은 그대로 유지돼요. 어울리는 형식을 골라 편집창에서 확인하고 저장하세요.' : '형식마다 어떤 내용을 남기는지 살펴보세요. 먼저 골라도, 쓰고 나서 골라도 괜찮아요.'}
         </DialogDescription>
         <div className="grid gap-2 sm:grid-cols-2">
-          {DRAFT_PICKER_FORMATS.map((format) => (
+          {formats.map((format) => (
             <button type="button" key={format} onClick={() => onSelect(format)} className="rounded-xl border bg-white p-4 text-left hover:bg-lime-50" style={{ borderColor: '#E5DFD0' }}>
               <span className="block text-base font-semibold">{getRecordFormatLabel(format)}</span>
               <span className="mt-1 block text-sm" style={{ color: '#646B57' }}>{RECORD_FORMAT_DESCRIPTIONS[format]?.description}</span>

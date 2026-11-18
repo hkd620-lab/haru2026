@@ -1,3 +1,4 @@
+import { getFormatDisplayName } from '../records/recordFormatDescriptions';
 import { useState, useEffect } from 'react';
 import { Layers, X, FileSpreadsheet } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router';
@@ -610,7 +611,7 @@ export function MergePage() {
                     wordBreak: 'keep-all',
                   }}
                 >
-                  {FORMAT_EMOJI[format]} {format === '애완동물관찰일지' ? '반려동물' : format}
+                  {FORMAT_EMOJI[format]} {getFormatDisplayName(format)}
                 </button>
               );
             })}

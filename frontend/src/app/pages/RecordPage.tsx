@@ -12,7 +12,8 @@ import { HaruLawPanel, useHaruLaw } from '../assistants/haruLaw/HaruLawPanel';
 import { PetHealthAlert, detectPetAlertLevel, type PetAlertLevel } from '../components/PetHealthAlert';
 import { toast } from 'sonner';
 import { RecordFormat, Category, CATEGORY_FORMATS } from '../types/haruTypes';
-import { applyDraftSaveTarget, buildDraftEditorData, readHomeWritingDraft, WORK_ENTRY_FORMATS } from '../records/writeBeforeFormat';
+import { applyDraftSaveTarget, buildDraftEditorData, filterFormatsForUser, readHomeWritingDraft, WORK_ENTRY_FORMATS } from '../records/writeBeforeFormat';
+import { isDeveloperUid } from '../utils/developerAccount';
 import { RecordFormatPicker } from '../components/RecordFormatPicker';
 import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
 import { startSelectedRecordPhotoReads } from '../services/selectedRecordPhoto';
@@ -1193,7 +1194,7 @@ function RecordPageContent() {
             <HaruLawPanel law={haruLaw} />
           ) : selectedCategory ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {(selectedCategory === '업무' ? WORK_ENTRY_FORMATS : CATEGORY_FORMATS[selectedCategory])
+              {filterFormatsForUser(selectedCategory === '업무' ? WORK_ENTRY_FORMATS : CATEGORY_FORMATS[selectedCategory], isDeveloperUid(user?.uid))
                 .filter((format) => format !== 'HARU가계부' && format !== 'HARU보조장부')
                 .map((format) => {
                 return (
@@ -1308,7 +1309,7 @@ function RecordPageContent() {
                 <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>내 기록으로 창작</span>
               </div>
               <p style={{ fontSize: 11, color: '#B5D4F4', lineHeight: 1.9, marginBottom: 7 }}>
-                일기, 에세이, 육아일기 ···<br />
+                일기, 에세이, 손주자람일기 ···<br />
                 한 기록을 선택하거나 합친 기록을 선택하여
               </p>
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 7 }}>
