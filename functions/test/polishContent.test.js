@@ -2254,3 +2254,13 @@ test('Codex 재리뷰: 원문에 명시된 생명 시작·탄생의 조사·서�
   const source = '씨앗이 싹을 틔웠다.';
   assert.equal((await strongResult(source, '생명이 시작된 날이었다.')).text, source);
 });
+
+test('발아 원문 밖 결말을 복원할 때 사실에 맞는 앞 문장 편집은 유지한다', async () => {
+  const source = '화분에 심어 둔 강낭콩에서 오늘 처음 싹이 나온 것을 봤다. 기뻤다. 잎이 펼쳐진 것은 아니다. 심어 둔 씨앗이 싹을 틔운 뜻깊은 시작이었다.';
+  const opening = '화분에 심어 둔 강낭콩에서 오늘 처음으로 싹을 봤다. 기뻤다.';
+  const output = opening + ' 잎이 펼쳐진 것은 아니지만, 심어 둔 씨앗이 싹을 틔우며 생명이 시작된 뜻깊은 날이었다.';
+  assert.deepEqual(await strongResult(source, output), {
+    text: opening + ' 잎이 펼쳐진 것은 아니다. 심어 둔 씨앗이 싹을 틔운 뜻깊은 시작이었다.',
+    preserved: undefined,
+  });
+});
