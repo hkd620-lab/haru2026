@@ -2388,12 +2388,14 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
   // 의도 표현 앞의 동사 어간 전체(예: ‘보’, ‘보관하’). 첫 음절만 비교하면 ‘보려고’가 ‘보관하려고’를 근거로 통과시킨다.
   const intentStem = (word = '', phrase = '') => {
     const stem = word.replace(/[^가-힣]/g, '');
+    if (stem === '마무리하') return '완성하';
+    if (stem === '우') return ''; // 명사 ‘우려는’은 목적 어미가 아니다.
     // 으려- 앞의 불규칙 어간만 정규화한다. ‘들려고(들다)’와 ‘들으려고(듣다)’는 구분한다.
     const irregular: Record<string, string> = { 들: '듣', 지: '짓', 걸: '걷' };
     return phrase.startsWith(`${word}으려`) ? (irregular[stem] ?? stem) : stem;
   };
   // 고자·느라는 ‘중고자전거’처럼 낱말 안에서도 나오므로 어미 뒤 경계(공백·문장부호·끝, 고자는 ‘하고자한다’의 하- 활용)를 확인한다.
-  const intent = /([가-힣]*?)(?:으려(?:고|는|던|면)?|(?<![배고염우격장])려(?:고|는|던|면)|기\s?위(?:해서|하여|해|한)|고자(?=[하한했합할]|[^가-힣]|$)|느라(?:고)?(?=[^가-힣]|$))/g;
+  const intent = /([가-힣]*?)(?:으려(?:고|는|던|면)?|(?<![배고염격장])려(?:고|는|던|면)|기\s?위(?:해서|하여|해|한)|고자(?=[하한했합할]|[^가-힣]|$)|느라(?:고)?(?=[^가-힣]|$))/g;
   const observation = /([가-힣]+)\s?(?:것|모습|장면)[을를]\s?(?:보니|보며|보면서|보고|보자|바라보|지켜보)/g;
   // 지각 장면 표현. 결과와 원문을 같은 활용형 기준으로 대조한다(예: 원문 ‘뜨면서’는 결과 ‘뜨면서’의 근거가 된다).
   const perception = /떴|뜨(?:는|자|니|면서)|뜬(?=\s)|떠\s?(?:있|올)|나타나|나타났|보였|보이(?:는|자|니|고|며|면서|기)|펼쳐|눈에\s?(?:들어|띄)|눈앞에/g;
@@ -2424,7 +2426,7 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
   // 장소 뒷말로 끝나지만 장소가 아닌 낱말(처지·주장·변화·사실·직함·글).
   const nonVenue = new Set(['입장', '주장', '성장', '등장', '연장', '문장', '사실', '진실', '현실', '결실', '확실', '사장', '부장', '과장', '회장', '원장', '관장', '실장', '반장', '통장']);
   // 완료 어휘가 있어도 미완성·거의 완성·완료하지 못함은 완전한 완료의 근거가 아니다.
-  const completionClaim = /완성(?!도)|완료|마무리(?:[를는도가]\s*)?(?:했|한|된|됐|되었|해\s?(?:냈|낸|놓았|놓은|두었|둔|뒀|놨)|하(?=지))|끝마(?:쳤|친|치)|다\s?만들(?:었|어)|다\s?만든/g;
+  const completionClaim = /완성(?!도)|완료|마무리(?:[를는도가]\s*)?(?:했|한|된|됐|되었|해\s?(?:냈|낸|놓았|놓은|두었|둔|뒀|놨)|(?=하(?:지|는|려|고자|기)|할|해야))|끝마(?:쳤|친|치)|다\s?만들(?:었|어)|다\s?만든/g;
   const completionStatus = (match: RegExpMatchArray) => {
     const value = match.input ?? '';
     const start = match.index ?? 0;
@@ -2496,7 +2498,7 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
     [/조심스럽|꼼꼼|차근차근|차례차례|하나하나|일일이|정성껏|정성스럽|공들여|천천히|세심|신중/g,
       match => source.includes(match[0].slice(0, 2))],
     // ~하려고·~하기 위해·~하느라 같은 의도·목적. 원문에 같은 동사 줄기의 의도 표현이 있으면 통과한다.
-    [intent, match => sourceIntentStems.includes(intentStem(match[1], match[0]))],
+    [intent, match => !intentStem(match[1], match[0]) || sourceIntentStems.includes(intentStem(match[1], match[0]))],
     // 글쓴이가 목표·범위를 직접 정했다는 새 의도는 원문에 같은 설정 행동이 있을 때만 허용한다.
     [/(?:스스로|자신이|내가)\s?정(?:한|했|해)/g, () => /정하|정했|정한|정해/.test(source)],
     // ‘전시를 위해’ 같은 명사 뒤 목적. 원문에 ‘위해·위한·위하여’가 있을 때만 통과한다.

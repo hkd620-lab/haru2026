@@ -2188,3 +2188,21 @@ test('Codex 재리뷰: 듣다·짓다·걷다의 의도 불규칙 활용은 보�
   const source = '상자를 들려고 준비했다.';
   assert.equal((await strongResult(source, '상자를 듣기 위해 준비했다.')).text, source);
 });
+
+
+test('Codex 재리뷰: 배우다·세우다 의도는 보존하고 우려는 목적 어미로 오인하지 않는다', async () => {
+  for (const [source, edited] of [['피아노를 배우려고 학원에 등록했다.', '피아노를 배우기 위해 학원에 등록했다.'], ['오늘 계획을 세우려고 공책을 폈다.', '오늘 계획을 세우기 위해 공책을 폈다.']]) {
+    assert.equal((await strongResult(source, edited)).text, edited);
+  }
+  const source = '우려는 남았다.';
+  assert.equal((await strongResult(source, source)).text, source);
+});
+
+test('Codex 재리뷰: 마무리의 계획·진행은 완성과 동의어 편집하되 완료로 높이지 않는다', async () => {
+  for (const ending of ['할 예정이다', '하는 중이다', '하려고 한다']) {
+    const source = `앱을 마무리${ending}.`;
+    const edited = `앱을 완성${ending}.`;
+    assert.equal((await strongResult(source, edited)).text, edited);
+    assert.equal((await strongResult(source, '앱을 완성했다.')).text, source);
+  }
+});
