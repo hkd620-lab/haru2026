@@ -27,16 +27,27 @@
     <meta name="google-site-verification" content="mvdHJzOG0UpcZFa0-hlFFjuP8o6dmCFJMz6q9pUdJ1E" />
     <meta name="naver-site-verification" content="ccb732f802e32b70554ab3397c036c65d15158c5" />
 
-    <!-- 라이트모드 강제 -->
-    <meta name="color-scheme" content="light">
-    <meta name="theme-color" content="#EDE9F5" />
+    <!-- 설치 화면과 앱 첫 화면의 색상 기준 -->
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#F5F0E8" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="HARU" />
+    <meta name="apple-mobile-web-app-title" content="haru2026" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-grape-v1.png" />
     <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-grape-v1-192.png" />
     <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-grape-v1-512.png" />
+
+    <script>
+      try {
+        var haruSavedTheme = localStorage.getItem('haru-theme');
+        var haruDarkRoute = ['/', '/v2', '/sayu', '/sayu-together', '/settings', '/record'].indexOf(location.pathname) !== -1;
+        var haruDark = haruDarkRoute && (haruSavedTheme === 'dark' || (haruSavedTheme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches));
+        document.documentElement.classList.toggle('dark', haruDark);
+        document.documentElement.style.colorScheme = haruDark ? 'dark' : 'light';
+        document.querySelector('meta[name="theme-color"]').content = haruDark ? '#20251D' : '#F5F0E8';
+      } catch (_) {}
+    </script>
 
     <!-- 카카오 JavaScript SDK (구 버전) -->
     <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>

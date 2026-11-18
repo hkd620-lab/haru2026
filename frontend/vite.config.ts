@@ -37,16 +37,16 @@ export default defineConfig({
       },
     },
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       injectRegister: null,
       includeAssets: ['icons/icon-grape-v1-192.png', 'icons/icon-grape-v1-512.png'],
       manifest: {
-        name: 'HARU2026',
-        short_name: 'HARU',
+        name: 'haru2026',
+        short_name: 'haru2026',
         description: 'haru2026은 생활기록 관리와 생활문제 해결을 돕는 AI 생활관리 플랫폼입니다.',
         lang: 'ko',
-        theme_color: '#4F46E5',
-        background_color: '#FDFEF7',
+        theme_color: '#F5F0E8',
+        background_color: '#F5F0E8',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
@@ -79,14 +79,13 @@ export default defineConfig({
         ],
       },
       workbox: {
-        skipWaiting: true,
+        skipWaiting: false,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-        importScripts: ['/sw-landing-refresh.js'],
-        navigateFallback: null,
-        navigateFallbackDenylist: [/^\/firebase-messaging-sw\.js/],
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/(?:oauth|__|auth|payment|single-payment|subscription\/inicis)(?:\/|$)/, /^\/(?:welcome|card|tools)(?:\/|$)/, /\.[^/]+$/],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['index.html', 'assets/*.{js,css,woff2}', 'icons/*.{png,ico}', 'brand/*.{png,svg}'],
         runtimeCaching: [
           {
             // Google Fonts 캐싱

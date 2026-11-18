@@ -782,9 +782,9 @@ export function HomePageV2() {
   if (authLoading) {
     return (
       <div
-        className="min-h-screen"
+        className="haru-home-page min-h-screen"
         style={{
-          background: 'linear-gradient(180deg, #F5F0E8 0%, #EDE8DC 100%)',
+          background: 'var(--haru-bg)',
         }}
       />
     );
@@ -792,13 +792,10 @@ export function HomePageV2() {
 
   return (
     <div
-      className="min-h-screen"
+      className="haru-home-page min-h-screen"
       style={{
-        background:
-          'radial-gradient(1200px 600px at 85% -10%, rgba(212,222,160,0.18), transparent 60%),' +
-          'radial-gradient(900px 500px at -10% 110%, rgba(201,192,222,0.18), transparent 55%),' +
-          'linear-gradient(180deg, #F5F0E8 0%, #EDE8DC 100%)',
-        color: '#2C2C2A',
+        background: 'var(--haru-home-background)',
+        color: 'var(--haru-ink, #2C2C2A)',
         fontFamily: FONT_KR,
         fontSize: 13,
         lineHeight: 1.55,
@@ -934,7 +931,7 @@ export function HomePageV2() {
                 width: 52,
                 height: 52,
                 borderRadius: 14,
-                background: '#FFFDF6',
+                background: 'var(--haru-surface, #FFFDF6)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -962,7 +959,7 @@ export function HomePageV2() {
                   fontSize: 22,
                   fontWeight: 700,
                   letterSpacing: '-0.01em',
-                  color: '#2C2C2A',
+                  color: 'var(--haru-ink, #2C2C2A)',
                 }}
               >
                 haru2026
@@ -974,7 +971,7 @@ export function HomePageV2() {
                   fontSize: 10,
                   fontWeight: 500,
                   letterSpacing: 3,
-                  color: '#7A6F5A',
+                  color: 'var(--haru-muted, #7A6F5A)',
                   marginTop: 6,
                   textTransform: 'none',
                 }}
@@ -1018,9 +1015,9 @@ export function HomePageV2() {
                   width: 44,
                   height: 44,
                   borderRadius: 999,
-                  background: '#fff',
-                  border: '1px solid #E5DFD0',
-                  color: '#7A6F5A',
+                  background: 'var(--haru-surface, #fff)',
+                  border: '1px solid var(--haru-border, #E5DFD0)',
+                  color: 'var(--haru-muted, #7A6F5A)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1042,9 +1039,9 @@ export function HomePageV2() {
                   width: 44,
                   height: 44,
                   borderRadius: 999,
-                  background: '#fff',
-                  border: '1px solid #E5DFD0',
-                  color: '#7A6F5A',
+                  background: 'var(--haru-surface, #fff)',
+                  border: '1px solid var(--haru-border, #E5DFD0)',
+                  color: 'var(--haru-muted, #7A6F5A)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1066,9 +1063,9 @@ export function HomePageV2() {
                 width: 44,
                 height: 44,
                 borderRadius: 999,
-                background: '#fff',
-                border: '1px solid #E5DFD0',
-                color: '#7A6F5A',
+                background: 'var(--haru-surface, #fff)',
+                border: '1px solid var(--haru-border, #E5DFD0)',
+                color: 'var(--haru-muted, #7A6F5A)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1093,7 +1090,7 @@ export function HomePageV2() {
           </div>
         </header>
 
-        <p style={{ fontSize: 13, color: '#646B57', margin: '0 0 14px' }}>{today.big} · {timeText}</p>
+        <p style={{ fontSize: 13, color: 'var(--haru-muted, #646B57)', margin: '0 0 14px' }}>{today.big} · {timeText}</p>
         <HomeRecordComposer
           key={currentUserUid || 'guest'}
           content={homeDraftContent}
@@ -1136,8 +1133,8 @@ export function HomePageV2() {
               alignItems: 'center',
               padding: 4,
               borderRadius: 999,
-              background: '#fff',
-              border: '1px solid #E5DFD0',
+              background: 'var(--haru-surface, #fff)',
+              border: '1px solid var(--haru-border, #E5DFD0)',
               boxShadow: '0 8px 22px -18px rgba(74,90,44,0.22)',
             }}
           >
@@ -1170,7 +1167,7 @@ export function HomePageV2() {
               </>
             }
           />
-          <p style={{ fontSize: 14, color: '#646B57', marginBottom: 14 }}>남기고 싶은 내용에 맞는 형식을 골라보세요. 형식별 작성 화면으로 이어집니다.</p>
+          <p style={{ fontSize: 14, color: 'var(--haru-muted, #646B57)', marginBottom: 14 }}>남기고 싶은 내용에 맞는 형식을 골라보세요. 형식별 작성 화면으로 이어집니다.</p>
           <div
             data-v2="records-grid"
             style={{
@@ -1188,8 +1185,8 @@ export function HomePageV2() {
                   : { format: r.format, from: '/v2' } })}
                 className="v2-rec"
                 style={{
-                  background: '#fff',
-                  border: '1px solid #E5DFD0',
+                  background: 'var(--haru-surface, #fff)',
+                  border: '1px solid var(--haru-border, #E5DFD0)',
                   borderRadius: 20,
                   padding: '22px 18px 20px',
                   display: 'flex',
@@ -1223,7 +1220,7 @@ export function HomePageV2() {
                   style={{
                     fontSize: 14,
                     fontWeight: 600,
-                    color: '#2C2C2A',
+                    color: 'var(--haru-ink, #2C2C2A)',
                     letterSpacing: '-0.01em',
                     position: 'relative',
                     zIndex: 1,
@@ -1234,7 +1231,7 @@ export function HomePageV2() {
                 <span
                   style={{
                     fontSize: 13,
-                    color: '#646B57',
+                    color: 'var(--haru-muted, #646B57)',
                     marginTop: 0,
                     lineHeight: 1.6,
                     position: 'relative',
@@ -1281,21 +1278,21 @@ export function HomePageV2() {
             }
           />
           <div style={{ marginBottom: 16 }}>
-            <h3 style={{ fontSize: 17, fontWeight: 700, color: '#1A3C6E', margin: '0 0 6px' }}>이용할 비서를 선택하세요</h3>
-            <p style={{ fontSize: 14, lineHeight: 1.6, color: '#46566B', margin: 0 }}>‘이 비서 알아보기’로 설명을 확인한 뒤, ‘이 비서 이용하기’를 누르세요. 질문 입력이나 사진 추가는 열린 비서 화면의 안내를 따라주세요.</p>
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--haru-link, #1A3C6E)', margin: '0 0 6px' }}>이용할 비서를 선택하세요</h3>
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--haru-semantic-blue, #46566B)', margin: 0 }}>‘이 비서 알아보기’로 설명을 확인한 뒤, ‘이 비서 이용하기’를 누르세요. 질문 입력이나 사진 추가는 열린 비서 화면의 안내를 따라주세요.</p>
           </div>
           {agentViewMode === 'my' && (
             <div style={{ display: 'grid', gap: 8, marginBottom: 18 }}>
               {visibleAgents.filter((agent) => ['HARU가계부', '하루LAW', '하루식물탐정', 'HARU주식관리'].includes(agent.label) && !homeAgents.includes(agent)).map((agent) => (
-                <button type="button" key={agent.label} onClick={() => setPreviewAgent(agent)} style={{ background: '#fff', border: '1px solid #E5DFD0', borderRadius: 14, padding: 14, textAlign: 'left', color: '#2C2C2A' }}>
+                <button type="button" key={agent.label} onClick={() => setPreviewAgent(agent)} style={{ background: 'var(--haru-surface, #fff)', border: '1px solid var(--haru-border, #E5DFD0)', borderRadius: 14, padding: 14, textAlign: 'left', color: 'var(--haru-ink, #2C2C2A)' }}>
                   <strong style={{ display: 'block', fontSize: 14 }}>{HOME_ASSISTANT_NEEDS[agent.label]}</strong>
-                  <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#4A5A2C', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 이 비서 알아보기 →</span>
+                  <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--haru-accent-ink, #4A5A2C)', marginTop: 5 }}>{agent.label}{agent.beta ? ' · 베타' : ''} · 이 비서 알아보기 →</span>
                 </button>
               ))}
             </div>
           )}
           <div data-v2="assistant-controls" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-            <div role="tablist" aria-label="하루비서 보기 전환" style={{ display: 'inline-flex', padding: 4, borderRadius: 999, background: '#fff', border: '1px solid #E5DFD0' }}>
+            <div role="tablist" aria-label="하루비서 보기 전환" style={{ display: 'inline-flex', padding: 4, borderRadius: 999, background: 'var(--haru-surface, #fff)', border: '1px solid var(--haru-border, #E5DFD0)' }}>
               <HomeModeButton active={agentViewMode === 'my'} onClick={() => setAgentViewMode('my')}>
                 내 하루비서
               </HomeModeButton>
@@ -1307,9 +1304,9 @@ export function HomePageV2() {
               내 하루비서 관리
             </button>
           </div>
-          {personalizationError && !personalizationModalOpen && <p role="alert" style={{ color: '#9C3528', fontSize: 13 }}>{personalizationError}</p>}
+          {personalizationError && !personalizationModalOpen && <p role="alert" style={{ color: 'var(--haru-semantic-rose, #9C3528)', fontSize: 13 }}>{personalizationError}</p>}
           {!effectivePersonalizationLoaded && agentViewMode === 'my' ? (
-            <p role="status" style={{ color: '#7A6F5A', fontSize: 13 }}>내 하루비서를 불러오는 중입니다.</p>
+            <p role="status" style={{ color: 'var(--haru-muted, #7A6F5A)', fontSize: 13 }}>내 하루비서를 불러오는 중입니다.</p>
           ) : isMyHaruEmpty ? (
             <EmptyMyHaru onShowAll={() => setAgentViewMode('all')} />
           ) : (
@@ -1347,9 +1344,9 @@ export function HomePageV2() {
                     'transform 180ms cubic-bezier(0.22,0.61,0.36,1), box-shadow 180ms',
                   minHeight: 148,
                   textAlign: 'left',
-                  background: disabled ? '#F5F0E8' : agentBg[a.variant],
+                  background: disabled ? 'var(--haru-bg)' : 'var(--haru-surface)',
                   border: `1px solid ${disabled ? '#E5DFD0' : agentBorder[a.variant]}`,
-                  color: disabled ? '#888780' : agentText[a.variant],
+                  color: disabled ? 'var(--haru-muted, #888780)' : `var(--haru-agent-ink, ${agentText[a.variant]})`,
                   opacity: disabled ? 0.7 : 1,
                 }}
               >
@@ -1363,7 +1360,7 @@ export function HomePageV2() {
                       zIndex: 2,
                       padding: '2px 7px',
                       borderRadius: 999,
-                      background: '#1A3C6E',
+                      background: 'var(--haru-button-blue, #1A3C6E)',
                       color: '#fff',
                       fontFamily: FONT_EN,
                       fontSize: 9,
@@ -1381,7 +1378,7 @@ export function HomePageV2() {
                     width: 52,
                     height: 52,
                     borderRadius: 14,
-                    background: '#fff',
+                    background: 'var(--haru-surface, #fff)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1425,7 +1422,7 @@ export function HomePageV2() {
                       marginTop: 12,
                       padding: '10px 12px',
                       borderRadius: 10,
-                      background: '#fff',
+                      background: 'var(--haru-surface, #fff)',
                       border: '1px solid currentColor',
                       fontSize: 14,
                       fontWeight: 700,
@@ -1530,8 +1527,8 @@ export function HomePageV2() {
                 onClick={() => navigate(tool.path, { state: { from: '/v2' } })}
                 className="v2-rec"
                 style={{
-                  background: '#fff',
-                  border: '1px solid #E5DFD0',
+                  background: 'var(--haru-surface, #fff)',
+                  border: '1px solid var(--haru-border, #E5DFD0)',
                   borderRadius: 20,
                   padding: '22px 18px 20px',
                   display: 'flex',
@@ -1565,7 +1562,7 @@ export function HomePageV2() {
                   style={{
                     fontSize: 14,
                     fontWeight: 600,
-                    color: '#2C2C2A',
+                    color: 'var(--haru-ink, #2C2C2A)',
                     letterSpacing: '-0.01em',
                     position: 'relative',
                     zIndex: 1,
@@ -1576,7 +1573,7 @@ export function HomePageV2() {
                 <span
                   style={{
                     fontSize: 13,
-                    color: '#646B57',
+                    color: 'var(--haru-muted, #646B57)',
                     lineHeight: 1.6,
                     marginTop: 0,
                     letterSpacing: '0.04em',
@@ -1609,7 +1606,7 @@ export function HomePageV2() {
             justifyContent: 'center',
           }}
         >
-          <span style={{ height: 1, flex: '0 0 60px', background: '#E5DFD0' }} />
+          <span style={{ height: 1, flex: '0 0 60px', background: 'var(--haru-tint-orange, #E5DFD0)' }} />
           <span
             style={{
               width: 6,
@@ -1628,7 +1625,7 @@ export function HomePageV2() {
               opacity: 0.5,
             }}
           />
-          <span style={{ height: 1, flex: '0 0 60px', background: '#E5DFD0' }} />
+          <span style={{ height: 1, flex: '0 0 60px', background: 'var(--haru-tint-orange, #E5DFD0)' }} />
         </div>
       </div>
 
@@ -1651,11 +1648,11 @@ export function HomePageV2() {
       />
 
       <Dialog open={previewAgent !== null} onOpenChange={(open) => { if (!open) setPreviewAgent(null); }}>
-        <DialogContent style={{ background: '#F5F0E8', color: '#2C2C2A' }}>
+        <DialogContent themeAware style={{ background: 'var(--haru-bg, #F5F0E8)', color: 'var(--haru-ink, #2C2C2A)' }}>
           <DialogTitle className="pr-6">이용할 비서 · {previewAgent?.label}{previewAgent?.beta ? ' · 베타' : ''}</DialogTitle>
           <DialogDescription>{previewAgent ? HOME_ASSISTANT_NEEDS[previewAgent.label] : ''}</DialogDescription>
           <p style={{ fontSize: 15, lineHeight: 1.7 }}>{previewAgent?.sub}</p>
-          <button type="button" style={{ ...pillStyle, background: '#4A5A2C', color: '#fff', justifyContent: 'center', padding: 14 }} onClick={() => {
+          <button type="button" style={{ ...pillStyle, background: 'var(--haru-accent, #4A5A2C)', color: '#fff', justifyContent: 'center', padding: 14 }} onClick={() => {
             if (!previewAgent) return;
             const agent = previewAgent;
             setPreviewAgent(null);
@@ -1706,8 +1703,8 @@ function HomeModeButton({
       style={{
         border: 'none',
         borderRadius: 999,
-        background: active ? '#4A5A2C' : 'transparent',
-        color: active ? '#F5F0E8' : '#7A6F5A',
+        background: active ? 'var(--haru-accent)' : 'transparent',
+        color: active ? '#F5F0E8' : 'var(--haru-muted, #7A6F5A)',
         padding: '8px 14px',
         fontSize: 12,
         fontWeight: 800,
@@ -1722,10 +1719,10 @@ function HomeModeButton({
 
 function EmptyMyHaru({ onShowAll }: { onShowAll: () => void }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, padding: 20, borderRadius: 18, background: '#fff', border: '1px dashed #D4CDB9' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, padding: 20, borderRadius: 18, background: 'var(--haru-surface, #fff)', border: '1px dashed var(--haru-border, #D4CDB9)' }}>
       <div>
-        <p style={{ margin: 0, color: '#2C2C2A', fontSize: 15 }}>자주 쓰는 비서를 여기에 담아두세요</p>
-        <p style={{ margin: '6px 0 0', color: '#7A6F5A', fontSize: 12 }}>필요한 비서는 전체 보기에서 바로 이용할 수 있습니다.</p>
+        <p style={{ margin: 0, color: 'var(--haru-ink, #2C2C2A)', fontSize: 15 }}>자주 쓰는 비서를 여기에 담아두세요</p>
+        <p style={{ margin: '6px 0 0', color: 'var(--haru-muted, #7A6F5A)', fontSize: 12 }}>필요한 비서는 전체 보기에서 바로 이용할 수 있습니다.</p>
       </div>
       <button type="button" onClick={onShowAll} style={pillStyle}>비서 둘러보기</button>
     </div>
@@ -1806,8 +1803,8 @@ function SkeletonCard({ minHeight = 134 }: { minHeight?: number }) {
       aria-hidden="true"
       style={{
         minHeight,
-        background: '#fff',
-        border: '1px solid #E5DFD0',
+        background: 'var(--haru-surface, #fff)',
+        border: '1px solid var(--haru-border, #E5DFD0)',
         borderRadius: 20,
         padding: '22px 18px 20px',
         display: 'flex',
@@ -1820,11 +1817,11 @@ function SkeletonCard({ minHeight = 134 }: { minHeight?: number }) {
           width: 52,
           height: 52,
           borderRadius: 14,
-          background: '#F5F0E8',
+          background: 'var(--haru-bg, #F5F0E8)',
         }}
       />
-      <span style={{ width: '42%', height: 14, borderRadius: 999, background: '#F5F0E8' }} />
-      <span style={{ width: '64%', height: 10, borderRadius: 999, background: '#F5F0E8' }} />
+      <span style={{ width: '42%', height: 14, borderRadius: 999, background: 'var(--haru-bg, #F5F0E8)' }} />
+      <span style={{ width: '64%', height: 10, borderRadius: 999, background: 'var(--haru-bg, #F5F0E8)' }} />
     </div>
   );
 }
@@ -1835,11 +1832,11 @@ const pillStyle: CSSProperties = {
   gap: 8,
   padding: '9px 14px',
   borderRadius: 999,
-  background: '#fff',
-  border: '1px solid #E5DFD0',
+  background: 'var(--haru-surface, #fff)',
+  border: '1px solid var(--haru-border, #E5DFD0)',
   fontSize: 12,
   fontWeight: 500,
-  color: '#7A6F5A',
+  color: 'var(--haru-muted, #7A6F5A)',
   cursor: 'pointer',
   transition:
     'background 180ms cubic-bezier(0.22,0.61,0.36,1), color 180ms, border-color 180ms, transform 120ms',
@@ -1931,9 +1928,9 @@ function Chip({
 
 function StreakDot({ state }: { state: 'on' | 'semi' | 'off' }) {
   const map = {
-    on: { bg: '#7A8B4E', border: '#7A8B4E' },
-    semi: { bg: '#E0E8B8', border: '#D4DEA0' },
-    off: { bg: '#EDE8DC', border: '#E5DFD0' },
+    on: { bg: '#7A8B4E', border: 'var(--haru-border, #7A8B4E)' },
+    semi: { bg: '#E0E8B8', border: 'var(--haru-border, #D4DEA0)' },
+    off: { bg: '#EDE8DC', border: 'var(--haru-border, #E5DFD0)' },
   } as const;
   const { bg, border } = map[state];
   return (
@@ -2008,13 +2005,13 @@ function SectionHead({
           fontFamily: FONT_SERIF,
           fontSize: 22,
           fontWeight: 700,
-          color: '#2C2C2A',
+          color: 'var(--haru-ink, #2C2C2A)',
           letterSpacing: '-0.01em',
         }}
       >
         {title}
       </span>
-      <span data-v2="section-sub" style={{ fontSize: 12, color: '#7A6F5A', marginLeft: 4 }}>{sub}</span>
+      <span data-v2="section-sub" style={{ fontSize: 12, color: 'var(--haru-muted, #7A6F5A)', marginLeft: 4 }}>{sub}</span>
       <span
         data-v2="section-badge"
         style={{
@@ -2023,13 +2020,13 @@ function SectionHead({
           gap: 6,
           padding: '5px 11px',
           borderRadius: 999,
-          background: '#fff',
-          border: '1px solid #E5DFD0',
+          background: 'var(--haru-surface, #fff)',
+          border: '1px solid var(--haru-border, #E5DFD0)',
           fontFamily: FONT_EN,
           fontSize: 10,
           fontWeight: 600,
           letterSpacing: '0.16em',
-          color: '#7A6F5A',
+          color: 'var(--haru-muted, #7A6F5A)',
           textTransform: 'uppercase',
           marginLeft: 'auto',
         }}

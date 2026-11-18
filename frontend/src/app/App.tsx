@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, type CSSProperties, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router';
 import { AuthProvider } from './contexts/AuthContext';
+import { PwaStatus } from './components/PwaStatus';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LoadingProvider } from './contexts/LoadingContext';
 import { Toaster } from 'sonner';
@@ -210,8 +211,8 @@ function AppChrome() {
     : undefined;
 
   return (
-    <div className="min-h-screen bg-[#FEFBE8] print:bg-white" style={appChromeStyle}>
-      <main style={{ paddingBottom: 'var(--content-pb)' }}>
+    <div className="haru-app-shell min-h-screen print:bg-white" style={appChromeStyle}>
+      <main>
         <Routes>
           {/* 홈 화면 — 비로그인 시 랜딩, 로그인 시 홈 */}
           <Route path="/" element={<HomeOrLanding />} />
@@ -339,10 +340,15 @@ function AppChrome() {
   );
 }
 
+function RoutedTheme({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  return <ThemeProvider pathname={pathname}><div className="haru-app-root"><PwaStatus />{children}</div></ThemeProvider>;
+}
+
 function App() {
   return (
-    <ThemeProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <RoutedTheme>
         <PublicLegalBoundary>
           <AuthProvider>
             <LoadingProvider>
@@ -352,8 +358,8 @@ function App() {
             </LoadingProvider>
           </AuthProvider>
         </PublicLegalBoundary>
-      </BrowserRouter>
-    </ThemeProvider>
+      </RoutedTheme>
+    </BrowserRouter>
   );
 }
 

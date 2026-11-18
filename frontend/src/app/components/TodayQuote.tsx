@@ -93,27 +93,27 @@ export function TodayQuote({ defaultTab, hideTabSwitcher = false }: TodayQuotePr
       : todayQuote.author ?? todayQuote.source;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 no-print">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-3 no-print">
       <div
         className="rounded-xl shadow-sm overflow-hidden"
         style={{
-          backgroundColor: '#FAF9F6',
-          border: '1px solid #e8e5de',
+          backgroundColor: 'var(--haru-surface, #FAF9F6)',
+          border: '1px solid var(--haru-border, #e8e5de)',
         }}
       >
         {/* 탭 토글 */}
         {!hideTabSwitcher && (
           <div
             className="grid grid-cols-2"
-            style={{ borderBottom: '1px solid #e8e5de' }}
+            style={{ borderBottom: '1px solid var(--haru-border, #e8e5de)' }}
           >
             <button
               type="button"
               onClick={() => handleQuoteTypeChange('classic')}
               className="py-2.5 text-xs font-semibold transition-colors active:scale-[0.99] touch-manipulation"
               style={{
-                backgroundColor: !isBible ? '#1A3C6E' : 'transparent',
-                color: !isBible ? '#fff' : 'rgba(26,60,110,0.55)',
+                backgroundColor: !isBible ? 'var(--haru-button-blue)' : 'transparent',
+                color: !isBible ? '#fff' : 'var(--haru-muted)',
               }}
             >
               💬 동서양 명언
@@ -123,8 +123,8 @@ export function TodayQuote({ defaultTab, hideTabSwitcher = false }: TodayQuotePr
               onClick={() => handleQuoteTypeChange('bible')}
               className="py-2.5 text-xs font-semibold transition-colors active:scale-[0.99] touch-manipulation"
               style={{
-                backgroundColor: isBible ? '#1A3C6E' : 'transparent',
-                color: isBible ? '#fff' : 'rgba(26,60,110,0.55)',
+                backgroundColor: isBible ? 'var(--haru-button-blue)' : 'transparent',
+                color: isBible ? '#fff' : 'var(--haru-muted)',
               }}
               title="성경 말씀"
             >
@@ -137,14 +137,14 @@ export function TodayQuote({ defaultTab, hideTabSwitcher = false }: TodayQuotePr
         <div className="px-5 py-4">
           <p
             className="text-sm leading-relaxed"
-            style={{ color: '#1A3C6E', fontWeight: 500 }}
+            style={{ color: 'var(--haru-link, #1A3C6E)', fontWeight: 500 }}
           >
             “{todayQuote.text}”
           </p>
           {todayQuote.original && todayQuote.original !== todayQuote.text && (
             <p
               className="text-xs mt-2 leading-relaxed"
-              style={{ color: '#666', fontStyle: 'italic' }}
+              style={{ color: 'var(--haru-muted, #666)', fontStyle: 'italic' }}
             >
               <span style={{ fontWeight: 600, marginRight: 4 }}>원문:</span>
               {todayQuote.original}
@@ -153,7 +153,7 @@ export function TodayQuote({ defaultTab, hideTabSwitcher = false }: TodayQuotePr
           {sourceLabel && (
             <p
               className="text-xs mt-2 text-right"
-              style={{ color: '#666' }}
+              style={{ color: 'var(--haru-muted, #666)' }}
             >
               — {sourceLabel}
             </p>

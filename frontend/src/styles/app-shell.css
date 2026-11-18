@@ -1,0 +1,105 @@
+:root {
+  --haru-bg: #F5F0E8;
+  --haru-surface: #fff;
+  --haru-subtle: #F0F3E7;
+  --haru-ink: #2C2C2A;
+  --haru-muted: #626956;
+  --haru-border: #DCD8CD;
+  --haru-input-border: #7B8962;
+  --haru-accent: #4A5A2C;
+  --haru-accent-ink: #4A5A2C;
+  --haru-link: #1A3C6E;
+  --haru-button-blue: #1A3C6E;
+  --haru-home-background: linear-gradient(180deg, #F5F0E8, #EDE8DC);
+}
+:root.dark {
+  --haru-bg: #20251D;
+  --haru-surface: #2B3127;
+  --haru-subtle: #343D2F;
+  --haru-ink: #F0F1E9;
+  --haru-agent-ink: #F0F1E9;
+  --haru-muted: #C0C7B6;
+  --haru-border: #515B49;
+  --haru-input-border: #8FA37B;
+  --haru-tint-neutral: #343A31;
+  --haru-tint-rose: #492D35;
+  --haru-tint-orange: #453327;
+  --haru-tint-amber: #403B26;
+  --haru-tint-green: #293E31;
+  --haru-tint-cyan: #273E42;
+  --haru-tint-blue: #293A50;
+  --haru-tint-violet: #3C324B;
+  --haru-semantic-rose: #FFB4C2;
+  --haru-semantic-orange: #FFC29A;
+  --haru-semantic-amber: #E7D58E;
+  --haru-semantic-green: #A3DBB2;
+  --haru-semantic-cyan: #9EDCE3;
+  --haru-semantic-blue: #B7D1FF;
+  --haru-semantic-violet: #D8BEFF;
+  --haru-accent: #526735;
+  --haru-accent-ink: #CCE3A6;
+  --haru-link: #BCD4FF;
+  --haru-button-blue: #284E7F;
+  --haru-home-background: #20251D;
+}
+html, body { background: var(--haru-bg); color: var(--haru-ink); }
+.haru-app-root { padding-top: env(safe-area-inset-top, 0px); }
+.haru-app-shell { background: var(--haru-bg); color: var(--haru-ink); padding-bottom: var(--content-pb); }
+.haru-app-shell > main { min-height: 60dvh; }
+.haru-bottom-nav { position: fixed; inset: auto 0 0; z-index: 40; background: var(--haru-surface); border-top: 1px solid var(--haru-border); padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+.haru-nav-items { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 760px; margin: auto; }
+.haru-nav-items > :is(a,button) { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 68px; min-width: 0; padding: 8px 4px; color: var(--haru-muted); font-size: 13px; line-height: 1.3; background: transparent; border: 0; text-decoration: none; cursor: pointer; }
+.haru-nav-items > :is([aria-current="page"],[data-active="true"]) { color: var(--haru-accent-ink); font-weight: 750; }
+.haru-nav-items > :is([aria-current="page"],[data-active="true"]) svg { background: var(--haru-subtle); box-shadow: 0 0 0 6px var(--haru-subtle); border-radius: 5px; stroke-width: 2.5; }
+.haru-more-sheet { background: var(--haru-surface); color: var(--haru-ink); border-color: var(--haru-border); max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px); overflow-y: auto; }
+.haru-more-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.haru-more-links a { display: flex; gap: 12px; align-items: center; min-height: 56px; padding: 12px; border: 1px solid var(--haru-border); border-radius: 12px; color: var(--haru-ink); text-decoration: none; }
+.haru-more-links a[aria-current="page"] { background: var(--haru-subtle); border-color: var(--haru-accent-ink); }
+.haru-secondary-button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--haru-border); border-radius: 10px; background: var(--haru-surface); color: var(--haru-accent-ink); font-size: 14px; cursor: pointer; }
+.haru-install-status { display: flex; gap: 8px; align-items: center; color: var(--haru-muted); font-size: 14px; }
+.haru-install-guide { color: var(--haru-muted); font-size: 14px; line-height: 1.7; }
+.haru-install-guide p { margin: 12px 0 0; }
+.haru-theme-picker { min-width: 0; border: 1px solid var(--haru-border); border-radius: 12px; padding: 12px; }
+.haru-theme-picker legend { font-size: 15px; font-weight: 700; padding: 0 4px; }
+.haru-theme-picker > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.haru-theme-picker label { flex: 1; min-width: 80px; position: relative; }
+.haru-theme-picker input { position: absolute; opacity: 0; }
+.haru-theme-picker span { display: grid; place-items: center; min-height: 44px; padding: 8px; border: 1px solid var(--haru-border); border-radius: 8px; background: var(--haru-surface); color: var(--haru-ink); cursor: pointer; font-size: 14px; }
+.haru-theme-picker input:checked + span { background: var(--haru-subtle); border-color: var(--haru-accent-ink); font-weight: 700; }
+.haru-theme-picker input:focus-visible + span { outline: 3px solid var(--haru-link); outline-offset: 2px; }
+.haru-pwa-status { position: relative; z-index: 45; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); background: var(--haru-subtle); color: var(--haru-ink); border-bottom: 1px solid var(--haru-border); font-size: 14px; line-height: 1.6; }
+.haru-pwa-status p { margin: 0 0 8px; }
+.haru-pwa-status button { min-height: 44px; padding: 8px 12px; margin-right: 8px; border: 1px solid var(--haru-border); border-radius: 8px; background: var(--haru-surface); color: var(--haru-ink); cursor: pointer; }
+.haru-format-help { padding: 12px 0; color: var(--haru-muted); font-size: 14px; }
+.haru-format-help summary, .haru-business-details summary { cursor: pointer; min-height: 44px; display: list-item; align-content: center; }
+.haru-format-help p { margin: 8px 0 12px; line-height: 1.7; }
+.haru-business-details p { margin: 8px 0; }
+.haru-refresh-row { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 14px; color: var(--haru-muted); font-size: 14px; }
+.haru-home-page [data-v2="page"] { padding-bottom: 32px !important; }
+.haru-home-page [data-v2="header-actions"] button { min-width: 44px !important; min-height: 44px !important; }
+:where(button, a, summary, select):focus-visible { outline: 3px solid var(--haru-link); outline-offset: 3px; }
+button:disabled { cursor: not-allowed; }
+/* Existing utility surfaces participate in the same theme; content images are preserved. */
+.dark :is(.haru-app-shell, [data-slot="dialog-content"]) .bg-white { background-color: var(--haru-surface); }
+.dark [data-slot="dialog-content"] { color: var(--haru-ink); }
+.dark .haru-writing-field::placeholder { color: var(--haru-muted); }
+@media (max-width: 640px) {
+  .haru-more-sheet { top: auto; bottom: 0; left: 0; width: 100%; max-width: 100%; transform: none; translate: none; border-radius: 20px 20px 0 0; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { .haru-home-page *, .haru-bottom-nav *, .haru-more-sheet * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+@media print { html, body, .haru-app-root { padding-top: env(safe-area-inset-top, 0px); }
+.haru-app-shell { background: white; color: black; } }
+
+/* Unaudited dialogs keep their existing foreground/background pair, even on a dark route. */
+.haru-light-surface {
+  color-scheme: light;
+  color: #2C2C2A;
+  --background: #F5F0E8; --foreground: #2C2C2A; --muted-foreground: #626956;
+  --haru-bg: #F5F0E8; --haru-surface: #fff; --haru-subtle: #F0F3E7; --haru-agent-ink: initial;
+  --haru-ink: #2C2C2A; --haru-muted: #626956; --haru-border: #DCD8CD; --haru-input-border: #7B8962;
+  --haru-accent: #4A5A2C; --haru-accent-ink: #4A5A2C; --haru-link: #1A3C6E; --haru-button-blue: #1A3C6E;
+  --haru-tint-neutral: initial; --haru-tint-rose: initial; --haru-tint-orange: initial; --haru-tint-amber: initial;
+  --haru-tint-green: initial; --haru-tint-cyan: initial; --haru-tint-blue: initial; --haru-tint-violet: initial;
+  --haru-semantic-rose: initial; --haru-semantic-orange: initial; --haru-semantic-amber: initial;
+  --haru-semantic-green: initial; --haru-semantic-cyan: initial; --haru-semantic-blue: initial; --haru-semantic-violet: initial;
+}

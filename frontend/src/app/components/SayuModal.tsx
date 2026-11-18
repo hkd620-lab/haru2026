@@ -135,8 +135,8 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
           lineHeight: 1.8,
           border: '1px solid #e5e5e5',
           borderRadius: 8,
-          backgroundColor: '#fff',
-          color: '#333',
+          backgroundColor: 'var(--haru-surface, #fff)',
+          color: 'var(--haru-ink, #333)',
           resize: 'vertical',
           fontFamily: 'inherit',
           outline: 'none',
@@ -161,19 +161,19 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
     {
       label: '수입',
       value: money(income),
-      color: '#059669',
+      color: 'var(--haru-semantic-green, #059669)',
     },
-    { label: '지출', value: money(expense), color: '#dc2626' },
-    { label: '수입−지출', value: money(balance), color: balance >= 0 ? '#059669' : '#dc2626' },
+    { label: '지출', value: money(expense), color: 'var(--haru-semantic-rose, #dc2626)' },
+    { label: '수입−지출', value: money(balance), color: balance >= 0 ? 'var(--haru-semantic-green, #059669)' : 'var(--haru-semantic-rose, #dc2626)' },
   ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 16 }}>
+      <div style={{ backgroundColor: 'var(--haru-surface, #fff)', border: '1px solid #e5e7eb', borderRadius: 10, padding: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
           {summaryItems.map((item) => (
             <div key={item.label} style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 700 }}>{item.label}</div>
+              <div style={{ fontSize: 12, color: 'var(--haru-muted, #6b7280)', marginBottom: 4, fontWeight: 700 }}>{item.label}</div>
               <div style={{ fontSize: 16, color: item.color, fontWeight: 800, wordBreak: 'break-word' }}>{item.value}</div>
               {item.note && (
                 <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3, fontWeight: 500, wordBreak: 'keep-all' }}>{item.note}</div>
@@ -181,16 +181,16 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
             </div>
           ))}
         </div>
-        <p style={{ margin: '10px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>{HOUSEHOLD_SUMMARY_NOTE}</p>
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--haru-muted, #6b7280)', lineHeight: 1.6 }}>{HOUSEHOLD_SUMMARY_NOTE}</p>
         {userText && (
-          <p style={{ margin: '8px 0 0', fontSize: 12, color: '#83642d', lineHeight: 1.6 }}>
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--haru-semantic-orange, #83642d)', lineHeight: 1.6 }}>
             아래 거래 목록이 최신 분류·메모 기준입니다. 기록 본문은 작성 당시 내용이며 자동으로 고치지 않습니다.
           </p>
         )}
         {userText && fallbackText && (
           <details style={{ marginTop: 8 }}>
-            <summary style={{ fontSize: 12, color: '#83642d', fontWeight: 700, cursor: 'pointer' }}>작성 당시 본문 보기</summary>
-            <div style={{ marginTop: 8, padding: 12, border: '1px solid #e5e5e5', borderRadius: 8, fontSize: 14, color: '#333', lineHeight: 1.8, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{fallbackText}</div>
+            <summary style={{ fontSize: 12, color: 'var(--haru-semantic-orange, #83642d)', fontWeight: 700, cursor: 'pointer' }}>작성 당시 본문 보기</summary>
+            <div style={{ marginTop: 8, padding: 12, border: '1px solid #e5e5e5', borderRadius: 8, fontSize: 14, color: 'var(--haru-ink, #333)', lineHeight: 1.8, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{fallbackText}</div>
           </details>
         )}
       </div>
@@ -212,7 +212,7 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
           const detail = isTransfer ? entry.memo || '이체' : title;
           const meta = [entry.category || entry.transactionType, entry.subcategory, entry.paymentMethod, entry.date].filter(Boolean).join(' · ');
           return (
-            <div key={`${entry.date}_${entry.amount}_${index}`} style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 14 }}>
+            <div key={`${entry.date}_${entry.amount}_${index}`} style={{ backgroundColor: 'var(--haru-surface, #fff)', border: '1px solid #e5e7eb', borderRadius: 10, padding: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 34, height: 34, borderRadius: '50%', backgroundColor: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, flexShrink: 0 }}>
                   {icon}
@@ -224,11 +224,11 @@ function renderHouseholdSayuView(entries: HouseholdSayuEntry[], fallbackText: st
                       {isIncome ? '+' : isTransfer ? '' : '-'}{money(amount)}
                     </span>
                   </div>
-                  <div style={{ marginTop: 6, fontSize: 13, color: '#374151', lineHeight: 1.5, overflowWrap: 'anywhere' }}>
+                  <div style={{ marginTop: 6, fontSize: 13, color: 'var(--haru-ink, #374151)', lineHeight: 1.5, overflowWrap: 'anywhere' }}>
                     {detailLabel}: {detail} · {meta.replace(entry.date, formatHouseholdDate(entry.date))}
                   </div>
                   {!isTransfer && entry.memo && (
-                    <div style={{ marginTop: 4, fontSize: 12, color: '#6b7280', lineHeight: 1.5, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>메모: {entry.memo}</div>
+                    <div style={{ marginTop: 4, fontSize: 12, color: 'var(--haru-muted, #6b7280)', lineHeight: 1.5, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>메모: {entry.memo}</div>
                   )}
                 </div>
               </div>
@@ -311,7 +311,7 @@ function SortableEnvTagItem({
               height: 24,
               borderRadius: 999,
               border: 'none',
-              backgroundColor: '#1A3C6E',
+              backgroundColor: 'var(--haru-button-blue, #1A3C6E)',
               color: '#FAF9F6',
               display: 'inline-flex',
               alignItems: 'center',
@@ -330,7 +330,7 @@ function SortableEnvTagItem({
               height: 24,
               borderRadius: 999,
               border: 'none',
-              backgroundColor: '#e5e7eb',
+              backgroundColor: 'var(--haru-tint-blue, #e5e7eb)',
               color: '#555',
               display: 'inline-flex',
               alignItems: 'center',
@@ -353,8 +353,8 @@ function SortableEnvTagItem({
               padding: '3px 8px',
               borderRadius: 6,
               border: isSelected ? 'none' : '1px solid #d0dff0',
-              backgroundColor: isSelected ? '#1A3C6E' : '#FDF6C3',
-              color: isSelected ? '#FAF9F6' : '#1A3C6E',
+              backgroundColor: isSelected ? 'var(--haru-button-blue, #1A3C6E)' : 'var(--haru-subtle, #FDF6C3)',
+              color: isSelected ? '#FAF9F6' : 'var(--haru-link, #1A3C6E)',
               cursor: 'grab',
             }}
           >
@@ -371,7 +371,7 @@ function SortableEnvTagItem({
                 height: 24,
                 borderRadius: 999,
                 border: 'none',
-                backgroundColor: '#eef2f7',
+                backgroundColor: 'var(--haru-tint-blue, #eef2f7)',
                 color: '#555',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1824,7 +1824,7 @@ export function SayuModal({
   const renderOriginalData = () => {
     if (!editedOriginalData || Object.keys(editedOriginalData).length === 0) {
       return (
-        <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
+        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--haru-muted, #999)' }}>
           <p>저장된 원본 데이터가 없습니다.</p>
           <p style={{fontSize: '11px', marginTop: '8px'}}>
             (사유가 AI로만 생성되었거나, 원본이 저장되지 않았을 수 있습니다)
@@ -1859,13 +1859,13 @@ export function SayuModal({
           const isTitle = key.endsWith('_title');
 
           return (
-            <div key={key} style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #eee' }}>
+            <div key={key} style={{ backgroundColor: 'var(--haru-surface, #fff)', padding: '16px', borderRadius: '8px', border: '1px solid #eee' }}>
               <span style={{
                 display: 'inline-block',
                 fontSize: '11px',
                 fontWeight: '600',
-                color: '#1A3C6E',
-                backgroundColor: '#FDF6C3',
+                color: 'var(--haru-link, #1A3C6E)',
+                backgroundColor: 'var(--haru-subtle, #FDF6C3)',
                 padding: '4px 8px',
                 borderRadius: '4px',
                 marginBottom: '8px'
@@ -1882,11 +1882,11 @@ export function SayuModal({
                     width: '100%',
                     fontSize: '16px',
                     lineHeight: '1.6',
-                    color: '#333',
+                    color: 'var(--haru-ink, #333)',
                     border: '1px solid #d0dff0',
                     borderRadius: '6px',
                     padding: '8px 10px',
-                    backgroundColor: '#fafcff',
+                    backgroundColor: 'var(--haru-tint-blue, #fafcff)',
                     outline: 'none',
                     boxSizing: 'border-box',
                     fontFamily: 'inherit',
@@ -1910,11 +1910,11 @@ export function SayuModal({
                     width: '100%',
                     fontSize: '16px',
                     lineHeight: '1.6',
-                    color: '#333',
+                    color: 'var(--haru-ink, #333)',
                     border: '1px solid #d0dff0',
                     borderRadius: '6px',
                     padding: '8px 10px',
-                    backgroundColor: '#fafcff',
+                    backgroundColor: 'var(--haru-tint-blue, #fafcff)',
                     outline: 'none',
                     resize: 'none',
                     overflow: 'hidden',
@@ -2006,7 +2006,7 @@ export function SayuModal({
               style={{
                 border: 'none',
                 background: 'transparent',
-                color: '#1A3C6E',
+                color: 'var(--haru-link, #1A3C6E)',
                 fontSize: 11,
                 fontWeight: 700,
                 cursor: 'pointer',
@@ -2019,7 +2019,7 @@ export function SayuModal({
               style={{
                 border: 'none',
                 background: 'transparent',
-                color: '#999',
+                color: 'var(--haru-muted, #999)',
                 fontSize: 11,
                 cursor: 'pointer',
               }}
@@ -2035,7 +2035,7 @@ export function SayuModal({
               height: 24,
               borderRadius: 999,
               border: 'none',
-              backgroundColor: '#e5e7eb',
+              backgroundColor: 'var(--haru-tint-blue, #e5e7eb)',
               color: '#555',
               fontSize: 15,
               fontWeight: 700,
@@ -2073,7 +2073,7 @@ export function SayuModal({
           {/* 메인 메시지 */}
           <p
             style={{
-              color: '#1A3C6E',
+              color: 'var(--haru-link, #1A3C6E)',
               fontSize: '17px',
               fontWeight: 600,
               letterSpacing: '0.5px',
@@ -2086,7 +2086,7 @@ export function SayuModal({
           {/* 안내 메시지 */}
           <p
             style={{
-              color: '#666',
+              color: 'var(--haru-muted, #666)',
               fontSize: '13px',
               fontWeight: 400,
               lineHeight: '1.6',
@@ -2105,7 +2105,7 @@ export function SayuModal({
               style={{
                 width: '200px',
                 height: '6px',
-                background: '#E5E7EB',
+                background: 'var(--haru-tint-blue, #E5E7EB)',
                 borderRadius: '3px',
                 overflow: 'hidden',
                 marginTop: '8px',
@@ -2304,7 +2304,7 @@ export function SayuModal({
         <div
           className="sayu-modal-inner"
           style={{
-            backgroundColor: '#FEFBE8',
+            backgroundColor: 'var(--haru-bg, #FEFBE8)',
             borderRadius: 12,
             maxHeight: '90vh',
             overflow: 'hidden',
@@ -2321,20 +2321,20 @@ export function SayuModal({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              backgroundColor: '#fff',
+              backgroundColor: 'var(--haru-surface, #fff)',
             }}
           >
             <div>
-              <h2 style={{ fontSize: 18, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
+              <h2 style={{ fontSize: 18, color: 'var(--haru-link, #1A3C6E)', fontWeight: 600, margin: 0 }}>
                 ✨ {dateLabel} SAYU
               </h2>
               {format && (
-                <p style={{ fontSize: 12, color: '#999', marginTop: 4, marginBottom: 0 }}>
+                <p style={{ fontSize: 12, color: 'var(--haru-muted, #999)', marginTop: 4, marginBottom: 0 }}>
                   {format}
                 </p>
               )}
               {isGrowthTimeline && (
-                <p style={{ fontSize: 12, color: '#6B7280', marginTop: 4, marginBottom: 0, lineHeight: 1.4 }}>
+                <p style={{ fontSize: 12, color: 'var(--haru-muted, #6B7280)', marginTop: 4, marginBottom: 0, lineHeight: 1.4 }}>
                   HARU타임라인 문서형 기록입니다. 제목을 눌러 다시 열고 수정할 수 있습니다.
                 </p>
               )}
@@ -2355,7 +2355,7 @@ export function SayuModal({
                   }}
                   title="텍스트 복사 (카톡용)"
                 >
-                  <FileText style={{ width: 20, height: 20, color: '#10b981' }} />
+                  <FileText style={{ width: 20, height: 20, color: 'var(--haru-semantic-green, #10b981)' }} />
                 </button>
               )}
 
@@ -2376,7 +2376,7 @@ export function SayuModal({
                   }}
                   title="문서로 보기 (PDF·인쇄)"
                 >
-                  <Download style={{ width: 20, height: 20, color: '#1A3C6E' }} />
+                  <Download style={{ width: 20, height: 20, color: 'var(--haru-link, #1A3C6E)' }} />
                 </button>
               )}
 
@@ -2395,7 +2395,7 @@ export function SayuModal({
                   }}
                   title="텍스트 복사 (카톡용)"
                 >
-                  <FileText style={{ width: 20, height: 20, color: '#10b981' }} />
+                  <FileText style={{ width: 20, height: 20, color: 'var(--haru-semantic-green, #10b981)' }} />
                 </button>
               )}
 
@@ -2414,7 +2414,7 @@ export function SayuModal({
                   }}
                   title="이미지 복사 (Word/Gmail용)"
                 >
-                  <Copy style={{ width: 20, height: 20, color: '#1A3C6E' }} />
+                  <Copy style={{ width: 20, height: 20, color: 'var(--haru-link, #1A3C6E)' }} />
                 </button>
               )}
               
@@ -2464,7 +2464,7 @@ export function SayuModal({
 
               {/* 구분선 */}
               {!isGrowthTimeline && (
-                <div style={{ width: 1, height: 20, backgroundColor: '#e5e5e5', margin: '0 2px' }} />
+                <div style={{ width: 1, height: 20, backgroundColor: 'var(--haru-tint-neutral, #e5e5e5)', margin: '0 2px' }} />
               )}
 
               {/* 🖨️ 인쇄 버튼 */}
@@ -2523,7 +2523,7 @@ export function SayuModal({
                   justifyContent: 'center',
                 }}
               >
-                <X style={{ width: 20, height: 20, color: '#666' }} />
+                <X style={{ width: 20, height: 20, color: 'var(--haru-muted, #666)' }} />
               </button>
             </div>
           </div>
@@ -2533,7 +2533,7 @@ export function SayuModal({
             style={{
               display: 'flex',
               borderBottom: '1px solid #e5e5e5',
-              backgroundColor: '#fff',
+              backgroundColor: 'var(--haru-surface, #fff)',
             }}
           >
             <button
@@ -2543,8 +2543,8 @@ export function SayuModal({
                 flex: 1,
                 padding: '12px',
                 border: 'none',
-                backgroundColor: viewMode === 'ai' ? '#FDF6C3' : 'transparent',
-                color: viewMode === 'ai' ? '#1A3C6E' : '#999',
+                backgroundColor: viewMode === 'ai' ? 'var(--haru-subtle, #FDF6C3)' : 'transparent',
+                color: viewMode === 'ai' ? 'var(--haru-link, #1A3C6E)' : 'var(--haru-muted, #999)',
                 fontSize: 14,
                 fontWeight: viewMode === 'ai' ? 600 : 400,
                 cursor: 'pointer',
@@ -2561,8 +2561,8 @@ export function SayuModal({
                 flex: 1,
                 padding: '12px',
                 border: 'none',
-                backgroundColor: viewMode === 'original' ? '#FDF6C3' : 'transparent',
-                color: viewMode === 'original' ? '#1A3C6E' : '#999',
+                backgroundColor: viewMode === 'original' ? 'var(--haru-subtle, #FDF6C3)' : 'transparent',
+                color: viewMode === 'original' ? 'var(--haru-link, #1A3C6E)' : 'var(--haru-muted, #999)',
                 fontSize: 14,
                 fontWeight: viewMode === 'original' ? 600 : 400,
                 cursor: 'pointer',
@@ -2580,7 +2580,7 @@ export function SayuModal({
           style={{
             flex: 1,
             overflowY: 'auto',
-            backgroundColor: '#fafafa',
+            backgroundColor: 'var(--haru-tint-neutral, #fafafa)',
           }}
         >
           {/* 편집 안내는 실제 수정 화면에서만 표시 */}
@@ -2594,8 +2594,8 @@ export function SayuModal({
               marginBottom: 16,
               borderRadius: 8,
               border: '1px solid #D1FAE5',
-              backgroundColor: '#ECFDF5',
-              color: '#0F766E',
+              backgroundColor: 'var(--haru-tint-green, #ECFDF5)',
+              color: 'var(--haru-semantic-cyan, #0F766E)',
               fontSize: 13,
               lineHeight: 1.5,
             }}
@@ -2618,7 +2618,7 @@ export function SayuModal({
               )}
               {/* 제목 입력 */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 6, fontWeight: 600 }}>
+                <label style={{ display: 'block', fontSize: 13, color: 'var(--haru-muted, #666)', marginBottom: 6, fontWeight: 600 }}>
                   📌 제목
                 </label>
                 <input
@@ -2630,7 +2630,7 @@ export function SayuModal({
                     width: '100%', boxSizing: 'border-box',
                     padding: '10px 14px', fontSize: 16,
                     border: '1px solid #d0dff0', borderRadius: 8,
-                    backgroundColor: '#fff', color: '#333',
+                    backgroundColor: 'var(--haru-surface, #fff)', color: 'var(--haru-ink, #333)',
                     fontFamily: 'inherit', outline: 'none',
                   }}
                 />
@@ -2642,28 +2642,28 @@ export function SayuModal({
               <>
               {/* 환경 정보 */}
               {(recordDate || weather || temperature || mood) && (
-                <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e5e5' }}>
+                <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'var(--haru-surface, #fff)', borderRadius: '8px', border: '1px solid #e5e5e5' }}>
                   {recordDate && (
-                    <p style={{ fontSize: '14px', fontWeight: '600', color: '#1A3C6E', marginBottom: '12px' }}>
+                    <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--haru-link, #1A3C6E)', marginBottom: '12px' }}>
                       📅 {formatDateToKorean(recordDate)}
                     </p>
                   )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {/* 날씨 선택 */}
                     <div>
-                      <p style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>날씨</p>
+                      <p style={{ fontSize: '12px', color: 'var(--haru-muted, #666)', marginBottom: '4px' }}>날씨</p>
                       {renderEnvTags('weather', weatherTags, editedWeather, setEditedWeather)}
                     </div>
 
                     {/* 기온 선택 */}
                     <div>
-                      <p style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>기온</p>
+                      <p style={{ fontSize: '12px', color: 'var(--haru-muted, #666)', marginBottom: '4px' }}>기온</p>
                       {renderEnvTags('temperature', temperatureTags, editedTemperature, setEditedTemperature)}
                     </div>
 
                     {/* 기분 선택 */}
                     <div>
-                      <p style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>기분</p>
+                      <p style={{ fontSize: '12px', color: 'var(--haru-muted, #666)', marginBottom: '4px' }}>기분</p>
                       {renderEnvTags('mood', moodTags, editedMood, setEditedMood)}
                     </div>
                   </div>
@@ -2672,7 +2672,7 @@ export function SayuModal({
 
               {isGrowthTimeline && editedTimelineItems.length > 0 && (
                 <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <p style={{ margin: 0, fontSize: 13, color: '#1A3C6E', fontWeight: 800 }}>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--haru-link, #1A3C6E)', fontWeight: 800 }}>
                     성장타임라인 사진별 기록
                   </p>
                   {editedTimelineItems.map((item, index) => (
@@ -2685,10 +2685,10 @@ export function SayuModal({
                         padding: 10,
                         border: '1px solid #e5e7eb',
                         borderRadius: 10,
-                        backgroundColor: '#fff',
+                        backgroundColor: 'var(--haru-surface, #fff)',
                       }}
                     >
-                      <div style={{ position: 'relative', width: 72, height: 72, borderRadius: 8, overflow: 'hidden', backgroundColor: '#f3f4f6' }}>
+                      <div style={{ position: 'relative', width: 72, height: 72, borderRadius: 8, overflow: 'hidden', backgroundColor: 'var(--haru-subtle, #f3f4f6)' }}>
                         <img
                           src={item.url}
                           alt={`성장타임라인 사진 ${index + 1}`}
@@ -2736,7 +2736,7 @@ export function SayuModal({
                             border: '1px solid #d0dff0',
                             borderRadius: 7,
                             padding: '8px 9px',
-                            color: '#1A3C6E',
+                            color: 'var(--haru-link, #1A3C6E)',
                             fontSize: 13,
                           }}
                         />
@@ -2754,8 +2754,8 @@ export function SayuModal({
                                 border: '1px solid #cfe3d6',
                                 borderRadius: 7,
                                 padding: '7px 9px',
-                                color: '#24553b',
-                                backgroundColor: '#f7fbf8',
+                                color: 'var(--haru-semantic-green, #24553b)',
+                                backgroundColor: 'var(--haru-tint-green, #f7fbf8)',
                                 fontSize: 12,
                                 fontWeight: 700,
                               }}
@@ -2780,7 +2780,7 @@ export function SayuModal({
                             border: '1px solid #e5e7eb',
                             borderRadius: 7,
                             padding: '8px 9px',
-                            color: '#333',
+                            color: 'var(--haru-ink, #333)',
                             fontSize: 13,
                             lineHeight: 1.5,
                             resize: 'vertical',
@@ -2804,8 +2804,8 @@ export function SayuModal({
                       fontSize: 13,
                       borderRadius: 8,
                       border: '1px dashed #1A3C6E',
-                      backgroundColor: '#FDF6C3',
-                      color: '#1A3C6E',
+                      backgroundColor: 'var(--haru-subtle, #FDF6C3)',
+                      color: 'var(--haru-link, #1A3C6E)',
                       cursor: isUploadingImage ? 'not-allowed' : 'pointer',
                       opacity: isUploadingImage ? 0.5 : 1,
                       display: 'flex',
@@ -3090,8 +3090,8 @@ export function SayuModal({
                       fontSize: 13,
                       borderRadius: 8,
                       border: '1px dashed #1A3C6E',
-                      backgroundColor: '#FDF6C3',
-                      color: '#1A3C6E',
+                      backgroundColor: 'var(--haru-subtle, #FDF6C3)',
+                      color: 'var(--haru-link, #1A3C6E)',
                       cursor: isUploadingImage ? 'not-allowed' : 'pointer',
                       opacity: isUploadingImage ? 0.5 : 1,
                       display: 'flex',
@@ -3140,8 +3140,8 @@ export function SayuModal({
                   lineHeight: 1.8,
                   border: '1px solid #e5e5e5',
                   borderRadius: 8,
-                  backgroundColor: '#fff',
-                  color: '#333',
+                  backgroundColor: 'var(--haru-surface, #fff)',
+                  color: 'var(--haru-ink, #333)',
                   resize: 'none',
                   overflowY: 'hidden',
                   fontFamily: 'inherit',
@@ -3155,7 +3155,7 @@ export function SayuModal({
                 <div style={{
                   marginTop: 16,
                   padding: '12px 16px',
-                  backgroundColor: '#FDF6C3',
+                  backgroundColor: 'var(--haru-subtle, #FDF6C3)',
                   borderRadius: 10,
                   border: '1px solid #e8d87a',
                   display: 'flex',
@@ -3167,7 +3167,7 @@ export function SayuModal({
                     <p style={{
                       margin: 0,
                       fontSize: 11,
-                      color: '#a08c2a',
+                      color: 'var(--haru-semantic-amber, #a08c2a)',
                       fontWeight: 700,
                       marginBottom: 4,
                       letterSpacing: '0.5px',
@@ -3175,7 +3175,7 @@ export function SayuModal({
                     <p style={{
                       margin: 0,
                       fontSize: 14,
-                      color: '#4a3d00',
+                      color: 'var(--haru-semantic-amber, #4a3d00)',
                       lineHeight: 1.6,
                       fontStyle: 'italic',
                     }}>{localAiComment}</p>
@@ -3194,7 +3194,7 @@ export function SayuModal({
                     alt="haru2026 포도송이 로고"
                     style={{ display: 'block', width: 50, height: 'auto', margin: '0 auto 12px' }}
                   />
-                  <p style={{ margin: 0, color: '#86551E', fontSize: 14, fontWeight: 700, letterSpacing: '0.08em' }}>
+                  <p style={{ margin: 0, color: 'var(--haru-semantic-orange, #86551E)', fontSize: 14, fontWeight: 700, letterSpacing: '0.08em' }}>
                     하루의 기록
                   </p>
                   {format?.trim() && (
@@ -3210,7 +3210,7 @@ export function SayuModal({
                 <h3
                   style={{
                     margin: '18px 0 0',
-                    color: '#263B2E',
+                    color: 'var(--haru-semantic-green, #263B2E)',
                     fontSize: 23,
                     lineHeight: 1.45,
                     overflowWrap: 'anywhere',
@@ -3221,17 +3221,17 @@ export function SayuModal({
                 {(editedWeather || editedTemperature || editedMood) && (
                   <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
                     {editedWeather && (
-                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F0F2E9', color: '#4B5D50', fontSize: 12 }}>
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: 'var(--haru-tint-amber, #F0F2E9)', color: '#4B5D50', fontSize: 12 }}>
                         {editedWeather}
                       </span>
                     )}
                     {editedTemperature && (
-                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F0F2E9', color: '#4B5D50', fontSize: 12 }}>
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: 'var(--haru-tint-amber, #F0F2E9)', color: '#4B5D50', fontSize: 12 }}>
                         {editedTemperature}
                       </span>
                     )}
                     {editedMood && (
-                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: '#F0F2E9', color: '#4B5D50', fontSize: 12 }}>
+                      <span style={{ padding: '5px 9px', borderRadius: 999, backgroundColor: 'var(--haru-tint-amber, #F0F2E9)', color: '#4B5D50', fontSize: 12 }}>
                         {editedMood}
                       </span>
                     )}
@@ -3248,7 +3248,7 @@ export function SayuModal({
                     {editedTimelineItems.map((item, index) => (
                       <article
                         key={`${item.url}_read_${index}`}
-                        style={{ overflow: 'hidden', border: '1px solid #e5e7eb', borderRadius: 12, backgroundColor: '#fff' }}
+                        style={{ overflow: 'hidden', border: '1px solid #e5e7eb', borderRadius: 12, backgroundColor: 'var(--haru-surface, #fff)' }}
                       >
                         <img
                           src={item.url}
@@ -3257,14 +3257,14 @@ export function SayuModal({
                           style={{ display: 'block', width: '100%', maxHeight: 360, objectFit: 'cover' }}
                         />
                         <div style={{ padding: '12px 14px' }}>
-                          <p style={{ margin: 0, color: '#1A3C6E', fontSize: 13, fontWeight: 700 }}>
+                          <p style={{ margin: 0, color: 'var(--haru-link, #1A3C6E)', fontSize: 13, fontWeight: 700 }}>
                             {item.takenDate ? formatDateToKorean(item.takenDate) : `사진 ${index + 1}`}
                           </p>
                           {getTimelineLocationText(item) && (
                             <p style={{ margin: '5px 0 0', color: '#52715f', fontSize: 12 }}>📍 {getTimelineLocationText(item)}</p>
                           )}
                           {item.memo && (
-                            <p style={{ margin: '8px 0 0', color: '#374151', fontSize: 15, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{item.memo}</p>
+                            <p style={{ margin: '8px 0 0', color: 'var(--haru-ink, #374151)', fontSize: 15, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{item.memo}</p>
                           )}
                         </div>
                       </article>
@@ -3314,15 +3314,15 @@ export function SayuModal({
                     {editedContent}
                   </article>
                 ) : (
-                  <div style={{ padding: '36px 16px', borderRadius: 12, backgroundColor: '#fff', color: '#6B7280', textAlign: 'center' }}>
+                  <div style={{ padding: '36px 16px', borderRadius: 12, backgroundColor: 'var(--haru-surface, #fff)', color: 'var(--haru-muted, #6B7280)', textAlign: 'center' }}>
                     저장된 SAYU 내용이 없습니다.
                   </div>
                 )}
 
                 {localAiComment && (
-                  <div style={{ marginTop: 16, padding: '12px 16px', backgroundColor: '#FDF6C3', borderRadius: 10, border: '1px solid #e8d87a' }}>
-                    <p style={{ margin: '0 0 4px', fontSize: 11, color: '#a08c2a', fontWeight: 700 }}>💬 AI 한마디</p>
-                    <p style={{ margin: 0, fontSize: 14, color: '#4a3d00', lineHeight: 1.6 }}>{localAiComment}</p>
+                  <div style={{ marginTop: 16, padding: '12px 16px', backgroundColor: 'var(--haru-subtle, #FDF6C3)', borderRadius: 10, border: '1px solid #e8d87a' }}>
+                    <p style={{ margin: '0 0 4px', fontSize: 11, color: 'var(--haru-semantic-amber, #a08c2a)', fontWeight: 700 }}>💬 AI 한마디</p>
+                    <p style={{ margin: 0, fontSize: 14, color: 'var(--haru-semantic-amber, #4a3d00)', lineHeight: 1.6 }}>{localAiComment}</p>
                   </div>
                 )}
               </>
@@ -3352,7 +3352,7 @@ export function SayuModal({
           style={{
             padding: '16px 20px',
             borderTop: '1px solid #e5e5e5',
-            backgroundColor: '#fff',
+            backgroundColor: 'var(--haru-surface, #fff)',
           }}
         >
           {isEditing && (
@@ -3366,8 +3366,8 @@ export function SayuModal({
                 padding: '10px 20px',
                 borderRadius: 10,
                 border: `2px solid ${isSpecialDay ? '#F59E0B' : '#e5e5e5'}`,
-                backgroundColor: isSpecialDay ? '#FFF8F0' : '#fff',
-                color: isSpecialDay ? '#F59E0B' : '#aaa',
+                backgroundColor: isSpecialDay ? 'var(--haru-tint-orange, #FFF8F0)' : 'var(--haru-surface, #fff)',
+                color: isSpecialDay ? 'var(--haru-semantic-orange, #F59E0B)' : '#aaa',
                 cursor: 'pointer',
                 fontSize: 14,
                 fontWeight: 600,
@@ -3377,7 +3377,7 @@ export function SayuModal({
               <span style={{ fontSize: 20 }}>✨</span>
               특별한 날
               {isSpecialDay && (
-                <span style={{ fontSize: 12, color: '#10b981', marginLeft: 4 }}>✓ 체크됨</span>
+                <span style={{ fontSize: 12, color: 'var(--haru-semantic-green, #10b981)', marginLeft: 4 }}>✓ 체크됨</span>
               )}
             </button>
           </div>
@@ -3412,7 +3412,7 @@ export function SayuModal({
                   border: '1.5px solid #1A3C6E',
                   borderRadius: 10,
                   background: 'linear-gradient(90deg, #EEF3FA 0%, #fff 100%)',
-                  color: '#1A3C6E',
+                  color: 'var(--haru-link, #1A3C6E)',
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -3437,8 +3437,8 @@ export function SayuModal({
                 fontSize: 14,
                 border: '1px solid #e5e5e5',
                 borderRadius: 8,
-                backgroundColor: '#fff',
-                color: '#666',
+                backgroundColor: 'var(--haru-surface, #fff)',
+                color: 'var(--haru-muted, #666)',
                 cursor: isSaving ? 'not-allowed' : 'pointer',
                 opacity: isSaving ? 0.5 : 1,
                 fontWeight: 500,
@@ -3476,7 +3476,7 @@ export function SayuModal({
                 fontSize: 15,
                 border: '1px solid #d1d5db',
                 borderRadius: 10,
-                backgroundColor: '#fff',
+                backgroundColor: 'var(--haru-surface, #fff)',
                 color: '#4B5563',
                 cursor: 'pointer',
                 fontWeight: 600,
@@ -3513,7 +3513,7 @@ export function SayuModal({
             style={{
               padding: '16px 20px',
               borderTop: '1px solid #e5e5e5',
-              backgroundColor: '#fff',
+              backgroundColor: 'var(--haru-surface, #fff)',
             }}
           >
             {canPolishOriginal && (
@@ -3531,7 +3531,7 @@ export function SayuModal({
                   fontSize: 14,
                   border: 'none',
                   borderRadius: 8,
-                  backgroundColor: '#1A3C6E',
+                  backgroundColor: 'var(--haru-button-blue, #1A3C6E)',
                   color: '#fff',
                   cursor: (isSavingOriginal || isRefining) ? 'not-allowed' : 'pointer',
                   opacity: (isSavingOriginal || isRefining) ? 0.6 : 1,
@@ -3577,7 +3577,7 @@ export function SayuModal({
         >
           <div
             style={{
-              backgroundColor: '#fff',
+              backgroundColor: 'var(--haru-surface, #fff)',
               borderRadius: 12,
               padding: '28px 24px',
               maxWidth: 320,
@@ -3587,7 +3587,7 @@ export function SayuModal({
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ fontSize: 36, marginBottom: 12 }}>🗑</div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1A3C6E', margin: '0 0 8px' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--haru-link, #1A3C6E)', margin: '0 0 8px' }}>
               기록 삭제
             </h3>
             <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, margin: '0 0 8px' }}>
@@ -3606,8 +3606,8 @@ export function SayuModal({
                   fontSize: 14,
                   border: '1px solid #e5e5e5',
                   borderRadius: 8,
-                  backgroundColor: '#fff',
-                  color: '#666',
+                  backgroundColor: 'var(--haru-surface, #fff)',
+                  color: 'var(--haru-muted, #666)',
                   cursor: isDeleting ? 'not-allowed' : 'pointer',
                   opacity: isDeleting ? 0.5 : 1,
                   fontWeight: 500,

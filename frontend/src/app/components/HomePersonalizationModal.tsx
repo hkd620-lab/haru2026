@@ -74,6 +74,7 @@ export function HomePersonalizationModal({
 
   return (
     <div
+      className="haru-light-surface"
       role="dialog"
       aria-modal="true"
       aria-labelledby="home-personalization-title"
@@ -97,8 +98,8 @@ export function HomePersonalizationModal({
           width: 'min(920px, 100%)',
           maxHeight: 'min(780px, 92vh)',
           overflow: 'auto',
-          background: '#F5F0E8',
-          border: '1px solid #E5DFD0',
+          background: 'var(--haru-bg, #F5F0E8)',
+          border: '1px solid var(--haru-border, #E5DFD0)',
           borderRadius: 22,
           boxShadow: '0 24px 70px -34px rgba(44,44,42,0.55)',
         }}
@@ -110,7 +111,7 @@ export function HomePersonalizationModal({
             zIndex: 1,
             background: 'rgba(245,240,232,0.96)',
             backdropFilter: 'blur(6px)',
-            borderBottom: '1px solid #E5DFD0',
+            borderBottom: '1px solid var(--haru-border, #E5DFD0)',
             padding: '20px 22px 16px',
           }}
         >
@@ -122,13 +123,13 @@ export function HomePersonalizationModal({
                   margin: 0,
                   fontFamily: FONT_SERIF,
                   fontSize: 24,
-                  color: '#2C2C2A',
+                  color: 'var(--haru-ink, #2C2C2A)',
                   letterSpacing: 0,
                 }}
               >
                 내 하루비서 관리
               </h2>
-              <p style={{ margin: '6px 0 0', color: '#7A6F5A', fontSize: 12, lineHeight: 1.6 }}>
+              <p style={{ margin: '6px 0 0', color: 'var(--haru-muted, #7A6F5A)', fontSize: 12, lineHeight: 1.6 }}>
                 자주 쓰는 비서만 골라 두세요. 담지 않은 비서도 전체 보기에서 바로 이용할 수 있습니다.
               </p>
             </div>
@@ -152,7 +153,7 @@ export function HomePersonalizationModal({
         </div>
 
         <div style={{ padding: 22, display: 'grid', gap: 24 }}>
-          {error && <p role="alert" style={{ margin: 0, color: '#9C3528', fontSize: 13 }}>{error}</p>}
+          {error && <p role="alert" style={{ margin: 0, color: 'var(--haru-semantic-rose, #9C3528)', fontSize: 13 }}>{error}</p>}
           {records.length > 0 && (
             <OptionGroup
               title="HARU 기록"
@@ -175,7 +176,7 @@ export function HomePersonalizationModal({
             bottom: 0,
             background: 'rgba(245,240,232,0.96)',
             backdropFilter: 'blur(6px)',
-            borderTop: '1px solid #E5DFD0',
+            borderTop: '1px solid var(--haru-border, #E5DFD0)',
             padding: '14px 22px',
             display: 'flex',
             justifyContent: 'flex-end',
@@ -220,7 +221,7 @@ function OptionGroup({
           margin: '0 0 12px',
           fontFamily: FONT_SERIF,
           fontSize: 18,
-          color: '#2C2C2A',
+          color: 'var(--haru-ink, #2C2C2A)',
           letterSpacing: 0,
         }}
       >
@@ -245,7 +246,7 @@ function OptionGroup({
                 minHeight: 76,
                 borderRadius: 14,
                 border: `1px solid ${checked ? '#7A8B4E' : '#E5DFD0'}`,
-                background: checked ? '#FFFFFF' : 'rgba(255,255,255,0.56)',
+                background: checked ? 'var(--haru-tint-neutral, #FFFFFF)' : 'rgba(255,255,255,0.56)',
                 padding: 12,
                 cursor: 'pointer',
               }}
@@ -257,8 +258,8 @@ function OptionGroup({
                 style={{ width: 16, height: 16, marginTop: 2, accentColor: '#4A5A2C', flexShrink: 0 }}
               />
               <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-                <span style={{ color: '#2C2C2A', fontSize: 13, fontWeight: 700 }}>{option.label}</span>
-                <span style={{ color: '#7A6F5A', fontSize: 11, lineHeight: 1.45 }}>{option.sub}</span>
+                <span style={{ color: 'var(--haru-ink, #2C2C2A)', fontSize: 13, fontWeight: 700 }}>{option.label}</span>
+                <span style={{ color: 'var(--haru-muted, #7A6F5A)', fontSize: 11, lineHeight: 1.45 }}>{option.sub}</span>
               </span>
             </label>
           );
@@ -272,9 +273,9 @@ const iconButtonStyle: CSSProperties = {
   width: 38,
   height: 38,
   borderRadius: 999,
-  border: '1px solid #E5DFD0',
-  background: '#fff',
-  color: '#7A6F5A',
+  border: '1px solid var(--haru-border, #E5DFD0)',
+  background: 'var(--haru-surface, #fff)',
+  color: 'var(--haru-muted, #7A6F5A)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -284,9 +285,9 @@ const iconButtonStyle: CSSProperties = {
 
 const countPillStyle: CSSProperties = {
   borderRadius: 999,
-  border: '1px solid #D4DEA0',
-  background: '#fff',
-  color: '#4A5A2C',
+  border: '1px solid var(--haru-border, #D4DEA0)',
+  background: 'var(--haru-surface, #fff)',
+  color: 'var(--haru-accent-ink, #4A5A2C)',
   padding: '6px 11px',
   fontSize: 12,
   fontWeight: 700,
@@ -294,9 +295,9 @@ const countPillStyle: CSSProperties = {
 
 const miniButtonStyle: CSSProperties = {
   borderRadius: 999,
-  border: '1px solid #E5DFD0',
-  background: '#fff',
-  color: '#7A6F5A',
+  border: '1px solid var(--haru-border, #E5DFD0)',
+  background: 'var(--haru-surface, #fff)',
+  color: 'var(--haru-muted, #7A6F5A)',
   padding: '6px 11px',
   fontSize: 12,
   cursor: 'pointer',
@@ -304,9 +305,9 @@ const miniButtonStyle: CSSProperties = {
 
 const secondaryButtonStyle: CSSProperties = {
   borderRadius: 999,
-  border: '1px solid #E5DFD0',
-  background: '#fff',
-  color: '#7A6F5A',
+  border: '1px solid var(--haru-border, #E5DFD0)',
+  background: 'var(--haru-surface, #fff)',
+  color: 'var(--haru-muted, #7A6F5A)',
   padding: '10px 16px',
   fontSize: 13,
   fontWeight: 700,
@@ -315,8 +316,8 @@ const secondaryButtonStyle: CSSProperties = {
 
 const primaryButtonStyle: CSSProperties = {
   borderRadius: 999,
-  border: '1px solid #4A5A2C',
-  background: '#4A5A2C',
+  border: '1px solid var(--haru-border, #4A5A2C)',
+  background: 'var(--haru-accent, #4A5A2C)',
   color: '#F5F0E8',
   padding: '10px 18px',
   fontSize: 13,

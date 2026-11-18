@@ -15,6 +15,7 @@ const fixtureUser = { uid: ['developer', 'developer-full'].includes(params.get('
 export function useAuth() { return { user: params.get('scenario') === 'guest' ? null : fixtureUser, loading: false }; }
 export const buildTimelineMeta = () => ({});
 export const firestoreService = {
+  async getHealthMedications() { return []; },
   async saveRecord(_uid: string, data: any) {
     document.getElementById('fixture-status')!.textContent = JSON.stringify({ savedRecord: data });
     return data.id;
@@ -34,3 +35,7 @@ export function TimelineCollageModal() { return null; }
 export function beginLoginTrace() {}
 export function finishLoginTrace() {}
 export function markLoginTrace() {}
+
+export const useSensitiveConsent = () => ({ hasConsent: true, isSaving: false, grantConsent() {} });
+export const extractDrugSearchTerm = (value: string) => ({ searchTerm: value, removedDoseLikeText: false });
+export const searchOfficialDrugs = async () => ({ results: [], removedDoseLikeText: false });

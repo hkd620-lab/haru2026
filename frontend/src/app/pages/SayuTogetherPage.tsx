@@ -53,7 +53,7 @@ const sayuChipStyle = (active: boolean) => ({
   padding: '0 12px',
   borderRadius: 999,
   border: active ? '1.5px solid #0F766E' : '1px solid #CBD5E1',
-  background: active ? '#0F766E' : '#FFFFFF',
+  background: active ? '#0F766E' : 'var(--haru-surface, #FFFFFF)',
   color: active ? '#FFFFFF' : '#475569',
   fontSize: 12,
   fontWeight: 800,
@@ -404,7 +404,7 @@ export function SayuTogetherPage() {
     return (
       <>
         <div className="mb-4">
-          <h2 className="text-xl font-bold" style={{ color: '#1A3C6E' }}>
+          <h2 className="text-xl font-bold" style={{ color: 'var(--haru-link, #1A3C6E)' }}>
             {item.title || 'SAYU 기록'}
           </h2>
           <p className="text-xs mt-1" style={{ color: '#64748B' }}>
@@ -421,7 +421,7 @@ export function SayuTogetherPage() {
                   padding: '0 14px',
                   borderRadius: 8,
                   border: '1px solid #CBD5E1',
-                  background: '#FFFFFF',
+                  background: 'var(--haru-surface, #FFFFFF)',
                   color: '#475569',
                   fontSize: 12,
                   fontWeight: 800,
@@ -440,8 +440,8 @@ export function SayuTogetherPage() {
                   padding: '0 14px',
                   borderRadius: 8,
                   border: '1px solid #FECACA',
-                  background: '#FEF2F2',
-                  color: '#B42318',
+                  background: 'var(--haru-tint-rose, #FEF2F2)',
+                  color: 'var(--haru-semantic-rose, #B42318)',
                   fontSize: 12,
                   fontWeight: 800,
                   cursor: isBusy ? 'wait' : 'pointer',
@@ -465,7 +465,7 @@ export function SayuTogetherPage() {
               <div
                 key={`${item.id}_photo_${index}`}
                 className="overflow-hidden rounded-xl"
-                style={{ border: '1px solid #E2E8F0', aspectRatio: photoUrls.length === 1 ? '16 / 9' : '1 / 1', background: '#F8FAFC' }}
+                style={{ border: '1px solid #E2E8F0', aspectRatio: photoUrls.length === 1 ? '16 / 9' : '1 / 1', background: 'var(--haru-tint-blue, #F8FAFC)' }}
               >
                 <img
                   src={url}
@@ -484,10 +484,10 @@ export function SayuTogetherPage() {
               key={`${item.id}_${format.formatKey || format.formatLabel}`}
               style={{ borderTop: '1px solid #E2E8F0', paddingTop: 14 }}
             >
-              <p className="text-xs font-bold mb-2" style={{ color: '#0F766E' }}>
+              <p className="text-xs font-bold mb-2" style={{ color: 'var(--haru-semantic-cyan, #0F766E)' }}>
                 {format.formatLabel || 'SAYU'}
               </p>
-              <p className="text-sm whitespace-pre-wrap" style={{ color: '#334155', lineHeight: 1.85 }}>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--haru-semantic-blue, #334155)', lineHeight: 1.85 }}>
                 {format.sayuText || ''}
               </p>
             </article>
@@ -495,7 +495,7 @@ export function SayuTogetherPage() {
         </div>
 
         <div className="mt-6 pt-5" style={{ borderTop: '1px solid #E2E8F0' }}>
-          <h3 className="text-sm font-bold mb-3" style={{ color: '#1A3C6E' }}>
+          <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--haru-link, #1A3C6E)' }}>
             댓글
           </h3>
 
@@ -509,17 +509,17 @@ export function SayuTogetherPage() {
                 <div
                   key={comment.id}
                   className="rounded-lg p-3"
-                  style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0' }}
+                  style={{ backgroundColor: 'var(--haru-tint-blue, #F8FAFC)', border: '1px solid #E2E8F0' }}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-bold" style={{ color: '#0F766E' }}>
+                    <p className="text-xs font-bold" style={{ color: 'var(--haru-semantic-cyan, #0F766E)' }}>
                       {comment.displayName || '익명 사용자'}
                     </p>
                     <p className="text-[10px]" style={{ color: '#94A3B8' }}>
                       {formatCommentTime(comment.createdAt)}
                     </p>
                   </div>
-                  <p className="text-sm mt-1 whitespace-pre-wrap" style={{ color: '#334155', lineHeight: 1.6 }}>
+                  <p className="text-sm mt-1 whitespace-pre-wrap" style={{ color: 'var(--haru-semantic-blue, #334155)', lineHeight: 1.6 }}>
                     {comment.body}
                   </p>
                 </div>
@@ -529,7 +529,7 @@ export function SayuTogetherPage() {
 
           <div className="mt-4">
             {!user?.uid && (
-              <p className="text-sm mb-2" style={{ color: '#B42318' }}>
+              <p className="text-sm mb-2" style={{ color: 'var(--haru-semantic-rose, #B42318)' }}>
                 댓글을 작성하려면 로그인이 필요합니다.
               </p>
             )}
@@ -546,8 +546,8 @@ export function SayuTogetherPage() {
                 padding: 12,
                 fontSize: 14,
                 resize: 'vertical',
-                background: user?.uid ? '#FFFFFF' : '#F1F5F9',
-                color: '#334155',
+                background: user?.uid ? 'var(--haru-surface, #FFFFFF)' : '#F1F5F9',
+                color: 'var(--haru-semantic-blue, #334155)',
                 outline: 'none',
               }}
             />
@@ -561,7 +561,7 @@ export function SayuTogetherPage() {
                   padding: '0 16px',
                   borderRadius: 8,
                   border: 'none',
-                  background: !user?.uid || commentSubmitting || !commentBody.trim() ? '#CBD5E1' : '#0F766E',
+                  background: !user?.uid || commentSubmitting || !commentBody.trim() ? 'var(--haru-tint-blue, #CBD5E1)' : '#0F766E',
                   color: '#FFFFFF',
                   fontSize: 13,
                   fontWeight: 800,
@@ -582,30 +582,30 @@ export function SayuTogetherPage() {
       {card.judgmentType && (
         <span
           className="text-xs font-bold"
-          style={{ color: '#1A3C6E', backgroundColor: '#F0F4FF', borderRadius: 999, padding: '2px 8px' }}
+          style={{ color: 'var(--haru-link, #1A3C6E)', backgroundColor: 'var(--haru-tint-blue, #F0F4FF)', borderRadius: 999, padding: '2px 8px' }}
         >
           {JUDGMENT_LABELS[card.judgmentType] || card.judgmentType}
         </span>
       )}
-      <h2 className="text-xl font-bold mt-2" style={{ color: '#1A3C6E' }}>{card.title}</h2>
-      <p className="text-sm mt-2" style={{ color: '#6B7280', lineHeight: 1.7 }}>{card.anonymizedQuestion}</p>
-      <p className="text-sm mt-4 whitespace-pre-wrap" style={{ color: '#374151', lineHeight: 1.7 }}>{card.summary}</p>
+      <h2 className="text-xl font-bold mt-2" style={{ color: 'var(--haru-link, #1A3C6E)' }}>{card.title}</h2>
+      <p className="text-sm mt-2" style={{ color: 'var(--haru-muted, #6B7280)', lineHeight: 1.7 }}>{card.anonymizedQuestion}</p>
+      <p className="text-sm mt-4 whitespace-pre-wrap" style={{ color: 'var(--haru-ink, #374151)', lineHeight: 1.7 }}>{card.summary}</p>
       {Array.isArray(card.relatedStatutes) && card.relatedStatutes.length > 0 && (
-        <div className="mt-4 rounded-lg" style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB', padding: 10 }}>
+        <div className="mt-4 rounded-lg" style={{ backgroundColor: 'var(--haru-subtle, #F9FAFB)', border: '1px solid #E5E7EB', padding: 10 }}>
           {card.relatedStatutes.map((statute, idx) => (
             <div key={`${card.id}_statute_${idx}`} className={idx > 0 ? 'mt-2' : ''}>
-              <p className="text-xs font-bold" style={{ color: '#111827' }}>
+              <p className="text-xs font-bold" style={{ color: 'var(--haru-semantic-blue, #111827)' }}>
                 {[statute.title, statute.article].filter(Boolean).join(' · ')}
               </p>
               {statute.easySummary && (
-                <p className="text-xs mt-0.5" style={{ color: '#6B7280', lineHeight: 1.6 }}>{statute.easySummary}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--haru-muted, #6B7280)', lineHeight: 1.6 }}>{statute.easySummary}</p>
               )}
             </div>
           ))}
         </div>
       )}
       {card.disclaimer && (
-        <p className="text-xs mt-4" style={{ color: '#92400E', lineHeight: 1.6 }}>{card.disclaimer}</p>
+        <p className="text-xs mt-4" style={{ color: 'var(--haru-semantic-orange, #92400E)', lineHeight: 1.6 }}>{card.disclaimer}</p>
       )}
     </div>
   );
@@ -625,7 +625,7 @@ export function SayuTogetherPage() {
           style={{ border: '1px solid #D1FAE5' }}
         >
           <div className="mb-4 flex items-center justify-between">
-            <span className="text-xs font-bold" style={{ color: '#0F766E' }}>
+            <span className="text-xs font-bold" style={{ color: 'var(--haru-semantic-cyan, #0F766E)' }}>
               {selectedLawCard ? '⚖️ 하루LAW 익명 사례' : 'SAYU 기록 상세'}
             </span>
             <button
@@ -667,9 +667,9 @@ export function SayuTogetherPage() {
           className="text-left rounded-2xl p-5 bg-white shadow-sm"
           style={{ border: '1px solid #D1FAE5' }}
         >
-          <p className="text-base font-bold" style={{ color: '#1A3C6E' }}>{entry.label}</p>
+          <p className="text-base font-bold" style={{ color: 'var(--haru-link, #1A3C6E)' }}>{entry.label}</p>
           <p className="text-xs mt-1.5" style={{ color: '#64748B', lineHeight: 1.6 }}>{entry.desc}</p>
-          <p className="text-[11px] mt-3 font-bold" style={{ color: '#0F766E' }}>{entry.count}개</p>
+          <p className="text-[11px] mt-3 font-bold" style={{ color: 'var(--haru-semantic-cyan, #0F766E)' }}>{entry.count}개</p>
         </button>
       ))}
     </div>
@@ -680,7 +680,7 @@ export function SayuTogetherPage() {
       <button
         type="button"
         onClick={() => { setAxis(null); setSelectedCategory('all'); }}
-        style={{ background: 'none', border: 'none', padding: 0, marginBottom: 10, color: '#0F766E', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+        style={{ background: 'none', border: 'none', padding: 0, marginBottom: 10, color: 'var(--haru-semantic-cyan, #0F766E)', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
       >
         ← 처음으로
       </button>
@@ -729,7 +729,7 @@ export function SayuTogetherPage() {
         )}
       </div>
       <div className="p-3">
-        <p className="text-sm font-bold truncate" style={{ color: '#1A3C6E' }}>{card.title}</p>
+        <p className="text-sm font-bold truncate" style={{ color: 'var(--haru-link, #1A3C6E)' }}>{card.title}</p>
         <p className="text-[11px] mt-1 truncate" style={{ color: '#64748B' }}>{card.meta}</p>
         {card.badges.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
@@ -737,7 +737,7 @@ export function SayuTogetherPage() {
               <span
                 key={badge}
                 className="text-[10px] font-bold rounded-full px-2 py-0.5"
-                style={{ backgroundColor: '#ECFDF5', color: '#0F766E' }}
+                style={{ backgroundColor: 'var(--haru-tint-green, #ECFDF5)', color: 'var(--haru-semantic-cyan, #0F766E)' }}
               >
                 {badge}
               </span>
@@ -752,7 +752,7 @@ export function SayuTogetherPage() {
     if (axisScopedCards.length === 0) {
       return (
         <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #D1FAE5' }}>
-          <p className="text-sm" style={{ color: '#0F766E' }}>아직 이 분류로 공개된 기록이 없습니다.</p>
+          <p className="text-sm" style={{ color: 'var(--haru-semantic-cyan, #0F766E)' }}>아직 이 분류로 공개된 기록이 없습니다.</p>
         </div>
       );
     }
@@ -764,7 +764,7 @@ export function SayuTogetherPage() {
             .filter((section) => section.cards.length > 0)
             .map((section) => (
               <div key={section.key}>
-                <p className="text-xs font-bold mb-2" style={{ color: '#0F766E' }}>
+                <p className="text-xs font-bold mb-2" style={{ color: 'var(--haru-semantic-cyan, #0F766E)' }}>
                   {section.label} <span style={{ color: '#94A3B8', fontWeight: 700 }}>{section.count}</span>
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -787,7 +787,7 @@ export function SayuTogetherPage() {
     if (authLoading || loading) {
       return (
         <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #D1FAE5' }}>
-          <p className="text-sm" style={{ color: '#0F766E' }}>공개된 SAYU 기록을 불러오고 있습니다.</p>
+          <p className="text-sm" style={{ color: 'var(--haru-semantic-cyan, #0F766E)' }}>공개된 SAYU 기록을 불러오고 있습니다.</p>
         </div>
       );
     }
@@ -795,7 +795,7 @@ export function SayuTogetherPage() {
     if (!user?.uid) {
       return (
         <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #D1FAE5' }}>
-          <p className="text-sm" style={{ color: '#0F766E', lineHeight: 1.7 }}>
+          <p className="text-sm" style={{ color: 'var(--haru-semantic-cyan, #0F766E)', lineHeight: 1.7 }}>
             공개 기록 함께읽기는 로그인한 HARU 회원만 볼 수 있습니다.
           </p>
         </div>
@@ -805,7 +805,7 @@ export function SayuTogetherPage() {
     if (errorMessage) {
       return (
         <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #FECACA' }}>
-          <p className="text-sm" style={{ color: '#B42318', lineHeight: 1.7 }}>{errorMessage}</p>
+          <p className="text-sm" style={{ color: 'var(--haru-semantic-rose, #B42318)', lineHeight: 1.7 }}>{errorMessage}</p>
         </div>
       );
     }
@@ -819,7 +819,7 @@ export function SayuTogetherPage() {
             border: '1px solid #D1FAE5',
           }}
         >
-          <p className="text-sm" style={{ color: '#0F766E', lineHeight: 1.7 }}>
+          <p className="text-sm" style={{ color: 'var(--haru-semantic-cyan, #0F766E)', lineHeight: 1.7 }}>
             공개된 기록을 준비하고 있습니다.<br />
             곧 이곳에서 다른 회원들의 SAYU 기록을 만나보실 수 있어요.
           </p>
@@ -841,7 +841,7 @@ export function SayuTogetherPage() {
     if (authLoading || booksLoading) {
       return (
         <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #DBEAFE' }}>
-          <p className="text-sm" style={{ color: '#1A3C6E' }}>발행중인 사람속으로 책을 불러오고 있습니다.</p>
+          <p className="text-sm" style={{ color: 'var(--haru-link, #1A3C6E)' }}>발행중인 사람속으로 책을 불러오고 있습니다.</p>
         </div>
       );
     }
@@ -849,7 +849,7 @@ export function SayuTogetherPage() {
     if (!user?.uid) {
       return (
         <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #DBEAFE' }}>
-          <p className="text-sm" style={{ color: '#1A3C6E', lineHeight: 1.7 }}>
+          <p className="text-sm" style={{ color: 'var(--haru-link, #1A3C6E)', lineHeight: 1.7 }}>
             사람속으로 발행본은 로그인한 HARU 회원만 볼 수 있습니다.
           </p>
         </div>
@@ -859,7 +859,7 @@ export function SayuTogetherPage() {
     if (booksErrorMessage) {
       return (
         <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #FECACA' }}>
-          <p className="text-sm" style={{ color: '#B42318', lineHeight: 1.7 }}>{booksErrorMessage}</p>
+          <p className="text-sm" style={{ color: 'var(--haru-semantic-rose, #B42318)', lineHeight: 1.7 }}>{booksErrorMessage}</p>
         </div>
       );
     }
@@ -867,7 +867,7 @@ export function SayuTogetherPage() {
     if (publishedBooks.length === 0) {
       return (
         <div className="rounded-2xl p-8 text-center bg-white" style={{ border: '1px solid #DBEAFE' }}>
-          <p className="text-sm" style={{ color: '#1A3C6E', lineHeight: 1.7 }}>
+          <p className="text-sm" style={{ color: 'var(--haru-link, #1A3C6E)', lineHeight: 1.7 }}>
             발행중인 사람속으로 책을 준비하고 있습니다.
           </p>
         </div>
@@ -884,7 +884,7 @@ export function SayuTogetherPage() {
           >
             <div className="flex items-start justify-between gap-3">
               <div style={{ minWidth: 0 }}>
-                <h2 className="text-base font-bold" style={{ color: '#1A3C6E' }}>
+                <h2 className="text-base font-bold" style={{ color: 'var(--haru-link, #1A3C6E)' }}>
                   {book.title || '사람속으로'}
                 </h2>
                 <p className="text-xs mt-1" style={{ color: '#64748B' }}>
@@ -893,13 +893,13 @@ export function SayuTogetherPage() {
               </div>
               <span
                 className="text-[10px] font-bold rounded-full px-2 py-1"
-                style={{ backgroundColor: '#ECFDF5', color: '#0F766E' }}
+                style={{ backgroundColor: 'var(--haru-tint-green, #ECFDF5)', color: 'var(--haru-semantic-cyan, #0F766E)' }}
               >
                 발행중
               </span>
             </div>
             {book.summary && (
-              <p className="text-sm mt-3" style={{ color: '#334155', lineHeight: 1.7 }}>
+              <p className="text-sm mt-3" style={{ color: 'var(--haru-semantic-blue, #334155)', lineHeight: 1.7 }}>
                 {book.summary}
               </p>
             )}
@@ -913,7 +913,7 @@ export function SayuTogetherPage() {
                   padding: '0 14px',
                   borderRadius: 8,
                   border: '1px solid #1A3C6E',
-                  background: '#1A3C6E',
+                  background: 'var(--haru-button-blue, #1A3C6E)',
                   color: '#FFFFFF',
                   fontSize: 12,
                   fontWeight: 800,
@@ -966,8 +966,8 @@ export function SayuTogetherPage() {
                 minHeight: 38,
                 borderRadius: 9,
                 border: active ? '1.5px solid #0F766E' : '1px solid #CBD5E1',
-                background: active ? '#ECFDF5' : '#FFFFFF',
-                color: active ? '#0F766E' : '#475569',
+                background: active ? 'var(--haru-tint-green, #ECFDF5)' : 'var(--haru-surface, #FFFFFF)',
+                color: active ? 'var(--haru-semantic-cyan, #0F766E)' : '#475569',
                 fontSize: 12,
                 fontWeight: 800,
                 cursor: 'pointer',
@@ -991,7 +991,7 @@ export function SayuTogetherPage() {
                   padding: '0 14px',
                   borderRadius: 8,
                   border: '1px solid #1A3C6E',
-                  background: '#1A3C6E',
+                  background: 'var(--haru-button-blue, #1A3C6E)',
                   color: '#FFFFFF',
                   fontSize: 12,
                   fontWeight: 800,
@@ -1020,18 +1020,18 @@ export function SayuTogetherPage() {
 
       {recoverySub === 'epub' && (
         <section className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: '1px solid #DBEAFE' }}>
-          <h2 className="text-base font-bold mb-2" style={{ color: '#1A3C6E' }}>
+          <h2 className="text-base font-bold mb-2" style={{ color: 'var(--haru-link, #1A3C6E)' }}>
             📖 EPUB 내보내기
           </h2>
-          <p style={{ fontSize: 13, color: '#6B7280', margin: '0 0 14px' }}>
+          <p style={{ fontSize: 13, color: 'var(--haru-muted, #6B7280)', margin: '0 0 14px' }}>
             날짜 범위를 선택하면 해당 기간 기록을 EPUB 파일로 다운로드합니다.
           </p>
           <EpubReaderNotice />
           {!user?.uid ? (
-            <p style={{ fontSize: 13, color: '#B42318' }}>로그인 후 이용할 수 있습니다.</p>
+            <p style={{ fontSize: 13, color: 'var(--haru-semantic-rose, #B42318)' }}>로그인 후 이용할 수 있습니다.</p>
           ) : (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <label style={{ fontSize: 13, color: '#1A3C6E' }}>
+              <label style={{ fontSize: 13, color: 'var(--haru-link, #1A3C6E)' }}>
                 시작일&nbsp;
                 <input
                   type="date"
@@ -1040,7 +1040,7 @@ export function SayuTogetherPage() {
                   style={{ border: '1px solid #CBD5E1', borderRadius: 8, padding: '9px 10px', fontSize: 14 }}
                 />
               </label>
-              <label style={{ fontSize: 13, color: '#1A3C6E' }}>
+              <label style={{ fontSize: 13, color: 'var(--haru-link, #1A3C6E)' }}>
                 종료일&nbsp;
                 <input
                   type="date"
@@ -1057,7 +1057,7 @@ export function SayuTogetherPage() {
                   border: 0,
                   borderRadius: 8,
                   padding: '10px 16px',
-                  background: epubStartDate && epubEndDate ? '#1A3C6E' : '#CBD5E1',
+                  background: epubStartDate && epubEndDate ? 'var(--haru-button-blue, #1A3C6E)' : '#CBD5E1',
                   color: '#fff',
                   fontWeight: 800,
                   fontSize: 14,
@@ -1103,11 +1103,11 @@ export function SayuTogetherPage() {
       <div className="mb-5">
         <h1
           className="text-2xl md:text-3xl font-bold tracking-tight"
-          style={{ color: '#1A3C6E' }}
+          style={{ color: 'var(--haru-link, #1A3C6E)' }}
         >
           🌿 공개 기록 함께읽기
         </h1>
-        <p className="text-sm mt-1.5" style={{ color: '#666', lineHeight: 1.6 }}>
+        <p className="text-sm mt-1.5" style={{ color: 'var(--haru-muted, #666)', lineHeight: 1.6 }}>
           HARU 회원들이 공개한 기록을 함께 읽고 댓글로 마음을 나누는 공간입니다. 기존 ‘SAYU·함께보기’와 같은 공간이에요.
         </p>
       </div>
@@ -1133,8 +1133,8 @@ export function SayuTogetherPage() {
                 minHeight: 42,
                 borderRadius: 10,
                 border: active ? '1.5px solid #0F766E' : '1px solid #CBD5E1',
-                background: active ? '#ECFDF5' : '#FFFFFF',
-                color: active ? '#0F766E' : '#475569',
+                background: active ? 'var(--haru-tint-green, #ECFDF5)' : 'var(--haru-surface, #FFFFFF)',
+                color: active ? 'var(--haru-semantic-cyan, #0F766E)' : '#475569',
                 fontSize: 13,
                 fontWeight: 800,
                 cursor: 'pointer',
