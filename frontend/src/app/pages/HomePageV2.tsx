@@ -1346,7 +1346,7 @@ export function HomePageV2() {
                   textAlign: 'left',
                   background: disabled ? 'var(--haru-bg)' : 'var(--haru-surface)',
                   border: `1px solid ${disabled ? '#E5DFD0' : agentBorder[a.variant]}`,
-                  color: disabled ? '#888780' : agentText[a.variant],
+                  color: disabled ? 'var(--haru-muted, #888780)' : `var(--haru-agent-ink, ${agentText[a.variant]})`,
                   opacity: disabled ? 0.7 : 1,
                 }}
               >
@@ -1648,7 +1648,7 @@ export function HomePageV2() {
       />
 
       <Dialog open={previewAgent !== null} onOpenChange={(open) => { if (!open) setPreviewAgent(null); }}>
-        <DialogContent style={{ background: 'var(--haru-bg, #F5F0E8)', color: 'var(--haru-ink, #2C2C2A)' }}>
+        <DialogContent themeAware style={{ background: 'var(--haru-bg, #F5F0E8)', color: 'var(--haru-ink, #2C2C2A)' }}>
           <DialogTitle className="pr-6">이용할 비서 · {previewAgent?.label}{previewAgent?.beta ? ' · 베타' : ''}</DialogTitle>
           <DialogDescription>{previewAgent ? HOME_ASSISTANT_NEEDS[previewAgent.label] : ''}</DialogDescription>
           <p style={{ fontSize: 15, lineHeight: 1.7 }}>{previewAgent?.sub}</p>

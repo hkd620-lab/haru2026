@@ -1,7 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark';
-type Preference = Theme | 'system';
+import { readThemePreference, resolveTheme, type Theme, type ThemePreference as Preference } from '../utils/themePreference';
 interface ThemeContextType {
   theme: Theme;
   preference: Preference;
@@ -9,14 +8,14 @@ interface ThemeContextType {
   toggleTheme: () => void;
   isDark: boolean;
 }
-const ThemeContext = createContext<ThemeContextType>({ theme: 'light', preference: 'system', setPreference() {}, toggleTheme() {}, isDark: false });
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+const ThemeContext = createContext<ThemeContextType>({ theme: 'light', preference: 'light', setPreference() {}, toggleTheme() {}, isDark: false });
+export function ThemeProvider({ children, pathname = window.location.pathname }: { children: React.ReactNode; pathname?: string }) {
   const [preference, setPreference] = useState<Preference>(() => {
-    try { const saved = localStorage.getItem('haru-theme'); return saved === 'light' || saved === 'dark' ? saved : 'system'; }
-    catch { return 'system'; }
+    try { return readThemePreference(localStorage.getItem('haru-theme')); }
+    catch { return 'light'; }
   });
   const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
-  const theme = preference === 'system' ? (systemDark ? 'dark' : 'light') : preference;
+  const theme = resolveTheme(preference, systemDark, pathname);
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const sync = () => setSystemDark(media.matches);
@@ -24,7 +23,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (media.addEventListener) media.addEventListener('change', sync); else media.addListener(sync);
     return () => { if (media.removeEventListener) media.removeEventListener('change', sync); else media.removeListener(sync); };
   }, []);
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.documentElement.style.colorScheme = theme;
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#20251D' : '#F5F0E8');
@@ -33,7 +32,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const sync = (event: StorageEvent) => {
       if (event.key !== 'haru-theme') return;
-      setPreference(event.newValue === 'dark' || event.newValue === 'light' ? event.newValue : 'system');
+      setPreference(readThemePreference(event.newValue));
     };
     window.addEventListener('storage', sync);
     return () => window.removeEventListener('storage', sync);

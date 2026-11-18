@@ -41,7 +41,8 @@
     <script>
       try {
         var haruSavedTheme = localStorage.getItem('haru-theme');
-        var haruDark = haruSavedTheme === 'dark' || (haruSavedTheme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        var haruDarkRoute = ['/', '/v2', '/sayu', '/sayu-together', '/settings', '/record'].indexOf(location.pathname) !== -1;
+        var haruDark = haruDarkRoute && (haruSavedTheme === 'dark' || (haruSavedTheme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches));
         document.documentElement.classList.toggle('dark', haruDark);
         document.documentElement.style.colorScheme = haruDark ? 'dark' : 'light';
         document.querySelector('meta[name="theme-color"]').content = haruDark ? '#20251D' : '#F5F0E8';

@@ -1,3 +1,5 @@
+import { TodayQuote } from '../../src/app/components/TodayQuote';
+import { HealthMedicationPage } from '../../src/app/pages/HealthMedicationPage';
 import { usePullToRefresh } from '../../src/app/hooks/usePullToRefresh';
 import { ThemeProvider } from '../../src/app/contexts/ThemeContext';
 import { ThemePicker } from '../../src/app/components/ThemePicker';
@@ -52,22 +54,32 @@ function Geometry() {
   }, []);
   return <output style={{ display: 'block' }}>{value}</output>;
 }
+function FixtureTheme({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  return <ThemeProvider pathname={pathname}>{children}</ThemeProvider>;
+}
+const page = new URLSearchParams(location.search).get('page');
+const initialPath = page === 'pwa' ? '/pwa-test' : page === 'landing' ? '/landing' : page === 'medication' ? '/sayu-health/drug' : page === 'footer' ? '/' : '/v2';
 startPwaState();
 createRoot(document.getElementById('root')!).render(
-  <ThemeProvider><div className="haru-app-shell">
+  <MemoryRouter initialEntries={[initialPath]}><FixtureTheme><div className="haru-app-root">
     <PwaStatus />
+    <div className="haru-app-shell">
     <aside style={{ padding: 8, background: '#eee', color: '#222', font: '12px sans-serif' }}>
       비서실 격리 검증 · 운영 연결 없음 · 시나리오: {new URLSearchParams(location.search).get('scenario') || 'new'}
       <output id="fixture-status">저장 없음</output>
       <Geometry /><ThemePicker />
       <button onClick={() => window.dispatchEvent(new Event('offline'))}>연결 끊김 시험</button> / <button onClick={() => window.dispatchEvent(new Event('online'))}>재연결 시험</button>
     </aside>
-    <MemoryRouter initialEntries={[new URLSearchParams(location.search).get('page') === 'pwa' ? '/pwa-test' : new URLSearchParams(location.search).get('page') === 'landing' ? '/landing' : '/v2']}><Routes>
+    <Routes>
+      <Route path="/" element={<HomePageV2 />} />
       <Route path="/pwa-test" element={<PullRefreshFixture />} />
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/v2" element={<HomePageV2 />} />
       <Route path="/record" element={<RecordPage />} />
+      <Route path="/sayu-health/drug" element={<HealthMedicationPage />} />
       <Route path="*" element={<Destination />} />
-    </Routes>{new URLSearchParams(location.search).get('page') !== 'landing' && <><Footer /><BottomNav /></>}<Toaster /></MemoryRouter>
-  </div></ThemeProvider>,
+    </Routes>{page !== 'landing' && <><TodayQuote /><Footer /><BottomNav /></>}<Toaster />
+    </div>
+  </div></FixtureTheme></MemoryRouter>,
 );

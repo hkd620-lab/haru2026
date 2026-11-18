@@ -7,8 +7,10 @@ let shell, manifest;
 const routes = [];
 const listeners = {};
 let activated = 0;
+let claims = 0;
 const worker = { addEventListener: (type, fn) => { listeners[type] = fn; }, skipWaiting: () => { activated++; } };
 const workbox = {
+  clientsClaim() { claims++; },
   precacheAndRoute(entries) { manifest = entries; }, cleanupOutdatedCaches() {},
   createHandlerBoundToURL(url) { return url; },
   NavigationRoute: class { constructor(url, options) { shell = { url, ...options }; } },
@@ -23,7 +25,7 @@ test('cached shell supports application deep links and excludes auth/payment/sta
   assert.equal(shell.url, '/index.html');
   const excluded = path => shell.denylist.some(regex => regex.test(path));
   for (const path of ['/', '/sayu', '/settings', '/record']) assert.equal(excluded(path), false, path);
-  for (const path of ['/auth/callback', '/payment/single', '/single-payment', '/subscription/inicis', '/welcome/', '/card/', '/firebase-messaging-sw.js']) assert.equal(excluded(path), true, path);
+  for (const path of ['/oauth/google/callback', '/__/auth/handler', '/auth/callback', '/payment/single', '/single-payment', '/subscription/inicis', '/welcome/', '/card/', '/firebase-messaging-sw.js']) assert.equal(excluded(path), true, path);
 });
 test('only public shell assets are precached; private JSON, account data and OAuth URLs are absent', () => {
   assert.ok(manifest.some(entry => entry.url === 'index.html'));
@@ -38,4 +40,12 @@ test('new worker does not force activation; only an explicit update message acti
   assert.equal(activated, 0);
   listeners.message({ data: { type: 'SKIP_WAITING' } });
   assert.equal(activated, 1);
+});
+
+test('every Hosting Function rewrite bypasses cached SPA navigation', () => {
+  const config = JSON.parse(readFileSync(new URL('../../firebase.json', import.meta.url), 'utf8'));
+  for (const rewrite of config.hosting.rewrites.filter(item => item.function)) {
+    assert.equal(shell.denylist.some(regex => regex.test(rewrite.source)), true, rewrite.source);
+  }
+  assert.equal(claims, 1, 'the first visit receives a controller without reloading its draft');
 });

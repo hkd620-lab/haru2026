@@ -43,7 +43,7 @@ export function BottomNav() {
       </div>
     </nav>
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="haru-more-sheet no-print">
+      <DialogContent themeAware className="haru-more-sheet no-print">
         <DialogTitle>더보기</DialogTitle>
         <DialogDescription>필요한 기능과 앱 설정을 찾아보세요.</DialogDescription>
         <div className="haru-more-links">{more.map(({ path, icon: Icon, label }) =>

@@ -11,7 +11,7 @@ export function RecordFormatPicker({ open, afterWriting = false, onClose, onSele
 }) {
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-h-[85dvh] overflow-y-auto" style={{ background: 'var(--haru-bg, #F5F0E8)', color: 'var(--haru-ink, #2C2C2A)' }}>
+      <DialogContent themeAware className="max-h-[85dvh] overflow-y-auto" style={{ background: 'var(--haru-bg, #F5F0E8)', color: 'var(--haru-ink, #2C2C2A)' }}>
         <DialogTitle className="pr-6">{afterWriting ? '작성한 기록을 어떤 형식으로 남길까요?' : '어떤 내용을 남기고 싶으세요?'}</DialogTitle>
         <DialogDescription>
           {afterWriting ? '작성한 내용은 그대로 유지돼요. 어울리는 형식을 골라 편집창에서 확인하고 저장하세요.' : '형식마다 어떤 내용을 남기는지 살펴보세요. 먼저 골라도, 쓰고 나서 골라도 괜찮아요.'}

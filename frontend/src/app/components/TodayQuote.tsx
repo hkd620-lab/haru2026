@@ -112,8 +112,8 @@ export function TodayQuote({ defaultTab, hideTabSwitcher = false }: TodayQuotePr
               onClick={() => handleQuoteTypeChange('classic')}
               className="py-2.5 text-xs font-semibold transition-colors active:scale-[0.99] touch-manipulation"
               style={{
-                backgroundColor: !isBible ? '#1A3C6E' : 'transparent',
-                color: !isBible ? '#fff' : 'rgba(26,60,110,0.55)',
+                backgroundColor: !isBible ? 'var(--haru-button-blue)' : 'transparent',
+                color: !isBible ? '#fff' : 'var(--haru-muted)',
               }}
             >
               💬 동서양 명언
@@ -123,8 +123,8 @@ export function TodayQuote({ defaultTab, hideTabSwitcher = false }: TodayQuotePr
               onClick={() => handleQuoteTypeChange('bible')}
               className="py-2.5 text-xs font-semibold transition-colors active:scale-[0.99] touch-manipulation"
               style={{
-                backgroundColor: isBible ? '#1A3C6E' : 'transparent',
-                color: isBible ? '#fff' : 'rgba(26,60,110,0.55)',
+                backgroundColor: isBible ? 'var(--haru-button-blue)' : 'transparent',
+                color: isBible ? '#fff' : 'var(--haru-muted)',
               }}
               title="성경 말씀"
             >

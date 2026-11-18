@@ -80,10 +80,10 @@ export default defineConfig({
       },
       workbox: {
         skipWaiting: false,
-        clientsClaim: false,
+        clientsClaim: true,
         cleanupOutdatedCaches: true,
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/(?:auth|payment|single-payment|subscription\/inicis)(?:\/|$)/, /^\/(?:welcome|card|tools)(?:\/|$)/, /\.[^/]+$/],
+        navigateFallbackDenylist: [/^\/(?:oauth|__|auth|payment|single-payment|subscription\/inicis)(?:\/|$)/, /^\/(?:welcome|card|tools)(?:\/|$)/, /\.[^/]+$/],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         globPatterns: ['index.html', 'assets/*.{js,css,woff2}', 'icons/*.{png,ico}', 'brand/*.{png,svg}'],
         runtimeCaching: [

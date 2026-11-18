@@ -17,7 +17,7 @@ export default defineConfig({
       if (!importer || !source.startsWith('.')) return;
       const resolved = path.resolve(path.dirname(importer.split('?')[0]), source);
       if (/\/(firebase|FormatModal|HaruLawPanel|useSubscription|DiaryLearnModal|RecordTitleAnimation)(\.tsx?)?$/.test(resolved)) return path.join(root, 'recordMocks.tsx');
-      if (/\/(AuthContext|firestoreService|assistantOnboardingService|TimelineCollageModal|loginPerformance)(\.tsx?)?$/.test(resolved)) {
+      if (/\/(AuthContext|firestoreService|assistantOnboardingService|TimelineCollageModal|loginPerformance|useSensitiveConsent|drugService)(\.tsx?)?$/.test(resolved)) {
         return path.join(root, 'mocks.tsx');
       }
     },

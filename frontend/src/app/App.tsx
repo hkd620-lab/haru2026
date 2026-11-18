@@ -212,7 +212,7 @@ function AppChrome() {
 
   return (
     <div className="haru-app-shell min-h-screen print:bg-white" style={appChromeStyle}>
-      <main style={{ paddingBottom: 'var(--content-pb)' }}>
+      <main>
         <Routes>
           {/* 홈 화면 — 비로그인 시 랜딩, 로그인 시 홈 */}
           <Route path="/" element={<HomeOrLanding />} />
@@ -340,11 +340,15 @@ function AppChrome() {
   );
 }
 
+function RoutedTheme({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  return <ThemeProvider pathname={pathname}><div className="haru-app-root"><PwaStatus />{children}</div></ThemeProvider>;
+}
+
 function App() {
   return (
-    <ThemeProvider>
-      <PwaStatus />
-      <BrowserRouter>
+    <BrowserRouter>
+      <RoutedTheme>
         <PublicLegalBoundary>
           <AuthProvider>
             <LoadingProvider>
@@ -354,8 +358,8 @@ function App() {
             </LoadingProvider>
           </AuthProvider>
         </PublicLegalBoundary>
-      </BrowserRouter>
-    </ThemeProvider>
+      </RoutedTheme>
+    </BrowserRouter>
   );
 }
 

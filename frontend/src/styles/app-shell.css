@@ -17,6 +17,7 @@
   --haru-surface: #2B3127;
   --haru-subtle: #343D2F;
   --haru-ink: #F0F1E9;
+  --haru-agent-ink: #F0F1E9;
   --haru-muted: #C0C7B6;
   --haru-border: #515B49;
   --haru-input-border: #8FA37B;
@@ -42,7 +43,8 @@
   --haru-home-background: #20251D;
 }
 html, body { background: var(--haru-bg); color: var(--haru-ink); }
-.haru-app-shell { background: var(--haru-bg); color: var(--haru-ink); padding-top: env(safe-area-inset-top, 0px); }
+.haru-app-root { padding-top: env(safe-area-inset-top, 0px); }
+.haru-app-shell { background: var(--haru-bg); color: var(--haru-ink); padding-bottom: var(--content-pb); }
 .haru-app-shell > main { min-height: 60dvh; }
 .haru-bottom-nav { position: fixed; inset: auto 0 0; z-index: 40; background: var(--haru-surface); border-top: 1px solid var(--haru-border); padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
 .haru-nav-items { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 760px; margin: auto; }
@@ -65,7 +67,7 @@ html, body { background: var(--haru-bg); color: var(--haru-ink); }
 .haru-theme-picker span { display: grid; place-items: center; min-height: 44px; padding: 8px; border: 1px solid var(--haru-border); border-radius: 8px; background: var(--haru-surface); color: var(--haru-ink); cursor: pointer; font-size: 14px; }
 .haru-theme-picker input:checked + span { background: var(--haru-subtle); border-color: var(--haru-accent-ink); font-weight: 700; }
 .haru-theme-picker input:focus-visible + span { outline: 3px solid var(--haru-link); outline-offset: 2px; }
-.haru-pwa-status { position: relative; z-index: 45; padding: calc(12px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); background: var(--haru-subtle); color: var(--haru-ink); border-bottom: 1px solid var(--haru-border); font-size: 14px; line-height: 1.6; }
+.haru-pwa-status { position: relative; z-index: 45; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); background: var(--haru-subtle); color: var(--haru-ink); border-bottom: 1px solid var(--haru-border); font-size: 14px; line-height: 1.6; }
 .haru-pwa-status p { margin: 0 0 8px; }
 .haru-pwa-status button { min-height: 44px; padding: 8px 12px; margin-right: 8px; border: 1px solid var(--haru-border); border-radius: 8px; background: var(--haru-surface); color: var(--haru-ink); cursor: pointer; }
 .haru-format-help { padding: 12px 0; color: var(--haru-muted); font-size: 14px; }
@@ -85,4 +87,19 @@ button:disabled { cursor: not-allowed; }
   .haru-more-sheet { top: auto; bottom: 0; left: 0; width: 100%; max-width: 100%; transform: none; translate: none; border-radius: 20px 20px 0 0; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
 }
 @media (prefers-reduced-motion: reduce) { .haru-home-page *, .haru-bottom-nav *, .haru-more-sheet * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
-@media print { html, body, .haru-app-shell { background: white; color: black; } }
+@media print { html, body, .haru-app-root { padding-top: env(safe-area-inset-top, 0px); }
+.haru-app-shell { background: white; color: black; } }
+
+/* Unaudited dialogs keep their existing foreground/background pair, even on a dark route. */
+.haru-light-surface {
+  color-scheme: light;
+  color: #2C2C2A;
+  --background: #F5F0E8; --foreground: #2C2C2A; --muted-foreground: #626956;
+  --haru-bg: #F5F0E8; --haru-surface: #fff; --haru-subtle: #F0F3E7; --haru-agent-ink: initial;
+  --haru-ink: #2C2C2A; --haru-muted: #626956; --haru-border: #DCD8CD; --haru-input-border: #7B8962;
+  --haru-accent: #4A5A2C; --haru-accent-ink: #4A5A2C; --haru-link: #1A3C6E; --haru-button-blue: #1A3C6E;
+  --haru-tint-neutral: initial; --haru-tint-rose: initial; --haru-tint-orange: initial; --haru-tint-amber: initial;
+  --haru-tint-green: initial; --haru-tint-cyan: initial; --haru-tint-blue: initial; --haru-tint-violet: initial;
+  --haru-semantic-rose: initial; --haru-semantic-orange: initial; --haru-semantic-amber: initial;
+  --haru-semantic-green: initial; --haru-semantic-cyan: initial; --haru-semantic-blue: initial; --haru-semantic-violet: initial;
+}

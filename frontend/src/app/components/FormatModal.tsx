@@ -3937,7 +3937,7 @@ ${contentValues.slice(0, 4100)}`,
   };
 
   return (
-    <>
+    <div className="haru-light-surface">
       {/* 메인 모달 */}
       <div
         style={{
@@ -7571,6 +7571,6 @@ ${contentValues.slice(0, 4100)}`,
                 : '사진 업로드 중...'
         }
       />
-    </>
+    </div>
   );
 }
