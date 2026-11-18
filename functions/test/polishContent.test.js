@@ -1466,12 +1466,12 @@ test('풍성도·문장별 검사 블록은 강의 마지막 응답 형식 지�
   }
 });
 
-test('행사 메모의 강에만 항목을 두 문장으로 푸는 기존 안내를 남긴다', async () => {
+test('행사 메모는 항목을 풀되 새 시점·장소·순서 연결어를 만들지 않는다', async () => {
   const event = '동네 전시회 참석.\n- 일시: 5월 3일 오전 10시~정오\n- 장소: 은행나무 도서관';
   for (const [text, expected] of [[event, true], ['오후에 화분 하나에 물을 줬다.', false]]) {
     const f = fixture();
     await f.request({ text, format: 'diary', strength: 'STRONG', includeAiComment: false });
-    assert.equal(f.calls[0].input.includes('행사 메모에서 여러 항목이 묶인 문장은 두 문장으로 풀어 쓴다. 같은 행동을 거듭 서술하지 말고 지시어로 이어 준다.'), expected);
+    assert.equal(f.calls[0].input.includes('행사 메모에서 여러 항목이 묶인 문장은 두 문장으로 풀어 쓴다. 같은 행동을 거듭 서술하지 않는다. 원문에 명시된 날짜·장소·참석 정보를 문장 안에 엮되 새 시점·장소·순서 연결어는 만들지 않는다.'), expected);
     assert.ok(f.calls[0].input.includes('원문에 명시된 동시성과 이유를 살린다'));
   }
 });
@@ -2108,4 +2108,44 @@ test('실제 Gemini 녹음 응답은 한 문단·다문단의 연습에서 기�
     assert.match(result.text, /아직 남아/);
     assert.doesNotMatch(result.text, /언제든|내내|오랜|수없이/);
   }
+});
+
+test('CC 잔여: 조사 엔·와·과가 붙은 상대 날짜도 바꾸지 않고 조사만 다듬은 문장은 살린다', async () => {
+  for (const suffix of ['엔', '와', '과', '에는', '도']) {
+    const source = `이번 주${suffix} 계획을 적었다.`;
+    assert.equal((await strongResult(source, `다음 주${suffix} 계획을 적었다.`)).text, source);
+  }
+  assert.equal((await strongResult('지난주가 바빴다.', '지난주에는 바빴다.')).text, '지난주에는 바빴다.');
+});
+
+test('CC 잔여: 이동 동사는 보존하고 근거 없는 점진 방식은 복원한다', async () => {
+  for (const [source, edited] of [['길을 지나가다 꽃을 봤다.', '길을 지나가면서 꽃을 봤다.'], ['계단을 올라가다 간판을 봤다.', '계단을 올라가며 간판을 봤다.'], ['회사에 가다 간판을 봤다.', '회사 가면서 간판을 봤다.']]) {
+    assert.equal((await strongResult(source, edited)).text, edited);
+  }
+  assert.equal((await strongResult('그림을 그렸다.', '그림을 그려 가면서 완성했다.')).text, '그림을 그렸다.');
+});
+
+test('CC 잔여: 처음인데·처음입니다의 새 최초 주장을 차단한다', async () => {
+  for (const ending of ['처음인데', '처음입니다']) {
+    const source = '이 곡을 녹음했다.';
+    assert.equal((await strongResult(source, `이 곡 녹음은 ${ending}.`)).text, source);
+  }
+  const source = '이 곡 녹음은 처음인데 뿌듯했다.';
+  assert.equal((await strongResult(source, source)).text, source);
+});
+
+test('CC 잔여: 들고는 듣다로 오인하지 않고 수만·그저께의 낱말 내부를 한정으로 오인하지 않는다', async () => {
+  for (const [source, edited] of [['가방을 들었다. 기뻤다.', '가방을 들고 기뻤다.'], ['다시 들을 수 있다.', '다시 들을 수만 있다.'], ['그저께 녹음했다.', '그저께 녹음을 했다.']]) {
+    assert.equal((await strongResult(source, edited)).text, edited);
+  }
+  assert.equal((await strongResult('연습했다.', '수만 번 연습했다.')).text, '연습했다.');
+});
+
+
+test('원문에 없는 스스로 정한 목표는 빼고 녹음의 의미 문장은 살린다', async () => {
+  const source = ['연습해 온 곡을 오늘 처음 녹음했다.', '긴장했지만 끝까지 연주해서 뿌듯했다.', '음원 정리와 공개는 아직 남았다.', '연습하던 곡이 다시 들을 수 있는 기록이 된 뜻깊은 날이었다.'];
+  const edited = [source[0], '긴장했지만 곡의 끝까지 연주를 마쳤고, 스스로 정한 끝까지 다 연주해 낸 사실에 뿌듯했다.', '다만 음원을 정리하고 공개하는 일은 아직 남아 있다.', '그래도 연습하던 곡이 다시 들을 수 있는 기록으로 남으면서, 익혀 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.'];
+  assert.equal((await strongResult(source.join('\n\n'), edited)).text, [edited[0], source[1], edited[2], edited[3]].join('\n\n'));
+  const explicit = '스스로 정한 곡의 끝까지 연주했다.';
+  assert.equal((await strongResult(explicit, explicit)).text, explicit);
 });
