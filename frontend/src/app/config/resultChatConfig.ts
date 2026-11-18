@@ -127,7 +127,7 @@ export const RESULT_CHAT_CONFIGS: Record<string, ResultChatConfig> = {
   },
   child_sayu: {
     sourceKey: 'child_sayu',
-    label: '육아일기',
+    label: '손주자람일기',
     riskLevel: 'medium',
     safetyMode: 'medical_basic',
     externalDataPolicy: 'conditional_external',

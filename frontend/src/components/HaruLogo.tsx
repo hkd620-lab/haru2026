@@ -22,7 +22,7 @@ const grapeLayout: GrapePosition[] = [
   { x: 18, y: -66, icon: 'garden', label: '텃밭' },
   { x: 55, y: -66, icon: 'memo', label: '메모' },
   { x: -36, y: -26, icon: 'pet', label: '애완동물' },
-  { x: 0, y: -26, icon: 'parenting', label: '육아일기' },
+  { x: 0, y: -26, icon: 'parenting', label: '손주자람일기' },
   { x: 36, y: -26, icon: 'travel', label: '여행기록' },
   { x: -18, y: 14, icon: 'mission', label: '선교보고' },
   { x: 18, y: 14, icon: 'report', label: '일반보고' },

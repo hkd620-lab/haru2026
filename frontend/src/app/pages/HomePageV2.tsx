@@ -23,6 +23,15 @@ const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 // 일반 사용자 메뉴에서 숨기는 비서 (코드는 보존)
 const HIDDEN_AGENT_LABELS = new Set([
   '나도작가',
+  // 은퇴자 대상 메뉴 정리 1단계(2026-11-18 허대표님 승인) — 사용량 확인 후 삭제 여부 결정
+  'HARU주식관리',
+  'HARU보조장부',
+  '영어일기',
+  'HARU미래전망',
+  'HARU반려동물건강돌봄',
+  // 삭제 예정(3단계) — 그때까지는 홈에서만 숨긴다
+  '전자소송연습비서',
+  'HARU우리아이건강돌봄',
 ]);
 
 const FONT_KR =
@@ -142,7 +151,7 @@ const RECORDS: RecordItem[] = [
     ),
   },
   {
-    label: '육아일기',
+    label: '손주자람일기',
     sub: '자라남의 기록',
     bg: '#E9DEF1',
     stroke: '#5A4E7A',
@@ -176,6 +185,7 @@ const RECORDS: RecordItem[] = [
     bg: '#E5DFD0',
     stroke: '#7A6F5A',
     format: '일반보고',
+    developerOnly: true, // 은퇴자 대상 메뉴 정리: 일반 회원 홈에서는 숨김(2026-11-18 허대표님 결정)
     icon: (
       <>
         <rect x="4" y="3" width="16" height="18" rx="2" />
@@ -190,6 +200,7 @@ const RECORDS: RecordItem[] = [
     bg: '#9BAA67',
     stroke: '#FFFFFF',
     format: '업무일지',
+    developerOnly: true, // 은퇴자 대상 메뉴 정리: 일반 회원 홈에서는 숨김(2026-11-18 허대표님 결정)
     icon: (
       <>
         <rect x="3" y="7" width="18" height="13" rx="2" />

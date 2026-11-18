@@ -8,7 +8,7 @@ export const RECORD_FORMAT_DESCRIPTIONS: Partial<Record<RecordFormat, { label: s
   '독서사유': { label: '독서사유', description: '책에서 인상 깊었던 내용과 읽으며 떠오른 나의 생각을 남겨요.' },
   '텃밭일지': { label: '텃밭일지', description: '기르는 식물의 변화와 물주기 등 돌본 내용을 남겨요.' },
   '애완동물관찰일지': { label: '반려동물', description: '함께 사는 동물의 행동과 상태, 돌보며 발견한 변화를 남겨요.' },
-  '육아일기': { label: '육아일기', description: '아이와 보낸 하루, 새롭게 해낸 일과 부모로서 느낀 마음을 남겨요.' },
+  '육아일기': { label: '손주자람일기', description: '아이와 손주가 자라는 모습, 새롭게 해낸 일과 곁에서 느낀 마음을 남겨요.' },
   '선교보고': { label: '선교보고', description: '선교 현장에서 한 활동과 만난 사람들, 나누고 싶은 소식을 정리해요.' },
   '일반보고': { label: '일반보고', description: '행사나 활동의 진행 내용과 결과를 사실 중심으로 정리해요.' },
   '업무일지': { label: '업무일지', description: '오늘 한 일, 진행 상황과 다음에 해야 할 일을 남겨요.' },

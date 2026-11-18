@@ -8,9 +8,6 @@ import { useAuth } from './contexts/AuthContext';
 import { rememberPostLoginReturnPath } from './utils/postLoginReturn';
 import { HomePageV2 } from './pages/HomePageV2';
 import { LandingPage } from './pages/LandingPage';
-import { OnboardingPreviewPage } from './pages/OnboardingPreviewPage';
-import { GyeongdaePreviewPage } from './pages/GyeongdaePreviewPage';
-import { OnyuPreviewPage } from './pages/OnyuPreviewPage';
 import { AssistantOnboardingPage } from './pages/AssistantOnboardingPage';
 import { AssistantOnboardingDetailPage } from './pages/AssistantOnboardingDetailPage';
 import { RecordPage } from './pages/RecordPage';
@@ -222,11 +219,6 @@ function AppChrome() {
           {/* 실제 신규 사용자 온보딩 */}
           <Route path="/onboarding" element={<AssistantOnboardingPage />} />
           <Route path="/onboarding/detail" element={<AssistantOnboardingDetailPage />} />
-
-          {/* 비교용 preview 라우트 */}
-          <Route path="/onboarding-preview" element={<OnboardingPreviewPage />} />
-          <Route path="/gyeongdae-preview" element={<GyeongdaePreviewPage />} />
-          <Route path="/onyu-preview" element={<OnyuPreviewPage />} />
 
           {/* 인증 */}
           <Route path="/login" element={<LoginPage />} />
