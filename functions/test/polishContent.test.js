@@ -2219,3 +2219,29 @@ test('Codex 재리뷰: 처음 구웠다와 구운 것은 처음이었다의 최�
     assert.equal((await strongResult(source, edited)).text, edited);
   }
 });
+
+
+test('새 표본: 만족 감정의 새 관찰 계기를 복원하고 글 묶음의 단일 글 과장을 차단한다', async () => {
+  const source = ['메모 여덟 편을 작은 글 묶음으로 정리했다.', '만족스러웠다.', '따로 남겨 둔 기록이 한 흐름으로 읽히게 된 날이었다.'];
+  const edited = [source[0], '정리된 글 묶음을 보니 만족스러웠다.', '따로 남겨 둔 기록이 하나의 글로 묶인 날이었다.'];
+  assert.equal((await strongResult(source.join('\n\n'), edited)).text, source.join('\n\n'));
+  const originalCause = '글 묶음을 보니 만족스러웠다.';
+  assert.equal((await strongResult(originalCause, originalCause)).text, originalCause);
+  assert.equal((await strongResult('글 한 편을 썼다.', '하나의 글을 썼다.')).text, '하나의 글을 썼다.');
+  const originalSingle = '오늘 기록이 하나의 글로 이어졌다.';
+  assert.equal((await strongResult(originalSingle, originalSingle)).text, originalSingle);
+});
+
+test('새 표본: 발아를 생명의 시작으로 확대하지 않는다', async () => {
+  const source = '심어 둔 씨앗이 싹을 틔운 뜻깊은 시작이었다.';
+  for (const claim of ['심어 둔 씨앗이 싹을 틔우며 생명이 시작된 뜻깊은 날이었다.', '새 생명이 탄생한 날이었다.']) {
+    assert.equal((await strongResult(source, claim)).text, source);
+  }
+});
+
+
+test('독립 검토: 글 하나하나는 단일 글 근거가 아니며 새 생명 동의어는 보존한다', async () => {
+  const source = '여덟 편의 글 하나하나를 작은 글 묶음으로 정리했다.';
+  assert.equal((await strongResult(source, '여덟 편의 글을 하나의 글로 정리했다.')).text, source);
+  assert.equal((await strongResult('새로운 생명이 태어났다.', '새 생명이 태어났다.')).text, '새 생명이 태어났다.');
+});
