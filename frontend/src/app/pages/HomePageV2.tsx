@@ -23,6 +23,15 @@ const DEVELOPER_UID = 'naver_lGu8c7z0B13JzA5ZCn_sTu4fD7VcN3dydtnt0t5PZ-8';
 // 일반 사용자 메뉴에서 숨기는 비서 (코드는 보존)
 const HIDDEN_AGENT_LABELS = new Set([
   '나도작가',
+  // 은퇴자 대상 메뉴 정리 1단계(2026-11-18 허대표님 승인) — 사용량 확인 후 삭제 여부 결정
+  'HARU주식관리',
+  'HARU보조장부',
+  '영어일기',
+  'HARU미래전망',
+  'HARU반려동물건강돌봄',
+  // 삭제 예정(3단계) — 그때까지는 홈에서만 숨긴다
+  '전자소송연습비서',
+  'HARU우리아이건강돌봄',
 ]);
 
 const FONT_KR =
