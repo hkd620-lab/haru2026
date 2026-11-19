@@ -149,6 +149,15 @@ export function LitigationFlowMap() {
         })}
       </ol>
 
+      <button
+        type="button"
+        onClick={() => navigate('/legal-assistant/guide', { state: { resetAssistantScroll: true } })}
+        className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-1 rounded-md border border-blue-200 bg-white px-4 text-sm font-bold text-blue-700"
+      >
+        자세한 전체 과정과 내 사건 점검표 보기
+        <ChevronRight className="size-4" aria-hidden="true" />
+      </button>
+
       <p className="mt-4 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-sm leading-6 text-red-900">
         이 흐름은 이해를 돕기 위한 안내입니다. HARU는 법률 판단, 법정 기한 확정, 실제 법원 제출을 대신하지 않습니다.
         실제 진행은 법원 문서와 전자소송포털의 안내를 확인하세요.
