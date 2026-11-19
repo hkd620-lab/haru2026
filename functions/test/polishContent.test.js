@@ -2347,6 +2347,8 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
     ['그동안에', '준비한'],
     ['그동안에만', '준비한'],
     ['그동안의', '준비한'],
+    ['그동안엔', '준비한'],
+    ['그동안까지', '준비한'],
   ]) {
     const withDuration = [...source.slice(0, 3), `${duration} ${prepared} 내용을 설명할 순서로 정돈한 날이었다.`];
     const durationOutput = [...reworded];
