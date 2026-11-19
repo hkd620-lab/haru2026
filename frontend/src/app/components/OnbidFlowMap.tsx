@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calculator, CircleCheck, FileSearch, Gavel, Home, KeyRound, ShieldCheck, UserPlus, Wallet, type LucideIcon } from 'lucide-react';
+import { Calculator, ChevronDown, CircleCheck, FileSearch, Gavel, Home, KeyRound, ShieldCheck, UserPlus, Wallet } from 'lucide-react';
 import { FlowTimeline, type FlowPhase, type FlowStep } from './FlowTimeline';
 
 // 온비드 공매 입찰 흐름도 + 보증금 연습 계산. 문구는 정해진 안내문이며 AI를 쓰지 않는다.
@@ -16,9 +16,12 @@ const PHASES: Record<string, FlowPhase> = {
 function DepositPractice() {
   const [amountText, setAmountText] = useState('');
   const [rate, setRate] = useState('10');
-  const amount = Number(amountText.replace(/[^0-9]/g, ''));
+  // 숫자만 받고 15자리까지로 제한한다(자바스크립트 정수 정밀도 한계 안). '1억'처럼 글자를 넣으면 안내한다.
+  const digits = amountText.replace(/[^0-9]/g, '').slice(0, 15);
+  const amount = digits ? Number(digits) : 0;
+  const hasNonNumeric = /[^0-9,\s]/.test(amountText);
   const rateNumber = Number(rate);
-  const validRate = Number.isFinite(rateNumber) && rateNumber > 0 && rateNumber <= 100;
+  const validRate = rate !== '' && Number.isFinite(rateNumber) && rateNumber > 0 && rateNumber <= 100;
   const deposit = amount > 0 && validRate ? Math.round((amount * rateNumber) / 100) : null;
   const inputStyle = { fontSize: 16 } as const; // 모바일 입력 확대 방지
   return (
@@ -28,18 +31,22 @@ function DepositPractice() {
         보증금 연습 계산
         <span className="ml-1 rounded bg-gray-800 px-1.5 py-0.5 text-sm font-bold text-white">연습</span>
       </p>
-      <p className="mt-1 text-gray-700">입찰하려는 금액을 넣어 보증금이 얼마쯤 되는지 연습해 보세요.</p>
-      <label className="mt-2 block font-semibold text-gray-900" htmlFor="onbid-practice-amount">입찰 금액 (원)</label>
+      <p className="mt-1 text-gray-700">금액을 넣어 보증금이 얼마쯤 되는지 연습해 보세요.</p>
+      <label className="mt-2 block font-semibold text-gray-900" htmlFor="onbid-practice-amount">기준 금액 (원) — 예: 입찰 금액</label>
       <input
         id="onbid-practice-amount"
         inputMode="numeric"
         autoComplete="off"
         value={amount > 0 ? amount.toLocaleString('ko-KR') : ''}
         onChange={(event) => setAmountText(event.target.value)}
+        aria-describedby="onbid-practice-amount-help"
         placeholder="예: 100,000,000"
         style={inputStyle}
         className="mt-1 min-h-[44px] w-full rounded-md border border-gray-300 px-3"
       />
+      <p id="onbid-practice-amount-help" className={`mt-1 ${hasNonNumeric ? 'font-bold text-red-800' : 'text-gray-600'}`}>
+        숫자만 입력해 주세요. 예: 100000000 (1억 원)
+      </p>
       <label className="mt-2 block font-semibold text-gray-900" htmlFor="onbid-practice-rate">보증금 비율 (%)</label>
       <input
         id="onbid-practice-rate"
@@ -50,9 +57,19 @@ function DepositPractice() {
         style={inputStyle}
         className="mt-1 min-h-[44px] w-full rounded-md border border-gray-300 px-3"
       />
-      <p className="mt-1 text-gray-600">보통 입찰 금액의 10% 안팎이지만, 실제 비율은 물건 공고문이 기준입니다.</p>
+      <p className="mt-1 text-gray-600">
+        보증금 비율과 무엇을 기준으로 계산하는지(입찰 금액, 최저입찰가 등)는 물건 공고문에 적혀 있습니다. 보통 10% 안팎이지만 물건마다 다를 수 있어요. 여기서는 연습으로 입력한 금액에 비율을 곱해 봅니다.
+      </p>
       <p aria-live="polite" className="mt-2 rounded-md bg-emerald-50 px-3 py-2 font-bold text-emerald-900">
-        {deposit === null ? '입찰 금액을 넣으면 보증금이 계산돼요.' : `연습 계산 보증금: 약 ${deposit.toLocaleString('ko-KR')}원`}
+        {!validRate
+          ? '보증금 비율은 0보다 크고 100 이하의 숫자로 넣어 주세요.'
+          : hasNonNumeric
+            ? '금액은 숫자로만 넣어 주세요. 예: 100000000'
+            : deposit === null
+              ? '기준 금액을 넣으면 보증금이 계산돼요.'
+              : deposit < 1
+                ? '계산된 보증금이 1원보다 작아요. 금액을 다시 확인해 주세요.'
+                : `연습 계산 보증금: 약 ${deposit.toLocaleString('ko-KR')}원`}
       </p>
       <p className="mt-2 text-gray-700">
         보증금 말고도 낙찰 후 나머지 대금과 점유 정리·수리 등 별도 비용이 들 수 있어요. 이 계산은 연습이며 실제 금액이 아닙니다.
@@ -108,7 +125,7 @@ const STEPS: FlowStep[] = [
   {
     short: '잔금 납부', icon: CircleCheck, phase: 'result',
     easy: '낙찰된 뒤 정해진 기한 안에 나머지 대금을 내는 단계입니다.',
-    userTasks: ['매각결정과 잔금 납부 기한 확인(물건·공고에 따라 다름)', '기한 안에 납부'],
+    userTasks: ['매각결정(또는 계약 체결)과 잔금 납부 기한 확인(물건·공고에 따라 다름)', '기한 안에 납부'],
     haruTasks: ['확인할 것 안내'],
     note: '기한 안에 내지 않으면 매각이 취소되고 보증금을 돌려받지 못할 수 있습니다. 기한은 HARU가 확정하지 않고 공고문·온비드 안내를 따릅니다.',
   },
@@ -125,21 +142,40 @@ const SITUATIONS = [
   { label: '처음 알아봐요', index: 0 },
   { label: '물건을 보고 있어요', index: 1 },
   { label: '입찰하려고 해요', index: 3 },
-  { label: '낙찰됐어요', index: 5 },
+  { label: '낙찰됐어요', index: 6 },
 ];
 
 export function OnbidFlowMap() {
+  // 검색 폼이 첫 화면에서 밀려나지 않도록 기본은 접어 두고, 눌러서 펼친다.
+  const [open, setOpen] = useState(false);
   return (
     <div className="mb-5">
-      <FlowTimeline
-        id="onbid-flow"
-        title="공매, 한눈에 보는 흐름"
-        intro="온비드 공매는 한국자산관리공사(캠코)가 온비드에서 전자로 진행하는 입찰입니다. 법원이 진행하는 법원경매와는 다른 제도예요. 물건마다 다를 수 있어요. 단계를 누르면 자세히 볼 수 있어요."
-        phases={PHASES}
-        steps={STEPS}
-        situations={SITUATIONS}
-        footer="이 흐름과 연습 계산은 이해를 돕기 위한 안내입니다. HARU는 입찰을 권유하거나 대신하지 않으며, 낙찰 가능성과 수익을 알려 드리지 않습니다. 실제 입찰은 온비드에서 직접 하고, 물건별 공고문이 기준입니다."
-      />
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-controls="onbid-flow-wrap"
+        className="flex min-h-[56px] w-full items-center justify-between gap-2 rounded-lg border border-blue-200 bg-white px-4 py-3 text-left shadow-sm"
+      >
+        <span className="min-w-0">
+          <span className="block text-[17px] font-bold text-gray-900">공매, 한눈에 보는 흐름</span>
+          <span className="block text-sm leading-6 text-gray-600">가입부터 잔금까지 8단계 · 보증금 연습 계산</span>
+        </span>
+        <ChevronDown className={`size-5 shrink-0 text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+      </button>
+      {open && (
+        <div id="onbid-flow-wrap" className="mt-3">
+          <FlowTimeline
+            id="onbid-flow"
+            title="공매, 한눈에 보는 흐름"
+            intro="온비드 공매는 한국자산관리공사(캠코)가 운영하는 온비드에서 캠코와 공공기관 등이 전자로 진행하는 입찰입니다. 법원이 진행하는 법원경매와는 다른 제도예요. 물건마다 다를 수 있어요. 단계를 누르면 자세히 볼 수 있어요."
+            phases={PHASES}
+            steps={STEPS}
+            situations={SITUATIONS}
+            footer="이 흐름과 연습 계산은 이해를 돕기 위한 안내입니다. HARU는 입찰을 권유하거나 대신하지 않으며, 낙찰 가능성과 수익을 알려 드리지 않습니다. 실제 입찰은 온비드에서 직접 하고, 물건별 공고문이 기준입니다."
+          />
+        </div>
+      )}
     </div>
   );
 }
