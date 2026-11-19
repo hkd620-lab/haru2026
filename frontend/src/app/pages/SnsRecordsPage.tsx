@@ -1,3 +1,4 @@
+import { SnsImportFlowMap } from '../components/SnsImportFlowMap';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
@@ -385,6 +386,8 @@ function SnsRecordsContent() {
 
             {source === 'facebook' && (
               <>
+                <SnsImportFlowMap />
+
                 {/* STEP 1 */}
                 <div style={stepBoxStyle}>
                   <div style={stepHeaderStyle}>
