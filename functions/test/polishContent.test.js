@@ -2265,6 +2265,17 @@ test('발아 원문 밖 결말을 복원할 때 사실에 맞는 앞 문장 편�
   });
 });
 
+test('직접 만든 일의 수치 성취를 풀어 쓰고 명시된 도움을 보존한다', async () => {
+  const source = '내가 만든 독서 퀴즈 다운로드 12회 달성 이웃이 도와준 덕분이다.';
+  const output = '내가 만든 독서 퀴즈의 다운로드 횟수가 12회에 이르렀다. 직접 만든 수고가 기록으로 남았고, 이만큼 이룰 수 있었던 건 이웃이 도와준 덕분이다.';
+  const f = fixture({ polishParagraphs: [output] });
+  const result = await f.request({ text: source, strength: 'STRONG', includeAiComment: false });
+  assert.match(f.calls[0].systemInstruction, /직접 만든 일과 수치로 남은 성취/);
+  assert.match(f.calls[0].systemInstruction, /도움의 방법·시점, 개발 기간·고생의 강도/);
+  assert.match(f.calls[0].systemInstruction, /의미와 도움은 일기 말투로 이어 쓰고/);
+  assert.equal(result.text, output);
+});
+
 test('발아의 첫 관찰·기쁨·미전개를 보존하면서 기록의 의미를 풀어 쓴다', async () => {
   const source = '화분에 심어 둔 강낭콩에서 오늘 처음 싹이 나온 것을 봤다. 기뻤다. 잎이 펼쳐진 것은 아니다. 심어 둔 씨앗이 싹을 틔운 뜻깊은 시작이었다.';
   const output = '화분에 심어 둔 강낭콩에서 오늘 첫 싹을 봤다. 기쁜 일이었다. 잎이 펼쳐진 것은 아니다. 그래도 심어 둔 씨앗이 틔운 그 첫 싹은 내게 뜻깊은 시작이었다.';
