@@ -3489,15 +3489,24 @@ ${SOURCE_PRESERVATION_RULES}`;
               }
             }
           }
-          if (polishPresentationParagraphs && /설명할[ \t]+(?:순서|차례|흐름)/.test(paragraph.original)) {
-            // 앞 절의 배열과 뒤 절의 설명 흐름이 같은 성과를 말할 때만 겹치는 앞 절을 줄인다.
-            const originalPeriod = /(?<![가-힣])그동안[가-힣]*/.exec(paragraph.original)?.[0];
-            const preparedDuring = originalPeriod ? `${originalPeriod === '그동안의' ? '그동안' : originalPeriod} ` : '';
-            candidateText = candidateText.replace(
-              /^(그래도[ \t]+)?(?:그동안[ \t]+)?((?:생각해|준비해) 온 내용을) 설명할 (?:순서|차례)로 (?:엮어 (?:내며|냄으로써)|정돈해|정리해),[ \t]+(?=무엇부터 (?:(?:설명하고|밝히고) )?어떻게 (?:이어 ?갈지|이야기할지) 흐름을)/,
-              (_phrase, transition: string | undefined, prepared: string) =>
-                `${transition ?? ''}${preparedDuring}${prepared} 정돈해, `,
-            );
+          const explainsOrder = /설명할[ \t]+(?:순서|차례|흐름)/;
+          if (polishPresentationParagraphs && explainsOrder.test(paragraph.original)) {
+            // 결말의 준비 기간만 이어 쓴다. 다른 문장이나 부사로 쓰기 어려운 형태의 기간은 치환하지 않는다.
+            const periodWord = /(?<![가-힣])그동안[가-힣]*/;
+            const meaningSentences = groundedSentenceTools().sentences(paragraph.original)
+              .filter(sentence => explainsOrder.test(sentence));
+            const originalPeriod = periodWord.exec(meaningSentences[0] ?? '')?.[0];
+            const usablePeriod = originalPeriod
+              ? /^그동안(?:에[는도만]?|엔|[은도만의]|까지)?$/.test(originalPeriod)
+              : !periodWord.test(paragraph.original);
+            if (meaningSentences.length === 1 && usablePeriod) {
+              const preparedDuring = originalPeriod ? `${originalPeriod === '그동안의' ? '그동안' : originalPeriod} ` : '';
+              candidateText = candidateText.replace(
+                /^(그래도[ \t]+)?(?:그동안[ \t]+)?((?:생각해|준비해) 온 내용을) 설명할 (?:순서|차례)로 (?:엮어 (?:내며|냄으로써)|정돈해|정리해),[ \t]+(?=무엇부터 (?:(?:설명하고|밝히고) )?어떻게 (?:이어 ?갈지|이야기할지) 흐름을)/,
+                (_phrase, transition: string | undefined, prepared: string) =>
+                  `${transition ?? ''}${preparedDuring}${prepared} 정돈해, `,
+              );
+            }
           }
           // 원문 근거를 남길 수 있으면 같은 문단 안에서 되풀이한 문장을 지운다.
           const paragraphText = dropDuplicateGroundedSentences(candidateText, paragraph.original) ?? candidateText;

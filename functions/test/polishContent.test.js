@@ -2359,6 +2359,17 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
     assert.ok(adjustedWithDuration.text.split('\n\n')[3].includes(expectedDuration + ' '));
   }
 
+  for (const ending of [
+    '그동안을 떠올리며 준비한 내용을 설명할 순서로 정돈한 날이었다.',
+    '그동안이 길었다. 준비한 내용을 설명할 순서로 정돈한 날이었다.',
+  ]) {
+    const withOtherPeriod = [...source.slice(0, 3), ending];
+    const output = [...reworded];
+    const run = fixture({ polishParagraphs: output });
+    const result = await run.request({ text: withOtherPeriod.join('\n\n'), strength: 'STRONG', includeAiComment: false });
+    assert.doesNotMatch(result.text, /그동안[이를] 생각해 온/);
+  }
+
   const duplicated = [...edited];
   duplicated[0] = '발표 자료 열 장의 순서를 바꿨다.';
   duplicated[1] = '그렇게 세 번에 걸쳐 순서를 바꾼 끝에 마지막 장까지 정리하고 나니 뿌듯했다.';
