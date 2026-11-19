@@ -2801,6 +2801,27 @@ function groundedSentenceTools() {
   return { split, sentences, grams, similarity, covers, joinKept, factMarkers, union, contains, keepsSourceEvidence, restoreLostEvidence, closing };
 }
 
+// 첫 싹에 이미 의미를 부여한 원문에서, 모델이 맺음에 근거 없는 기다림·생명이나
+// 같은 변화를 되풀이한 경우에만 원문의 파종·발아·의미로 맺음 한 문장을 다시 쓴다.
+function repairSproutConclusion(text: string, source: string): string {
+  const { sentences } = groundedSentenceTools();
+  const originals = sentences(source);
+  const meaning = /^(심어|뿌려) 둔 씨앗이 싹을 (틔운|낸) (뜻깊은|의미 있는) 시작이었다[.!?。！？]?$/
+    .exec(originals.at(-1) ?? '');
+  if (!meaning || !originals.some(sentence => /(?:처음(?:으로)? 싹|첫 싹)[^.!?]*(?:봤다|보았다)/.test(sentence))) return text;
+
+  const ending = sentences(text).at(-1);
+  if (!ending || !/^(?:그래도 )?(?:심어|뿌려) 둔 씨앗이 싹을 /.test(ending)) return text;
+  const unsupported = /기다리|기다려|기다렸|기대|생명|심어 온/;
+  const repeatsSprouting = /싹을 (?:틔운 것은|틔워 냈다는|틔웠다는|틔운 점에서)[^.!?]*싹/.test(ending);
+  if (!repeatsSprouting && !(unsupported.test(ending) && !unsupported.test(source))) return text;
+
+  const [, planted, sprouted, significance] = meaning;
+  const contrast = ending.startsWith('그래도 ') ? '그래도 ' : '';
+  const closing = `${contrast}${planted} 둔 씨앗이 ${sprouted} 그 첫 싹은 내게 ${significance} 시작이었다.`;
+  return text.slice(0, text.lastIndexOf(ending)) + closing;
+}
+
 // 다듬은 문장이 같은 순번 원문 문단보다 다른 원문 문단의 문장에 뚜렷이 더 가깝거나, 앞 문단의 다듬은 문장을
 // 거의 그대로 되풀이하면 문단 간 되풀이로 본다. 같은 순번 원문 문단에도 그 내용이 있으면(원문이 일부러 되풀이) 통과한다.
 function repeatsOtherParagraph(sentence: string, ownSource: string, otherSources: string[], earlierOutputs: string[]): boolean {
@@ -3152,6 +3173,7 @@ export const polishContent = onCall(
       let polishInput = text;
       let groundedPolish: string | undefined;
       let polishPresentationParagraphs = false;
+      let polishSprout = false;
       let groundedParagraphs: Array<{ text: string; original: string; kept: boolean }> | undefined;
       const wrappedRichSource = strength !== undefined
         ? /(?:^|\n)\[원문 시작\]\n([\s\S]+)\n\[원문 끝\]\s*$/.exec(text)
@@ -3223,8 +3245,8 @@ ${sourceBody}
 감정의 계기와 진행 상태는 원문 그대로 둡니다. 원문이 감정의 이유로 적은 것만 계기로 쓰고, 다른 장면을 계기로 새로 세우지 않습니다. 감정을 풀어 쓴다는 것은 이유를 지어내는 것이 아닙니다. 원문이 이유 없이 감정만 적었으면(예: ‘정말 기뻤다.’) 같은 문단의 원문 사실 안에서 감정의 종류와 정도는 그대로 두고 말투만 다듬고, ‘~을 확인하니’, ‘~을 마주하니’, ‘~이 화면에 뜨는 순간’처럼 감정 앞에 장면·확인·마주침을 새로 만들지 않습니다. 원문에 적힌 진행 정도(시작함, 하는 중, 일부만 함, 마침)를 넓히거나 완료로 바꾸지 않습니다.
 [작지만 구체적인 변화와 준비의 의미]
 이미 적힌 행동이 어떤 변화로 이어졌는지 마지막 문장에 구체적으로 씁니다. 아직 이르지 않은 다음 단계는 그대로 둡니다. 감정이 따로 적혀 있으면 감정의 이유나 시점을 새로 붙이지 않습니다. 의미는 원문에 있는 대상과 변화의 이름으로 드러내며 비유나 뜻이 겹치는 결말을 덧붙이지 않습니다.
-- 가상 예시: ‘뿌려 둔 상추 씨앗에서 오늘 처음 싹이 난 것을 봤다. 기뻤다. 본잎이 나온 것은 아니다. 뿌린 씨앗이 싹을 낸 뜻깊은 날이었다.’ → ‘뿌려 둔 상추 씨앗에서 오늘 처음으로 싹을 봤다. 기뻤다. 본잎이 나온 것은 아니다. 그래도 씨앗을 뿌려 둔 일이 첫 싹으로 이어진 뜻깊은 날이었다.’ 실제 글에서도 원문에 적힌 변화까지만 씁니다.
-- 가상 다문단 예시: 원문 [1] ‘안내문 순서를 바꿨다.’ [2] ‘실제로 읽어 주지는 않았다.’ [3] ‘적어 온 내용을 읽어 줄 순서로 정돈한 날이었다.’ → [1] ‘안내문의 순서를 바꿨다.’ [2] ‘다만 실제로 읽어 주지는 않았다.’ [3] ‘그래도 적어 온 내용에 차례를 잡아, 읽어 줄 흐름이 있는 안내문으로 정리한 날이었다.’ 마지막 문단에서는 준비한 내용에 어떤 구조가 생겼는지 한 번만 씁니다. 원문 표현을 그대로 옮긴 뒤 그 뜻을 설명하는 절을 덧붙이지 않고, 원문의 의미 문장 자체를 다시 씁니다. 앞 문단의 횟수나 행동은 반복하지 않습니다.
+- 가상 예시: ‘화분에 뿌려 둔 상추 씨앗에서 오늘 처음 싹이 난 것을 봤다. 기뻤다. 본잎이 나온 것은 아니다. 뿌린 씨앗이 싹을 낸 뜻깊은 날이었다.’ → ‘화분에 뿌려 둔 상추 씨앗에서 오늘 첫 싹을 봤다. 기쁜 일이었다. 본잎이 나온 것은 아니다. 그래도 뿌려 둔 씨앗이 틔운 그 첫 싹은 내게 뜻깊은 시작이었다.’ ‘오늘’은 씨앗을 뿌린 때가 아니라 싹을 본 때에 붙입니다. 첫 관찰과 그때까지의 변화는 구분합니다. 기쁨은 원래 정도를 살리고 새 계기나 시점을 달지 않습니다. 결말에는 아직 이르지 않은 단계와 실제 변화의 의미를 대비합니다. 원문이 이미 시작에 의미를 두었다면 그 시작이 왜 뜻깊은지 원문의 행동과 결과로 풀어 씁니다. ‘처음’을 ‘처음으로’ 바꾸거나 원문 결말에 ‘그래도’만 붙이는 데 그치지 않습니다.
+- 가상 다문단 예시: 원문 [1] ‘안내문 순서를 바꿨다.’ [2] ‘실제로 읽어 주지는 않았다.’ [3] ‘적어 온 내용을 읽어 줄 순서로 정돈한 날이었다.’ → [1] ‘안내문의 순서를 바꿨다.’ [2] ‘다만 실제로 읽어 주지는 않았다.’ [3] ‘적어 온 내용을 정돈해, 무엇부터 읽고 어떻게 이어 갈지 흐름을 갖춘 날이었다.’ 마지막 문단에서는 준비한 내용에 어떤 구조가 생겼는지 한 번만 씁니다. 원문 표현을 그대로 옮긴 뒤 그 뜻을 설명하는 절을 덧붙이지 않고, 원문의 의미 문장 자체를 다시 씁니다. 앞 문단의 횟수나 행동은 반복하지 않습니다.
 부정이나 미완료를 나타내는 서술은 원문과 같은 형태로 따로 둡니다. 이전의 준비를 가리킬 때에는 원문의 ‘~해 온’을 그대로 두고, 새 한정이나 부정을 붙이지 않습니다. 이전 상태를 평하지 말고 지금 갖춘 흐름을 설명합니다. 자료에 설명할 순서를 잡은 결과는 설명을 준비한 진전으로 표현하고 실제 발표 여부는 그대로 둡니다. 의미 문단에 이런 진전이 적혀 있다면 결과에 그 설명이 들어갔는지 확인합니다. 접속어만 더해 원문을 되돌려 주지 말고 지금 갖춘 흐름이 무엇인지 서술합니다. 예시의 대상과 사실을 실제 글에 섞지 않습니다.
 제출 직전에 ‘언제든’·‘어디서든’·‘내내’가 원문에 없는지 다시 확인하고, 없으면 그 단어를 삭제한 문장으로 제출합니다. 의미를 풀어 쓴 나머지 부분은 살립니다. ‘~된 것은, ~한 날이었다’처럼 주어와 서술어가 맞지 않는 문장은 ‘~되면서, ~한 날이었다’처럼 문법을 바로잡습니다. 본문을 내기 전에 문장마다 원문에 없는 새 주장이 있는지 확인합니다. 새 관찰 장면(‘~하는 것을 보니’ 등), 새 감정의 계기, 원문에 없는 의도·목적, 넓어진 완료 범위, 원문에 없는 시간·장소·감각·동작·기간·인과가 있으면 그 부분을 지우고 남은 원문 근거만으로 문장을 다시 씁니다.`;
         systemPrompt = `한국어 생활 기록 편집자입니다. [원문 시작]과 [원문 끝] 사이의 본문을 강으로 편집합니다.
@@ -3263,8 +3285,13 @@ ${eventExample}${groundedPolish === undefined ? `\n${strongRichnessBlock}\n` : '
             && groundedParagraphs.some(paragraph => !paragraph.kept && /발표[ \t]*자료/.test(paragraph.original));
           const presentationGuide = polishPresentationParagraphs ? `
 [발표 자료를 정리한 일기]
-문단별로 역할을 나눠 편집합니다. 순서를 반복해서 바꾼 사실과 정리를 마친 감정이 원문에 함께 있으면, 감정 문단을 그대로 옮기지 않고 “그렇게 순서를 거듭 바꾼 끝에 정리를 마치고 나니 뿌듯했다.”처럼 연결합니다. 감정은 원문과 같은 종류·정도를 유지하고, 앞 문단의 반복을 다시 가리킬 때 숫자 대신 ‘거듭’을 씁니다. 각 문단의 정확한 횟수와 수량은 원래 문단에만 남깁니다. 발표를 하지 않았다는 문단은 독립적으로 둡니다.
-마지막 원문 문단이 준비한 내용을 설명할 순서로 정리한 의미라면, “생각해 온 내용을 정돈해, 무엇부터 설명하고 어떻게 이어 갈지 흐름을 갖춘 날이었다.”처럼 준비의 성과를 한 문장으로 표현합니다. 결말에서 같은 배열을 ‘순서’와 ‘차례’로 겹쳐 말하지 않고, 무엇부터 어떻게 설명할 수 있게 됐는지에 초점을 둡니다. 원문보다 앞선 단계나 실제 발표, 새로운 목적·감정, 이전 상태에 대한 추측은 쓰지 않습니다. 접속어나 수식어만 바꾼 문장이라면 제출 전에 이 문단을 다시 다듬습니다.` : '';
+순서를 바꾼 행동과 횟수는 그 사실이 적힌 원문 문단에서 한 번만 서술합니다. 바로 다음 원문 문단이 정리 결과와 감정을 적었다면 ‘그 과정을 거쳐 마지막 장까지 정리하고 나니 뿌듯했다.’처럼 앞의 수고를 짧게 받아 결과와 잇습니다. ‘그렇게 순서를 거듭 바꾼 끝에’, ‘배열을 다시 고친 끝에’처럼 앞 문단의 행동을 다른 말로 다시 서술하지 않습니다. 예시의 마지막 장·감정은 원문에 있을 때에만 씁니다. 감정은 원문과 같은 종류·정도를 유지하고, 정확한 횟수와 수량은 원래 문단에만 남깁니다. 발표를 하지 않았다는 문단은 독립적으로 둡니다.
+마지막 원문 문단이 준비한 내용을 설명할 순서로 정리한 의미라면, “생각해 온 내용을 정돈해, 무엇부터 설명하고 어떻게 이어 갈지 흐름을 갖춘 날이었다.”처럼 준비의 성과를 한 문장으로 표현합니다. 결말에서는 ‘설명할 순서로 엮어 내며’처럼 원문을 다시 서술하는 대신 무엇부터 어떻게 설명할지 곧바로 씁니다. 앞 문단에 적은 순서 변경은 ‘차례’, ‘배열’로 말을 바꿔도 되풀이입니다. 현재 원문 문단 자체에 배열이나 변경이 사실로 적혀 있으면 보존합니다. 원문보다 앞선 단계나 실제 발표, 새로운 목적·감정, 이전 상태에 대한 추측은 쓰지 않습니다. 접속어나 수식어만 바꾼 문장이라면 제출 전에 이 문단을 다시 다듬습니다.` : '';
+          polishSprout = normalizedFormat === 'diary' && /씨앗/.test(source) && /싹/.test(source)
+            && /뜻깊|의미|시작/.test(source);
+          const sproutGuide = polishSprout ? `
+[첫 싹을 본 기록]
+첫 관찰에는 원문에 적힌 용기·장소·식물 이름과 관찰 시점을 남깁니다. 원문에 기쁨이나 아직 이르지 않은 단계가 따로 적혔다면 둘 다 보존합니다. 기쁨에는 새 계기나 정도를 붙이지 않습니다. 뜻을 적은 결말은 ‘그래도 심어 둔 씨앗이 틔운 그 첫 싹은 내게 뜻깊은 시작이었다.’처럼 원문의 대상과 변화에 곧바로 의미를 연결해 한 문장으로 씁니다. ‘씨앗이 싹을 틔운 것은’, ‘싹을 틔웠다는 점에서’처럼 같은 대상을 설명하는 절이나 ‘이것은’으로 결말을 시작하지 않습니다. ‘심어 둔’을 ‘심어 온’으로 늘리지 않습니다. 원문에 없는 생장 단계·기대·기다림은 넣지 않습니다.` : '';
           systemPrompt += `
 
 [강에서 원문 근거로 의미 풀기]
@@ -3282,7 +3309,7 @@ ${eventExample}${groundedPolish === undefined ? `\n${strongRichnessBlock}\n` : '
 예시 5(여러 번 바꾼 배치가 하나의 전체가 됨). 한 문단 원문 ‘조각 천 열두 장을 이어 붙일 순서를 여러 번 바꿨다. 마지막 조각까지 자리를 정하고 나니 뿌듯했다. 오늘은 따로 모아 둔 천 조각들이 한 장의 무늬가 된 날이었다.’ → 같은 "text" 안에서 빈 줄로 나눈 두 문단 ‘조각 천 열두 장을 이어 붙일 순서를 여러 번 바꿨다. 그렇게 순서를 거듭 바꾼 끝에 마지막 조각까지 자리를 정하고 나니 뿌듯했다.’와 ‘오늘은 따로 모아 둔 천 조각들이 그 끝에 한 장의 무늬가 된 날이었다.’ 같은 내용이 원문 문단 셋이면 → [1] ‘조각 천 열두 장을 이어 붙일 순서를 여러 번 바꿨다.’ [2] ‘그렇게 순서를 거듭 바꾼 끝에 마지막 조각까지 자리를 정하고 나니 뿌듯했다.’ [3] ‘오늘은 따로 모아 둔 천 조각들이 그렇게 거듭한 끝에 한 장의 무늬가 된 날이었다.’ 이 예시는 여러 번 바꾼 과정을 결과 문장과 맺음 문장 안에서 가리켜, 따로 있던 조각들이 거듭한 끝에 하나가 된 변화를 풀어 씁니다. 뿌듯함의 계기는 원문 그대로(마지막 조각까지 자리를 정함)이고, ‘열두 장’·‘여러 번’은 처음 문장에만 둡니다. ‘한 장씩 대 보며’(새 동작), ‘한참을 고민했다’(새 궁리·기간), ‘바닥에 펼쳐 놓으니’(새 장면), ‘수십 번’(바뀐 수량), ‘작업실에서’(새 장소), 맺음 뒤에 ‘~한 하루였다’를 다시 붙이는 것은 근거가 없습니다.
 
 ${strongRichnessBlock}
-위 본문 출력 규칙은 각 문단의 "text"에 적용합니다. 입력의 [문단 n]은 원문 문단의 순번입니다. 원문 문단 ${groundedParagraphs?.length ?? 0}개를 순번 1부터 차례로 하나씩 다듬어 같은 순번의 "text"에 씁니다. 문단을 빼거나 합치거나 순서를 바꾸지 않고, 한 원문 문단의 내용을 다른 순번으로 옮기지 않습니다. 한 원문 문단을 여러 문단으로 풀어 쓸 때는 그 "text" 안에서 빈 줄로 나눕니다. [문단 n] 표시는 "text"에 옮기지 않습니다.${presentationGuide}
+위 본문 출력 규칙은 각 문단의 "text"에 적용합니다. 입력의 [문단 n]은 원문 문단의 순번입니다. 원문 문단 ${groundedParagraphs?.length ?? 0}개를 순번 1부터 차례로 하나씩 다듬어 같은 순번의 "text"에 씁니다. 문단을 빼거나 합치거나 순서를 바꾸지 않고, 한 원문 문단의 내용을 다른 순번으로 옮기지 않습니다. 한 원문 문단을 여러 문단으로 풀어 쓸 때는 그 "text" 안에서 빈 줄로 나눕니다. [문단 n] 표시는 "text"에 옮기지 않습니다.${presentationGuide}${sproutGuide}
 최종 응답은 {"paragraphs":[{"index":1,"text":"1번 원문 문단을 다듬은 글"}]} 형태의 JSON만 쓰고, "paragraphs"에는 정확히 ${groundedParagraphs?.length ?? 0}개를 씁니다.`;
         }
       } else if (strength !== undefined && normalizedFormat !== 'voiding') {
@@ -3432,29 +3459,39 @@ ${SOURCE_PRESERVATION_RULES}`;
           const paragraph = paragraphs[index];
           if (paragraph.kept) return paragraph.original;
           if (protectedActors?.hasActor(responseText)) return paragraph.original;
-          let candidateText = responseText;
+          let candidateText = polishSprout ? repairSproutConclusion(responseText, paragraph.original) : responseText;
           const previous = paragraphs[index - 1];
           if (polishPresentationParagraphs && previous && !previous.kept) {
             // 결과 앞 문단과 원문에 같은 횟수로 발표 자료의 순서를 바꾼 일이 남아 있을 때만
-            // 바로 다음 문단에 반복된 횟수를 ‘거듭’으로 바꾼다. 나머지는 기존 검사를 그대로 받는다.
+            // 바로 다음 문단에서 반복된 행동은 짧게 가리키고, 나머지는 기존 검사를 그대로 받는다.
             const repeatedOrder = /^발표[ \t]*자료[^.!?。！？"'“”‘’\r\n]*?순서를[ \t]+((?:두|세|네|[2-9]|[1-9]\d+)[ \t]*번)[ \t]+바(?:꿨|꾸었)다[.!?。！？]?$/;
             const countKey = (count: string | undefined) => count?.replace(/[ \t]/g, '');
             const sourceCount = countKey(repeatedOrder.exec(previous.original.trim())?.[1]);
             const earlierCount = countKey(repeatedOrder.exec(all[index - 1].trim())?.[1]);
             if (sourceCount && sourceCount === earlierCount && !countKey(paragraph.original)?.includes(sourceCount)) {
               const withoutRepeatedCount = responseText.replace(
-                /^그렇게[ \t]+([가-힣0-9]+[ \t]*번)(?:에[ \t]*걸쳐[ \t]+순서를[ \t]*바꾼|의[ \t]*고침)[ \t]+끝에/,
-                (phrase, count: string) => countKey(count) === sourceCount ? '그렇게 순서를 거듭 바꾼 끝에' : phrase,
+                /^그렇게[ \t]+([가-힣0-9]+[ \t]*번)(?:에[ \t]*걸쳐[ \t]+순서를[ \t]*바꾼|의[ \t]*(?:고침|수정))[ \t]+끝에/,
+                (phrase, count: string) => countKey(count) === sourceCount ? '그 과정을 거쳐' : phrase,
               );
-              if (withoutRepeatedCount !== responseText) {
+              const shortReference = /순서|차례|배열|바(?:꿔|꾼|꿨|꾸)/.test(paragraph.original)
+                ? withoutRepeatedCount
+                : withoutRepeatedCount.replace(/^그렇게[ \t]+(?:(?:순서|차례|배열)를[ \t]+거듭[ \t]+)?바꾼[ \t]+끝에(?=[ \t])/, '그 과정을 거쳐');
+              if (shortReference !== responseText) {
                 // 뒤 문단에 원래 있던 별도 횟수·수량 등이 빠졌으면 중복 정리를 적용하지 않는다.
                 const { factMarkers } = groundedSentenceTools();
-                const remainingFacts = new Set(factMarkers(withoutRepeatedCount));
+                const remainingFacts = new Set(factMarkers(shortReference));
                 if (factMarkers(paragraph.original).every(marker => remainingFacts.has(marker))) {
-                  candidateText = withoutRepeatedCount;
+                  candidateText = shortReference;
                 }
               }
             }
+          }
+          if (polishPresentationParagraphs && /설명할[ \t]+(?:순서|차례|흐름)/.test(paragraph.original)) {
+            // 앞 절의 배열과 뒤 절의 설명 흐름이 같은 성과를 말할 때만 겹치는 앞 절을 줄인다.
+            candidateText = candidateText.replace(
+              /^(그래도[ \t]+)?(?:그동안[ \t]+)?((?:생각해|준비해) 온 내용을) 설명할 (?:순서|차례)로 (?:엮어 (?:내며|냄으로써)|정돈해|정리해),[ \t]+(?=무엇부터 (?:(?:설명하고|밝히고) )?어떻게 (?:이어 ?갈지|이야기할지) 흐름을)/,
+              '$1$2 정돈해, ',
+            );
           }
           // 원문 근거를 남길 수 있으면 같은 문단 안에서 되풀이한 문장을 지운다.
           const paragraphText = dropDuplicateGroundedSentences(candidateText, paragraph.original) ?? candidateText;

@@ -22,7 +22,7 @@ const handler = variable('polishContent').arguments.at(-1);
 const compiled = ts.transpileModule([
   `const STATS_PROMPTS = ${variable('STATS_PROMPTS').getText(ast)};`,
   fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('addsOutsideAssessment'), fn('addsUnstatedFeelingOrAction'),
-  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('dateNegationMarks'), fn('changesDateOrNegation'), fn('addsUngroundedSpecifics'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), fn('failsGroundedParagraph'), fn('groundedSentenceTools'), fn('repeatsOtherParagraph'), fn('restoreGroundedSentences'), fn('dropDuplicateGroundedSentences'), `(${handler.getText(ast)});`,
+  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('dateNegationMarks'), fn('changesDateOrNegation'), fn('addsUngroundedSpecifics'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), fn('failsGroundedParagraph'), fn('groundedSentenceTools'), fn('repairSproutConclusion'), fn('repeatsOtherParagraph'), fn('restoreGroundedSentences'), fn('dropDuplicateGroundedSentences'), `(${handler.getText(ast)});`,
 ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2019 } }).outputText;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -2265,6 +2265,23 @@ test('발아 원문 밖 결말을 복원할 때 사실에 맞는 앞 문장 편�
   });
 });
 
+test('발아의 첫 관찰·기쁨·미전개를 보존하면서 기록의 의미를 풀어 쓴다', async () => {
+  const source = '화분에 심어 둔 강낭콩에서 오늘 처음 싹이 나온 것을 봤다. 기뻤다. 잎이 펼쳐진 것은 아니다. 심어 둔 씨앗이 싹을 틔운 뜻깊은 시작이었다.';
+  const output = '화분에 심어 둔 강낭콩에서 오늘 첫 싹을 봤다. 기쁜 일이었다. 잎이 펼쳐진 것은 아니다. 그래도 심어 둔 씨앗이 틔운 그 첫 싹은 내게 뜻깊은 시작이었다.';
+  const f = fixture({ polishParagraphs: [output] });
+  const result = await f.request({ text: source, strength: 'STRONG', includeAiComment: false });
+  assert.match(f.calls[0].systemInstruction, /첫 관찰에는 원문에 적힌 용기·장소/);
+  assert.equal(result.text, output);
+
+  const observation = '화분에 심어 둔 강낭콩에서 오늘 첫 싹을 봤다. 기쁜 일이었다. 잎이 펼쳐진 것은 아니다.';
+  for (const ending of [
+    '그래도 심어 둔 씨앗이 싹을 틔운 것은, 그동안 기다리던 강낭콩이 생명을 보인 뜻깊은 시작이었다.',
+    '그래도 심어 둔 씨앗이 싹을 틔운 것은, 뿌려 둔 씨앗이 싹으로 이어진 뜻깊은 시작이었다.',
+  ]) {
+    assert.equal((await strongResult(source, observation + ' ' + ending)).text, output);
+  }
+});
+
 test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용하고 근거 있는 과정과 의미를 보존한다', async () => {
   const source = [
     '발표 자료 열 장의 순서를 세 번 바꿨다.',
@@ -2274,7 +2291,7 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
   ];
   const edited = [
     source[0],
-    '그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리하고 나니 뿌듯했다.',
+    '그 과정을 거쳐 마지막 장까지 정리하고 나니 뿌듯했다.',
     '다만 실제 발표는 아직 하지 않았다.',
     '생각해 온 내용을 정돈해, 무엇부터 설명하고 어떻게 이어 갈지 흐름을 갖춘 날이었다.',
   ];
@@ -2282,11 +2299,12 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
   const f = fixture({ polishParagraphs: edited });
   const result = await f.request({ text: source.join('\n\n'), strength: 'STRONG', includeAiComment: false });
   assert.match(f.calls[0].systemInstruction, guide);
-  assert.match(f.calls[0].systemInstruction, /같은 배열을 ‘순서’와 ‘차례’로 겹쳐 말하지 않고/);
+  assert.match(f.calls[0].systemInstruction, /순서를 바꾼 행동과 횟수는 그 사실이 적힌 원문 문단에서 한 번만 서술/);
+  assert.ok(f.calls[0].systemInstruction.includes(edited[1]));
   assert.ok(f.calls[0].systemInstruction.includes(edited[3]));
   assert.equal(result.text, edited.join('\n\n'));
 
-  for (const prefix of ['그렇게 세 번에 걸쳐 순서를 바꾼 끝에', '그렇게 세 번의 고침 끝에', '그렇게 두 번에 걸쳐 순서를 바꾼 끝에']) {
+  for (const prefix of ['그렇게 세 번에 걸쳐 순서를 바꾼 끝에', '그렇게 세 번의 고침 끝에', '그렇게 세 번의 수정 끝에', '그렇게 두 번에 걸쳐 순서를 바꾼 끝에']) {
     const output = [...edited];
     output[1] = prefix + ' 마지막 장까지 정리하고 나니 뿌듯했다.';
     const run = fixture({ polishParagraphs: output });
@@ -2294,6 +2312,28 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
     const expected = prefix.includes('두 번') ? source[1] : edited[1];
     assert.equal(polished.text.split('\n\n')[1], expected);
   }
+
+  const wordy = [
+    edited[0],
+    '그렇게 순서를 거듭 바꾼 끝에 마지막 장까지 정리하고 나니 뿌듯했다.',
+    edited[2],
+    '그래도 생각해 온 내용을 설명할 순서로 엮어 내며, 무엇부터 설명하고 어떻게 이어 갈지 흐름을 갖춘 날이었다.',
+  ];
+  const repeatedAction = fixture({ polishParagraphs: wordy });
+  const trimmed = await repeatedAction.request({ text: source.join('\n\n'), strength: 'STRONG', includeAiComment: false });
+  assert.equal(trimmed.text, [...edited.slice(0, 3), '그래도 ' + edited[3]].join('\n\n'));
+
+  const reworded = [...wordy];
+  reworded[1] = '그렇게 세 번의 수정 끝에 마지막 장까지 정리를 마치고 나니 뿌듯했다.';
+  reworded[3] = '그래도 그동안 생각해 온 내용을 설명할 순서로 정돈해, 무엇부터 밝히고 어떻게 이어 갈지 흐름을 갖춘 날이었다.';
+  const repeatedOrder = fixture({ polishParagraphs: reworded });
+  const adjusted = await repeatedOrder.request({ text: source.join('\n\n'), strength: 'STRONG', includeAiComment: false });
+  assert.equal(adjusted.text, [
+    edited[0],
+    '그 과정을 거쳐 마지막 장까지 정리를 마치고 나니 뿌듯했다.',
+    edited[2],
+    '그래도 생각해 온 내용을 정돈해, 무엇부터 밝히고 어떻게 이어 갈지 흐름을 갖춘 날이었다.',
+  ].join('\n\n'));
 
   const duplicated = [...edited];
   duplicated[0] = '발표 자료 열 장의 순서를 바꿨다.';
@@ -2311,7 +2351,7 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
     const run = fixture({ polishParagraphs: output });
     const resultWithOwnCount = await run.request({ text: withOwnCount.join('\n\n'), strength: 'STRONG', includeAiComment: false });
     const expected = keepsOwnCount
-      ? '그렇게 순서를 거듭 바꾼 끝에 마지막 장을 두 번 정리하고 나니 뿌듯했다.'
+      ? '그 과정을 거쳐 마지막 장을 두 번 정리하고 나니 뿌듯했다.'
       : withOwnCount[1];
     assert.equal(resultWithOwnCount.text.split('\n\n')[1], expected);
   }
