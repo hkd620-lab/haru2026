@@ -4302,7 +4302,9 @@ export function SayuPage() {
   const matchesSayuSearch = (entry: FlatSayuEntry) => {
     if (!normalizedSayuSearch) return true;
     const fallbackText = buildSearchText(entry.label, entry.title, entry.subtitle, entry.keywords);
-    return (entry.searchText || fallbackText).includes(normalizedSayuSearch);
+    // 화면에 보이는 형식 이름(예: 손주자람일기)으로도 찾을 수 있게 한다. 저장·스냅샷에 쓰는 searchText(형식 키 기준)는 바꾸지 않는다.
+    const displayName = getFormatDisplayName(entry.label).toLowerCase();
+    return (entry.searchText || fallbackText).includes(normalizedSayuSearch) || displayName.includes(normalizedSayuSearch);
   };
   const filteredActiveEntries = labelScopedActiveEntries.filter(matchesSayuSearch);
   const filteredActiveCalendarEntries = labelScopedCalendarEntries.filter(matchesSayuSearch);
