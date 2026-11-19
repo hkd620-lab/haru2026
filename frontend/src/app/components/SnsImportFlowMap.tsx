@@ -17,7 +17,7 @@ const STEPS: FlowStep[] = [
   {
     short: '내려받기 신청', icon: Send, phase: 'ready',
     easy: 'Facebook에서 내 기록 파일을 받을 수 있게 신청하는 단계입니다.',
-    userTasks: ['아래 STEP 1의 "Facebook 다운로드 신청하기" 버튼 누르기', '받을 내용 고르기', '파일 형식은 JSON으로 선택하기'],
+    userTasks: ['아래 \'STEP 1\' 상자의 "Facebook 다운로드 신청하기" 버튼 누르기', '받을 내용 고르기', '파일 형식은 JSON으로 선택하기'],
     haruTasks: ['Facebook 다운로드 페이지를 새 탭으로 열어 드림'],
     note: 'Facebook 화면은 바뀔 수 있어요. 설명과 다르면 Facebook 안내를 따라 주세요.',
   },
@@ -37,8 +37,8 @@ const STEPS: FlowStep[] = [
   },
   {
     short: 'HARU에 올리기', icon: Upload, phase: 'upload',
-    easy: '내려받은 ZIP 파일을 아래 STEP 3에서 그대로 올리는 단계입니다.',
-    userTasks: ['STEP 3의 "ZIP 파일 선택하기" 누르기', '내려받은 ZIP 파일 그대로 선택하기'],
+    easy: "내려받은 ZIP 파일을 아래 'STEP 3' 상자에서 그대로 올리는 단계입니다.",
+    userTasks: ['아래 \'STEP 3\' 상자의 "ZIP 파일 선택하기" 누르기', '내려받은 ZIP 파일 그대로 선택하기'],
     haruTasks: ['올린 파일에서 내 게시물을 찾아 정리'],
   },
   {
