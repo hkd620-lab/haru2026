@@ -2266,13 +2266,16 @@ test('발아 원문 밖 결말을 복원할 때 사실에 맞는 앞 문장 편�
 });
 
 test('직접 만든 일의 수치 성취를 풀어 쓰고 명시된 도움을 보존한다', async () => {
-  const source = '내가 만든 독서 퀴즈 다운로드 12회 달성 이웃이 도와준 덕분이다.';
-  const output = '내가 만든 독서 퀴즈의 다운로드 횟수가 12회에 이르렀다. 직접 만든 수고가 기록으로 남았고, 이만큼 이룰 수 있었던 건 이웃이 도와준 덕분이다.';
+  const source = '내가 만든 독서 퀴즈 다운로드 12회 달성 솔빛이 도와준 덕분이다.';
+  const output = '내가 만든 독서 퀴즈의 다운로드 횟수가 12회에 이르렀다. 직접 만든 수고가 기록으로 남았고, 이만큼 이룰 수 있었던 건 솔빛이 도와준 덕분이다.';
   const f = fixture({ polishParagraphs: [output] });
   const result = await f.request({ text: source, strength: 'STRONG', includeAiComment: false });
   assert.match(f.calls[0].systemInstruction, /직접 만든 일과 수치로 남은 성취/);
   assert.match(f.calls[0].systemInstruction, /도움의 방법·시점, 개발 기간·고생의 강도/);
   assert.match(f.calls[0].systemInstruction, /의미와 도움은 일기 말투로 이어 쓰고/);
+  assert.match(f.calls[0].systemInstruction, /앞 문장에서 밝힌 대상 이름을 다음 문장에 반복하지 않습니다/);
+  assert.match(f.calls[0].systemInstruction, /직접 만든 일이나 수고가 그 기록으로 이어졌다고 써서 주어와 서술어를 맞춥니다/);
+  assert.match(f.calls[0].systemInstruction, /원문의 이름과 조사를 함께 옮깁니다/);
   assert.equal(result.text, output);
 });
 
