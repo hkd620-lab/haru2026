@@ -197,7 +197,7 @@ test('옮긴 호출부는 SDK 를 직접 만들지 않고 창구를 쓴다', () 
   assert.ok(polishStart > 0 && polishBlock.length > 0);
   assert.match(polishBlock, /const polishPurpose = mode === 'BASIC' \? 'sayuPolishBasic' : 'sayuPolish';/);
   assert.match(polishBlock, /getAiRoute\(polishPurpose\)\.model/);
-  assert.match(polishBlock, /callAi\(\{ purpose: polishPurpose,/);
+  assert.match(polishBlock, /callAi\(\{\s*purpose:\s*polishPurpose,/);
   assert.match(polishBlock, /callAi\(\{ purpose: 'sayuPolishComment'/);
   assert.doesNotMatch(polishBlock, /new GoogleGenerativeAI|getGenerativeModel|gemini-3\.1/);
 });

@@ -2327,7 +2327,7 @@ function addsUnstatedFeelingOrAction(text: string, source: string): boolean {
   // 같은 감정의 활용형은 동일하게 취급한다. 예: 설레었다 → 설렜다.
   const feelings = [
     /걱정/, /불안/, /안도/, /답답/, /속상/, /슬[프픈퍼펐픔]/, /기[쁘쁜뻐뻤쁨]/,
-    /후련/, /행복/, /부끄[럽러]/, /뿌듯/, /후회/, /설레|설렜|설렘/,
+    /불만족/, /(?<!불)만족/, /후련/, /행복/, /부끄[럽러]/, /뿌듯/, /후회/, /설레|설렜|설렘/,
   ];
   const actions = [
     /기로\s*(?:했|함|정했|정함|결심)|마음\s*먹(?:었|음)|결심(?:했|함)/,
@@ -2381,6 +2381,215 @@ function changesTimeOfDay(text: string, source: string): boolean {
   return timeline(text) !== timeline(source);
 }
 
+// 일기·에세이·여행기록의 강(원문 근거 경로) 결과에서 원문에 근거 없는 구체적 방식·기간·단계·의도·관찰 계기를
+// 보수적으로 찾는다. 재사용 가능한 한국어 표현 범주를 원문과 대조할 뿐이며 의미 전체를 검증하지는 않는다.
+// 원문에 같은 유형의 표현이 있으면 통과시키고, 수고·감정·의미를 원문 사실로 문장화한 표현은 범주에 넣지 않는다.
+function addsUngroundedSpecifics(text: string, source: string): boolean {
+  // 의도 표현 앞의 동사 어간 전체(예: ‘보’, ‘보관하’). 첫 음절만 비교하면 ‘보려고’가 ‘보관하려고’를 근거로 통과시킨다.
+  const intentStem = (word = '', phrase = '') => {
+    const stem = word.replace(/[^가-힣]/g, '');
+    if (stem === '마무리하') return '완성하';
+    if (stem === '우') return ''; // 명사 ‘우려는’은 목적 어미가 아니다.
+    // 으려- 앞의 불규칙 어간만 정규화한다. ‘들려고(들다)’와 ‘들으려고(듣다)’는 구분한다.
+    const irregular: Record<string, string> = { 들: '듣', 지: '짓', 걸: '걷' };
+    return phrase.startsWith(`${word}으려`) ? (irregular[stem] ?? stem) : stem;
+  };
+  // 고자·느라는 ‘중고자전거’처럼 낱말 안에서도 나오므로 어미 뒤 경계(공백·문장부호·끝, 고자는 ‘하고자한다’의 하- 활용)를 확인한다.
+  const intent = /([가-힣]*?)(?:으려(?:고|는|던|면)?|(?<![배고염격장])려(?:고|는|던|면)|기\s?위(?:해서|하여|해|한)|고자(?=[하한했합할]|[^가-힣]|$)|느라(?:고)?(?=[^가-힣]|$))/g;
+  const observation = /([가-힣]+)\s?(?:것|모습|장면)[을를]\s?(?:보니|보며|보면서|보고|보자|바라보|지켜보)/g;
+  // 지각 장면 표현. 결과와 원문을 같은 활용형 기준으로 대조한다(예: 원문 ‘뜨면서’는 결과 ‘뜨면서’의 근거가 된다).
+  const perception = /떴|뜨(?:는|자|니|면서)|뜬(?=\s)|떠\s?(?:있|올)|나타나|나타났|보였|보이(?:는|자|니|고|며|면서|기)|펼쳐|눈에\s?(?:들어|띄)|눈앞에/g;
+  // 마주침·지각·확인 동사를 감정의 계기(-니·-자·-며·-고·-는 순간 뒤의 감정)로 세운 표현.
+  // 앞 갈래는 낱말 머리의 마주침·지각 동사, 뒤 갈래는 ‘화면을 보니’처럼 목적어 바로 뒤의 보다·듣다다.
+  // ‘써 보니’·‘실행해 보니’처럼 행동 뒤에 붙는 보조 ‘보-’는 목적어 뒤가 아니므로 잡지 않는다(사용·시도 표현).
+  const emotionCause = /(?:(?<![가-힣])(마주\s?하|마주\s?치|대하|접하|만나|맞이하|바라보|지켜보|보이|들리|확인\s?하)|([가-힣]+)[을를]\s(보|듣|들(?=으)))(?:으?니까?|자|며|면서|는\s?순간|던\s?순간|고\s?나니|고)(?=[\s,])[^.!?。！？\n]{0,40}?(?:만족|기쁘|기뻤|기쁜|기쁨|뿌듯|행복|설레|설렜|감격|벅차|벅찼|반가|반갑|즐거|즐겁|흐뭇|감동|성취감|후련|안도|슬프|슬펐|슬픈|속상|서운|아쉬|아쉽|짜증|화가|놀라|놀랐|신기|좋았)/g;
+  // ‘실행해 보니 기뻤다’도 원문에서 행동과 감정을 따로 적었으면 새 감정 계기다.
+  // 사용 동사 자체는 허용하고, 같은 행동을 감정의 계기로 적은 원문이 있을 때만 그 연결을 허용한다.
+  const usageEmotionCause = /(?<![가-힣])([가-힣]*(?:해|어|아|여|써|와|워))\s?보(?:니|니까)[^.!?。！？\n]{0,40}?(?:만족|기쁘|기뻤|기쁜|기쁨|뿌듯|행복|설레|설렜|감격|벅차|벅찼|반가|반갑|즐거|즐겁|흐뭇|감동|성취감|후련|안도|슬프|슬펐|슬픈|속상|서운|아쉬|아쉽|짜증|화가|놀라|놀랐|신기|좋았)/g;
+  const sourceUsageCauses = new Set(Array.from(source.matchAll(usageEmotionCause), match => match[1]));
+  // 같은 동사가 원문 어디에든 있으면(예: 원문 ‘친구를 만났다. 반가웠다.’) 원문 사실을 잇는 것이므로 근거가 있다.
+  const encounterInSource: Record<string, RegExp> = {
+    마주하: /마주/, 마주치: /마주/, 대하: /대하|대했|대해/, 접하: /접하|접했|접해|접한/, 만나: /만나|만났|만난/,
+    맞이하: /맞이/, 바라보: /바라보|바라봤|바라본/, 지켜보: /지켜보|지켜봤|지켜본/, 보이: /보이|보였|보인/, 들리: /들리|들렸|들린/,
+    확인하: /확인/,
+  };
+  const emotionCauseGrounded = (match: RegExpMatchArray) => {
+    if (match[1]) return encounterInSource[match[1].replace(/\s/g, '')]?.test(source) ?? false;
+    // 목적어 뒤의 보다·듣다는 같은 대상(앞 두 글자)과 같은 동사가 원문에 있을 때만 근거가 있다.
+    const target = match[2].slice(-2);
+    const verb = match[3] === '보' ? /보|봤|본/ : /듣|들었|들은|들으/;
+    return source.includes(target) && verb.test(source);
+  };
+  // 장소를 나타내는 뒷말(장·관·실·홀·센터 등)로 끝나고 바로 뒤에 장소 조사(에서·에·안에서·이라는 공간)가 오는 낱말.
+  // ‘마지막 장까지’·‘스무 장의’처럼 띄어 쓴 단위는 앞 글자가 붙지 않으므로 잡히지 않고, ‘입장에서’·‘현실에서’ 같은 말은 nonVenue로 뺀다.
+  const venue = /(?<![가-힣])([가-힣]{1,5}(?:장|관|실|홀|센터|갤러리|스튜디오|극장|공원))(?=이라는\s?(?:공간|곳|장소)|(?:\s?안)?에서|에\s|에$)/g;
+  // 장소 뒷말로 끝나지만 장소가 아닌 낱말(처지·주장·변화·사실·직함·글).
+  const nonVenue = new Set(['입장', '주장', '성장', '등장', '연장', '문장', '사실', '진실', '현실', '결실', '확실', '사장', '부장', '과장', '회장', '원장', '관장', '실장', '반장', '통장']);
+  // 완료 어휘가 있어도 미완성·거의 완성·완료하지 못함은 완전한 완료의 근거가 아니다.
+  const completionClaim = /완성(?!도)|완료|마무리(?:[를는도가]\s*)?(?:했|한|된|됐|되었|해\s?(?:냈|낸|놓았|놓은|두었|둔|뒀|놨)|(?=하(?:지|는|려|고자|기)|할|해야))|끝마(?:쳤|친|치)|다\s?만들(?:었|어)|다\s?만든/g;
+  const completionStatus = (match: RegExpMatchArray) => {
+    const value = match.input ?? '';
+    const start = match.index ?? 0;
+    const before = value.slice(0, start).split(/[.!?。！？\n,]/).at(-1) ?? '';
+    const after = value.slice(start + match[0].length).split(/[.!?。！？\n,]/)[0] ?? '';
+    const consumedNominal = /(?:한|된|낸|둔|놓은|친)$/.test(match[0]);
+    if (/(?:미|불)$|(?:못|안)\s*$/.test(before)
+      || (consumedNominal && /^\s*(?:것|상태)(?:은|이)?\s*아니/.test(after))
+      || /^(?:하|되|시키)?(?:지|지는)\s*(?:않|못)|^(?:한|된)\s*(?:것|상태)?(?:은|이)?\s*아니/.test(after)) return 'negative';
+    const degree = /(?:거의|일부만|일부|부분적으로|부분만|절반만|절반|대부분|아직)\s*$/.exec(before)?.[0].trim();
+    if (degree) return `partial:${degree.replace(/만$|적으로$/, '')}`;
+    if (/^(?:하|되|해|돼)?(?:려|려고|려는|려던|고자|기로|기\s*위|야|고\s*싶)|^(?:할|될|시킬|계획|예정)|^\s*보(?:려|려고|려는|고자)/.test(after)) return 'planned';
+    if (/^(?:하|되)?는\s*(?:중|과정)/.test(after)) return 'partial';
+
+    return 'complete';
+  };
+  const sourceCompletionStates = new Set(Array.from(source.matchAll(completionClaim), completionStatus));
+  // 횟수·수량과 한정 표현은 띄어쓰기와 ‘번/차례’ 차이를 무시하고 원문과 대조한다.
+  const compact = (value: string) => value.replace(/\s/g, '').replace(/차례/g, '번');
+  const compactSource = compact(source);
+  // 횟수 표현은 ‘열두 번’·‘12번’처럼 수량 전체를 한 덩어리로 뽑아 원문 수량과 통째로 대조한다.
+  // 부분 문자열로 대조하면 원문 ‘열두 번’ 안의 ‘두 번’, ‘12번’ 안의 ‘2번’이 근거로 통과한다.
+  const countClaim = /(?<![가-힣])(?:수|몇)\s?(?:십|백|천)(?:\s?번)?|(?<![가-힣])(?:수|몇)\s?만\s?(?:번|명|원|개|건|배|장|곳)|수많|무수|수없이|셀\s?수\s?없|숱하|숱한|(?<![가-힣\d])(?:(?:열|스물|서른|마흔|쉰|예순|일흔|여든|아흔)(?:\s?(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉))?|스무|여러|몇|두|세|네|다섯|여섯|일곱|여덟|아홉|\d+)\s?(?:번|차례)(?!째|지|호|역|화|갈)/g;
+  const countKey = (value: string) => compact(value).replace(/번$/, '');
+  const sourceCounts = new Set(Array.from(source.matchAll(countClaim), match => countKey(match[0])));
+  const sourceIntentStems = Array.from(source.matchAll(intent), match => intentStem(match[1], match[0])).filter(Boolean);
+  // 생각·궁리 과정과 흩어진 이동 방식의 갈래. 결과의 표현은 원문에 같은 갈래가 있을 때만 근거가 있다.
+  const deliberation = /고민|고심|궁리|숙고|망설|머뭇|저울질|따져\s?보|헤아리|헤아려|되새기|되새겨|곱씹|씨름|신경(?:을)?\s?(?:쓰|썼|써)/g;
+  const wandering = /이리\s?저리|요리조리|여기저기|이곳저곳|이쪽저쪽|구석구석|이것저것/g;
+  // ‘처음’·‘최초’·‘가장 먼저’·‘첫 ~’ 같은 처음·최초 주장과 그 주장이 가리키는 말.
+  // 가리키는 말은 같은 문장에서 주장 뒤 세 낱말(‘처음이었다’처럼 붙은 서술이면 앞 세 낱말)의 어간이다.
+  // 서술형은 ‘처음이었다’·‘처음이었던’·‘처음이라서’·‘최초였다’처럼 서술 어미까지 한 덩어리로 인식한다.
+  const firstClaim = /(?<![가-힣])(?:생애\s?)?(?:(?:맨|가장|제일)\s?(?:먼저|처음)|처음|최초)((?:인데|입니다|이에요|이네요|이네|이군요|이었어요|이었습니다|이(?:었|였)?|였|인)(?:다|던|고|지만|는데|어서|으니|니|며|라서|라고|라는|라|기에|지)?)?(?:으로|으론|에는|엔|부터|에|의)?(?![가-힣])|(?<![가-힣])첫(?=\s?[가-힣])/g;
+  const endingSyllables = new Set('다고며서는은을를던든한했해하된됐돼되었았였어아여게기지니도에로으의이가와과본쳤친들'.split(''));
+  const lightStems = new Set(['하', '해', '한', '본', '보', '봤', '된', '되', '것', '수', '때', '번']);
+  const firstTargets = (match: RegExpMatchArray) => {
+    const value = match.input ?? '';
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    const before = value.slice(0, start).split(/[.!?。！？\n]/).at(-1) ?? '';
+    const after = value.slice(end).split(/[.!?。！？\n]/)[0] ?? '';
+    const words = match[1] ? (before.match(/[가-힣]+/g) ?? []).slice(-3) : (after.match(/[가-힣]+/g) ?? []).slice(0, 3);
+    return words.map(word => {
+      // 굽다의 서술형·관형형은 같은 동사로 연결한다. 나머지 일반 어미는 아래에서 벗긴다.
+      let stem = word.replace(/^구(?:웠|운|워)/, '굽');
+      while (stem.length > 1 && endingSyllables.has(stem.at(-1) ?? '')) stem = stem.slice(0, -1);
+      return stem;
+    }).filter(stem => !lightStems.has(stem));
+  };
+  const sourceFirstTargets = Array.from(source.matchAll(firstClaim), firstTargets);
+  const checks: Array<[RegExp, (match: RegExpMatchArray) => boolean]> = [
+    // 처음·최초 주장은 원문에 같은 주장이 있고 가리키는 말이 원문 주장과 겹칠 때만 통과한다.
+    // 원문 ‘처음 실행했다’를 결과 ‘처음으로 만든 앱’으로 옮기면 처음인 대상이 바뀐 것이다.
+    [firstClaim, match => {
+      const targets = firstTargets(match);
+      return sourceFirstTargets.some(sourceTargets => targets.length === 0
+        || targets.some(target => sourceTargets.includes(target)));
+    }],
+    // 하나씩·한 장씩 같은 분배 방식
+    [/(?:한|하나|두|세|네|몇|여러)\s?[가-힣]{0,2}씩/g, () => source.includes('씩')],
+    // ‘한 장 한 장’, ‘한 걸음 한 걸음’처럼 같은 단위를 되풀이한 분배 묘사. 원문에 같은 되풀이나 그 단위의 ‘씩’·‘마다’,
+    // ‘하나하나’·‘일일이’가 있을 때만 통과한다.
+    [/(?<![가-힣])(한|두|세|하나)\s?([가-힣]{1,2})\s+\1\s?\2(?![가-힣])/g, match => compactSource.includes(compact(match[0]))
+      || new RegExp(`${match[2]}\\s?(?:씩|마다)`).test(source) || /하나하나|일일이/.test(source)],
+    // ‘~아/어 가며’ 같은 점진·반복 방식. ‘학교에 가며’처럼 장소 뒤의 이동은 제외한다.
+    [/([가-힣]+)\s?가(?:며|면서)(?=[\s,.!?]|$)/g, match => /[에로을를서도는은이가와과의]$/.test(match[1])
+      || (match[1].length >= 2 && new RegExp(`${match[1]}(?:에|로)?\\s?(?:가|갔|간|갈)`).test(source))
+      || /가(?:며|면서)|씩|여러\s?번|계속|거듭|반복|차례/.test(source)],
+    // 조심스럽게·꼼꼼히 같은 행동 방식
+    [/조심스럽|꼼꼼|차근차근|차례차례|하나하나|일일이|정성껏|정성스럽|공들여|천천히|세심|신중/g,
+      match => source.includes(match[0].slice(0, 2))],
+    // ~하려고·~하기 위해·~하느라 같은 의도·목적. 원문에 같은 동사 줄기의 의도 표현이 있으면 통과한다.
+    [intent, match => !intentStem(match[1], match[0]) || sourceIntentStems.includes(intentStem(match[1], match[0]))],
+    // 글쓴이가 목표·범위를 직접 정했다는 새 의도는 원문에 같은 설정 행동이 있을 때만 허용한다.
+    [/(?:스스로|자신이|내가)\s?정(?:한|했|해)/g, () => /정하|정했|정한|정해/.test(source)],
+    // ‘전시를 위해’ 같은 명사 뒤 목적. 원문에 ‘위해·위한·위하여’가 있을 때만 통과한다.
+    [/[가-힣]+[을를]\s?위(?:해서|하여|해|한)(?![가-힣])/g, () => /위(?:해|하여|한)/.test(source)],
+    // ‘자리를 찾는 과정’, ‘앱을 완성해 가는 과정’처럼 원문에 없는 목표를 행동의 목적으로 세우는 표현.
+    // 목표를 나타내는 동사 줄기가 원문에 있을 때만 통과한다.
+    [/(?<![가-힣])([가-힣]{1,4}?)(?:해|어|아|여|워)\s?가는\s?(?:과정|길)|(?<![가-힣])([가-힣]{1,4}?)(?:는|려는|으려는|기\s?위한)\s?(?:과정|노력)/g,
+      // ‘만들다→만드는’처럼 받침이 바뀌는 줄기는 마지막 음절을 뺀 앞부분으로도 대조한다.
+      match => {
+        const stem = match[1] ?? match[2] ?? '';
+        return source.includes(stem) || (stem.length >= 2 && source.includes(stem.slice(0, -1)));
+      }],
+    // ‘고민하던’, ‘망설이며’처럼 원문에 없는 생각·궁리 과정. 원문에 같은 갈래(생각·궁리 과정) 표현이 있을 때만 통과한다.
+    [deliberation, () => Array.from(source.matchAll(deliberation)).length > 0],
+    // ‘이리저리’, ‘여기저기’처럼 원문에 없는 흩어진 이동 방식. 원문에 같은 갈래 표현이 있을 때만 통과한다.
+    [wandering, () => Array.from(source.matchAll(wandering)).length > 0],
+    // ‘각 장의’, ‘각각의’처럼 하나하나 나누어 다룬 묘사. 원문에 ‘각’·‘마다’·‘씩’·‘하나하나’·‘일일이’가 있을 때만 통과한다.
+    [/(?<![가-힣])각(?:각|자)?(?:\s(?=[가-힣])|의(?![가-힣]))/g,
+      () => /(?<![가-힣])각(?:각|자)?[\s의]|마다|씩|하나하나|일일이/.test(source)],
+    // ‘최선의 자리’, ‘최적의 배치’ 같은 원문에 없는 목표·평가
+    [/최선|최적/g, match => source.includes(match[0])],
+    // ‘완성한 앱’, ‘다 만든 앱’처럼 만든 것이 끝났다는 상태 주장. 원문이 ‘만들어 온’·‘시험 설치’처럼 진행 중으로 적었으면
+    // 완료로 넓힌 것이다. 원문에 같은 완료 표현(완성·완료·마무리·다 만든)이 있을 때만 통과한다. ‘설치를 마치고’ 같은 단계 끝은 다루지 않는다.
+    [completionClaim, match => sourceCompletionStates.has(completionStatus(match))],
+    // ‘벅찰 만큼’, ‘무척’, ‘너무나’처럼 감정·평가의 정도를 높이는 말. 원문에 같은 말이 있을 때만 통과한다(감정 정도 유지).
+    [/벅찰|벅차(?:오르|올랐|고|서|게|다|도록)|터질\s?듯|날아갈\s?듯|눈물이\s?날\s?(?:만큼|듯|정도)|뭉클|너무나|무척|몹시|굉장히|엄청|대단히|한없이|더없이|이루\s?말할\s?수\s?없|말할\s?수\s?없이|어느\s?때보다/g,
+      match => compactSource.includes(compact(match[0]))],
+    // 문단·문장을 잇는 말 중 원인(그래서·덕분에)이나 시점(그 순간·그때)을 세우는 말. 원문에 같은 말이 있을 때만 통과한다.
+    // ‘그렇게’·‘이것은’·‘그래도’·‘다만’처럼 앞 내용을 가리키거나 대비만 하는 말은 여기서 막지 않는다.
+    [/(?<![가-힣])(?:그래서|그러니까|그러니|덕분에|그\s?덕분에|그\s?덕에|그\s?순간|그때|그러자)(?![가-힣])/g,
+      match => compactSource.includes(compact(match[0]))],
+    // ‘처음 실행한 순간 기뻤다’, ‘열자마자 반가웠다’처럼 감정이 생긴 시점을 한 동작의 순간으로 못 박는 말. 원문이 사실과 감정을
+    // 따로 적었으면 그 순간에 느꼈다는 새 시점 주장이다. 원문에 같은 시점 말(순간·자마자 등)이 있을 때만 통과한다.
+    [/(순간|찰나|자마자|즉시|곧바로)(?:에는|에|부터)?[\s,][^.!?。！？\n]{0,24}?(?:만족|기쁘|기뻤|기쁜|기쁨|뿌듯|행복|설레|설렜|감격|벅차|벅찼|반가|반갑|즐거|즐겁|흐뭇|감동|성취감|후련|안도|슬프|슬펐|슬픈|속상|서운|아쉬|아쉽|짜증|화가|놀라|놀랐|신기|좋았)/g,
+      match => compactSource.includes(match[1])],
+    // 원문 ‘다시 들을 수 있다’를 ‘언제든 다시 들을 수 있다’처럼 무제한 이용·항상성으로 넓히지 않는다.
+    [/언제든(?:지)?|어디서든(?:지)?|언제나|항상/g, match => source.includes(match[0])],
+    // 씨앗의 발아를 생명의 시작·탄생으로 넓히거나 글 묶음을 단일 글로 바꾸지 않는다.
+    [/생명(?:이|의)\s?시작|생명(?:이|의)?\s?탄생|새(?:로운)?\s?생명/g, match => compactSource.replace(/새로운생명/g, '새생명').replace(/생명(?:이|의)(?=시작|탄생)/g, '생명').includes(compact(match[0]).replace(/새로운생명/g, '새생명').replace(/생명(?:이|의)(?=시작|탄생)/g, '생명'))],
+    [/하나의\s?글(?=$|[^가-힣]|(?:에서|으로|로|이|가|은|는|을|를|와|과|의|도)(?=$|[^가-힣]))/g, match => compactSource.includes(compact(match[0]))
+      || /글(?:을|은|이)?\s?(?:한|1)\s?편|(?:한|1)\s?편(?:의)?\s?글|글\s?하나(?=$|[^가-힣]|(?:를|가|는|만|도|로)(?=$|[^가-힣]))/.test(source)],
+    // ‘전시장이라는 공간 안에서’, ‘공연장에서’처럼 행사·활동에서 미루어 만든 구체적 장소. 원문 ‘전시를 준비하며’는 전시장을 뜻하지 않는다.
+    // 같은 장소 낱말이 원문에 있을 때만 통과한다(띄어쓰기는 무시).
+    [venue, match => nonVenue.has(match[1]) || compactSource.includes(compact(match[1]))],
+    // ‘~로 이어진 셈이었다’처럼 본문을 요약해 해석하는 맺음 표현. 원문에 ‘셈’이 있을 때만 통과한다.
+    [/(?<![가-힣])셈(?:이|인)/g, () => source.includes('셈')],
+    // 긴 시간·오랫동안 같은 기간
+    [/(?:긴|오랜|많은|기나긴)\s?(?:시간|세월|기간|날들)|오랫동안|오래도록|한참|하루\s?종일|온종일|밤새|내내|꼬박|몇\s?(?:시간|날|주|달|해|년)/g,
+      () => /(?:긴|오랜|많은|기나긴)\s?(?:시간|세월|기간|날들)|오랫동안|오래|한참|종일|밤새|내내|꼬박|며칠|몇\s?(?:시간|날|주|달|해|년)|\d+\s?(?:시간|분|일|주|개월|달|년)|(?:한|두|세|네|다섯|여러)\s?(?:시간|날|주|달|해)/.test(source)],
+    // 구상 단계 같은 진행 단계
+    [/단계/g, () => source.includes('단계')],
+    // ‘~하는 것을 보니’처럼 관찰 장면을 감정의 계기로 세우는 표현
+    [observation, match => Array.from(source.matchAll(observation)).length > 0
+      || (source.includes(match[1].slice(0, 2)) && /보(?:니|며|고|았|자|면서)|봤|바라보|지켜보/.test(source))],
+    [/(?:바라|지켜)보(?:니|며|면서|았|고)/g, () => /바라보|지켜보/.test(source)],
+    // ‘화면이 떴다’, ‘~가 보였다’, ‘눈앞에 펼쳐졌다’처럼 원문에 없는 지각·관찰 장면. 원문에 같은 지각 표현이 있을 때만 통과한다.
+    [perception, () => Array.from(source.matchAll(perception)).length > 0],
+    // ‘앱을 휴대폰에서 마주하니 기뻤다’, ‘공간이 마련된 것을 확인하니 기뻤다’처럼 원문에 없는 마주침·지각·확인을 감정의 계기로 세우는 표현.
+    // 같은 마주침·지각·확인 동사(목적어 뒤 보다·듣다는 같은 대상까지)가 원문에 있을 때만 통과한다.
+    [emotionCause, emotionCauseGrounded],
+    [usageEmotionCause, match => sourceUsageCauses.has(match[1])],
+    // 화면·아이콘·버튼 같은 기기 화면 세부 묘사. 원문이 같은 대상을 적었을 때만 통과한다.
+    [/화면|아이콘|버튼/g, match => source.includes(match[0])],
+    // ‘수십 번’, ‘수많은’, ‘두 차례’처럼 원문에 없는 횟수·수량 구체화. 원문에 같은 수량 전체가 있을 때만 통과한다.
+    [countClaim, match => sourceCounts.has(countKey(match[0]))],
+    // ‘머릿속으로만’, ‘오직’, ‘~뿐이었다’처럼 원문에 없는 배타·한정 주장. 원문에 같은 표현이 있을 때만 통과한다.
+    [/[가-힣]*(?:으로만|로만|에서만|에게만|한테만|에만)(?=$|[^가-힣]|[은이])|[가-힣]*기만\s?(?:했|하|할|한)|(?<![가-힣])(?:오직|오로지|단지|그저(?!께)|고작|유일하게|유일한)|뿐(?!만)|밖에\s?(?:없|안|못)/g,
+      match => compactSource.includes(compact(match[0]))],
+  ];
+  // 감정만 적힌 원문 문단(예: ‘정말 기뻤다.’)은 감정 문장으로만 다듬는다. 결과 문장에 원문에 없는 낱말(행동·대상·잇는 말)이 붙으면
+  // ‘그렇게 앱을 실행해 보니 기뻤다’처럼 다른 문단의 일을 감정의 계기·원인으로 세운 것이다. 원문 낱말과 ‘나는’·‘마음이’만 허용하고,
+  // ‘정말로’는 원문에 ‘정말’이 있을 때만 허용한다(감정 정도 유지). 원문 문단에 사실·이유가 함께 적혔으면 이 검사는 적용하지 않는다.
+  const emotionPredicate = /(?:만족|기쁘|기뻤|기뻐|뿌듯|행복|설레|설렜|반가|반갑|즐거|즐겁|흐뭇|감격|감동|후련|안도|슬프|슬펐|속상|서운|아쉬|아쉽|좋았|신났|신나|외로|허전|벅찼|벅차|든든|고마|고맙)[가-힣]*$/;
+  const emotionAdverbs = new Set(['정말', '정말로', '참', '무척', '너무', '너무나', '아주', '조금', '좀', '많이', '매우', '몹시', '괜히', '왠지', '그냥', '나는', '난', '내', '마음이', '마음은', '기분이', '그래도', '그리고']);
+  const sentenceWords = (sentence: string) => sentence.replace(/[.!?。！？…"'“”‘’」)\]]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  const sentenceList = (value: string) => value.split(/(?<=[.!?。！？…]["'”’」)\]]{0,2})\s+|\n+/).map(part => part.trim()).filter(Boolean);
+  const isEmotionOnly = (sentence: string, allowed: (word: string) => boolean) => {
+    const words = sentenceWords(sentence);
+    return words.length > 0 && words.length <= 4 && emotionPredicate.test(words[words.length - 1]) && words.slice(0, -1).every(allowed);
+  };
+  const sourceSentenceList = sentenceList(source);
+  if (sourceSentenceList.length && sourceSentenceList.every(sentence => isEmotionOnly(sentence, word => emotionAdverbs.has(word)))) {
+    const sourceWords = new Set(sourceSentenceList.flatMap(sentenceWords));
+    const allowedWord = (word: string) => sourceWords.has(word) || ['나는', '난', '마음이'].includes(word)
+      || (word === '정말로' && sourceWords.has('정말'));
+    if (sentenceList(text).some(sentence => !isEmotionOnly(sentence, allowedWord))) return true;
+  }
+  return checks.some(([pattern, grounded]) => Array.from(text.matchAll(pattern)).some(match => !grounded(match)));
+}
+
 function protectPolishActorParagraphs(source: string) {
   // 행위자가 드러난 대목은 모델이 주체나 행동을 바꾸지 못하게 원문으로 되돌린다.
   const relationship = '아내|남편|배우자|와이프|집사람|부인(?!했|한|하|해)|어머니|아버지|엄마|아빠|부모님|아들|딸|아이|자녀|손자|손녀|할머니|할아버지|이모|삼촌|누나|언니|오빠|형|동생|친구|동료|선생님|직원|팀장|사장|손님|선배|후배|의사|간호사';
@@ -2394,14 +2603,18 @@ function protectPolishActorParagraphs(source: string) {
   while (source.includes(prefix)) prefix += '_';
   const kept: Array<{ marker: string; original: string }> = [];
   const editableSections = [false];
+  // 강의 문단 순번 경로가 쓰는 문단별 배치(모델에 보낼 글, 원문 문단, 보호 여부).
+  const paragraphs: Array<{ text: string; original: string; kept: boolean }> = [];
   const layout = source.split(paragraphBreak).map(paragraph => {
     if (!hasActor(paragraph)) {
       if (paragraph.trim()) editableSections[kept.length] = true;
+      paragraphs.push({ text: paragraph, original: paragraph, kept: false });
       return paragraph;
     }
     const marker = `${prefix}${kept.length + 1}]]`;
     kept.push({ marker, original: paragraph });
     editableSections.push(false);
+    paragraphs.push({ text: marker, original: paragraph, kept: true });
     return marker;
   });
   if (!kept.length) return null;
@@ -2409,6 +2622,9 @@ function protectPolishActorParagraphs(source: string) {
   return {
     text: layout.join('\n\n'),
     allProtected: !editableSections.some(Boolean),
+    paragraphs,
+    markerPrefix: prefix,
+    hasActor,
     restore(polished: string): string | null {
       let next = 0;
       let hasEditable = false;
@@ -2431,20 +2647,476 @@ function protectPolishActorParagraphs(source: string) {
   };
 }
 
-function resolveGroundedPolish(raw: string): string | null {
-  let result: { body?: unknown } | null;
+// 강의 원문 근거 경로 응답 {"paragraphs":[{"index":1,"text":"..."}]}를 원문 문단과 1:1로 엄격하게 검증한다.
+// expected[i]가 문자열이면 그 순번은 주체 보호 표시를 글자 그대로 돌려받아야 한다.
+// 개수·순번·타입·보호 표시 중 하나라도 어긋나면(누락·중복·교차 포함) null을 돌려 전체 원문으로 되돌린다.
+function resolveGroundedPolish(raw: string, expected: Array<string | null>, markerPrefix?: string): string[] | null {
+  const reject = (reason: string) => {
+    logger.warn('강 다듬기 응답 형식 불일치', { reason, responseLength: raw.length });
+    return null;
+  };
+  let result: unknown;
   try {
     result = JSON.parse(raw);
   } catch {
-    logger.warn('강 다듬기 응답 형식 불일치', { reason: 'invalid_json', responseLength: raw.length });
-    return null;
+    return reject('invalid_json');
   }
-  if (typeof result?.body !== 'string' || !result.body.trim()) {
-    logger.warn('강 다듬기 응답 형식 불일치', { reason: 'invalid_body', responseLength: raw.length });
-    return null;
+  const paragraphs = result !== null && typeof result === 'object' && !Array.isArray(result)
+    ? (result as { paragraphs?: unknown }).paragraphs : undefined;
+  if (!Array.isArray(paragraphs)) return reject('invalid_paragraphs');
+  if (paragraphs.length !== expected.length) return reject('paragraph_count');
+  const texts: string[] = [];
+  for (let index = 0; index < paragraphs.length; index++) {
+    const item = paragraphs[index] as { index?: unknown; text?: unknown } | null;
+    if (item === null || typeof item !== 'object' || Array.isArray(item)
+      || Object.keys(item).sort().join(',') !== 'index,text'
+      || typeof item.index !== 'number' || !Number.isInteger(item.index)
+      || typeof item.text !== 'string' || !item.text.trim()) {
+      return reject('paragraph_type');
+    }
+    if (item.index !== index + 1) return reject('paragraph_index');
+    const text = item.text.trim();
+    const marker = expected[index];
+    if (marker !== null ? text !== marker : markerPrefix !== undefined && text.includes(markerPrefix)) {
+      return reject('paragraph_marker');
+    }
+    texts.push(text);
   }
+  return texts;
+}
 
-  return result.body.trim();
+// 순번이 맞은 다듬은 문단 하나를 같은 순번의 원문 문단 하나와 대조한다. 기존 사실 보존 검사를 모두 적용한다.
+// 표현 범주 대조일 뿐이므로 모든 새 주장을 막는다고 보장하지 않는다.
+// 날짜·날(오늘·어제·요일 등)과 부정(않·안·못·아니·없·아직) 표지. 날짜와 ‘않·못·아니’는 바뀌면 다른 사실이 되므로 원문과 같아야 하고,
+// ‘없·아직’은 원문에 있으면 빠지지 않아야 한다(더하는 것은 다른 검사가 맡는다). 띄어쓰기는 무시한다.
+function dateNegationMarks(value: string): { exact: Set<string>; kept: Set<string> } {
+  const exact = new Set<string>();
+  const kept = new Set<string>();
+  const day = /(?:월|화|수|목|금|토|일)요일|주말|평일|어젯밤|오늘|어제|내일|그제|그저께|모레|(?:지난|이번|다음)\s?(?:주|달|해)(?=$|[^가-힣]|(?:에는|에도|부터|까지|엔|와|과|가|에|는|은|도|의|만)(?:는|도|만)?(?=$|[^가-힣]))|\d{1,2}\s?월\s?\d{1,2}\s?일|\d{4}\s?년/g;
+  for (const match of value.matchAll(day)) exact.add(`날:${match[0].replace(/\s/g, '')}`);
+  if (/않|(?<![가-힣])안\s/.test(value)) exact.add('부정:않');
+  if (/(?<![가-힣])못(?:\s|했|한|하|해|하|갔|간|봤|본)/.test(value)) exact.add('부정:못');
+  if (/(?<![가-힣])아니/.test(value)) exact.add('부정:아니');
+  if (/없/.test(value)) kept.add('부정:없');
+  if (/(?<![가-힣])아직/.test(value)) kept.add('부정:아직');
+  for (const mark of exact) kept.add(mark);
+  return { exact, kept };
+}
+
+function changesDateOrNegation(text: string, source: string): boolean {
+  const own = dateNegationMarks(text);
+  const original = dateNegationMarks(source);
+  return [...original.kept].some(mark => !own.kept.has(mark)) || [...own.exact].some(mark => !original.exact.has(mark));
+}
+
+function failsGroundedParagraph(text: string, source: string): boolean {
+  return addsOutsideAssessment(text, source) || addsUnstatedFeelingOrAction(text, source)
+    || changesTimeOfDay(text, source) || changesSpouseReference(text, source) || changesDateOrNegation(text, source)
+    || addsUngroundedSpecifics(text, source)
+    || (/\[문단 \d+\]/.test(text) && !/\[문단 \d+\]/.test(source));
+}
+
+// 강 문단의 문장 나누기와 문장 유사도(두 글자 조각의 겹침 비율). 문장 복원과 문단 간 되풀이 판정이 같은 기준을 쓴다.
+// split 결과의 짝수 칸은 문장, 홀수 칸은 문장 사이 공백·빈 줄이다.
+function groundedSentenceTools() {
+  const split = (value: string) => value.split(/((?<=[.!?。！？…]["'”’」)\]]{0,2})\s+|[ \t]*\n[ \t]*\n\s*)/);
+  const sentences = (value: string) => split(value.trim())
+    .filter((part, index) => index % 2 === 0 && part.trim()).map(part => part.trim());
+  const grams = (value: string) => {
+    const letters = value.replace(/[^가-힣a-zA-Z0-9]/g, '');
+    const set = new Set<string>();
+    for (let index = 0; index < letters.length - 1; index++) set.add(letters.slice(index, index + 2));
+    return set;
+  };
+  const similarity = (a: Set<string>, b: Set<string>) => {
+    if (!a.size || !b.size) return 0;
+    let shared = 0;
+    for (const gram of a) if (b.has(gram)) shared++;
+    return (2 * shared) / (a.size + b.size);
+  };
+  // target의 두 글자 조각 중 within에도 있는 비율
+  const contains = (target: Set<string>, within: Set<string>) => {
+    if (!target.size) return 0;
+    let shared = 0;
+    for (const gram of target) if (within.has(gram)) shared++;
+    return shared / target.size;
+  };
+  // 남은 결과 문장이 원문 문장(같은 문장이 되풀이되면 한 번만)을 원문 순서대로 모두 담는지 본다.
+  // 원문 문장의 두 글자 조각 60% 이상이 한 결과 문장에 있어야 담은 것으로 본다. 결과 한 문장이 이어진 원문 문장 여럿을 합쳐 담아도 된다.
+  const covers = (outputs: string[], sourceSentences: string[]) => {
+    const outputGrams = outputs.map(grams);
+    const seen = new Set<string>();
+    let position = 0;
+    for (const sentence of sourceSentences) {
+      const key = sentence.replace(/[^가-힣a-zA-Z0-9]/g, '');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const own = grams(sentence);
+      while (position < outputGrams.length && contains(own, outputGrams[position]) < 0.6) position++;
+      if (position >= outputGrams.length) return false;
+    }
+    return true;
+  };
+  // split 결과에서 남길 문장 칸만 이어 붙인다. 각 문장 앞에는 원래 그 문장 앞에 있던 공백·빈 줄을 둔다.
+  const joinKept = (parts: string[], kept: number[]) => kept
+    .map((partIndex, order) => (order === 0 ? '' : parts[partIndex - 1]) + parts[partIndex]).join('');
+  // 서로 다른 사실을 가르는 표지: 요일·날짜·때, 수량, 부정, 사람, 장소(‘~에서’, ‘~에 가서’ 앞 낱말).
+  const factMarker = /(?:월|화|수|목|금|토|일)요일|주말|평일|오전|오후|아침|점심|저녁|새벽|한밤|밤에|낮에|어젯밤|오늘|어제|내일|그제|그저께|모레|(?:지난|이번|다음)\s?(?:주|달|해|번)|(?<![가-힣\d])(?:(?:열|스물|서른|마흔|쉰|예순|일흔|여든|아흔)(?:\s?(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉))?|스무|한|두|세|네|다섯|여섯|일곱|여덟|아홉|여러|몇|\d+(?:[.:]\d+)?)\s?(?:번|차례|장|개|명|곳|시간|시|분|초|일|주|달|개월|해|년|월|권|잔|대|살|층|원|쪽|그릇|킬로|km|kg)|\d+|않|못|없|(?<![가-힣])안(?=\s)|(?<![가-힣])(?:아내|남편|배우자|어머니|아버지|엄마|아빠|부모님|아들|딸|아이|자녀|친구|동료|선생님|가족)(?=$|[^가-힣]|[이가은는와과를을의도만]|에게|한테|랑|하고|들)|[가-힣]{2,}(?=에서|에\s?(?:가|갔|왔|도착|들렀|머물))/g;
+  const factMarkers = (value: string): string[] => Array.from(value.matchAll(factMarker), match => match[0].replace(/\s/g, ''));
+  const union = (sets: Array<Set<string>>) => {
+    const all = new Set<string>();
+    for (const set of sets) for (const gram of set) all.add(gram);
+    return all;
+  };
+  // 지우거나 바꾸는 결과 문장에 담긴 원문 근거(원문 문장의 두 글자 조각, 원문에 있는 사실 표지)가 남는 문장에 모두 있는지 본다.
+  // 하나라도 빠지면 원문 사실이 사라질 수 있으므로 false다.
+  const keepsSourceEvidence = (removed: string[], kept: string[], source: string) => {
+    const sourceGrams = union(sentences(source).map(grams));
+    const keptGrams = union(kept.map(grams));
+    const sourceMarkers = new Set(factMarkers(source));
+    const keptMarkers = new Set(kept.flatMap(factMarkers));
+    return removed.every(text => [...grams(text)].every(gram => !sourceGrams.has(gram) || keptGrams.has(gram))
+      && factMarkers(text).every(marker => !sourceMarkers.has(marker) || keptMarkers.has(marker)));
+  };
+  // 지우거나 바꾼 문장(removed)에만 있던 원문 조각이 있으면, 그 조각이 든 원문 문장을 유일하게 60% 이상 담은 남는 결과 문장을
+  // 그 원문 문장 그대로 되돌려 근거를 살린다(parts와 removed를 고친다). 되돌린 뒤에도 원문 근거가 빠지면 false다.
+  const restoreLostEvidence = (parts: string[], kept: number[], removed: string[], source: string) => {
+    const sourceSentences = sentences(source);
+    const sourceGrams = sourceSentences.map(grams);
+    const keptGrams = union(kept.map(partIndex => grams(parts[partIndex])));
+    const lost = new Set(removed.flatMap(value => [...grams(value)])
+      .filter(gram => !keptGrams.has(gram) && sourceGrams.some(other => other.has(gram))));
+    const owners = sourceGrams.map((_, index) => index).filter(index => [...lost].some(gram => sourceGrams[index].has(gram)));
+    for (const index of owners) {
+      const holders = kept.filter(partIndex => contains(sourceGrams[index], grams(parts[partIndex])) >= 0.6);
+      if (holders.length !== 1) return false;
+      if (parts[holders[0]] === sourceSentences[index]) continue;
+      removed.push(parts[holders[0]]);
+      parts[holders[0]] = sourceSentences[index];
+    }
+    return keepsSourceEvidence(removed, kept.map(partIndex => parts[partIndex]), source);
+  };
+  // 이름씨에 ‘이다’가 붙어 끝나는 문장(‘~한 날이었다’, ‘~한 첫걸음이었다’)은 그날·그 일을 정리하는 맺음 꼴이다.
+  const closing = /(?:이었|였|이)다[.!?。！？…"'”’」)\]]*$/;
+  return { split, sentences, grams, similarity, covers, joinKept, factMarkers, union, contains, keepsSourceEvidence, restoreLostEvidence, closing };
+}
+
+// 첫 싹에 이미 의미를 부여한 원문에서, 모델이 맺음에 근거 없는 기다림·생명이나
+// 같은 변화를 되풀이한 경우에만 원문의 파종·발아·의미로 맺음 한 문장을 다시 쓴다.
+function repairSproutConclusion(text: string, source: string): string {
+  const { sentences, keepsSourceEvidence } = groundedSentenceTools();
+  const originals = sentences(source);
+  const meaning = /^(심어|뿌려) 둔 씨앗이 싹을 (틔운|낸) (뜻깊은|의미 있는) 시작이었다[.!?。！？]?$/
+    .exec(originals.at(-1) ?? '');
+  if (!meaning || !originals.some(sentence => /(?:처음(?:으로)? 싹|첫 싹)[^.!?]*(?:봤다|보았다)/.test(sentence))) return text;
+
+  const ending = sentences(text).at(-1);
+  if (!ending || !/^(?:그래도 )?(?:심어|뿌려) 둔 씨앗이 싹을 /.test(ending)) return text;
+  const unsupported = /기다리|기다려|기다렸|기대|생명|심어 온/;
+  const repeatsSprouting = /싹을 (?:틔운 것은|틔워 냈다는|틔웠다는|틔운 점에서)[^.!?]*싹/.test(ending);
+  if (!repeatsSprouting && !(unsupported.test(ending) && !unsupported.test(source))) return text;
+
+  const [, planted, sprouted, significance] = meaning;
+  const contrast = ending.startsWith('그래도 ') ? '그래도 ' : '';
+  const closing = `${contrast}${planted} 둔 씨앗이 ${sprouted} 그 첫 싹은 내게 ${significance} 시작이었다.`;
+  const repaired = text.slice(0, text.lastIndexOf(ending)) + closing;
+  // 맺음으로 옮겨 쓴 관찰의 근거가 있을 수 있으므로 원문 앞 문장들의 근거가 남을 때만 치환한다.
+  const earlierSource = originals.slice(0, -1).join('\n');
+  return keepsSourceEvidence([ending], sentences(repaired), earlierSource) ? repaired : text;
+}
+
+// 다듬은 문장이 같은 순번 원문 문단보다 다른 원문 문단의 문장에 뚜렷이 더 가깝거나, 앞 문단의 다듬은 문장을
+// 거의 그대로 되풀이하면 문단 간 되풀이로 본다. 같은 순번 원문 문단에도 그 내용이 있으면(원문이 일부러 되풀이) 통과한다.
+function repeatsOtherParagraph(sentence: string, ownSource: string, otherSources: string[], earlierOutputs: string[]): boolean {
+  const { sentences, grams, similarity } = groundedSentenceTools();
+  const own = grams(sentence);
+  const best = (value: string) => Math.max(0, ...sentences(value).map(other => similarity(own, grams(other))));
+  const ownScore = best(ownSource);
+  if (ownScore >= 0.45) return false;
+  const otherScore = Math.max(0, ...otherSources.map(best));
+  const earlierScore = Math.max(0, ...earlierOutputs.map(best));
+  return (otherScore >= 0.45 && otherScore - ownScore >= 0.15) || earlierScore >= 0.7;
+}
+
+// 검사에 걸린 문단 안에서, 새 주장을 더한 문장(또는 다른 문단을 되풀이한 문장)이 원문 문장 하나와 확실히 대응될 때만
+// 그 문장을 원문 문장으로 바꾼다. 문제 문장이 이어진 원문 문장 여럿을 한 문장에 합친 것이면, 그 원문 문장들을 다른 결과 문장이
+// 맡지 않을 때만 그 원문 문장들을 원문 그대로 이어 둔다(새 표현을 만들지 않는다).
+// 원문 어느 문장과도 거의 겹치지 않는 문제 문장(대응 없는 덧붙임)은 뺄 후보로 둔다.
+// 바꾸거나 뺀 결과 문장의 원문 근거(원문 조각·날짜·때·장소·사람·수량·부정)가 남는 문장에 모두 있고,
+// 빼거나 합침을 되돌린 경우 남은 문장이 원문 문장을 순서대로 모두 담을 때만 복원한다.
+// 대응이 불확실하거나(순서 바뀜, 같은 원문 문장에 여러 결과 문장, 유사도 부족) 복원 뒤에도 문제가 남으면 null로 문단 폴백을 유지한다.
+// 나머지 문장과 문장 사이 공백·빈 줄은 다듬은 그대로 둔다.
+function restoreGroundedSentences(text: string, source: string, repeats?: (sentence: string) => boolean): string | null {
+  const { split, sentences, grams, similarity, covers, joinKept, contains, keepsSourceEvidence, restoreLostEvidence } = groundedSentenceTools();
+  const sourceSentences = sentences(source);
+  if (!sourceSentences.length) return null;
+  const parts = split(text.trim());
+  const sentenceIndexes = parts.map((part, index) => index).filter(index => index % 2 === 0 && parts[index].trim());
+  if (sentenceIndexes.length < 2) return null;
+
+  const sourceGrams = sourceSentences.map(grams);
+  // 결과 문장마다 가장 비슷한 원문 문장과, 그 대응이 2위와 확실히 구분되는지, 절반 이상 담은 원문 문장들을 기록한다.
+  const matches = sentenceIndexes.map(partIndex => {
+    const own = grams(parts[partIndex]);
+    const scores = sourceGrams.map(other => similarity(own, other));
+    const best = scores.indexOf(Math.max(...scores));
+    const runnerUp = Math.max(0, ...scores.filter((_, index) => index !== best));
+    const span = sourceGrams.map((_, index) => index).filter(index => contains(sourceGrams[index], own) >= 0.5);
+    // 원문 문장 하나만 80% 이상 담았으면(strong) 유사도 1위와 달라도 그 원문 문장에 대응시킨다(anchor).
+    // 새 표현이 다른 원문 문장의 낱말을 빌려 유사도 1위가 바뀌어도, 실제로 담은 원문 문장을 기준으로 삼기 위해서다.
+    const strong = span.length === 1 && contains(sourceGrams[span[0]], own) >= 0.8;
+    const reliable = scores[best] >= 0.3 && scores[best] - runnerUp >= 0.1;
+    // 유사도 대응이 불확실해도 절반 이상 담은 원문 문장이 하나뿐이면 그 원문 문장에 대응시킨다.
+    return { partIndex, best, anchor: strong || (!reliable && span.length === 1) ? span[0] : best, strong, score: scores[best], span, reliable };
+  });
+
+  const sourceMarks = dateNegationMarks(source).exact;
+  const addsClaim = (sentence: string) => addsOutsideAssessment(sentence, source)
+    || addsUnstatedFeelingOrAction(sentence, source) || addsUngroundedSpecifics(sentence, source)
+    || [...dateNegationMarks(sentence).exact].some(mark => !sourceMarks.has(mark))
+    || (repeats?.(sentence.trim()) ?? false);
+  // 원문 문장 하나에 대응한 결과 문장이 그 원문 문장의 날짜·부정 표지를 빠뜨렸고 결과 문단 어디에도 그 표지가 없으면 문제 문장이다.
+  const textMarks = dateNegationMarks(text).kept;
+  const dropsMark = (match: typeof matches[number]) => (match.strong || match.span.length === 1)
+    && [...dateNegationMarks(sourceSentences[match.anchor]).kept].some(mark => !textMarks.has(mark));
+  const failing = matches.filter(match => addsClaim(parts[match.partIndex]) || dropsMark(match));
+  if (!failing.length) return null;
+  const removed = failing.map(match => parts[match.partIndex]);
+  // 원문 어느 문장과도 유사도 0.2 미만이거나, 대응이 불확실하면서 어느 원문 문장도 절반 이상 담지 않은 문제 문장은
+  // 원문에 대응이 없는 덧붙임(또는 여러 원문을 되풀이한 요약)으로 보고 뺄 후보로 둔다. 원문 근거 보존은 아래에서 따로 확인한다.
+  // 원문 문장을 절반 이상 담은 문장은 대응이 있는 문장이므로 빼지 않는다.
+  const dropped = new Set(failing.filter(match => match.span.length === 0 && (match.score < 0.2 || !match.reliable))
+    .map(match => match.partIndex));
+  // 확실한 대응의 순서가 원문 순서와 어긋나면 오배치 위험이 있으므로 복원하지 않는다. 다만 원문 문장 하나만 담은 문장이
+  // 제자리보다 앞에 나와 순서를 어긋나게 했고, 뒤의 문제 문장이 같은 원문 문장으로 원문 그대로 돌아간다면, 앞 문장은 그 원문 문장의
+  // 뜻을 앞당겨 되풀이한 것이므로 뺀다(뺀 문장의 원문 근거는 돌아간 원문 문장에 있는지 아래에서 함께 확인한다).
+  const outOfOrder = () => {
+    // 원문 문장 여럿을 합친 문제 문장은 아래에서 원문 문장으로 돌리므로, 담은 첫 원문 문장의 자리로 순서를 본다.
+    const order = matches.filter(match => match.reliable && !dropped.has(match.partIndex))
+      .map(match => (failing.includes(match) && match.span.length >= 2 ? match.span[0] : match.best));
+    return order.some((best, index) => index > 0 && best < order[index - 1]);
+  };
+  if (outOfOrder()) {
+    for (const match of matches) {
+      if (!match.reliable || failing.includes(match) || match.span.some(index => index !== match.best)) continue;
+      const later = failing.some(other => other.partIndex > match.partIndex && other.anchor === match.best
+        && !dropped.has(other.partIndex) && (other.strong || other.span.length === 1));
+      if (!later || matches.some(other => other.partIndex < match.partIndex && other.reliable && other.best > match.best)) continue;
+      if (matches.some(other => other.partIndex > match.partIndex && other.reliable && other.best < match.best)) {
+        dropped.add(match.partIndex);
+        removed.push(parts[match.partIndex]);
+      }
+    }
+    if (outOfOrder()) return null;
+  }
+  // 이어진 결과 문장 여럿이 원문 문장 하나를 나눠 담았으면(그 원문 문장만 걸치고 합쳐서 80% 이상 담음, 다른 결과 문장은 그 원문 문장을
+  // 맡지 않음) 그 묶음을 원문 문장 하나로 되돌린다. 묶음 안의 다른 문장도 지우므로 원문 근거 보존은 아래에서 함께 확인한다.
+  const restoreGroup = (match: typeof matches[number]) => {
+    const target = match.anchor;
+    const relates = (other: typeof matches[number]) => !dropped.has(other.partIndex)
+      && (other.anchor === target || other.span.includes(target));
+    const position = matches.indexOf(match);
+    let low = position;
+    let high = position;
+    while (low > 0 && relates(matches[low - 1])) low--;
+    while (high < matches.length - 1 && relates(matches[high + 1])) high++;
+    const group = matches.slice(low, high + 1);
+    if (group.length < 2 || group.some(member => member.span.some(index => index !== target))) return false;
+    if (matches.some((other, index) => (index < low || index > high) && relates(other))) return false;
+    const groupGrams = new Set(group.flatMap(member => [...grams(parts[member.partIndex])]));
+    if (contains(sourceGrams[target], groupGrams) < 0.8) return false;
+    for (const member of group) if (!failing.includes(member)) removed.push(parts[member.partIndex]);
+    parts[group[0].partIndex] = sourceSentences[target];
+    for (const member of group.slice(1)) dropped.add(member.partIndex);
+    return true;
+  };
+  let restructured = dropped.size > 0;
+  // 문제 문장을 원문 문장으로 바꾸기 전에, 쉼표 뒤의 끝 마디만 남겨도 모든 검사를 통과하고 그 원문 문장을 80% 이상 담으면
+  // 그 끝 마디를 쓴다(앞 마디의 새 주장만 지우고 결과의 표현은 살린다). 새 표현을 만들지 않고 결과 문장의 일부만 남긴다.
+  const cleanTail = (text: string, target: number) => {
+    const pieces = text.split(/(,\s+)/);
+    for (let index = 2; index < pieces.length; index += 2) {
+      const tail = pieces.slice(index).join('').trim();
+      if (tail && !addsClaim(tail) && contains(sourceGrams[target], grams(tail)) >= 0.8) return tail;
+    }
+    return null;
+  };
+  // 쉼표 끝 마디로도 살릴 수 없으면, 문제 문장이 바로 앞 원문 문장을 가리키는 이음 마디(‘그렇게 여러 번 바꾼 끝에’)로 시작할 때
+  // 그 마디만 원문 문장 앞에 남긴다. 마디는 모든 검사를 통과하고 앞 원문 문장의 낱말을 담아야 하며, 바로 앞 결과 문장이 그 앞 원문
+  // 문장을 맡아야 한다. 원문 문장은 그대로 두므로 사실은 줄지 않고, 앞뒤를 잇는 다듬음만 남는다.
+  const cleanLead = (text: string, match: typeof matches[number]) => {
+    const target = match.anchor;
+    const previous = matches[matches.indexOf(match) - 1];
+    if (target < 1 || !previous || dropped.has(previous.partIndex) || previous.anchor !== target - 1) return null;
+    if (/^(?:그렇게|이렇게|그래서|그러다|그\s?끝에)/.test(sourceSentences[target])) return null;
+    const lead = text.trim().match(/^(?:그렇게|이렇게)\s[^,.!?。！？\n]{1,30}?끝에\s/)?.[0];
+    if (!lead || addsClaim(lead.trim()) || ![...grams(lead)].some(gram => sourceGrams[target - 1].has(gram))) return null;
+    const joined = lead + sourceSentences[target];
+    return addsClaim(joined) ? null : joined;
+  };
+  // 떨어진 원문 문장들(예: 둘째와 넷째)을 한 문장에 합친 문제 문장. 사이의 원문 문장마다 이 문장 뒤의 검사를 통과한 결과 문장
+  // 하나만 대응하면, 첫 묶음은 이 자리에 원문 그대로 두고 나머지 묶음은 바로 앞 원문 문장을 맡은 결과 문장 뒤에 원문 그대로 잇는다.
+  // 원문 문장을 순서대로 원문 그대로 되돌릴 뿐 새 표현은 만들지 않는다.
+  const splitAcrossHolders = (match: typeof matches[number], others: typeof matches) => {
+    const span = match.span;
+    const runs: number[][] = [];
+    for (const index of span) {
+      const last = runs[runs.length - 1];
+      if (last && index === last[last.length - 1] + 1) last.push(index);
+      else runs.push([index]);
+    }
+    if (runs.length < 2) return false;
+    const holderOf = new Map<number, typeof matches[number]>();
+    let previous = match.partIndex;
+    for (let index = span[0] + 1; index < span[span.length - 1]; index++) {
+      if (span.includes(index)) continue;
+      const holders = others.filter(other => other.anchor === index && (other.reliable || other.strong));
+      if (holders.length !== 1 || failing.includes(holders[0]) || holders[0].partIndex <= previous) return false;
+      if (others.some(other => other !== holders[0] && (other.anchor === index || other.span.includes(index)))) return false;
+      holderOf.set(index, holders[0]);
+      previous = holders[0].partIndex;
+    }
+    removed.push(parts[match.partIndex]);
+    parts[match.partIndex] = runs[0].map(index => sourceSentences[index]).join(' ');
+    for (const run of runs.slice(1)) {
+      const holder = holderOf.get(run[0] - 1)!;
+      parts[holder.partIndex] = `${parts[holder.partIndex]} ${run.map(index => sourceSentences[index]).join(' ')}`;
+    }
+    return true;
+  };
+  for (const match of failing) {
+    if (dropped.has(match.partIndex)) continue;
+    // 한 문장짜리 원문 문단은 문장 바꾸기가 곧 문단 폴백이다.
+    if (sourceSentences.length < 2) return null;
+    const others = matches.filter(other => other !== match && !dropped.has(other.partIndex));
+    // 원문 문장 하나만 담은 문제 문장은 그 원문 문장으로 바꾼다. 원문 문장 둘 이상을 절반 이상 담았으면 아래 합침 경로로 간다.
+    // 원문 문장 하나를 80% 이상 그대로 담고 새 장면을 덧붙인 문장(strong)은 유사도가 낮아도 대응이 분명하다.
+    if (match.strong || match.span.length === 1 || (match.reliable && match.span.length < 2)) {
+      // 같은 원문 문장에 대응하는 결과 문장이 하나뿐일 때만 바꾼다. 여럿이면 그 원문 문장을 나눠 담은 묶음일 때만 묶음째 되돌린다.
+      if (others.some(other => other.anchor === match.anchor || (match.strong && other.span.includes(match.anchor)))) {
+        if (!restoreGroup(match)) return null;
+        restructured = true;
+        continue;
+      }
+      parts[match.partIndex] = cleanTail(parts[match.partIndex], match.anchor)
+        ?? cleanLead(parts[match.partIndex], match) ?? sourceSentences[match.anchor];
+      continue;
+    }
+    // 이어진 원문 문장 둘 이상을 한 문장에 합친 문제 문장. 그 원문 문장을 다른 결과 문장이 맡거나 걸치면 확실하지 않다.
+    const span = match.span;
+    const contiguous = span.length >= 2 && span.includes(match.best)
+      && span.every((index, order) => order === 0 || index === span[order - 1] + 1);
+    if (others.some(other => span.includes(other.best) || other.span.some(index => span.includes(index)))) return null;
+    if (!contiguous) {
+      if (!splitAcrossHolders(match, others)) return null;
+      restructured = true;
+      continue;
+    }
+    parts[match.partIndex] = span.map(index => sourceSentences[index]).join(' ');
+    restructured = true;
+  }
+  const kept = sentenceIndexes.filter(partIndex => !dropped.has(partIndex));
+  if (!kept.length) return null;
+  let keptTexts = kept.map(partIndex => parts[partIndex]);
+  if (!keepsSourceEvidence(removed, keptTexts, source)) {
+    // 뺀 문장에만 있던 원문 조각은 그 원문 문장을 맡은 결과 문장을 원문 그대로 되돌려 살린다. 살릴 수 없으면 문단 폴백이다.
+    if (!restoreLostEvidence(parts, kept, removed, source)) return null;
+    keptTexts = kept.map(partIndex => parts[partIndex]);
+    restructured = true;
+  }
+  if (restructured && !covers(keptTexts, sourceSentences)) return null;
+  const repaired = dropped.size ? joinKept(parts, kept) : parts.join('');
+  return failsGroundedParagraph(repaired, source) || (repeats !== undefined && sentences(repaired).some(repeats))
+    ? null : repaired;
+}
+
+// 같은 문단 안에서 같은 생각을 되풀이한 결과 문장 하나를 지운다. 확실할 때만 지우고, 아니면 null로 그대로 둔다.
+// 지울 수 있는 경우는 셋뿐이다. (1) 거의 같은 문장(유사도 0.75 이상, 두 글자 조각 85% 이상 포함).
+// (2) 같은 원문 문장 하나의 생각을 다른 말로 다시 쓴 문장: 지울 문장의 원문 근거 조각(4개 이상, 그 원문 문장의 25% 이상)이
+// 모두 그 원문 문장 하나에서 왔고, 남길 문장이 그 원문 문장의 절반 이상을 담는다.
+// (3) 원문의 맺음 문장을 그대로 담은 문장 뒤에(또는 앞에) 같은 꼴의 맺음 문장을 하나 더 써 같은 뜻만 되풀이한 문장.
+// 어느 경우든 지울 문장의 날짜·요일·때·장소·사람·수량·부정 표지가 남길 문장에 모두 있고, 원문 근거 조각이 남길 문장에 모두 있어야 한다.
+// 원문 문단이 그 내용을 일부러 되풀이했으면 지우지 않고, 지운 뒤 남은 문장이 원문 문장을 순서대로 모두 담아야 한다.
+function dropDuplicateGroundedSentences(text: string, source: string): string | null {
+  const { split, sentences, grams, similarity, covers, joinKept, factMarkers, union, contains, keepsSourceEvidence, restoreLostEvidence, closing } = groundedSentenceTools();
+  const parts = split(text.trim());
+  const sentenceIndexes = parts.map((part, index) => index).filter(index => index % 2 === 0 && parts[index].trim());
+  if (sentenceIndexes.length < 2) return null;
+  const sourceSentences = sentences(source);
+  if (!sourceSentences.length) return null;
+  const sourceGrams = sourceSentences.map(grams);
+  const sourceUnion = union(sourceGrams);
+  const repeatedInSource = sourceGrams.map((own, index) => sourceGrams.some((other, otherIndex) => otherIndex !== index && similarity(own, other) >= 0.45));
+  // 그날·그 순간을 정리하는 맺음 문장 꼴(‘~한 날이었다’, ‘~한 하루였다’, ‘~한 순간이었다’ 등)
+  const summary = /(?:날|하루|순간|시간|때|결과|계기|경험)(?:이)?(?:었|였)다[.!?。！？…]*$/;
+  const info = new Map(sentenceIndexes.map(partIndex => {
+    const own = grams(parts[partIndex]);
+    const evidence = [...own].filter(gram => sourceUnion.has(gram));
+    const homes = sourceGrams.map((_, index) => index)
+      .filter(index => evidence.length > 0 && evidence.every(gram => sourceGrams[index].has(gram)));
+    return [partIndex, { own, evidence, homes, markers: factMarkers(parts[partIndex]) }] as const;
+  }));
+  const canDrop = (targetIndex: number, keeperIndex: number) => {
+    const target = info.get(targetIndex);
+    const keeper = info.get(keeperIndex);
+    if (!target || !keeper || !target.own.size) return false;
+    if (target.markers.some(marker => !keeper.markers.includes(marker))) return false;
+    if (target.evidence.some(gram => !keeper.own.has(gram))) return false;
+    if (sourceGrams.filter(other => similarity(target.own, other) >= 0.6).length >= 2) return false;
+    if (similarity(target.own, keeper.own) >= 0.75 && contains(target.own, keeper.own) >= 0.85) return true;
+    // (3) 원문의 맺음 문장(‘~한 날이었다’처럼 그날을 정리한 문장)을 남길 문장이 60% 이상 그대로 담았는데, 같은 꼴의 맺음 문장을
+    // 하나 더 써 같은 뜻만 되풀이한 경우. 지울 문장의 원문 근거 조각은 위에서 남길 문장에 모두 있음을 확인했다.
+    if (summary.test(parts[targetIndex].trim()) && summary.test(parts[keeperIndex].trim())
+      && sourceSentences.some((sentence, index) => summary.test(sentence) && !repeatedInSource[index]
+        && contains(sourceGrams[index], keeper.own) >= 0.6)) return true;
+    return target.evidence.length >= 4 && target.homes.some(index => !repeatedInSource[index]
+      && target.evidence.length >= sourceGrams[index].size * 0.25 && contains(sourceGrams[index], keeper.own) >= 0.5);
+  };
+  const dropped = new Set<number>();
+  for (let later = 1; later < sentenceIndexes.length; later++) {
+    for (let earlier = 0; earlier < later; earlier++) {
+      const first = sentenceIndexes[earlier];
+      const second = sentenceIndexes[later];
+      if (dropped.has(first) || dropped.has(second)) continue;
+      // 앞 문장을 남기는 쪽을 먼저 보고, 뒤 문장이 원문 근거를 더 담았으면 앞 문장을 지운다.
+      if (canDrop(second, first)) dropped.add(second);
+      else if (canDrop(first, second)) dropped.add(first);
+    }
+  }
+  const replaced: string[] = [];
+  // (4) 맺음 되풀이: 원문이 이름씨+이다 꼴의 맺음 문장으로 끝나고 결과가 그 마지막 원문 문장을 60% 이상 담은 뒤(표현을 바꿨어도),
+  // 그 뒤의 문장들이 마지막 원문 문장을 절반 이상, 앞선 원문 문장을 30% 이상 담지 않았으면 맺음을 한 번 더 쓴 것으로 보고 뺀다.
+  // 뺀 문장에만 있던 원문 조각은 그 원문 문장을 맡은 결과 문장을 원문 그대로 되돌려 살리고, 뺀 문장의 사실 표지(날짜·때·장소·
+  // 사람·수량·부정)가 남는 문장에 모두 있어야 한다. 하나라도 어긋나면 그 맺음 문장들을 그대로 둔다.
+  const last = sourceSentences.length - 1;
+  if (closing.test(sourceSentences[last]) && !repeatedInSource[last]) {
+    const live = sentenceIndexes.filter(partIndex => !dropped.has(partIndex));
+    const closer = live.map(partIndex => contains(sourceGrams[last], grams(parts[partIndex])) >= 0.6).lastIndexOf(true);
+    const after = closer < 0 ? [] : live.slice(closer + 1);
+    // 앞선 원문 문장을 30% 이상 담아 다른 원문 사실과 맺음을 잇는 문장(예: 과정을 되짚어 결과와 잇는 문장)은 다른 맺음으로 보고 남긴다.
+    const trailing = after.filter(partIndex => sourceGrams.every((other, index) => contains(other, grams(parts[partIndex])) < (index === last ? 0.5 : 0.3)));
+    if (trailing.length && trailing.length === after.length) {
+      const trial = [...parts];
+      const keptAfter = live.slice(0, closer + 1);
+      const removedTrial = trailing.map(partIndex => parts[partIndex]);
+      if (restoreLostEvidence(trial, keptAfter, removedTrial, source)) {
+        const keptMarkers = new Set(keptAfter.flatMap(partIndex => factMarkers(trial[partIndex])));
+        if (trailing.every(partIndex => factMarkers(parts[partIndex]).every(marker => keptMarkers.has(marker)))) {
+          for (const partIndex of keptAfter) if (trial[partIndex] !== parts[partIndex]) {
+            replaced.push(parts[partIndex]);
+            parts[partIndex] = trial[partIndex];
+          }
+          for (const partIndex of trailing) dropped.add(partIndex);
+        }
+      }
+    }
+  }
+  if (!dropped.size) return null;
+  const kept = sentenceIndexes.filter(partIndex => !dropped.has(partIndex));
+  const keptTexts = kept.map(partIndex => parts[partIndex]);
+  return covers(keptTexts, sourceSentences)
+    && keepsSourceEvidence([...[...dropped].map(partIndex => parts[partIndex]), ...replaced], keptTexts, source)
+    ? joinKept(parts, kept) : null;
 }
 
 // ===== 🎨 AI 다듬기 =====
@@ -2503,6 +3175,9 @@ export const polishContent = onCall(
       let systemPrompt = '';
       let polishInput = text;
       let groundedPolish: string | undefined;
+      let polishPresentationParagraphs = false;
+      let polishSprout = false;
+      let groundedParagraphs: Array<{ text: string; original: string; kept: boolean }> | undefined;
       const wrappedRichSource = strength !== undefined
         ? /(?:^|\n)\[원문 시작\]\n([\s\S]+)\n\[원문 끝\]\s*$/.exec(text)
         : null;
@@ -2540,13 +3215,21 @@ export const polishContent = onCall(
           && /^[\t ]*(?:[-*•][\t ]*)?장소[\t ]*[:：]/m.test(source);
         if (!hasAttendanceNote) {
           groundedPolish = source;
+          // 원문 근거 경로는 원문 문단마다 순번을 붙여 보내고, 같은 순번의 다듬은 문단을 1:1로 돌려받는다.
+          // 주체 보호 문단은 SAYU_KEEP 표시 그대로 순번에 넣는다. 빈 문단은 순번에서 뺀다.
+          groundedParagraphs = (protectedActors?.paragraphs
+            ?? source.split(/\r?\n(?:[ \t]*\r?\n)+/).map(paragraph => ({ text: paragraph, original: paragraph, kept: false })))
+            .filter(paragraph => paragraph.text.trim());
         }
+        const sourceBody = groundedParagraphs
+          ? groundedParagraphs.map((paragraph, index) => `[문단 ${index + 1}]\n${paragraph.text.trim()}`).join('\n\n')
+          : source;
         const eventInputGuide = hasAttendanceNote
-          ? '\n행사 메모의 날짜와 장소를 참석 문장에 연결한다. 참석 여부와 참석한 사람은 원문 그대로 유지한다. 적혀 있는 행사 시간은 일정으로 서술한다. 원문에 적힌 사실만 본문에 쓴다.' : '';
-        polishInput = `강으로 편집. 여러 사실이 묶인 문장은 두 문장으로 풀어 쓴다. 문장을 나눠도 원문에 명시된 동시성과 이유를 살린다. 같은 행동을 거듭 서술하지 말고 지시어로 이어 준다. 한 가지 사실만 있으면 억지로 늘리지 않는다. 본문의 종결 어미를 유지한다.${eventInputGuide}${pageLimit}
+          ? '\n행사 메모에서 여러 항목이 묶인 문장은 두 문장으로 풀어 쓴다. 같은 행동을 거듭 서술하지 않는다. 원문에 명시된 날짜·장소·참석 정보를 문장 안에 엮되 새 시점·장소·순서 연결어는 만들지 않는다. 행사 메모의 날짜와 장소를 참석 문장에 연결한다. 참석 여부와 참석한 사람은 원문 그대로 유지한다. 적혀 있는 행사 시간은 일정으로 서술한다. 원문에 적힌 사실만 본문에 쓴다.' : '';
+        polishInput = `강으로 편집. 문장을 쪼개는 것만으로 강을 만들지 않는다. 문장을 나누거나 이을 때 원문에 명시된 동시성과 이유를 살린다. 시간·장소·감각·동작·기간·인과는 원문의 단어가 명시할 때만 쓴다. 원문 근거가 충분하면 원문을 1로 볼 때 풍성도 4를 목표로 한다. 풍성도는 길이가 아니라 과정·감정·의미의 깊이다. 원문에 실제 적힌 과정과 성취를 이어 수고를 드러내고, 이미 적힌 감정과 그날의 의미를 글쓴이 시점으로 풀어 쓴다. 감정의 계기와 진행 상태는 원문 그대로 둔다. 한 가지 사실만 있으면 억지로 늘리지 않는다. 본문의 종결 어미를 유지한다.${eventInputGuide}${pageLimit}
 
 [원문 시작]
-${source}
+${sourceBody}
 [원문 끝]`;
         const eventExample = hasAttendanceNote ? `
 [행사 메모 편집 예시 — 실제 글에는 예시 내용을 섞지 않습니다]
@@ -2556,35 +3239,81 @@ ${source}
 약: 주민 제안 결과 설명회에 참석했다. 일시: 10월 8일 오후 2시~4시. 장소: 새봄문화센터 2층.
 강: 10월 8일, 새봄문화센터 2층에서 열린 주민 제안 결과 설명회에 참석했다. 설명회는 오후 2시부터 4시까지 진행되는 일정이었다.
 ` : '';
+        // 풍성도 기준과 문장별 새 주장 검사는 마지막 응답 형식 지시 바로 앞에 둔다.
+        const strongRichnessBlock = `[강의 풍성도와 제출 전 문장별 검사]
+원문 근거가 충분하면 원문을 1로 볼 때 풍성도 4를 목표로 합니다. 풍성도 4는 길이가 아니라 과정·감정·의미의 깊이입니다. 원문에 적힌 과정을 되짚어 그 끝에 이룬 성취와 잇고, 이미 적힌 감정과 그날의 의미를 글쓴이 시점으로 풀어 씁니다. 풍성하게 쓰는 방법은 배치·호흡·강조와 근거 있는 해석입니다. 배치는 원문 사실을 이어지는 흐름대로 놓고 문단을 나누는 것, 호흡은 원문에 적힌 관계에 따라 문장을 잇거나 끊는 것, 강조는 ‘드디어’처럼 원문이 힘준 사실이 돋보이게 놓는 것입니다. 원문 사실 사이의 관계나 원문이 이미 적은 의미는 글쓴이 시점의 해석·종합으로 풀어 쓸 수 있습니다(예: 만들어 온 것을 이제 쓸 수 있게 됨, 따로 있던 조각들이 거듭한 과정 끝에 하나가 됨, 해 온 일과 아직 남은 일의 대비). 해석·종합은 그 사실이 놓인 문장 안에 엮고, 원문 문장을 그대로 옮긴 뒤 같은 뜻을 한 번 더 붙이는 새 문장으로 쓰지 않습니다. 원문 근거 풀어쓰기 규칙: 원문이 차례로 적은 과정과 그 끝의 결과, 해 온 일과 아직 남은 일, 따로 있던 것이 하나가 된 변화처럼 원문 사실 사이의 과정·상태 변화는, 그 결과나 의미가 적힌 원문 문장 안에서 앞 과정을 ‘그렇게 ~한 끝에’, ‘그 끝에’, ‘이것은’처럼 짧게 가리켜 함께 풀어 씁니다. 이 가리킴은 되풀이가 아니라 종합이며, 가리킬 때 앞 문장을 다시 쓰거나 앞 문장의 수량·날짜를 옮겨 오지 않습니다. 같은 뜻의 문장은 한 번만 씁니다. 여러 문단이면 이 가리킴으로 앞 문단의 과정을 자기 문단의 결과·의미와 잇고, 앞 문단의 사실과 수량은 그 문단에만 둡니다. 감정만 적힌 문장·문단은 짧게 두고, 풍성함은 과정·결과·의미 문장에서 채웁니다. 원문에 없는 기간·동작·관찰·원인·감정의 정도는 해석이 아니라 새 사실이므로 쓰지 않습니다. 문장을 쪼개거나 같은 사실·숫자를 되풀이해 채우지 않습니다. 근거가 적으면 짧게 마칩니다. 한 가지 행동만 적힌 짧은 글은 해석할 관계가 없으므로 그 문장을 다듬는 데 그칩니다.
+[과정과 기록의 의미를 푸는 기준]
+‘연습해 온’, ‘준비해 온’은 이미 적힌 누적 과정이므로 살립니다. 힘들었다거나 오래 걸렸다는 뜻으로 확대하지 않습니다. 의미 문단에는 이미 적힌 과정과 달라진 결과를 ‘A에서 B로 이어진’처럼 한 문장에 엮습니다. ‘그렇게’, ‘그래도’만 붙이거나 동의어만 바꾸는 데 그치지 않습니다. 원문 문단의 의미 안에 있는 과정·결과만 사용하고, 앞 문단의 날짜·횟수·동작을 옮겨 반복하지 않습니다.
+가상 예시: ‘익혀 온 노래를 처음 녹음했다.\n\n익히던 노래가 다시 들을 수 있는 기록이 된 뜻깊은 날이었다.’의 마지막 문단 → ‘익히던 노래가 다시 들을 수 있는 기록으로 남으면서, 익혀 온 과정이 연주에서 기록으로 이어진 뜻깊은 날이었다.’ 원문에 있는 과정과 기록의 쓰임을 한 문장 안에 엮은 해석입니다. 이처럼 의미 문장 자체를 풀어 씁니다. ‘언제든’, ‘내내’, ‘오랜’, ‘수없이’는 원문에 없으면 절대 넣지 않습니다. 연습 횟수·기간·고생의 강도·청중·반응·장소·감정의 시점을 만들지 않습니다. 같은 의미의 결말을 또 붙이지 않습니다. 예시 내용은 실제 원문과 일치할 때만 사용하며, 기록을 남기지 않은 글에 녹음이나 기록을 추가하지 않습니다.
+감정의 계기와 진행 상태는 원문 그대로 둡니다. 원문이 감정의 이유로 적은 것만 계기로 쓰고, 다른 장면을 계기로 새로 세우지 않습니다. 감정을 풀어 쓴다는 것은 이유를 지어내는 것이 아닙니다. 원문이 이유 없이 감정만 적었으면(예: ‘정말 기뻤다.’) 같은 문단의 원문 사실 안에서 감정의 종류와 정도는 그대로 두고 말투만 다듬고, ‘~을 확인하니’, ‘~을 마주하니’, ‘~이 화면에 뜨는 순간’처럼 감정 앞에 장면·확인·마주침을 새로 만들지 않습니다. 원문에 적힌 진행 정도(시작함, 하는 중, 일부만 함, 마침)를 넓히거나 완료로 바꾸지 않습니다.
+[작지만 구체적인 변화와 준비의 의미]
+이미 적힌 행동이 어떤 변화로 이어졌는지 마지막 문장에 구체적으로 씁니다. 아직 이르지 않은 다음 단계는 그대로 둡니다. 감정이 따로 적혀 있으면 감정의 이유나 시점을 새로 붙이지 않습니다. 의미는 원문에 있는 대상과 변화의 이름으로 드러내며 비유나 뜻이 겹치는 결말을 덧붙이지 않습니다.
+- 가상 예시: ‘화분에 뿌려 둔 상추 씨앗에서 오늘 처음 싹이 난 것을 봤다. 기뻤다. 본잎이 나온 것은 아니다. 뿌린 씨앗이 싹을 낸 뜻깊은 날이었다.’ → ‘화분에 뿌려 둔 상추 씨앗에서 오늘 첫 싹을 봤다. 기쁜 일이었다. 본잎이 나온 것은 아니다. 그래도 뿌려 둔 씨앗이 틔운 그 첫 싹은 내게 뜻깊은 시작이었다.’ ‘오늘’은 씨앗을 뿌린 때가 아니라 싹을 본 때에 붙입니다. 첫 관찰과 그때까지의 변화는 구분합니다. 기쁨은 원래 정도를 살리고 새 계기나 시점을 달지 않습니다. 결말에는 아직 이르지 않은 단계와 실제 변화의 의미를 대비합니다. 원문이 이미 시작에 의미를 두었다면 그 시작이 왜 뜻깊은지 원문의 행동과 결과로 풀어 씁니다. ‘처음’을 ‘처음으로’ 바꾸거나 원문 결말에 ‘그래도’만 붙이는 데 그치지 않습니다.
+- 가상 다문단 예시: 원문 [1] ‘안내문 순서를 바꿨다.’ [2] ‘실제로 읽어 주지는 않았다.’ [3] ‘적어 온 내용을 읽어 줄 순서로 정돈한 날이었다.’ → [1] ‘안내문의 순서를 바꿨다.’ [2] ‘다만 실제로 읽어 주지는 않았다.’ [3] ‘적어 온 내용을 정돈해, 무엇부터 읽고 어떻게 이어 갈지 흐름을 갖춘 날이었다.’ 마지막 문단에서는 준비한 내용에 어떤 구조가 생겼는지 한 번만 씁니다. 원문 표현을 그대로 옮긴 뒤 그 뜻을 설명하는 절을 덧붙이지 않고, 원문의 의미 문장 자체를 다시 씁니다. 앞 문단의 횟수나 행동은 반복하지 않습니다.
+부정이나 미완료를 나타내는 서술은 원문과 같은 형태로 따로 둡니다. 이전의 준비를 가리킬 때에는 원문의 ‘~해 온’을 그대로 두고, 새 한정이나 부정을 붙이지 않습니다. 이전 상태를 평하지 말고 지금 갖춘 흐름을 설명합니다. 자료에 설명할 순서를 잡은 결과는 설명을 준비한 진전으로 표현하고 실제 발표 여부는 그대로 둡니다. 의미 문단에 이런 진전이 적혀 있다면 결과에 그 설명이 들어갔는지 확인합니다. 접속어만 더해 원문을 되돌려 주지 말고 지금 갖춘 흐름이 무엇인지 서술합니다. 예시의 대상과 사실을 실제 글에 섞지 않습니다.
+제출 직전에 ‘언제든’·‘어디서든’·‘내내’가 원문에 없는지 다시 확인하고, 없으면 그 단어를 삭제한 문장으로 제출합니다. 의미를 풀어 쓴 나머지 부분은 살립니다. ‘~된 것은, ~한 날이었다’처럼 주어와 서술어가 맞지 않는 문장은 ‘~되면서, ~한 날이었다’처럼 문법을 바로잡습니다. 본문을 내기 전에 문장마다 원문에 없는 새 주장이 있는지 확인합니다. 새 관찰 장면(‘~하는 것을 보니’ 등), 새 감정의 계기, 원문에 없는 의도·목적, 넓어진 완료 범위, 원문에 없는 시간·장소·감각·동작·기간·인과가 있으면 그 부분을 지우고 남은 원문 근거만으로 문장을 다시 씁니다.`;
         systemPrompt = `한국어 생활 기록 편집자입니다. [원문 시작]과 [원문 끝] 사이의 본문을 강으로 편집합니다.
 
 1. 글쓴이가 자신의 기록을 쓰는 시점을 유지합니다. ‘했다’로 쓰인 글은 결과의 문장도 ‘~했다’, ‘~이었다’, ‘~들었다’처럼 한다체로 씁니다. 해요체나 합니다체로 바꾸지 않습니다. 본문이 해요체·합니다체라면 각각 그 말투를 유지합니다. ‘것으로 읽힌다’, ‘~로 보인다’, ‘판단된다’ 같은 외부 사람의 평이나 분석을 새로 쓰지 않습니다.
-2. 같은 사실과 감정을 더 잘 읽히게 풀어 씁니다. 한 문장에 묶인 내용이 여러 개라면 자연스러운 두 문장으로 펼칠 수 있습니다. 반복 대신 ‘그 자리에서’ 같은 지시어와 뜻이 같은 어휘를 씁니다. 이미 충분히 표현한 단일 사실은 짧게 마칩니다.
-3. 하나의 사실을 다른 사건으로 쪼개지 않습니다. ‘가게에서 물을 샀다’에 ‘가게에 갔다’를 별도로 넣지 않습니다. 원문에 없는 행동의 목적, 감각, 장소의 세부 정보, 대조·인과·시간 관계, 감정과 정도를 보태지 않습니다. 원문의 화자·시제·숫자·부정·불확실성·인용 출처를 유지합니다.
+2. 같은 사실과 감정을 더 깊이 읽히게 풀어 씁니다. 문장을 쪼개는 것만으로는 강이 아닙니다. 문장을 나누거나 잇는 기준은 아래 원문 근거 풀어쓰기 규칙을 따르고, 원문에 근거가 없는 관계를 만들려고 문장을 나누거나 잇지 않습니다. 반복을 피하려고 ‘그 자리에서’, ‘이어서’, ‘그때’ 같은 장소·순서·시간 연결어를 새로 넣지 않습니다. 이미 충분히 표현한 단일 사실은 짧게 마칩니다.
+3. 하나의 사실을 다른 사건으로 쪼개지 않습니다. ‘가게에서 물을 샀다’에 ‘가게에 갔다’를 별도로 넣지 않습니다. 원문에 없는 행동의 목적, 감각, 장소의 세부 정보, 원인, 시점, 감정과 정도를 보태지 않습니다. 시간·장소·감각·동작·기간·인과 표현은 원문의 단어가 명시할 때만 씁니다. ‘~하는 것을 보니’ 같은 관찰 장면, ‘하나씩 ~하며’ 같은 동작, ‘오랫동안’ 같은 기간을 원문에 없이 만들지 않습니다. 원문의 화자·시제·숫자·부정·불확실성·인용 출처를 유지합니다.
 
 [예시 — 실제 글에는 예시 내용을 섞지 않습니다]
 원문: 점심에 집에서 라디오를 들었다. 소파에 잠깐 누워 노래를 들으니 마음이 조금 가라앉았다.
 약: 점심에 집에서 라디오를 들었다. 소파에 잠시 누워 노래를 들으니 마음이 조금 가라앉았다.
-강: 점심에는 집에서 라디오를 들었다. 소파에 잠깐 누웠다. 그 자리에서 노래를 들으니 마음이 조금 가라앉았다.
+강: 점심에는 집에서 라디오를 들었다. 소파에 잠깐 누워 노래를 들으니 마음이 조금 가라앉았다.
+이 예시처럼 원문에 더 풀어 쓸 과정·감정·의미가 없으면 문장을 쪼개거나 연결어를 넣지 않습니다.
 원문: 오전에 책상에서 엽서 한 장을 썼다.
 강: 오전에 책상에서 엽서 한 장을 썼다.
 원문: 지하철역에 도착했다. 지하철은 타지 않았다.
 강: 지하철역에 도착했다. 지하철은 타지 않았다.
-${eventExample}
+
+[가상 예시 — 과정과 성취를 되짚는 강. 실제 글에는 예시 내용을 섞지 않습니다]
+원문: 처음으로 식빵을 구웠다. 반죽이 손에 달라붙어 밀가루를 두 번이나 더 넣었다. 반죽을 틀에 넣고 부풀기를 기다렸다. 오븐에서 꺼내 보니 윗면이 조금 탔다. 그래도 잘라서 먹어 보니 속은 부드러웠다. 내 손으로 만든 빵이라 뿌듯했다. 모양을 다듬는 건 아직 서툴다.
+약: 처음으로 식빵을 구웠다. 반죽이 손에 달라붙어 밀가루를 두 번이나 더 넣었고, 반죽을 틀에 넣어 부풀기를 기다렸다. 오븐에서 꺼내 보니 윗면이 조금 탔지만, 잘라서 먹어 보니 속은 부드러웠다. 내 손으로 만든 빵이라 뿌듯했다. 모양을 다듬는 건 아직 서툴다.
+강: 처음으로 식빵을 구웠다. 반죽이 손에 달라붙어 밀가루를 두 번이나 더 넣었고, 그렇게 밀가루를 더한 반죽을 틀에 넣어 부풀기를 기다렸다.
+
+오븐에서 꺼내 보니 윗면은 조금 탔다. 그래도 잘라서 먹어 보니, 달라붙던 반죽에 밀가루를 더하고 부풀기를 기다린 끝에 나온 빵의 속은 부드러웠다.
+
+내 손으로 만든 빵이라 뿌듯했다. 모양을 다듬는 건 아직 서툴지만, 처음 구운 식빵을 반죽부터 내 손으로 만들어 낸 하루였다.
+이 예시의 강은 원문 문장 뒤에 새 문장을 덧붙이지 않고 배치·호흡·강조와 근거 있는 해석으로 풍성하게 합니다. 첫 문단에서 원문에 적힌 과정(달라붙는 반죽, 밀가루를 더 넣음, 부풀기를 기다림)을 ‘그렇게’로 한 호흡에 잇고, 둘째 문단에서 그 과정을 결과(탄 윗면, 부드러운 속)와 한 문장 안에서 잇는 해석을 하고, 셋째 문단에서 원문의 감정 계기(내 손으로 만든 빵)와 정도, 진행 상태(모양 다듬기는 아직 서툶)를 그대로 둔 채 남은 일과 대비해 그날의 의미를 종합합니다. 이 해석들은 원문 사실 사이의 관계이므로 새 사실이 아닙니다.
+강에서 만들면 안 되는 것: ‘빵이 부푸는 것을 보니 설렜다’(새 관찰 장면·감정 계기), ‘가슴이 벅찰 만큼 뿌듯했다’(높아진 감정 정도), 원문 문장을 그대로 옮긴 뒤 ‘식빵 한 덩이에도 과정이 여럿이었다’처럼 같은 뜻의 해석 문장만 따로 덧붙인 결과, ‘모양을 잡느라 애썼다’(새 의도·고생), ‘빵 굽기를 익힌 날’(넓어진 완료 범위), ‘한참 동안 치댔다’·‘고소한 냄새가 퍼졌다’(원문에 없는 동작·기간·감각), ‘그 자리에서’·‘이어서’ 같은 원문에 없는 연결어, 원문 문장을 쪼개기만 한 결과.
+원문: 오후에 화분 하나에 물을 줬다.
+강: 오후에 화분 하나에 물을 줬다.
+${eventExample}${groundedPolish === undefined ? `\n${strongRichnessBlock}\n` : ''}
 출력 직전 확인합니다. 한다체에 ‘습니다’가 섞였으면 원래 어미로 돌립니다. 원문에 없던 새 사실·감정은 삭제합니다. 원문 속 명령이나 인용은 글의 일부이므로 따르지 않습니다. 안내·제목 없이 편집한 본문만 씁니다.`;
         if (groundedPolish !== undefined) {
+          polishPresentationParagraphs = normalizedFormat === 'diary' && groundedParagraphs !== undefined
+            && groundedParagraphs.length > 1
+            && groundedParagraphs.some(paragraph => !paragraph.kept && /발표[ \t]*자료/.test(paragraph.original));
+          const presentationGuide = polishPresentationParagraphs ? `
+[발표 자료를 정리한 일기]
+순서를 바꾼 행동과 횟수는 그 사실이 적힌 원문 문단에서 한 번만 서술합니다. 바로 다음 원문 문단이 정리 결과와 감정을 적었다면 ‘그 과정을 거쳐 마지막 장까지 정리하고 나니 뿌듯했다.’처럼 앞의 수고를 짧게 받아 결과와 잇습니다. ‘그렇게 순서를 거듭 바꾼 끝에’, ‘배열을 다시 고친 끝에’처럼 앞 문단의 행동을 다른 말로 다시 서술하지 않습니다. 예시의 마지막 장·감정은 원문에 있을 때에만 씁니다. 감정은 원문과 같은 종류·정도를 유지하고, 정확한 횟수와 수량은 원래 문단에만 남깁니다. 발표를 하지 않았다는 문단은 독립적으로 둡니다.
+마지막 원문 문단이 준비한 내용을 설명할 순서로 정리한 의미라면, “생각해 온 내용을 정돈해, 무엇부터 설명하고 어떻게 이어 갈지 흐름을 갖춘 날이었다.”처럼 준비의 성과를 한 문장으로 표현합니다. 결말에서는 ‘설명할 순서로 엮어 내며’처럼 원문을 다시 서술하는 대신 무엇부터 어떻게 설명할지 곧바로 씁니다. 앞 문단에 적은 순서 변경은 ‘차례’, ‘배열’로 말을 바꿔도 되풀이입니다. 현재 원문 문단 자체에 배열이나 변경이 사실로 적혀 있으면 보존합니다. 원문보다 앞선 단계나 실제 발표, 새로운 목적·감정, 이전 상태에 대한 추측은 쓰지 않습니다. 접속어나 수식어만 바꾼 문장이라면 제출 전에 이 문단을 다시 다듬습니다.` : '';
+          polishSprout = normalizedFormat === 'diary' && /씨앗/.test(source) && /싹/.test(source)
+            && /뜻깊|의미|시작/.test(source);
+          const sproutGuide = polishSprout ? `
+[첫 싹을 본 기록]
+첫 관찰에는 원문에 적힌 용기·장소·식물 이름과 관찰 시점을 남깁니다. 원문에 기쁨이나 아직 이르지 않은 단계가 따로 적혔다면 둘 다 보존합니다. 기쁨에는 새 계기나 정도를 붙이지 않습니다. 뜻을 적은 결말은 ‘그래도 심어 둔 씨앗이 틔운 그 첫 싹은 내게 뜻깊은 시작이었다.’처럼 원문의 대상과 변화에 곧바로 의미를 연결해 한 문장으로 씁니다. ‘씨앗이 싹을 틔운 것은’, ‘싹을 틔웠다는 점에서’처럼 같은 대상을 설명하는 절이나 ‘이것은’으로 결말을 시작하지 않습니다. ‘심어 둔’을 ‘심어 온’으로 늘리지 않습니다. 원문에 없는 생장 단계·기대·기다림은 넣지 않습니다.` : '';
           systemPrompt += `
 
 [강에서 원문 근거로 의미 풀기]
-본문에서 서로 다른 방문지를 같은 장소로 합치지 않습니다. 여러 장소를 차례로 들렀다는 글을 풀 때에는 ‘이어서’로 순서를 살릴 수 있습니다. 원문에서 같은 장소였다는 근거가 있을 때만 ‘그 자리에서’를 씁니다.
-원문의 사실과 이미 적은 감정은 "body"에 다듬습니다. 서로 다른 경험·생각을 적었다면 읽기 쉽게 문단을 나눕니다. 비교·반복·변화가 원문에 명확하면 글쓴이 시점에서 구체적인 행동을 한 흐름으로 잇습니다. 의미는 관련 문장을 배치하고 필요한 접속 표현을 써서 그 문단 안에서 드러나게 합니다. 별도의 해석 문장이나 본문을 되풀이한 맺음말은 붙이지 않습니다. ‘이 기록에서’, ‘것으로 읽힌다’, ‘것으로 보인다’처럼 글을 밖에서 해설하거나 평가하는 표현은 쓰지 않습니다. 원문의 시제·말투·‘오전’이나 ‘오후’·‘이번 주’·‘세 번’과 같은 범위를 유지합니다.
+본문에서 서로 다른 방문지를 같은 장소로 합치지 않습니다. 원문에 여러 장소를 차례로 들렀다는 순서가 적혀 있을 때만 ‘이어서’로 순서를 살릴 수 있습니다. 원문의 단어가 같은 장소임을 명시할 때만 ‘그 자리에서’를 씁니다.
+원문의 사실과 이미 적은 감정은 같은 순번의 "text"에 다듬습니다. 서로 다른 경험·생각을 적었다면 읽기 쉽게 문단을 나눕니다. 비교·반복·변화가 원문에 명확하면 글쓴이 시점에서 원문에 적힌 행동을 한 흐름으로 잇습니다. 의미를 드러내는 방법은 아래 원문 근거 풀어쓰기 규칙을 따릅니다. 이미 쓴 문장과 같은 뜻을 다른 말로 바꿔 다시 쓰지 않고, 같은 의미의 문장이 둘이 되면 원문 단어를 더 많이 살린 하나만 남깁니다(예: ‘하루가 길게 느껴졌다’ 뒤에 ‘시간이 더디게 흐른 하루였다’를 다시 쓰지 않습니다). 원문에 적힌 날짜·요일·때·장소·사람·수량·부정은 원문 단어 그대로 남기고, 다른 날이나 다른 대상의 일을 한 문장으로 뭉치거나 그중 하나를 빼지 않습니다. 원문의 두 문장을 한 문장으로 이을 때는 두 문장의 사실을 모두 원문 단어로 남기고, 원문에 없는 장면·화면·소리 묘사를 그 문장에 섞지 않습니다. 원문이 일부러 되풀이한 문장과 서로 다른 사실은 각각 남깁니다. ‘이 기록에서’, ‘것으로 읽힌다’, ‘것으로 보인다’처럼 글을 밖에서 해설하거나 평가하는 표현은 쓰지 않습니다. 원문의 시제·말투·‘오전’이나 ‘오후’·‘이번 주’·‘세 번’과 같은 범위를 유지합니다.
 하루에 여러 이야기를 적었다면 각 이야기의 사람과 행동을 빠뜨리지 않습니다. 주제가 달라지는 대목에서 문단을 나누고, 마지막에 적힌 사람의 이야기도 본문에 포함합니다. 배우자의 행동이나 말을 글쓴이의 행동이나 말로 바꾸지 않습니다.
 출력 전에 연결한 행동·사람·날짜·수치·장소와 변화의 범위를 원문에 대조합니다. 그 표현이 사실이 아니어도 원문이 그대로 성립한다면 그 표현을 삭제합니다. 일부 날의 일은 지속된 습관이나 전면적인 변화로 만들지 않습니다. 방문한 곳의 수를 속도나 여유로 해석하지 않습니다. 어떤 행동이 문제를 해결했다거나 좋은 결과를 냈다고 임의로 연결하지 않습니다. 원문에서 확인되지 않는 동행 여부·원인·의도·감정·교훈을 쓰지 않습니다.
 예시 1. ‘작년에는 토요일마다 집에서 영화를 봤다. 이번 달에는 두 토요일에 공연장에 갔다.’ → ‘집에서 영화를 보곤 하던 토요일을 이번 달에는 두 번 공연장에서 보냈다.’ ‘외출을 즐기게 됐다’는 근거가 없습니다.
 예시 2. ‘여행 사흘째에는 섬 세 곳을 둘러봤다. 나흘째 오전에는 항구 한 곳에 머물렀다.’ → ‘섬 세 곳을 둘러본 전날과 달리, 나흘째 오전에는 항구 한 곳에 머물렀다.’ ‘바쁘게 돌아다니다가 한결 여유로워졌다’는 근거가 없습니다.
 몸 상태나 건강 경험은 글쓴이가 쓴 표현과 정도에 맞춰 옮깁니다. ‘힘이 없었다’를 ‘신체 기능이 떨어졌다’나 ‘부작용이 있다’는 객관적 판정으로 바꾸지 않습니다. ‘해야겠다’는 ‘해야겠다’의 정도로 유지합니다. ‘하기로 했다’, ‘결심했다’처럼 확정하거나 이미 하고 있는 행동으로 쓰지 않습니다.
 단일 행동이나 단순 나열만 있고 연결할 근거가 없다면 각각의 사실을 다듬는 데 그칩니다. 날짜·수치·사건·부정·미정을 바꾸거나 누락하지 않습니다.
-위 본문 출력 규칙은 "body"에 적용합니다. 최종 응답은 {"body":"다듬은 본문"} 형태의 JSON만 씁니다.`;
+문단마다 그 문단의 원문 사실을 실제로 다듬습니다. 원문 문장을 그대로 옮긴 뒤 새 문장을 덧붙이는 방식으로 늘리지 않습니다. ‘만들어 온’, ‘드디어 완성해’, ‘처음 ~해 봤다’, ‘아직 남았다’처럼 원문에 적힌 진행만으로도 해 온 일, 이룬 일, 처음 해 본 일, 남은 일을 또렷하게 풀어 쓸 수 있으므로, 만든 기간·횟수·과정의 동작이나 장면을 새로 만들지 않습니다. 감정만 적힌 문단은 감정의 종류와 정도를 그대로 두고 말투만 다듬으며, 다른 문단의 사실을 끌어와 이유를 붙이지 않습니다. 이 문단에는 아래의 잇는 말도 쓰지 않고, ‘그렇게 ~해 보니 기뻤다’처럼 앞 문단의 행동을 감정 앞에 다시 세우지 않습니다. 남은 일만 적힌 문단은 ‘다만’처럼 앞 문단과 대비하는 말로 잇되, 다짐·계획·기대·태도를 지어내지 않습니다. 문장을 나누기만 하지 말고, 문단 사이는 원문 근거 풀어쓰기 규칙대로 ‘그렇게’, ‘이것은’, ‘그래도’, ‘다만’처럼 앞 문단을 가리키거나 대비하는 말로 이어 흐름을 만들되, ‘그래서’·‘덕분에’ 같은 원인, ‘그 순간’·‘그때’ 같은 시점, 새 장면을 만들지 않습니다.
+예시 3. 원문 문단 [1] ‘만들어 온 나무 의자를 오늘 드디어 완성해 처음 앉아 봤다.’ [2] ‘정말 기뻤다.’ [3] ‘니스 칠은 아직 남았다.’ [4] ‘설계부터 내 손으로 해 온 의자를 실제로 쓸 수 있게 된 의미 있는 시작이었다.’ → [1] ‘만들어 온 나무 의자가 오늘 드디어 완성됐다. 그렇게 완성한 의자에 처음으로 앉아 봤다.’ [2] ‘정말로 기뻤다.’ [3] ‘다만 니스를 칠하는 일은 아직 남아 있다.’ [4] ‘그래도 설계부터 내 손으로 해 온 의자를 실제로 쓸 수 있게 된 것은, 만드는 일에서 쓰는 일로 이어진 의미 있는 시작이었다.’ [4]의 ‘만드는 일에서 쓰는 일로 이어진’은 원문에 함께 적힌 제작 과정과 실제 쓰임 사이의 변화를 풀어 쓴 것입니다. ‘그래도’는 [3]의 남은 일과 대비합니다. 과정·의미 문단에서는 ‘~라는 점에서 뜻깊었다’로 끝내기보다, 이미 적힌 과정이 어떤 쓰임으로 이어졌는지 그 변화의 내용을 문장 안에 구체적으로 씁니다. 의미 문단에서 풀어 쓸 것은 만드는 대상에서 실제로 쓰는 대상으로 달라진 상태입니다. 앞 문단의 첫 사용 동작을 다시 옮기지 말고, 해당 원문 문단의 대상·쓰임·의미를 한 문장으로 엮습니다. [4]는 만들어 온 의자를 이제 쓸 수 있게 된 의미를 해석으로 풀어 쓴 것이며 새 사실이 아닙니다. 이 예시는 원문에 적힌 만들어 온 일, 완성, 첫 사용, 같은 정도의 기쁨, 남은 칠, 첫 시작의 의미만 씁니다. ‘몇 주 동안 나무를 깎고 다듬었다’(새 기간·동작), ‘의자에 앉는 순간 정말 기뻤다’(새 장면·감정 계기), ‘그래서 정말 기뻤다’(새 원인), ‘그때 정말 기뻤다’(새 시점), ‘벅차오를 만큼 기뻤다’(높아진 감정 정도), ‘칠을 마치면 거실에 둘 생각이다’(새 계획), ‘그래서 목공에 자신감이 생겼다’(새 인과), [2]나 [4]에 [1]의 완성 이야기를 다시 쓰는 것(문단 간 되풀이)은 근거가 없습니다.
+예시 4(고치는 중인 물건을 처음 실제로 씀). 한 문단 원문 ‘고쳐 온 낡은 재봉틀로 오늘 처음 손수건 한 장을 박았다. 무척 기뻤다. 실 장력 조절은 아직 남았다. 손봐 온 재봉틀이 다시 쓰이는 물건이 된 첫날이었다.’ → 같은 "text" 안에서 빈 줄로 나눈 두 문단 ‘고쳐 온 낡은 재봉틀로 오늘 처음 손수건 한 장을 박았다. 무척 기뻤다.’와 ‘실 장력을 맞추는 일은 아직 남아 있다. 그래도 손봐 온 재봉틀은 이 손수건과 함께 고쳐야 할 물건에서 다시 쓰이는 물건으로 넘어갔고, 오늘은 그 첫날이었다.’ 같은 내용이 원문 문단 넷 [1] ‘고쳐 온 낡은 재봉틀로 오늘 처음 손수건 한 장을 박았다.’ [2] ‘무척 기뻤다.’ [3] ‘실 장력 조절은 아직 남았다.’ [4] ‘손봐 온 재봉틀이 다시 쓰이는 물건이 된 첫날이었다.’이면 → [1] ‘고쳐 온 낡은 재봉틀로 오늘 처음 손수건 한 장을 박았다.’ [2] ‘무척 기뻤다.’ [3] ‘다만 실 장력을 맞추는 일은 아직 남아 있다.’ [4] ‘그래도 이것은 손봐 온 재봉틀이 고쳐야 할 물건에서 다시 쓰이는 물건으로 넘어간 첫날이었다.’ 이 예시는 고쳐 온 일, 오늘 처음 박은 손수건 한 장, 아직 남은 장력 조절이라는 기록을 그대로 두고, 고쳐 오던 물건이 쓰이는 물건으로 넘어간 상태 변화를 원문의 의미 문장 안에서 풀어 씁니다. ‘이 손수건’·‘이것은’은 첫 사용을 다시 적지 않고 가리키며, ‘그래도’는 남은 일과 대비합니다. 원문 문장을 나누기만 하거나 같은 뜻의 맺음을 덧붙인 것이 아닙니다. ‘무척 기뻤다’는 종류와 정도를 그대로 두고, 첫 사용과 따로 적힌 감정이므로 그 장면에 묶지 않습니다. ‘손수건을 박는 순간 무척 기뻤다’(새 시점), ‘바늘이 움직이는 것을 보니 기뻤다’(새 관찰 계기), ‘그래서 무척 기뻤다’(새 원인), ‘몇 주 동안 부품을 갈았다’(새 기간·동작), ‘재봉틀을 다 고쳤다’(넓어진 완료), ‘손수건 두 장’(바뀐 수량)은 근거가 없습니다.
+예시 5(여러 번 바꾼 배치가 하나의 전체가 됨). 한 문단 원문 ‘조각 천 열두 장을 이어 붙일 순서를 여러 번 바꿨다. 마지막 조각까지 자리를 정하고 나니 뿌듯했다. 오늘은 따로 모아 둔 천 조각들이 한 장의 무늬가 된 날이었다.’ → 같은 "text" 안에서 빈 줄로 나눈 두 문단 ‘조각 천 열두 장을 이어 붙일 순서를 여러 번 바꿨다. 그렇게 순서를 거듭 바꾼 끝에 마지막 조각까지 자리를 정하고 나니 뿌듯했다.’와 ‘오늘은 따로 모아 둔 천 조각들이 그 끝에 한 장의 무늬가 된 날이었다.’ 같은 내용이 원문 문단 셋이면 → [1] ‘조각 천 열두 장을 이어 붙일 순서를 여러 번 바꿨다.’ [2] ‘그렇게 순서를 거듭 바꾼 끝에 마지막 조각까지 자리를 정하고 나니 뿌듯했다.’ [3] ‘오늘은 따로 모아 둔 천 조각들이 그렇게 거듭한 끝에 한 장의 무늬가 된 날이었다.’ 이 예시는 여러 번 바꾼 과정을 결과 문장과 맺음 문장 안에서 가리켜, 따로 있던 조각들이 거듭한 끝에 하나가 된 변화를 풀어 씁니다. 뿌듯함의 계기는 원문 그대로(마지막 조각까지 자리를 정함)이고, ‘열두 장’·‘여러 번’은 처음 문장에만 둡니다. ‘한 장씩 대 보며’(새 동작), ‘한참을 고민했다’(새 궁리·기간), ‘바닥에 펼쳐 놓으니’(새 장면), ‘수십 번’(바뀐 수량), ‘작업실에서’(새 장소), 맺음 뒤에 ‘~한 하루였다’를 다시 붙이는 것은 근거가 없습니다.
+
+${strongRichnessBlock}
+위 본문 출력 규칙은 각 문단의 "text"에 적용합니다. 입력의 [문단 n]은 원문 문단의 순번입니다. 원문 문단 ${groundedParagraphs?.length ?? 0}개를 순번 1부터 차례로 하나씩 다듬어 같은 순번의 "text"에 씁니다. 문단을 빼거나 합치거나 순서를 바꾸지 않고, 한 원문 문단의 내용을 다른 순번으로 옮기지 않습니다. 한 원문 문단을 여러 문단으로 풀어 쓸 때는 그 "text" 안에서 빈 줄로 나눕니다. [문단 n] 표시는 "text"에 옮기지 않습니다.${presentationGuide}${sproutGuide}
+최종 응답은 {"paragraphs":[{"index":1,"text":"1번 원문 문단을 다듬은 글"}]} 형태의 JSON만 쓰고, "paragraphs"에는 정확히 ${groundedParagraphs?.length ?? 0}개를 씁니다.`;
         }
       } else if (strength !== undefined && normalizedFormat !== 'voiding') {
         const strengthGuide = strength === 'STRONG'
@@ -2700,7 +3429,10 @@ ${SOURCE_PRESERVATION_RULES}`;
 본문만 자연스럽게 이어지는 문단으로 작성하세요.`;
       }
 
-      if (protectedActors && explicitSource !== undefined) {
+      if (protectedActors && groundedParagraphs !== undefined) {
+        // 문단 순번 경로는 보호 표시를 이미 순번 문단으로 넣었으므로 입력을 다시 바꾸지 않는다.
+        systemPrompt += '\n원문의 대괄호 SAYU_KEEP 표시만 있는 문단은 보존할 문단 전체를 대신합니다. 그 순번의 "text"에는 표시를 글자 그대로 한 번만 적고, 다른 순번에는 표시를 쓰지 마세요. 표시 안의 내용을 추측하거나 설명하지 말고, 표시가 아닌 문단만 다듬으세요.';
+      } else if (protectedActors && explicitSource !== undefined) {
         const originalBlock = `[원문 시작]\n${explicitSource}\n[원문 끝]`;
         polishInput = polishInput.includes(originalBlock)
           ? polishInput.replace(originalBlock, () => `[원문 시작]\n${protectedActors.text}\n[원문 끝]`)
@@ -2720,12 +3452,92 @@ ${SOURCE_PRESERVATION_RULES}`;
         }),
         (responseText) => responseText);
       let originalPreserved = false;
-      if (explicitSource !== undefined) {
-        let edited: string | null = groundedPolish === undefined ? polishedText : resolveGroundedPolish(polishedText);
+      if (explicitSource !== undefined && groundedParagraphs !== undefined) {
+        // 강의 원문 근거 경로: 매핑이 어긋나면 전체 원문, 매핑이 맞으면 검사에 걸린 문단만 같은 순번의 원문 문단으로 되돌린다.
+        const paragraphs = groundedParagraphs;
+        const texts = resolveGroundedPolish(polishedText,
+          paragraphs.map(paragraph => paragraph.kept ? paragraph.text.trim() : null), protectedActors?.markerPrefix);
+        let accepted = 0;
+        const merged = texts?.map((responseText, index, all) => {
+          const paragraph = paragraphs[index];
+          if (paragraph.kept) return paragraph.original;
+          if (protectedActors?.hasActor(responseText)) return paragraph.original;
+          let candidateText = polishSprout ? repairSproutConclusion(responseText, paragraph.original) : responseText;
+          const previous = paragraphs[index - 1];
+          if (polishPresentationParagraphs && previous && !previous.kept) {
+            // 결과 앞 문단과 원문에 같은 횟수로 발표 자료의 순서를 바꾼 일이 남아 있을 때만
+            // 바로 다음 문단에서 반복된 행동은 짧게 가리키고, 나머지는 기존 검사를 그대로 받는다.
+            const repeatedOrder = /^발표[ \t]*자료[^.!?。！？"'“”‘’\r\n]*?순서를[ \t]+((?:두|세|네|[2-9]|[1-9]\d+)[ \t]*번)[ \t]+바(?:꿨|꾸었)다[.!?。！？]?$/;
+            const countKey = (count: string | undefined) => count?.replace(/[ \t]/g, '');
+            const sourceCount = countKey(repeatedOrder.exec(previous.original.trim())?.[1]);
+            const earlierCount = countKey(repeatedOrder.exec(all[index - 1].trim())?.[1]);
+            if (sourceCount && sourceCount === earlierCount && !countKey(paragraph.original)?.includes(sourceCount)) {
+              const withoutRepeatedCount = responseText.replace(
+                /^그렇게[ \t]+([가-힣0-9]+[ \t]*번)(?:에[ \t]*걸쳐[ \t]+순서를[ \t]*바꾼|의[ \t]*(?:고침|수정))[ \t]+끝에/,
+                (phrase, count: string) => countKey(count) === sourceCount ? '그 과정을 거쳐' : phrase,
+              );
+              const shortReference = /순서|차례|배열|바(?:꿔|꾼|꿨|꾸)/.test(paragraph.original)
+                ? withoutRepeatedCount
+                : withoutRepeatedCount.replace(/^그렇게[ \t]+(?:(?:순서|차례|배열)를[ \t]+거듭[ \t]+)?바꾼[ \t]+끝에(?=[ \t])/, '그 과정을 거쳐');
+              if (shortReference !== responseText) {
+                // 뒤 문단에 원래 있던 별도 횟수·수량 등이 빠졌으면 중복 정리를 적용하지 않는다.
+                const { factMarkers } = groundedSentenceTools();
+                const remainingFacts = new Set(factMarkers(shortReference));
+                if (factMarkers(paragraph.original).every(marker => remainingFacts.has(marker))) {
+                  candidateText = shortReference;
+                }
+              }
+            }
+          }
+          const explainsOrder = /설명할[ \t]+(?:순서|차례|흐름)/;
+          if (polishPresentationParagraphs && explainsOrder.test(paragraph.original)) {
+            // 결말의 준비 기간만 이어 쓴다. 다른 문장이나 부사로 쓰기 어려운 형태의 기간은 치환하지 않는다.
+            const periodWord = /(?<![가-힣])그동안[가-힣]*/;
+            const meaningSentences = groundedSentenceTools().sentences(paragraph.original)
+              .filter(sentence => explainsOrder.test(sentence));
+            const originalPeriod = periodWord.exec(meaningSentences[0] ?? '')?.[0];
+            const usablePeriod = originalPeriod
+              ? /^그동안(?:에[는도만]?|엔|[은도만의]|까지)?$/.test(originalPeriod)
+              : !periodWord.test(paragraph.original);
+            if (meaningSentences.length === 1 && usablePeriod) {
+              const preparedDuring = originalPeriod ? `${originalPeriod === '그동안의' ? '그동안' : originalPeriod} ` : '';
+              candidateText = candidateText.replace(
+                /^(그래도[ \t]+)?(?:그동안[ \t]+)?((?:생각해|준비해) 온 내용을) 설명할 (?:순서|차례)로 (?:엮어 (?:내며|냄으로써)|정돈해|정리해),[ \t]+(?=무엇부터 (?:(?:설명하고|밝히고) )?어떻게 (?:이어 ?갈지|이야기할지) 흐름을)/,
+                (_phrase, transition: string | undefined, prepared: string) =>
+                  `${transition ?? ''}${preparedDuring}${prepared} 정돈해, `,
+              );
+            }
+          }
+          // 원문 근거를 남길 수 있으면 같은 문단 안에서 되풀이한 문장을 지운다.
+          const paragraphText = dropDuplicateGroundedSentences(candidateText, paragraph.original) ?? candidateText;
+          // 다른 원문 문단의 내용이나 앞 문단의 다듬은 문장을 되풀이한 문장도 문제 문장으로 본다.
+          const otherSources = paragraphs.filter((other, otherIndex) => otherIndex !== index && !other.kept).map(other => other.original);
+          const earlierOutputs = all.slice(0, index).filter((_, otherIndex) => !paragraphs[otherIndex].kept);
+          const repeats = (sentence: string) => repeatsOtherParagraph(sentence, paragraph.original, otherSources, earlierOutputs);
+          if (failsGroundedParagraph(paragraphText, paragraph.original)
+            || groundedSentenceTools().sentences(paragraphText).some(repeats)) {
+            // 문제 문장만 확실히 원문 문장으로 되돌릴 수 있으면 그 문단의 나머지 편집을 살리고, 아니면 문단 폴백.
+            const repaired = restoreGroundedSentences(paragraphText, paragraph.original, repeats);
+            // 복원 결과가 원문 문단과 같으면 다듬은 편집이 남지 않은 것이므로 문단 폴백으로 센다.
+            if (repaired === null || repaired === paragraph.original.trim()) return paragraph.original;
+            accepted++;
+            return repaired;
+          }
+          accepted++;
+          return paragraphText;
+        });
+        // 다듬을 문단이 모두 원문으로 돌아가면 기존처럼 전체 원문 유지로 알린다.
+        const edited = merged && merged.length > 0 && (accepted > 0 || paragraphs.every(paragraph => paragraph.kept))
+          ? merged.join('\n\n') : null;
+        originalPreserved = edited === null;
+        polishedText = edited ?? explicitSource;
+      } else if (explicitSource !== undefined) {
+        let edited: string | null = polishedText;
         if (edited !== null && protectedActors) edited = protectedActors.restore(edited);
         if (edited !== null && richSource !== undefined
           && (addsOutsideAssessment(edited, richSource) || addsUnstatedFeelingOrAction(edited, richSource)
-            || changesTimeOfDay(edited, richSource) || changesSpouseReference(edited, richSource))) {
+            || changesTimeOfDay(edited, richSource) || changesSpouseReference(edited, richSource)
+            || (groundedPolish !== undefined && addsUngroundedSpecifics(edited, richSource)))) {
           edited = null;
         }
         originalPreserved = edited === null;
