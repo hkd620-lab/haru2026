@@ -22,7 +22,7 @@ const handler = variable('polishContent').arguments.at(-1);
 const compiled = ts.transpileModule([
   `const STATS_PROMPTS = ${variable('STATS_PROMPTS').getText(ast)};`,
   fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('addsOutsideAssessment'), fn('addsUnstatedFeelingOrAction'),
-  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('dateNegationMarks'), fn('changesDateOrNegation'), fn('addsUngroundedSpecifics'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), fn('failsGroundedParagraph'), fn('groundedSentenceTools'), fn('repairSproutConclusion'), fn('repeatsOtherParagraph'), fn('restoreGroundedSentences'), fn('dropDuplicateGroundedSentences'), `(${handler.getText(ast)});`,
+  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('dateNegationMarks'), fn('changesDateOrNegation'), fn('addsUngroundedSpecifics'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), fn('repairFirstRunMeaning'), fn('failsGroundedParagraph'), fn('groundedSentenceTools'), fn('repairSproutConclusion'), fn('repeatsOtherParagraph'), fn('restoreGroundedSentences'), fn('dropDuplicateGroundedSentences'), `(${handler.getText(ast)});`,
 ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2019 } }).outputText;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -2263,6 +2263,48 @@ test('발아 원문 밖 결말을 복원할 때 사실에 맞는 앞 문장 편�
     text: opening + ' 잎이 펼쳐진 것은 아니다. 심어 둔 씨앗이 싹을 틔운 뜻깊은 시작이었다.',
     preserved: undefined,
   });
+});
+
+test('기기의 첫 실행과 남은 절차를 지키면서 만들어 온 일의 의미를 살린다', async () => {
+  const source = [
+    '만들어 온 시간표 앱을 태블릿에서 처음 실행했다.',
+    '앱이 태블릿에서 열림. 단순히 기능이 완성된 것이 아니라, 정식 배포를 향해 한 걸음 나아간 날. 정식 배포는 아직 남았다.',
+  ];
+  const edited = [
+    '만들어 온 시간표 앱을 태블릿에서 처음 실행했다.',
+    '앱이 태블릿에서 열렸다. 단순히 기능이 완성된 것이 아니라, 만들어 온 앱이 실제 태블릿에서 열리기까지 이어져 정식 배포를 향해 한 걸음 나아간 날이었다. 정식 배포는 아직 남았다.',
+  ];
+  const response = [edited[0], edited[1].replace('완성된 것이 아니라', '완성된 데 그치지 않고')
+    .replace('열리기까지 이어져', '열리는 단계까지 나아가')];
+  const f = fixture({ polishParagraphs: response });
+  const result = await f.request({ text: source.join('\n\n'), mode: 'BASIC', strength: 'STRONG', includeAiComment: false });
+  assert.match(f.calls[0].systemInstruction, /만들어 온 일과 실제 첫 실행의 의미/);
+  assert.match(f.calls[0].systemInstruction, /남은 절차를 지키고/);
+  assert.match(f.calls[0].systemInstruction, /원문의 대비와 부정 표현을 그대로/);
+  assert.equal(result.text, edited.join('\n\n'));
+
+  for (const unsupported of [
+    response[1].replace('기능이 완성된 데', '기능이 공개된 데'),
+    response[1].replace('정식 배포를 향해 한 걸음 나아간 날이었다', '정식 배포를 마친 날이었다'),
+  ]) {
+    const raw = JSON.stringify({ paragraphs: [edited[0], unsupported].map((text, index) => ({ index: index + 1, text })) });
+    const rejected = await liveResult({ source: source.join('\n\n'), raw });
+    assert.doesNotMatch(rejected.text, /공개된 데|배포를 마친/);
+    assert.match(rejected.text, /정식 배포는 아직 남았다/);
+  }
+});
+
+test('구현의 놀라움을 살리고 원문 밖 이전 상태와 반복 결말을 걷어낸다', async () => {
+  const source = '날마다 놀라움의 연속이다 내 아이디어가 AI들을 통해 눈에 보이고 작동하는 일정표가 되는 것이 놀랍다';
+  const edited = '내 아이디어가 AI들을 통해 눈에 보이고 작동하는 일정표가 되고 있다. 그 변화가 날마다 놀랍다.';
+  assert.equal((await strongResult(source, edited)).text, edited);
+  const redundant = ' 생각에 머물던 것이 눈에 보이고 작동하는 일정표가 되는 것이 날마다 놀랍다.';
+  const result = (await strongResult(source, edited + redundant)).text;
+  assert.doesNotMatch(result, /생각에 머물던/);
+  assert.ok(result === edited || result === source);
+
+  const explicit = '구상에 머물던 일정표를 만들기 시작했다.';
+  assert.equal((await strongResult(explicit, '구상에 머물던 일정표를 만들기 시작한 날이었다.')).text, '구상에 머물던 일정표를 만들기 시작한 날이었다.');
 });
 
 test('직접 만든 일의 수치 성취를 풀어 쓰고 명시된 도움을 보존한다', async () => {
