@@ -1,3 +1,4 @@
+import { getFormatDisplayName } from '../records/recordFormatDescriptions';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { httpsCallable } from 'firebase/functions';
@@ -546,7 +547,7 @@ export function RecordProphecyPage() {
                     alignItems: 'center',
                   }}
                 >
-                  <span style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 500 }}>{fmt}</span>
+                  <span style={{ fontSize: 14, color: '#1A3C6E', fontWeight: 500 }}>{getFormatDisplayName(fmt)}</span>
                   <span style={{ fontSize: 12, color: '#9ca3af' }}>
                     {records.filter(r => r.format === fmt).length}편
                   </span>
@@ -559,12 +560,12 @@ export function RecordProphecyPage() {
         {step === 'formatList' && (
           <>
             <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
-              {selectedFormat} 기록을 선택하세요
+              {getFormatDisplayName(selectedFormat)} 기록을 선택하세요
             </p>
             {records.filter(r => r.format === selectedFormat).map((rec, i) => (
               <div key={i} style={styles.recordItem(false)}
                 onClick={() => { setSelectedRecord(rec); setStep('preview'); }}>
-                <div style={{ fontSize: 10, color: '#9ca3af' }}>{rec.date} · {rec.format}</div>
+                <div style={{ fontSize: 10, color: '#9ca3af' }}>{rec.date} · {getFormatDisplayName(rec.format)}</div>
                 <div style={{ fontSize: 13, fontWeight: 500, color: '#1A3C6E', margin: '3px 0' }}>{rec.title}</div>
                 <div style={{ fontSize: 11, color: '#6b7280', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
                   {rec.content.slice(0, 80)}...
@@ -583,7 +584,7 @@ export function RecordProphecyPage() {
               <p style={{ fontSize: 12, fontWeight: 500, color: '#1A3C6E', marginBottom: 10 }}>형식 선택</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
                 {['일기', '에세이', '여행기록', '육아일기', '선교보고', '업무일지'].map(f => (
-                  <button key={f} style={styles.pill(mergeFormat === f)} onClick={() => setMergeFormat(f)}>{f}</button>
+                  <button key={f} style={styles.pill(mergeFormat === f)} onClick={() => setMergeFormat(f)}>{getFormatDisplayName(f)}</button>
                 ))}
               </div>
               <p style={{ fontSize: 12, fontWeight: 500, color: '#1A3C6E', marginBottom: 6 }}>날짜 범위</p>
@@ -614,7 +615,7 @@ export function RecordProphecyPage() {
             )}
             {mergeRecords.length === 0 && mergeLoading === false && mergeStartDate && mergeEndDate && (
               <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, padding: 20 }}>
-                해당 기간에 SAYU 완료된 {mergeFormat} 기록이 없습니다.
+                해당 기간에 SAYU 완료된 {getFormatDisplayName(mergeFormat)} 기록이 없습니다.
               </p>
             )}
           </>

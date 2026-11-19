@@ -44,7 +44,7 @@ const FORMATS: { name: string; icon: string; hue: Hue; cat: string; badge?: stri
   { name: '독서사유',     icon: 'book',      hue: 'green',      cat: '생활' },
   { name: '텃밭일지',     icon: 'seed',      hue: 'green',      cat: '생활' },
   { name: '반려동물', icon: 'paw',   hue: 'terracotta', cat: '생활' },
-  { name: '육아일기',     icon: 'baby',      hue: 'lilac',      cat: '생활' },
+  { name: '손주자람일기', icon: 'baby',      hue: 'lilac',      cat: '생활' },
   { name: '선교보고',     icon: 'church',    hue: 'lilac',      cat: '업무' },
   { name: '일반보고',     icon: 'bookbind',  hue: 'terracotta', cat: '업무' },
   { name: '업무일지',     icon: 'briefcase', hue: 'lilac',      cat: '업무' },

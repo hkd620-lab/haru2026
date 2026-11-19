@@ -1,3 +1,4 @@
+import { getFormatDisplayName } from '../records/recordFormatDescriptions';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, X, Printer, Download, FileText } from 'lucide-react';
@@ -334,7 +335,7 @@ export function MergeViewerPage() {
   const getPreviewContent = () => {
     if (currentPage === 0) {
       return {
-        title: `${format} 합본`,
+        title: `${getFormatDisplayName(format)} 합본`,
         preview: `${startDate} ~ ${endDate}\n총 ${records.length}개의 기록 · ${filterLabel}`,
       };
     }
@@ -361,7 +362,7 @@ export function MergeViewerPage() {
       return (
         <div className="h-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-blue-50 to-purple-50">
           <h1 className="text-3xl font-bold mb-4" style={{ color: '#1A3C6E' }}>
-            {format} 합본
+            {getFormatDisplayName(format)} 합본
           </h1>
           <p className="text-lg mb-2" style={{ color: '#666' }}>
             {startDate} ~ {endDate}
@@ -739,7 +740,7 @@ export function MergeViewerPage() {
             </button>
           </div>
           <div className="text-sm font-medium" style={{ color: '#1A3C6E' }}>
-            {format} 합본
+            {getFormatDisplayName(format)} 합본
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -881,7 +882,7 @@ export function MergeViewerPage() {
       <div className="print-show">
         {/* 표지 */}
         <div className="print-page print-cover">
-          <h1>{format} 합본</h1>
+          <h1>{getFormatDisplayName(format)} 합본</h1>
           <p style={{ fontSize: '14pt', color: '#666', marginBottom: '10px' }}>
             {startDate} ~ {endDate}
           </p>
