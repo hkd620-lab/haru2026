@@ -60,7 +60,7 @@ function DepositPractice() {
         className="mt-1 min-h-[44px] w-full rounded-md border border-gray-300 px-3"
       />
       <p className="mt-1 text-gray-600">
-        보증금 비율과 무엇을 기준으로 계산하는지(최저입찰가, 입찰 금액 등)는 물건 공고문에 적혀 있습니다. 보통 10%인 경우가 많지만 물건마다 다를 수 있어요. 여기서는 연습으로 입력한 금액에 비율을 곱해 봅니다.
+        보증금 비율과 무엇을 기준으로 계산하는지(최저입찰가, 입찰 금액 등)는 물건 공고문에 적혀 있습니다. 10%는 연습용 예시입니다. 실제 보증금과 잔금 납부기한은 해당 물건의 공고문을 확인하세요. 여기서는 연습으로 입력한 금액에 비율을 곱해 봅니다.
       </p>
       <p aria-live="polite" className="mt-2 rounded-md bg-emerald-50 px-3 py-2 font-bold text-emerald-900">
         {!validRate
