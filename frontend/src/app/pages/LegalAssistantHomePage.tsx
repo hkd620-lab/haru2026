@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronRight, FileText, HelpCircle, Loader2, Scale, ShieldAl
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { InlineHelpPopover, LegalTermHelp } from '../components/LegalTermHelp';
+import { LitigationFlowMap } from '../components/LitigationFlowMap';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
@@ -167,6 +168,8 @@ export default function LegalAssistantHomePage() {
             </div>
           </div>
         </section>
+
+        <LitigationFlowMap />
 
         <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-2">
