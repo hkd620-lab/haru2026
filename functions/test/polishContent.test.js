@@ -2340,13 +2340,21 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
     '그래도 생각해 온 내용을 정돈해, 무엇부터 밝히고 어떻게 이어 갈지 흐름을 갖춘 날이었다.',
   ].join('\n\n'));
 
-  for (const prepared of ['생각해 온', '열심히 생각해 온', '준비한']) {
-    const withDuration = [...source.slice(0, 3), `그동안 ${prepared} 내용을 설명할 순서로 정돈한 날이었다.`];
+  for (const [duration, prepared] of [
+    ['그동안', '생각해 온'],
+    ['그동안', '열심히 생각해 온'],
+    ['그동안', '준비한'],
+    ['그동안에', '준비한'],
+    ['그동안에만', '준비한'],
+    ['그동안의', '준비한'],
+  ]) {
+    const withDuration = [...source.slice(0, 3), `${duration} ${prepared} 내용을 설명할 순서로 정돈한 날이었다.`];
     const durationOutput = [...reworded];
     if (prepared === '준비한') durationOutput[3] = durationOutput[3].replace('생각해 온', '준비해 온');
     const repeatedWithDuration = fixture({ polishParagraphs: durationOutput });
     const adjustedWithDuration = await repeatedWithDuration.request({ text: withDuration.join('\n\n'), strength: 'STRONG', includeAiComment: false });
-    assert.match(adjustedWithDuration.text.split('\n\n')[3], /그동안/);
+    const expectedDuration = duration === '그동안의' ? '그동안' : duration;
+    assert.ok(adjustedWithDuration.text.split('\n\n')[3].includes(expectedDuration + ' '));
   }
 
   const duplicated = [...edited];

@@ -3491,7 +3491,8 @@ ${SOURCE_PRESERVATION_RULES}`;
           }
           if (polishPresentationParagraphs && /설명할[ \t]+(?:순서|차례|흐름)/.test(paragraph.original)) {
             // 앞 절의 배열과 뒤 절의 설명 흐름이 같은 성과를 말할 때만 겹치는 앞 절을 줄인다.
-            const preparedDuring = /(?<![가-힣])그동안(?![가-힣])/.test(paragraph.original) ? '그동안 ' : '';
+            const originalPeriod = /(?<![가-힣])그동안(?:에[는도만]?|[은도만의])?(?![가-힣])/.exec(paragraph.original)?.[0];
+            const preparedDuring = originalPeriod ? `${originalPeriod === '그동안의' ? '그동안' : originalPeriod} ` : '';
             candidateText = candidateText.replace(
               /^(그래도[ \t]+)?(?:그동안[ \t]+)?((?:생각해|준비해) 온 내용을) 설명할 (?:순서|차례)로 (?:엮어 (?:내며|냄으로써)|정돈해|정리해),[ \t]+(?=무엇부터 (?:(?:설명하고|밝히고) )?어떻게 (?:이어 ?갈지|이야기할지) 흐름을)/,
               (_phrase, transition: string | undefined, prepared: string) =>
