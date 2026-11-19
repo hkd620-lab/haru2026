@@ -2283,6 +2283,14 @@ test('기기의 첫 실행과 남은 절차를 지키면서 만들어 온 일의
   assert.match(f.calls[0].systemInstruction, /원문의 대비와 부정 표현을 그대로/);
   assert.equal(result.text, edited.join('\n\n'));
 
+  for (const inflected of ['나아가는 것은', '나아가며']) {
+    const paragraphs = [edited[0], response[1].replace('나아가', inflected)];
+    const f = fixture({ polishParagraphs: paragraphs });
+    const result = await f.request({ text: source.join('\n\n'), mode: 'BASIC', strength: 'STRONG', includeAiComment: false });
+    assert.doesNotMatch(result.text, /이어져(?:는|며)|열리는 단계/);
+    assert.match(result.text, /정식 배포는 아직 남았다/);
+  }
+
   for (const unsupported of [
     response[1].replace('기능이 완성된 데', '기능이 공개된 데'),
     response[1].replace('정식 배포를 향해 한 걸음 나아간 날이었다', '정식 배포를 마친 날이었다'),

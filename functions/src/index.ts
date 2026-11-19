@@ -2727,7 +2727,7 @@ function repairFirstRunMeaning(text: string, source: string): string {
   );
   // 같은 문단에 있는 앱의 동작은 살리고 새로 붙인 단계 이름만 뺀다.
   if (!/단계/.test(source) && /앱(?:이|을)/.test(source) && /열(?:림|렸|린)/.test(source)) {
-    return withOriginalContrast.replace(/열리는 단계까지 (?:나아가|이어져|이르러)/g, '열리기까지 이어져');
+    return withOriginalContrast.replace(/열리는 단계까지 (?:나아가|이어져|이르러)(?=[\s,，])/g, '열리기까지 이어져');
   }
   return withOriginalContrast;
 }
