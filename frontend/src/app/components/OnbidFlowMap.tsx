@@ -34,7 +34,7 @@ function DepositPractice() {
         <span className="ml-1 rounded bg-gray-800 px-1.5 py-0.5 text-sm font-bold text-white">연습</span>
       </p>
       <p className="mt-1 text-gray-700">금액을 넣어 보증금이 얼마쯤 되는지 연습해 보세요.</p>
-      <label className="mt-2 block font-semibold text-gray-900" htmlFor="onbid-practice-amount">기준 금액 (원) — 예: 입찰 금액</label>
+      <label className="mt-2 block font-semibold text-gray-900" htmlFor="onbid-practice-amount">기준 금액 (원) — 예: 최저입찰가(매각예정가격)</label>
       <input
         id="onbid-practice-amount"
         inputMode="numeric"
@@ -60,7 +60,7 @@ function DepositPractice() {
         className="mt-1 min-h-[44px] w-full rounded-md border border-gray-300 px-3"
       />
       <p className="mt-1 text-gray-600">
-        보증금 비율과 무엇을 기준으로 계산하는지(입찰 금액, 최저입찰가 등)는 물건 공고문에 적혀 있습니다. 보통 10% 안팎이지만 물건마다 다를 수 있어요. 여기서는 연습으로 입력한 금액에 비율을 곱해 봅니다.
+        보증금 비율과 무엇을 기준으로 계산하는지(최저입찰가, 입찰 금액 등)는 물건 공고문에 적혀 있습니다. 보통 10% 안팎이지만 물건마다 다를 수 있어요. 여기서는 연습으로 입력한 금액에 비율을 곱해 봅니다.
       </p>
       <p aria-live="polite" className="mt-2 rounded-md bg-emerald-50 px-3 py-2 font-bold text-emerald-900">
         {!validRate
@@ -136,7 +136,7 @@ const STEPS: FlowStep[] = [
     easy: '소유권을 넘겨받고, 점유하고 있는 사람이 있으면 정리하는 단계입니다.',
     userTasks: ['소유권 이전 절차 확인', '점유자가 있으면 정리(명도) 방법 확인', '필요하면 전문가 상담'],
     haruTasks: ['확인할 것 안내'],
-    note: '명도 책임은 물건 종류에 따라 다릅니다. 낙찰자가 직접 해결해야 하는 경우가 많으니 입찰 전에 공고문을 확인하세요.',
+    note: '압류재산 공매는 점유자 정리(명도)를 낙찰자가 책임지는 것이 원칙입니다. 법원경매와 달리 인도명령 제도가 없어, 점유자가 나가지 않으면 명도소송이 필요할 수 있어요. 다른 물건도 입찰 전에 공고문의 명도 책임 항목을 확인하세요.',
   },
 ];
 
