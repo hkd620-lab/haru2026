@@ -10,8 +10,8 @@ type Phase = 'prepare' | 'submit' | 'proceed' | 'finish';
 
 const PHASES: Record<Phase, { label: string; node: string; chip: string; panel: string }> = {
   prepare: { label: '준비', node: 'bg-blue-600', chip: 'bg-blue-50 text-blue-800 border-blue-200', panel: 'border-blue-200 bg-blue-50/60' },
-  submit: { label: '제출', node: 'bg-emerald-600', chip: 'bg-emerald-50 text-emerald-800 border-emerald-200', panel: 'border-emerald-200 bg-emerald-50/60' },
-  proceed: { label: '진행', node: 'bg-amber-600', chip: 'bg-amber-50 text-amber-900 border-amber-200', panel: 'border-amber-200 bg-amber-50/60' },
+  submit: { label: '제출', node: 'bg-emerald-700', chip: 'bg-emerald-50 text-emerald-800 border-emerald-200', panel: 'border-emerald-200 bg-emerald-50/60' },
+  proceed: { label: '진행', node: 'bg-amber-700', chip: 'bg-amber-50 text-amber-900 border-amber-200', panel: 'border-amber-200 bg-amber-50/60' },
   finish: { label: '마무리', node: 'bg-violet-600', chip: 'bg-violet-50 text-violet-800 border-violet-200', panel: 'border-violet-200 bg-violet-50/60' },
 };
 
@@ -19,12 +19,12 @@ type StepView = { short: string; icon: LucideIcon; phase: Phase; action?: { labe
 
 // guideSteps와 같은 순서(9단계)
 const STEP_VIEWS: StepView[] = [
-  { short: '사건 정리', icon: ClipboardList, phase: 'prepare', action: { label: '소장 작성 연습하기', path: '/lawsuit-practice' } },
+  { short: '사건 정리', icon: ClipboardList, phase: 'prepare', action: { label: '전자소송 연습 시작하기', path: '/lawsuit-practice' } },
   { short: '절차·법원 확인', icon: Landmark, phase: 'prepare' },
-  { short: '서류·증거 준비', icon: FolderOpen, phase: 'prepare', action: { label: '소장 작성 연습하기', path: '/lawsuit-practice' } },
-  { short: '전자 제출', icon: Send, phase: 'submit', action: { label: '제출 과정 연습하기', path: '/lawsuit-practice' } },
-  { short: '접수 확인', icon: CircleCheck, phase: 'submit', action: { label: '내 사건 기록하기', path: '/legal-cases' } },
-  { short: '송달 확인', icon: Mailbox, phase: 'proceed', action: { label: '내 사건 기록하기', path: '/legal-cases' } },
+  { short: '서류·증거 준비', icon: FolderOpen, phase: 'prepare', action: { label: '전자소송 연습 시작하기', path: '/lawsuit-practice' } },
+  { short: '전자 제출', icon: Send, phase: 'submit', action: { label: '전자소송 연습 시작하기', path: '/lawsuit-practice' } },
+  { short: '접수 확인', icon: CircleCheck, phase: 'submit', action: { label: '내 사건 체크리스트 열기', path: '/legal-cases' } },
+  { short: '송달 확인', icon: Mailbox, phase: 'proceed', action: { label: '내 사건 체크리스트 열기', path: '/legal-cases' } },
   { short: '보정·답변·기일', icon: MessagesSquare, phase: 'proceed', action: { label: '받은 문서 확인하기', path: '/legal-assistant/document-helper' } },
   { short: '판결 확인', icon: Gavel, phase: 'finish' },
   { short: '판결 이후', icon: Flag, phase: 'finish' },
@@ -47,14 +47,15 @@ export function LitigationFlowMap() {
   const chooseSituation = (index: number) => {
     setCurrentIndex(index);
     setOpenIndex(index);
-    window.setTimeout(() => rowRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+    const reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.requestAnimationFrame(() => rowRefs.current[index]?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' }));
   };
 
   return (
     <section aria-labelledby="litigation-flow-title" className="rounded-lg border border-blue-100 bg-white p-4 shadow-sm">
       <h2 id="litigation-flow-title" className="text-lg font-bold text-gray-900">소송, 한눈에 보는 흐름</h2>
       <p className="mt-1 text-sm leading-6 text-gray-600">
-        소송은 보통 이런 순서로 진행됩니다. 단계를 누르면 무엇을 하는지 자세히 볼 수 있어요.
+        일반적인 소송의 큰 흐름입니다. 사건에 따라 다를 수 있어요. 단계를 누르면 무엇을 하는지 자세히 볼 수 있어요.
       </p>
 
       <div className="mt-3">
@@ -88,7 +89,7 @@ export function LitigationFlowMap() {
           const startsPhase = index === 0 || STEP_VIEWS[index - 1]?.phase !== view.phase;
           const panelId = `litigation-step-panel-${index}`;
           return (
-            <li key={step.title} ref={(element) => { rowRefs.current[index] = element; }} className="relative flex gap-3">
+            <li key={`${index}-${step.title}`} ref={(element) => { rowRefs.current[index] = element; }} className="relative flex gap-3">
               <div className="flex w-12 shrink-0 flex-col items-center">
                 <span className={`flex h-12 w-12 items-center justify-center rounded-full text-white ${phase.node} ${isCurrent ? 'ring-4 ring-blue-200' : ''}`}>
                   <Icon className="size-6" aria-hidden="true" />
@@ -97,7 +98,7 @@ export function LitigationFlowMap() {
               </div>
               <div className={`min-w-0 flex-1 ${isLast ? 'pb-0' : 'pb-4'}`}>
                 {startsPhase && (
-                  <span className={`mb-1 inline-block rounded-full border px-2 py-0.5 text-xs font-bold ${phase.chip}`}>{phase.label}</span>
+                  <span className={`mb-1 inline-block rounded-full border px-2.5 py-0.5 text-sm font-bold ${phase.chip}`}>{phase.label}</span>
                 )}
                 <button
                   type="button"
@@ -110,8 +111,8 @@ export function LitigationFlowMap() {
                 >
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-semibold text-gray-500">{index + 1}단계</span>
-                      {isCurrent && <span className="rounded bg-blue-600 px-1.5 py-0.5 text-xs font-bold text-white">여기예요</span>}
+                      <span className="text-sm font-semibold text-gray-700">{phase.label} · {index + 1}단계</span>
+                      {isCurrent && <span className="rounded bg-blue-600 px-1.5 py-0.5 text-sm font-bold text-white">내가 고른 단계</span>}
                     </span>
                     <span className="block text-[17px] font-bold leading-6 text-gray-900">{view.short}</span>
                     <span className="mt-0.5 block text-sm leading-6 text-gray-600">{step.easy}</span>
@@ -148,7 +149,7 @@ export function LitigationFlowMap() {
         })}
       </ol>
 
-      <p className="mt-4 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-xs leading-5 text-red-900">
+      <p className="mt-4 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-sm leading-6 text-red-900">
         이 흐름은 이해를 돕기 위한 안내입니다. HARU는 법률 판단, 법정 기한 확정, 실제 법원 제출을 대신하지 않습니다.
         실제 진행은 법원 문서와 전자소송포털의 안내를 확인하세요.
       </p>
