@@ -2804,7 +2804,7 @@ function groundedSentenceTools() {
 // 첫 싹에 이미 의미를 부여한 원문에서, 모델이 맺음에 근거 없는 기다림·생명이나
 // 같은 변화를 되풀이한 경우에만 원문의 파종·발아·의미로 맺음 한 문장을 다시 쓴다.
 function repairSproutConclusion(text: string, source: string): string {
-  const { sentences } = groundedSentenceTools();
+  const { sentences, keepsSourceEvidence } = groundedSentenceTools();
   const originals = sentences(source);
   const meaning = /^(심어|뿌려) 둔 씨앗이 싹을 (틔운|낸) (뜻깊은|의미 있는) 시작이었다[.!?。！？]?$/
     .exec(originals.at(-1) ?? '');
@@ -2819,7 +2819,10 @@ function repairSproutConclusion(text: string, source: string): string {
   const [, planted, sprouted, significance] = meaning;
   const contrast = ending.startsWith('그래도 ') ? '그래도 ' : '';
   const closing = `${contrast}${planted} 둔 씨앗이 ${sprouted} 그 첫 싹은 내게 ${significance} 시작이었다.`;
-  return text.slice(0, text.lastIndexOf(ending)) + closing;
+  const repaired = text.slice(0, text.lastIndexOf(ending)) + closing;
+  // 맺음으로 옮겨 쓴 관찰의 근거가 있을 수 있으므로 원문 앞 문장들의 근거가 남을 때만 치환한다.
+  const earlierSource = originals.slice(0, -1).join('\n');
+  return keepsSourceEvidence([ending], sentences(repaired), earlierSource) ? repaired : text;
 }
 
 // 다듬은 문장이 같은 순번 원문 문단보다 다른 원문 문단의 문장에 뚜렷이 더 가깝거나, 앞 문단의 다듬은 문장을
@@ -3488,7 +3491,7 @@ ${SOURCE_PRESERVATION_RULES}`;
           }
           if (polishPresentationParagraphs && /설명할[ \t]+(?:순서|차례|흐름)/.test(paragraph.original)) {
             // 앞 절의 배열과 뒤 절의 설명 흐름이 같은 성과를 말할 때만 겹치는 앞 절을 줄인다.
-            const preparedDuring = /(?:^|[ \t])그동안[ \t]+(?:생각해|준비해) 온 내용을/.test(paragraph.original) ? '그동안 ' : '';
+            const preparedDuring = /(?<![가-힣])그동안(?![가-힣])/.test(paragraph.original) ? '그동안 ' : '';
             candidateText = candidateText.replace(
               /^(그래도[ \t]+)?(?:그동안[ \t]+)?((?:생각해|준비해) 온 내용을) 설명할 (?:순서|차례)로 (?:엮어 (?:내며|냄으로써)|정돈해|정리해),[ \t]+(?=무엇부터 (?:(?:설명하고|밝히고) )?어떻게 (?:이어 ?갈지|이야기할지) 흐름을)/,
               (_phrase, transition: string | undefined, prepared: string) =>

@@ -2280,6 +2280,11 @@ test('발아의 첫 관찰·기쁨·미전개를 보존하면서 기록의 의�
   ]) {
     assert.equal((await strongResult(source, observation + ' ' + ending)).text, output);
   }
+
+  const laterDetails = '오늘 처음 싹이 나온 것을 봤다. 기뻤다. 잎이 펼쳐진 것은 아니다. 심어 둔 씨앗이 싹을 틔운 것은, 화분에 심은 강낭콩이 첫 싹을 낸 뜻깊은 시작이었다.';
+  const resultWithLaterDetails = await strongResult(source, laterDetails);
+  assert.match(resultWithLaterDetails.text, /화분/);
+  assert.match(resultWithLaterDetails.text, /강낭콩/);
 });
 
 test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용하고 근거 있는 과정과 의미를 보존한다', async () => {
@@ -2335,13 +2340,14 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
     '그래도 생각해 온 내용을 정돈해, 무엇부터 밝히고 어떻게 이어 갈지 흐름을 갖춘 날이었다.',
   ].join('\n\n'));
 
-  const withDuration = [...source.slice(0, 3), '그동안 생각해 온 내용을 설명할 순서로 정돈한 날이었다.'];
-  const repeatedWithDuration = fixture({ polishParagraphs: reworded });
-  const adjustedWithDuration = await repeatedWithDuration.request({ text: withDuration.join('\n\n'), strength: 'STRONG', includeAiComment: false });
-  assert.equal(
-    adjustedWithDuration.text.split('\n\n')[3],
-    '그래도 그동안 생각해 온 내용을 정돈해, 무엇부터 밝히고 어떻게 이어 갈지 흐름을 갖춘 날이었다.',
-  );
+  for (const prepared of ['생각해 온', '열심히 생각해 온', '준비한']) {
+    const withDuration = [...source.slice(0, 3), `그동안 ${prepared} 내용을 설명할 순서로 정돈한 날이었다.`];
+    const durationOutput = [...reworded];
+    if (prepared === '준비한') durationOutput[3] = durationOutput[3].replace('생각해 온', '준비해 온');
+    const repeatedWithDuration = fixture({ polishParagraphs: durationOutput });
+    const adjustedWithDuration = await repeatedWithDuration.request({ text: withDuration.join('\n\n'), strength: 'STRONG', includeAiComment: false });
+    assert.match(adjustedWithDuration.text.split('\n\n')[3], /그동안/);
+  }
 
   const duplicated = [...edited];
   duplicated[0] = '발표 자료 열 장의 순서를 바꿨다.';
