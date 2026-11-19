@@ -20,8 +20,10 @@ function DepositPractice() {
   const digits = amountText.replace(/[^0-9]/g, '').slice(0, 15);
   const amount = digits ? Number(digits) : 0;
   const hasNonNumeric = /[^0-9,\s]/.test(amountText);
-  const rateNumber = Number(rate);
-  const validRate = rate !== '' && Number.isFinite(rateNumber) && rateNumber > 0 && rateNumber <= 100;
+  // 비율은 입력한 글자 그대로 검사한다. '-10'·'1e2'처럼 기호를 지워 다른 숫자로 바꾸지 않고 안내한다.
+  const rateTrimmed = rate.trim();
+  const rateNumber = Number(rateTrimmed);
+  const validRate = /^(\d+\.?\d*|\.\d+)$/.test(rateTrimmed) && Number.isFinite(rateNumber) && rateNumber > 0 && rateNumber <= 100;
   const deposit = amount > 0 && validRate ? Math.round((amount * rateNumber) / 100) : null;
   const inputStyle = { fontSize: 16 } as const; // 모바일 입력 확대 방지
   return (
@@ -53,7 +55,7 @@ function DepositPractice() {
         inputMode="decimal"
         autoComplete="off"
         value={rate}
-        onChange={(event) => setRate(event.target.value.replace(/[^0-9.]/g, ''))}
+        onChange={(event) => setRate(event.target.value)}
         style={inputStyle}
         className="mt-1 min-h-[44px] w-full rounded-md border border-gray-300 px-3"
       />
