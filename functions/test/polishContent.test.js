@@ -2367,7 +2367,7 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
     const output = [...reworded];
     const run = fixture({ polishParagraphs: output });
     const result = await run.request({ text: withOtherPeriod.join('\n\n'), strength: 'STRONG', includeAiComment: false });
-    assert.doesNotMatch(result.text, /그동안[이를] 생각해 온/);
+    assert.doesNotMatch(result.text, /그동안[이을] 생각해 온/);
   }
 
   const duplicated = [...edited];
