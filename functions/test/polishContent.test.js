@@ -2335,6 +2335,14 @@ test('발표 자료를 정리한 다문단 일기에만 보충 지침을 적용�
     '그래도 생각해 온 내용을 정돈해, 무엇부터 밝히고 어떻게 이어 갈지 흐름을 갖춘 날이었다.',
   ].join('\n\n'));
 
+  const withDuration = [...source.slice(0, 3), '그동안 생각해 온 내용을 설명할 순서로 정돈한 날이었다.'];
+  const repeatedWithDuration = fixture({ polishParagraphs: reworded });
+  const adjustedWithDuration = await repeatedWithDuration.request({ text: withDuration.join('\n\n'), strength: 'STRONG', includeAiComment: false });
+  assert.equal(
+    adjustedWithDuration.text.split('\n\n')[3],
+    '그래도 그동안 생각해 온 내용을 정돈해, 무엇부터 밝히고 어떻게 이어 갈지 흐름을 갖춘 날이었다.',
+  );
+
   const duplicated = [...edited];
   duplicated[0] = '발표 자료 열 장의 순서를 바꿨다.';
   duplicated[1] = '그렇게 세 번에 걸쳐 순서를 바꾼 끝에 마지막 장까지 정리하고 나니 뿌듯했다.';
@@ -2372,6 +2380,7 @@ test('만족과 불만족은 서로 바꿔 쓰지 않는다', async () => {
   for (const [source, output] of [
     ['결과가 불만족스러웠다.', '결과가 만족스러웠다.'],
     ['결과가 만족스러웠다.', '결과가 불만족스러웠다.'],
+    ['결과가 만족스럽지 않았다.', '결과가 만족스러웠다.'],
   ]) {
     assert.equal((await strongResult(source, output)).text, source);
   }
