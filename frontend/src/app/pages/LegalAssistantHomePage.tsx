@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronRight, FileText, HelpCircle, Loader2, Scale, ShieldAl
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { InlineHelpPopover, LegalTermHelp } from '../components/LegalTermHelp';
+import { LitigationFlowMap } from '../components/LitigationFlowMap';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
@@ -79,95 +80,8 @@ export default function LegalAssistantHomePage() {
     );
   }
 
-  return (
-    <main className="min-h-screen bg-[#FEFBE8] px-4 py-5">
-      <div className="mx-auto max-w-3xl space-y-4">
-        <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="px-2">
-            <ArrowLeft className="size-4" />
-            뒤로가기
-          </Button>
-          <div className="min-w-0 text-center">
-            <h1 className="truncate text-lg font-semibold text-gray-900">전자소송비서</h1>
-            <p className="truncate text-xs text-gray-500">확인 · 기록 · 진행상태 · 다음 행동</p>
-          </div>
-          <span />
-        </header>
-
-        <section className="rounded-lg border border-blue-100 bg-white p-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700">
-              <Scale className="size-5" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900">전자소송비서는 법원 제출 전후의 확인을 돕는 기록 도구입니다.</p>
-              <p className="mt-2 text-sm leading-6 text-gray-600">
-                <LegalTermHelp term="전자소송" />
-                은 법원에 서류를 온라인으로 제출하고{' '}
-                <LegalTermHelp term="송달문서" />
-                ,{' '}
-                <LegalTermHelp term="보정명령" />
-                ,{' '}
-                <LegalTermHelp term="기일" />
-                ,{' '}
-                <LegalTermHelp term="제출서류" />
-                를 직접 확인하며 진행하는 절차입니다.
-                HARU는 처음 준비하는 <LegalTermHelp term="나홀로소송" /> 내용은 연습으로 정리하고, 이미 제출한 사건은 체크리스트와 오늘 할 일로 관리하도록 돕습니다.
-              </p>
-              <div className="mt-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-3">
-                <p className="text-sm font-semibold text-blue-900">나홀로소송 전체 과정 보기</p>
-                <p className="mt-1 text-xs leading-5 text-blue-800">
-                  준비부터 제출, 송달, 보정, 판결 이후까지 전체 흐름을 먼저 살펴봅니다.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 border-blue-200 bg-white text-blue-700"
-                  onClick={() => navigate('/legal-assistant/guide', {
-                    state: { resetAssistantScroll: true },
-                  })}
-                >
-                  나홀로소송 전체 과정 보기
-                  <ChevronRight className="size-4" />
-                </Button>
-              </div>
-              <div className="mt-3 grid gap-2 text-xs leading-5 text-gray-600 sm:grid-cols-3">
-                <div className="rounded-md bg-gray-50 px-3 py-2">
-                  <span className="font-semibold text-gray-900">처음이라면</span>
-                  <br />
-                  새로 소송을 준비하고 있어요
-                </div>
-                <div className="rounded-md bg-gray-50 px-3 py-2">
-                  <span className="font-semibold text-gray-900">제출했다면</span>
-                  <br />
-                  이미 소송을 제출했어요
-                </div>
-                <div className="rounded-md bg-gray-50 px-3 py-2">
-                  <span className="font-semibold text-gray-900">문서를 받았다면</span>
-                  <br />
-                  법원에서 문서를 받았어요
-                </div>
-              </div>
-              <p className="mt-3 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-xs leading-5 text-red-900">
-                HARU는 법률 판단, 제출기한 확정, 실제 법원 제출을 대신하지 않습니다. 법원 문서와 전자소송포털 안내를 직접 확인하세요.
-              </p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="mt-3 px-0 text-blue-700 hover:bg-transparent hover:text-blue-800"
-                onClick={() => navigate('/legal-assistant/beginner-guide', {
-                  state: { resetAssistantScroll: true },
-                })}
-              >
-                전자소송포털 처음 안내 다시 보기
-                <ChevronRight className="size-4" />
-              </Button>
-            </div>
-          </div>
-        </section>
-
+  // 오늘 확인할 일이 있으면 흐름도보다 위에, 없으면 흐름도 아래에 둔다(이미 사건을 쓰는 사람에게 핵심 기능을 먼저 보여 준다).
+  const todaySection = (
         <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-gray-900">오늘 할 일</h2>
@@ -241,6 +155,67 @@ export default function LegalAssistantHomePage() {
             </div>
           )}
         </section>
+  );
+
+  return (
+    <main className="min-h-screen bg-[#FEFBE8] px-4 py-5">
+      <div className="mx-auto max-w-3xl space-y-4">
+        <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="px-2">
+            <ArrowLeft className="size-4" />
+            뒤로가기
+          </Button>
+          <div className="min-w-0 text-center">
+            <h1 className="truncate text-lg font-semibold text-gray-900">전자소송비서</h1>
+            <p className="truncate text-xs text-gray-500">확인 · 기록 · 진행상태 · 다음 행동</p>
+          </div>
+          <span />
+        </header>
+
+        <section className="rounded-lg border border-blue-100 bg-white p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700">
+              <Scale className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900">전자소송비서는 법원 제출 전후의 확인을 돕는 기록 도구입니다.</p>
+              <p className="mt-2 text-sm leading-6 text-gray-600">
+                <LegalTermHelp term="전자소송" />
+                은 법원에 서류를 온라인으로 제출하고{' '}
+                <LegalTermHelp term="송달문서" />
+                ,{' '}
+                <LegalTermHelp term="보정명령" />
+                ,{' '}
+                <LegalTermHelp term="기일" />
+                ,{' '}
+                <LegalTermHelp term="제출서류" />
+                를 직접 확인하며 진행하는 절차입니다.
+                HARU는 처음 준비하는 <LegalTermHelp term="나홀로소송" /> 내용은 연습으로 정리하고, 이미 제출한 사건은 체크리스트와 오늘 할 일로 관리하도록 돕습니다.
+              </p>
+              <p className="mt-3 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-xs leading-5 text-red-900">
+                HARU는 법률 판단, 제출기한 확정, 실제 법원 제출을 대신하지 않습니다. 법원 문서와 전자소송포털 안내를 직접 확인하세요.
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-3 px-0 text-blue-700 hover:bg-transparent hover:text-blue-800"
+                onClick={() => navigate('/legal-assistant/beginner-guide', {
+                  state: { resetAssistantScroll: true },
+                })}
+              >
+                전자소송포털 처음 안내 다시 보기
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {tasks.length > 0 && todaySection}
+
+        <LitigationFlowMap />
+
+        {tasks.length === 0 && todaySection}
 
         <section className="grid gap-3">
           {entranceCards.map((card) => {
