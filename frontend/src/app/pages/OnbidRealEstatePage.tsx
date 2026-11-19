@@ -1,3 +1,4 @@
+import { OnbidFlowMap } from '../components/OnbidFlowMap';
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -231,6 +232,8 @@ export function OnbidRealEstatePage() {
           한국자산관리공사 온비드 공매 부동산을 한눈에 — 입찰 일정·최저가·소재지까지
         </p>
       </div>
+
+      <OnbidFlowMap />
 
       {/* 검색 폼 */}
       <form
