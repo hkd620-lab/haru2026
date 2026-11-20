@@ -53,12 +53,8 @@ import {
   shouldBlockNewSubscriptionForInitialBillingCleanup,
 } from './subscriptionBillingCore';
 import { enforceRateLimit } from './utils/rateLimit';
-import {
-  CONVERTED_JPEG_MAX_BYTES,
-  HEIC_UPLOAD_TRANSFORMATION,
-  convertHeicToJpegBase64,
-  sweepExpiredHeicTempObjects,
-} from './heicConversionCore';
+import { convertHeicLocallyToJpegBase64, sweepExpiredHeicTempObjects } from './heicConversionCore';
+import { HeicInputError, convertHeicBufferToJpeg } from './heicLocalConversion';
 import { TTS_QUALITY_SETTINGS, buildTtsCachePath, normalizeTtsQuality } from './ttsQuality';
 import { reserveStockOcrQuota, rollbackStockOcrQuota } from './stockOcrQuota';
 import * as PortOne from '@portone/server-sdk';
@@ -6597,11 +6593,6 @@ function configureCloudinary() {
   });
 }
 
-function safeCloudinarySegment(value: unknown, fallback: string): string {
-  const raw = String(value || fallback).trim();
-  return raw.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || fallback;
-}
-
 function extractCloudinaryPublicId(imageUrl: string): string | null {
   try {
     const parsed = new URL(imageUrl);
@@ -6691,7 +6682,8 @@ function getBase64DecodedSizeBytes(value: string): number {
 }
 
 export const convertHeic = onCall(
-  { region: 'asia-northeast3', memory: '512MiB' },
+  // 해독은 인스턴스 메모리 안에서 이뤄진다: 48MP 원본(RGBA 약 190MB, WASM 힙 + 화면 방향 사본)을 고려해 1GiB·동시 1건.
+  { region: 'asia-northeast3', memory: '1GiB', concurrency: 1 },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -6713,45 +6705,16 @@ export const convertHeic = onCall(
 
     await enforceRateLimit(request.auth.uid, 'convertHeic', 5, 30);
 
-    configureCloudinary();
-
-    const temporaryPublicId = `heic_temp/${safeCloudinarySegment(request.auth.uid, 'user')}/${crypto.randomUUID()}`;
+    // 서버 내부 오픈소스 해독(libheif WASM) + sharp 인코딩. 외부 업로드 없음.
     try {
-      return await convertHeicToJpegBase64(imageBase64, temporaryPublicId, {
-        upload: async (dataUri, publicId) => cloudinary.uploader.upload(dataUri, {
-          resource_type: 'image',
-          format: 'jpg',
-          public_id: publicId,
-          overwrite: false,
-          transformation: [HEIC_UPLOAD_TRANSFORMATION],
-        }),
-        download: async (url, maxBytes) => {
-          const response = await axios.get(url, {
-            responseType: 'arraybuffer',
-            timeout: 30_000,
-            maxContentLength: maxBytes,
-            maxBodyLength: maxBytes,
-          });
-          const contentType = String(response.headers['content-type'] || '').toLowerCase();
-          if (!contentType.startsWith('image/jpeg')) {
-            throw new Error('Cloudinary conversion did not return JPEG data');
-          }
-          const jpeg = Buffer.from(response.data);
-          if (jpeg.length > CONVERTED_JPEG_MAX_BYTES) {
-            throw new Error('Converted JPEG exceeds the response size limit');
-          }
-          return jpeg;
-        },
-        destroy: async (publicId) => {
-          const result = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
-          if (!['ok', 'not found'].includes(String(result?.result))) {
-            throw new Error(`Cloudinary temporary object cleanup failed: ${String(result?.result || 'unknown')}`);
-          }
-        },
-      });
+      return await convertHeicLocallyToJpegBase64(imageBase64, convertHeicBufferToJpeg);
     } catch (error: any) {
-      logger.error('Cloudinary HEIC 변환 오류:', error);
-      throw new HttpsError('internal', `변환 실패: ${error.message}`);
+      if (error instanceof HeicInputError) {
+        logger.warn('HEIC 변환 거부', { reason: error.message });
+        throw new HttpsError('invalid-argument', '지원하지 않거나 손상된 HEIC 파일입니다.');
+      }
+      logger.error('HEIC 변환 오류', { name: error?.name, message: error?.message });
+      throw new HttpsError('internal', '변환에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     }
   }
 );

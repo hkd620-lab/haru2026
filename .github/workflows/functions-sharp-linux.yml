@@ -11,6 +11,9 @@ on:
       - 'functions/test/aiLibrary*.js'
       - 'functions/src/snsAnalyzer.ts'
       - 'functions/test/sharpImagePipelines.test.js'
+      - 'functions/src/heic*.ts'
+      - 'functions/test/heicConversionCore.test.js'
+      - 'functions/test/convertHeicGuard.policy.test.js'
   workflow_dispatch:
 
 permissions:
@@ -53,6 +56,12 @@ jobs:
 
       - name: Build and run image pipelines
         run: npm run test:sharp-pipelines
+
+      - name: Verify HEIC conversion guard
+        run: npm run test:convert-heic-guard
+
+      - name: Verify HEIC local WASM decode and JPEG behavior
+        run: npm run test:convert-heic-behavior
 
       - name: Verify AI classification with synthetic clients
         run: npm run test:ai-library-classification
