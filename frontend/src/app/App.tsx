@@ -36,6 +36,8 @@ import { BookCreate } from './pages/BookCreate';
 import { BookReader } from './pages/BookReader';
 import { NewsPage } from './pages/NewsPage';
 import { FunVideosPage } from './pages/FunVideosPage';
+import { VideoFinderPage } from './pages/VideoFinderPage';
+import { VideoFinderConnectPage } from './pages/VideoFinderConnectPage';
 import { DiaryLearnPage } from './pages/DiaryLearnPage';
 import { AdminChecklistPage } from './pages/AdminChecklistPage';
 import { AdminHaruLawReviewPage } from './pages/AdminHaruLawReviewPage';
@@ -250,6 +252,9 @@ function AppChrome() {
           <Route path="/book-reader/:bookId" element={<BookReader />} />
           <Route path="/news" element={<NewsPage />} />
           <Route path="/fun-videos" element={<FunVideosPage />} />
+          {/* 내 영상 찾기 — 재미 영상(운영자 큐레이션)과 별개인 개인 보관 기능. 하단 탭에는 넣지 않는다. */}
+          <Route path="/video-finder/connect" element={<VideoFinderConnectPage />} />
+          <Route path="/video-finder/*" element={<SignedInRoute><VideoFinderPage basePath="/video-finder" variant="haru" /></SignedInRoute>} />
           <Route path="/novel-studio" element={<NovelStudio />} />
           <Route path="/novel-synopsis" element={<NovelSynopsisPage />} />
           <Route path="/novel-story" element={<NovelStoryPage />} />

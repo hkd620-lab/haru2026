@@ -474,6 +474,22 @@ const AGENTS: Agent[] = [
       </>
     ),
   },
+  {
+    // 운영자가 고른 '재미 영상'(하단 탭)과 다른 개인 보관 기능. 전체 보기에서만 노출하고 하단 탭은 늘리지 않는다.
+    label: '내 영상 찾기',
+    sub: '원하는 영상을 찾아 내 보관함에 모아요. 메모를 남기고 며칠 뒤 다시 찾아볼 수 있어요. 영상 정보 출처: YouTube',
+    tag: 'VIDEO · 찾아 모으기',
+    variant: 'teal',
+    stroke: '#0F766E',
+    path: '/video-finder',
+    icon: (
+      <>
+        <circle cx="10" cy="10" r="6" />
+        <path d="M14.5 14.5L20 20" />
+        <path d="M8.5 7.5v5l4-2.5z" />
+      </>
+    ),
+  },
 ];
 
 const agentBg = {

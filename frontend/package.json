@@ -8,6 +8,8 @@
     "validate:build-env": "node scripts/validate-build-env.mjs",
     "prebuild": "npm run validate:build-env",
     "build": "vite build",
+    "build:video-finder": "npm run validate:build-env && vite build --config vite.video-finder.config.ts",
+    "test:video-finder": "node --import tsx --test test/videoFinder.test.mjs && node test/videoFinder.policy.test.cjs",
     "dev": "vite",
     "dev:reading-ai-qa": "vite --config test/reading-ai-browser/vite.config.mjs",
     "test:reading-ai": "node --import tsx --test test/readingAi.test.mjs",
