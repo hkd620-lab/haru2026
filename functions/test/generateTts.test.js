@@ -449,6 +449,26 @@ test('긴 글의 일부가 낭독 검증에 실패하면 전체 음성과 사용
   assert.ok(f.connections.every(conn => conn.closed));
 });
 
+test('긴 조각에는 분량에 맞는 용량을 배정하고 여러 묶음의 합계는 전체 상한을 지킨다', async () => {
+  const text = Array(32).fill('The tide carried the paper boats around the bend and out of sight.').join(' ');
+  const options = { realtimeOverrides: { maxPcmBytes: 120 } };
+  const clips = [40, 26, 22, 6].map(size => pcmOf(size));
+  const f = fixture({ ...options, scripts: clips.map(clip => speak({ chunks: [clip] })) });
+
+  await f.call({ ...standardCall, text });
+  assert.equal(f.connections.length, 4);
+  assert.deepEqual(parseWav([...f.objects.values()][0]).data, Buffer.concat(clips));
+
+  const oversized = fixture({
+    ...options,
+    scripts: [50, 48, 40].map(size => speak({ chunks: [pcmOf(size)] })),
+  });
+  await assert.rejects(oversized.call({ ...standardCall, text }), { code: 'internal' });
+  assert.equal(oversized.connections.length, 3);
+  assert.equal(oversized.objects.size, 0);
+  assert.equal(oversized.counters.length, 0);
+});
+
 test('미완료 response.done·빈 오디오·홀수 바이트·도중 종료는 실패하고 캐시·사용량을 남기지 않는다', async () => {
   const cases = [
     speak({ doneStatus: 'incomplete', statusDetails: { type: 'incomplete', reason: 'max_output_tokens' } }),

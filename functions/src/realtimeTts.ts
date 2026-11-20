@@ -672,25 +672,31 @@ export async function synthesizeRealtimeSpeech(params: RealtimeSpeechParams): Pr
   const now = params.now ?? Date.now;
   const deadline = now() + (params.totalTimeoutMs ?? REALTIME_TTS_TOTAL_TIMEOUT_MS);
   const byteLimit = params.maxPcmBytes ?? REALTIME_TTS_MAX_PCM_BYTES;
-  const chunkByteLimit = Math.floor(byteLimit / chunks.length);
+  const totalChars = chunks.reduce((size, chunk) => size + chunk.length, 0);
   const audio: Buffer[] = [];
+  let audioBytes = 0;
 
   for (let offset = 0; offset < chunks.length; offset += NARRATION_PARALLELISM) {
     const remaining = deadline - now();
     if (remaining <= 0) throw new RealtimeTtsError('timeout');
+    const remainingBytes = byteLimit - audioBytes;
+    if (remainingBytes <= 0) throw new RealtimeTtsError('too_large');
     const batch = chunks.slice(offset, offset + NARRATION_PARALLELISM);
     // 각 연결이 정리된 후 다음 묶음을 시작한다. 실패한 조각이 있으면 전체를 저장하지 않는다.
     const results = await Promise.allSettled(batch.map(text => synthesizeRealtimeChunk({
       ...params,
       text,
       totalTimeoutMs: remaining,
-      maxPcmBytes: chunkByteLimit,
+      // 같은 용량으로 나누면 긴 조각이 먼저 넘칠 수 있어 글자 수에 비례해 여유를 준다.
+      maxPcmBytes: Math.min(remainingBytes, Math.ceil(byteLimit * text.length / totalChars * 1.5)),
     })));
     for (const result of results) {
       if (result.status === 'rejected') throw result.reason;
       audio.push(result.value);
+      audioBytes += result.value.length;
     }
+    if (audioBytes > byteLimit) throw new RealtimeTtsError('too_large');
   }
 
-  return Buffer.concat(audio);
+  return Buffer.concat(audio, audioBytes);
 }
