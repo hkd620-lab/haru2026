@@ -53,7 +53,7 @@ assert(!/<img[^>]+youtube/i.test(page + standalone), 'YouTube 로고 이미지�
 assert(!/<iframe/i.test(page), '영상은 YouTube에서 재생하고 화면 안에 내려받거나 복제하지 않는다');
 
 // 4) 로그인·결제 경로 보존: URL로 토큰을 넘기는 기존 흐름에 독립 주소를 추가하지 않는다.
-assert(!oauthState.includes('youtube.haru2026.com'), '소셜 로그인 returnOrigin 허용 목록을 넓히지 않는다');
+assert(!/\b(?:youtube|videos)\.haru2026\.com\b/.test(oauthState), '소셜 로그인 returnOrigin 허용 목록을 넓히지 않는다');
 assert(!socialUrls.includes('youtube'), '소셜 로그인 시작 주소 변경 없음');
 assert(postLoginReturn.includes("const SIGNED_IN_RETURN_PATHS = new Set(['/settings', '/sayu', '/video-finder/connect']);"), '로그인 복귀 허용 목록은 /video-finder/connect만 추가');
 assert(connect.includes("rememberPostLoginReturnPath('/video-finder/connect'); navigate('/login', { state: { fromProtectedRoute: true } });"), '확인 창은 정확한 경로만 기억하고 기존 fromProtectedRoute 상태로 로그인에 간다');

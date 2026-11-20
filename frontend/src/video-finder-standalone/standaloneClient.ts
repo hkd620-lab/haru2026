@@ -1,4 +1,4 @@
-// youtube.haru2026.com 전용 서버 호출. Firebase SDK·HARU 로그인 없이 videoFinderStandalone 한 곳만 부른다.
+// videos.haru2026.com 전용 서버 호출. Firebase SDK·HARU 로그인 없이 videoFinderStandalone 한 곳만 부른다.
 // 전용 세션은 요청 본문에만 싣는다(주소·머리글·로그에 남기지 않음). Firebase 호출 규약(POST {data} → {result}|{error})을 그대로 쓴다.
 import type { VideoFinderClient } from '../app/videoFinder/videoFinderModel';
 

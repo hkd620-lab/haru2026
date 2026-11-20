@@ -1,4 +1,4 @@
-// youtube.haru2026.com 전용 진입점. HARU 앱의 다른 화면·HARU AuthProvider·Firebase SDK는 이 묶음에 넣지 않는다.
+// videos.haru2026.com 전용 진입점. HARU 앱의 다른 화면·HARU AuthProvider·Firebase SDK는 이 묶음에 넣지 않는다.
 // 로그인은 haru2026.com 확인 창에서 '내 영상 찾기' 전용 세션으로만 이어받는다(Firebase 토큰을 옮기지 않음, 주소로 넘기지 않음).
 // 세션은 이 탭의 sessionStorage에만 두어 새로고침·하위 화면(/saved, /history)에서 함께 쓰고, 로그아웃·만료 때 지운다.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';

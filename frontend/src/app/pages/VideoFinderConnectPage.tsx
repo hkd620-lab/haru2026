@@ -1,4 +1,4 @@
-// haru2026.com/video-finder/connect — 독립 주소(youtube.haru2026.com)가 연 작은 창.
+// haru2026.com/video-finder/connect — 독립 주소(videos.haru2026.com)가 연 작은 창.
 // 같은 출처의 기존 HARU 로그인으로 계정을 확인하고, 사용자가 누를 때만 서버가 확인한 uid로
 // '내 영상 찾기' 전용 세션을 받아 허용된 출처의 원래 창으로 넘긴다. Firebase 로그인 토큰은 넘기지 않는다.
 // 세션은 주소에 넣지 않고 postMessage(targetOrigin 고정)로만 전달한다.

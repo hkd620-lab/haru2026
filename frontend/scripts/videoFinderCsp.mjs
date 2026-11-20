@@ -1,4 +1,4 @@
-// youtube.haru2026.com 전용 Content-Security-Policy.
+// videos.haru2026.com 전용 Content-Security-Policy.
 // - 외부 스크립트·글꼴 CDN 없이 같은 출처 자산만 허용한다.
 // - Vite legacy 플러그인이 넣는 인라인 스크립트(iOS 구형 대응)는 'unsafe-inline' 대신 실제 빌드 결과의 SHA-256 해시로만 허용한다.
 //   허용할 해시는 플러그인이 공개한 cspHashes 목록에 있는 것만 받는다. 모르는 인라인 스크립트가 생기면 빌드를 멈춘다.

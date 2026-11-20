@@ -1,4 +1,4 @@
-// youtube.haru2026.com(독립 주소)이 haru2026.com 계정으로 '내 영상 찾기'만 이용하게 하는 연결 규칙.
+// videos.haru2026.com(독립 주소)이 haru2026.com 계정으로 '내 영상 찾기'만 이용하게 하는 연결 규칙.
 // Firebase 로그인 토큰(HARU 기록·결제 등 앱 전체 자격 증명)은 독립 주소로 옮기지 않는다.
 //
 // 흐름
@@ -9,7 +9,7 @@
 // 3) 독립 주소는 보낸 출처·팝업 창·요청 번호가 모두 맞을 때만 세션을 받아, 이 기능 전용 호출에만 실어 보낸다.
 
 export const HARU_PRIMARY_ORIGIN = 'https://haru2026.com';
-export const VIDEO_FINDER_STANDALONE_ORIGIN = 'https://youtube.haru2026.com';
+export const VIDEO_FINDER_STANDALONE_ORIGIN = 'https://videos.haru2026.com';
 export const VIDEO_FINDER_CONNECT_PATH = '/video-finder/connect';
 export const VIDEO_FINDER_SESSION_MESSAGE = 'haru-video-finder-session';
 export const VIDEO_FINDER_CONNECT_STORAGE_KEY = 'haru.videoFinderConnect.v1';

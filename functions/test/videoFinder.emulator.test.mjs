@@ -81,7 +81,7 @@ test('탈퇴 신청·삭제 시작 뒤에는 담기·편집·이력·세션 쓰�
   await assert.rejects(store.updateSavedFields(uid, vid(1), () => ({ note: 'x' })), (e) => e.code === 'failed-precondition');
   await assert.rejects(store.putHistory(uid, { id: 'a'.repeat(32), createdAt: NOW }), (e) => e.code === 'failed-precondition');
   await assert.rejects(store.reserveQuota(uid, 102, true, NOW, { enabled: true, standaloneSignIn: true, userDailySearches: 5, globalDailyUnits: 1000 }));
-  await assert.rejects(store.createSession('h'.repeat(64), { uid, audience: 'https://youtube.haru2026.com', createdAt: NOW, expiresAt: NOW + 1 }));
+  await assert.rejects(store.createSession('h'.repeat(64), { uid, audience: 'https://videos.haru2026.com', createdAt: NOW, expiresAt: NOW + 1 }));
   assert.equal((await db.collection(`users/${uid}/videoFinderSaved`).count().get()).data().count, 1);
   assert.equal((await db.doc(`users/${uid}/videoFinderSaved/${vid(1)}`).get()).data().note, '');
   assert.equal((await db.doc(`videoFinderSessions/${'h'.repeat(64)}`).get()).exists, false);
@@ -108,7 +108,7 @@ test('Rules 기본 거부: 로그인한 본인도 내 영상 찾기·세션·레
   const uid = 'vf-owner';
   await activeUser(uid);
   await db.doc(`users/${uid}/videoFinderSaved/${vid(1)}`).set(savedDoc(vid(1)));
-  await db.doc(`videoFinderSessions/${'a'.repeat(64)}`).set({ uid, audience: 'https://youtube.haru2026.com', createdAt: NOW, expiresAt: NOW + 1 });
+  await db.doc(`videoFinderSessions/${'a'.repeat(64)}`).set({ uid, audience: 'https://videos.haru2026.com', createdAt: NOW, expiresAt: NOW + 1 });
   const denied = (p) => assert.rejects(p, (e) => e?.code === 'permission-denied');
   for (const p of [
     `users/${uid}/videoFinderSaved/${vid(1)}`,

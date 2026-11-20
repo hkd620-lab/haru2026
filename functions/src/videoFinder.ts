@@ -1,6 +1,6 @@
 // '내 영상 찾기' Firebase Functions 연결부.
 // - HARU 안(haru2026.com) 호출: UID는 request.auth.uid에서만 도출한다(클라이언트가 보낸 uid 값은 받지 않는다).
-// - 독립 주소(youtube.haru2026.com) 호출: Firebase 토큰을 옮기지 않고, HARU 확인 창에서 발급한
+// - 독립 주소(videos.haru2026.com) 호출: Firebase 토큰을 옮기지 않고, HARU 확인 창에서 발급한
 //   '내 영상 찾기' 전용 세션만 videoFinderStandalone에서 받는다. UID는 서버의 세션 문서에서만 정한다.
 // - YouTube 서버 키는 Secret Manager 참조(defineSecret)로만 바인딩한다.
 // - 영상·자막 다운로드나 페이지 수집은 하지 않고 YouTube Data API v3 search/videos/channels만 호출한다.
@@ -196,7 +196,7 @@ export const createVideoFinderSession = onCall(
   },
 );
 
-// youtube.haru2026.com 전용 호출. Firebase 로그인(request.auth)은 쓰지 않고 본문의 전용 세션만 받는다.
+// videos.haru2026.com 전용 호출. Firebase 로그인(request.auth)은 쓰지 않고 본문의 전용 세션만 받는다.
 // 브라우저 CORS는 독립 주소만 허용하고, 서버에서도 Origin 머리글을 세션 발급 대상과 대조한다.
 export const videoFinderStandalone = onCall(
   {

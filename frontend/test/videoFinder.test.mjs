@@ -102,7 +102,8 @@ test('연결 요청은 허용된 출처와 올바른 요청 번호만 받는다'
   assert.deepEqual(parseConnectRequest(`#nonce=${nonce}&origin=${encodeURIComponent(VIDEO_FINDER_STANDALONE_ORIGIN)}`, allowed), { nonce, origin: VIDEO_FINDER_STANDALONE_ORIGIN });
   assert.equal(parseConnectRequest(`#nonce=${nonce}&origin=${encodeURIComponent('https://evil.example')}`, allowed), null);
   assert.equal(parseConnectRequest(`#nonce=short&origin=${encodeURIComponent(VIDEO_FINDER_STANDALONE_ORIGIN)}`, allowed), null);
-  assert.equal(parseConnectRequest(`#nonce=${nonce}&origin=${encodeURIComponent('http://youtube.haru2026.com')}`, allowed), null);
+  assert.equal(parseConnectRequest(`#nonce=${nonce}&origin=${encodeURIComponent('http://videos.haru2026.com')}`, allowed), null);
+  assert.equal(parseConnectRequest(`#nonce=${nonce}&origin=${encodeURIComponent('https://youtube.haru2026.com')}`, allowed), null);
   // 미리보기 출처는 빌드 환경값으로만, https 출처 형식일 때만 더한다.
   assert.deepEqual(resolveAllowedStandaloneOrigins('https://example--pr1.web.app'), [VIDEO_FINDER_STANDALONE_ORIGIN, 'https://example--pr1.web.app']);
   assert.deepEqual(resolveAllowedStandaloneOrigins('https://x.web.app/path'), [VIDEO_FINDER_STANDALONE_ORIGIN]);

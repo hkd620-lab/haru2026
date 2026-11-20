@@ -1,4 +1,4 @@
-// '내 영상 찾기' 화면 본체 — HARU 안(/video-finder)과 독립 주소(youtube.haru2026.com)가 함께 쓴다.
+// '내 영상 찾기' 화면 본체 — HARU 안(/video-finder)과 독립 주소(videos.haru2026.com)가 함께 쓴다.
 // 로그인 방식에 의존하지 않도록 서버 호출(client)과 계정 구분 값(accountKey)을 밖에서 받는다.
 // 독립 주소 묶음이 HARU의 AuthContext·Firebase 설정을 불러오지 않게 이 파일은 그 둘을 import하지 않는다.
 // 데이터는 Functions를 거쳐 로그인한 계정의 보관함에만 저장된다. 영상 정보 출처는 YouTube이며 재생은 YouTube에서 한다.
@@ -237,8 +237,10 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
   }, [searchKey, uid, urlFilters, runSearch]);
 
   const loadMore = async () => {
-    if (!searchState?.nextPageToken || searchState.loadingMore) return;
-    const key = `${uid}|${searchKey}`;
+    const requestedSearchKey = searchKey;
+    if (!requestedSearchKey || activeSearchKey.current !== requestedSearchKey ||
+        !searchState?.nextPageToken || searchState.loadingMore) return;
+    const cacheKey = `${uid}|${requestedSearchKey}`;
     const current = { ...searchState, loadingMore: true, moreError: '' };
     setSearchState(current);
     try {
@@ -246,11 +248,13 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
       const seen = new Set(current.videos.map((v) => v.videoId));
       const added = result.videos.filter((v) => !seen.has(v.videoId));
       const next: SearchState = { ...current, loadingMore: false, videos: [...current.videos, ...added], nextPageToken: result.nextPageToken, notice: result.notice || current.notice };
-      rememberSearch(key, next);
+      rememberSearch(cacheKey, next);
+      if (activeSearchKey.current !== requestedSearchKey) return;
       setRemainingSearches(result.remainingSearches);
       setSearchState(next);
       setStatus(added.length ? `영상 ${added.length}개를 더 찾았어요.` : '더 보여드릴 새 영상이 없어요.');
     } catch (error) {
+      if (activeSearchKey.current !== requestedSearchKey) return;
       setSearchState({ ...current, loadingMore: false, moreError: friendlyErrorMessage(error) });
     }
   };
@@ -698,10 +702,12 @@ function SavedCard({ uid, client, item, onChanged, onRemoved, onStatus }: {
   };
 
   const saveNote = () => run(async () => {
-    const result = await client.updateSaved(item.videoId, { note, tags: parseTagInput(tagText) });
-    writeDraft(draftKey, null);
+    const submittedNote = note;
+    const submittedTags = tagText;
+    const result = await client.updateSaved(item.videoId, { note: submittedNote, tags: parseTagInput(submittedTags) });
+    if (readDraft(draftKey) === submittedNote) writeDraft(draftKey, null);
     onChanged(result.item);
-    setTagText(result.item.tags.join(', '));
+    setTagText((current) => current === submittedTags ? result.item.tags.join(', ') : current);
     setSavedMessage('메모를 저장했어요.');
     onStatus(`“${title}” 메모를 저장했어요.`);
   });

@@ -29,7 +29,7 @@ export const VIDEO_FINDER_SESSION_COLLECTION = 'videoFinderSessions';
 export const VIDEO_FINDER_CONFIG_DOC = 'config/videoFinder';
 
 // 독립 주소 세션은 이 출처에서 온 요청만 받는다(서버 CORS 허용 목록과 Origin 검사에 함께 쓴다).
-export const VIDEO_FINDER_STANDALONE_ORIGINS = ['https://youtube.haru2026.com'];
+export const VIDEO_FINDER_STANDALONE_ORIGINS = ['https://videos.haru2026.com'];
 // 세션 유효기간: 발급 후 8시간. 연장하지 않으며 만료되면 HARU 확인 창을 다시 거친다.
 export const VIDEO_FINDER_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 const SESSION_TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;

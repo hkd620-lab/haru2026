@@ -1,4 +1,4 @@
-// youtube.haru2026.com(내 영상 찾기 독립 주소) 전용 빌드.
+// videos.haru2026.com(내 영상 찾기 독립 주소) 전용 빌드.
 // 같은 frontend 의존성과 VITE_FIREBASE_PROJECT_ID 환경값을 쓰고, 결과는 별도 Hosting 사이트용 video-finder-web/dist에 만든다.
 // frontend/dist(haru2026.com)와 섞이지 않게 출력 폴더를 분리하고, PWA·공용 public 폴더는 포함하지 않는다.
 // 독립 주소 묶음에는 Firebase SDK·HARU 로그인이 들어가지 않는다(전용 세션 호출만 사용).

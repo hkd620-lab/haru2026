@@ -618,7 +618,7 @@ test('세션 발급: 운영 스위치가 꺼졌거나 허용되지 않은 주소
   const store = memoryStore({ ...ON, standaloneSignIn: false });
   await assert.rejects(issueStandaloneSession({ store, now: () => NOW }, 'uidA', { audience: ORIGIN }), (e) => e.code === 'failed-precondition');
   store.limits = ON;
-  for (const audience of ['https://evil.example', 'http://youtube.haru2026.com', undefined]) {
+  for (const audience of ['https://evil.example', 'http://videos.haru2026.com', 'https://youtube.haru2026.com', undefined]) {
     await assert.rejects(issueStandaloneSession({ store, now: () => NOW }, 'uidA', { audience }), (e) => e.code === 'invalid-argument');
   }
   assert.equal(store.sessions.size, 0);
@@ -719,7 +719,7 @@ test('Functions 연결부: 리전·Secret 참조·UID 도출·유료 AI 미연�
   const standaloneFn = src.slice(src.indexOf('export const videoFinderStandalone'), src.indexOf('export const purgeStaleVideoFinderMetadata'));
   assert.ok(!standaloneFn.includes('request.auth'), '독립 주소 호출은 Firebase 로그인을 받지 않고 전용 세션만 받는다');
   assert.ok(!/logger\.[a-z]+\([^)]*session/i.test(src), '세션 값을 로그에 남기지 않는다');
-  assert.deepEqual(VIDEO_FINDER_STANDALONE_ORIGINS, ['https://youtube.haru2026.com']);
+  assert.deepEqual(VIDEO_FINDER_STANDALONE_ORIGINS, ['https://videos.haru2026.com']);
   // 다른 Functions·Rules는 이 세션을 받지 않는다: 세션 컬렉션은 이 기능의 저장소와 탈퇴 정리에서만 쓴다.
   const srcDir = path.join(__dirname, '..', 'src');
   const users = fs.readdirSync(srcDir).filter((f) => f.endsWith('.ts'))
