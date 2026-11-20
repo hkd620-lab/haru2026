@@ -59,7 +59,16 @@ import {
   convertHeicToJpegBase64,
   sweepExpiredHeicTempObjects,
 } from './heicConversionCore';
-import { TTS_QUALITY_SETTINGS, buildTtsCachePath, normalizeTtsQuality } from './ttsQuality';
+import { buildTtsCachePath, normalizeTtsQuality } from './ttsQuality';
+import {
+  REALTIME_TTS_SETTINGS,
+  RealtimeTtsError,
+  buildRealtimeTtsCachePath,
+  cleanTtsText,
+  pcm16ToWav,
+  synthesizeRealtimeSpeech,
+  toRealtimeVoice,
+} from './realtimeTts';
 import { reserveStockOcrQuota, rollbackStockOcrQuota } from './stockOcrQuota';
 import * as PortOne from '@portone/server-sdk';
 import {
@@ -10112,38 +10121,56 @@ export const generateTTS = onCall(
   {
     region: 'asia-northeast3',
     memory: '512MiB',
+    // Realtime PCM은 MP3보다 커서 인스턴스당 동시 음성 버퍼 수를 제한한다.
+    concurrency: 3,
     secrets: [GEMINI_API_KEY_SECRET, GOOGLE_CLOUD_API_KEY_SECRET, OPENAI_API_KEY_SECRET],
+    // 합성 자체는 realtimeTts 에서 재시도 포함 60초로 묶는다(클라이언트 기본 70초). 이 값은 서버 쪽 최종 상한이다.
     timeoutSeconds: 120,
   },
   async (request) => {
-    if (!request.auth) {
+    if (!request.auth?.uid) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
 
     const { text, cacheKey, voice = 'nova', quality } = request.data;
-    if (!text || !cacheKey) {
+    if (!text || !cacheKey || typeof text !== 'string') {
       throw new HttpsError('invalid-argument', '텍스트와 캐시키가 필요합니다.');
     }
     const validVoices = ['nova', 'onyx', 'alloy', 'echo', 'fable', 'shimmer'];
     const safeVoice = validVoices.includes(voice) ? voice : 'nova';
     const safeQuality = normalizeTtsQuality(quality);
-    const ttsSettings = TTS_QUALITY_SETTINGS[safeQuality];
-    const filePath = buildTtsCachePath({ cacheKey, voice: safeVoice, quality: safeQuality, text });
-    const file = bucket().file(filePath);
+    // 텍스트 정제 — 한글, 영문만 남기기 (기존 규칙·4000자 제한 유지)
+    const cleanedText = cleanTtsText(text);
+    if (!cleanedText) {
+      throw new HttpsError('invalid-argument', '읽을 수 있는 텍스트가 없습니다.');
+    }
+    const uid = request.auth.uid;
+    // 기존 표준 MP3(`${cacheKey}_${voice}.mp3`)는 키가 일기 앞 20자·장 ID 뿐이라 소유자도 정확한 본문도 확인할 수 없어
+    // 더 이상 내주지 않는다(객체는 지우지 않고 그대로 둔다).
+    // 기존 고음질 MP3 는 해시에 전체 본문·음성·옛 설정이 들어 있어 본문이 정확히 같을 때만 맞으므로 계속 재사용한다.
+    const legacyNativeFile = safeQuality === 'native'
+      ? bucket().file(buildTtsCachePath({ cacheKey, voice: safeVoice, quality: 'native', text }))
+      : undefined;
+    // 새 Realtime 음성은 uid·본문·설정 해시만 쓰는 별도 버전 경로의 WAV 로 저장한다(사용자별 분리).
+    const realtimeSettings = REALTIME_TTS_SETTINGS[safeQuality];
+    const file = bucket().file(buildRealtimeTtsCachePath({ uid, voice: safeVoice, quality: safeQuality, text: cleanedText }));
+    const cacheCandidates = legacyNativeFile ? [legacyNativeFile, file] : [file];
+    let stage = 'cache';
 
     try {
       // 1. Storage 캐시 확인 — 캐시된 경우 서명된 URL 반환 (한도 차감 없음)
-      const [exists] = await file.exists();
-      if (exists) {
-        const [signedUrl] = await file.getSignedUrl({
-          action: 'read',
-          expires: Date.now() + 3600 * 1000, // 1시간
-        });
-        return { success: true, audioUrl: signedUrl, cached: true };
+      for (const cachedFile of cacheCandidates) {
+        const [exists] = await cachedFile.exists();
+        if (exists) {
+          const [signedUrl] = await cachedFile.getSignedUrl({
+            action: 'read',
+            expires: Date.now() + 3600 * 1000, // 1시간
+          });
+          return { success: true, audioUrl: signedUrl, cached: true };
+        }
       }
 
       // 사용자별 하루 TTS 호출 제한 (KST 기준, 캐시 미스 = 새 절 첫 청취만 차감)
-      const uid = request.auth.uid;
       const todayKst = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
       const usageRef = db.doc(`users/${uid}/ttsUsage/${todayKst}`);
       const usageSnap = await usageRef.get();
@@ -10152,75 +10179,25 @@ export const generateTTS = onCall(
         throw new HttpsError('resource-exhausted', '오늘 TTS 사용 한도를 초과했습니다');
       }
 
-      // 2. OpenAI TTS 생성
+      // 2. OpenAI Realtime 음성 생성 (PCM16 24kHz mono). 완료된 response.done + 전사 검증 통과만 성공,
+      //    재시도 포함 전체 60초 제한. 음성 시작 전 rate limit 과 전사 불일치(1회)만 재시도한다.
+      stage = 'realtime';
       const OPENAI_KEY = OPENAI_API_KEY_SECRET.value().replace(/[^\x20-\x7E]/g, '').trim();
+      const pcm = await synthesizeRealtimeSpeech({
+        apiKey: OPENAI_KEY,
+        model: realtimeSettings.model,
+        text: cleanedText,
+        voice: toRealtimeVoice(safeVoice),
+        speed: realtimeSettings.speed,
+        onRetry: ({ attempt, delayMs, kind }) => {
+          // kind 는 고정 분류값뿐이다(전사·본문은 남기지 않음).
+          logger.warn(`TTS 재시도 ${attempt}회 (${kind}, ${delayMs}ms 대기)`);
+        },
+      });
 
-      // 텍스트 정제 — 한글, 영문만 남기기
-      const cleanedText = text
-        .replace(/#{1,3}\s*/g, '')
-        .replace(/\*\*/g, '')
-        .replace(/\*/g, '')
-        .replace(/[`~^|\\[\]{}]/g, '')
-        .replace(/https?:\/\/\S+/g, '')
-        .replace(/[0-9]+\./g, '')
-        .replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, '')
-        .replace(/[^\uAC00-\uD7A3a-zA-Z0-9\s.,!?]/g, ' ')
-        .replace(/\s{2,}/g, ' ')
-        .trim()
-        .slice(0, 4000);
-
-      const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-      // 429(rate limit) 백오프: OpenAI Retry-After 헤더 우선, 미제공 시 5/10/20초 + jitter, 총 3회 시도
-      const BACKOFF_MS = [5000, 10000, 20000];
-      const MAX_ATTEMPTS = 3;
-      let ttsResponse: any = null;
-      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-        try {
-          ttsResponse = await axios.post(
-            'https://api.openai.com/v1/audio/speech',
-            {
-              model: ttsSettings.model,
-              input: cleanedText,
-              voice: safeVoice,
-              response_format: 'mp3',
-              speed: ttsSettings.speed,
-            },
-            {
-              headers: {
-                'Authorization': `Bearer ${OPENAI_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              responseType: 'arraybuffer',
-              timeout: 60000,
-            }
-          );
-          break;
-        } catch (err: any) {
-          const status = err?.response?.status;
-          if (status === 429 && attempt < MAX_ATTEMPTS - 1) {
-            const retryAfterRaw = err?.response?.headers?.['retry-after'];
-            const serverHintMs = retryAfterRaw ? Math.ceil(Number(retryAfterRaw) * 1000) : 0;
-            const baseDelay = BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)];
-            const jitter = Math.floor(Math.random() * 1000);
-            const delay = Math.max(serverHintMs, baseDelay) + jitter;
-            logger.warn(`TTS 429 재시도 ${attempt + 1}회 (${delay}ms 대기, retry-after=${retryAfterRaw ?? 'none'})`);
-            await sleep(delay);
-          } else {
-            throw err;
-          }
-        }
-      }
-
-      // 절 사이 호출 간격 확보 (OpenAI rate-limit 자체 유발 방지)
-      await sleep(500);
-
-      const audioBuffer = Buffer.from(ttsResponse.data);
-      if (!audioBuffer.length) {
-        throw new HttpsError('internal', 'TTS 생성에 실패했습니다.');
-      }
-
-      await file.save(audioBuffer, {
-        metadata: { contentType: 'audio/mpeg' },
+      stage = 'save';
+      await file.save(pcm16ToWav(pcm), {
+        metadata: { contentType: 'audio/wav' },
       });
 
       // 일일 호출 카운터 +1 (Storage 저장 성공 후 차감)
@@ -10236,14 +10213,15 @@ export const generateTTS = onCall(
       });
       return { success: true, audioUrl: signedUrl, cached: false };
 
-    } catch (error: any) {
-      // 보안: axios 에러 객체를 통째로 로깅하면 Authorization 헤더(OpenAI API 키)가 노출됨.
-      // 안전한 필드만 남긴다.
+    } catch (error: unknown) {
+      const realtimeError = error instanceof RealtimeTtsError ? error : undefined;
+      // 캐시키에는 일기 본문의 일부가 들어갈 수 있어 단계와 안전한 오류 분류만 남긴다.
       logger.error('TTS 생성 실패:', {
-        message: error?.message,
-        status: error?.response?.status,
-        code: error?.code,
-        cacheKey,
+        stage,
+        kind: realtimeError?.kind ?? (error instanceof HttpsError ? error.code : 'unknown'),
+        status: realtimeError?.status,
+        providerCode: realtimeError?.providerCode,
+        providerType: realtimeError?.providerType,
       });
       throw new HttpsError('internal', 'TTS 생성에 실패했습니다.');
     }
