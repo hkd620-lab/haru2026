@@ -96,6 +96,13 @@ export function PrivacyPage() {
       <p style={{ fontSize: 13, color: '#999', marginBottom: 32 }}>
         시행일: 2026년 8월 20일
       </p>
+      <section id="video-finder" aria-labelledby="video-finder-privacy-heading" className="mb-8 space-y-2 rounded-lg border border-[#e5e5e5] bg-[#F9FAFB] p-4 text-sm leading-relaxed text-[#333]">
+        <h2 id="video-finder-privacy-heading" className="font-bold text-[#1A3C6E]">내 영상 찾기 개인정보 안내</h2>
+        <p>공개 영상 정보를 표시하기 위해 YouTube API 서비스를 사용합니다. 영상 자료와 서비스 제공자의 정보 처리 방식은 <a className="underline" href="https://policies.google.com/privacy">Google 개인정보처리방침</a>에서 확인할 수 있습니다.</p>
+        <p>HARU 계정에 동의 기록, 지난 검색 조건, 영상 주소, 직접 쓴 메모·태그와 프리미엄 이용량을 연결합니다. 제목·썸네일 등 영상 정보는 필요한 기간 동안 보관하고 30일 이내에 갱신하거나 지웁니다. 작성 중인 메모는 브라우저에도 임시로 남을 수 있습니다.</p>
+        <p>프리미엄 영상 질문을 실행할 때 분석에 필요한 공개 영상 주소와 질문·후속 질문 문맥을 Google Gemini에 HTTPS로 전송합니다. 후속 질문에 답할 수 있도록 짧은 근거 요약과 요청 결과를 일시적으로 보관합니다. 영상과 음원·자막 파일은 HARU 서버에 저장하지 않습니다.</p>
+        <p>보관함의 ‘내 기록 관리’에서 보관 자료를 내보내거나 삭제할 수 있습니다. 개인정보 문의는 아래의 연락처를 이용해 주세요.</p>
+      </section>
       {sections.map((section) => (
         <div key={section.title} style={{ marginBottom: 28 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>

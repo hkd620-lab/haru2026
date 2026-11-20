@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   ALL_TOPICS, DEFAULT_FILTERS, describeFilters, filtersFromSearchParams, filtersToSearchParams, formatCount,
-  formatDate, formatDuration, friendlyErrorMessage, hasSearch, noteDraftKey, parseTagInput, searchSavedItems,
+  formatDate, formatDuration, friendlyErrorMessage, hasSearch, noteDraftKey, parseTagInput, searchSavedItems, youtubeWatchUrl,
 } from '../src/app/videoFinder/videoFinderModel.ts';
 import {
   HARU_PRIMARY_ORIGIN, VIDEO_FINDER_SESSION_MESSAGE, VIDEO_FINDER_STANDALONE_ORIGIN, acceptSessionMessage,
@@ -163,6 +163,24 @@ test('전용 호출: 세션은 본문에만 싣고 주소·쿠키·리퍼러로 
     assert.equal(JSON.parse(init.body).data.session, ISSUED.session, '하위 화면 요청도 같은 세션을 쓴다');
   }
   assert.deepEqual(JSON.parse(f.calls[1].init.body).data, { op: 'library', session: ISSUED.session, payload: { action: 'history' } });
+});
+
+test('전용 주소의 동의와 영상 질문은 같은 세션으로 서버 권한을 확인한다', async () => {
+  const access = { policyAccepted: true, questionAccess: 'ready', remainingQuestions: 10, remainingAnalysisSeconds: 7200 };
+  const answer = { answer: '영상에서 확인한 내용', timestamps: [62], status: { ...access, remainingQuestions: 9 } };
+  const f = fakeFetch([access, access, answer].map((result) => ({ body: { result } })));
+  const client = createStandaloneClient(createStandaloneCaller(standaloneEndpoint('demo-project'), () => ISSUED.session, f.impl));
+  await client.accessStatus();
+  await client.acceptPolicy(1);
+  const request = { requestId: 'fixture-id', videoId: 'abcdefghijk', question: '무엇을 설명하나요?' };
+  assert.deepEqual(await client.askQuestion(request), answer);
+  assert.deepEqual(f.calls.map(({ init }) => JSON.parse(init.body).data), [
+    { op: 'access', session: ISSUED.session, payload: { action: 'status' } },
+    { op: 'access', session: ISSUED.session, payload: { action: 'acceptPolicy', version: 1 } },
+    { op: 'access', session: ISSUED.session, payload: { action: 'ask', ...request } },
+  ]);
+  assert.equal(youtubeWatchUrl(request.videoId, 62), 'https://www.youtube.com/watch?v=abcdefghijk&t=62s');
+  assert.equal(youtubeWatchUrl(request.videoId, -1), 'https://www.youtube.com/watch?v=abcdefghijk');
 });
 
 test('전용 호출: 서버 오류 코드는 화면이 이해하는 형식으로 바뀌고 세션이 없으면 요청하지 않는다', async () => {

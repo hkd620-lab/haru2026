@@ -20,7 +20,7 @@ const { deleteApp: deleteClientApp, initializeApp: initializeClientApp } = front
 const { connectFirestoreEmulator, doc, getDocFromServer, getFirestore, setDoc } = frontendRequire('firebase/firestore');
 const { deleteApp: deleteAdminApp, initializeApp: initializeAdminApp } = functionsRequire('firebase-admin/app');
 const { getFirestore: getAdminFirestore } = functionsRequire('firebase-admin/firestore');
-const { createFirestoreVideoFinderStore, expireSavedMetaIfStale } = functionsRequire('./lib/videoFinderStore.js');
+const { createFirestoreVideoFinderAccessStore, createFirestoreVideoFinderStore, expireSavedMetaIfStale } = functionsRequire('./lib/videoFinderStore.js');
 const core = functionsRequire('./lib/videoFinderCore.js');
 
 const adminApp = initializeAdminApp({ projectId }, `video-finder-admin-${Date.now()}`);
@@ -114,6 +114,9 @@ test('Rules 기본 거부: 로그인한 본인도 내 영상 찾기·세션·레
     `users/${uid}/videoFinderSaved/${vid(1)}`,
     `users/${uid}/videoFinderHistory/${'b'.repeat(32)}`,
     `users/${uid}/rateLimits/videoFinderSavedLock`,
+    `users/${uid}/videoFinderAccess/policy`,
+    `users/${uid}/videoFinderAccess/usage`,
+    `users/${uid}/videoFinderAiCache/recap_${vid(1)}`,
     `videoFinderSessions/${'a'.repeat(64)}`,
     'videoFinderQuota/2026-11-19',
     'config/videoFinder',
@@ -121,4 +124,51 @@ test('Rules 기본 거부: 로그인한 본인도 내 영상 찾기·세션·레
     await denied(getDocFromServer(doc(clientDb, p)));
     await denied(setDoc(doc(clientDb, p), { uid, injected: true }));
   }
+});
+
+test('실제 Firestore에서 프리미엄만 예약하고 동시 호출·재시도에도 한 번만 확정한다', async () => {
+  const uid = `vf-premium-emulator-${Date.now()}`;
+  await activeUser(uid);
+  await db.doc('config/videoFinder').set({ questionsEnabled: true }, { merge: true });
+  const subscription = db.doc(`users/${uid}/subscription/info`);
+  await subscription.set({ plan: 'basic', status: 'active', endDate: new Date(NOW + 7 * 86400000).toISOString() });
+  let modelCalls = 0;
+  let modelStarted;
+  const started = new Promise((resolve) => { modelStarted = resolve; });
+  let respond;
+  const answer = new Promise((resolve) => { respond = resolve; });
+  const access = core.createVideoFinderAccessService({
+    store: createFirestoreVideoFinderAccessStore(db),
+    now: () => NOW,
+    youtube: () => ({ analysisInfo: async () => ({ isPublic: true, durationSeconds: 600 }) }),
+    model: () => ({
+      analyzeVideo: async () => { modelCalls++; modelStarted(); return answer; },
+      answerFromRecap: async () => { throw new Error('unexpected follow-up'); },
+    }),
+  });
+  const question = { action: 'ask', videoId: vid(31), question: '어떤 이야기인가요?', requestId: 'emulator-test-01' };
+  assert.equal((await access.handle(uid, { action: 'status' })).policyAccepted, false);
+  await assert.rejects(access.requirePolicyFor(uid, 'search', {}), (error) => error.code === 'failed-precondition');
+  const accepted = await access.handle(uid, { action: 'acceptPolicy', version: core.VIDEO_FINDER_POLICY_VERSION });
+  assert.equal(accepted.questionAccess, 'premium-required');
+  await assert.rejects(access.handle(uid, question), (error) => error.code === 'permission-denied');
+  assert.equal(modelCalls, 0);
+  await subscription.update({ plan: 'premium' });
+
+  const first = access.handle(uid, question);
+  await Promise.race([started, first.then(() => { throw new Error('모의 모델 호출을 기다리지 않고 종료했습니다.'); })]);
+  try {
+    await assert.rejects(access.handle(uid, { ...question, requestId: 'emulator-test-02' }), (error) => error.code === 'unavailable');
+  } finally {
+    respond({ supported: true, answer: '모의 답변', timestamps: [60], recap: { summary: '모의 요약', segments: [{ t: 60, text: '모의 근거' }] } });
+  }
+  const result = await first;
+  assert.equal(result.status.remainingQuestions, 9);
+  assert.equal(result.status.remainingAnalysisSeconds, 6600);
+  assert.deepEqual(await access.handle(uid, question), result);
+  assert.equal(modelCalls, 1);
+
+  await store.deleteAll(uid);
+  assert.equal((await db.collection(`users/${uid}/videoFinderAiCache`).get()).size, 0);
+  assert.equal((await access.handle(uid, { action: 'status' })).remainingQuestions, 9);
 });

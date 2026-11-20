@@ -22,7 +22,7 @@ import { getAiRoute } from './ai/aiModels';
 export { chatWithReadingContext } from './readingAi';
 export { getFunVideoMetadata } from './funVideoMetadata';
 export { getFunVideos } from './funVideos';
-export { videoFinderSearch, videoFinderLibrary, createVideoFinderSession, videoFinderStandalone, purgeStaleVideoFinderMetadata } from './videoFinder';
+export { videoFinderSearch, videoFinderLibrary, videoFinderAccess, createVideoFinderSession, videoFinderStandalone, purgeStaleVideoFinderMetadata } from './videoFinder';
 import {
   cancelSubscriptionForUid,
   getSafePortOneBillingKeyRevocationError,

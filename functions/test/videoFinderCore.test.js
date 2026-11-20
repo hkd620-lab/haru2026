@@ -709,10 +709,10 @@ test('기본 전체 상한 8,000단위와 102단위 선예약은 표준 할당�
 
 // ───── 연결부 정적 점검 ─────
 
-test('Functions 연결부: 리전·Secret 참조·UID 도출·유료 AI 미연결', () => {
+test('Functions 연결부: 리전·Secret 참조·UID 도출·유료 AI는 질문 경로에만 연결', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'videoFinder.ts'), 'utf8');
   const regionUses = src.match(/region: REGION/g) || [];
-  assert.equal(regionUses.length, 5);
+  assert.equal(regionUses.length, 6);
   assert.ok(!/createCustomToken|customToken/.test(src), 'Firebase custom token을 만들거나 독립 주소로 넘기지 않는다');
   assert.ok(src.includes('cors: VIDEO_FINDER_STANDALONE_ORIGINS'), '독립 주소 호출은 CORS 허용 목록을 쓴다');
   assert.ok(src.includes('gateway.handle(request.data, request.rawRequest?.headers?.origin)'), '서버에서도 Origin을 세션과 대조한다');
@@ -734,7 +734,21 @@ test('Functions 연결부: 리전·Secret 참조·UID 도출·유료 AI 미연�
   assert.ok(!/AIza[0-9A-Za-z_-]{10,}/.test(src), 'API 키 문자열이 없어야 한다');
   assert.ok(src.includes('request.auth?.uid'));
   assert.ok(!/request\.data\??\.uid/.test(src), '클라이언트가 보낸 uid를 쓰지 않는다');
-  assert.ok(!/gemini|typesafe|jev/i.test(src.replace(/\/\/.*$/gm, '')), '유료 AI 모델 호출 코드가 없어야 한다');
+  // 유료 AI(Gemini)는 영상 질문 경로에만: 전용 시크릿, 검색·보관함 함수에는 바인딩하지 않음, Jev 미연결.
+  const code = src.replace(/\/\/.*$/gm, '');
+  assert.ok(!/typesafe|jev/i.test(code), 'Jev 등 다른 유료 AI 호출 코드가 없어야 한다');
+  assert.ok(src.includes("defineSecret('VIDEO_FINDER_GEMINI_API_KEY')"));
+  assert.equal((code.match(/createGeminiVideoClient\(/g) || []).length, 1);
+  for (const name of ['videoFinderSearch', 'videoFinderLibrary', 'createVideoFinderSession']) {
+    const start = code.indexOf(`export const ${name}`);
+    const fn = code.slice(start, code.indexOf('export const', start + 10));
+    assert.ok(!/GEMINI/.test(fn), `${name}에는 Gemini 시크릿을 바인딩하지 않는다`);
+  }
+  for (const name of ['videoFinderAccess', 'videoFinderStandalone']) {
+    const start = code.indexOf(`export const ${name}`);
+    const fn = code.slice(start, code.indexOf('export const', start + 10));
+    assert.ok(fn.includes('VIDEO_FINDER_GEMINI_API_KEY'), `${name}에는 Gemini 시크릿을 바인딩한다`);
+  }
   assert.ok(!/captions|timedtext|download/i.test(src.replace(/\/\/.*$/gm, '')), '자막·영상 다운로드 경로가 없어야 한다');
   assert.ok(src.includes("'X-Goog-Api-Key': apiKey"), '키는 헤더로만 보낸다');
   const index = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8');

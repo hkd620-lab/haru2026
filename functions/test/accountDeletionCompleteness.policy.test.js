@@ -29,7 +29,7 @@ const requiredSubcollections = [
   'settings', 'readProgress', 'novelSettings', 'bibleProgress', 'bibleWordbook', 'vocabulary',
   'snsRecords', 'snsSearchHistory', 'savedSearches', 'timelines', 'legalCases', 'health',
   'petHealthLogs', 'petVaccineRecords', 'lawsuitClaimReasonUsage',
-  'videoFinderSaved', 'videoFinderHistory',
+  'videoFinderSaved', 'videoFinderHistory', 'videoFinderAccess', 'videoFinderAiCache',
 ];
 const subcollectionList = src.match(/const USER_SUBCOLLECTIONS_TO_DELETE = \[([\s\S]*?)\];/)[1];
 for (const name of requiredSubcollections) {
@@ -38,7 +38,7 @@ for (const name of requiredSubcollections) {
 // Other features' rateLimits counters must be preserved; only video finder docs are deleted.
 assert(!subcollectionList.includes("'rateLimits'"), 'rateLimits 전체 삭제 금지');
 const vfRateDocs = src.match(/const VIDEO_FINDER_RATE_LIMIT_DOCS = \[([\s\S]*?)\];/)[1];
-for (const name of ['videoFinderSearch', 'videoFinderSavedLock', 'videoFinderLibrary', 'videoFinderSession']) {
+for (const name of ['videoFinderSearch', 'videoFinderSavedLock', 'videoFinderLibrary', 'videoFinderSession', 'videoFinderAccess']) {
   assert(vfRateDocs.includes(`'${name}'`), `VIDEO_FINDER_RATE_LIMIT_DOCS missing '${name}'`);
 }
 assert(src.includes('db.doc(`users/${uid}/rateLimits/${feature}`).delete()'));

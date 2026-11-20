@@ -1,6 +1,6 @@
 // videos.haru2026.com 전용 서버 호출. Firebase SDK·HARU 로그인 없이 videoFinderStandalone 한 곳만 부른다.
 // 전용 세션은 요청 본문에만 싣는다(주소·머리글·로그에 남기지 않음). Firebase 호출 규약(POST {data} → {result}|{error})을 그대로 쓴다.
-import type { VideoFinderClient } from '../app/videoFinder/videoFinderModel';
+import type { VideoFinderAccess, VideoFinderClient, VideoQuestionAnswer } from '../app/videoFinder/videoFinderModel';
 
 export const STANDALONE_FUNCTION_NAME = 'videoFinderStandalone';
 const FUNCTIONS_REGION = 'asia-northeast3';
@@ -22,7 +22,7 @@ function callError(status: unknown, message: unknown): StandaloneCallError {
 export type FetchLike = (url: string, init: { method: string; headers: Record<string, string>; body: string; credentials: 'omit'; cache: 'no-store'; referrerPolicy: 'no-referrer' }) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
 export function createStandaloneCaller(endpoint: string, getSession: () => string | null, fetchImpl: FetchLike = (url, init) => fetch(url, init)) {
-  return async function call<T>(op: 'session' | 'search' | 'library' | 'signOut', payload?: unknown): Promise<T> {
+  return async function call<T>(op: 'session' | 'search' | 'library' | 'access' | 'signOut', payload?: unknown): Promise<T> {
     const session = getSession();
     if (!session) throw callError('UNAUTHENTICATED', '');
     let response;
@@ -52,6 +52,9 @@ export function createStandaloneCaller(endpoint: string, getSession: () => strin
 export function createStandaloneClient(call: ReturnType<typeof createStandaloneCaller>): VideoFinderClient {
   const library = <T,>(payload: Record<string, unknown>) => call<T>('library', payload);
   return {
+    accessStatus: () => call<VideoFinderAccess>('access', { action: 'status' }),
+    acceptPolicy: (version) => call<VideoFinderAccess>('access', { action: 'acceptPolicy', version }),
+    askQuestion: (request) => call<VideoQuestionAnswer>('access', { action: 'ask', ...request }),
     searchVideos: (filters, pageToken) => call('search', pageToken ? { filters, pageToken } : { filters }),
     listSaved: () => library({ action: 'list' }),
     saveVideo: (video, category) => library({ action: 'save', video, category }),

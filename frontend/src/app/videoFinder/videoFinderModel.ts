@@ -176,9 +176,34 @@ export type SearchResult = {
   notice: string;
 };
 
+export const VIDEO_FINDER_POLICY_VERSION = 1;
+
+export type VideoFinderAccess = {
+  policyAccepted: boolean;
+  questionAccess: 'disabled' | 'premium-required' | 'ready';
+  remainingQuestions: number;
+  remainingAnalysisSeconds: number;
+};
+
+export type VideoQuestionRequest = {
+  requestId: string;
+  videoId: string;
+  question: string;
+  previous?: Array<{ question: string; answer: string }>;
+};
+
+export type VideoQuestionAnswer = {
+  answer: string;
+  timestamps: number[];
+  status: VideoFinderAccess;
+};
+
 // 화면은 이 계약만 안다. HARU 안에서는 Firebase 로그인 호출(videoFinderApi.ts),
 // 독립 주소에서는 전용 세션 호출(video-finder-standalone/standaloneClient.ts)을 넣는다.
 export interface VideoFinderClient {
+  accessStatus(): Promise<VideoFinderAccess>;
+  acceptPolicy(version: number): Promise<VideoFinderAccess>;
+  askQuestion(request: VideoQuestionRequest): Promise<VideoQuestionAnswer>;
   searchVideos(filters: SearchFilters, pageToken?: string | null): Promise<SearchResult>;
   listSaved(): Promise<{ saved: SavedItem[]; searchEnabled: boolean }>;
   saveVideo(video: VideoMeta, category: string): Promise<{ item: SavedItem; created: boolean }>;
@@ -192,8 +217,11 @@ export interface VideoFinderClient {
   deleteAllVideoFinderData(): Promise<void>;
 }
 
-export function youtubeWatchUrl(videoId: string): string {
-  return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+export function youtubeWatchUrl(videoId: string, atSeconds?: number): string {
+  const start = typeof atSeconds === 'number' && Number.isSafeInteger(atSeconds) && atSeconds >= 0
+    ? `&t=${atSeconds}s`
+    : '';
+  return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}${start}`;
 }
 
 // 보관함 안 찾기: 제목·채널·메모·태그를 띄어쓰기 단위로 모두 포함하는 항목만 남긴다.

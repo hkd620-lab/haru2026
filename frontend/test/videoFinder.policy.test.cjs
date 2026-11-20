@@ -13,6 +13,8 @@ const home = read('frontend/src/app/pages/HomePageV2.tsx');
 const haruPage = read('frontend/src/app/pages/VideoFinderPage.tsx');
 // 화면 본체는 HARU 안과 독립 주소가 함께 쓰는 VideoFinderScreen이다.
 const page = read('frontend/src/app/videoFinder/VideoFinderScreen.tsx');
+const policies = read('frontend/src/app/videoFinder/VideoFinderPolicies.tsx');
+const questionDialog = read('frontend/src/app/videoFinder/VideoQuestionDialog.tsx');
 const connect = read('frontend/src/app/pages/VideoFinderConnectPage.tsx');
 const standalone = read('frontend/src/video-finder-standalone/main.tsx');
 const standaloneClient = read('frontend/src/video-finder-standalone/standaloneClient.ts');
@@ -49,7 +51,10 @@ assert(page.includes('영상 정보 출처: YouTube'));
 for (const [name, src] of [['page', page], ['standalone', standalone], ['html', standaloneHtml], ['home', home]]) {
   assert(!/YouTube\s*(AI\s*)?탐색기|유튜브\s*탐색기|youtube[-_ ]?logo|yt_logo|youtube_social/i.test(src), `${name}: YouTube 이름·로고 차용 금지`);
 }
-assert(!/<img[^>]+youtube/i.test(page + standalone), 'YouTube 로고 이미지를 넣지 않는다');
+assert(page.includes('<YouTubeAttribution />') && standalone.includes('<YouTubeAttribution />'), '두 진입점에 공식 출처를 표시한다');
+assert(policies.includes("'./assets/developed-with-youtube.png'") && policies.includes('href="https://www.youtube.com/"'));
+assert(policies.includes('https://www.youtube.com/t/terms') && policies.includes('https://policies.google.com/privacy'));
+assert(page.includes('if (access?.policyAccepted) return <VideoFinderContent'), '동의를 확인한 뒤에 검색과 보관을 불러온다');
 assert(!/<iframe/i.test(page), '영상은 YouTube에서 재생하고 화면 안에 내려받거나 복제하지 않는다');
 
 // 4) 로그인·결제 경로 보존: URL로 토큰을 넘기는 기존 흐름에 독립 주소를 추가하지 않는다.
@@ -74,7 +79,7 @@ assert(standalone.includes("('signOut')"), '로그아웃 때 서버 세션도 �
 
 // 5) 독립 주소 묶음에는 HARU의 다른 화면·HARU 로그인·Firebase SDK가 없다(민감 화면 우회 경로·자격 증명 노출 차단).
 const importsOf = (src) => [...src.matchAll(/from '([^']+)'/g)].map((m) => m[1]);
-for (const [name, src] of [['main', standalone], ['standaloneClient', standaloneClient], ['screen', page], ['bridge', bridge], ['model', read('frontend/src/app/videoFinder/videoFinderModel.ts')]]) {
+for (const [name, src] of [['main', standalone], ['standaloneClient', standaloneClient], ['screen', page], ['policies', policies], ['questionDialog', questionDialog], ['bridge', bridge], ['model', read('frontend/src/app/videoFinder/videoFinderModel.ts')]]) {
   for (const spec of importsOf(src)) {
     assert(!/\/App$|pages\//.test(spec), `독립 주소 묶음(${name})은 ${spec}를 가져오지 않는다`);
     assert(!/^firebase(\/|$)|contexts\/AuthContext|config\/firebase|\/firebase$|videoFinderApi/.test(spec), `독립 주소 묶음(${name})은 HARU 로그인·Firebase(${spec})를 가져오지 않는다`);

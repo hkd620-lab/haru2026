@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { VideoFinderScreen } from '../app/videoFinder/VideoFinderScreen';
+import { VideoFinderPolicyLinks, YouTubeAttribution } from '../app/videoFinder/VideoFinderPolicies';
 import {
   acceptSessionMessage,
   buildConnectUrl,
@@ -88,6 +89,7 @@ function StandaloneSignIn({ onSession, notice }: { onSession: (s: StandaloneSess
         <h1 className="mt-2 text-3xl font-extrabold">내 영상 찾기</h1>
         <p className="mt-3 text-lg leading-8">원하는 영상을 찾아 내 보관함에 모아요. haru2026 계정으로 들어가면 haru2026 안에서 보던 보관함과 메모를 그대로 볼 수 있어요.</p>
         <p className="mt-2 text-base leading-7 text-[#46524a]">영상 정보 출처: YouTube</p>
+        <div className="mt-3"><YouTubeAttribution /></div>
         {notice && <p role="status" className="mt-4 rounded-xl bg-[#fff9e6] p-3 text-base leading-7">{notice}</p>}
         <button
           type="button"
@@ -103,6 +105,7 @@ function StandaloneSignIn({ onSession, notice }: { onSession: (s: StandaloneSess
           haru2026 안에서는 비서실 ‘전체 보기’의 ‘내 영상 찾기’로 바로 들어갈 수 있어요.
         </p>
         <p className="mt-3 text-base leading-7 text-[#46524a]">이 주소에서는 내 영상 찾기만 이용할 수 있어요. 로그인 연결은 8시간 뒤 끝나요.</p>
+        <div className="mt-4"><VideoFinderPolicyLinks haruOrigin={HARU_ORIGIN} /></div>
       </section>
     </div>
   );

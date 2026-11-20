@@ -160,6 +160,9 @@ const USER_SUBCOLLECTIONS_TO_DELETE = [
   'lawsuitClaimReasonUsage',
   'videoFinderSaved',
   'videoFinderHistory',
+  // 내 영상 찾기 동의·AI 질문 사용량(videoFinderAccess)과 비공개 영상 요약·답변 캐시(videoFinderAiCache)
+  'videoFinderAccess',
+  'videoFinderAiCache',
 ];
 
 // 내 영상 찾기가 만든 rateLimits 문서만 지운다. 다른 기능 카운터는 기존처럼 보존한다.
@@ -168,6 +171,7 @@ const VIDEO_FINDER_RATE_LIMIT_DOCS = [
   'videoFinderSavedLock',
   'videoFinderLibrary',
   'videoFinderSession',
+  'videoFinderAccess',
 ];
 
 // 1회 스케줄 실행에서 처리할 최대 계정 수(타임아웃 방지). 남은 대상은 다음날 처리된다.

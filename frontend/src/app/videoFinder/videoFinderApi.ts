@@ -2,7 +2,7 @@
 // UID는 서버가 로그인 정보에서 정한다. 독립 주소는 이 파일을 쓰지 않는다(standaloneClient.ts 사용).
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
-import type { SearchFilters, SearchResult, VideoFinderClient } from './videoFinderModel';
+import type { SearchFilters, SearchResult, VideoFinderAccess, VideoFinderClient, VideoQuestionAnswer } from './videoFinderModel';
 
 export type { SearchResult } from './videoFinderModel';
 
@@ -11,8 +11,13 @@ const libraryCallable = httpsCallable<Record<string, unknown>, any>(functions, '
 const sessionCallable = httpsCallable<{ audience: string }, { session: string; expiresAt: number; accountKey: string }>(functions, 'createVideoFinderSession');
 
 const library = async (body: Record<string, unknown>) => (await libraryCallable(body)).data;
+const access = async <T>(body: Record<string, unknown>) =>
+  (await httpsCallable<Record<string, unknown>, T>(functions, 'videoFinderAccess', { timeout: 125_000 })(body)).data;
 
 export const haruVideoFinderClient: VideoFinderClient = {
+  accessStatus: () => access<VideoFinderAccess>({ action: 'status' }),
+  acceptPolicy: (version) => access<VideoFinderAccess>({ action: 'acceptPolicy', version }),
+  askQuestion: (request) => access<VideoQuestionAnswer>({ action: 'ask', ...request }),
   async searchVideos(filters, pageToken) {
     return (await searchCallable(pageToken ? { filters, pageToken } : { filters })).data;
   },
