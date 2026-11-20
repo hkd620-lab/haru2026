@@ -160,8 +160,14 @@ const USER_SUBCOLLECTIONS_TO_DELETE = [
   'lawsuitClaimReasonUsage',
   'videoFinderSaved',
   'videoFinderHistory',
-  // 서버 전용 개인 카운터(기능별 요청 횟수, 내 영상 찾기 검색 수·보관 레지스터). 계정 삭제 뒤 남길 이유가 없다.
-  'rateLimits',
+];
+
+// 내 영상 찾기가 만든 rateLimits 문서만 지운다. 다른 기능 카운터는 기존처럼 보존한다.
+const VIDEO_FINDER_RATE_LIMIT_DOCS = [
+  'videoFinderSearch',
+  'videoFinderSavedLock',
+  'videoFinderLibrary',
+  'videoFinderSession',
 ];
 
 // 1회 스케줄 실행에서 처리할 최대 계정 수(타임아웃 방지). 남은 대상은 다음날 처리된다.
@@ -201,6 +207,9 @@ async function deleteUserSubcollections(uid: string): Promise<void> {
 async function deleteVideoFinderSessions(uid: string): Promise<void> {
   const snap = await db.collection('videoFinderSessions').where('uid', '==', uid).get();
   await Promise.all(snap.docs.map((d) => d.ref.delete()));
+  await Promise.all(
+    VIDEO_FINDER_RATE_LIMIT_DOCS.map((feature) => db.doc(`users/${uid}/rateLimits/${feature}`).delete()),
+  );
 }
 
 async function deleteEmailToUidMapping(uid: string): Promise<void> {
