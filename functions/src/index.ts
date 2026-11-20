@@ -2524,6 +2524,9 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
     // ‘완성한 앱’, ‘다 만든 앱’처럼 만든 것이 끝났다는 상태 주장. 원문이 ‘만들어 온’·‘시험 설치’처럼 진행 중으로 적었으면
     // 완료로 넓힌 것이다. 원문에 같은 완료 표현(완성·완료·마무리·다 만든)이 있을 때만 통과한다. ‘설치를 마치고’ 같은 단계 끝은 다루지 않는다.
     [completionClaim, match => sourceCompletionStates.has(completionStatus(match))],
+    // 정식 절차를 마쳤다는 말은 같은 절차와 완료 행동을 원문에서 확인한다.
+    [/정식[ \t]+(?:배포|공개|출시|심사|승인)[를을][ \t]*(?:마쳤|마친|완료했|완료한|끝냈|끝낸)/g,
+      match => compactSource.includes(compact(match[0]))],
     // ‘벅찰 만큼’, ‘무척’, ‘너무나’처럼 감정·평가의 정도를 높이는 말. 원문에 같은 말이 있을 때만 통과한다(감정 정도 유지).
     [/벅찰|벅차(?:오르|올랐|고|서|게|다|도록)|터질\s?듯|날아갈\s?듯|눈물이\s?날\s?(?:만큼|듯|정도)|뭉클|너무나|무척|몹시|굉장히|엄청|대단히|한없이|더없이|이루\s?말할\s?수\s?없|말할\s?수\s?없이|어느\s?때보다/g,
       match => compactSource.includes(compact(match[0]))],
@@ -2565,6 +2568,9 @@ function addsUngroundedSpecifics(text: string, source: string): boolean {
     [/화면|아이콘|버튼/g, match => source.includes(match[0])],
     // ‘수십 번’, ‘수많은’, ‘두 차례’처럼 원문에 없는 횟수·수량 구체화. 원문에 같은 수량 전체가 있을 때만 통과한다.
     [countClaim, match => sourceCounts.has(countKey(match[0]))],
+    // 생각이 구현됐다는 사실만으로 이전에 생각에 머물러 있었다고 단정하지 않는다.
+    [/(?<![가-힣])(?:생각|구상|아이디어)에[ \t]*(?:만[ \t]*)?머물(?:던|렀(?:다|고|던)|러[ \t]*있(?:던|었다|었고))/g,
+      match => compactSource.includes(compact(match[0]))],
     // ‘머릿속으로만’, ‘오직’, ‘~뿐이었다’처럼 원문에 없는 배타·한정 주장. 원문에 같은 표현이 있을 때만 통과한다.
     [/[가-힣]*(?:으로만|로만|에서만|에게만|한테만|에만)(?=$|[^가-힣]|[은이])|[가-힣]*기만\s?(?:했|하|할|한)|(?<![가-힣])(?:오직|오로지|단지|그저(?!께)|고작|유일하게|유일한)|뿐(?!만)|밖에\s?(?:없|안|못)/g,
       match => compactSource.includes(compact(match[0]))],
@@ -2707,6 +2713,23 @@ function changesDateOrNegation(text: string, source: string): boolean {
   const own = dateNegationMarks(text);
   const original = dateNegationMarks(source);
   return [...original.kept].some(mark => !own.kept.has(mark)) || [...own.exact].some(mark => !original.exact.has(mark));
+}
+
+// 문장 첫머리의 동일한 대조 대상에 한해 원문의 부정 표현을 복원한다.
+// 뒤에 이어지는 결과와 의미는 기존 사실 보존 검사에서 별도로 확인한다.
+function repairFirstRunMeaning(text: string, source: string): string {
+  const originalContrast = /(?:^|[.!?。！？]\s+)단순히 ([가-힣 ]{1,60}?[한된]) 것이 아니라,/g;
+  const sourceClauses = new Set(Array.from(source.matchAll(originalContrast), match => match[1]));
+  const withOriginalContrast = text.replace(
+    /(^|[.!?。！？]\s+)단순히 ([가-힣 ]{1,60}?[한된]) 데 그치지 않고,/g,
+    (phrase, boundary: string, clause: string) =>
+      sourceClauses.has(clause) ? `${boundary}단순히 ${clause} 것이 아니라,` : phrase,
+  );
+  // 같은 문단에 있는 앱의 동작은 살리고 새로 붙인 단계 이름만 뺀다.
+  if (!/단계/.test(source) && /앱(?:이|을)/.test(source) && /열(?:림|렸|린)/.test(source)) {
+    return withOriginalContrast.replace(/열리는 단계까지 (?:나아가|이어져|이르러)(?=[\s,，])/g, '열리기까지 이어져');
+  }
+  return withOriginalContrast;
 }
 
 function failsGroundedParagraph(text: string, source: string): boolean {
@@ -3177,6 +3200,7 @@ export const polishContent = onCall(
       let groundedPolish: string | undefined;
       let polishPresentationParagraphs = false;
       let polishSprout = false;
+      let polishFirstRun = false;
       let groundedParagraphs: Array<{ text: string; original: string; kept: boolean }> | undefined;
       const wrappedRichSource = strength !== undefined
         ? /(?:^|\n)\[원문 시작\]\n([\s\S]+)\n\[원문 끝\]\s*$/.exec(text)
@@ -3299,6 +3323,18 @@ ${eventExample}${groundedPolish === undefined ? `\n${strongRichnessBlock}\n` : '
           const sproutGuide = polishSprout ? `
 [첫 싹을 본 기록]
 첫 관찰에는 원문에 적힌 용기·장소·식물 이름과 관찰 시점을 남깁니다. 원문에 기쁨이나 아직 이르지 않은 단계가 따로 적혔다면 둘 다 보존합니다. 기쁨에는 새 계기나 정도를 붙이지 않습니다. 뜻을 적은 결말은 ‘그래도 심어 둔 씨앗이 틔운 그 첫 싹은 내게 뜻깊은 시작이었다.’처럼 원문의 대상과 변화에 곧바로 의미를 연결해 한 문장으로 씁니다. ‘씨앗이 싹을 틔운 것은’, ‘싹을 틔웠다는 점에서’처럼 같은 대상을 설명하는 절이나 ‘이것은’으로 결말을 시작하지 않습니다. ‘심어 둔’을 ‘심어 온’으로 늘리지 않습니다. 원문에 없는 생장 단계·기대·기다림은 넣지 않습니다.` : '';
+          const appDiary = normalizedFormat === 'diary' && source.includes('앱');
+          polishFirstRun = appDiary && /(?:만들어|개발해)[ \t]*온/.test(source)
+            && /(?:처음|첫)[^.!?。！？\r\n]{0,40}(?:실행|설치)/.test(source);
+          const firstRunGuide = polishFirstRun ? `
+[만들어 온 일과 실제 첫 실행의 의미]
+‘설치되고 실행되다’, ‘열림’ 같은 메모형은 일어난 사건을 서술하는 완결문으로 씁니다. 첫 문단이 첫 실행을 한 문장으로 전한다면 그 사건만 한 문장으로 정돈합니다. 만들어 온 일이 실제 기기에서 앱이 열리는 데까지 이어진 변화는 해당 원문 문단에서 구체적으로 풉니다. 그 의미와 공개를 향한 진전이 함께 적혀 있으면 한 문장에 잇습니다. 이때 ‘단순히 … 것이 아니라’ 같은 원문의 대비와 부정 표현을 그대로 두고, 뒤에서 실제로 일어난 행동과 그 의미를 이어 씁니다. 원문에 없는 새 단계 이름을 붙이거나 같은 진전을 별도의 결말로 되풀이하지 않습니다. 여러 문단에서 의미를 다뤘다면 각 문단의 고유 내용에 집중합니다. 첫 실행은 출시나 승인과 구분합니다. 남은 절차를 지키고 원문보다 완료 범위를 넓히지 않습니다.
+가상 예시: ‘만들어 온 시간표 앱이 태블릿에서 열림. 단순히 기능이 완성된 것이 아니라, 정식 공개를 향해 한 걸음 나아간 날.’ → ‘만들어 온 시간표 앱이 태블릿에서 열렸다. 단순히 기능이 완성된 것이 아니라, 만들어 온 앱을 실제 태블릿에서 열기까지 이르러 정식 공개를 향해 한 걸음 나아간 날이었다.’ 원문의 기기·출시 상태·사람과 시점은 보존합니다.` : '';
+          const ideaGuide = appDiary && /생각|구상|아이디어/.test(source)
+            && /작동/.test(source) && /놀라|놀랍/.test(source) ? `
+[생각이 작동하는 앱으로 자란 놀라움]
+원문이 생각과 AI의 역할, 눈에 보이는 형태와 실제 작동을 함께 적었다면 같은 흐름으로 잇습니다. 첫 문장은 그 변화, 다음 문장은 글쓴이의 놀라움을 담습니다. ‘생각에 머물던’, ‘머릿속에만 있던’, ‘구상에 그치던’처럼 이전 상태를 새로 세우지 않습니다. 놀라움이 원문에 거듭 나와도 ‘날마다’ 같은 감정의 범위를 남겨 한 번만 쓰고, 같은 의미의 결말은 추가하지 않습니다.
+가상 예시: ‘날마다 신기하고 놀랍다 내 계획이 AI 덕분에 눈에 보이고 작동하는 메뉴판 앱으로 바뀌는 게 놀랍다.’ → ‘내 계획이 AI의 도움을 받아 눈에 보이는 형태를 갖추고, 작동하는 메뉴판 앱으로 바뀌고 있다. 그 변화가 날마다 신기하고 놀랍다.’` : '';
           systemPrompt += `
 
 [강에서 원문 근거로 의미 풀기]
@@ -3316,7 +3352,7 @@ ${eventExample}${groundedPolish === undefined ? `\n${strongRichnessBlock}\n` : '
 예시 5(여러 번 바꾼 배치가 하나의 전체가 됨). 한 문단 원문 ‘조각 천 열두 장을 이어 붙일 순서를 여러 번 바꿨다. 마지막 조각까지 자리를 정하고 나니 뿌듯했다. 오늘은 따로 모아 둔 천 조각들이 한 장의 무늬가 된 날이었다.’ → 같은 "text" 안에서 빈 줄로 나눈 두 문단 ‘조각 천 열두 장을 이어 붙일 순서를 여러 번 바꿨다. 그렇게 순서를 거듭 바꾼 끝에 마지막 조각까지 자리를 정하고 나니 뿌듯했다.’와 ‘오늘은 따로 모아 둔 천 조각들이 그 끝에 한 장의 무늬가 된 날이었다.’ 같은 내용이 원문 문단 셋이면 → [1] ‘조각 천 열두 장을 이어 붙일 순서를 여러 번 바꿨다.’ [2] ‘그렇게 순서를 거듭 바꾼 끝에 마지막 조각까지 자리를 정하고 나니 뿌듯했다.’ [3] ‘오늘은 따로 모아 둔 천 조각들이 그렇게 거듭한 끝에 한 장의 무늬가 된 날이었다.’ 이 예시는 여러 번 바꾼 과정을 결과 문장과 맺음 문장 안에서 가리켜, 따로 있던 조각들이 거듭한 끝에 하나가 된 변화를 풀어 씁니다. 뿌듯함의 계기는 원문 그대로(마지막 조각까지 자리를 정함)이고, ‘열두 장’·‘여러 번’은 처음 문장에만 둡니다. ‘한 장씩 대 보며’(새 동작), ‘한참을 고민했다’(새 궁리·기간), ‘바닥에 펼쳐 놓으니’(새 장면), ‘수십 번’(바뀐 수량), ‘작업실에서’(새 장소), 맺음 뒤에 ‘~한 하루였다’를 다시 붙이는 것은 근거가 없습니다.
 
 ${strongRichnessBlock}
-위 본문 출력 규칙은 각 문단의 "text"에 적용합니다. 입력의 [문단 n]은 원문 문단의 순번입니다. 원문 문단 ${groundedParagraphs?.length ?? 0}개를 순번 1부터 차례로 하나씩 다듬어 같은 순번의 "text"에 씁니다. 문단을 빼거나 합치거나 순서를 바꾸지 않고, 한 원문 문단의 내용을 다른 순번으로 옮기지 않습니다. 한 원문 문단을 여러 문단으로 풀어 쓸 때는 그 "text" 안에서 빈 줄로 나눕니다. [문단 n] 표시는 "text"에 옮기지 않습니다.${presentationGuide}${sproutGuide}
+위 본문 출력 규칙은 각 문단의 "text"에 적용합니다. 입력의 [문단 n]은 원문 문단의 순번입니다. 원문 문단 ${groundedParagraphs?.length ?? 0}개를 순번 1부터 차례로 하나씩 다듬어 같은 순번의 "text"에 씁니다. 문단을 빼거나 합치거나 순서를 바꾸지 않고, 한 원문 문단의 내용을 다른 순번으로 옮기지 않습니다. 한 원문 문단을 여러 문단으로 풀어 쓸 때는 그 "text" 안에서 빈 줄로 나눕니다. [문단 n] 표시는 "text"에 옮기지 않습니다.${presentationGuide}${sproutGuide}${firstRunGuide}${ideaGuide}
 최종 응답은 {"paragraphs":[{"index":1,"text":"1번 원문 문단을 다듬은 글"}]} 형태의 JSON만 쓰고, "paragraphs"에는 정확히 ${groundedParagraphs?.length ?? 0}개를 씁니다.`;
         }
       } else if (strength !== undefined && normalizedFormat !== 'voiding') {
@@ -3512,6 +3548,7 @@ ${SOURCE_PRESERVATION_RULES}`;
               );
             }
           }
+          if (polishFirstRun) candidateText = repairFirstRunMeaning(candidateText, paragraph.original);
           // 원문 근거를 남길 수 있으면 같은 문단 안에서 되풀이한 문장을 지운다.
           const paragraphText = dropDuplicateGroundedSentences(candidateText, paragraph.original) ?? candidateText;
           // 다른 원문 문단의 내용이나 앞 문단의 다듬은 문장을 되풀이한 문장도 문제 문장으로 본다.
