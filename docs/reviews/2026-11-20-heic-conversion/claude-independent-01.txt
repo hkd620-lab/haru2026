@@ -1,0 +1,81 @@
+2026-11-20 KST
+검토 기준: origin/main 59ec0e02 + 커밋 전 구현 초안
+검토 당시 libheif-js 잠금 파일과 설치, 실제 촬영본 검증은 준비 중이었다.
+검토 질문 원문
+HARU2026 operating policy 8.1 independent review, design and code only. This is a fresh read-only reviewer. Worktree /private/tmp/haru-heic-local-20261120 branch codex/heic-local-conversion-20261120 base origin/main 59ec0e02. Owner requirements: replace Cloudinary for HEIC-to-JPEG and preserve displayed orientation for both real iPhone and Galaxy photos. Review only current diff and untracked HEIC source/test as needed. Check normal callable compatibility, orientation precedence and transforms, primary vs auxiliary, resource bounds, Cloudinary legacy delete/sweep consistency, portability on Linux Node22, and evidence required for release. The implementation is still being finalized; treat missing package lock as pending. Do not access secrets, user data, devices, production, Slack or web. Do not edit, commit, push, deploy, or invoke other agents. Return a short independent review with concrete severity/file/line and a verdict (승인, 수정 후 승인 or 재설계); note runtime or review gaps precisely. Relevant previous PR for photo contract #212 / #275 / #276 if referred to locally.
+
+검토 결과 원문
+
+# 독립 검토: HEIC 서버 내부 변환 (Cloudinary 대체)
+
+범위는 현재 diff와 추적되지 않은 `functions/src/heicLocalConversion.ts`, 테스트 2개입니다. 읽기만 했고 아무것도 실행하지 않았습니다. 이 worktree에는 `functions/node_modules/libheif-js`가 설치돼 있지 않습니다. 그래서 libheif에 닿는 경로는 런타임으로 확인하지 못했습니다.
+
+## 판정: **수정 후 승인**
+
+호출 계약, 리소스 제한, Cloudinary 정리 흐름 설계는 타당합니다. 아래 H1과 H2가 해소되고 E1~E5 증거가 나오기 전에는 merge하면 안 됩니다.
+
+## 지적 사항
+
+**H1 (높음): libheif-js에 필요한 C 함수가 export되는지 확인 안 됨** — `heicLocalConversion.ts:176-230`, `:242`
+- 코드는 Emscripten 저수준 함수를 직접 부릅니다.
+  - 메타데이터: `_heif_image_handle_get_metadata*`, `_heif_image_handle_get_list_of_metadata_block_IDs`
+  - 변환 속성: `_heif_item_get_properties_of_type`, `_heif_image_handle_get_item_id`
+  - 기타: `fourcc`, `HEAPU8`/`HEAPU32`, `_malloc`/`_free`, `_heif_context_set_maximum_image_size_limit`
+- 이것들은 libheif-js 1.23.5 wasm-bundle의 `EXPORTED_FUNCTIONS`/`EXPORTED_RUNTIME_METHODS`에 들어 있어야만 존재합니다. 보장된 공개 API가 아닙니다.
+- `primaryHasNativeTransform`(`:225`)은 함수가 없으면 throw합니다. 하나라도 빠지면 **모든 변환이 `internal`로 실패합니다.**
+- 크기 제한(`:242`)은 반대로, 함수가 없거나 `context.$$.ptr`가 없으면 **조용히 건너뜁니다.**
+- 확인할 것들:
+  - 위 함수들이 실제로 있는지
+  - `heif_js_decode_image2` 결과의 모양(`width/height/channels[0].data/stride/image`)
+  - `heif_js_context_get_primary_image_handle`이 실패할 때 무엇을 돌려주는지
+  - import 결과가 thenable인지 Promise인지(`:159-161`)
+- 필요한 함수가 없으면 시작 시점에 한 번 확인하고 명확히 실패하게 하세요. 크기 제한은 없으면 넘어가지 말고 실패로 처리하는 편이 낫습니다.
+
+**H2 (높음): 방향 우선순위가 실제 기기 사진으로 검증되지 않음** — `heicLocalConversion.ts:232-260`
+- 현재 규칙:
+  - irot/imir가 있으면 libheif 변환만 쓰고 Exif는 무시합니다. iPhone(irot와 Exif 둘 다 기록)에서 이중 회전을 막는 올바른 방향입니다.
+  - irot/imir가 없을 때만 Exif Orientation을 적용합니다.
+- 문제는 이 Exif fallback입니다. HEIF/MIAF 규격과 libheif, Apple 디코더는 HEIF 안의 Exif 방향을 표시에 쓰지 않습니다. 그래서 다음 경우 서버 결과가 기기 갤러리 화면과 달라질 수 있습니다.
+  - 픽셀은 이미 회전됐는데 Exif가 옛값인 편집·내보내기 파일
+  - irot 각도 0과 Exif 6이 같이 있는 파일(현재 코드는 이때 Exif를 무시함)
+- 합성 fixture 테스트(`heicConversionCore.test.js:178-204`)는 "irot를 free로 바꾼 판이 같은 방향"이라는 자기 일관성만 봅니다. Galaxy 실제 사진이 이 규칙대로 보이는지는 증명하지 못합니다.
+- 프론트는 브라우저 해독을 먼저 씁니다(`recordPhotoCompression.ts:8`). Android Chrome에는 HEIC 해독이 없으므로 **Galaxy 사진은 사실상 전부 서버 경로를 탑니다.** 이 경로의 실제 사진 검증이 핵심입니다.
+
+**M1 (중간): 메모리·시간이 측정되지 않음** — `index.ts:6691`, `heicLocalConversion.ts:262-290`
+- 48MP 사진 한 장의 예상 최대 사용량:
+  - WASM 안: YCbCr 평면 약 73MB + RGBA 약 194MB
+  - JS 방향 사본: 194MB
+  - sharp 원본 입력과 resize 버퍼
+- WASM 메모리는 한 번 커지면 줄어들지 않습니다. 인스턴스가 최대 크기를 계속 들고 있습니다.
+- 1GiB면 아마 맞겠지만 실측이 필요합니다. 1GiB gen2의 기본 CPU 할당과 기본 timeout 60초 안에 48MP 그리드 HEIC가 끝나는지도 재야 합니다.
+- 개선 제안: 방향 복사본을 따로 만들지 말고 sharp의 `rotate()`/`flip()`/`flop()`에 맡기면 194MB 사본 하나를 줄일 수 있습니다(선택).
+- `maxInstances`가 설정되지 않았습니다. 사용자별 rate limit(5회/30초)은 있지만 1GiB 인스턴스 비용 상한을 따로 두는 것을 권합니다.
+
+**M2 (중간): 색 공간과 비트 깊이** — `heicLocalConversion.ts:262`, `:276-290`
+- iPhone Display P3 픽셀이 ICC 태그 없이 저장되면 색이 약간 바랩니다. Cloudinary의 `strip_profile`이 sRGB 변환 뒤 profile을 지웠는지와 비교해서 퇴행인지 판단해야 합니다.
+- Galaxy 10-bit HEIC를 8-bit `interleaved_RGBA`로 요청할 때 변환이 성공하는지도 실측해야 합니다.
+
+**L1 (낮음): 이전 Cloudinary 코드가 남아 있음** — `heicConversionCore.ts:4-11`, `:123-143`
+- `convertHeicToJpegBase64`, `HEIC_UPLOAD_TRANSFORMATION`, 관련 테스트는 이제 쓰이지 않는 코드입니다.
+- `cleanupHeicTemp`(`index.ts:6727`)를 남겨 기존 `heic_temp/` 객체를 계속 지우는 것은 일관되고 올바릅니다.
+- 정리 계획을 PR에 적어 두세요: `heic_temp/` prefix가 0개로 확인되면 sweep과 이 코드를 함께 제거.
+
+**L2 (낮음): 의존성·패키징**
+- package lock은 지시대로 보류 상태로 봤습니다.
+- lock에 Linux용 `@img/sharp-linux-x64`와 `@img/sharp-libvips-linux-x64`가 들어 있는지 확인해야 합니다. sharp는 이미 `^0.35.5` 의존성으로 있습니다.
+- libheif-js는 순수 WASM이라 Linux Node 22로 옮겨도 문제없습니다. 라이선스는 LGPL-3.0입니다. 서버에서만 실행하므로 배포 의무는 없지만 기록해 두는 것을 권합니다.
+
+## 문제없음으로 판단한 부분
+- **호출 호환성**: 인증 확인, 20MB와 base64 검증, rate limit, 응답 키(`imageBase64/contentType/url`), 6MiB와 30MB 응답 상한이 모두 그대로입니다. 오류 메시지가 더는 내부 정보를 노출하지 않습니다. 손상 입력은 `invalid-argument`를 반환하는데, 프론트는 code나 message에 의존하지 않으므로(`FormatModal.tsx:2248-2251`) 호환됩니다.
+- **대표 이미지와 보조 이미지**: primary handle만 해독합니다. 썸네일, depth, gain map은 무시하고, alpha는 흰색 위에 합칩니다. 출력에는 Exif가 없습니다. 모두 적절합니다.
+- **Exif 파서**: 경계 검사, 바이트 순서, `Exif\0\0` 머리말 처리 모두 문제없습니다. 방향 8종 pixel 비교를 sharp 기준값과 대조하는 테스트도 좋습니다.
+- **자원 제한**: 해독 전 50MP/16384 상한 확인, 인스턴스 안 직렬 큐, `concurrency: 1`, 실패한 뒤 큐가 회복되는 것까지 테스트돼 있습니다.
+
+## 릴리스 전 필요한 증거
+- **E1.** Linux Node 22에서 libheif-js 1.23.5를 설치하고 전체 테스트 통과. 함수 export 목록 출력과 HEIC 합성 fixture 테스트 포함.
+- **E2.** 실제 iPhone HEIC 8방향(세로/가로/거꾸로, 편집본 포함): 서버 출력이 기기 사진 앱 화면과 일치함을 보여주는 비교 이미지.
+- **E3.** 실제 Galaxy HEIC 세로/가로/거꾸로(가능하면 10-bit 포함): 갤러리 화면과 일치. 각 파일의 irot/imir/Exif 값 기록 포함.
+- **E4.** 48MP 그리드 HEIC를 1GiB에서 변환할 때의 최대 RSS와 소요 시간. 실패 후, 연속 변환 후의 메모리 포함.
+- **E5.** lock 파일 diff와 Cloud Build 기준 `npm ci`·tsc 결과.
+
+**런타임 공백:** libheif 경로(H1 전체, H2 실기기 검증, M1, M2)는 이번 검토에서 실행·확인하지 않았습니다. 판단 근거는 코드 정적 검토뿐입니다.
