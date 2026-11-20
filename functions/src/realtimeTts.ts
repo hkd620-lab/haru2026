@@ -2,17 +2,20 @@ import * as crypto from 'crypto';
 import type { TtsQuality } from './ttsQuality';
 
 // generateTTS 의 OpenAI Realtime(GA, 서버 간 WebSocket) 음성 생성.
-// 기존 MP3 캐시(ttsQuality.ts)는 읽기 전용으로 그대로 두고, 새 음성은 별도 버전 경로의 WAV 로 저장한다.
+// 기존 MP3 객체(ttsQuality.ts)는 지우지 않는다. 고음질 MP3 만 읽기 전용으로 재사용하고(표준 MP3 는 내주지 않음),
+// 새 음성은 사용자별 해시를 쓰는 별도 버전 경로의 WAV 로 저장한다.
 
 export const REALTIME_TTS_MODEL = 'gpt-realtime-2.1-mini';
-export const REALTIME_TTS_CACHE_VERSION = 'realtime-v1';
+// v2: 사용자(uid)별 캐시 분리 + 전사 검증을 통과한 음성만 저장한다.
+export const REALTIME_TTS_CACHE_VERSION = 'realtime-v2';
 export const REALTIME_TTS_SAMPLE_RATE = 24000;
 export const REALTIME_TTS_TEXT_MAX = 4000;
 // PCM16 24kHz mono = 48,000 B/s → 32MiB ≈ 11.6분. 정제 후 최대 4000자 낭독을 넉넉히 덮고 512MiB 함수 메모리 안에 머문다.
 export const REALTIME_TTS_MAX_PCM_BYTES = 32 * 1024 * 1024;
-// 함수 timeoutSeconds(120) 안에서 저장·서명 URL 시간을 남긴다.
-export const REALTIME_TTS_TOTAL_TIMEOUT_MS = 105_000;
-export const REALTIME_TTS_ATTEMPT_TIMEOUT_MS = 90_000;
+// Firebase 콜러블 클라이언트 기본 제한 시간(70초) 안에 끝나도록 재시도까지 포함한 합성 전체를 60초로 묶는다.
+// 남는 시간은 캐시 확인·Storage 저장·서명 URL 용이다.
+export const REALTIME_TTS_TOTAL_TIMEOUT_MS = 60_000;
+export const REALTIME_TTS_ATTEMPT_TIMEOUT_MS = 60_000;
 const REALTIME_TTS_HANDSHAKE_TIMEOUT_MS = 15_000;
 const MIN_ATTEMPT_MS = 10_000;
 // 429(rate limit) 백오프: 기존 generateTTS 와 같은 5/10/20초 + jitter, 총 3회 시도
@@ -65,15 +68,20 @@ export function cleanTtsText(text: string): string {
     .slice(0, REALTIME_TTS_TEXT_MAX);
 }
 
-// 새 캐시 경로는 클라이언트 값(cacheKey 등)을 경로에 넣지 않고 해시만 쓴다 → ttsCache/realtime-v1/ 밖으로 나갈 수 없다.
+// 새 캐시 경로는 클라이언트 값(cacheKey 등)을 경로에 넣지 않고 해시만 쓴다 → ttsCache/realtime-v2/ 밖으로 나갈 수 없다.
+// 해시에 서버가 인증한 uid 를 넣어 같은 본문이라도 사용자 사이에 캐시를 나눠 쓰지 않는다.
 // 확장자가 .wav 라서 기존 `${cacheKey}_${voice}.mp3`·`native/<hash>.mp3` 경로와도 겹치지 않는다.
-export function buildRealtimeTtsCachePath(params: { voice: string; quality: TtsQuality; text: string }): string {
+export function buildRealtimeTtsCachePath(params: { uid: string; voice: string; quality: TtsQuality; text: string }): string {
+  if (typeof params.uid !== 'string' || !params.uid) {
+    throw new Error('realtime tts cache path requires an authenticated uid');
+  }
   const quality: TtsQuality = params.quality === 'native' ? 'native' : 'standard';
   const settings = REALTIME_TTS_SETTINGS[quality];
   const hash = crypto
     .createHash('sha256')
     .update(JSON.stringify({
       version: REALTIME_TTS_CACHE_VERSION,
+      uid: params.uid,
       model: settings.model,
       speed: settings.speed,
       quality,
@@ -109,8 +117,202 @@ export function pcm16ToWav(pcm: Buffer, sampleRate: number = REALTIME_TTS_SAMPLE
   return Buffer.concat([header, pcm], 44 + pcm.length);
 }
 
+// ===== 전사(transcript) 검증 =====
+// 모델이 본문을 그대로 읽었는지 response 의 출력 음성 전사로 확인한다. 통과하지 못한 음성은 캐시에 넣지 않는다.
+// 비교는 NFC 정규화 → 소문자 → 글자·숫자만 남긴 문자열끼리 한다(문장부호·띄어쓰기·대소문자 차이 무시).
+//  - 짧은 본문(정규화 40자 이하): 숫자 부분을 빼면 완전히 같아야 한다.
+//  - 긴 본문: 전사 잡음을 위해 편집 거리 2%(최대 60) 까지 허용하되,
+//    연속 20자 구간마다 3개 이하, 앞·뒤 3자는 0개여야 한다 → 문장 누락·추가, 앞말·맺음말은 걸러진다.
+//  - 숫자 연속(예: 2026, 3)은 같은 숫자 또는 숫자가 없는 짧은 글자열(읽은 형태: "삼", "three")로 맞춰 본다.
+//    길이 상한은 4 + 9×자릿수(최대 72)이며, 다른 숫자로 적힌 전사는 맞지 않는 것으로 본다.
+// 본문 앞쪽 전사는 앞말이 끼어들 여지가 없도록 처음부터 맞춰야 하고(앞쪽 삽입 불가), 끝 뒤 삽입도 허용하지 않는다.
+export const TRANSCRIPT_SHORT_MAX = 40;
+const TRANSCRIPT_LONG_EDIT_RATIO = 0.02;
+const TRANSCRIPT_LONG_EDIT_MAX = 60;
+const TRANSCRIPT_WINDOW = 20;
+const TRANSCRIPT_WINDOW_EDIT_MAX = 3;
+const TRANSCRIPT_EDGE = 3;
+const NARRATION_CHUNK_SIZE = 700;
+const NARRATION_PARALLELISM = 3;
+const TRANSCRIPT_INPUT_MAX = NARRATION_CHUNK_SIZE * 4;
+
+export function normalizeForTranscript(text: string): string {
+  return text.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+}
+
+type TranscriptToken = { ch: string; digits?: undefined } | { ch?: undefined; digits: string; maxSpan: number };
+
+function tokenizeExpected(normalized: string): TranscriptToken[] {
+  const tokens: TranscriptToken[] = [];
+  const re = /[0-9]+|[^0-9]/gu;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(normalized)) !== null) {
+    const value = match[0];
+    if (/^[0-9]/.test(value)) tokens.push({ digits: value, maxSpan: Math.min(4 + 9 * value.length, 72) });
+    else tokens.push({ ch: value });
+  }
+  return tokens;
+}
+
+const DIR_DIAG = 1;
+const DIR_DEL = 2;
+const DIR_INS = 3;
+const DIR_SLOT = 4;
+const INF = 1 << 29;
+const isAsciiDigit = (c: string) => c >= '0' && c <= '9';
+
+export function transcriptMatchesText(expectedText: string, transcript: unknown): boolean {
+  if (typeof transcript !== 'string' || typeof expectedText !== 'string') return false;
+  if (transcript.length > TRANSCRIPT_INPUT_MAX) return false;
+  const expected = normalizeForTranscript(expectedText);
+  const actual = normalizeForTranscript(transcript);
+  if (!expected || !actual) return false;
+  if (expected === actual) return true;
+  const tokens = tokenizeExpected(expected);
+  const t = Array.from(actual);
+  const n = tokens.length;
+  const T = t.length;
+  if (n === 0 || T === 0) return false;
+
+  const budget = n <= TRANSCRIPT_SHORT_MAX
+    ? 0
+    : Math.min(Math.ceil(n * TRANSCRIPT_LONG_EDIT_RATIO), TRANSCRIPT_LONG_EDIT_MAX);
+
+  // 비용이 budget 이하인 정렬은 기대 위치에서 ±budget(숫자 칸은 읽은 길이만큼 더) 안에 머문다 → 띠(band)만 계산한다.
+  const lo = new Int32Array(n + 1);
+  const hi = new Int32Array(n + 1);
+  let minPos = 0;
+  let maxPos = 0;
+  lo[0] = 0;
+  hi[0] = 0; // 맨 앞 삽입(앞말) 불가
+  for (let i = 1; i <= n; i++) {
+    const tok = tokens[i - 1];
+    minPos += 1;
+    maxPos += tok.digits !== undefined ? tok.maxSpan : 1;
+    lo[i] = Math.max(0, minPos - budget);
+    hi[i] = Math.min(T, maxPos + budget);
+  }
+  if (T < lo[n] || T > hi[n]) return false;
+
+  const costRows: Int32Array[] = new Array(n + 1);
+  const dirRows: Uint8Array[] = new Array(n + 1);
+  const spanRows: Array<Uint8Array | undefined> = new Array(n + 1);
+  costRows[0] = Int32Array.of(0);
+  dirRows[0] = Uint8Array.of(0);
+  const get = (i: number, j: number) => (j < lo[i] || j > hi[i] ? INF : costRows[i][j - lo[i]]);
+
+  for (let i = 1; i <= n; i++) {
+    const tok = tokens[i - 1];
+    const width = hi[i] - lo[i] + 1;
+    if (width <= 0) return false;
+    const cost = new Int32Array(width);
+    const dir = new Uint8Array(width);
+    const spans = tok.digits !== undefined ? new Uint8Array(width) : undefined;
+    let rowMin = INF;
+    for (let j = lo[i]; j <= hi[i]; j++) {
+      let best = INF;
+      let bestDir = 0;
+      let bestSpan = 0;
+      if (tok.digits === undefined) {
+        if (j >= 1) {
+          const diag = get(i - 1, j - 1) + (t[j - 1] === tok.ch ? 0 : 1);
+          if (diag < best) { best = diag; bestDir = DIR_DIAG; }
+        }
+        const del = get(i - 1, j) + 1;
+        if (del < best) { best = del; bestDir = DIR_DEL; }
+      } else {
+        // 숫자 칸: 같은 숫자 그대로, 또는 숫자가 섞이지 않은 1..maxSpan 글자(읽은 형태)와 비용 0 으로 맞춘다.
+        let segment = '';
+        let hasDigit = false;
+        for (let s = 1; s <= tok.maxSpan && j - s >= 0; s++) {
+          const c = t[j - s];
+          segment = c + segment;
+          if (isAsciiDigit(c)) hasDigit = true;
+          if (hasDigit && s > tok.digits.length) break;
+          if (hasDigit && segment !== tok.digits) continue;
+          const prev = get(i - 1, j - s);
+          if (prev < best) { best = prev; bestDir = DIR_SLOT; bestSpan = s; }
+        }
+        const del = get(i - 1, j) + tok.digits.length;
+        if (del < best) { best = del; bestDir = DIR_DEL; }
+      }
+      // 마지막 행의 삽입은 맺음말이므로 허용하지 않는다.
+      if (i < n && j - 1 >= lo[i]) {
+        const ins = cost[j - 1 - lo[i]] + 1;
+        if (ins < best) { best = ins; bestDir = DIR_INS; bestSpan = 0; }
+      }
+      const k = j - lo[i];
+      cost[k] = best > INF ? INF : best;
+      dir[k] = bestDir;
+      if (spans) spans[k] = bestSpan;
+      if (best < rowMin) rowMin = best;
+    }
+    if (rowMin > budget) return false;
+    costRows[i] = cost;
+    dirRows[i] = dir;
+    spanRows[i] = spans;
+  }
+
+  const total = get(n, T);
+  if (total > budget) return false;
+  if (total === 0) return true;
+
+  // 정렬을 되짚어 편집 위치를 모은 뒤, 구간·앞뒤 제한을 확인한다.
+  const editsAt = new Int32Array(n + 1);
+  let i = n;
+  let j = T;
+  while (i > 0) {
+    const k = j - lo[i];
+    const d = dirRows[i][k];
+    const tok = tokens[i - 1];
+    if (d === DIR_DIAG) {
+      if (t[j - 1] !== tok.ch) editsAt[i] += 1;
+      i -= 1; j -= 1;
+    } else if (d === DIR_DEL) {
+      editsAt[i] += tok.digits !== undefined ? tok.digits.length : 1;
+      i -= 1;
+    } else if (d === DIR_SLOT) {
+      j -= (spanRows[i] as Uint8Array)[k];
+      i -= 1;
+    } else if (d === DIR_INS) {
+      editsAt[i] += 1;
+      j -= 1;
+    } else {
+      return false;
+    }
+  }
+  if (j !== 0) return false;
+
+  for (let p = 0; p <= n; p++) {
+    if ((p <= TRANSCRIPT_EDGE || p > n - TRANSCRIPT_EDGE) && editsAt[p] > 0) return false;
+  }
+  let windowSum = 0;
+  for (let p = 0; p <= n; p++) {
+    windowSum += editsAt[p];
+    if (p >= TRANSCRIPT_WINDOW) windowSum -= editsAt[p - TRANSCRIPT_WINDOW];
+    if (windowSum > TRANSCRIPT_WINDOW_EDIT_MAX) return false;
+  }
+  return true;
+}
+
+// response.done 의 출력 음성 파트 전사를 모은다(여러 파트면 모두 이어 붙여 추가 발화도 비교 대상에 넣는다).
+function collectOutputTranscripts(output: unknown): string[] {
+  const transcripts: string[] = [];
+  if (!Array.isArray(output)) return transcripts;
+  for (const item of output) {
+    const content = item && Array.isArray(item.content) ? item.content : [];
+    for (const part of content) {
+      if (part && (part.type === 'output_audio' || part.type === 'audio') && typeof part.transcript === 'string') {
+        transcripts.push(part.transcript);
+      }
+    }
+  }
+  return transcripts;
+}
+
 export type RealtimeTtsErrorKind =
   | 'rate_limited'
+  | 'transcript_mismatch'
   | 'timeout'
   | 'incomplete'
   | 'closed'
@@ -219,10 +421,11 @@ function runRealtimeAttempt(params: {
   speed: number;
   timeoutMs: number;
   maxPcmBytes: number;
-}): Promise<Buffer> {
+}): Promise<{ audio: Buffer; transcript?: string }> {
   const { connection, text, voice, speed, timeoutMs, maxPcmBytes } = params;
-  return new Promise<Buffer>((resolve, reject) => {
+  return new Promise<{ audio: Buffer; transcript?: string }>((resolve, reject) => {
     const chunks: Buffer[] = [];
+    const doneTranscripts: string[] = [];
     let total = 0;
     let settled = false;
     let sessionStarted = false;
@@ -300,6 +503,11 @@ function runRealtimeAttempt(params: {
           total += chunk.length;
           return;
         }
+        case 'response.output_audio_transcript.done': {
+          if (!responseRequested) return;
+          if (typeof event.transcript === 'string') doneTranscripts.push(event.transcript);
+          return;
+        }
         case 'response.done': {
           if (!responseRequested) return;
           const response = event.response ?? {};
@@ -322,8 +530,12 @@ function runRealtimeAttempt(params: {
           }
           if (total === 0) { fail(new RealtimeTtsError('empty_audio')); return; }
           if (total % 2 !== 0) { fail(new RealtimeTtsError('invalid_audio')); return; }
+          // 최종 response 의 출력 음성 파트 전사를 우선 쓰고, 없으면 output_audio_transcript.done 이벤트를 쓴다.
+          const fromOutput = collectOutputTranscripts(response.output).join(' ');
+          const fromEvents = doneTranscripts.join(' ');
+          const transcript = fromOutput.trim() ? fromOutput : fromEvents.trim() ? fromEvents : undefined;
           const audio = Buffer.concat(chunks, total);
-          settle(() => resolve(audio));
+          settle(() => resolve({ audio, transcript }));
           return;
         }
         default:
@@ -333,7 +545,12 @@ function runRealtimeAttempt(params: {
 
     try {
       // SDK 는 서버 이벤트를 type 이름으로, 서버 error 이벤트·소켓 오류는 'error' 로 내보낸다.
-      for (const type of ['session.updated', 'response.output_audio.delta', 'response.done']) {
+      for (const type of [
+        'session.updated',
+        'response.output_audio.delta',
+        'response.output_audio_transcript.done',
+        'response.done',
+      ]) {
         connection.on(type, onEvent);
       }
       connection.on('error', (err: unknown) => fail(err));
@@ -349,8 +566,10 @@ function runRealtimeAttempt(params: {
 }
 
 // 텍스트 하나를 Realtime 으로 낭독해 PCM16 LE mono 24kHz 를 돌려준다.
-// response.done(status=completed) + 비어 있지 않은 짝수 바이트일 때만 성공한다.
-export async function synthesizeRealtimeSpeech(params: {
+// response.done(status=completed) + 비어 있지 않은 짝수 바이트 + 전사 검증 통과일 때만 성공한다.
+// 재시도: 음성 시작 전 rate limit(기존 횟수), 전사 불일치는 남은 시간이 직전 시도보다 넉넉할 때 새 세션으로 한 번만.
+// 실패한 시도의 음성은 버리며 이어 붙이거나 저장하지 않는다.
+type RealtimeSpeechParams = {
   apiKey: string;
   model: string;
   text: string;
@@ -363,7 +582,9 @@ export async function synthesizeRealtimeSpeech(params: {
   totalTimeoutMs?: number;
   maxPcmBytes?: number;
   onRetry?: (info: { attempt: number; delayMs: number; kind: string }) => void;
-}): Promise<Buffer> {
+};
+
+async function synthesizeRealtimeChunk(params: RealtimeSpeechParams): Promise<Buffer> {
   const connect = params.connect ?? defaultRealtimeConnect;
   const sleep = params.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const now = params.now ?? Date.now;
@@ -371,9 +592,12 @@ export async function synthesizeRealtimeSpeech(params: {
   const totalTimeoutMs = params.totalTimeoutMs ?? REALTIME_TTS_TOTAL_TIMEOUT_MS;
   const minAttemptMs = Math.min(MIN_ATTEMPT_MS, attemptTimeoutMs);
   const deadline = now() + totalTimeoutMs;
+  let rateLimitRetries = 0;
+  let transcriptRetried = false;
 
   for (let attempt = 0; ; attempt++) {
-    const remaining = deadline - now();
+    const attemptStart = now();
+    const remaining = deadline - attemptStart;
     if (remaining <= 0) throw new RealtimeTtsError('timeout');
     let connection: RealtimeConnection;
     try {
@@ -386,7 +610,7 @@ export async function synthesizeRealtimeSpeech(params: {
       throw classifyRealtimeError(err);
     }
     try {
-      return await runRealtimeAttempt({
+      const result = await runRealtimeAttempt({
         connection,
         text: params.text,
         voice: params.voice,
@@ -394,16 +618,79 @@ export async function synthesizeRealtimeSpeech(params: {
         timeoutMs: Math.min(attemptTimeoutMs, remaining),
         maxPcmBytes: params.maxPcmBytes ?? REALTIME_TTS_MAX_PCM_BYTES,
       });
+      // 전사는 비교에만 쓰고 로그·오류에 담지 않는다.
+      if (!transcriptMatchesText(params.text, result.transcript)) {
+        throw new RealtimeTtsError('transcript_mismatch');
+      }
+      return result.audio;
     } catch (raw) {
       const err = classifyRealtimeError(raw);
+      if (err.kind === 'transcript_mismatch') {
+        const elapsed = now() - attemptStart;
+        const left = deadline - now();
+        // 같은 길이의 새 시도가 남은 시간 안에 끝날 만할 때만 한 번 더 시도한다.
+        if (transcriptRetried || left < Math.max(minAttemptMs, Math.ceil(elapsed * 1.25))) throw err;
+        transcriptRetried = true;
+        params.onRetry?.({ attempt: attempt + 1, delayMs: 0, kind: err.kind });
+        continue;
+      }
       // 음성이 한 조각이라도 오기 전의 rate limit 만 재시도한다(부분 음성을 이어 붙이지 않음).
-      if (err.kind !== 'rate_limited' || err.audioStarted || attempt >= MAX_ATTEMPTS - 1) throw err;
-      const baseDelay = BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)];
+      if (err.kind !== 'rate_limited' || err.audioStarted || rateLimitRetries >= MAX_ATTEMPTS - 1) throw err;
+      const baseDelay = BACKOFF_MS[Math.min(rateLimitRetries, BACKOFF_MS.length - 1)];
       const jitter = Math.floor(Math.random() * 1000);
       const delayMs = Math.max(err.retryAfterMs ?? 0, baseDelay) + jitter;
       if (now() + delayMs + minAttemptMs > deadline) throw err;
+      rateLimitRetries += 1;
       params.onRetry?.({ attempt: attempt + 1, delayMs, kind: err.kind });
       await sleep(delayMs);
     }
   }
+}
+
+function splitNarration(text: string): string[] {
+  const chunks: string[] = [];
+  let rest = text.trim();
+  while (rest.length > NARRATION_CHUNK_SIZE) {
+    const window = rest.slice(0, NARRATION_CHUNK_SIZE + 1);
+    const boundaries = Array.from(window.matchAll(/[.!?](?=\s)/g));
+    const lastSentenceEnd = (boundaries.at(-1)?.index ?? -1) + 1;
+    const lastSpace = window.lastIndexOf(' ');
+    const end = lastSentenceEnd >= NARRATION_CHUNK_SIZE / 2
+      ? lastSentenceEnd
+      : lastSpace > 0 ? lastSpace : NARRATION_CHUNK_SIZE;
+    chunks.push(rest.slice(0, end).trim());
+    rest = rest.slice(end).trimStart();
+  }
+  if (rest) chunks.push(rest);
+  return chunks;
+}
+
+export async function synthesizeRealtimeSpeech(params: RealtimeSpeechParams): Promise<Buffer> {
+  const chunks = splitNarration(params.text);
+  if (chunks.length < 2) return synthesizeRealtimeChunk(params);
+
+  const now = params.now ?? Date.now;
+  const deadline = now() + (params.totalTimeoutMs ?? REALTIME_TTS_TOTAL_TIMEOUT_MS);
+  const byteLimit = params.maxPcmBytes ?? REALTIME_TTS_MAX_PCM_BYTES;
+  const chunkByteLimit = Math.floor(byteLimit / chunks.length);
+  const audio: Buffer[] = [];
+
+  for (let offset = 0; offset < chunks.length; offset += NARRATION_PARALLELISM) {
+    const remaining = deadline - now();
+    if (remaining <= 0) throw new RealtimeTtsError('timeout');
+    const batch = chunks.slice(offset, offset + NARRATION_PARALLELISM);
+    // 각 연결이 정리된 후 다음 묶음을 시작한다. 실패한 조각이 있으면 전체를 저장하지 않는다.
+    const results = await Promise.allSettled(batch.map(text => synthesizeRealtimeChunk({
+      ...params,
+      text,
+      totalTimeoutMs: remaining,
+      maxPcmBytes: chunkByteLimit,
+    })));
+    for (const result of results) {
+      if (result.status === 'rejected') throw result.reason;
+      audio.push(result.value);
+    }
+  }
+
+  return Buffer.concat(audio);
 }

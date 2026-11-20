@@ -65,6 +65,7 @@ class FakeRealtime {
   }
   send(event) {
     this.sent.push({ ...event, _afterSessionUpdated: this.sessionUpdatedEmitted });
+    if (event.type === 'conversation.item.create') this.inputText = event.item?.content?.[0]?.text;
     setImmediate(() => this.script.onSend(this, event));
   }
   close() {
@@ -75,8 +76,13 @@ class FakeRealtime {
   }
 }
 
-// 기본 성공 시나리오: session.update → session.updated, response.create → 오디오 조각 → response.done(completed)
-function speak({ chunks = [pcmOf(6), pcmOf(4, 3)], doneStatus = 'completed', statusDetails, afterAudio } = {}) {
+// 기본 성공 시나리오: session.update → session.updated, response.create → 오디오 조각 → 전사 → response.done(completed)
+// transcript: 문자열 또는 (보낸 본문) => 문자열. 기본은 보낸 본문을 그대로 읽은 전사.
+// transcriptVia: 'event'(output_audio_transcript.done) | 'response'(response.done 출력 파트) | 'none'
+function speak({
+  chunks = [pcmOf(6), pcmOf(4, 3)], doneStatus = 'completed', statusDetails, afterAudio,
+  transcript = (text) => text, transcriptVia = 'event',
+} = {}) {
   return {
     onSend(conn, event) {
       if (event.type === 'session.update') conn.emit({ type: 'session.updated', session: event.session });
@@ -87,7 +93,14 @@ function speak({ chunks = [pcmOf(6), pcmOf(4, 3)], doneStatus = 'completed', sta
         }
         if (afterAudio) { afterAudio(conn); return; }
         conn.emit({ type: 'response.output_audio.done' });
-        conn.emit({ type: 'response.done', response: { status: doneStatus, status_details: statusDetails } });
+        const spoken = typeof transcript === 'function' ? transcript(conn.inputText) : transcript;
+        if (transcriptVia === 'event') {
+          conn.emit({ type: 'response.output_audio_transcript.done', transcript: spoken });
+        }
+        const output = transcriptVia === 'response'
+          ? [{ type: 'message', role: 'assistant', content: [{ type: 'output_audio', transcript: spoken }] }]
+          : [];
+        conn.emit({ type: 'response.done', response: { status: doneStatus, status_details: statusDetails, output } });
       }
     },
   };
@@ -170,8 +183,9 @@ function fixture({ usageCount = 0, scripts = [], realtimeOverrides = {}, seed = 
 }
 
 const standardCall = { text: 'In the beginning', cacheKey: 'bible_genesis_1_verse_1_nova', voice: 'nova' };
-const wavPathRe = /^ttsCache\/realtime-v1\/(standard|native)\/[0-9a-f]{64}\.wav$/;
-const realtimePath = (voice, quality, text) => realtimeTts.buildRealtimeTtsCachePath({ voice, quality, text });
+const wavPathRe = /^ttsCache\/realtime-v2\/(standard|native)\/[0-9a-f]{64}\.wav$/;
+const realtimePath = (voice, quality, text, uid = 'user-1') =>
+  realtimeTts.buildRealtimeTtsCachePath({ uid, voice, quality, text });
 
 function parseWav(buffer) {
   assert.equal(buffer.toString('ascii', 0, 4), 'RIFF');
@@ -255,22 +269,62 @@ test('캐시 미스 뒤 같은 요청은 새 WAV 캐시를 재사용하고 사�
   assert.deepEqual(f.counters.map((value) => value.count), [1]);
 });
 
-test('기존 표준·고음질 MP3 캐시가 있으면 Realtime 을 부르지 않고 그대로 돌려준다(삭제·덮어쓰기 없음)', async () => {
+test('기존 표준 MP3 는 소유자·본문을 확인할 수 없어 내주지 않고(객체는 그대로), 고음질 MP3 는 계속 재사용한다', async () => {
   const legacyStandard = 'ttsCache/bible_genesis_1_verse_1_nova_nova.mp3';
   const legacyNative = ttsQuality.buildTtsCachePath({ cacheKey: 'x', voice: 'nova', quality: 'native', text: standardCall.text });
   assert.match(legacyNative, /^ttsCache\/native\/[0-9a-f]{64}\.mp3$/);
   const f = fixture({ seed: { [legacyStandard]: Buffer.from('mp3-a'), [legacyNative]: Buffer.from('mp3-b') } });
 
   const standard = await f.call(standardCall);
+  assert.equal(standard.cached, false, '표준 MP3 가 있어도 새로 생성한다');
+  assert.notEqual(standard.audioUrl, `https://signed.test/${legacyStandard}`);
+  assert.equal(standard.audioUrl, `https://signed.test/${realtimePath('nova', 'standard', standardCall.text)}`);
+  assert.equal(f.connections.length, 1);
+
   const native = await f.call({ ...standardCall, quality: 'native' });
-  assert.equal(standard.cached, true);
-  assert.equal(standard.audioUrl, `https://signed.test/${legacyStandard}`);
   assert.equal(native.cached, true);
   assert.equal(native.audioUrl, `https://signed.test/${legacyNative}`);
-  assert.equal(f.connections.length, 0);
-  assert.equal(f.counters.length, 0);
-  assert.deepEqual([...f.objects.keys()].sort(), [legacyNative, legacyStandard].sort());
+  assert.equal(f.connections.length, 1, '고음질 MP3 적중은 Realtime 을 부르지 않는다');
+  assert.deepEqual(f.counters.map((value) => value.count), [1]);
+
+  // 기존 객체는 지우거나 덮어쓰지 않는다.
   assert.deepEqual(f.objects.get(legacyStandard), Buffer.from('mp3-a'));
+  assert.deepEqual(f.objects.get(legacyNative), Buffer.from('mp3-b'));
+  assert.equal(f.objects.size, 3);
+
+  // 다른 사용자도 같은 고음질 MP3(전체 본문 해시)는 그대로 받는다.
+  const other = await f.call({ ...standardCall, quality: 'native' }, { uid: 'user-2' });
+  assert.equal(other.audioUrl, `https://signed.test/${legacyNative}`);
+});
+
+test('같은 불투명 cacheKey 라도 본문이 다르면 서로 다른 WAV 를 만든다', async () => {
+  const f = fixture();
+  const sharedKey = 'diary_s_0_오늘은 비가 와서 집에';
+  const first = await f.call({ text: '오늘은 비가 와서 집에 있었다.', cacheKey: sharedKey });
+  const second = await f.call({ text: '오늘은 비가 와서 집에 있었지만 저녁에 나갔다.', cacheKey: sharedKey });
+  assert.equal(first.cached, false);
+  assert.equal(second.cached, false);
+  assert.notEqual(first.audioUrl, second.audioUrl);
+  assert.equal(f.connections.length, 2);
+  assert.equal(f.objects.size, 2);
+  assert.equal(f.connections[1].sent[1].item.content[0].text, '오늘은 비가 와서 집에 있었지만 저녁에 나갔다.');
+});
+
+test('같은 본문이라도 다른 사용자와는 WAV 캐시를 나눠 쓰지 않는다', async () => {
+  const f = fixture();
+  const mine = await f.call(standardCall, { uid: 'user-1' });
+  const again = await f.call(standardCall, { uid: 'user-1' });
+  const theirs = await f.call(standardCall, { uid: 'user-2' });
+  assert.equal(mine.cached, false);
+  assert.equal(again.cached, true, '같은 사용자·같은 본문은 적중');
+  assert.equal(theirs.cached, false, '다른 사용자는 적중하지 않음');
+  assert.notEqual(theirs.audioUrl, mine.audioUrl);
+  assert.equal(f.connections.length, 2);
+  assert.deepEqual([...f.objects.keys()].sort(), [
+    realtimePath('nova', 'standard', standardCall.text, 'user-1'),
+    realtimePath('nova', 'standard', standardCall.text, 'user-2'),
+  ].sort());
+  assert.throws(() => realtimeTts.buildRealtimeTtsCachePath({ uid: '', voice: 'nova', quality: 'standard', text: 'x' }));
 });
 
 test('기존 MP3 경로 규칙과 고음질 해시·속도는 그대로다', () => {
@@ -303,8 +357,8 @@ test('표준·고음질은 서로 다른 WAV 캐시와 속도를 쓰고, 알 수
   assert.equal(f.connections[1].sent[0].session.audio.output.speed, 0.92);
   const keys = [...f.objects.keys()];
   assert.equal(keys.length, 2);
-  assert.match(keys[0], /^ttsCache\/realtime-v1\/standard\//);
-  assert.match(keys[1], /^ttsCache\/realtime-v1\/native\//);
+  assert.match(keys[0], /^ttsCache\/realtime-v2\/standard\//);
+  assert.match(keys[1], /^ttsCache\/realtime-v2\/native\//);
 
   const standardAgain = await f.call(standardCall);
   const nativeAgain = await f.call({ ...standardCall, quality: 'native' });
@@ -345,6 +399,7 @@ test('새 WAV 캐시 경로는 클라이언트 값과 무관하게 해시만 쓰
     ['nova', 'standard', ''],
   ]) {
     assert.match(realtimePath(voice, quality, text), wavPathRe);
+    assert.match(realtimePath(voice, quality, text, '../../other-user'), wavPathRe);
   }
   assert.equal(realtimePath('nova', 'standard', 'x'), realtimePath('nova', 'standard', 'x'), '결정적');
   assert.notEqual(realtimePath('nova', 'standard', 'x'), realtimePath('nova', 'standard', 'y'));
@@ -364,6 +419,34 @@ test('기존 텍스트 정제·4000자 제한을 유지하고 정제된 본문�
   const f = fixture();
   await f.call({ text: '# 제목 **굵게** 본문', cacheKey: 'k' });
   assert.equal(f.connections[0].sent[1].item.content[0].text, '제목 굵게 본문');
+});
+
+test('긴 도서는 문장 경계에서 나눠 모든 음성을 원문 순서대로 하나의 WAV에 저장한다', async () => {
+  const sentence = 'The tide carried the paper boats around the bend and out of sight.';
+  const text = Array(18).fill(sentence).join(' ');
+  const firstAudio = pcmOf(4, 2);
+  const secondAudio = pcmOf(6, 7);
+  const f = fixture({ scripts: [speak({ chunks: [firstAudio] }), speak({ chunks: [secondAudio] })] });
+
+  const result = await f.call({ ...standardCall, text });
+  assert.equal(result.cached, false);
+  assert.equal(f.connections.length, 2);
+  assert.equal(f.connections.map(conn => conn.inputText).join(' '), text);
+  assert.ok(f.connections.every(conn => conn.inputText.endsWith('.') && conn.inputText.length <= 700));
+  const wav = parseWav([...f.objects.values()][0]);
+  assert.deepEqual(wav.data, Buffer.concat([firstAudio, secondAudio]));
+  assert.equal(f.counters.length, 1);
+});
+
+test('긴 글의 일부가 낭독 검증에 실패하면 전체 음성과 사용량을 저장하지 않는다', async () => {
+  const text = Array(18).fill('The tide carried the paper boats around the bend and out of sight.').join(' ');
+  const incorrect = speak({ transcript: 'This is a summary.' });
+  const f = fixture({ scripts: [speak(), incorrect] });
+
+  await assert.rejects(f.call({ ...standardCall, text }), { code: 'internal' });
+  assert.equal(f.objects.size, 0);
+  assert.equal(f.counters.length, 0);
+  assert.ok(f.connections.every(conn => conn.closed));
 });
 
 test('미완료 response.done·빈 오디오·홀수 바이트·도중 종료는 실패하고 캐시·사용량을 남기지 않는다', async () => {
@@ -511,6 +594,145 @@ test('handler 는 콜러블 이름·리전·인증 비밀값 설정을 유지하
   assert.match(handlerSource, /region: 'asia-northeast3'/);
   assert.match(handlerSource, /OPENAI_API_KEY_SECRET/);
   assert.ok(!handlerSource.includes('/v1/audio/speech'));
+  assert.ok(!/sleep\(/.test(handlerSource), '합성 뒤 고정 대기를 두지 않는다');
+});
+
+test('합성 전체 제한은 재시도 포함 60초이고 한 시도도 그 안에 머문다', () => {
+  assert.equal(realtimeTts.REALTIME_TTS_TOTAL_TIMEOUT_MS, 60_000);
+  assert.ok(realtimeTts.REALTIME_TTS_ATTEMPT_TIMEOUT_MS <= realtimeTts.REALTIME_TTS_TOTAL_TIMEOUT_MS);
+});
+
+// ===== 전사 검증 =====
+const match = realtimeTts.transcriptMatchesText;
+const longEn = 'Today I walked along the river with my sister. We talked about the summer trip and the old house. '
+  + 'The wind was cold but the sun felt warm on our faces. In the evening we cooked soup and read quietly until late.';
+const longKo = '오늘은 아침부터 비가 내려서 하루 종일 집에 있었다. 오후에는 창가에 앉아 오래된 편지를 다시 읽었다. '
+  + '저녁에는 동생과 함께 따뜻한 국을 끓여 먹고 일찍 잠자리에 들었다.';
+
+test('전사 검증: 문장부호·대소문자·띄어쓰기·NFC 차이는 같은 것으로 본다', () => {
+  assert.equal(match('In the beginning', 'in the beginning'), true);
+  assert.equal(match('In the beginning', 'IN THE BEGINNING!'), true);
+  assert.equal(
+    match('In the beginning, God created the heaven and the earth.', 'in the beginning God created the heaven and the earth'),
+    true,
+  );
+  assert.equal(match('오늘은 비가 왔다. 그래서, 집에 있었다!', '오늘은 비가 왔다 그래서 집에 있었다.'), true);
+  assert.equal(match('오늘은 비가 왔다.', '오늘은 비가 왔다'.normalize('NFD')), true, 'NFD 한글도 NFC 로 맞춘다');
+  assert.equal(match(longEn, longEn.toUpperCase().replace(/[.,]/g, ' ')), true);
+  assert.equal(match(longKo, longKo.replace(/\s+/g, '').replace(/\./g, '')), true, '띄어쓰기 차이');
+});
+
+test('전사 검증: 짧은 본문은 정확히 같아야 하고, 질문에 답하거나 다른 말을 하면 거절한다', () => {
+  assert.equal(match('In the beginning', 'In the beginnings'), false);
+  assert.equal(match('What time is it now?', 'It is three in the afternoon.'), false, '질문에 답함');
+  assert.equal(match('지금 몇 시야?', '지금은 오후 세 시입니다.'), false, '질문에 답함');
+  assert.equal(match('Translate this into Korean.', '이것을 한국어로 번역하세요.'), false, '번역함');
+  assert.equal(match('In the beginning', 'Sure! In the beginning'), false, '앞말');
+  assert.equal(match('In the beginning', 'In the beginning. Let me know if you need anything else.'), false, '맺음말');
+});
+
+test('전사 검증: 전사가 없거나 비었거나 문자열이 아니면 거절한다', () => {
+  for (const transcript of [undefined, null, '', '   ', '...!?', 42, {}]) {
+    assert.equal(match('In the beginning', transcript), false);
+  }
+  assert.equal(match('', 'anything'), false);
+  assert.equal(match('In the beginning', 'x'.repeat(20_000)), false);
+});
+
+test('전사 검증: 긴 본문은 흩어진 전사 잡음만 조금 허용하고, 문장 누락·추가·앞말·맺음말은 거절한다', () => {
+  // 흩어진 잡음 3개(sister→sistr, quietly→quitely) — 허용
+  const noisy = longEn.replace('sister', 'sistr').replace('quietly', 'quitely');
+  assert.equal(match(longEn, noisy), true);
+  const koNoisy = longKo.replace('읽었다', '읽엇다').replace('잠자리에', '잠짜리에');
+  assert.equal(match(longKo, koNoisy), true);
+
+  // 문장 누락
+  assert.equal(match(longEn, longEn.replace('We talked about the summer trip and the old house. ', '')), false);
+  assert.equal(match(longKo, longKo.replace('오후에는 창가에 앉아 오래된 편지를 다시 읽었다. ', '')), false);
+  // 문장 추가
+  assert.equal(match(longEn, longEn.replace('sister. ', 'sister. It was a lovely day. ')), false);
+  assert.equal(match(longKo, `${longKo} 정말 좋은 하루였다.`), false);
+  // 짧은 앞말·맺음말도 거절(앞·뒤 3자는 편집 0)
+  assert.equal(match(longEn, `Ok. ${longEn}`), false);
+  assert.equal(match(longEn, `${longEn} OK.`), false);
+  assert.equal(match(longKo, `네. ${longKo}`), false);
+  // 한곳에 몰린 오류(짧은 단어 누락보다 긴 구간 변경)는 거절
+  assert.equal(match(longEn, longEn.replace('the summer trip', 'the winter')), false);
+  // 전혀 다른 말
+  assert.equal(match(longEn, longKo), false);
+});
+
+test('전사 검증: 숫자는 같은 숫자 또는 읽은 형태로 맞추고, 다른 숫자·숫자 누락은 거절한다', () => {
+  assert.equal(match('3월 2일에 친구를 만났다', '삼월 이일에 친구를 만났다.'), true);
+  assert.equal(match('3월 2일에 친구를 만났다', '3월 2일에 친구를 만났다'), true);
+  assert.equal(match('I bought 3 apples in 2026', 'I bought three apples in two thousand twenty six'), true);
+  assert.equal(match('I bought 3 apples', 'I bought 4 apples'), false, '다른 숫자');
+  assert.equal(match('I bought 3 apples', 'I bought apples'), false, '숫자 누락');
+  assert.equal(match('I bought 3 apples', 'I bought 33 apples'), false);
+  assert.equal(match('3월 2일에 친구를 만났다', '삼월 이일에 동생을 만났다'), false, '숫자 밖 내용은 그대로 엄격');
+});
+
+test('전사 불일치는 저장하지 않고 고정 분류로만 기록하며, 새 세션으로 한 번만 다시 시도한다', async () => {
+  const answered = speak({ transcript: 'It is three in the afternoon.' });
+  const f = fixture({ scripts: [answered] });
+  await assert.rejects(f.call({ text: 'What time is it now?', cacheKey: 'k' }), (error) => {
+    assert.equal(error.code, 'internal');
+    assert.equal(error.message, 'TTS 생성에 실패했습니다.');
+    return true;
+  });
+  assert.equal(f.connections.length, 2, '불일치는 한 번만 재시도');
+  assert.ok(f.connections.every((conn) => conn.closed));
+  assert.notEqual(f.connections[0], f.connections[1], '새 세션');
+  assert.equal(f.objects.size, 0, '실패한 음성은 저장하지 않는다');
+  assert.equal(f.counters.length, 0);
+  assert.equal(f.errors[0][1].kind, 'transcript_mismatch');
+  const logged = JSON.stringify([f.errors, f.warnings]);
+  assert.ok(!logged.includes('afternoon'), '전사를 로그에 남기지 않는다');
+  assert.ok(!logged.includes('What time'), '본문을 로그에 남기지 않는다');
+  assert.equal(f.warnings.length, 1);
+  assert.match(String(f.warnings[0][0]), /transcript_mismatch/);
+});
+
+test('전사가 없거나 비면 실패하고 저장하지 않는다', async () => {
+  for (const script of [speak({ transcriptVia: 'none' }), speak({ transcript: '' }), speak({ transcript: ' . ' })]) {
+    const f = fixture({ scripts: [script] });
+    await assert.rejects(f.call(standardCall), { code: 'internal' });
+    assert.equal(f.errors[0][1].kind, 'transcript_mismatch');
+    assert.equal(f.objects.size, 0);
+    assert.equal(f.counters.length, 0);
+  }
+});
+
+test('첫 시도 전사가 틀리고 다시 시도한 전사가 맞으면 두 번째 음성만 저장한다', async () => {
+  const leadIn = speak({ chunks: [pcmOf(4, 9)], transcript: 'Sure! In the beginning' });
+  const f = fixture({ scripts: [leadIn, speak()] });
+  const result = await f.call(standardCall);
+  assert.equal(result.cached, false);
+  assert.equal(f.connections.length, 2);
+  const saved = parseWav(f.objects.get(realtimePath('nova', 'standard', standardCall.text)));
+  assert.deepEqual(saved.data, Buffer.concat([pcmOf(6), pcmOf(4, 3)]), '첫 시도 음성은 섞이지 않는다');
+  assert.deepEqual(f.counters.map((value) => value.count), [1]);
+});
+
+test('response.done 출력 음성 파트의 전사로도 검증한다', async () => {
+  const f = fixture({ scripts: [speak({ transcriptVia: 'response' })] });
+  const result = await f.call(standardCall);
+  assert.equal(result.cached, false);
+  assert.equal(f.objects.size, 1);
+
+  const wrong = fixture({ scripts: [speak({ transcriptVia: 'response', transcript: 'Hello there' })] });
+  await assert.rejects(wrong.call(standardCall), { code: 'internal' });
+  assert.equal(wrong.objects.size, 0);
+});
+
+test('남은 시간이 부족하면 전사 불일치를 다시 시도하지 않는다', async () => {
+  let t = 0;
+  const now = () => { const value = t; t += 20_000; return value; };
+  const f = fixture({ scripts: [speak({ transcript: 'Something else entirely' }), speak()], realtimeOverrides: { now } });
+  await assert.rejects(f.call(standardCall), { code: 'internal' });
+  assert.equal(f.connections.length, 1);
+  assert.equal(f.objects.size, 0);
+  assert.equal(f.errors[0][1].kind, 'transcript_mismatch');
 });
 
 test('pcm16ToWav 는 표준 44바이트 PCM 헤더를 만든다', () => {

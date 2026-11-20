@@ -10067,10 +10067,11 @@ export const generateTTS = onCall(
     // Realtime PCM은 MP3보다 커서 인스턴스당 동시 음성 버퍼 수를 제한한다.
     concurrency: 3,
     secrets: [GEMINI_API_KEY_SECRET, GOOGLE_CLOUD_API_KEY_SECRET, OPENAI_API_KEY_SECRET],
+    // 합성 자체는 realtimeTts 에서 재시도 포함 60초로 묶는다(클라이언트 기본 70초). 이 값은 서버 쪽 최종 상한이다.
     timeoutSeconds: 120,
   },
   async (request) => {
-    if (!request.auth) {
+    if (!request.auth?.uid) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
 
@@ -10086,16 +10087,22 @@ export const generateTTS = onCall(
     if (!cleanedText) {
       throw new HttpsError('invalid-argument', '읽을 수 있는 텍스트가 없습니다.');
     }
-    // 기존 MP3 캐시(표준 cacheKey 경로·고음질 해시 경로)는 읽기만 하고 그대로 재사용한다.
-    const legacyFile = bucket().file(buildTtsCachePath({ cacheKey, voice: safeVoice, quality: safeQuality, text }));
-    // 새 Realtime 음성은 해시만 쓰는 별도 버전 경로의 WAV 로 저장한다.
+    const uid = request.auth.uid;
+    // 기존 표준 MP3(`${cacheKey}_${voice}.mp3`)는 키가 일기 앞 20자·장 ID 뿐이라 소유자도 정확한 본문도 확인할 수 없어
+    // 더 이상 내주지 않는다(객체는 지우지 않고 그대로 둔다).
+    // 기존 고음질 MP3 는 해시에 전체 본문·음성·옛 설정이 들어 있어 본문이 정확히 같을 때만 맞으므로 계속 재사용한다.
+    const legacyNativeFile = safeQuality === 'native'
+      ? bucket().file(buildTtsCachePath({ cacheKey, voice: safeVoice, quality: 'native', text }))
+      : undefined;
+    // 새 Realtime 음성은 uid·본문·설정 해시만 쓰는 별도 버전 경로의 WAV 로 저장한다(사용자별 분리).
     const realtimeSettings = REALTIME_TTS_SETTINGS[safeQuality];
-    const file = bucket().file(buildRealtimeTtsCachePath({ voice: safeVoice, quality: safeQuality, text: cleanedText }));
+    const file = bucket().file(buildRealtimeTtsCachePath({ uid, voice: safeVoice, quality: safeQuality, text: cleanedText }));
+    const cacheCandidates = legacyNativeFile ? [legacyNativeFile, file] : [file];
     let stage = 'cache';
 
     try {
       // 1. Storage 캐시 확인 — 캐시된 경우 서명된 URL 반환 (한도 차감 없음)
-      for (const cachedFile of [legacyFile, file]) {
+      for (const cachedFile of cacheCandidates) {
         const [exists] = await cachedFile.exists();
         if (exists) {
           const [signedUrl] = await cachedFile.getSignedUrl({
@@ -10107,7 +10114,6 @@ export const generateTTS = onCall(
       }
 
       // 사용자별 하루 TTS 호출 제한 (KST 기준, 캐시 미스 = 새 절 첫 청취만 차감)
-      const uid = request.auth.uid;
       const todayKst = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
       const usageRef = db.doc(`users/${uid}/ttsUsage/${todayKst}`);
       const usageSnap = await usageRef.get();
@@ -10116,23 +10122,21 @@ export const generateTTS = onCall(
         throw new HttpsError('resource-exhausted', '오늘 TTS 사용 한도를 초과했습니다');
       }
 
-      // 2. OpenAI Realtime 음성 생성 (PCM16 24kHz mono, 완료된 response.done 만 성공 / 음성 시작 전 rate limit 만 재시도)
+      // 2. OpenAI Realtime 음성 생성 (PCM16 24kHz mono). 완료된 response.done + 전사 검증 통과만 성공,
+      //    재시도 포함 전체 60초 제한. 음성 시작 전 rate limit 과 전사 불일치(1회)만 재시도한다.
       stage = 'realtime';
       const OPENAI_KEY = OPENAI_API_KEY_SECRET.value().replace(/[^\x20-\x7E]/g, '').trim();
-      const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
       const pcm = await synthesizeRealtimeSpeech({
         apiKey: OPENAI_KEY,
         model: realtimeSettings.model,
         text: cleanedText,
         voice: toRealtimeVoice(safeVoice),
         speed: realtimeSettings.speed,
-        onRetry: ({ attempt, delayMs }) => {
-          logger.warn(`TTS rate limit 재시도 ${attempt}회 (${delayMs}ms 대기)`);
+        onRetry: ({ attempt, delayMs, kind }) => {
+          // kind 는 고정 분류값뿐이다(전사·본문은 남기지 않음).
+          logger.warn(`TTS 재시도 ${attempt}회 (${kind}, ${delayMs}ms 대기)`);
         },
       });
-
-      // 절 사이 호출 간격 확보 (OpenAI rate-limit 자체 유발 방지)
-      await sleep(500);
 
       stage = 'save';
       await file.save(pcm16ToWav(pcm), {
