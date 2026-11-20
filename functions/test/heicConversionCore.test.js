@@ -15,6 +15,8 @@ const {
   copyRgbaWithOrientation,
   decodeHeicPrimaryImage,
   encodeOrientedRgbaToJpeg,
+  encodeRgbaPlaneToJpeg,
+  orientAndResizeRgbaPlane,
   parseHeifExifOrientation,
 } = require('../src/heicLocalConversion.ts');
 const fs = require('node:fs');
@@ -108,8 +110,60 @@ async function runLocalConversionTests() {
       assert.equal(actual.height, expected.info.height, `orientation ${orientation} height`);
       assert.deepEqual(actual.data, expected.data, `orientation ${orientation} pixels (stride ${stride})`);
     }
+    // 운영 경로: 해독 평면을 사본 없이 sharp에 넘기고 padding·방향을 sharp가 처리해도 같은 픽셀
+    // (연속, 행 padding, 비정렬 시작, 4의 배수가 아닌 stride, 마지막 행 padding 없음 → 사본 fallback)
+    for (const [stride, leading, trimLastRow] of [
+      [width * 4, 0, false], [width * 4 + 12, 0, false], [width * 4 + 12, 1, false],
+      [width * 4 + 3, 1, false], [width * 4 + 12, 0, true],
+    ]) {
+      let source = patternRgba(width, height, stride, leading);
+      if (trimLastRow) source = source.subarray(0, stride * (height - 1) + width * 4);
+      const label = `sharp orientation ${orientation} stride ${stride} leading ${leading} trim ${trimLastRow}`;
+      const raw = await orientAndResizeRgbaPlane(source, width, height, stride, orientation);
+      assert.equal(raw.width, expected.info.width, `${label} width`);
+      assert.equal(raw.height, expected.info.height, `${label} height`);
+      assert.deepEqual(raw.data, expected.data, `${label} pixels`);
+    }
   }
   assert.throws(() => copyRgbaWithOrientation(new Uint8Array(10), 5, 3, 20, 1), /smaller than expected/);
+  for (const [bytes, stride] of [[10, 20], [60, 16], [60, 20.5]]) {
+    await assert.rejects(() => orientAndResizeRgbaPlane(new Uint8Array(bytes), 5, 3, stride, 6), /smaller than expected/);
+    await assert.rejects(() => encodeRgbaPlaneToJpeg(new Uint8Array(bytes), 5, 3, stride, 1), /smaller than expected/);
+  }
+
+  // 출력 축소가 실제로 일어나는 크기 + 행 padding: 8방향 모두 변경 전 방식
+  // (전체 크기 사본에 방향 적용 → 축소·JPEG)과 같은 크기·같은 사분면 색이어야 한다.
+  {
+    const w = 3000;
+    const h = 1200;
+    const stride = w * 4 + 64;
+    const plane = Buffer.alloc(stride * h);
+    const colors = [[220, 20, 20], [20, 200, 40], [20, 50, 230], [250, 250, 250]]; // 좌상 R, 우상 G, 좌하 B, 우하 W
+    for (let y = 0; y < h; y += 1) {
+      for (let x = 0; x < w; x += 1) {
+        const c = colors[(y < h / 2 ? 0 : 2) + (x < w / 2 ? 0 : 1)];
+        plane.set([c[0], c[1], c[2], 255], y * stride + x * 4);
+      }
+    }
+    const quadrants = async (jpeg) => {
+      const { data, info } = await sharp(jpeg).raw().toBuffer({ resolveWithObject: true });
+      const at = (fx, fy) => {
+        const x = Math.floor(info.width * fx);
+        const y = Math.floor(info.height * fy);
+        return Array.from(data.subarray((y * info.width + x) * info.channels, (y * info.width + x) * info.channels + 3));
+      };
+      return { w: info.width, h: info.height, q: [at(0.25, 0.25), at(0.75, 0.25), at(0.25, 0.75), at(0.75, 0.75)] };
+    };
+    for (let orientation = 1; orientation <= 8; orientation += 1) {
+      const previous = await quadrants(await encodeOrientedRgbaToJpeg(copyRgbaWithOrientation(plane, w, h, stride, orientation)));
+      const actual = await quadrants(await encodeRgbaPlaneToJpeg(plane, w, h, stride, orientation));
+      assert.equal(actual.w, previous.w, `large orientation ${orientation} width`);
+      assert.equal(actual.h, previous.h, `large orientation ${orientation} height`);
+      assert.equal(Math.max(actual.w, actual.h), 2560, `large orientation ${orientation} is resized`);
+      actual.q.forEach((rgb, q) => rgb.forEach((value, c) => assert(Math.abs(value - previous.q[q][c]) <= 6,
+        `large orientation ${orientation} quadrant ${q}: ${rgb} vs ${previous.q[q]}`)));
+    }
+  }
 
   // 해독 전 크기 상한
   assertDecodableDimensions(8064, 6048); // 48MP 촬영본

@@ -14,6 +14,8 @@ on:
       - 'functions/src/heic*.ts'
       - 'functions/test/heicConversionCore.test.js'
       - 'functions/test/convertHeicGuard.policy.test.js'
+      - 'functions/test/convertHeic.memory.benchmark.js'
+      - 'functions/test/fixtures/heic/**'
   workflow_dispatch:
 
 permissions:
@@ -62,6 +64,15 @@ jobs:
 
       - name: Verify HEIC local WASM decode and JPEG behavior
         run: npm run test:convert-heic-behavior
+
+      # lib는 위 test:sharp-pipelines의 build가 만든다. 컴파일된 전체 index에서 convertHeic.run 3회 연속,
+      # 48MP 생성 fixture, 1GiB(convertHeic memory)와 최대 RSS 비교. rate limit 전송만 require cache로 대체.
+      - name: Benchmark convertHeic memory on compiled index (48MP x3)
+        run: |
+          node test/convertHeic.memory.benchmark.js
+          node test/convertHeic.memory.benchmark.js --exif6
+          node test/convertHeic.memory.benchmark.js --plain
+          node test/convertHeic.memory.benchmark.js --orientation-pipeline
 
       - name: Verify AI classification with synthetic clients
         run: npm run test:ai-library-classification

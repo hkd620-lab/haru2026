@@ -229,10 +229,23 @@ function primaryHasNativeTransform(heif: any, contextPtr: number, handlePtr: num
     heif._heif_item_get_properties_of_type(contextPtr, itemId, heif.fourcc(type), 0, 0) > 0);
 }
 
+// 해독된 RGBA 평면. data는 WASM 힙을 가리키는 view이며, withDecodedHeicPrimary의
+// 콜백 안에서만 유효하다(콜백이 끝나면 libheif 이미지를 해제한다). 밖으로 내보내지 않는다.
+type DecodedPlane = {
+  data: Uint8Array;
+  width: number;
+  height: number;
+  stride: number;
+  orientation: number;
+};
+
 // 대표(primary) 이미지만 해독. libheif가 irot/imir/clap 변환을 적용하므로,
 // 그 변환이 있으면 Exif Orientation은 다시 적용하지 않는다(이중 회전 방지).
 // 변환 속성이 없을 때만 대표 항목 Exif의 Orientation을 적용한다.
-export async function decodeHeicPrimaryImage(input: Buffer): Promise<DecodedHeic> {
+// 해독 이미지·handle·context는 use()의 await가 끝난 뒤 finally에서 해제한다.
+// 호출은 convertHeicBufferToJpeg의 직렬 큐(인스턴스당 1건, concurrency 1) 안에서만 한다:
+// 콜백이 도는 동안 다른 WASM 호출이 힙을 바꾸거나 키우지 않아야 view가 유효하다.
+async function withDecodedHeicPrimary<T>(input: Buffer, use: (plane: DecodedPlane) => T | Promise<T>): Promise<T> {
   const heif = await loadLibheif();
   const context = heif.heif_context_alloc();
   if (!context) throw new Error('HEIF context allocation failed');
@@ -265,7 +278,8 @@ export async function decodeHeicPrimaryImage(input: Buffer): Promise<DecodedHeic
         decoded.width !== width || decoded.height !== height) {
       throw new HeicInputError('HEIF image could not be decoded');
     }
-    return copyRgbaWithOrientation(channel.data, width, height, channel.stride, orientation);
+    if (!(channel.data instanceof Uint8Array)) throw new HeicInputError('HEIF image could not be decoded');
+    return await use({ data: channel.data, width, height, stride: channel.stride, orientation });
   } finally {
     if (decoded?.image) heif.heif_image_release(decoded.image);
     if (handle) heif.heif_image_handle_release(handle);
@@ -273,18 +287,127 @@ export async function decodeHeicPrimaryImage(input: Buffer): Promise<DecodedHeic
   }
 }
 
+// 시험·진단용: 화면 방향으로 배치한 연속 RGBA 사본을 돌려준다(WASM 힙과 분리된 메모리).
+export async function decodeHeicPrimaryImage(input: Buffer): Promise<DecodedHeic> {
+  // 운영 변환과 같은 대기열을 써서, sharp가 view를 읽는 동안 다른 해독이 WASM 힙을 키우지 못하게 한다.
+  return runExclusive(() => withDecodedHeicPrimary(input, (plane) =>
+    copyRgbaWithOrientation(plane.data, plane.width, plane.height, plane.stride, plane.orientation)));
+}
+
+type SharpPipeline = ReturnType<typeof sharp>;
+
+// Exif Orientation 1~8 → sharp 연산. 측정상 sharp는 flip/flop을 rotate보다 먼저 적용한다.
+// copyRgbaWithOrientation과 같은 결과인지 8방향 시험이 강제한다(sharp 동작이 바뀌면 시험이 실패).
+const ORIENTATION_OPS: Record<number, { angle: number; flip?: boolean; flop?: boolean }> = {
+  1: { angle: 0 },
+  2: { angle: 0, flop: true },
+  3: { angle: 180 },
+  4: { angle: 0, flip: true },
+  5: { angle: 90, flip: true },
+  6: { angle: 90 },
+  7: { angle: 90, flop: true },
+  8: { angle: 270 },
+};
+
+// 해독 평면을 사본 없이 sharp raw 입력으로 연다(전체 크기 RGBA 사본 1개를 줄임). 방향은 적용하지 않는다.
+// - stride가 4의 배수이고 stride*height 바이트가 모두 있으면: 그 영역을 그대로 view로 넘기고
+//   행 끝 padding은 sharp extract로 잘라낸다.
+// - 그 밖의 경우(검증할 수 없는 배치)만 연속 사본 1개를 만든다. 이것은 변경 전과 같은
+//   메모리(전체 RGBA 사본 1개)이므로 변경 전 측정치를 넘지 않는다.
+function rgbaPlaneInput(data: Uint8Array, width: number, height: number, stride: number): SharpPipeline {
+  const rowBytes = width * 4;
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0 ||
+      !Number.isInteger(stride) || stride < rowBytes || data.length < stride * (height - 1) + rowBytes) {
+    throw new Error('HEIF decoded plane is smaller than expected');
+  }
+  if (stride % 4 === 0 && data.length >= stride * height) {
+    const view = Buffer.from(data.buffer, data.byteOffset, stride * height);
+    const image = sharp(view, {
+      raw: { width: stride / 4, height, channels: 4 },
+      limitInputPixels: (stride / 4) * height,
+    });
+    return stride === rowBytes ? image : image.extract({ left: 0, top: 0, width, height });
+  }
+  const compact = copyRgbaWithOrientation(data, width, height, stride, 1);
+  return sharp(compact.data, { raw: { width, height, channels: 4 }, limitInputPixels: HEIC_DECODE_MAX_PIXELS });
+}
+
+// 출력 상자는 정사각형(2560x2560 내접)이라, 방향 적용 전에 줄여도 결과 크기가 같다.
+function resizeToOutputBox(image: SharpPipeline): SharpPipeline {
+  return image.resize({
+    width: HEIC_OUTPUT_MAX_DIMENSION,
+    height: HEIC_OUTPUT_MAX_DIMENSION,
+    fit: 'inside',
+    withoutEnlargement: true,
+  });
+}
+
+// Exif-only 방향(2~8) 경로: (1) 해독 평면 view → padding 제거 → 출력 크기로 축소한 raw(최대 2560²,
+// WASM 힙과 분리) (2) 그 작은 raw에 rotate/flip/flop. sharp는 resize가 함께 있으면 extract와
+// rotate의 적용 순서를 바꾸므로 두 단계로 나눠 그 내부 순서에 의존하지 않는다.
+async function orientedResizedPipeline(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  stride: number,
+  orientation: number,
+): Promise<SharpPipeline> {
+  const resized = await resizeToOutputBox(rgbaPlaneInput(data, width, height, stride))
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const op = ORIENTATION_OPS[orientation] ?? ORIENTATION_OPS[1];
+  let image = sharp(resized.data, {
+    raw: { width: resized.info.width, height: resized.info.height, channels: 4 },
+  });
+  if (op.angle) image = image.rotate(op.angle);
+  if (op.flip) image = image.flip();
+  if (op.flop) image = image.flop();
+  return image;
+}
+
+// 시험용: Exif-only 경로의 축소·방향 적용 결과(raw RGBA).
+export async function orientAndResizeRgbaPlane(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  stride: number,
+  orientation: number,
+): Promise<DecodedHeic> {
+  const oriented = await (await orientedResizedPipeline(data, width, height, stride, orientation))
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  return { data: oriented.data, width: oriented.info.width, height: oriented.info.height };
+}
+
+function encodeSharpToJpeg(image: SharpPipeline): Promise<Buffer> {
+  // 출력에는 메타데이터를 넣지 않는다(sharp 기본 동작: Exif·ICC 미포함). 방향은 픽셀에 반영됨.
+  return resizeToOutputBox(image)
+    .flatten({ background: '#ffffff' })
+    .jpeg({ quality: HEIC_OUTPUT_JPEG_QUALITY })
+    .toBuffer();
+}
+
 export async function encodeOrientedRgbaToJpeg(decoded: DecodedHeic): Promise<Buffer> {
-  // 출력에는 메타데이터를 넣지 않는다(sharp 기본 동작: Exif·ICC 미포함). 방향은 이미 픽셀에 반영됨.
-  return sharp(decoded.data, {
+  return encodeSharpToJpeg(sharp(decoded.data, {
     raw: { width: decoded.width, height: decoded.height, channels: 4 },
     limitInputPixels: HEIC_DECODE_MAX_PIXELS,
-  })
-    .resize({
-      width: HEIC_OUTPUT_MAX_DIMENSION,
-      height: HEIC_OUTPUT_MAX_DIMENSION,
-      fit: 'inside',
-      withoutEnlargement: true,
-    })
+  }));
+}
+
+// 운영 경로. 방향 1(irot/imir를 libheif가 이미 적용한 경우 포함)은 해독 평면 view에서 바로
+// 한 번에 JPEG로 인코딩한다(변경 전과 같은 resize→flatten→JPEG 파이프라인, 사본 없음).
+export async function encodeRgbaPlaneToJpeg(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  stride: number,
+  orientation: number,
+): Promise<Buffer> {
+  if (!(orientation >= 2 && orientation <= 8)) {
+    return encodeSharpToJpeg(rgbaPlaneInput(data, width, height, stride));
+  }
+  // 2단계 파이프라인은 이미 출력 상자 안이므로 다시 축소하지 않는다.
+  return (await orientedResizedPipeline(data, width, height, stride, orientation))
     .flatten({ background: '#ffffff' })
     .jpeg({ quality: HEIC_OUTPUT_JPEG_QUALITY })
     .toBuffer();
@@ -303,5 +426,7 @@ export async function convertHeicBufferToJpeg(input: Buffer): Promise<Buffer> {
   if (!Buffer.isBuffer(input) || input.length < 12) {
     throw new HeicInputError('HEIF container could not be read');
   }
-  return runExclusive(async () => encodeOrientedRgbaToJpeg(await decodeHeicPrimaryImage(input)));
+  // 해독 평면(WASM 힙 view)을 JPEG 인코딩이 끝날 때까지만 쓰고, 그 뒤에 libheif가 해제한다.
+  return runExclusive(() => withDecodedHeicPrimary(input, (plane) =>
+    encodeRgbaPlaneToJpeg(plane.data, plane.width, plane.height, plane.stride, plane.orientation)));
 }

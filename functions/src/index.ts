@@ -6682,7 +6682,7 @@ function getBase64DecodedSizeBytes(value: string): number {
 }
 
 export const convertHeic = onCall(
-  // 해독은 인스턴스 메모리 안에서 이뤄진다: 48MP 원본(RGBA 약 190MB, WASM 힙 + 화면 방향 사본)을 고려해 1GiB·동시 1건.
+  // 해독은 인스턴스 메모리 안에서 이뤄진다: 48MP 원본(RGBA 약 190MB, WASM 힙의 해독 평면을 사본 없이 sharp가 읽음)을 고려해 1GiB·동시 1건.
   { region: 'asia-northeast3', memory: '1GiB', concurrency: 1 },
   async (request) => {
     if (!request.auth) {
