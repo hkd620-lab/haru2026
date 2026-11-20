@@ -2721,15 +2721,59 @@ function repairFirstRunMeaning(text: string, source: string): string {
   const originalContrast = /(?:^|[.!?。！？]\s+)단순히 ([가-힣 ]{1,60}?[한된]) 것이 아니라,/g;
   const sourceClauses = new Set(Array.from(source.matchAll(originalContrast), match => match[1]));
   const withOriginalContrast = text.replace(
-    /(^|[.!?。！？]\s+)단순히 ([가-힣 ]{1,60}?[한된]) 데 그치지 않고,/g,
-    (phrase, boundary: string, clause: string) =>
-      sourceClauses.has(clause) ? `${boundary}단순히 ${clause} 것이 아니라,` : phrase,
+    /(^|[.!?。！？]\s+)(?:단순히 )?([가-힣 ]{1,60}?)( 데(?:서)? 그치지 않고|에 그친 것이 아니라),/g,
+    (phrase, boundary: string, clause: string, contrast: string) => {
+      const original = contrast.startsWith(' 데') ? (sourceClauses.has(clause) ? clause : undefined)
+        : [...sourceClauses].find(value =>
+          /[이가] (?:완성|완료)된$/.test(value) && value.replace(/[이가] (완성|완료)된$/, ' $1') === clause.trim());
+      return original ? `${boundary}단순히 ${original} 것이 아니라,` : phrase;
+    },
   );
   // 같은 문단에 있는 앱의 동작은 살리고 새로 붙인 단계 이름만 뺀다.
   if (!/단계/.test(source) && /앱(?:이|을)/.test(source) && /열(?:림|렸|린)/.test(source)) {
     return withOriginalContrast.replace(/열리는 단계까지 (?:나아가|이어져|이르러)(?=[\s,，])/g, '열리기까지 이어져');
   }
   return withOriginalContrast;
+}
+
+// 출시를 향한 진전이 앞 문단의 원문과 검증을 마친 결과에 남아 있을 때,
+// 결말 문단에서 새로 되풀이한 진전 구절만 덜어 낸다.
+function trimRepeatedReleaseProgress(
+  text: string, source: string, earlierSources: string[], earlierOutputs: string[],
+): string {
+  const releaseDirection = /((?:(?:앱스토어|정식)[ \t]+)?(?:출시|공개|배포))를[ \t]+향(?:해|한)/g;
+  if (!/(?:출시|공개|배포)(?:는|은|가)[ \t]+(?:아직[ \t]+)?남/.test(source)
+    || !/뜻깊은[ \t]+이정표|의미[ \t]+있는[ \t]+이정표/.test(source)
+    || [...source.matchAll(releaseDirection)].length) return text;
+  const earlierDirections = (paragraphs: string[]) => new Set(
+    paragraphs.flatMap(paragraph => Array.from(paragraph.matchAll(releaseDirection), match => match[1])),
+  );
+  const originalDirections = earlierDirections(earlierSources);
+  const finalDirections = earlierDirections(earlierOutputs);
+  return text.replace(
+    /(^|[.!?。！？]\s+)((?:그래도|그럼에도)[ \t]+)?((?:(?:앱스토어|정식)[ \t]+)?(?:출시|공개|배포))를[ \t]+향(?:한[ \t]+과정이[ \t]+(?:이만큼[ \t]+)?이어진|해[ \t]+한[ \t]+걸음[ \t]+(?:나아간|내디딘|올라선))[ \t]+것은[ \t]+(?=(?:정말[ \t]+)?(?:뜻깊은|의미[ \t]+있는)[ \t]+이정표)/g,
+    (phrase, boundary: string, transition: string | undefined, target: string) =>
+      originalDirections.has(target) && finalDirections.has(target) ? boundary + (transition ?? '') : phrase,
+  );
+}
+
+function repairAppChangeAndSurprise(text: string, source: string): string {
+  if (!/작동하는[ \t]+앱으로/.test(source) || /움직이/.test(source)) return text;
+  // 원문의 작동을 물리적인 움직임으로 바꾸지 않는다.
+  const withOriginalVerb = text.replace(/(?<![가-힣])움직이는(?=[ \t]+앱으로[ \t]+(?:성장|자라|바뀌|발전))/g, '작동하는');
+  const change = /(?:내[ \t]+)?(생각|구상|아이디어)(?:이|가)[^.!?。！？\r\n]*?작동하는[ \t]+앱으로[ \t]+(?:성장|자라|바뀌|발전)/.exec(withOriginalVerb);
+  if (!change) return withOriginalVerb;
+  // 한 번 적은 변화와 놀라움을 다시 푼 맺음절만 덜어 낸다.
+  const duplicate = withOriginalVerb.replace(
+    /([.!?。！？]\s+)((?:그[ \t]+변화가[ \t]+)?날마다[ \t]+놀라움의[ \t]+연속)이(?:고|어서),?[ \t]+(?:(?:내[ \t]+)?(생각|구상|아이디어)(?:이|가)[ \t]+)?(?:실제로[ \t]+)?(?:작동하는|움직이는)[ \t]+앱이[ \t]+되어[ \t]+가는[ \t]+모습이[ \t]+놀랍다(?=$|[.!?。！？])/g,
+    (phrase, boundary: string, emotion: string, subject: string | undefined) =>
+      !subject || subject === change[1] ? `${boundary}${emotion}이다` : phrase,
+  );
+  return duplicate.replace(
+    /([.!?。！？]\s+)(?:내[ \t]+)?(생각|구상|아이디어)(?:이|가)[ \t]+앱의[ \t]+형태를[ \t]+갖추고[ \t]+(?:실제로[ \t]+)?작동하는[ \t]+모습으로[ \t]+이어지는[ \t]+(변화가[ \t]+날마다[ \t]+놀랍다)(?=$|[.!?。！？])/g,
+    (phrase, boundary: string, subject: string, emotion: string) =>
+      subject === change[1] ? `${boundary}그 ${emotion}` : phrase,
+  );
 }
 
 function failsGroundedParagraph(text: string, source: string): boolean {
@@ -3201,6 +3245,7 @@ export const polishContent = onCall(
       let polishPresentationParagraphs = false;
       let polishSprout = false;
       let polishFirstRun = false;
+      let polishAppChange = false;
       let groundedParagraphs: Array<{ text: string; original: string; kept: boolean }> | undefined;
       const wrappedRichSource = strength !== undefined
         ? /(?:^|\n)\[원문 시작\]\n([\s\S]+)\n\[원문 끝\]\s*$/.exec(text)
@@ -3328,12 +3373,13 @@ ${eventExample}${groundedPolish === undefined ? `\n${strongRichnessBlock}\n` : '
             && /(?:처음|첫)[^.!?。！？\r\n]{0,40}(?:실행|설치)/.test(source);
           const firstRunGuide = polishFirstRun ? `
 [만들어 온 일과 실제 첫 실행의 의미]
-‘설치되고 실행되다’, ‘열림’ 같은 메모형은 일어난 사건을 서술하는 완결문으로 씁니다. 첫 문단이 첫 실행을 한 문장으로 전한다면 그 사건만 한 문장으로 정돈합니다. 만들어 온 일이 실제 기기에서 앱이 열리는 데까지 이어진 변화는 해당 원문 문단에서 구체적으로 풉니다. 그 의미와 공개를 향한 진전이 함께 적혀 있으면 한 문장에 잇습니다. 이때 ‘단순히 … 것이 아니라’ 같은 원문의 대비와 부정 표현을 그대로 두고, 뒤에서 실제로 일어난 행동과 그 의미를 이어 씁니다. 원문에 없는 새 단계 이름을 붙이거나 같은 진전을 별도의 결말로 되풀이하지 않습니다. 여러 문단에서 의미를 다뤘다면 각 문단의 고유 내용에 집중합니다. 첫 실행은 출시나 승인과 구분합니다. 남은 절차를 지키고 원문보다 완료 범위를 넓히지 않습니다.
+‘설치되고 실행되다’, ‘열림’ 같은 메모형은 일어난 사건을 서술하는 완결문으로 씁니다. 첫 문단이 첫 실행을 한 문장으로 전한다면 그 사건만 한 문장으로 정돈합니다. 만들어 온 일이 실제 기기에서 앱이 열리는 데까지 이어진 변화는 해당 원문 문단에서 구체적으로 풉니다. 그 의미와 공개를 향한 진전이 함께 적혀 있으면 한 문장에 잇습니다. 이때 ‘단순히 … 것이 아니라’ 같은 원문의 대비와 부정 표현을 그대로 두고, 뒤에서 실제로 일어난 행동과 그 의미를 이어 씁니다. 원문에 없는 새 단계 이름을 붙이거나 같은 진전을 별도의 결말로 되풀이하지 않습니다. ‘출시를 향해 한 걸음’ 같은 해석은 그 진전을 적은 원문 문단에서만 씁니다. 마지막 문단에 출시가 남았다는 사실과 구상한 앱을 자기 기기에서 만난 감회가 있다면 그 둘을 이어 이정표의 의미를 씁니다. 앞 문단의 출시 진전을 ‘출시를 향한 과정이 이어진 일’ 등으로 다시 풀어 설명하지 않습니다. 첫 실행은 출시나 승인과 구분합니다. 남은 절차를 지키고 원문보다 완료 범위를 넓히지 않습니다.
 가상 예시: ‘만들어 온 시간표 앱이 태블릿에서 열림. 단순히 기능이 완성된 것이 아니라, 정식 공개를 향해 한 걸음 나아간 날.’ → ‘만들어 온 시간표 앱이 태블릿에서 열렸다. 단순히 기능이 완성된 것이 아니라, 만들어 온 앱을 실제 태블릿에서 열기까지 이르러 정식 공개를 향해 한 걸음 나아간 날이었다.’ 원문의 기기·출시 상태·사람과 시점은 보존합니다.` : '';
-          const ideaGuide = appDiary && /생각|구상|아이디어/.test(source)
-            && /작동/.test(source) && /놀라|놀랍/.test(source) ? `
+          polishAppChange = appDiary && /생각|구상|아이디어/.test(source)
+            && /작동/.test(source) && /놀라|놀랍/.test(source);
+          const ideaGuide = polishAppChange ? `
 [생각이 작동하는 앱으로 자란 놀라움]
-원문이 생각과 AI의 역할, 눈에 보이는 형태와 실제 작동을 함께 적었다면 같은 흐름으로 잇습니다. 첫 문장은 그 변화, 다음 문장은 글쓴이의 놀라움을 담습니다. ‘생각에 머물던’, ‘머릿속에만 있던’, ‘구상에 그치던’처럼 이전 상태를 새로 세우지 않습니다. 놀라움이 원문에 거듭 나와도 ‘날마다’ 같은 감정의 범위를 남겨 한 번만 쓰고, 같은 의미의 결말은 추가하지 않습니다.
+원문이 생각과 AI의 역할, 눈에 보이는 형태와 실제 작동을 함께 적었다면 같은 흐름으로 잇습니다. 변화는 한 문장으로 설명합니다. 원문이 ‘작동하는 앱’이라고 썼다면 이 표현을 살립니다. 다음 문장에서는 ‘그 변화가 날마다 놀랍다’와 같이 변화에 대한 놀라움을 한 번만 씁니다. 놀라움을 적은 뒤 변화가 어떤 것이었는지 다시 설명하지 않습니다. ‘생각에 머물던’, ‘머릿속에만 있던’, ‘구상에 그치던’처럼 이전 상태를 새로 세우지 않습니다. 놀라움이 원문에 거듭 나와도 ‘날마다’ 같은 감정의 범위를 남겨 한 번만 쓰고, 같은 의미의 결말은 추가하지 않습니다.
 가상 예시: ‘날마다 신기하고 놀랍다 내 계획이 AI 덕분에 눈에 보이고 작동하는 메뉴판 앱으로 바뀌는 게 놀랍다.’ → ‘내 계획이 AI의 도움을 받아 눈에 보이는 형태를 갖추고, 작동하는 메뉴판 앱으로 바뀌고 있다. 그 변화가 날마다 신기하고 놀랍다.’` : '';
           systemPrompt += `
 
@@ -3549,6 +3595,7 @@ ${SOURCE_PRESERVATION_RULES}`;
             }
           }
           if (polishFirstRun) candidateText = repairFirstRunMeaning(candidateText, paragraph.original);
+          if (polishAppChange) candidateText = repairAppChangeAndSurprise(candidateText, paragraph.original);
           // 원문 근거를 남길 수 있으면 같은 문단 안에서 되풀이한 문장을 지운다.
           const paragraphText = dropDuplicateGroundedSentences(candidateText, paragraph.original) ?? candidateText;
           // 다른 원문 문단의 내용이나 앞 문단의 다듬은 문장을 되풀이한 문장도 문제 문장으로 본다.
@@ -3567,6 +3614,16 @@ ${SOURCE_PRESERVATION_RULES}`;
           accepted++;
           return paragraphText;
         });
+        if (polishFirstRun && merged && merged.length > 1) {
+          const lastIndex = merged.length - 1;
+          const last = paragraphs[lastIndex];
+          if (!last.kept) {
+            const earlierSources = paragraphs.slice(0, lastIndex).filter(paragraph => !paragraph.kept).map(paragraph => paragraph.original);
+            const earlierOutputs = merged.slice(0, lastIndex).filter((_, index) => !paragraphs[index].kept);
+            const trimmed = trimRepeatedReleaseProgress(merged[lastIndex], last.original, earlierSources, earlierOutputs);
+            if (trimmed !== merged[lastIndex] && !failsGroundedParagraph(trimmed, last.original)) merged[lastIndex] = trimmed;
+          }
+        }
         // 다듬을 문단이 모두 원문으로 돌아가면 기존처럼 전체 원문 유지로 알린다.
         const edited = merged && merged.length > 0 && (accepted > 0 || paragraphs.every(paragraph => paragraph.kept))
           ? merged.join('\n\n') : null;

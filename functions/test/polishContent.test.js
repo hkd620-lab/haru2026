@@ -22,7 +22,7 @@ const handler = variable('polishContent').arguments.at(-1);
 const compiled = ts.transpileModule([
   `const STATS_PROMPTS = ${variable('STATS_PROMPTS').getText(ast)};`,
   fn('analyzeStats'), fn('buildAiCommentPrompt'), fn('addsOutsideAssessment'), fn('addsUnstatedFeelingOrAction'),
-  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('dateNegationMarks'), fn('changesDateOrNegation'), fn('addsUngroundedSpecifics'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), fn('repairFirstRunMeaning'), fn('failsGroundedParagraph'), fn('groundedSentenceTools'), fn('repairSproutConclusion'), fn('repeatsOtherParagraph'), fn('restoreGroundedSentences'), fn('dropDuplicateGroundedSentences'), `(${handler.getText(ast)});`,
+  fn('changesSpouseReference'), fn('changesTimeOfDay'), fn('dateNegationMarks'), fn('changesDateOrNegation'), fn('addsUngroundedSpecifics'), fn('protectPolishActorParagraphs'), fn('resolveGroundedPolish'), fn('repairFirstRunMeaning'), fn('trimRepeatedReleaseProgress'), fn('repairAppChangeAndSurprise'), fn('failsGroundedParagraph'), fn('groundedSentenceTools'), fn('repairSproutConclusion'), fn('repeatsOtherParagraph'), fn('restoreGroundedSentences'), fn('dropDuplicateGroundedSentences'), `(${handler.getText(ast)});`,
 ].join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2019 } }).outputText;
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -2283,6 +2283,13 @@ test('기기의 첫 실행과 남은 절차를 지키면서 만들어 온 일의
   assert.match(f.calls[0].systemInstruction, /원문의 대비와 부정 표현을 그대로/);
   assert.equal(result.text, edited.join('\n\n'));
 
+  for (const contrast of ['기능이 완성된 데서 그치지 않고', '기능 완성에 그친 것이 아니라']) {
+    const shortenedContrast = [response[0], response[1].replace('단순히 기능이 완성된 데 그치지 않고', contrast)];
+    const shortened = fixture({ polishParagraphs: shortenedContrast });
+    const shortenedResult = await shortened.request({ text: source.join('\n\n'), mode: 'BASIC', strength: 'STRONG', includeAiComment: false });
+    assert.equal(shortenedResult.text, edited.join('\n\n'));
+  }
+
   for (const inflected of ['나아가는 것은', '나아가며']) {
     const paragraphs = [edited[0], response[1].replace('나아가', inflected)];
     const f = fixture({ polishParagraphs: paragraphs });
@@ -2313,6 +2320,47 @@ test('구현의 놀라움을 살리고 원문 밖 이전 상태와 반복 결말
 
   const explicit = '구상에 머물던 일정표를 만들기 시작했다.';
   assert.equal((await strongResult(explicit, '구상에 머물던 일정표를 만들기 시작한 날이었다.')).text, '구상에 머물던 일정표를 만들기 시작한 날이었다.');
+});
+
+test('앱 첫 실행의 진전은 그 문단에 남기고 결말에서 더한 반복만 자른다', async () => {
+  const source = [
+    '오늘 만들어 온 사진 정리 앱을 노트북에서 처음으로 실행했다.',
+    '시험판이 실제 기기에서 열려 정식 공개를 향해 한 걸음 나아간 날.',
+    '아직 정식 공개는 남았다. 내가 구상한 앱을 이 기기에서 직접 쓴 뜻깊은 이정표.',
+  ];
+  const edited = [
+    '오늘 만들어 온 사진 정리 앱을 노트북에서 처음으로 실행했다.',
+    '시험판이 실제 기기에서 열려 정식 공개를 향해 한 걸음 나아간 날이었다.',
+    '아직 정식 공개는 남아 있다. 그래도 정말 뜻깊은 이정표였다. 내가 구상한 앱을 이 기기에서 직접 쓴 날이었다.',
+  ];
+  const repeated = [edited[0], edited[1], edited[2].replace('그래도 정말', '그래도 정식 공개를 향한 과정이 이어진 것은 정말')];
+  const fixtureResult = fixture({ polishParagraphs: repeated });
+  const result = await fixtureResult.request({ text: source.join('\n\n'), mode: 'BASIC', strength: 'STRONG', includeAiComment: false });
+  assert.equal(result.text, edited.join('\n\n'));
+
+  const ownProgress = [...source.slice(0, 2), source[2] + ' 정식 공개를 향한 과정이 이어진 시점이었다.'];
+  const grounded = fixture({ polishParagraphs: repeated });
+  const groundedResult = await grounded.request({ text: ownProgress.join('\n\n'), mode: 'BASIC', strength: 'STRONG', includeAiComment: false });
+  assert.match(groundedResult.text.split('\n\n').at(-1), /정식 공개를 향한 과정이 이어진/);
+});
+
+test('앱의 작동을 보존하고 변화와 놀라움을 한 번씩만 남긴다', async () => {
+  const source = '날마다 놀랍다. 구상이 AI의 도움으로 눈에 보이고 작동하는 앱으로 자란 것이 놀라움의 연속이다.';
+  const edited = '구상이 AI의 도움으로 눈에 보이고 작동하는 앱으로 자라고 있다. 그 변화가 날마다 놀라움의 연속이다.';
+  const raw = edited.replace('작동하는 앱으로', '움직이는 앱으로').replace(
+    '연속이다.', '연속이고, 구상이 실제로 움직이는 앱이 되어 가는 모습이 놀랍다.',
+  );
+  const f = fixture({ polishParagraphs: [raw] });
+  const result = await f.request({ text: source, mode: 'BASIC', strength: 'STRONG', includeAiComment: false });
+  assert.equal(result.text, edited);
+  assert.match(f.calls[0].systemInstruction, /‘작동하는 앱’이라고 썼다면 이 표현을 살립니다/);
+
+  const repeated = edited.replace('그 변화가 날마다 놀라움의 연속이다.',
+    '구상이 앱의 형태를 갖추고 작동하는 모습으로 이어지는 변화가 날마다 놀랍다.');
+  const second = fixture({ polishParagraphs: [repeated] });
+  const secondResult = await second.request({ text: source, mode: 'BASIC', strength: 'STRONG', includeAiComment: false });
+  assert.equal(secondResult.text, edited.replace('놀라움의 연속이다.', '놀랍다.'));
+
 });
 
 test('직접 만든 일의 수치 성취를 풀어 쓰고 명시된 도움을 보존한다', async () => {
