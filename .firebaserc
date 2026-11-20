@@ -7,6 +7,9 @@
       "hosting": {
         "vault": [
           "haru2026-vault"
+        ],
+        "videoFinder": [
+          "haru2026-video-finder"
         ]
       }
     }

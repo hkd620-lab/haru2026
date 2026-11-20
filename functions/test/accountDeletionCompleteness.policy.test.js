@@ -29,10 +29,19 @@ const requiredSubcollections = [
   'settings', 'readProgress', 'novelSettings', 'bibleProgress', 'bibleWordbook', 'vocabulary',
   'snsRecords', 'snsSearchHistory', 'savedSearches', 'timelines', 'legalCases', 'health',
   'petHealthLogs', 'petVaccineRecords', 'lawsuitClaimReasonUsage',
+  'videoFinderSaved', 'videoFinderHistory', 'rateLimits',
 ];
+const subcollectionList = src.match(/const USER_SUBCOLLECTIONS_TO_DELETE = \[([\s\S]*?)\];/)[1];
 for (const name of requiredSubcollections) {
-  assert(src.includes(`'${name}'`), `USER_SUBCOLLECTIONS_TO_DELETE missing '${name}'`);
+  assert(subcollectionList.includes(`'${name}'`), `USER_SUBCOLLECTIONS_TO_DELETE missing '${name}'`);
 }
+
+// Video finder standalone sessions live in a top-level collection keyed by token hash; the scheduled
+// sweep must remove every session owned by the uid before the Auth account is deleted.
+const scheduledBody = src.slice(src.indexOf('export const executeScheduledDeletion'));
+assert(src.includes("db.collection('videoFinderSessions').where('uid', '==', uid)"));
+assert(scheduledBody.indexOf('await deleteVideoFinderSessions(uid)') > 0);
+assert(scheduledBody.indexOf('await deleteVideoFinderSessions(uid)') < scheduledBody.indexOf('await deleteAuthAccountIfExists'));
 
 // Payment/transaction records are legally-relevant and must be preserved (withdrawnAt marker
 // only), never deleted, regardless of how the subcollection/storage sweep evolves.

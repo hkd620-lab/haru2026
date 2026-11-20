@@ -127,7 +127,8 @@ export const cancelAccountDeletion = onCall(
 // ===== 실제 삭제 (1단계 승인 범위 + billingSubscriptions 처리 변경 승인분) =====
 // [삭제] users/{uid} 하위 서브컬렉션 전체, Storage users/{uid}/ 전체 + profile_images/{uid}/,
 //        email_to_uid, prophecyUsage, shared_records(+comments),
-//        sharedHaruLawCardMeta, haruLawSharePreviews, aiLibraryClassificationPrivate/{uid} 전체
+//        sharedHaruLawCardMeta, haruLawSharePreviews, aiLibraryClassificationPrivate/{uid} 전체,
+//        videoFinderSessions(uid 일치, 내 영상 찾기 독립 주소 세션)
 //        + billingSubscriptions/{uid}.billingKey(포트원 빌링키 포함) — 30일 유예 없이
 //          requestAccountDeletion 신청 즉시 삭제(아래 markBillingRecordsWithdrawn은 안전망)
 // [보존] billingSubscriptions/{uid}의 결제일시·금액·상품명·주문번호 등 거래기록,
@@ -157,6 +158,10 @@ const USER_SUBCOLLECTIONS_TO_DELETE = [
   'petHealthLogs',
   'petVaccineRecords',
   'lawsuitClaimReasonUsage',
+  'videoFinderSaved',
+  'videoFinderHistory',
+  // 서버 전용 개인 카운터(기능별 요청 횟수, 내 영상 찾기 검색 수·보관 레지스터). 계정 삭제 뒤 남길 이유가 없다.
+  'rateLimits',
 ];
 
 // 1회 스케줄 실행에서 처리할 최대 계정 수(타임아웃 방지). 남은 대상은 다음날 처리된다.
@@ -189,6 +194,13 @@ async function deleteUserSubcollections(uid: string): Promise<void> {
   for (const sub of USER_SUBCOLLECTIONS_TO_DELETE) {
     await db.recursiveDelete(userRef.collection(sub));
   }
+}
+
+// 내 영상 찾기 독립 주소 전용 세션(최상위 videoFinderSessions, 문서 ID는 토큰 해시)을 지운다.
+// 탈퇴 신청 즉시 세션은 매 요청 계정 상태 확인으로 거절되며, 여기서는 남은 문서를 정리한다.
+async function deleteVideoFinderSessions(uid: string): Promise<void> {
+  const snap = await db.collection('videoFinderSessions').where('uid', '==', uid).get();
+  await Promise.all(snap.docs.map((d) => d.ref.delete()));
 }
 
 async function deleteEmailToUidMapping(uid: string): Promise<void> {
@@ -310,6 +322,9 @@ export const executeScheduledDeletion = onSchedule(
 
         await deleteUserSubcollections(uid);
         completedSteps.push('users_subcollections');
+
+        await deleteVideoFinderSessions(uid);
+        completedSteps.push('videoFinderSessions');
 
         await deleteEmailToUidMapping(uid);
         completedSteps.push('email_to_uid');

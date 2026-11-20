@@ -1,6 +1,8 @@
 const POST_LOGIN_RETURN_KEY = 'haru.postLoginReturnPath.v1';
 const AI_IMPORT_RETURN_PATTERN = /^\/ai-import#[a-f0-9]{64}$/;
-const SIGNED_IN_RETURN_PATHS = new Set(['/settings', '/sayu']);
+// '/video-finder/connect': 독립 주소 로그인 창이 HARU 로그인 후 확인 화면으로 돌아오기 위한 정확한 경로(해시·쿼리 없음).
+// 연결 요청 자체는 같은 출처 sessionStorage에 검증해 둔 값만 쓰고, 세션 발급은 사용자 클릭 때만 한다.
+const SIGNED_IN_RETURN_PATHS = new Set(['/settings', '/sayu', '/video-finder/connect']);
 
 type SessionStorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
