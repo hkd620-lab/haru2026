@@ -156,7 +156,7 @@ function StandaloneShell() {
   }, [end]);
 
   if (!session) return <StandaloneSignIn onSession={onSession} notice={notice} />;
-  return <VideoFinderScreen basePath="" variant="standalone" client={client} accountKey={session.accountKey} haruOrigin={HARU_ORIGIN} onSignOut={signOut} />;
+  return <VideoFinderScreen key={session.accountKey} basePath="" variant="standalone" client={client} accountKey={session.accountKey} haruOrigin={HARU_ORIGIN} onSignOut={signOut} />;
 }
 
 function RedirectToHaru({ path }: { path: string }) {

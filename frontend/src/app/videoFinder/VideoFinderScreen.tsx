@@ -195,12 +195,13 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
 
   useEffect(() => { setDraft(urlFilters); setFormError(''); }, [urlFilters]);
 
-  const activeSearchKey = useRef('');
+  const activeSearch = useRef<{ key: string } | null>(null);
   const lastSearchKey = useRef('');
   if (searchKey) lastSearchKey.current = searchKey;
 
   const runSearch = useCallback(async (key: string, filters: SearchFilters, force = false) => {
-    activeSearchKey.current = key;
+    const request = { key };
+    activeSearch.current = request;
     const cacheKey = `${uid}|${key}`;
     if (!force && searchCache.has(cacheKey)) {
       setSearchState(searchCache.get(cacheKey)!);
@@ -217,14 +218,16 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
       }
       const result = await pending.finally(() => pendingSearches.delete(cacheKey));
       const ready: SearchState = { ...loading, status: 'ready', videos: result.videos, nextPageToken: result.nextPageToken, notice: result.notice };
-      rememberSearch(cacheKey, ready);
+      if (activeSearch.current === request || activeSearch.current?.key !== key) {
+        rememberSearch(cacheKey, ready);
+      }
+      // 같은 조건을 다시 고른 경우까지 해당 요청의 화면에서만 결과를 반영한다.
+      if (activeSearch.current !== request) return;
       setRemainingSearches(result.remainingSearches);
-      // 기다리는 사이 다른 검색으로 옮겼으면 늦게 온 결과로 화면을 덮지 않는다.
-      if (activeSearchKey.current !== key) return;
       setSearchState(ready);
       setStatus(result.videos.length ? `영상 ${result.videos.length}개를 찾았어요.` : '조건에 맞는 영상을 찾지 못했어요.');
     } catch (error) {
-      if (activeSearchKey.current !== key) return;
+      if (activeSearch.current !== request) return;
       const message = friendlyErrorMessage(error);
       setSearchState({ ...loading, status: 'error', error: message });
       setStatus('');
@@ -232,15 +235,15 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
   }, [client, uid]);
 
   useEffect(() => {
-    if (!searchKey || !uid) { activeSearchKey.current = ''; setSearchState(null); return; }
+    if (!searchKey || !uid) { activeSearch.current = null; setSearchState(null); return; }
     void runSearch(searchKey, urlFilters);
   }, [searchKey, uid, urlFilters, runSearch]);
 
   const loadMore = async () => {
-    const requestedSearchKey = searchKey;
-    if (!requestedSearchKey || activeSearchKey.current !== requestedSearchKey ||
-        !searchState?.nextPageToken || searchState.loadingMore) return;
-    const cacheKey = `${uid}|${requestedSearchKey}`;
+    const request = activeSearch.current;
+    if (!request || request.key !== searchKey || !searchState?.nextPageToken || searchState.loadingMore) return;
+    const cacheKey = `${uid}|${request.key}`;
+    const cachedAtStart = searchCache.get(cacheKey);
     const current = { ...searchState, loadingMore: true, moreError: '' };
     setSearchState(current);
     try {
@@ -248,13 +251,16 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
       const seen = new Set(current.videos.map((v) => v.videoId));
       const added = result.videos.filter((v) => !seen.has(v.videoId));
       const next: SearchState = { ...current, loadingMore: false, videos: [...current.videos, ...added], nextPageToken: result.nextPageToken, notice: result.notice || current.notice };
-      rememberSearch(cacheKey, next);
-      if (activeSearchKey.current !== requestedSearchKey) return;
+      if (searchCache.get(cacheKey) === cachedAtStart &&
+          (activeSearch.current === request || activeSearch.current?.key !== request.key)) {
+        rememberSearch(cacheKey, next);
+      }
+      if (activeSearch.current !== request) return;
       setRemainingSearches(result.remainingSearches);
       setSearchState(next);
       setStatus(added.length ? `영상 ${added.length}개를 더 찾았어요.` : '더 보여드릴 새 영상이 없어요.');
     } catch (error) {
-      if (activeSearchKey.current !== requestedSearchKey) return;
+      if (activeSearch.current !== request) return;
       setSearchState({ ...current, loadingMore: false, moreError: friendlyErrorMessage(error) });
     }
   };

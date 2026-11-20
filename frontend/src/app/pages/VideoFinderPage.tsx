@@ -11,5 +11,5 @@ type Props = {
 
 export function VideoFinderPage({ basePath, variant }: Props) {
   const { user } = useAuth();
-  return <VideoFinderScreen basePath={basePath} variant={variant} client={haruVideoFinderClient} accountKey={user?.uid || ''} />;
+  return <VideoFinderScreen key={user?.uid} basePath={basePath} variant={variant} client={haruVideoFinderClient} accountKey={user?.uid || ''} />;
 }
