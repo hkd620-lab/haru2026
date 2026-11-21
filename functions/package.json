@@ -32,7 +32,7 @@
     "test:sns-thumbnail-privacy": "node test/snsThumbnailPrivacy.policy.test.js",
     "test:sns-story": "node test/snsStory.policy.test.js",
     "test:sns-story-emulator": "node --test test/snsStoryFinal.emulator.test.js",
-    "test:video-finder": "node --experimental-strip-types --test test/videoFinderCore.test.js",
+    "test:video-finder": "node --experimental-strip-types --test test/videoFinderCore.test.js test/videoFinderAccess.test.js",
     "test:video-finder:emulator": "npm run build && node --test --test-timeout=120000 test/videoFinder.emulator.test.mjs",
     "test:law-easy-explain": "node --experimental-strip-types test/lawEasyExplain.test.js",
     "test:sharp-pipelines": "npm run build && node --test test/sharpImagePipelines.test.js",

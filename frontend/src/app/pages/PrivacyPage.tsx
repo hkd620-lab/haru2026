@@ -96,6 +96,22 @@ export function PrivacyPage() {
       <p style={{ fontSize: 13, color: '#999', marginBottom: 32 }}>
         시행일: 2026년 8월 20일
       </p>
+      <section id="video-finder" aria-labelledby="video-finder-privacy-heading" className="mb-8 space-y-2 rounded-lg border border-[#e5e5e5] bg-[#F9FAFB] p-4 text-sm leading-relaxed text-[#333]">
+        <h2 id="video-finder-privacy-heading" className="font-bold text-[#1A3C6E]">내 영상 찾기 개인정보 안내</h2>
+        <p>공개 영상 정보를 표시하기 위해 YouTube API 서비스를 사용합니다. 영상 자료와 서비스 제공자의 정보 처리 방식은 <a className="underline" href="https://policies.google.com/privacy">Google 개인정보처리방침</a>에서 확인할 수 있습니다.</p>
+        <p>HARU 계정에 동의 기록, 지난 검색 조건, 영상 주소, 직접 쓴 메모·태그와 프리미엄 이용량을 연결합니다. 제목·썸네일 등 영상 정보는 필요한 기간 동안 보관하고 30일 이내에 갱신하거나 지웁니다. 작성 중인 메모는 브라우저에도 임시로 남을 수 있습니다.</p>
+        <div id="video-finder-search-ai" className="space-y-2">
+          <h3 className="font-bold">자연어 검색 정보 전송 안내</h3>
+          <p>‘동의하고 AI로 찾기’를 누르면 검색 문장을 해석하기 위해 Google의 유료 Gemini API에 HTTPS로 전송합니다. 전송 받는 주체와 처리 국가, Google의 55일간 보관 기준은 아래 안내와 같습니다. 검색어에 개인정보를 넣지 마세요. ‘찾기’를 사용하면 이 해석 절차 없이 YouTube에서 찾습니다.</p>
+        </div>
+        <div id="video-finder-ai" className="space-y-2">
+          <h3 className="font-bold">프리미엄 영상 질문 개인정보 국외 이전 안내</h3>
+          <p>별도 동의 후 질문을 보낼 때, 영상 분석과 답변 생성을 위해 Google의 유료 Gemini API에 공개 영상 주소(최초 분석 시), 질문, 필요한 범위의 이전 질문과 답변·근거 요약을 HTTPS로 전송합니다. Google(한국 청구 주소 기준 Google Asia Pacific Pte. Ltd. 및 그 계열사)은 미국 등 Google 또는 그 대리인이 시설을 운영하는 국가에 이 정보를 일시 저장할 수 있습니다.</p>
+          <p>Google은 서비스 악용 방지 등을 위해 질문, 추가 문맥 및 응답을 55일간 보관합니다. Google의 처리 조건과 문의 방법은 <a className="underline" href="https://ai.google.dev/gemini-api/terms#data-use-paid">Gemini 유료 서비스 약관</a>과 <a className="underline" href="https://ai.google.dev/gemini-api/docs/usage-policies">악용 모니터링 안내</a>, <a className="underline" href="https://policies.google.com/privacy">Google 개인정보처리방침</a>에서 확인할 수 있습니다.</p>
+          <p>HARU에서는 근거 요약을 18시간, 요청 결과를 1시간 동안 재사용할 수 있도록 임시 보관하고 만료분은 주기적으로 지웁니다. 영상, 음원, 자막 파일은 HARU 서버에 저장하지 않습니다. 동의하지 않아도 영상 검색, 시청, 보관함을 이용할 수 있습니다. 보관함 ‘내 기록 관리’에서 AI 질문 동의를 철회할 수 있습니다.</p>
+        </div>
+        <p>보관함의 ‘내 기록 관리’에서 보관 자료를 내보내거나 삭제할 수 있습니다. 개인정보 문의는 아래의 연락처를 이용해 주세요.</p>
+      </section>
       {sections.map((section) => (
         <div key={section.title} style={{ marginBottom: 28 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1A3C6E', marginBottom: 8 }}>

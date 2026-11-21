@@ -88,7 +88,7 @@ export function filtersFromSearchParams(params: URLSearchParams): SearchFilters 
   const from = params.get('from') || '';
   const to = params.get('to') || '';
   return {
-    query: (params.get('q') || '').slice(0, 200),
+    query: (params.get('q') || '').slice(0, MAX_SEARCH_QUERY_LENGTH),
     category: category === ALL_TOPICS || VIDEO_FINDER_TOPICS.includes(category) ? category : ALL_TOPICS,
     minSubscribers: optionValue(SUBSCRIBER_OPTIONS, Number(params.get('subs') || 0), 0),
     period,
@@ -176,10 +176,45 @@ export type SearchResult = {
   notice: string;
 };
 
+export const MAX_SEARCH_QUERY_LENGTH = 500;
+export const SEARCH_AI_CONSENT_VERSION = 1;
+export const VIDEO_FINDER_POLICY_VERSION = 1;
+export const VIDEO_FINDER_AI_CONSENT_VERSION = 1;
+
+export type VideoFinderAccess = {
+  policyAccepted: boolean;
+  aiConsentAccepted: boolean;
+  searchAiEnabled?: boolean;
+  canResetSearchQuota?: boolean;
+  questionAccess: 'disabled' | 'premium-required' | 'ready';
+  remainingQuestions: number;
+  remainingAnalysisSeconds: number;
+};
+
+export type VideoQuestionRequest = {
+  requestId: string;
+  videoId: string;
+  question: string;
+  previousRequestIds?: string[];
+};
+
+export type VideoQuestionAnswer = {
+  answer: string;
+  needsClarification?: boolean;
+  timestamps: number[];
+  status: VideoFinderAccess;
+};
+
 // 화면은 이 계약만 안다. HARU 안에서는 Firebase 로그인 호출(videoFinderApi.ts),
 // 독립 주소에서는 전용 세션 호출(video-finder-standalone/standaloneClient.ts)을 넣는다.
 export interface VideoFinderClient {
-  searchVideos(filters: SearchFilters, pageToken?: string | null): Promise<SearchResult>;
+  accessStatus(): Promise<VideoFinderAccess>;
+  acceptPolicy(version: number): Promise<VideoFinderAccess>;
+  acceptAiConsent(version: number): Promise<VideoFinderAccess>;
+  revokeAiConsent(): Promise<VideoFinderAccess>;
+  askQuestion(request: VideoQuestionRequest): Promise<VideoQuestionAnswer>;
+  searchVideos(filters: SearchFilters, pageToken?: string | null, useAi?: boolean): Promise<SearchResult>;
+  resetSearchQuota(): Promise<{ remainingSearches: number }>;
   listSaved(): Promise<{ saved: SavedItem[]; searchEnabled: boolean }>;
   saveVideo(video: VideoMeta, category: string): Promise<{ item: SavedItem; created: boolean }>;
   updateSaved(videoId: string, changes: Partial<Pick<SavedItem, 'note' | 'tags' | 'favorite' | 'category'>>): Promise<{ item: SavedItem }>;
@@ -192,8 +227,11 @@ export interface VideoFinderClient {
   deleteAllVideoFinderData(): Promise<void>;
 }
 
-export function youtubeWatchUrl(videoId: string): string {
-  return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+export function youtubeWatchUrl(videoId: string, atSeconds?: number): string {
+  const start = typeof atSeconds === 'number' && Number.isSafeInteger(atSeconds) && atSeconds >= 0
+    ? `&t=${atSeconds}s`
+    : '';
+  return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}${start}`;
 }
 
 // 보관함 안 찾기: 제목·채널·메모·태그를 띄어쓰기 단위로 모두 포함하는 항목만 남긴다.

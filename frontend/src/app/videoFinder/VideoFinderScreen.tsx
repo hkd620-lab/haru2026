@@ -4,6 +4,8 @@
 // 데이터는 Functions를 거쳐 로그인한 계정의 보관함에만 저장된다. 영상 정보 출처는 YouTube이며 재생은 YouTube에서 한다.
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { VideoFinderPolicyLinks, VideoFinderPolicySummary, YouTubeAttribution } from './VideoFinderPolicies';
+import { VideoQuestionDialog, type VideoQuestionTarget } from './VideoQuestionDialog';
 import {
   ALL_TOPICS,
   DEFAULT_FILTERS,
@@ -12,6 +14,8 @@ import {
   SORT_OPTIONS,
   SUBSCRIBER_OPTIONS,
   VIDEO_FINDER_TOPICS,
+  VIDEO_FINDER_POLICY_VERSION,
+  MAX_SEARCH_QUERY_LENGTH,
   describeFilters,
   filtersFromSearchParams,
   filtersToSearchParams,
@@ -28,6 +32,7 @@ import {
   type SavedItem,
   type SearchFilters,
   type SearchResult,
+  type VideoFinderAccess,
   type VideoFinderClient,
   type VideoMeta,
 } from './videoFinderModel';
@@ -135,7 +140,122 @@ function WatchLink({ videoId, title }: { videoId: string; title: string }) {
   );
 }
 
-export function VideoFinderScreen({ basePath, variant, client, accountKey, haruOrigin = 'https://haru2026.com', onSignOut }: VideoFinderScreenProps) {
+async function downloadVideoFinderBackup(client: VideoFinderClient) {
+  const data = await client.downloadBackup();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `haru2026-my-videos-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function VideoFinderScreen(props: VideoFinderScreenProps) {
+  const { client, accountKey, onSignOut, haruOrigin = 'https://haru2026.com' } = props;
+  const [access, setAccess] = useState<VideoFinderAccess | null>(null);
+  const [error, setError] = useState('');
+  const [accepting, setAccepting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
+  const [backupReady, setBackupReady] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!accountKey) return;
+    let active = true;
+    setError('');
+    client.accessStatus().then((status) => {
+      if (active) setAccess(status);
+    }).catch((error) => {
+      if (active) setError(friendlyErrorMessage(error));
+    });
+    return () => { active = false; };
+  }, [client, accountKey, attempt]);
+
+  async function accept() {
+    setAccepting(true);
+    setError('');
+    try {
+      setAccess(await client.acceptPolicy(VIDEO_FINDER_POLICY_VERSION));
+    } catch (error) {
+      setError(friendlyErrorMessage(error));
+    } finally {
+      setAccepting(false);
+    }
+  }
+
+  async function backupExistingData() {
+    setBackingUp(true);
+    setBackupReady(false);
+    setError('');
+    try {
+      await downloadVideoFinderBackup(client);
+      setBackupReady(true);
+    } catch (error) {
+      setError(friendlyErrorMessage(error));
+    } finally {
+      setBackingUp(false);
+    }
+  }
+
+  async function deleteExistingData() {
+    if (!window.confirm('보관한 영상, 메모, 지난 검색과 AI 질문의 임시 자료를 지울까요?')) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await client.deleteAllVideoFinderData();
+      setDeleted(true);
+    } catch (error) {
+      setError(friendlyErrorMessage(error));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  if (access?.policyAccepted) return <VideoFinderContent {...props} access={access} setAccess={setAccess} />;
+  return (
+    <main className="min-h-screen bg-[#FEFBE8] px-4 py-8 text-[#27332e]">
+      <section className="mx-auto w-full max-w-xl space-y-4 rounded-3xl bg-white p-5 sm:p-7">
+        <h1 className="text-2xl font-bold">내 영상 찾기</h1>
+        <YouTubeAttribution />
+        {access ? (
+          <>
+            <h2 className="text-xl font-bold">처음 이용하기 전에 확인해 주세요</h2>
+            <div className="space-y-2 text-base leading-7"><VideoFinderPolicySummary /></div>
+            <VideoFinderPolicyLinks haruOrigin={haruOrigin} />
+            <button type="button" className={btnPrimary} disabled={accepting || deleting || backingUp} onClick={() => void accept()}>
+              {accepting ? '동의를 저장하는 중…' : '동의하고 이용하기'}
+            </button>
+          </>
+        ) : !error && <p role="status">이용 안내를 불러오는 중이에요…</p>}
+        {error && <ErrorBox message={error} onRetry={access ? undefined : () => setAttempt((value) => value + 1)} />}
+        {access && <div className="flex flex-wrap gap-2">
+          <button type="button" className={btnSecondary} disabled={backingUp || deleting || accepting} onClick={() => void backupExistingData()}>
+            {backingUp ? '백업을 준비하는 중…' : '기존 영상 찾기 자료 백업'}
+          </button>
+          <button type="button" className={btnDanger} disabled={deleting || accepting || backingUp || deleted} onClick={() => void deleteExistingData()}>
+            {deleting ? '자료를 지우는 중…' : '기존 영상 찾기 자료 삭제'}
+          </button>
+        </div>}
+        {backupReady && <p role="status">백업 파일을 내려받았어요.</p>}
+        {deleted && <p role="status">기존 영상 찾기 자료를 지웠어요.</p>}
+        {onSignOut ? <button type="button" className={btnSecondary} onClick={onSignOut}>로그아웃</button> : <a href="/" className={btnSecondary}>비서실로</a>}
+      </section>
+    </main>
+  );
+}
+
+type NoteDraft = { videoId: string; text: string };
+type QuestionVideo = VideoQuestionTarget & { meta?: VideoMeta };
+
+function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin = 'https://haru2026.com', onSignOut, access, setAccess }: VideoFinderScreenProps & {
+  access: VideoFinderAccess;
+  setAccess: (status: VideoFinderAccess) => void;
+}) {
   const uid = accountKey;
   const location = useLocation();
   const navigate = useNavigate();
@@ -159,6 +279,18 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
   const [busyVideoId, setBusyVideoId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
   const [status, setStatus] = useState('');
+  const [questionVideo, setQuestionVideo] = useState<QuestionVideo | null>(null);
+  const [adoptedDraft, setAdoptedDraft] = useState<NoteDraft | null>(null);
+  const accessRevision = useRef(0);
+  const clearAdoptedDraft = useCallback(() => setAdoptedDraft(null), []);
+
+  function openQuestion(video: QuestionVideo) {
+    setQuestionVideo(video);
+    const revision = ++accessRevision.current;
+    void client.accessStatus().then((latest) => {
+      if (revision === accessRevision.current) setAccess(latest);
+    }).catch(() => undefined);
+  }
 
   const loadSaved = useCallback(async () => {
     setSavedStatus('loading');
@@ -195,14 +327,17 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
 
   useEffect(() => { setDraft(urlFilters); setFormError(''); }, [urlFilters]);
 
-  const activeSearch = useRef<{ key: string } | null>(null);
+  const [resettingQuota, setResettingQuota] = useState(false);
+  const pendingAiSearchKey = useRef<string | null>(null);
+  const aiSearchLocation = useRef<string | null>(null);
+  const activeSearch = useRef<{ key: string; cacheKey: string } | null>(null);
   const lastSearchKey = useRef('');
   if (searchKey) lastSearchKey.current = searchKey;
 
-  const runSearch = useCallback(async (key: string, filters: SearchFilters, force = false) => {
-    const request = { key };
+  const runSearch = useCallback(async (key: string, filters: SearchFilters, force = false, useAi = false) => {
+    const cacheKey = `${uid}|${useAi ? 'ai|' : ''}${key}`;
+    const request = { key, cacheKey };
     activeSearch.current = request;
-    const cacheKey = `${uid}|${key}`;
     if (!force && searchCache.has(cacheKey)) {
       setSearchState(searchCache.get(cacheKey)!);
       return;
@@ -213,7 +348,7 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
     try {
       let pending = pendingSearches.get(cacheKey);
       if (!pending) {
-        pending = client.searchVideos(filters);
+        pending = client.searchVideos(filters, undefined, useAi);
         pendingSearches.set(cacheKey, pending);
       }
       const result = await pending.finally(() => pendingSearches.delete(cacheKey));
@@ -236,13 +371,17 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
 
   useEffect(() => {
     if (!searchKey || !uid) { activeSearch.current = null; setSearchState(null); return; }
-    void runSearch(searchKey, urlFilters);
-  }, [searchKey, uid, urlFilters, runSearch]);
+    if (pendingAiSearchKey.current === searchKey) {
+      aiSearchLocation.current = location.key;
+      pendingAiSearchKey.current = null;
+    }
+    void runSearch(searchKey, urlFilters, false, aiSearchLocation.current === location.key);
+  }, [searchKey, uid, urlFilters, runSearch, location.key]);
 
   const loadMore = async () => {
     const request = activeSearch.current;
     if (!request || request.key !== searchKey || !searchState?.nextPageToken || searchState.loadingMore) return;
-    const cacheKey = `${uid}|${request.key}`;
+    const { cacheKey } = request;
     const cachedAtStart = searchCache.get(cacheKey);
     const current = { ...searchState, loadingMore: true, moreError: '' };
     setSearchState(current);
@@ -265,8 +404,7 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
     }
   };
 
-  const submitSearch = (event: FormEvent) => {
-    event.preventDefault();
+  const startSearch = (useAi: boolean) => {
     const filters = { ...draft, query: draft.query.replace(/\s+/g, ' ').trim() };
     if (!hasSearch(filters)) {
       setFormError('찾을 내용을 입력하거나 관심 분야를 골라 주세요.');
@@ -282,12 +420,34 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
     }
     setFormError('');
     const key = filtersToSearchParams(filters).toString();
+
     if (key === searchKey && tab === 'search') {
-      void runSearch(key, filters, searchState?.status === 'error');
+      aiSearchLocation.current = useAi ? location.key : null;
+      void runSearch(key, filters, searchState?.status === 'error', useAi);
       return;
     }
+    pendingAiSearchKey.current = useAi ? key : null;
     navigate(`${pathFor('')}?${key}`);
   };
+
+  function submitSearch(event: FormEvent) {
+    event.preventDefault();
+    startSearch(false);
+  }
+
+  async function resetSearchQuota() {
+    setResettingQuota(true);
+    setActionError('');
+    try {
+      const { remainingSearches: remaining } = await client.resetSearchQuota();
+      setRemainingSearches(remaining);
+      setStatus('오늘 내 검색 횟수를 초기화했어요.');
+    } catch (error) {
+      setActionError(friendlyErrorMessage(error));
+    } finally {
+      setResettingQuota(false);
+    }
+  }
 
   const toggleSave = async (video: VideoMeta) => {
     setActionError('');
@@ -310,6 +470,27 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
       setBusyVideoId(null);
     }
   };
+
+  async function prepareAnswerNote(text: string) {
+    if (!questionVideo) return;
+    const { videoId, meta } = questionVideo;
+    let item = saved.find((candidate) => candidate.videoId === videoId);
+    if (!item) {
+      if (!meta) throw new Error('보관함을 새로 열고 다시 시도해 주세요.');
+      const result = await client.saveVideo(meta, urlFilters.category);
+      item = result.item;
+      replaceSavedItem(item);
+    }
+    const key = noteDraftKey(uid, videoId);
+    const previous = readDraft(key) ?? item.note;
+    const draft = [previous, text].filter(Boolean).join('\n\n');
+    if (draft.length > 2000) throw new Error('기존 메모와 합쳐 2,000자까지 쓸 수 있어요. 추가할 문장을 줄여 주세요.');
+    writeDraft(key, draft);
+    setAdoptedDraft({ videoId, text: draft });
+    setQuestionVideo(null);
+    goTab('saved');
+    setStatus('보관함 메모에 추가했어요. 내용 확인 후 메모를 저장해 주세요.');
+  }
 
   // ───── 지난 검색 ─────
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -348,16 +529,7 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
     setActionError('');
     setDataBusy(true);
     try {
-      const data = await client.downloadBackup();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `haru2026-my-videos-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await downloadVideoFinderBackup(client);
       setStatus('백업 파일을 내려받았어요.');
     } catch (error) {
       setActionError(friendlyErrorMessage(error));
@@ -365,6 +537,22 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
       setDataBusy(false);
     }
   };
+
+  async function revokeAiConsent() {
+    setDataBusy(true);
+    setActionError('');
+    accessRevision.current += 1;
+    try {
+      const latest = await client.revokeAiConsent();
+      accessRevision.current += 1;
+      setAccess(latest);
+      setStatus('AI 질문 정보 전송 동의를 철회했어요. AI 검색은 이용할 때마다 동의할 수 있어요.');
+    } catch (error) {
+      setActionError(friendlyErrorMessage(error));
+    } finally {
+      setDataBusy(false);
+    }
+  }
 
   const deleteAll = async () => {
     if (!window.confirm('내 영상 찾기의 보관 영상, 메모, 지난 검색을 모두 지울까요? 지운 뒤에는 되돌릴 수 없어요. 먼저 백업을 받아 두면 안전해요.')) return;
@@ -423,6 +611,7 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
           <p className="mt-3 text-lg leading-8">원하는 영상을 찾아 내 보관함에 모아요. 메모를 남겨 두고 며칠 뒤 다시 꺼내 볼 수 있어요.</p>
           <p className="mt-2 text-base leading-7 text-[#3b4a3f]">운영자가 골라 둔 ‘재미 영상’과 달리, 이곳은 내가 직접 찾고 모으는 곳이에요. 보관한 영상과 메모는 나만 봐요.</p>
           <p className="mt-2 text-base leading-7 text-[#3b4a3f]">영상 정보 출처: YouTube · 영상은 YouTube에서 재생돼요.</p>
+          <div className="mt-3"><YouTubeAttribution /></div>
         </section>
 
         <nav aria-label="내 영상 찾기 메뉴" className="mt-5 flex flex-wrap gap-2 rounded-2xl border border-[#dce3d2] bg-[#f7faed] p-2">
@@ -443,20 +632,32 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
             <form onSubmit={submitSearch} noValidate className="rounded-2xl border border-[#dce3d2] bg-white p-4 sm:p-5">
               <label htmlFor="vf-query" className="block text-lg font-bold">무엇을 찾을까요?</label>
               <div className="mt-2 flex flex-wrap gap-2">
-                <input
+                <textarea
                   id="vf-query"
-                  type="search"
+                  rows={2}
+                  role="searchbox"
                   enterKeyHint="search"
                   value={draft.query}
-                  maxLength={200}
+                  maxLength={MAX_SEARCH_QUERY_LENGTH}
                   onChange={(e) => setDraft({ ...draft, query: e.target.value })}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing || event.keyCode === 229) return;
+                    event.preventDefault();
+                    startSearch(false);
+                  }}
                   aria-describedby="vf-query-help"
                   aria-invalid={formError ? true : undefined}
-                  className={`${fieldClass} min-h-[52px] flex-[1_1_14rem] text-lg`}
+                  className={`${fieldClass} min-h-[52px] flex-[1_1_14rem] resize-y text-lg`}
                 />
-                <button type="submit" className={`${btnPrimary} min-h-[52px] flex-[0_0_auto] px-6 text-lg`}>찾기</button>
+                <button type="submit" className={`${btnPrimary} min-h-[52px] flex-[0_0_auto] self-start px-6 text-lg`}>찾기</button>
               </div>
-              <p id="vf-query-help" className="mt-2 text-base leading-7 text-[#46524a]">예: 텃밭 토마토 지지대, 무릎에 좋은 운동</p>
+              <p id="vf-query-help" className="mt-2 text-base leading-7 text-[#46524a]">짧게 적어도 돼요. 예를 들어 ‘치과 소식’, ‘무릎에 좋은 운동’처럼요.</p>
+              {access.searchAiEnabled && (
+                <div className="mt-3 rounded-lg bg-[#f7faed] p-3">
+                  <p id="vf-ai-search-help" className="mb-2 text-base leading-7">긴 문장을 AI가 해석하도록 검색어를 Google Gemini에 보내요. 개인정보는 적지 마세요. <a href={`${haruOrigin}/privacy#video-finder-search-ai`} className="font-semibold underline" target="_blank" rel="noopener noreferrer">정보 전송 안내 ↗</a></p>
+                  <button type="button" className={btnSecondary} aria-describedby="vf-ai-search-help" onClick={() => startSearch(true)} disabled={!draft.query.trim()}>동의하고 AI로 찾기</button>
+                </div>
+              )}
 
               <fieldset className="mt-4">
                 <legend className="text-base font-bold">관심 분야 (고르지 않아도 돼요)</legend>
@@ -513,11 +714,16 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
               </details>
               {formError && <p role="alert" className="mt-3 text-base font-semibold text-[#8a2f22]">{formError}</p>}
               {remainingSearches !== null && <p className="mt-3 text-base text-[#46524a]">오늘 남은 검색 {remainingSearches}회 · ‘더 보기’도 1회로 세요.</p>}
+              {access.canResetSearchQuota && (
+                <button type="button" className={`${btnSecondary} mt-3`} disabled={resettingQuota} onClick={() => void resetSearchQuota()}>
+                  {resettingQuota ? '초기화하는 중…' : '오늘 내 검색 횟수 초기화'}
+                </button>
+              )}
             </form>
 
             {searchState?.status === 'loading' && <p className="mt-6 text-lg">영상을 찾고 있어요…</p>}
             {searchState?.status === 'error' && (
-              <ErrorBox message={searchState.error} onRetry={() => void runSearch(searchKey, urlFilters, true)} />
+              <ErrorBox message={searchState.error} onRetry={() => void runSearch(searchKey, urlFilters, true, aiSearchLocation.current === location.key)} />
             )}
             {searchState?.status === 'ready' && (
               <div className="mt-6">
@@ -539,6 +745,11 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
                               <MetaLine meta={video} />
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <WatchLink videoId={video.videoId} title={video.title} />
+                                {access.questionAccess !== 'disabled' && (
+                                  <button type="button" className={btnSecondary} onClick={() => openQuestion({ videoId: video.videoId, title: video.title, meta: video })}>
+                                    <span className="sr-only">{video.title} </span>이 영상에 질문하기
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   aria-pressed={isSaved}
@@ -582,6 +793,9 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
                 onRemoved={(videoId) => setSaved((items) => items.filter((x) => x.videoId !== videoId))}
                 onStatus={setStatus}
                 onFindMore={() => goTab('search')}
+                onQuestion={access.questionAccess !== 'disabled' ? openQuestion : undefined}
+                adoptedDraft={adoptedDraft}
+                onDraftApplied={clearAdoptedDraft}
               />
             )}
             <section aria-labelledby="vf-data-heading" className="mt-10 rounded-2xl border border-[#dce3d2] bg-white p-4 sm:p-5">
@@ -590,6 +804,9 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" className={btnSecondary} disabled={dataBusy} onClick={() => void backup()}>백업 파일 받기</button>
                 <button type="button" className={btnDanger} disabled={dataBusy} onClick={() => void deleteAll()}>모두 지우기</button>
+                {access.aiConsentAccepted && (
+                  <button type="button" className={btnSecondary} disabled={dataBusy} onClick={() => void revokeAiConsent()}>AI 질문 동의 철회</button>
+                )}
               </div>
             </section>
           </section>
@@ -627,13 +844,21 @@ export function VideoFinderScreen({ basePath, variant, client, accountKey, haruO
           </section>
         )}
 
-        <p className="mt-10 text-base leading-7 text-[#46524a]">영상 정보는 YouTube Data API로 가져오며, 오래된 영상 정보는 정책에 따라 다시 가져오거나 지워요. 영상이나 자막 파일은 저장하지 않아요. 건강·연금 같은 중요한 내용은 공식 기관 안내로 꼭 다시 확인해 주세요.</p>
+        <footer className="mt-10 space-y-3 text-base leading-7 text-[#46524a]">
+          <p>영상 정보는 YouTube Data API로 가져오며, 오래된 영상 정보는 정책에 따라 다시 가져오거나 지워요. 영상이나 자막 파일은 저장하지 않아요. 건강·연금 같은 중요한 내용은 공식 기관 안내로 꼭 다시 확인해 주세요.</p>
+          <VideoFinderPolicyLinks haruOrigin={haruOrigin} />
+        </footer>
+        {questionVideo && (
+          <VideoQuestionDialog key={questionVideo.videoId} video={questionVideo} access={access} client={client} haruOrigin={haruOrigin}
+            onClose={() => setQuestionVideo(null)} onPrepareNote={prepareAnswerNote}
+            onAccess={(latest) => { accessRevision.current += 1; setAccess({ ...access, ...latest }); }} />
+        )}
       </div>
     </div>
   );
 }
 
-function SavedList({ uid, client, items, onChanged, onRemoved, onStatus, onFindMore }: {
+function SavedList({ uid, client, items, onChanged, onRemoved, onStatus, onFindMore, onQuestion, adoptedDraft, onDraftApplied }: {
   uid: string;
   client: VideoFinderClient;
   items: SavedItem[];
@@ -641,9 +866,18 @@ function SavedList({ uid, client, items, onChanged, onRemoved, onStatus, onFindM
   onRemoved: (videoId: string) => void;
   onStatus: (text: string) => void;
   onFindMore: () => void;
+  onQuestion?: (video: QuestionVideo) => void;
+  adoptedDraft: NoteDraft | null;
+  onDraftApplied: () => void;
 }) {
   const [filter, setFilter] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  useEffect(() => {
+    if (adoptedDraft) {
+      setFilter('');
+      setFavoritesOnly(false);
+    }
+  }, [adoptedDraft]);
   const shown = searchSavedItems(favoritesOnly ? items.filter((i) => i.favorite) : items, filter);
 
   if (!items.length) {
@@ -669,7 +903,8 @@ function SavedList({ uid, client, items, onChanged, onRemoved, onStatus, onFindM
       <ul className="mt-3 space-y-4">
         {shown.map((item) => (
           <li key={item.videoId}>
-            <SavedCard uid={uid} client={client} item={item} onChanged={onChanged} onRemoved={onRemoved} onStatus={onStatus} />
+            <SavedCard uid={uid} client={client} item={item} onChanged={onChanged} onRemoved={onRemoved} onStatus={onStatus}
+              onQuestion={onQuestion} adoptedDraft={adoptedDraft?.videoId === item.videoId ? adoptedDraft : null} onDraftApplied={onDraftApplied} />
           </li>
         ))}
       </ul>
@@ -677,13 +912,16 @@ function SavedList({ uid, client, items, onChanged, onRemoved, onStatus, onFindM
   );
 }
 
-function SavedCard({ uid, client, item, onChanged, onRemoved, onStatus }: {
+function SavedCard({ uid, client, item, onChanged, onRemoved, onStatus, onQuestion, adoptedDraft, onDraftApplied }: {
   uid: string;
   client: VideoFinderClient;
   item: SavedItem;
   onChanged: (item: SavedItem) => void;
   onRemoved: (videoId: string) => void;
   onStatus: (text: string) => void;
+  onQuestion?: (video: QuestionVideo) => void;
+  adoptedDraft: NoteDraft | null;
+  onDraftApplied: () => void;
 }) {
   const draftKey = noteDraftKey(uid, item.videoId);
   const [note, setNote] = useState(() => readDraft(draftKey) ?? item.note);
@@ -693,6 +931,12 @@ function SavedCard({ uid, client, item, onChanged, onRemoved, onStatus }: {
   const [savedMessage, setSavedMessage] = useState('');
   const title = item.meta?.title || '영상 정보가 지워진 항목';
   const dirty = note !== item.note || tagText !== item.tags.join(', ');
+  useEffect(() => {
+    if (!adoptedDraft) return;
+    setNote(adoptedDraft.text);
+    setSavedMessage('');
+    onDraftApplied();
+  }, [adoptedDraft, onDraftApplied]);
 
   const run = async (task: () => Promise<void>) => {
     setBusy(true);
@@ -762,6 +1006,11 @@ function SavedCard({ uid, client, item, onChanged, onRemoved, onStatus }: {
           <p className="mt-1 text-base text-[#46524a]">담은 날 {formatLocalDay(item.savedAt)}{item.category !== ALL_TOPICS ? ` · ${item.category}` : ''}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <WatchLink videoId={item.videoId} title={title} />
+            {onQuestion && item.metaStatus !== 'unavailable' && (
+              <button type="button" className={btnSecondary} onClick={() => onQuestion({ videoId: item.videoId, title, meta: item.meta ?? undefined })}>
+                <span className="sr-only">{title} </span>이 영상에 질문하기
+              </button>
+            )}
             <button type="button" aria-pressed={item.favorite} aria-label={`${title} 즐겨찾기`} disabled={busy} className={btnSecondary} onClick={() => void toggleFavorite()}>
               {item.favorite ? '★ 즐겨찾기됨' : '☆ 즐겨찾기'}
             </button>

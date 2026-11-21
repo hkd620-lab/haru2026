@@ -20,7 +20,7 @@ const { deleteApp: deleteClientApp, initializeApp: initializeClientApp } = front
 const { connectFirestoreEmulator, doc, getDocFromServer, getFirestore, setDoc } = frontendRequire('firebase/firestore');
 const { deleteApp: deleteAdminApp, initializeApp: initializeAdminApp } = functionsRequire('firebase-admin/app');
 const { getFirestore: getAdminFirestore } = functionsRequire('firebase-admin/firestore');
-const { createFirestoreVideoFinderStore, expireSavedMetaIfStale } = functionsRequire('./lib/videoFinderStore.js');
+const { createFirestoreVideoFinderAccessStore, createFirestoreVideoFinderStore, expireSavedMetaIfStale } = functionsRequire('./lib/videoFinderStore.js');
 const core = functionsRequire('./lib/videoFinderCore.js');
 
 const adminApp = initializeAdminApp({ projectId }, `video-finder-admin-${Date.now()}`);
@@ -110,10 +110,14 @@ test('Rules 기본 거부: 로그인한 본인도 내 영상 찾기·세션·레
   await db.doc(`users/${uid}/videoFinderSaved/${vid(1)}`).set(savedDoc(vid(1)));
   await db.doc(`videoFinderSessions/${'a'.repeat(64)}`).set({ uid, audience: 'https://videos.haru2026.com', createdAt: NOW, expiresAt: NOW + 1 });
   const denied = (p) => assert.rejects(p, (e) => e?.code === 'permission-denied');
+  await denied(setDoc(doc(clientDb, `users/${uid}/subscription/info`), { plan: 'premium', status: 'active', endDate: new Date(NOW + 86400000).toISOString() }));
   for (const p of [
     `users/${uid}/videoFinderSaved/${vid(1)}`,
     `users/${uid}/videoFinderHistory/${'b'.repeat(32)}`,
     `users/${uid}/rateLimits/videoFinderSavedLock`,
+    `users/${uid}/videoFinderAccess/policy`,
+    `users/${uid}/videoFinderAccess/usage`,
+    `users/${uid}/videoFinderAiCache/recap_${vid(1)}`,
     `videoFinderSessions/${'a'.repeat(64)}`,
     'videoFinderQuota/2026-11-19',
     'config/videoFinder',
@@ -121,4 +125,113 @@ test('Rules 기본 거부: 로그인한 본인도 내 영상 찾기·세션·레
     await denied(getDocFromServer(doc(clientDb, p)));
     await denied(setDoc(doc(clientDb, p), { uid, injected: true }));
   }
+});
+
+test('실제 Firestore에서 프리미엄만 예약하고 동시 호출·재시도에도 한 번만 확정한다', async () => {
+  const uid = `vf-premium-emulator-${Date.now()}`;
+  await activeUser(uid);
+  await db.doc('config/videoFinder').set({ questionsEnabled: true, policyRequired: false }, { merge: true });
+  const subscription = db.doc(`users/${uid}/subscription/info`);
+  await subscription.set({ plan: 'basic', status: 'active', endDate: new Date(NOW + 7 * 86400000).toISOString() });
+  let modelCalls = 0;
+  let modelStarted;
+  const started = new Promise((resolve) => { modelStarted = resolve; });
+  let respond;
+  const answer = new Promise((resolve) => { respond = resolve; });
+  const access = core.createVideoFinderAccessService({
+    store: createFirestoreVideoFinderAccessStore(db),
+    now: () => NOW,
+    youtube: () => ({ analysisInfo: async () => ({ isPublic: true, durationSeconds: 600 }) }),
+    model: () => ({
+      analyzeVideo: async () => { modelCalls++; modelStarted(); return answer; },
+      answerFromRecap: async () => { throw new Error('unexpected follow-up'); },
+    }),
+  });
+  const question = { action: 'ask', videoId: vid(31), question: '어떤 이야기인가요?', requestId: 'emulator-test-01' };
+  assert.equal((await access.handle(uid, { action: 'status' })).policyAccepted, false);
+  await access.requirePolicyFor(uid, 'search', {});
+  await db.doc('config/videoFinder').update({ policyRequired: true });
+  const archiveId = vid(32);
+  await store.createSaved(uid, { ...savedDoc(archiveId), note: '기존 보관 메모' }, 10);
+  const library = core.createVideoFinderService({ store, now: () => NOW, youtube: {} });
+  const backupRequest = { action: 'backup' };
+  await access.requirePolicyFor(uid, 'library', backupRequest);
+  const { backup } = await library.library(uid, backupRequest);
+  assert.equal(backup.saved[0].note, '기존 보관 메모');
+  assert.equal(backup.saved[0].url, `https://www.youtube.com/watch?v=${archiveId}`);
+  assert.equal(backup.saved[0].meta, undefined);
+  await assert.rejects(access.requirePolicyFor(uid, 'search', {}), (error) => error.code === 'failed-precondition');
+  const accepted = await access.handle(uid, { action: 'acceptPolicy', version: core.VIDEO_FINDER_POLICY_VERSION });
+  assert.equal(accepted.questionAccess, 'premium-required');
+  await assert.rejects(access.handle(uid, question), (error) => error.code === 'failed-precondition' && error.message.includes('Gemini'));
+  assert.equal(modelCalls, 0);
+  const aiConsent = { action: 'acceptAiConsent', version: core.VIDEO_FINDER_AI_CONSENT_VERSION };
+  await assert.rejects(access.handle(uid, aiConsent), (error) => error.code === 'permission-denied');
+  await subscription.update({ plan: 'premium' });
+  await assert.rejects(access.handle(uid, question), (error) => error.code === 'failed-precondition');
+  assert.equal(modelCalls, 0);
+  assert.equal((await access.handle(uid, aiConsent)).aiConsentAccepted, true);
+
+  const first = access.handle(uid, question);
+  await Promise.race([started, first.then(() => { throw new Error('모의 모델 호출을 기다리지 않고 종료했습니다.'); })]);
+  try {
+    await assert.rejects(access.handle(uid, { ...question, requestId: 'emulator-test-02' }), (error) => error.code === 'unavailable');
+  } finally {
+    respond({ supported: true, answer: '모의 답변', timestamps: [60], recap: { summary: '모의 요약', segments: [{ t: 60, text: '모의 근거' }] } });
+  }
+  const result = await first;
+  assert.equal(result.status.remainingQuestions, 9);
+  assert.equal(result.status.remainingAnalysisSeconds, 6600);
+  assert.deepEqual(await access.handle(uid, question), result);
+  assert.equal(modelCalls, 1);
+  const usage = (await db.doc(`users/${uid}/videoFinderAccess/usage`).get()).data();
+  assert.equal(usage.provider.attempts, 1);
+  assert.equal(usage.provider.seconds, 600);
+  assert.equal((await db.doc(`users/${uid}/videoFinderSaved/${archiveId}`).get()).data().note, '기존 보관 메모');
+
+  await store.deleteAll(uid);
+  assert.equal((await db.collection(`users/${uid}/videoFinderAiCache`).get()).size, 0);
+  const keptUsage = (await db.doc(`users/${uid}/videoFinderAccess/usage`).get()).data();
+  assert.deepEqual(keptUsage.provider, usage.provider);
+  assert.equal(keptUsage.dayCount, usage.dayCount);
+  assert.equal(keptUsage.monthSeconds, usage.monthSeconds);
+  assert.equal((await access.handle(uid, { action: 'status' })).remainingQuestions, 9);
+  const revoked = await access.handle(uid, { action: 'revokeAiConsent' });
+  assert.equal(revoked.policyAccepted, true);
+  assert.equal(revoked.aiConsentAccepted, false);
+  await assert.rejects(access.handle(uid, question), (error) => error.code === 'failed-precondition');
+  assert.equal(modelCalls, 1);
+});
+
+
+test('개발자 초기화는 자신의 한국 시간 검색 횟수만 돌려놓고 프로젝트 전체 사용량은 보존한다', async () => {
+  const developer = `vf-dev-${Date.now()}`;
+  const ordinary = `vf-basic-${Date.now()}`;
+  await Promise.all([activeUser(developer), activeUser(ordinary)]);
+  const day = core.dayKey(NOW, core.USER_QUOTA_TIME_ZONE);
+  const globalDay = core.dayKey(NOW, core.GLOBAL_QUOTA_TIME_ZONE);
+  const developerCounter = db.doc(`users/${developer}/rateLimits/videoFinderSearch`);
+  const ordinaryCounter = db.doc(`users/${ordinary}/rateLimits/videoFinderSearch`);
+  const globalCounter = db.doc(`videoFinderQuota/${globalDay}`);
+  await Promise.all([
+    developerCounter.set({ day, count: 5 }),
+    ordinaryCounter.set({ day, count: 3 }),
+    globalCounter.set({ day: globalDay, units: 102 }),
+  ]);
+  const access = core.createVideoFinderAccessService({
+    store: createFirestoreVideoFinderAccessStore(db),
+    now: () => NOW,
+    youtube: () => { throw new Error('unexpected YouTube call'); },
+    model: () => { throw new Error('unexpected Gemini call'); },
+    canResetSearchQuota: (uid) => uid === developer,
+    resetSearchQuota: (uid, ms) => store.resetUserSearchQuota(uid, ms),
+  });
+  const reset = { action: 'resetSearchQuota', uid: ordinary };
+  assert.equal((await access.handle(ordinary, { action: 'status' })).canResetSearchQuota, undefined);
+  await assert.rejects(access.handle(ordinary, { ...reset, uid: developer }), (error) => error.code === 'permission-denied');
+  assert.equal((await access.handle(developer, { action: 'status' })).canResetSearchQuota, true);
+  assert.equal((await access.handle(developer, reset)).remainingSearches, (await store.getLimits()).userDailySearches);
+  assert.deepEqual((await developerCounter.get()).data().count, 0);
+  assert.deepEqual((await ordinaryCounter.get()).data().count, 3);
+  assert.deepEqual((await globalCounter.get()).data().units, 102);
 });

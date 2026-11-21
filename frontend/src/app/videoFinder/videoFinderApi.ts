@@ -2,20 +2,28 @@
 // UID는 서버가 로그인 정보에서 정한다. 독립 주소는 이 파일을 쓰지 않는다(standaloneClient.ts 사용).
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
-import type { SearchFilters, SearchResult, VideoFinderClient } from './videoFinderModel';
+import { SEARCH_AI_CONSENT_VERSION, type SearchFilters, type SearchResult, type VideoFinderAccess, type VideoFinderClient, type VideoQuestionAnswer } from './videoFinderModel';
 
 export type { SearchResult } from './videoFinderModel';
 
-const searchCallable = httpsCallable<{ filters: SearchFilters; pageToken?: string }, SearchResult>(functions, 'videoFinderSearch');
+const searchCallable = httpsCallable<{ filters: SearchFilters; pageToken?: string; searchAiConsentVersion?: number }, SearchResult>(functions, 'videoFinderSearch');
 const libraryCallable = httpsCallable<Record<string, unknown>, any>(functions, 'videoFinderLibrary');
 const sessionCallable = httpsCallable<{ audience: string }, { session: string; expiresAt: number; accountKey: string }>(functions, 'createVideoFinderSession');
 
 const library = async (body: Record<string, unknown>) => (await libraryCallable(body)).data;
+const access = async <T>(body: Record<string, unknown>) =>
+  (await httpsCallable<Record<string, unknown>, T>(functions, 'videoFinderAccess', { timeout: 125_000 })(body)).data;
 
 export const haruVideoFinderClient: VideoFinderClient = {
-  async searchVideos(filters, pageToken) {
-    return (await searchCallable(pageToken ? { filters, pageToken } : { filters })).data;
+  accessStatus: () => access<VideoFinderAccess>({ action: 'status' }),
+  acceptPolicy: (version) => access<VideoFinderAccess>({ action: 'acceptPolicy', version }),
+  acceptAiConsent: (version) => access<VideoFinderAccess>({ action: 'acceptAiConsent', version }),
+  revokeAiConsent: () => access<VideoFinderAccess>({ action: 'revokeAiConsent' }),
+  askQuestion: (request) => access<VideoQuestionAnswer>({ action: 'ask', ...request }),
+  async searchVideos(filters, pageToken, useAi) {
+    return (await searchCallable({ filters, ...(pageToken ? { pageToken } : {}), ...(useAi ? { searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION } : {}) })).data;
   },
+  resetSearchQuota: () => access<{ remainingSearches: number }>({ action: 'resetSearchQuota' }),
   listSaved: () => library({ action: 'list' }),
   saveVideo: (video, category) => library({ action: 'save', video, category }),
   updateSaved: (videoId, changes) => library({ action: 'update', videoId, changes }),

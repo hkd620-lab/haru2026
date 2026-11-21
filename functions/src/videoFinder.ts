@@ -4,7 +4,12 @@
 //   '내 영상 찾기' 전용 세션만 videoFinderStandalone에서 받는다. UID는 서버의 세션 문서에서만 정한다.
 // - YouTube 서버 키는 Secret Manager 참조(defineSecret)로만 바인딩한다.
 // - 영상·자막 다운로드나 페이지 수집은 하지 않고 YouTube Data API v3 search/videos/channels만 호출한다.
-// - Gemini·Jev 등 유료 AI 모델 호출은 이 기능에 연결하지 않았다(요금·한도 별도 결정 대기).
+// - 영상 AI 질문(videoFinderAccess, 독립 주소 op 'access')만 Gemini를 부른다. 프리미엄 활성 구독·서버 스위치
+//   config/videoFinder.questionsEnabled(기본 꺼짐)·일반 동의와 AI(Gemini 전송) 동의·하루 10회·구독 한 달 7,200초 한도와
+//   공급자 비용 상한(실패 포함 하루 15회 호출·구독 기간 10,800초 분석 시도)을 서버에서 확인한다.
+// - 일반 검색·보관함의 동의 확인은 config/videoFinder.policyRequired(기본 꺼짐)가 켜졌을 때만 적용한다
+//   (Functions 먼저 배포 → 두 사이트 배포 → 스위치 켜기 순서).
+//   Gemini 키는 VIDEO_FINDER_GEMINI_API_KEY 전용 시크릿으로, 질문 처리에서만 쓴다. Jev는 연결하지 않았다.
 // - 세션 원문·검색어·메모는 로그에 남기지 않는다.
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
@@ -15,21 +20,29 @@ import { enforceRateLimit } from './utils/rateLimit';
 import {
   META_MAX_AGE_MS,
   META_PURGE_INTERVAL_HOURS,
+  VIDEO_FINDER_ACCESS_RATE_FEATURE,
+  VIDEO_FINDER_AI_CACHE_COLLECTION,
   VIDEO_FINDER_SAVED_COLLECTION,
   VIDEO_FINDER_SESSION_COLLECTION,
   VIDEO_FINDER_STANDALONE_ORIGINS,
   VideoFinderError,
   assertActiveAccount,
+  createGeminiVideoClient,
   createStandaloneGateway,
+  createVideoFinderAccessService,
   createVideoFinderService,
   issueStandaloneSession,
+  isPolicyAccepted,
+  mapAnalysisInfo,
   mapChannelSubscribers,
   mapVideoItem,
   type SearchResponse,
+  type VideoInfoClient,
   type VideoMeta,
   type YouTubeClient,
 } from './videoFinderCore';
-import { createFirestoreVideoFinderStore, expireSavedMetaIfStale } from './videoFinderStore';
+import { isInternalDeveloperUid } from './internalEntitlements';
+import { createFirestoreVideoFinderAccessStore, createFirestoreVideoFinderStore, expireSavedMetaIfStale } from './videoFinderStore';
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -40,8 +53,11 @@ const REGION = 'asia-northeast3';
 
 // 운영자가 Secret Manager에 별도로 만들어야 한다. 다른 기능의 키를 재사용하지 않는다.
 const VIDEO_FINDER_YOUTUBE_API_KEY = defineSecret('VIDEO_FINDER_YOUTUBE_API_KEY');
+// 내 영상 찾기 Gemini 키. 영상 질문과 선택형 자연어 검색의 한도는 각 호출 경로에서 관리한다.
+const VIDEO_FINDER_GEMINI_API_KEY = defineSecret('VIDEO_FINDER_GEMINI_API_KEY');
 
 const firestoreStore = createFirestoreVideoFinderStore(db, admin.auth());
+const firestoreAccessStore = createFirestoreVideoFinderAccessStore(db);
 
 class YouTubeHttpError extends Error {
   status: number;
@@ -66,7 +82,7 @@ function toYouTubeServiceError(error: unknown): VideoFinderError {
   return new VideoFinderError('unavailable', 'YouTube에서 결과를 받지 못했어요. 잠시 후 다시 시도해 주세요.');
 }
 
-function createYouTubeClient(apiKey: string): YouTubeClient {
+function createYouTubeClient(apiKey: string): YouTubeClient & VideoInfoClient {
   async function request(endpoint: 'search' | 'videos' | 'channels', params: Record<string, string>) {
     if (!apiKey) {
       throw new VideoFinderError('failed-precondition', '내 영상 찾기 검색은 아직 준비 중입니다. 보관함과 메모는 그대로 볼 수 있어요.');
@@ -107,6 +123,21 @@ function createYouTubeClient(apiKey: string): YouTubeClient {
   return {
     async search(params) {
       return await request('search', params) as SearchResponse;
+    },
+    // AI 질문 전 공개 여부·실시간/예정 방송 여부·공식 길이 확인용(videos.list 1단위, part 수와 관계없이 같은 비용).
+    // fields로 필요한 값만 받는다(snippet은 liveBroadcastContent만). 클라이언트가 보낸 길이는 쓰지 않는다.
+    async analysisInfo(videoId) {
+      const data = await request('videos', {
+        part: 'snippet,contentDetails,status',
+        id: videoId,
+        maxResults: '1',
+        fields: 'items(id,snippet/liveBroadcastContent,contentDetails/duration,status(privacyStatus,uploadStatus))',
+      });
+      for (const item of Array.isArray(data.items) ? data.items : []) {
+        const info = mapAnalysisInfo(item);
+        if (info && info.videoId === videoId) return info;
+      }
+      return null;
     },
     async videoDetails(videoIds) {
       const unique = videoIds.filter((id, index) => videoIds.indexOf(id) === index);
@@ -159,19 +190,61 @@ async function runService<T>(task: () => Promise<T>): Promise<T> {
   }
 }
 
-function serviceFor() {
+function serviceFor(withSearchAi = false) {
   return createVideoFinderService({
     store: firestoreStore,
     youtube: createYouTubeClient(VIDEO_FINDER_YOUTUBE_API_KEY.value()),
     now: Date.now,
+    interpretSearch: withSearchAi ? async (uid, query) => {
+      if (!(await firestoreAccessStore.getConfig()).searchAiEnabled) return null;
+      if (!isPolicyAccepted(await firestoreAccessStore.readPolicy(uid))) return null;
+      return createGeminiVideoClient({ apiKey: VIDEO_FINDER_GEMINI_API_KEY.value() }).interpretSearch(query);
+    } : undefined,
+  });
+}
+
+// 동의 확인·상태 조회는 Firestore만 읽는다. YouTube·Gemini 클라이언트는 질문 처리 중에만 만든다.
+// withAi=false(검색·보관함 함수, Gemini 시크릿 미바인딩)는 동의 확인 전용이라 모델을 만들지 않는다.
+function accessServiceFor(withAi: boolean) {
+  return createVideoFinderAccessService({
+    store: firestoreAccessStore,
+    now: Date.now,
+    youtube: () => createYouTubeClient(VIDEO_FINDER_YOUTUBE_API_KEY.value()),
+    model: () => {
+      if (!withAi) throw new VideoFinderError('failed-precondition', '영상 AI 질문은 아직 준비 중이에요.');
+      const client = createGeminiVideoClient({ apiKey: VIDEO_FINDER_GEMINI_API_KEY.value() });
+      // 실패 분류만 남긴다(질문·답변·영상 ID·키는 남기지 않음).
+      const logged = <T>(kind: string, task: () => Promise<T>) => task().catch((error: unknown) => {
+        logger.warn('videoFinder gemini request failed', {
+          kind,
+          status: (error as { status?: unknown })?.status ?? null,
+          reason: (error as { message?: unknown; name?: unknown })?.name === 'GeminiRequestError'
+            ? String((error as { message?: unknown }).message).slice(0, 40)
+            : (error as { name?: string })?.name || 'unknown',
+        });
+        throw error;
+      });
+      return {
+        analyzeVideo: (input) => logged('video', () => client.analyzeVideo(input)),
+        answerFromRecap: (input) => logged('recap', () => client.answerFromRecap(input)),
+      };
+    },
+    canResetSearchQuota: isInternalDeveloperUid,
+    resetSearchQuota: (uid, nowMs) => firestoreStore.resetUserSearchQuota(uid, nowMs),
+    // 공개 여부·길이 확인(videos.list 1단위)도 기존 전체 YouTube 할당량 카운터에 선예약한다.
+    reserveYouTube: async (uid, nowMs) => {
+      const limits = await firestoreStore.getLimits();
+      await firestoreStore.reserveQuota(uid, 1, false, nowMs, limits);
+    },
   });
 }
 
 export const videoFinderSearch = onCall(
-  { region: REGION, secrets: [VIDEO_FINDER_YOUTUBE_API_KEY], timeoutSeconds: 30, memory: '256MiB', maxInstances: 10 },
+  { region: REGION, secrets: [VIDEO_FINDER_YOUTUBE_API_KEY, VIDEO_FINDER_GEMINI_API_KEY], timeoutSeconds: 30, memory: '256MiB', maxInstances: 10 },
   async (request) => {
     const uid = await requireActiveUid(request);
-    return runService(() => serviceFor().search(uid, request.data));
+    await runService(() => accessServiceFor(false).requirePolicyFor(uid, 'search', request.data));
+    return runService(() => serviceFor(true).search(uid, request.data));
   },
 );
 
@@ -180,7 +253,25 @@ export const videoFinderLibrary = onCall(
   async (request) => {
     const uid = await requireActiveUid(request);
     await runService(() => enforceRateLimit(uid, 'videoFinderLibrary', 60, 600));
+    await runService(() => accessServiceFor(false).requirePolicyFor(uid, 'library', request.data));
     return runService(() => serviceFor().library(uid, request.data));
+  },
+);
+
+// 이용 안내·약관 동의(버전 1)와 프리미엄 영상 AI 질문: { action: 'status' | 'acceptPolicy' | 'acceptAiConsent' | 'revokeAiConsent' | 'ask' }.
+// 독립 주소의 op 'access'와 같은 구현을 쓴다. UID는 request.auth에서만 정한다.
+export const videoFinderAccess = onCall(
+  {
+    region: REGION,
+    secrets: [VIDEO_FINDER_YOUTUBE_API_KEY, VIDEO_FINDER_GEMINI_API_KEY],
+    timeoutSeconds: 120,
+    memory: '256MiB',
+    maxInstances: 10,
+  },
+  async (request) => {
+    const uid = await requireActiveUid(request);
+    await runService(() => enforceRateLimit(uid, VIDEO_FINDER_ACCESS_RATE_FEATURE, 30, 300));
+    return runService(() => accessServiceFor(true).handle(uid, request.data));
   },
 );
 
@@ -201,9 +292,10 @@ export const createVideoFinderSession = onCall(
 export const videoFinderStandalone = onCall(
   {
     region: REGION,
-    secrets: [VIDEO_FINDER_YOUTUBE_API_KEY],
+    secrets: [VIDEO_FINDER_YOUTUBE_API_KEY, VIDEO_FINDER_GEMINI_API_KEY],
     cors: VIDEO_FINDER_STANDALONE_ORIGINS,
-    timeoutSeconds: 30,
+    // AI 질문(op 'access')의 모델 제한시간(75초)보다 길고 예약 유효시간(3분)보다 짧게 둔다.
+    timeoutSeconds: 120,
     memory: '256MiB',
     maxInstances: 10,
   },
@@ -211,8 +303,10 @@ export const videoFinderStandalone = onCall(
     const gateway = createStandaloneGateway({
       store: firestoreStore,
       now: Date.now,
-      service: serviceFor,
+      service: () => serviceFor(true),
       beforeLibrary: (uid) => enforceRateLimit(uid, 'videoFinderLibrary', 60, 600),
+      access: () => accessServiceFor(true),
+      beforeAccess: (uid) => enforceRateLimit(uid, VIDEO_FINDER_ACCESS_RATE_FEATURE, 30, 300),
     });
     return runService(() => gateway.handle(request.data, request.rawRequest?.headers?.origin));
   },
@@ -220,13 +314,15 @@ export const videoFinderStandalone = onCall(
 
 // API 데이터 보관 기한(30일) 안전장치: 오래 열람하지 않은 보관 항목의 영상 정보를 지운다(메모는 유지).
 // 문서마다 트랜잭션으로 다시 읽어, 그사이 지워졌거나 최신화된 항목은 건드리지 않는다(되살리기·덮어쓰기 없음).
-// 함께 만료된 독립 주소 세션 문서도 지운다.
+// 함께 만료된 독립 주소 세션 문서와, 만료된 AI 질문 비공개 요약·중복 응답(videoFinderAiCache, expiresAt ms)도 지운다.
+// 요약은 18시간 뒤 만료되고 이 작업이 6시간마다 돌므로 늦어도 약 24시간 안에 지워진다.
+// 색인: firestore.indexes.json fieldOverrides — collectionGroup videoFinderAiCache, expiresAt, COLLECTION_GROUP 오름차순.
 export const purgeStaleVideoFinderMetadata = onSchedule(
   { region: REGION, schedule: `every ${META_PURGE_INTERVAL_HOURS} hours`, timeZone: 'Asia/Seoul', timeoutSeconds: 300, memory: '256MiB' },
   async () => {
     const nowMs = Date.now();
     const cutoff = nowMs - META_MAX_AGE_MS;
-    const counts = { expired: 0, skipped: 0, missing: 0, failed: 0, sessions: 0 };
+    const counts = { expired: 0, skipped: 0, missing: 0, failed: 0, sessions: 0, aiCache: 0 };
     for (let round = 0; round < 20; round += 1) {
       const snap = await db.collectionGroup(VIDEO_FINDER_SAVED_COLLECTION)
         .where('metaFetchedAt', '<', cutoff)
@@ -258,6 +354,29 @@ export const purgeStaleVideoFinderMetadata = onSchedule(
       expiredSessions.docs.forEach((d) => batch.delete(d.ref));
       await batch.commit();
       counts.sessions += expiredSessions.size;
+    }
+    for (let round = 0; round < 10; round += 1) {
+      const expiredCache = await db.collectionGroup(VIDEO_FINDER_AI_CACHE_COLLECTION)
+        .where('expiresAt', '<', nowMs)
+        .limit(400)
+        .get();
+      if (expiredCache.empty) break;
+      let deleted = 0;
+      // 같은 영상의 요약이 다시 생성되었다면 쿼리가 읽은 이전 버전만 지운다.
+      for (let offset = 0; offset < expiredCache.size; offset += 20) {
+        const results = await Promise.all(expiredCache.docs.slice(offset, offset + 20).map((doc) =>
+          db.runTransaction(async (tx) => {
+            const current = await tx.get(doc.ref);
+            const expiresAt = current.get('expiresAt');
+            if (typeof expiresAt !== 'number' || expiresAt > nowMs) return false;
+            tx.delete(doc.ref);
+            return true;
+          }),
+        ));
+        deleted += results.filter(Boolean).length;
+      }
+      counts.aiCache += deleted;
+      if (!deleted) break;
     }
     logger.info('videoFinder stale metadata purged', counts);
   },

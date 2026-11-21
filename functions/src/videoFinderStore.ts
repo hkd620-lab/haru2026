@@ -10,6 +10,8 @@ import { FieldValue, type DocumentData, type DocumentReference, type Firestore }
 import {
   GLOBAL_QUOTA_TIME_ZONE,
   USER_QUOTA_TIME_ZONE,
+  VIDEO_FINDER_ACCESS_COLLECTION,
+  VIDEO_FINDER_AI_CACHE_COLLECTION,
   VIDEO_FINDER_CONFIG_DOC,
   VIDEO_FINDER_GLOBAL_QUOTA_COLLECTION,
   VIDEO_FINDER_HISTORY_COLLECTION,
@@ -23,8 +25,12 @@ import {
   planMetaUpdate,
   quotaErrorFor,
   resolveVideoFinderLimits,
+  type AccessKeys,
+  type AccessSnapshot,
+  type AccessWrites,
   type HistoryEntry,
   type SavedDoc,
+  type VideoFinderAccessStore,
   type SessionRecord,
   type VideoFinderLimits,
   type VideoFinderStore,
@@ -72,6 +78,7 @@ function toSessionRecord(data: DocumentData | undefined): SessionRecord | null {
 
 export function createFirestoreVideoFinderStore(db: Firestore, auth: Auth): VideoFinderStore & {
   readLimits(): Promise<VideoFinderLimits>;
+  resetUserSearchQuota(uid: string, nowMs: number): Promise<number>;
 } {
   const userRef = (uid: string) => db.collection('users').doc(uid);
   const savedCol = (uid: string) => userRef(uid).collection(VIDEO_FINDER_SAVED_COLLECTION);
@@ -85,6 +92,15 @@ export function createFirestoreVideoFinderStore(db: Firestore, auth: Auth): Vide
   }
 
   return {
+    async resetUserSearchQuota(uid: string, nowMs: number) {
+      const ref = rateLimitRef(uid, VIDEO_FINDER_USER_QUOTA_FEATURE);
+      await db.runTransaction(async (tx) => {
+        const account = await tx.get(userRef(uid));
+        assertActiveAccount(account.data());
+        tx.set(ref, { day: dayKey(nowMs, USER_QUOTA_TIME_ZONE), count: 0, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      });
+      return (await readLimits()).userDailySearches;
+    },
     readLimits,
     getLimits: readLimits,
 
@@ -200,6 +216,11 @@ export function createFirestoreVideoFinderStore(db: Firestore, auth: Auth): Vide
       // 사용자 일일 검색 카운터(rateLimits)는 남긴다. 삭제 후 재시작으로 한도를 우회하지 못하게 한다.
       await db.recursiveDelete(savedCol(uid));
       await db.recursiveDelete(historyCol(uid));
+      // AI 질문 사용량·동의 기록은 남기고(한도 우회 방지, 동의는 별도), 비공개 요약·답변 캐시만 지운다.
+      // dataEpoch를 올려, 삭제 전에 시작된 질문이 늦게 끝나도 요약·답변을 다시 쓰지 않게 한다.
+      await userRef(uid).collection(VIDEO_FINDER_ACCESS_COLLECTION).doc('usage')
+        .set({ dataEpoch: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      await db.recursiveDelete(userRef(uid).collection(VIDEO_FINDER_AI_CACHE_COLLECTION));
     },
 
     async createSession(tokenHash, record) {
@@ -237,6 +258,79 @@ export function createFirestoreVideoFinderStore(db: Firestore, auth: Auth): Vide
           tokensValidAfterMs: Number.isFinite(validAfter) ? validAfter : null,
         } : null,
       };
+    },
+  };
+}
+
+// AI 질문·동의 저장소. 판정은 videoFinderCore.createVideoFinderAccessService가 하고 여기서는 읽기·트랜잭션 경계만 둔다.
+// 경로: users/{uid}/videoFinderAccess/{policy|usage}, users/{uid}/videoFinderAiCache/{recap_<videoId>|answer_<requestId>}
+// policy·usage 쓰기는 merge라 일반 동의/AI 동의, 사용자 차감/공급자 카운터(provider) 필드가 서로를 지우지 않는다.
+// 구독은 users/{uid}/subscription/info 실제 문서만 읽는다(쓰지 않음).
+export function createFirestoreVideoFinderAccessStore(db: Firestore): VideoFinderAccessStore {
+  const userRef = (uid: string) => db.collection('users').doc(uid);
+  const refsFor = (uid: string, keys: AccessKeys) => {
+    const access = userRef(uid).collection(VIDEO_FINDER_ACCESS_COLLECTION);
+    const cache = userRef(uid).collection(VIDEO_FINDER_AI_CACHE_COLLECTION);
+    return {
+      account: userRef(uid),
+      policy: access.doc('policy'),
+      usage: access.doc('usage'),
+      subscription: userRef(uid).collection('subscription').doc('info'),
+      // 키는 core에서 형식 검사를 마친 값만 들어온다(videoId 11자, requestId 8~64자 영숫자·_-).
+      recap: keys.videoId ? cache.doc(`recap_${keys.videoId}`) : null,
+      answer: keys.requestId ? cache.doc(`answer_${keys.requestId}`) : null,
+      // 이전 대화: 본인(uid) 답변 기록만 읽는다. 최대 3개(core에서 제한).
+      previous: (keys.previousRequestIds || []).map((id) => cache.doc(`answer_${id}`)),
+    };
+  };
+  const dataOf = (snap: { exists: boolean; data(): DocumentData | undefined } | null) => (snap && snap.exists ? snap.data() : null);
+
+  return {
+    async getConfig() {
+      const snap = await db.doc(VIDEO_FINDER_CONFIG_DOC).get();
+      const data = snap.exists ? snap.data() : undefined;
+      return { questionsEnabled: data?.questionsEnabled === true, policyRequired: data?.policyRequired === true, searchAiEnabled: data?.searchAiEnabled === true };
+    },
+
+    async readPolicy(uid) {
+      return dataOf(await refsFor(uid, {}).policy.get());
+    },
+
+    async read(uid, keys) {
+      const r = refsFor(uid, keys);
+      const [account, policy, subscription, usage, recap, answer, ...previous] = await Promise.all([
+        r.account.get(), r.policy.get(), r.subscription.get(), r.usage.get(),
+        r.recap ? r.recap.get() : Promise.resolve(null),
+        r.answer ? r.answer.get() : Promise.resolve(null),
+        ...r.previous.map((ref) => ref.get()),
+      ]);
+      return {
+        account: dataOf(account), policy: dataOf(policy), subscription: dataOf(subscription),
+        usage: dataOf(usage), recap: dataOf(recap), answer: dataOf(answer),
+        previousAnswers: previous.map((snap) => dataOf(snap)),
+      } as AccessSnapshot;
+    },
+
+    async transact(uid, keys, fn) {
+      // 트랜잭션에서는 이전 대화 문서를 읽지 않는다(사전 확인에서만 읽음).
+      const r = refsFor(uid, { videoId: keys.videoId, requestId: keys.requestId });
+      return db.runTransaction(async (tx) => {
+        const [account, policy, subscription, usage, recap, answer] = await Promise.all([
+          tx.get(r.account), tx.get(r.policy), tx.get(r.subscription), tx.get(r.usage),
+          r.recap ? tx.get(r.recap) : Promise.resolve(null),
+          r.answer ? tx.get(r.answer) : Promise.resolve(null),
+        ]);
+        const { writes, result } = fn({
+          account: dataOf(account), policy: dataOf(policy), subscription: dataOf(subscription),
+          usage: dataOf(usage), recap: dataOf(recap), answer: dataOf(answer),
+        });
+        const w: AccessWrites = writes;
+        if (w.policy) tx.set(r.policy, { ...w.policy, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        if (w.usage) tx.set(r.usage, { ...w.usage, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        if (w.recap && r.recap) tx.set(r.recap, w.recap);
+        if (w.answer && r.answer) tx.set(r.answer, w.answer);
+        return result;
+      });
     },
   };
 }
