@@ -88,7 +88,7 @@ export function filtersFromSearchParams(params: URLSearchParams): SearchFilters 
   const from = params.get('from') || '';
   const to = params.get('to') || '';
   return {
-    query: (params.get('q') || '').slice(0, 200),
+    query: (params.get('q') || '').slice(0, MAX_SEARCH_QUERY_LENGTH),
     category: category === ALL_TOPICS || VIDEO_FINDER_TOPICS.includes(category) ? category : ALL_TOPICS,
     minSubscribers: optionValue(SUBSCRIBER_OPTIONS, Number(params.get('subs') || 0), 0),
     period,
@@ -176,12 +176,16 @@ export type SearchResult = {
   notice: string;
 };
 
+export const MAX_SEARCH_QUERY_LENGTH = 500;
+export const SEARCH_AI_CONSENT_VERSION = 1;
 export const VIDEO_FINDER_POLICY_VERSION = 1;
 export const VIDEO_FINDER_AI_CONSENT_VERSION = 1;
 
 export type VideoFinderAccess = {
   policyAccepted: boolean;
   aiConsentAccepted: boolean;
+  searchAiEnabled?: boolean;
+  canResetSearchQuota?: boolean;
   questionAccess: 'disabled' | 'premium-required' | 'ready';
   remainingQuestions: number;
   remainingAnalysisSeconds: number;
@@ -196,6 +200,7 @@ export type VideoQuestionRequest = {
 
 export type VideoQuestionAnswer = {
   answer: string;
+  needsClarification?: boolean;
   timestamps: number[];
   status: VideoFinderAccess;
 };
@@ -208,7 +213,8 @@ export interface VideoFinderClient {
   acceptAiConsent(version: number): Promise<VideoFinderAccess>;
   revokeAiConsent(): Promise<VideoFinderAccess>;
   askQuestion(request: VideoQuestionRequest): Promise<VideoQuestionAnswer>;
-  searchVideos(filters: SearchFilters, pageToken?: string | null): Promise<SearchResult>;
+  searchVideos(filters: SearchFilters, pageToken?: string | null, useAi?: boolean): Promise<SearchResult>;
+  resetSearchQuota(): Promise<{ remainingSearches: number }>;
   listSaved(): Promise<{ saved: SavedItem[]; searchEnabled: boolean }>;
   saveVideo(video: VideoMeta, category: string): Promise<{ item: SavedItem; created: boolean }>;
   updateSaved(videoId: string, changes: Partial<Pick<SavedItem, 'note' | 'tags' | 'favorite' | 'category'>>): Promise<{ item: SavedItem }>;

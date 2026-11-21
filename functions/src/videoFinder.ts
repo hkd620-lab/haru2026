@@ -32,6 +32,7 @@ import {
   createVideoFinderAccessService,
   createVideoFinderService,
   issueStandaloneSession,
+  isPolicyAccepted,
   mapAnalysisInfo,
   mapChannelSubscribers,
   mapVideoItem,
@@ -40,6 +41,7 @@ import {
   type VideoMeta,
   type YouTubeClient,
 } from './videoFinderCore';
+import { isInternalDeveloperUid } from './internalEntitlements';
 import { createFirestoreVideoFinderAccessStore, createFirestoreVideoFinderStore, expireSavedMetaIfStale } from './videoFinderStore';
 
 if (!admin.apps.length) {
@@ -51,7 +53,7 @@ const REGION = 'asia-northeast3';
 
 // 운영자가 Secret Manager에 별도로 만들어야 한다. 다른 기능의 키를 재사용하지 않는다.
 const VIDEO_FINDER_YOUTUBE_API_KEY = defineSecret('VIDEO_FINDER_YOUTUBE_API_KEY');
-// 영상 AI 질문 전용 Gemini 키. 운영자가 Secret Manager에 별도로 만들어야 한다(다른 기능 키 재사용 금지).
+// 내 영상 찾기 Gemini 키. 영상 질문과 선택형 자연어 검색의 한도는 각 호출 경로에서 관리한다.
 const VIDEO_FINDER_GEMINI_API_KEY = defineSecret('VIDEO_FINDER_GEMINI_API_KEY');
 
 const firestoreStore = createFirestoreVideoFinderStore(db, admin.auth());
@@ -188,11 +190,16 @@ async function runService<T>(task: () => Promise<T>): Promise<T> {
   }
 }
 
-function serviceFor() {
+function serviceFor(withSearchAi = false) {
   return createVideoFinderService({
     store: firestoreStore,
     youtube: createYouTubeClient(VIDEO_FINDER_YOUTUBE_API_KEY.value()),
     now: Date.now,
+    interpretSearch: withSearchAi ? async (uid, query) => {
+      if (!(await firestoreAccessStore.getConfig()).searchAiEnabled) return null;
+      if (!isPolicyAccepted(await firestoreAccessStore.readPolicy(uid))) return null;
+      return createGeminiVideoClient({ apiKey: VIDEO_FINDER_GEMINI_API_KEY.value() }).interpretSearch(query);
+    } : undefined,
   });
 }
 
@@ -222,6 +229,8 @@ function accessServiceFor(withAi: boolean) {
         answerFromRecap: (input) => logged('recap', () => client.answerFromRecap(input)),
       };
     },
+    canResetSearchQuota: isInternalDeveloperUid,
+    resetSearchQuota: (uid, nowMs) => firestoreStore.resetUserSearchQuota(uid, nowMs),
     // 공개 여부·길이 확인(videos.list 1단위)도 기존 전체 YouTube 할당량 카운터에 선예약한다.
     reserveYouTube: async (uid, nowMs) => {
       const limits = await firestoreStore.getLimits();
@@ -231,11 +240,11 @@ function accessServiceFor(withAi: boolean) {
 }
 
 export const videoFinderSearch = onCall(
-  { region: REGION, secrets: [VIDEO_FINDER_YOUTUBE_API_KEY], timeoutSeconds: 30, memory: '256MiB', maxInstances: 10 },
+  { region: REGION, secrets: [VIDEO_FINDER_YOUTUBE_API_KEY, VIDEO_FINDER_GEMINI_API_KEY], timeoutSeconds: 30, memory: '256MiB', maxInstances: 10 },
   async (request) => {
     const uid = await requireActiveUid(request);
     await runService(() => accessServiceFor(false).requirePolicyFor(uid, 'search', request.data));
-    return runService(() => serviceFor().search(uid, request.data));
+    return runService(() => serviceFor(true).search(uid, request.data));
   },
 );
 
@@ -294,7 +303,7 @@ export const videoFinderStandalone = onCall(
     const gateway = createStandaloneGateway({
       store: firestoreStore,
       now: Date.now,
-      service: serviceFor,
+      service: () => serviceFor(true),
       beforeLibrary: (uid) => enforceRateLimit(uid, 'videoFinderLibrary', 60, 600),
       access: () => accessServiceFor(true),
       beforeAccess: (uid) => enforceRateLimit(uid, VIDEO_FINDER_ACCESS_RATE_FEATURE, 30, 300),

@@ -15,6 +15,7 @@ import {
   SUBSCRIBER_OPTIONS,
   VIDEO_FINDER_TOPICS,
   VIDEO_FINDER_POLICY_VERSION,
+  MAX_SEARCH_QUERY_LENGTH,
   describeFilters,
   filtersFromSearchParams,
   filtersToSearchParams,
@@ -326,14 +327,17 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
 
   useEffect(() => { setDraft(urlFilters); setFormError(''); }, [urlFilters]);
 
-  const activeSearch = useRef<{ key: string } | null>(null);
+  const [resettingQuota, setResettingQuota] = useState(false);
+  const pendingAiSearchKey = useRef<string | null>(null);
+  const aiSearchLocation = useRef<string | null>(null);
+  const activeSearch = useRef<{ key: string; cacheKey: string } | null>(null);
   const lastSearchKey = useRef('');
   if (searchKey) lastSearchKey.current = searchKey;
 
-  const runSearch = useCallback(async (key: string, filters: SearchFilters, force = false) => {
-    const request = { key };
+  const runSearch = useCallback(async (key: string, filters: SearchFilters, force = false, useAi = false) => {
+    const cacheKey = `${uid}|${useAi ? 'ai|' : ''}${key}`;
+    const request = { key, cacheKey };
     activeSearch.current = request;
-    const cacheKey = `${uid}|${key}`;
     if (!force && searchCache.has(cacheKey)) {
       setSearchState(searchCache.get(cacheKey)!);
       return;
@@ -344,7 +348,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
     try {
       let pending = pendingSearches.get(cacheKey);
       if (!pending) {
-        pending = client.searchVideos(filters);
+        pending = client.searchVideos(filters, undefined, useAi);
         pendingSearches.set(cacheKey, pending);
       }
       const result = await pending.finally(() => pendingSearches.delete(cacheKey));
@@ -367,13 +371,17 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
 
   useEffect(() => {
     if (!searchKey || !uid) { activeSearch.current = null; setSearchState(null); return; }
-    void runSearch(searchKey, urlFilters);
-  }, [searchKey, uid, urlFilters, runSearch]);
+    if (pendingAiSearchKey.current === searchKey) {
+      aiSearchLocation.current = location.key;
+      pendingAiSearchKey.current = null;
+    }
+    void runSearch(searchKey, urlFilters, false, aiSearchLocation.current === location.key);
+  }, [searchKey, uid, urlFilters, runSearch, location.key]);
 
   const loadMore = async () => {
     const request = activeSearch.current;
     if (!request || request.key !== searchKey || !searchState?.nextPageToken || searchState.loadingMore) return;
-    const cacheKey = `${uid}|${request.key}`;
+    const { cacheKey } = request;
     const cachedAtStart = searchCache.get(cacheKey);
     const current = { ...searchState, loadingMore: true, moreError: '' };
     setSearchState(current);
@@ -413,12 +421,30 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
     }
     setFormError('');
     const key = filtersToSearchParams(filters).toString();
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const useAi = access.searchAiEnabled === true && submitter instanceof HTMLButtonElement && submitter.value === 'ai';
     if (key === searchKey && tab === 'search') {
-      void runSearch(key, filters, searchState?.status === 'error');
+      aiSearchLocation.current = useAi ? location.key : null;
+      void runSearch(key, filters, searchState?.status === 'error', useAi);
       return;
     }
+    pendingAiSearchKey.current = useAi ? key : null;
     navigate(`${pathFor('')}?${key}`);
   };
+
+  async function resetSearchQuota() {
+    setResettingQuota(true);
+    setActionError('');
+    try {
+      const { remainingSearches: remaining } = await client.resetSearchQuota();
+      setRemainingSearches(remaining);
+      setStatus('오늘 내 검색 횟수를 초기화했어요.');
+    } catch (error) {
+      setActionError(friendlyErrorMessage(error));
+    } finally {
+      setResettingQuota(false);
+    }
+  }
 
   const toggleSave = async (video: VideoMeta) => {
     setActionError('');
@@ -603,20 +629,32 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
             <form onSubmit={submitSearch} noValidate className="rounded-2xl border border-[#dce3d2] bg-white p-4 sm:p-5">
               <label htmlFor="vf-query" className="block text-lg font-bold">무엇을 찾을까요?</label>
               <div className="mt-2 flex flex-wrap gap-2">
-                <input
+                <textarea
                   id="vf-query"
-                  type="search"
+                  rows={2}
+                  role="searchbox"
                   enterKeyHint="search"
                   value={draft.query}
-                  maxLength={200}
+                  maxLength={MAX_SEARCH_QUERY_LENGTH}
                   onChange={(e) => setDraft({ ...draft, query: e.target.value })}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+                    event.preventDefault();
+                    event.currentTarget.form?.requestSubmit();
+                  }}
                   aria-describedby="vf-query-help"
                   aria-invalid={formError ? true : undefined}
-                  className={`${fieldClass} min-h-[52px] flex-[1_1_14rem] text-lg`}
+                  className={`${fieldClass} min-h-[52px] flex-[1_1_14rem] resize-y text-lg`}
                 />
-                <button type="submit" className={`${btnPrimary} min-h-[52px] flex-[0_0_auto] px-6 text-lg`}>찾기</button>
+                <button type="submit" className={`${btnPrimary} min-h-[52px] flex-[0_0_auto] self-start px-6 text-lg`}>찾기</button>
               </div>
-              <p id="vf-query-help" className="mt-2 text-base leading-7 text-[#46524a]">예: 텃밭 토마토 지지대, 무릎에 좋은 운동</p>
+              <p id="vf-query-help" className="mt-2 text-base leading-7 text-[#46524a]">짧게 적어도 돼요. 예를 들어 ‘치과 소식’, ‘무릎에 좋은 운동’처럼요.</p>
+              {access.searchAiEnabled && (
+                <div className="mt-3 rounded-lg bg-[#f7faed] p-3">
+                  <p id="vf-ai-search-help" className="mb-2 text-base leading-7">긴 문장을 AI가 해석하도록 검색어를 Google Gemini에 보내요. 개인정보는 적지 마세요. <a href={`${haruOrigin}/privacy#video-finder-search-ai`} className="font-semibold underline" target="_blank" rel="noopener noreferrer">정보 전송 안내 ↗</a></p>
+                  <button type="submit" value="ai" className={btnSecondary} aria-describedby="vf-ai-search-help" disabled={!draft.query.trim()}>동의하고 AI로 찾기</button>
+                </div>
+              )}
 
               <fieldset className="mt-4">
                 <legend className="text-base font-bold">관심 분야 (고르지 않아도 돼요)</legend>
@@ -673,11 +711,16 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
               </details>
               {formError && <p role="alert" className="mt-3 text-base font-semibold text-[#8a2f22]">{formError}</p>}
               {remainingSearches !== null && <p className="mt-3 text-base text-[#46524a]">오늘 남은 검색 {remainingSearches}회 · ‘더 보기’도 1회로 세요.</p>}
+              {access.canResetSearchQuota && (
+                <button type="button" className={`${btnSecondary} mt-3`} disabled={resettingQuota} onClick={() => void resetSearchQuota()}>
+                  {resettingQuota ? '초기화하는 중…' : '오늘 내 검색 횟수 초기화'}
+                </button>
+              )}
             </form>
 
             {searchState?.status === 'loading' && <p className="mt-6 text-lg">영상을 찾고 있어요…</p>}
             {searchState?.status === 'error' && (
-              <ErrorBox message={searchState.error} onRetry={() => void runSearch(searchKey, urlFilters, true)} />
+              <ErrorBox message={searchState.error} onRetry={() => void runSearch(searchKey, urlFilters, true, aiSearchLocation.current === location.key)} />
             )}
             {searchState?.status === 'ready' && (
               <div className="mt-6">
@@ -805,7 +848,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
         {questionVideo && (
           <VideoQuestionDialog key={questionVideo.videoId} video={questionVideo} access={access} client={client} haruOrigin={haruOrigin}
             onClose={() => setQuestionVideo(null)} onPrepareNote={prepareAnswerNote}
-            onAccess={(latest) => { accessRevision.current += 1; setAccess(latest); }} />
+            onAccess={(latest) => { accessRevision.current += 1; setAccess({ ...access, ...latest }); }} />
         )}
       </div>
     </div>

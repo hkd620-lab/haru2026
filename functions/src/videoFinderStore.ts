@@ -78,6 +78,7 @@ function toSessionRecord(data: DocumentData | undefined): SessionRecord | null {
 
 export function createFirestoreVideoFinderStore(db: Firestore, auth: Auth): VideoFinderStore & {
   readLimits(): Promise<VideoFinderLimits>;
+  resetUserSearchQuota(uid: string, nowMs: number): Promise<number>;
 } {
   const userRef = (uid: string) => db.collection('users').doc(uid);
   const savedCol = (uid: string) => userRef(uid).collection(VIDEO_FINDER_SAVED_COLLECTION);
@@ -91,6 +92,15 @@ export function createFirestoreVideoFinderStore(db: Firestore, auth: Auth): Vide
   }
 
   return {
+    async resetUserSearchQuota(uid: string, nowMs: number) {
+      const ref = rateLimitRef(uid, VIDEO_FINDER_USER_QUOTA_FEATURE);
+      await db.runTransaction(async (tx) => {
+        const account = await tx.get(userRef(uid));
+        assertActiveAccount(account.data());
+        tx.set(ref, { day: dayKey(nowMs, USER_QUOTA_TIME_ZONE), count: 0, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      });
+      return (await readLimits()).userDailySearches;
+    },
     readLimits,
     getLimits: readLimits,
 
@@ -279,7 +289,7 @@ export function createFirestoreVideoFinderAccessStore(db: Firestore): VideoFinde
     async getConfig() {
       const snap = await db.doc(VIDEO_FINDER_CONFIG_DOC).get();
       const data = snap.exists ? snap.data() : undefined;
-      return { questionsEnabled: data?.questionsEnabled === true, policyRequired: data?.policyRequired === true };
+      return { questionsEnabled: data?.questionsEnabled === true, policyRequired: data?.policyRequired === true, searchAiEnabled: data?.searchAiEnabled === true };
     },
 
     async readPolicy(uid) {

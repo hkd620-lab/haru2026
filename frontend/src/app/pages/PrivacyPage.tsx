@@ -100,6 +100,10 @@ export function PrivacyPage() {
         <h2 id="video-finder-privacy-heading" className="font-bold text-[#1A3C6E]">내 영상 찾기 개인정보 안내</h2>
         <p>공개 영상 정보를 표시하기 위해 YouTube API 서비스를 사용합니다. 영상 자료와 서비스 제공자의 정보 처리 방식은 <a className="underline" href="https://policies.google.com/privacy">Google 개인정보처리방침</a>에서 확인할 수 있습니다.</p>
         <p>HARU 계정에 동의 기록, 지난 검색 조건, 영상 주소, 직접 쓴 메모·태그와 프리미엄 이용량을 연결합니다. 제목·썸네일 등 영상 정보는 필요한 기간 동안 보관하고 30일 이내에 갱신하거나 지웁니다. 작성 중인 메모는 브라우저에도 임시로 남을 수 있습니다.</p>
+        <div id="video-finder-search-ai" className="space-y-2">
+          <h3 className="font-bold">자연어 검색 정보 전송 안내</h3>
+          <p>‘동의하고 AI로 찾기’를 누르면 검색 문장을 해석하기 위해 Google의 유료 Gemini API에 HTTPS로 전송합니다. 전송 받는 주체와 처리 국가, Google의 55일간 보관 기준은 아래 안내와 같습니다. 검색어에 개인정보를 넣지 마세요. ‘찾기’를 사용하면 이 해석 절차 없이 YouTube에서 찾습니다.</p>
+        </div>
         <div id="video-finder-ai" className="space-y-2">
           <h3 className="font-bold">프리미엄 영상 질문 개인정보 국외 이전 안내</h3>
           <p>별도 동의 후 질문을 보낼 때, 영상 분석과 답변 생성을 위해 Google의 유료 Gemini API에 공개 영상 주소(최초 분석 시), 질문, 필요한 범위의 이전 질문과 답변·근거 요약을 HTTPS로 전송합니다. Google(한국 청구 주소 기준 Google Asia Pacific Pte. Ltd. 및 그 계열사)은 미국 등 Google 또는 그 대리인이 시설을 운영하는 국가에 이 정보를 일시 저장할 수 있습니다.</p>

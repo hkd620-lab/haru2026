@@ -202,3 +202,35 @@ test('실제 Firestore에서 프리미엄만 예약하고 동시 호출·재시�
   await assert.rejects(access.handle(uid, question), (error) => error.code === 'failed-precondition');
   assert.equal(modelCalls, 1);
 });
+
+
+test('개발자 초기화는 자신의 한국 시간 검색 횟수만 돌려놓고 프로젝트 전체 사용량은 보존한다', async () => {
+  const developer = `vf-dev-${Date.now()}`;
+  const ordinary = `vf-basic-${Date.now()}`;
+  await Promise.all([activeUser(developer), activeUser(ordinary)]);
+  const day = core.dayKey(NOW, core.USER_QUOTA_TIME_ZONE);
+  const globalDay = core.dayKey(NOW, core.GLOBAL_QUOTA_TIME_ZONE);
+  const developerCounter = db.doc(`users/${developer}/rateLimits/videoFinderSearch`);
+  const ordinaryCounter = db.doc(`users/${ordinary}/rateLimits/videoFinderSearch`);
+  const globalCounter = db.doc(`videoFinderQuota/${globalDay}`);
+  await Promise.all([
+    developerCounter.set({ day, count: 5 }),
+    ordinaryCounter.set({ day, count: 3 }),
+    globalCounter.set({ day: globalDay, units: 102 }),
+  ]);
+  const access = core.createVideoFinderAccessService({
+    store: createFirestoreVideoFinderAccessStore(db),
+    now: () => NOW,
+    youtube: () => { throw new Error('unexpected YouTube call'); },
+    model: () => { throw new Error('unexpected Gemini call'); },
+    canResetSearchQuota: (uid) => uid === developer,
+    resetSearchQuota: (uid, ms) => store.resetUserSearchQuota(uid, ms),
+  });
+  const reset = { action: 'resetSearchQuota', uid: ordinary };
+  await assert.rejects(access.handle(ordinary, { ...reset, uid: developer }), (error) => error.code === 'permission-denied');
+  assert.equal((await access.handle(developer, { action: 'status' })).canResetSearchQuota, true);
+  assert.equal((await access.handle(developer, reset)).remainingSearches, (await store.getLimits()).userDailySearches);
+  assert.deepEqual((await developerCounter.get()).data().count, 0);
+  assert.deepEqual((await ordinaryCounter.get()).data().count, 3);
+  assert.deepEqual((await globalCounter.get()).data().units, 102);
+});

@@ -187,6 +187,20 @@ test('전용 주소의 동의와 영상 질문은 같은 세션으로 서버 권
   assert.equal(youtubeWatchUrl(request.videoId, -1), 'https://www.youtube.com/watch?v=abcdefghijk');
 });
 
+test('독립 사이트도 AI 검색에 동의한 첫 페이지에만 동의 버전을 보내고 초기화 대상 계정을 보내지 않는다', async () => {
+  const f = fakeFetch([{}, {}, { remainingSearches: 20 }].map((result) => ({ body: { result } })));
+  const client = createStandaloneClient(createStandaloneCaller(standaloneEndpoint('demo-project'), () => ISSUED.session, f.impl));
+  const filters = { ...DEFAULT_FILTERS, query: '최근 2주 부산 치과 소식' };
+  await client.searchVideos(filters);
+  await client.searchVideos(filters, undefined, true);
+  assert.equal((await client.resetSearchQuota()).remainingSearches, 20);
+  assert.deepEqual(f.calls.map(({ init }) => JSON.parse(init.body).data.payload), [
+    { filters },
+    { filters, searchAiConsentVersion: 1 },
+    { action: 'resetSearchQuota' },
+  ]);
+});
+
 test('전용 호출: 서버 오류 코드는 화면이 이해하는 형식으로 바뀌고 세션이 없으면 요청하지 않는다', async () => {
   const f = fakeFetch([{ ok: false, status: 401, body: { error: { status: 'UNAUTHENTICATED', message: '로그인 연결이 끝났어요.' } } }]);
   const call = createStandaloneCaller('https://x', () => ISSUED.session, f.impl);

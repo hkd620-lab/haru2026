@@ -5,7 +5,7 @@ import { VIDEO_FINDER_AI_CONSENT_VERSION, friendlyErrorMessage, youtubeWatchUrl,
 
 export type VideoQuestionTarget = { videoId: string; title: string };
 
-type Turn = { requestId: string; question: string; answer: string; timestamps: number[] };
+type Turn = { requestId: string; question: string; answer: string; timestamps: number[]; needsClarification?: boolean };
 type Props = {
   video: VideoQuestionTarget;
   access: VideoFinderAccess;
@@ -60,10 +60,10 @@ export function VideoQuestionDialog({ video, access, client, haruOrigin, onAcces
     try {
       const requestId = lastAttempt.current?.question === text ? lastAttempt.current.id : createNonce();
       lastAttempt.current = { question: text, id: requestId };
-      const previousRequestIds = turns.slice(-3).map((turn) => turn.requestId);
-      const { answer, timestamps, status } = await client.askQuestion({ requestId, videoId: video.videoId, question: text, previousRequestIds });
+      const previousRequestIds = turns.filter((turn) => !turn.needsClarification).slice(-3).map((turn) => turn.requestId);
+      const { answer, timestamps, needsClarification, status } = await client.askQuestion({ requestId, videoId: video.videoId, question: text, previousRequestIds });
       lastAttempt.current = undefined;
-      setTurns((current) => [...current, { requestId, question: text, answer, timestamps }]);
+      setTurns((current) => [...current, { requestId, question: text, answer, timestamps, needsClarification }]);
       setQuestion((current) => current.trim() === text ? '' : current);
       onAccess(status);
     } catch (error) {
@@ -122,7 +122,9 @@ export function VideoQuestionDialog({ video, access, client, haruOrigin, onAcces
                         ))}
                       </div>
                     )}
-                    <button type="button" className={secondary} onClick={() => setNote(turn.answer.slice(0, 2000))}>답변을 메모로 옮기기</button>
+                    {!turn.needsClarification && (
+                      <button type="button" className={secondary} onClick={() => setNote(turn.answer.slice(0, 2000))}>답변을 메모로 옮기기</button>
+                    )}
                   </li>
                 ))}
               </ol>

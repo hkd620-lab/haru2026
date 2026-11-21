@@ -12,7 +12,7 @@ const {
   SEARCH_RESERVATION_UNITS, USER_QUOTA_TIME_ZONE, GLOBAL_QUOTA_TIME_ZONE, sanitizeVideoMeta, DATE_RELEVANCE_CURSOR,
   assertActiveAccount, planMetaUpdate, MAX_SAVED_PER_USER, META_PURGE_INTERVAL_HOURS, DEFAULT_VIDEO_FINDER_LIMITS,
   SEARCH_LIST_UNITS, issueStandaloneSession, createStandaloneGateway, hashSessionToken, accountKeyFor,
-  VIDEO_FINDER_SESSION_TTL_MS, VIDEO_FINDER_STANDALONE_ORIGINS,
+  VIDEO_FINDER_SESSION_TTL_MS, VIDEO_FINDER_STANDALONE_ORIGINS, MAX_QUERY_LENGTH, SEARCH_AI_CONSENT_VERSION,
 } = core;
 
 const NOW = Date.UTC(2026, 10, 20, 3, 0, 0); // 2026-11-20 12:00 KST
@@ -258,7 +258,7 @@ test('필수 조건: 전체 분야에서는 검색어가 필요하고 지원하�
   assert.throws(() => validateFilters({ ...baseFilters, period: 'custom' }));
   assert.throws(() => validateFilters({ ...baseFilters, period: 'custom', dateFrom: '2026-02-30' }));
   assert.throws(() => validateFilters({ ...baseFilters, period: 'custom', dateFrom: '2026-11-20', dateTo: '2026-11-01' }));
-  assert.throws(() => validateFilters({ ...baseFilters, query: 'a'.repeat(201) }));
+  assert.throws(() => validateFilters({ ...baseFilters, query: 'a'.repeat(MAX_QUERY_LENGTH + 1) }));
 });
 
 test('기간은 한국 날짜 0시 기준 UTC로 바뀌고 관심 분야가 검색어에 더해진다', () => {
@@ -269,6 +269,60 @@ test('기간은 한국 날짜 0시 기준 UTC로 바뀌고 관심 분야가 검�
   assert.equal(params.type, 'video');
   assert.equal(params.order, 'relevance');
   assert.equal('key' in params, false, '키는 검색 인자에 넣지 않는다');
+});
+
+test('일반 검색은 흔한 맞춤법·띄어쓰기를 고치고 내가 쓴 원래 조건은 이력에 저장한다', async () => {
+  const store = memoryStore();
+  const yt = fakeYouTube();
+  const svc = service(store, yt);
+  const query = '치꽈관련소식 좀 알려줘';
+  const result = await svc.search('uidA', { filters: { ...baseFilters, query } });
+  assert.equal(yt.calls.search[0].q, '치과 관련 소식');
+  assert.match(result.notice, /치과 관련 소식/);
+  assert.equal((await svc.library('uidA', { action: 'history' })).history[0].query, query);
+  assert.equal(core.normalizeSearchQuery('무릅 운동'), '무릎 운동');
+  assert.equal(core.normalizeSearchQuery('"무릅" -음악'), '"무릅" -음악');
+});
+
+test('동의한 긴 검색만 해석하고, 다음 페이지는 같은 검색어와 기간을 재사용하며 명시 조건을 보존한다', async () => {
+  const store = memoryStore();
+  const yt = fakeYouTube({ searchPages: [{ nextPageToken: 'NEXT1' }, {}, {}] });
+  const input = '요즘 나온 치꽈 영상이 궁금해요. 최근 2주 동안 틀니 쓰는 은퇴자가 알아 두면 좋은 부산 지역 새 소식, 병원 광고는 빼 주세요.';
+  const calls = [];
+  const svc = createVideoFinderService({ store, youtube: yt, now: () => NOW, interpretSearch: async (uid, query) => {
+    calls.push({ uid, query });
+    return { query: '부산 은퇴자 틀니 치과 소식 -광고', recentDays: 14 };
+  } });
+  const filters = { ...baseFilters, query: input, minSubscribers: 10000, duration: 'short' };
+  const first = await svc.search('uidA', { filters, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
+  assert.deepEqual(calls, [{ uid: 'uidA', query: input }]);
+  assert.match(first.notice, /최근 14일/);
+  const second = await svc.search('uidA', { filters, pageToken: first.nextPageToken, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
+  assert.equal(calls.length, 1);
+  assert.deepEqual(yt.calls.search[1], { ...yt.calls.search[0], pageToken: 'NEXT1' });
+  assert.equal(yt.calls.search[0].publishedAfter, '2026-11-06T15:00:00Z');
+  assert.equal(yt.calls.search[0].videoDuration, 'short');
+  assert.match(second.notice, /AI가/);
+  await svc.search('uidA', { filters: { ...filters, period: 'today' }, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
+  assert.equal(yt.calls.search[2].publishedAfter, '2026-11-19T15:00:00Z');
+  assert.equal(calls.length, 2);
+});
+
+test('동의 없는 검색은 모델을 부르지 않고, 공급자 오류가 나도 같은 필터로 일반 검색을 실행한다', async () => {
+  const store = memoryStore();
+  const yt = fakeYouTube();
+  let calls = 0;
+  const svc = createVideoFinderService({ store, youtube: yt, now: () => NOW, interpretSearch: async () => {
+    calls++;
+    throw new Error('timeout');
+  } });
+  const filters = { ...baseFilters, period: 'week', query: '임플란투 비용 찾아줘' };
+  await svc.search('uidA', { filters });
+  assert.equal(calls, 0);
+  await svc.search('uidA', { filters, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
+  assert.equal(calls, 1);
+  assert.deepEqual(yt.calls.search[0], yt.calls.search[1]);
+  assert.equal(yt.calls.search[0].q, '임플란트 비용');
 });
 
 test('페이지 토큰은 형식이 맞을 때만 받는다', () => {
@@ -734,17 +788,17 @@ test('Functions 연결부: 리전·Secret 참조·UID 도출·유료 AI는 질�
   assert.ok(!/AIza[0-9A-Za-z_-]{10,}/.test(src), 'API 키 문자열이 없어야 한다');
   assert.ok(src.includes('request.auth?.uid'));
   assert.ok(!/request\.data\??\.uid/.test(src), '클라이언트가 보낸 uid를 쓰지 않는다');
-  // 유료 AI(Gemini)는 영상 질문 경로에만: 전용 시크릿, 검색·보관함 함수에는 바인딩하지 않음, Jev 미연결.
+  // Gemini는 영상 질문·동의한 자연어 검색에만 사용. 보관함·세션 발급에 시크릿을 바인딩하지 않는다.
   const code = src.replace(/\/\/.*$/gm, '');
   assert.ok(!/typesafe|jev/i.test(code), 'Jev 등 다른 유료 AI 호출 코드가 없어야 한다');
   assert.ok(src.includes("defineSecret('VIDEO_FINDER_GEMINI_API_KEY')"));
-  assert.equal((code.match(/createGeminiVideoClient\(/g) || []).length, 1);
-  for (const name of ['videoFinderSearch', 'videoFinderLibrary', 'createVideoFinderSession']) {
+  assert.equal((code.match(/createGeminiVideoClient\(/g) || []).length, 2);
+  for (const name of ['videoFinderLibrary', 'createVideoFinderSession']) {
     const start = code.indexOf(`export const ${name}`);
     const fn = code.slice(start, code.indexOf('export const', start + 10));
     assert.ok(!/GEMINI/.test(fn), `${name}에는 Gemini 시크릿을 바인딩하지 않는다`);
   }
-  for (const name of ['videoFinderAccess', 'videoFinderStandalone']) {
+  for (const name of ['videoFinderSearch', 'videoFinderAccess', 'videoFinderStandalone']) {
     const start = code.indexOf(`export const ${name}`);
     const fn = code.slice(start, code.indexOf('export const', start + 10));
     assert.ok(fn.includes('VIDEO_FINDER_GEMINI_API_KEY'), `${name}에는 Gemini 시크릿을 바인딩한다`);
