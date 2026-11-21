@@ -457,6 +457,7 @@ test('베스트 오퍼 줄거리에서 추정된 제목으로 검색하고 다�
     modelRequests.push(JSON.parse(init.body));
     return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({
       query: '명화 중개인 의뢰인 사랑 사기 영화', movieTitle: '베스트 오퍼', recentDays: 0,
+      matchedClues: ['경매사가 미술품 감정을 의뢰받음', '의뢰인과 사랑에 빠졌다가 사기를 당함'],
     }) }] } }] }) };
   } });
   const store = memoryStore();
@@ -470,7 +471,7 @@ test('베스트 오퍼 줄거리에서 추정된 제목으로 검색하고 다�
   assert.equal(first.videos.length, 1);
   assert.equal(yt.calls.search[0].q, '베스트 오퍼 영화');
   assert.equal(modelRequests[0].contents[0].parts[0].text, input);
-  assert.ok(modelRequests[0].generationConfig.responseSchema.required.includes('movieTitle'));
+  assert.deepEqual(modelRequests[0].generationConfig.responseSchema.required, ['matchedClues', 'movieTitle', 'query', 'recentDays']);
   assert.match(modelRequests[0].systemInstruction.parts[0].text, /미술품 경매사.*베스트 오퍼/);
   const next = await svc.search('uidA', { filters, pageToken: first.nextPageToken });
   assert.match(next.notice, /《베스트 오퍼》/);
@@ -489,12 +490,28 @@ test('추정 제목은 다른 작품명과 구분하고 검색 형식과 제외 
   for (const { movieTitle, query, expected } of cases) {
     const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async () => ({
       ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({
-        query, movieTitle, recentDays: 0,
+        query, movieTitle, recentDays: 0, matchedClues: ['주인공의 소속과 상황', '핵심 사건과 인물의 결정'],
       }) }] } }] }),
     }) });
     assert.deepEqual(await gemini.interpretSearch('줄거리로 영화 찾아줘'), {
       query: expected, recentDays: 0, movieTitle,
     });
+  }
+});
+
+test('줄거리로 추정한 제목은 서로 다른 단서 두 개가 있을 때만 사용한다', async () => {
+  const input = '할머니가 세상을 떠난 뒤 엄마의 어린 시절 집을 정리하러 간 소녀가 숲에서 자기 또래 아이를 만나는데, 그 아이가 어린 시절의 엄마였던 영화';
+  const matchedClues = ['할머니가 떠난 뒤 엄마의 어린 시절 집으로 감', '숲에서 어린 시절의 엄마를 같은 나이로 만남'];
+  for (const [clues, expected] of [[matchedClues, '쁘띠 마망'], [[], undefined], [[matchedClues[0], matchedClues[0]], undefined]]) {
+    const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async (_url, init) => {
+      const request = JSON.parse(init.body);
+      assert.doesNotMatch(request.systemInstruction.parts[0].text, /쁘띠\s*마망|Petite Maman/i);
+      assert.equal(request.contents[0].parts[0].text, input);
+      return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({
+        matchedClues: clues, movieTitle: '쁘띠 마망', query: '쁘띠 마망 영화', recentDays: 0,
+      }) }] } }] }) };
+    } });
+    assert.equal((await gemini.interpretSearch(input))?.movieTitle, expected);
   }
 });
 
