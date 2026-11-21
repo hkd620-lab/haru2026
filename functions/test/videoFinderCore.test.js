@@ -453,7 +453,8 @@ test('동의한 긴 검색만 해석하고, 다음 페이지는 같은 검색어
 test('베스트 오퍼 줄거리에서 추정된 제목으로 검색하고 다음 페이지에서도 재사용한다', async () => {
   const input = '명화를 중계하는 중계인이 어떤미모이 의뢰인을 사랑하게 되지만 이 여자에게 큰 사기를당하는 영화';
   const modelRequests = [];
-  const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async (_url, init) => {
+  const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async (url, init) => {
+    assert.match(url, /\/models\/gemini-3\.8-flash:generateContent$/);
     modelRequests.push(JSON.parse(init.body));
     return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({
       query: '명화 중개인 의뢰인 사랑 사기 영화', movieTitle: '베스트 오퍼', recentDays: 0,
@@ -503,8 +504,10 @@ test('줄거리로 추정한 제목은 서로 다른 단서 두 개가 있을 �
   const input = '할머니가 세상을 떠난 뒤 엄마의 어린 시절 집을 정리하러 간 소녀가 숲에서 자기 또래 아이를 만나는데, 그 아이가 어린 시절의 엄마였던 영화';
   const matchedClues = ['할머니가 떠난 뒤 엄마의 어린 시절 집으로 감', '숲에서 어린 시절의 엄마를 같은 나이로 만남'];
   for (const [clues, expected] of [[matchedClues, '쁘띠 마망'], [[], undefined], [[matchedClues[0], matchedClues[0]], undefined]]) {
-    const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async (_url, init) => {
+    const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async (url, init) => {
+      assert.match(url, /\/models\/gemini-3\.8-flash:generateContent$/);
       const request = JSON.parse(init.body);
+      assert.equal(request.generationConfig.thinkingConfig.thinkingLevel, 'MEDIUM');
       assert.doesNotMatch(request.systemInstruction.parts[0].text, /쁘띠\s*마망|Petite Maman/i);
       assert.equal(request.contents[0].parts[0].text, input);
       return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({
@@ -512,6 +515,29 @@ test('줄거리로 추정한 제목은 서로 다른 단서 두 개가 있을 �
       }) }] } }] }) };
     } });
     assert.equal((await gemini.interpretSearch(input))?.movieTitle, expected);
+  }
+});
+
+test('작품 제목 찾기만 상위 모델로 보내고 일반 AI 검색은 기존 모델을 사용한다', async () => {
+  const inputs = [
+    ['기억나는 줄거리로 드라마 제목을 찾아줘', 'gemini-3.8-flash'],
+    ['기자가 용의자의 과거를 알게 되는 드라마', 'gemini-3.8-flash'],
+    ['첫사랑을 주제로 한 한국영화', 'gemini-3.5-flash-lite'],
+    ['미술품 경매에서 사기를 당하는 영화 추천', 'gemini-3.5-flash-lite'],
+    ['쁘띠 마망 영화 예고편', 'gemini-3.5-flash-lite'],
+    ['영화 제목 폰트 만드는 법', 'gemini-3.5-flash-lite'],
+  ];
+  for (const [query, expectedModel] of inputs) {
+    const requests = [];
+    const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async (url, init) => {
+      requests.push({ url, thinkingLevel: JSON.parse(init.body).generationConfig.thinkingConfig.thinkingLevel });
+      return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: '{"query":"검색어","recentDays":0}' }] } }] }) };
+    } });
+    await gemini.interpretSearch(query);
+    assert.deepEqual(requests, [{
+      url: `https://generativelanguage.googleapis.com/v1beta/models/${expectedModel}:generateContent`,
+      thinkingLevel: expectedModel === 'gemini-3.8-flash' ? 'MEDIUM' : 'MINIMAL',
+    }], query);
   }
 });
 
