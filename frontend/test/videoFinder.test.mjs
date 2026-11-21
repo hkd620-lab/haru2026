@@ -31,7 +31,7 @@ test('검색 조건은 주소로 왕복해도 같고, 기본값은 주소에 남
 });
 
 test('주소에 들어온 잘못된 값은 기본값으로 돌린다', () => {
-  const f = filtersFromSearchParams(new URLSearchParams('q=x&cat=해킹&subs=7&period=custom&from=bad&len=huge&sort=rating'));
+  const f = filtersFromSearchParams(new URLSearchParams('q=x&cat=%3Cscript%3E&subs=7&period=custom&from=bad&len=huge&sort=rating'));
   assert.equal(f.category, ALL_TOPICS);
   assert.equal(f.minSubscribers, 0);
   assert.equal(f.dateFrom, '');
@@ -42,6 +42,14 @@ test('주소에 들어온 잘못된 값은 기본값으로 돌린다', () => {
 test('검색어도 분야도 없으면 검색하지 않는다', () => {
   assert.equal(hasSearch(DEFAULT_FILTERS), false);
   assert.equal(hasSearch({ ...DEFAULT_FILTERS, category: '건강' }), true);
+});
+
+test('직접 추가한 관심 분야와 좋아요 순위를 주소에서 복원한다', () => {
+  const filters = { ...DEFAULT_FILTERS, category: '텃밭 가꾸기', sort: 'date' };
+  assert.deepEqual(filtersFromSearchParams(filtersToSearchParams(filters)), filters);
+  const ranking = { ...DEFAULT_FILTERS, sort: 'likeCount' };
+  assert.equal(hasSearch(ranking), true);
+  assert.deepEqual(filtersFromSearchParams(filtersToSearchParams(ranking)), ranking);
 });
 
 test('조건 요약·숫자·길이·날짜를 쉬운 한국어로 보여준다', () => {

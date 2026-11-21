@@ -16,6 +16,8 @@ import {
   VIDEO_FINDER_TOPICS,
   VIDEO_FINDER_POLICY_VERSION,
   MAX_SEARCH_QUERY_LENGTH,
+  MAX_TOPIC_LENGTH,
+  normalizeTopic,
   describeFilters,
   filtersFromSearchParams,
   filtersToSearchParams,
@@ -321,6 +323,22 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
   const urlFilters = useMemo(() => filtersFromSearchParams(new URLSearchParams(location.search)), [location.search]);
   const searchKey = tab === 'search' && hasSearch(urlFilters) ? filtersToSearchParams(urlFilters).toString() : '';
   const [draft, setDraft] = useState<SearchFilters>(urlFilters);
+  const topicStorageKey = `haru-video-finder-topics:${uid}`;
+  const [customTopics, setCustomTopics] = useState<string[]>(() => {
+    try {
+      const stored: unknown = JSON.parse(readDraft(topicStorageKey) ?? '[]');
+      return Array.isArray(stored)
+        ? [...new Set(stored.map(normalizeTopic).filter((topic): topic is string => topic !== null))]
+          .filter((topic) => topic !== ALL_TOPICS && !VIDEO_FINDER_TOPICS.includes(topic)).slice(0, 20)
+        : [];
+    } catch {
+      return [];
+    }
+  });
+  const [addingTopic, setAddingTopic] = useState(false);
+  const [topicName, setTopicName] = useState('');
+  const [topicError, setTopicError] = useState('');
+  const topics = [...new Set([ALL_TOPICS, ...VIDEO_FINDER_TOPICS, ...customTopics, draft.category])];
   const [formError, setFormError] = useState('');
   const [searchState, setSearchState] = useState<SearchState | null>(null);
   const [remainingSearches, setRemainingSearches] = useState<number | null>(null);
@@ -389,7 +407,9 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
       const result = await client.searchVideos(urlFilters, searchState.nextPageToken);
       const seen = new Set(current.videos.map((v) => v.videoId));
       const added = result.videos.filter((v) => !seen.has(v.videoId));
-      const next: SearchState = { ...current, loadingMore: false, videos: [...current.videos, ...added], nextPageToken: result.nextPageToken, notice: result.notice || current.notice };
+      const videos = [...current.videos, ...added];
+      if (urlFilters.sort === 'date') videos.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+      const next: SearchState = { ...current, loadingMore: false, videos, nextPageToken: result.nextPageToken, notice: result.notice || current.notice };
       if (searchCache.get(cacheKey) === cachedAtStart &&
           (activeSearch.current === request || activeSearch.current?.key !== request.key)) {
         rememberSearch(cacheKey, next);
@@ -404,8 +424,8 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
     }
   };
 
-  const startSearch = (useAi: boolean) => {
-    const filters = { ...draft, query: draft.query.replace(/\s+/g, ' ').trim() };
+  const startSearch = (useAi: boolean, selected = draft) => {
+    const filters = { ...selected, query: selected.query.replace(/\s+/g, ' ').trim() };
     if (!hasSearch(filters)) {
       setFormError('찾을 내용을 입력하거나 관심 분야를 골라 주세요.');
       return;
@@ -429,6 +449,41 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
     pendingAiSearchKey.current = useAi ? key : null;
     navigate(`${pathFor('')}?${key}`);
   };
+
+  function selectTopic(category: string) {
+    const filters = { ...DEFAULT_FILTERS, category, sort: category === ALL_TOPICS ? 'relevance' : 'date' };
+    setDraft(filters);
+    if (category === ALL_TOPICS) {
+      setFormError('');
+      lastSearchKey.current = '';
+      navigate(pathFor(''));
+      return;
+    }
+    startSearch(false, filters);
+  }
+
+  function addTopic() {
+    const topic = normalizeTopic(topicName);
+    if (!topic) {
+      setTopicError(`관심 분야 이름을 ${MAX_TOPIC_LENGTH}자 이내로 입력해 주세요. 예: 텃밭 가꾸기`);
+      return;
+    }
+    if ([ALL_TOPICS, ...VIDEO_FINDER_TOPICS, ...customTopics].some((item) => item.toLowerCase() === topic.toLowerCase())) {
+      setTopicError('이미 있는 관심 분야예요.');
+      return;
+    }
+    if (customTopics.length >= 20) {
+      setTopicError('관심 분야는 20개까지 추가할 수 있어요.');
+      return;
+    }
+    const next = [...customTopics, topic];
+    writeDraft(topicStorageKey, JSON.stringify(next));
+    setCustomTopics(next);
+    setAddingTopic(false);
+    setTopicName('');
+    setTopicError('');
+    selectTopic(topic);
+  }
 
   function submitSearch(event: FormEvent) {
     event.preventDefault();
@@ -555,12 +610,15 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
   }
 
   const deleteAll = async () => {
-    if (!window.confirm('내 영상 찾기의 보관 영상, 메모, 지난 검색을 모두 지울까요? 지운 뒤에는 되돌릴 수 없어요. 먼저 백업을 받아 두면 안전해요.')) return;
+    if (!window.confirm('내 영상 찾기의 보관 영상, 메모, 지난 검색과 이 브라우저에 추가한 관심 분야를 모두 지울까요? 지운 뒤에는 되돌릴 수 없어요. 먼저 백업을 받아 두면 안전해요.')) return;
     setActionError('');
     setDataBusy(true);
     try {
       await client.deleteAllVideoFinderData();
       saved.forEach((item) => writeDraft(noteDraftKey(uid, item.videoId), null));
+      writeDraft(topicStorageKey, null);
+      setCustomTopics([]);
+      lastSearchKey.current = '';
       setSaved([]);
       setHistory([]);
       setStatus('내 영상 찾기 기록을 모두 지웠어요.');
@@ -630,7 +688,50 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
               <p className="mb-4 rounded-2xl border border-[#e5d7a8] bg-[#fff9e6] p-4 text-base leading-7">영상 검색은 아직 준비 중이에요. 보관함과 메모는 지금도 볼 수 있어요.</p>
             )}
             <form onSubmit={submitSearch} noValidate className="rounded-2xl border border-[#dce3d2] bg-white p-4 sm:p-5">
-              <label htmlFor="vf-query" className="block text-lg font-bold">무엇을 찾을까요?</label>
+              <fieldset className="min-w-0">
+                <legend className="text-base font-bold">관심 분야</legend>
+                <p className="mt-1 text-base leading-7 text-[#46524a]">분야를 누르면 최신 영상부터 보여드려요. ‘조건 더 고르기’에서 기간이나 길이를 바꿔 다양한 영상을 찾아보세요.</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {topics.map((topic) => (
+                    <button
+                      key={topic}
+                      type="button"
+                      aria-pressed={draft.category === topic}
+                      onClick={() => selectTopic(topic)}
+                      className={`${btnBase} border ${draft.category === topic ? 'border-[#285843] bg-[#285843] text-white' : 'border-[#9fb39a] bg-white text-[#1f3b2d]'}`}
+                    >
+                      {topic}
+                    </button>
+                  ))}
+                  <button type="button" className={btnSecondary} aria-pressed={urlFilters.sort === 'likeCount'} onClick={() => {
+                    const filters = { ...draft, sort: 'likeCount' };
+                    setDraft(filters);
+                    startSearch(false, filters);
+                  }}>좋아요 TOP 10</button>
+                  <button type="button" className={btnSecondary} aria-expanded={addingTopic} onClick={() => {
+                    setAddingTopic(!addingTopic);
+                    setTopicError('');
+                  }}>＋ 관심 분야 추가</button>
+                </div>
+                {addingTopic && (
+                  <div className="mt-3">
+                    <label htmlFor="vf-new-topic" className="text-base font-semibold">새 관심 분야</label>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      <input id="vf-new-topic" className={`${fieldClass} flex-[1_1_12rem]`} value={topicName} maxLength={MAX_TOPIC_LENGTH}
+                        onChange={(event) => setTopicName(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter' || event.nativeEvent.isComposing || event.keyCode === 229) return;
+                          event.preventDefault();
+                          addTopic();
+                        }} />
+                      <button type="button" className={btnPrimary} onClick={addTopic}>추가하고 보기</button>
+                    </div>
+                    {topicError && <p role="alert" className="mt-1 text-base text-[#8a2f22]">{topicError}</p>}
+                  </div>
+                )}
+              </fieldset>
+
+              <label htmlFor="vf-query" className="mt-5 block text-lg font-bold">무엇을 찾을까요?</label>
               <div className="mt-2 flex flex-wrap gap-2">
                 <textarea
                   id="vf-query"
@@ -639,7 +740,14 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                   enterKeyHint="search"
                   value={draft.query}
                   maxLength={MAX_SEARCH_QUERY_LENGTH}
-                  onChange={(e) => setDraft({ ...draft, query: e.target.value })}
+                  onChange={(event) => {
+                    const query = event.target.value;
+                    setDraft((previous) => {
+                      const leavingTopic = !previous.query.trim() && previous.category !== ALL_TOPICS;
+                      const sort = leavingTopic && previous.sort === 'date' ? DEFAULT_FILTERS.sort : previous.sort;
+                      return { ...previous, query, category: ALL_TOPICS, sort };
+                    });
+                  }}
                   onKeyDown={(event) => {
                     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing || event.keyCode === 229) return;
                     event.preventDefault();
@@ -651,7 +759,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                 />
                 <button type="submit" className={`${btnPrimary} min-h-[52px] flex-[0_0_auto] self-start px-6 text-lg`}>찾기</button>
               </div>
-              <p id="vf-query-help" className="mt-2 text-base leading-7 text-[#46524a]">짧게 적어도 돼요. 예를 들어 ‘치과 소식’, ‘무릎에 좋은 운동’처럼요.</p>
+              <p id="vf-query-help" className="mt-2 text-base leading-7 text-[#46524a]">원하는 분야가 없거나 더 구체적으로 찾고 싶다면, 찾을 영상을 말하듯 적어 보세요.</p>
               {access.searchAiEnabled && (
                 <div className="mt-3 rounded-lg bg-[#f7faed] p-3">
                   <p id="vf-ai-search-help" className="mb-2 text-base leading-7">긴 문장을 AI가 해석하도록 검색어를 Google Gemini에 보내요. 개인정보는 적지 마세요. <a href={`${haruOrigin}/privacy#video-finder-search-ai`} className="font-semibold underline" target="_blank" rel="noopener noreferrer">정보 전송 안내 ↗</a></p>
@@ -659,24 +767,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                 </div>
               )}
 
-              <fieldset className="mt-4">
-                <legend className="text-base font-bold">관심 분야 (고르지 않아도 돼요)</legend>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {[ALL_TOPICS, ...VIDEO_FINDER_TOPICS].map((topic) => (
-                    <button
-                      key={topic}
-                      type="button"
-                      aria-pressed={draft.category === topic}
-                      onClick={() => setDraft({ ...draft, category: topic })}
-                      className={`${btnBase} border ${draft.category === topic ? 'border-[#285843] bg-[#285843] text-white' : 'border-[#9fb39a] bg-white text-[#1f3b2d]'}`}
-                    >
-                      {topic}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-
-              <details className="mt-4 rounded-xl border border-[#dce3d2] bg-[#fbfcf6] p-3" open={draft.minSubscribers !== 0 || draft.period !== 'all' || draft.duration !== 'any' || draft.sort !== 'relevance' ? true : undefined}>
+              <details className="mt-4 rounded-xl border border-[#dce3d2] bg-[#fbfcf6] p-3" open={draft.minSubscribers !== 0 || draft.period !== 'all' || draft.duration !== 'any' || draft.sort === 'viewCount' || draft.sort === 'subscribers' ? true : undefined}>
                 <summary className="flex min-h-[44px] cursor-pointer items-center text-base font-bold">조건 더 고르기 (구독자·기간·길이·순서)</summary>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <label className="block min-w-0 text-base font-semibold">채널 구독자 수
@@ -733,7 +824,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                   <p className="mt-4 rounded-2xl border border-dashed border-[#bac9ae] bg-[#f7faed] p-6 text-lg">조건에 맞는 영상을 찾지 못했어요. 검색어를 짧게 바꾸거나 ‘조건 더 고르기’를 풀어 보세요.</p>
                 ) : (
                   <ul className="mt-4 space-y-4">
-                    {searchState.videos.map((video) => {
+                    {searchState.videos.map((video, index) => {
                       const isSaved = savedIds.has(video.videoId);
                       return (
                         <li key={video.videoId} className="rounded-2xl border border-[#e5e8da] bg-white p-4">
@@ -741,6 +832,9 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                             <Thumbnail meta={video} />
                             <div className="min-w-0 flex-1">
                               <SourceLabel />
+                              {urlFilters.sort === 'likeCount' && typeof video.likes === 'number' && (
+                                <p className="mt-1 text-base font-bold text-[#285843]">{index + 1}위 · 좋아요 {formatCount(video.likes)}</p>
+                              )}
                               <h3 className="mt-2 break-words text-lg font-bold leading-7">{video.title}</h3>
                               <MetaLine meta={video} />
                               <div className="mt-3 flex flex-wrap gap-2">
