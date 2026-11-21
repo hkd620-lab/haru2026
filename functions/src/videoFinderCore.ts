@@ -1784,6 +1784,7 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
           '예: 미술품 경매사가 소장품 감정을 부탁한 은둔 여성에게 사랑을 느꼈다가 속는 영화 → {"movieTitle":"베스트 오퍼","query":"베스트 오퍼 영화","recentDays":0}',
           '예: 꿈 속에 들어가 기업 후계자에게 생각을 심는 영화 → {"movieTitle":"인셉션","query":"인셉션 영화","recentDays":0}',
           '작품을 특정하기 어렵거나 여러 작품을 찾는 요청이면 movieTitle은 빈 문자열로 두고, 사용자 문장의 특징적인 단서를 query에 보존합니다. 입력과 무관한 주제나 실제로 없는 제목을 추가하지 않습니다.',
+          '일반 검색에서 불확실한 고유명사는 추측해 바꾸지 않습니다. 일수로 바꿀 수 없는 날짜는 query에 남깁니다.',
           'query에는 검색어만 160자 이내로 쓰고, 명시한 제외 조건은 -용어 형식으로 적습니다. 명시적인 최근 기간만 recentDays(1~365)로 바꾸고 해당 표현을 query에서 뺍니다. 기간을 특정하지 않았으면 0입니다.',
         ].join('\n') }] },
         contents: [{ role: 'user', parts: [{ text: query }] }],
