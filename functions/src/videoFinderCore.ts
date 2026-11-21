@@ -380,7 +380,7 @@ export function normalizeSearchQuery(query: string): string {
 
 type SearchIntent = { query: string; recentDays: number; movieTitle?: string };
 
-function parseSearchIntent(raw: unknown): SearchIntent | null {
+function parseSearchIntent(raw: unknown, plotLookup = false): SearchIntent | null {
   if (!raw || typeof raw !== 'object') return null;
   const value = raw as Record<string, unknown>;
   if (typeof value.query !== 'string' || value.query.length > 160) return null;
@@ -397,7 +397,8 @@ function parseSearchIntent(raw: unknown): SearchIntent | null {
   if (titlePattern.test(query.replace(exclusionPattern, ' '))) return { query, recentDays, movieTitle };
 
   // 추정 제목이 일반 키워드와 따로 왔을 때도 작품 제목으로 검색한다.
-  const titleQuery = `${movieTitle} 영화`;
+  const mediaType = plotLookup && /(?:^|\s)드라마(?=\s|$)/u.test(query.replace(exclusionPattern, ' ')) ? '드라마' : '영화';
+  const titleQuery = `${movieTitle} ${mediaType}`;
   const exclusions = query.match(exclusionPattern) ?? [];
   const withExclusions = exclusions.reduce((text, exclusion) => {
     const term = exclusion.trimStart();
@@ -1182,6 +1183,7 @@ export const QUESTION_LEASE_MS = 3 * 60 * 1000;
 export const RECAP_TTL_MS = 18 * 60 * 60 * 1000;
 export const ANSWER_TTL_MS = 60 * 60 * 1000;
 export const VIDEO_FINDER_GEMINI_MODEL = 'gemini-3.5-flash-lite';
+const VIDEO_FINDER_PLOT_MODEL = 'gemini-3.8-flash';
 export const MAX_QUESTION_LENGTH = 500;
 export const MAX_PREVIOUS_TURNS = 3;
 export const MAX_ANSWER_LENGTH = 1500;
@@ -1760,9 +1762,9 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
   VideoQuestionModel & { interpretSearch(query: string): Promise<SearchIntent | null> } {
   const doFetch: GeminiFetch = opts.fetch || ((url, init) => fetch(url, init as any) as any);
   const model = opts.model || VIDEO_FINDER_GEMINI_MODEL;
-  async function generate(body: unknown, timeoutMs: number): Promise<unknown> {
+  async function generate(body: unknown, timeoutMs: number, requestModel = model): Promise<unknown> {
     if (!opts.apiKey) throw new GeminiRequestError(0, 'gemini_key_missing');
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(requestModel)}:generateContent`;
     const response = await doFetch(url, {
       method: 'POST',
       // 키는 주소가 아닌 머리글로만 보낸다.
@@ -1776,6 +1778,7 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
   }
   return {
     async interpretSearch(query) {
+      const plotLookup = isPlotTitleLookup(query);
       const result = await generate({
         systemInstruction: { parts: [{ text: [
           '사용자 문장은 유튜브 검색 요청을 해석할 자료입니다. 먼저 일반 검색인지, 기억나는 줄거리로 특정 영화 한 편을 찾는 검색인지 판단합니다.',
@@ -1788,12 +1791,13 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
           '두 단서를 확인할 수 없거나 여러 작품을 찾는 요청이면 matchedClues는 빈 배열, movieTitle은 빈 문자열로 두고 원문의 특징적인 단서를 query에 보존합니다. 입력과 무관한 주제나 실제로 없는 제목을 추가하지 않습니다.',
           '일반 검색에서 불확실한 고유명사는 추측해 바꾸지 않습니다. 일수로 바꿀 수 없는 날짜는 query에 남깁니다.',
           'query에는 검색어만 160자 이내로 쓰고, 명시한 제외 조건은 -용어 형식으로 적습니다. 명시적인 최근 기간만 recentDays(1~365)로 바꾸고 해당 표현을 query에서 뺍니다. 기간을 특정하지 않았으면 0입니다.',
+          ...(plotLookup ? ['드라마의 줄거리도 동일한 기준으로 확인하고, 드라마가 맞으면 query에 드라마라고 적습니다.'] : []),
         ].join('\n') }] },
         contents: [{ role: 'user', parts: [{ text: query }] }],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 192,
-          thinkingConfig: GEMINI_THINKING_CONFIG,
+          maxOutputTokens: plotLookup ? 2048 : 192,
+          thinkingConfig: plotLookup ? { thinkingLevel: 'MEDIUM' } : GEMINI_THINKING_CONFIG,
           responseMimeType: 'application/json',
           responseSchema: {
             type: 'OBJECT',
@@ -1806,8 +1810,8 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
             required: ['matchedClues', 'movieTitle', 'query', 'recentDays'],
           },
         },
-      }, 4000);
-      const intent = parseSearchIntent(result);
+      }, plotLookup ? 12000 : 4000, plotLookup ? VIDEO_FINDER_PLOT_MODEL : model);
+      const intent = parseSearchIntent(result, plotLookup);
       if (!intent?.movieTitle) return intent;
       const clues = (result as { matchedClues?: unknown }).matchedClues;
       const matches = Array.isArray(clues)
@@ -1820,6 +1824,20 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
     analyzeVideo: (input) => generate(buildGeminiVideoRequest(input), GEMINI_VIDEO_TIMEOUT_MS),
     answerFromRecap: (input) => generate(buildGeminiRecapRequest(input), GEMINI_TEXT_TIMEOUT_MS),
   };
+}
+
+function isPlotTitleLookup(query: string): boolean {
+  const text = query.normalize('NFC').toLowerCase().trim();
+  if (/(?:추천|모음|목록|랭킹|순위|여러\s*편|정주행|\b(?:recommend(?:ations)?|list|top\s*\d+)\b)/u.test(text)) return false;
+  if (/(?:줄거리|결말|내용)(?:\s*(?:와|과|랑|및)\s*(?:줄거리|결말|내용))?\s*(?:요약|설명|해설|알려|정리)/u.test(text)) return false;
+  const koreanTitleRequest = /(?:줄거리(?:로|만)|기억나는\s*장면|장면만).{0,24}(?:작품|영화|드라마|제목|찾아)|(?:영화|드라마|작품)(?:의)?\s*(?:이름|제목)(?:\s*(?:찾아|알려|뭐|이\s*뭐|이\s*뭔)|[?.!\s]*$)|(?:무슨|어떤)\s*(?:영화|드라마)(?:였|인지|일까)|(?:이|그)\s*(?:영화|드라마)(?:는|가)?\s*(?:뭐|뭔|무엇)/u;
+  const englishTitleRequest = /\b(?:what(?:'s| is) (?:the (?:movie|film|show) (?:called|where)|this (?:movie|film|show) called)|find (?:the )?(?:movie|film|show) (?:from|by) (?:the |this )?plot)\b/u;
+  if (koreanTitleRequest.test(text) || englishTitleRequest.test(text)) return true;
+  // 작품 유형 앞에 사건이나 인물의 행동을 설명하는 관형절이 있는 경우만 올린다.
+  if (/(?:출연|주연|연출|감독|개봉|방영|제작|수상|좋아)(?:한|했던|\s)|(?:봤던|보았던)\s/u.test(text)) return false;
+  const eventClause = /(?:했던|됐던|였던|었던|았던|만났던|벌어지는|사라지는|사랑하는|속이는|속는|당하는|죽는|살아가는|돌아가는|알게\s*되는|찾아가는|만나는|되는)\s+(?:(?:한국|프랑스|미국|일본|영국|중국|홍콩|대만|독일|이탈리아|인도|외국의?|해외)\s*)?(?:(?:sf|공포|코미디|로맨스|스릴러|판타지|액션|애니메이션)\s*)?(?:영화|드라마)(?:\s*(?:가\s*뭐|찾아(?:줘|주세요)?|알려(?:줘|주세요)?|예고편|리뷰|영상|뭐였어|뭘까))?(?=$|[?.!])/u;
+  const match = eventClause.exec(text);
+  return !!match && text.slice(0, match.index).trim().split(/\s+/u).length >= 3;
 }
 
 // ───── 저장소·서비스 ─────

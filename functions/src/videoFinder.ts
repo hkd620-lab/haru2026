@@ -240,7 +240,7 @@ function accessServiceFor(withAi: boolean) {
 }
 
 export const videoFinderSearch = onCall(
-  { region: REGION, secrets: [VIDEO_FINDER_YOUTUBE_API_KEY, VIDEO_FINDER_GEMINI_API_KEY], timeoutSeconds: 30, memory: '256MiB', maxInstances: 10 },
+  { region: REGION, secrets: [VIDEO_FINDER_YOUTUBE_API_KEY, VIDEO_FINDER_GEMINI_API_KEY], timeoutSeconds: 60, memory: '256MiB', maxInstances: 10 },
   async (request) => {
     const uid = await requireActiveUid(request);
     await runService(() => accessServiceFor(false).requirePolicyFor(uid, 'search', request.data));

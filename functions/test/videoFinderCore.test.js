@@ -453,7 +453,8 @@ test('동의한 긴 검색만 해석하고, 다음 페이지는 같은 검색어
 test('베스트 오퍼 줄거리에서 추정된 제목으로 검색하고 다음 페이지에서도 재사용한다', async () => {
   const input = '명화를 중계하는 중계인이 어떤미모이 의뢰인을 사랑하게 되지만 이 여자에게 큰 사기를당하는 영화';
   const modelRequests = [];
-  const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async (_url, init) => {
+  const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async (url, init) => {
+    assert.match(url, /\/models\/gemini-3\.8-flash:generateContent$/);
     modelRequests.push(JSON.parse(init.body));
     return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({
       query: '명화 중개인 의뢰인 사랑 사기 영화', movieTitle: '베스트 오퍼', recentDays: 0,
@@ -486,6 +487,7 @@ test('추정 제목은 다른 작품명과 구분하고 검색 형식과 제외 
     { movieTitle: '올드', query: '올드보이 영화 -예고편', expected: '올드 영화 -예고편' },
     { movieTitle: '베스트 오퍼', query: '경매 사기 영화 -"결말 포함"', expected: '베스트 오퍼 영화 -"결말 포함"' },
     { movieTitle: '베스트 오퍼', query: '경매 사기 영화 -"베스트 오퍼 해설"', expected: '베스트 오퍼 영화 -"베스트 오퍼 해설"' },
+    { movieTitle: '시그널', query: '과거 형사 무전기 드라마', expected: '시그널 드라마' },
   ];
   for (const { movieTitle, query, expected } of cases) {
     const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async () => ({
@@ -503,8 +505,10 @@ test('줄거리로 추정한 제목은 서로 다른 단서 두 개가 있을 �
   const input = '할머니가 세상을 떠난 뒤 엄마의 어린 시절 집을 정리하러 간 소녀가 숲에서 자기 또래 아이를 만나는데, 그 아이가 어린 시절의 엄마였던 영화';
   const matchedClues = ['할머니가 떠난 뒤 엄마의 어린 시절 집으로 감', '숲에서 어린 시절의 엄마를 같은 나이로 만남'];
   for (const [clues, expected] of [[matchedClues, '쁘띠 마망'], [[], undefined], [[matchedClues[0], matchedClues[0]], undefined]]) {
-    const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async (_url, init) => {
+    const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async (url, init) => {
+      assert.match(url, /\/models\/gemini-3\.8-flash:generateContent$/);
       const request = JSON.parse(init.body);
+      assert.equal(request.generationConfig.thinkingConfig.thinkingLevel, 'MEDIUM');
       assert.doesNotMatch(request.systemInstruction.parts[0].text, /쁘띠\s*마망|Petite Maman/i);
       assert.equal(request.contents[0].parts[0].text, input);
       return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({
@@ -512,6 +516,37 @@ test('줄거리로 추정한 제목은 서로 다른 단서 두 개가 있을 �
       }) }] } }] }) };
     } });
     assert.equal((await gemini.interpretSearch(input))?.movieTitle, expected);
+  }
+});
+
+test('작품 제목 찾기만 상위 모델로 보내고 일반 AI 검색은 기존 모델을 사용한다', async () => {
+  const inputs = [
+    ['기억나는 줄거리로 드라마 제목을 찾아줘', 'gemini-3.8-flash'],
+    ['기자가 용의자의 과거를 알게 되는 드라마', 'gemini-3.8-flash'],
+    ['우주비행사가 화성에 혼자 남게 되는 SF 영화', 'gemini-3.8-flash'],
+    ['할머니가 죽자 소녀가 어린 시절의 엄마를 만나는 프랑스 영화', 'gemini-3.8-flash'],
+    ['어떤 남자가 기억을 잃고 깨어나 보니 자신이 살인범으로 몰려요. 이 영화 뭔가요?', 'gemini-3.8-flash'],
+    ['주인공이 기억을 잃었다가 가족을 다시 만나는 영화 찾아줘. 리뷰 영상으로 보고 싶어', 'gemini-3.8-flash'],
+    ['첫사랑을 주제로 한 한국영화', 'gemini-3.5-flash-lite'],
+    ['미술품 경매에서 사기를 당하는 영화 추천', 'gemini-3.5-flash-lite'],
+    ['쁘띠 마망 영화 예고편', 'gemini-3.5-flash-lite'],
+    ['영화 제목 폰트 만드는 법', 'gemini-3.5-flash-lite'],
+    ['인터스텔라가 어떤 영화인지 줄거리와 결말 알려줘', 'gemini-3.5-flash-lite'],
+    ['유명 배우가 출연했던 드라마 예고편', 'gemini-3.5-flash-lite'],
+    ["What's the movie soundtrack from Interstellar?", 'gemini-3.5-flash-lite'],
+    ['What is the movie about? Interstellar ending explained', 'gemini-3.5-flash-lite'],
+  ];
+  for (const [query, expectedModel] of inputs) {
+    const requests = [];
+    const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async (url, init) => {
+      requests.push({ url, thinkingLevel: JSON.parse(init.body).generationConfig.thinkingConfig.thinkingLevel });
+      return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: '{"query":"검색어","recentDays":0}' }] } }] }) };
+    } });
+    await gemini.interpretSearch(query);
+    assert.deepEqual(requests, [{
+      url: `https://generativelanguage.googleapis.com/v1beta/models/${expectedModel}:generateContent`,
+      thinkingLevel: expectedModel === 'gemini-3.8-flash' ? 'MEDIUM' : 'MINIMAL',
+    }], query);
   }
 });
 
