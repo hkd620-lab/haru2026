@@ -478,15 +478,23 @@ test('베스트 오퍼 줄거리에서 추정된 제목으로 검색하고 다�
   assert.equal((await svc.library('uidA', { action: 'history' })).history[0].query, input);
 });
 
-test('다른 작품과 제목 앞부분이 같을 때는 추정된 작품명으로 검색어를 정한다', async () => {
-  const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async () => ({
-    ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({
-      query: '올드보이 영화 -예고편', movieTitle: '올드', recentDays: 0,
-    }) }] } }] }),
-  }) });
-  assert.deepEqual(await gemini.interpretSearch('시간이 빠르게 흐르는 해변에 갇히는 영화, 예고편 제외'), {
-    query: '올드 영화 -예고편', recentDays: 0, movieTitle: '올드',
-  });
+test('추정 제목은 다른 작품명과 구분하고 검색 형식과 제외 조건을 유지한다', async () => {
+  const cases = [
+    { movieTitle: '괴물', query: '영화 괴물 2006 예고편', expected: '영화 괴물 2006 예고편' },
+    { movieTitle: '올드', query: '올드보이 영화 -예고편', expected: '올드 영화 -예고편' },
+    { movieTitle: '베스트 오퍼', query: '경매 사기 영화 -"결말 포함"', expected: '베스트 오퍼 영화 -"결말 포함"' },
+    { movieTitle: '베스트 오퍼', query: '경매 사기 영화 -"베스트 오퍼 해설"', expected: '베스트 오퍼 영화 -"베스트 오퍼 해설"' },
+  ];
+  for (const { movieTitle, query, expected } of cases) {
+    const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async () => ({
+      ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({
+        query, movieTitle, recentDays: 0,
+      }) }] } }] }),
+    }) });
+    assert.deepEqual(await gemini.interpretSearch('줄거리로 영화 찾아줘'), {
+      query: expected, recentDays: 0, movieTitle,
+    });
+  }
 });
 
 test('제목이 없거나 잘못된 모델 출력은 일반 키워드를 유지한다', async () => {

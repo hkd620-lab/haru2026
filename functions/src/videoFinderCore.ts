@@ -391,14 +391,14 @@ function parseSearchIntent(raw: unknown): SearchIntent | null {
   const movieTitle = typeof value.movieTitle === 'string' ? value.movieTitle.normalize('NFC').replace(/\s+/g, ' ').trim() : '';
   if (movieTitle.length > 80 || !/[\p{L}\p{N}]/u.test(movieTitle)
     || /[\p{Cc}\p{Cf}]/u.test(movieTitle) || hasSearchOperators(movieTitle)) return { query, recentDays };
-  const queryLead = query.replace(/^"/u, '').toLowerCase();
-  const titleLead = movieTitle.toLowerCase();
-  if (queryLead.startsWith(titleLead) && !/^[\p{L}\p{M}\p{N}]/u.test(queryLead.slice(titleLead.length))) {
-    return { query, recentDays, movieTitle };
-  }
+  const exclusionPattern = /(?:^|\s)-(?:"[^"]+"|[^\s"]+)(?=\s|$)/gu;
+  const escapedTitle = movieTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const titlePattern = new RegExp(String.raw`(?<![\p{L}\p{M}\p{N}])${escapedTitle}(?![\p{L}\p{M}\p{N}])`, 'iu');
+  if (titlePattern.test(query.replace(exclusionPattern, ' '))) return { query, recentDays, movieTitle };
+
   // 추정 제목이 일반 키워드와 따로 왔을 때도 작품 제목으로 검색한다.
   const titleQuery = `${movieTitle} 영화`;
-  const exclusions = query.match(/(?:^|\s)-\S+/gu) ?? [];
+  const exclusions = query.match(exclusionPattern) ?? [];
   const withExclusions = exclusions.reduce((text, exclusion) => {
     const term = exclusion.trimStart();
     return text.length + 1 + term.length <= 160 ? `${text} ${term}` : text;
