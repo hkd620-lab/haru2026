@@ -323,6 +323,15 @@ test('첫사랑을 주제로 한 한국영화 검색에서는 해외 영화, TV 
   assert.deepEqual(second.videos.map((video) => video.videoId), ids.slice(-1));
   assert.equal(yt.calls.search.length, 2);
   assert.equal(core.mapVideoItem(raw[ids[2]]).videoId, ids[2]);
+
+  const topicYouTube = fakeYouTube({
+    searchPages: [items(ids)],
+    details: (id, koreanFilmsOnly) => core.mapVideoItem(raw[id], koreanFilmsOnly),
+  });
+  const topic = await service(memoryStore(), topicYouTube).search('uidA', {
+    filters: { ...baseFilters, query: '', category: '한국영화' },
+  });
+  assert.deepEqual(topic.videos.map((video) => video.videoId), [ids[0], ids[1], ids.at(-1)]);
 });
 
 test('한국 영화를 제외하거나 OR를 지정한 검색에는 한국 영화 전용 선별을 적용하지 않는다', async () => {
@@ -332,7 +341,7 @@ test('한국 영화를 제외하거나 OR를 지정한 검색에는 한국 영�
     details: (videoId, koreanFilmsOnly) => core.mapVideoItem({ id: videoId, snippet: { title: '일본 영화' } }, koreanFilmsOnly),
   });
   const svc = service(memoryStore(), yt);
-  for (const query of ['첫사랑 일본 영화 -한국영화', '한국 영화 말고 일본 영화', '한국영화 | 일본영화']) {
+  for (const query of ['첫사랑 일본 영화 -한국영화', '한국 영화가 아닌 일본 영화', '한국 영화 말고 일본 영화', '한국영화 | 일본영화']) {
     assert.equal((await svc.search('uidA', { filters: { ...baseFilters, query } })).videos.length, 1);
   }
 });

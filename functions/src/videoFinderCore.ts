@@ -321,7 +321,7 @@ function wantsKoreanFilms(query: string): boolean {
   const normalized = query.normalize('NFC');
   if (normalized.includes('|')) return false;
   const positiveQuery = normalized.replace(/(?:^|\s)-(?:"[^"]*"|한국\s*영화|국내\s*영화|\S+)/gu, '');
-  return KOREAN_FILM_LABEL.test(positiveQuery)
+  return KOREAN_FILM_LABEL.test(positiveQuery) && !DENIES_KOREAN_FILM.test(positiveQuery)
     && !/(?:한국\s*영화|한국산\s*영화|국내\s*영화)(?:는|를)?\s*(?:말고|제외|빼고)/u.test(positiveQuery);
 }
 
@@ -845,8 +845,8 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
       }
     }
 
-    // AI가 문구를 바꾸더라도 한국 영화 조건은 사용자가 입력한 원문에서 판단한다.
-    const koreanFilmsOnly = wantsKoreanFilms(filters.query);
+    // AI가 문구를 바꾸더라도 검색 원문과 직접 선택한 관심 분야로 판단한다.
+    const koreanFilmsOnly = wantsKoreanFilms(`${filters.query} ${filters.category}`);
     const details = ids.length ? await youtube.videoDetails(ids, koreanFilmsOnly) : {};
     const videos = filterAndSortVideos(ids.map((id) => details[id]).filter(Boolean) as VideoMeta[], filters);
     const upstreamNext = nextToken ? (dateRelevance ? DATE_RELEVANCE_CURSOR + nextToken : nextToken) : null;
