@@ -1081,6 +1081,7 @@ export type AccessStatus = {
   questionAccess: QuestionAccess;
   remainingQuestions: number;
   remainingAnalysisSeconds: number;
+  analysisPeriod?: 'calendar-month';
 };
 
 const ACCESS_ERRORS = {
@@ -1130,14 +1131,14 @@ function oneMonthBefore(ms: number): number {
   return d.getTime();
 }
 
-export type QuestionEntitlement = { ok: true; monthKey: string } | { ok: false };
+export type QuestionEntitlement = { ok: true; monthKey: string; analysisPeriod?: 'calendar-month' } | { ok: false };
 
 // 결제 한 번이 덮는 기간으로 보는 최대 길이. 이보다 길게 남은 지급은 장기 지급으로 보고 달력 월로 나눈다.
 const PAID_CYCLE_MAX_MS = 32 * DAY_MS;
 // 결제 뒤 만료일을 운영에서 고쳐 늘린 경우(보상 연장 등)도 같은 결제 기간으로 본다. 이보다 길면 장기 지급.
 const PAID_AMENDED_END_MAX_MS = 62 * DAY_MS;
 
-// users/{uid}/subscription/info 실제 문서만 본다(개발자·내부 계정 예외 없음).
+// 이 함수에서는 users/{uid}/subscription/info 문서의 정기구독만 판정한다.
 // - plan이 정확히 'premium', status가 'active' 또는 'cancelled'(만료일까지 이용)일 때만 통과.
 // - endDate(없으면 expiresAt)가 없거나, 지났거나, 날짜 값이 잘못됐으면 거절(fail closed).
 //   만료일 없는 'active'(결제 대기·수동으로 고친 무기한 지급)는 유료 이용 중으로 보지 않는다.
@@ -1268,6 +1269,7 @@ export function buildAccessStatus(args: {
   return {
     ...base,
     questionAccess: 'ready',
+    ...(args.entitlement.analysisPeriod ? { analysisPeriod: args.entitlement.analysisPeriod } : {}),
     remainingQuestions: Math.max(0, Math.min(QUESTION_DAILY_LIMIT - used.questions, PROVIDER_DAILY_ATTEMPTS - provider.attempts)),
     remainingAnalysisSeconds: Math.max(0, Math.min(ANALYSIS_MONTHLY_SECONDS - used.seconds, PROVIDER_CYCLE_SECONDS - provider.seconds)),
   };
@@ -1796,10 +1798,17 @@ export function createVideoFinderAccessService(deps: {
   model: () => VideoQuestionModel;
   // YouTube 전체 할당량 선예약(기존 videoFinderQuota). 거절되면 던진다.
   reserveYouTube?: (uid: string, nowMs: number) => Promise<void>;
-  canResetSearchQuota?: (uid: string) => boolean;
+  isDeveloper?: (uid: string) => boolean;
   resetSearchQuota?: (uid: string, nowMs: number) => Promise<number>;
 }) {
   const { store, now } = deps;
+
+  function questionEntitlement(uid: string, subscription: unknown, nowMs: number): QuestionEntitlement {
+    if (deps.isDeveloper?.(uid)) {
+      return { ok: true, monthKey: `m:${kstMonthKey(nowMs)}`, analysisPeriod: 'calendar-month' };
+    }
+    return evaluateQuestionEntitlement(subscription, nowMs);
+  }
 
   async function status(uid: string): Promise<AccessStatus> {
     const nowMs = now();
@@ -1808,18 +1817,18 @@ export function createVideoFinderAccessService(deps: {
       enabled: config.questionsEnabled,
       policyAccepted: isPolicyAccepted(snap.policy),
       aiConsentAccepted: isAiConsentAccepted(snap.policy),
-      entitlement: evaluateQuestionEntitlement(snap.subscription, nowMs),
+      entitlement: questionEntitlement(uid, snap.subscription, nowMs),
       usage: normalizeUsage(snap.usage),
       nowMs,
     });
     return {
       ...current,
       ...(config.searchAiEnabled ? { searchAiEnabled: true } : {}),
-      ...(deps.canResetSearchQuota?.(uid) ? { canResetSearchQuota: true } : {}),
+      ...(deps.isDeveloper?.(uid) ? { canResetSearchQuota: true } : {}),
     };
   }
 
-  // Gemini 전송 안내 동의(버전·시각만 기록). 서버 스위치가 켜져 있고, 프리미엄 이용 중이며, 일반 동의를 마친 경우에만 받는다.
+  // Gemini 전송 안내 동의(버전·시각만 기록). 서버 스위치가 켜져 있고, 질문 이용 권한이 있으며, 일반 동의를 마친 경우에만 받는다.
   async function acceptAiConsent(uid: string, body: Record<string, unknown>): Promise<AccessStatus> {
     if (body.version !== VIDEO_FINDER_AI_CONSENT_VERSION) {
       throw new VideoFinderError('invalid-argument', '안내 내용이 바뀌었어요. 화면을 새로 불러와 다시 확인해 주세요.');
@@ -1829,7 +1838,7 @@ export function createVideoFinderAccessService(deps: {
     await store.transact(uid, {}, (snap) => {
       assertActiveAccount(snap.account);
       if (!isPolicyAccepted(snap.policy)) throw ACCESS_ERRORS.policy();
-      if (!evaluateQuestionEntitlement(snap.subscription, nowMs).ok) throw ACCESS_ERRORS.premium();
+      if (!questionEntitlement(uid, snap.subscription, nowMs).ok) throw ACCESS_ERRORS.premium();
       if (isAiConsentAccepted(snap.policy)) return { writes: {}, result: null };
       return {
         writes: { policy: { aiConsentVersion: VIDEO_FINDER_AI_CONSENT_VERSION, aiConsentAcceptedAt: nowMs } },
@@ -1920,7 +1929,7 @@ export function createVideoFinderAccessService(deps: {
     const pre = await store.read(uid, { ...keys, previousRequestIds: input.previousRequestIds });
     assertActiveAccount(pre.account);
     assertBothConsents(pre.policy);
-    const preEnt = evaluateQuestionEntitlement(pre.subscription, nowMs);
+    const preEnt = questionEntitlement(uid, pre.subscription, nowMs);
     if (!preEnt.ok) throw ACCESS_ERRORS.premium();
     const preUsage = normalizeUsage(pre.usage);
     const repeated = readAnswerRecord(pre.answer, input, nowMs);
@@ -1954,7 +1963,7 @@ export function createVideoFinderAccessService(deps: {
     const reserved = await store.transact<Reserved>(uid, keys, (snap) => {
       assertActiveAccount(snap.account);
       assertBothConsents(snap.policy);
-      const ent = evaluateQuestionEntitlement(snap.subscription, reservationMs);
+      const ent = questionEntitlement(uid, snap.subscription, reservationMs);
       if (!ent.ok) throw ACCESS_ERRORS.premium();
       const usage = normalizeUsage(snap.usage);
       const done = readAnswerRecord(snap.answer, input, reservationMs);
@@ -1996,7 +2005,7 @@ export function createVideoFinderAccessService(deps: {
       // 되묻기에는 사용자 질문 횟수를 쓰지 않는다. 신규 영상을 실제 분석했다면 시간을 차감하고 요약을 재사용한다.
       const plan = planQuestionCompletion(usage, input.requestId, doneMs, !clean.needsClarification);
       if (!plan.ok) return { writes: {}, result: { kind: 'lost' } };
-      const ent = evaluateQuestionEntitlement(snap.subscription, doneMs);
+      const ent = questionEntitlement(uid, snap.subscription, doneMs);
       const revokedReason = !ent.ok ? 'premium' as const
         : !isPolicyAccepted(snap.policy) ? 'policy' as const
           : !isAiConsentAccepted(snap.policy) ? 'aiConsent' as const : null;
@@ -2041,7 +2050,7 @@ export function createVideoFinderAccessService(deps: {
     if (body.action === 'revokeAiConsent') return revokeAiConsent(uid);
     if (body.action === 'ask') return ask(uid, body);
     if (body.action === 'resetSearchQuota') {
-      if (!deps.canResetSearchQuota?.(uid) || !deps.resetSearchQuota) {
+      if (!deps.isDeveloper?.(uid) || !deps.resetSearchQuota) {
         throw new VideoFinderError('permission-denied', '개발자 계정에서만 오늘의 검색 횟수를 초기화할 수 있어요.');
       }
       return { remainingSearches: await deps.resetSearchQuota(uid, now()) };

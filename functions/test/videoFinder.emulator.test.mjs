@@ -223,7 +223,7 @@ test('개발자 초기화는 자신의 한국 시간 검색 횟수만 돌려놓�
     now: () => NOW,
     youtube: () => { throw new Error('unexpected YouTube call'); },
     model: () => { throw new Error('unexpected Gemini call'); },
-    canResetSearchQuota: (uid) => uid === developer,
+    isDeveloper: (uid) => uid === developer,
     resetSearchQuota: (uid, ms) => store.resetUserSearchQuota(uid, ms),
   });
   const reset = { action: 'resetSearchQuota', uid: ordinary };

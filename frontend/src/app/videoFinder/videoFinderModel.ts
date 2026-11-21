@@ -187,6 +187,7 @@ export type VideoFinderAccess = {
   searchAiEnabled?: boolean;
   canResetSearchQuota?: boolean;
   questionAccess: 'disabled' | 'premium-required' | 'ready';
+  analysisPeriod?: 'calendar-month';
   remainingQuestions: number;
   remainingAnalysisSeconds: number;
 };

@@ -225,6 +225,68 @@ test('예전 일반 동의만 있는 사용자는 AI 동의 전까지 모델·Yo
   assert.equal(isAiConsentAccepted({ aiConsentVersion: 1 }), false, '일반 동의 없이는 AI 동의로 보지 않는다');
 });
 
+test('서버가 확인한 개발자는 구독 없이 질문할 수 있고, 일반·AI 동의와 기능 스위치는 그대로 적용된다', async () => {
+  const store = accessStore();
+  const deps = fakeDeps();
+  const developer = 'server-developer';
+  const ordinary = 'ordinary-account';
+  store.u(developer).subscription = null;
+  store.u(developer).policy = null;
+  store.u(ordinary).subscription = { ...PREMIUM, plan: 'developer' };
+  const svc = createVideoFinderAccessService({
+    store, now: () => NOW, youtube: deps.youtube, model: deps.modelFactory,
+    reserveYouTube: deps.reserveYouTube, isDeveloper: (uid) => uid === developer,
+  });
+
+  store.enabled = false;
+  assert.equal((await svc.handle(developer, { action: 'status' })).questionAccess, 'disabled');
+  await assert.rejects(ask(svc, developer), code('failed-precondition'));
+  store.enabled = true;
+  await assert.rejects(svc.handle(developer, { action: 'acceptAiConsent', version: 1 }), code('failed-precondition'));
+  await svc.handle(developer, { action: 'acceptPolicy', version: 1 });
+  await assert.rejects(ask(svc, developer), code('failed-precondition'));
+  await assert.rejects(ask(svc, ordinary, { uid: developer, isDeveloper: true }), code('permission-denied'));
+  const accepted = await svc.handle(developer, { action: 'acceptAiConsent', version: 1 });
+  assert.equal(accepted.questionAccess, 'ready');
+  assert.equal(accepted.analysisPeriod, 'calendar-month');
+  noExternal(deps.calls);
+
+  const result = await ask(svc, developer);
+  assert.equal(result.status.analysisPeriod, 'calendar-month');
+  assert.equal(result.status.remainingQuestions, 9);
+  assert.equal(result.status.remainingAnalysisSeconds, 6600);
+  assert.deepEqual(await ask(svc, developer), result);
+  assert.equal(deps.calls.analyze.length, 1);
+  assert.equal(store.u(developer).subscription, null);
+});
+
+test('개발자도 영상 질문과 분석 한도를 적용하고 한국 시간으로 달이 바뀌면 기간을 갱신한다', async () => {
+  const store = accessStore();
+  const deps = fakeDeps();
+  const uid = 'server-developer';
+  let now = Date.UTC(2026, 10, 30, 14, 30); // 11월 30일 23:30 KST
+  const developer = store.u(uid);
+  developer.subscription = null;
+  developer.usage = {
+    day: '2026-11-30', dayCount: QUESTION_DAILY_LIMIT - 1, month: 'm:2026-11',
+    monthSeconds: ANALYSIS_MONTHLY_SECONDS - 600,
+  };
+  const svc = createVideoFinderAccessService({
+    store, now: () => now, youtube: deps.youtube, model: deps.modelFactory,
+    reserveYouTube: deps.reserveYouTube, isDeveloper: (candidate) => candidate === uid,
+  });
+
+  const last = await ask(svc, uid);
+  assert.equal(last.status.remainingQuestions, 0);
+  assert.equal(last.status.remainingAnalysisSeconds, 0);
+  await assert.rejects(ask(svc, uid, { requestId: 'req_00000002', videoId: VIDEO2 }), code('resource-exhausted'));
+  assert.equal(deps.calls.analyze.length, 1);
+  now = Date.UTC(2026, 10, 30, 15, 1); // 12월 1일 00:01 KST
+  const next = await svc.handle(uid, { action: 'status' });
+  assert.equal(next.remainingQuestions, QUESTION_DAILY_LIMIT);
+  assert.equal(next.remainingAnalysisSeconds, ANALYSIS_MONTHLY_SECONDS);
+});
+
 test('AI 동의는 서버 스위치 꺼짐·비프리미엄·일반 동의 전에는 받지 않는다', async () => {
   const cases = [
     ['off', (store) => { store.enabled = false; }, 'failed-precondition'],
@@ -745,8 +807,8 @@ test('Gemini 전송: 공식 generateContent에 YouTube 주소를 fileData로, �
 const ORIGIN = VIDEO_FINDER_STANDALONE_ORIGINS[0];
 const TOKEN = 'A'.repeat(43);
 
-function gatewayFor(accessSvc, calls) {
-  const sessions = new Map([[hashSessionToken(TOKEN), { uid: 'prem', audience: ORIGIN, createdAt: NOW - 1000, expiresAt: NOW + 3600000 }]]);
+function gatewayFor(accessSvc, calls, uid = 'prem') {
+  const sessions = new Map([[hashSessionToken(TOKEN), { uid, audience: ORIGIN, createdAt: NOW - 1000, expiresAt: NOW + 3600000 }]]);
   const store = {
     async getLimits() { return { enabled: true, standaloneSignIn: true, userDailySearches: 20, globalDailyUnits: 8000 }; },
     async getSession(h) { return sessions.get(h) || null; },
@@ -759,6 +821,22 @@ function gatewayFor(accessSvc, calls) {
   };
   return { gateway: createStandaloneGateway({ store, now: () => NOW, service: () => svc, access: () => accessSvc }), sessions };
 }
+
+test('독립 주소도 전용 세션에 연결된 개발자에게 구독 없이 질문 권한을 제공한다', async () => {
+  const store = accessStore();
+  const deps = fakeDeps();
+  const uid = 'server-developer';
+  store.u(uid).subscription = null;
+  const svc = createVideoFinderAccessService({
+    store, now: () => NOW, youtube: deps.youtube, model: deps.modelFactory,
+    reserveYouTube: deps.reserveYouTube, isDeveloper: (candidate) => candidate === uid,
+  });
+  const { gateway } = gatewayFor(svc, { search: 0, library: [] }, uid);
+  const call = (payload) => gateway.handle({ op: 'access', session: TOKEN, payload }, ORIGIN);
+  assert.equal((await call({ action: 'status' })).analysisPeriod, 'calendar-month');
+  assert.equal((await call({ action: 'ask', requestId: 'req_gateway_dev', videoId: VIDEO, question: '지지대는 어떻게 세워요?' })).status.remainingQuestions, 9);
+  assert.equal(deps.calls.analyze.length, 1);
+});
 
 test('독립 주소(동의 스위치 켬): 동의 전에는 세션·상태·동의·로그아웃·삭제·백업만 되고 검색·보관함은 막힌다', async () => {
   const store = accessStore();

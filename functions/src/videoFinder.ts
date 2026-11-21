@@ -4,12 +4,12 @@
 //   '내 영상 찾기' 전용 세션만 videoFinderStandalone에서 받는다. UID는 서버의 세션 문서에서만 정한다.
 // - YouTube 서버 키는 Secret Manager 참조(defineSecret)로만 바인딩한다.
 // - 영상·자막 다운로드나 페이지 수집은 하지 않고 YouTube Data API v3 search/videos/channels만 호출한다.
-// - 영상 AI 질문(videoFinderAccess, 독립 주소 op 'access')만 Gemini를 부른다. 프리미엄 활성 구독·서버 스위치
-//   config/videoFinder.questionsEnabled(기본 꺼짐)·일반 동의와 AI(Gemini 전송) 동의·하루 10회·구독 한 달 7,200초 한도와
-//   공급자 비용 상한(실패 포함 하루 15회 호출·구독 기간 10,800초 분석 시도)을 서버에서 확인한다.
+// - 영상 AI 질문은 활성 프리미엄 구독자와 서버에 등록된 개발자에게 제공한다. 기능 스위치와 두 동의를 확인한다.
+//   하루 답변 10회와 사용 기간당 분석 7,200초, 실패 포함 공급자 상한을 서버에서 적용한다.
+//   개발자의 분석 시간은 한국 시간의 달력 월을 기준으로 한다.
 // - 일반 검색·보관함의 동의 확인은 config/videoFinder.policyRequired(기본 꺼짐)가 켜졌을 때만 적용한다
 //   (Functions 먼저 배포 → 두 사이트 배포 → 스위치 켜기 순서).
-//   Gemini 키는 VIDEO_FINDER_GEMINI_API_KEY 전용 시크릿으로, 질문 처리에서만 쓴다. Jev는 연결하지 않았다.
+//   Gemini 키는 영상 질문과 동의한 자연어 검색에만 VIDEO_FINDER_GEMINI_API_KEY로 바인딩한다.
 // - 세션 원문·검색어·메모는 로그에 남기지 않는다.
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
@@ -229,7 +229,7 @@ function accessServiceFor(withAi: boolean) {
         answerFromRecap: (input) => logged('recap', () => client.answerFromRecap(input)),
       };
     },
-    canResetSearchQuota: isInternalDeveloperUid,
+    isDeveloper: isInternalDeveloperUid,
     resetSearchQuota: (uid, nowMs) => firestoreStore.resetUserSearchQuota(uid, nowMs),
     // 공개 여부·길이 확인(videos.list 1단위)도 기존 전체 YouTube 할당량 카운터에 선예약한다.
     reserveYouTube: async (uid, nowMs) => {
