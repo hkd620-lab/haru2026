@@ -345,6 +345,7 @@ test('한국 영화 검색은 다음 페이지에서 국내외 혼합 추천을 
     { title: '한국 영화 TOP 5', description: '#첫사랑\n외국 영화도 함께 소개합니다.' },
     { title: '첫사랑 영화 5편', description: '오늘은 한국 영화만 골라 소개합니다.' },
     { title: 'Korean movies list for first-love stories' },
+    { title: '첫사랑 영화 TOP 5', description: '첫사랑을 다룬 한국 영화 5편을 소개합니다.' },
   ];
   const ids = candidates.map((_, index) => vid(index));
   const raw = Object.fromEntries(candidates.map((snippet, index) => [ids[index], { id: ids[index], snippet }]));
@@ -357,7 +358,7 @@ test('한국 영화 검색은 다음 페이지에서 국내외 혼합 추천을 
   const first = await svc.search('uidA', { filters });
   const next = await svc.search('uidA', { filters, pageToken: first.nextPageToken });
   assert.deepEqual(first.videos.map((video) => video.videoId), [ids[0]]);
-  assert.deepEqual(next.videos.map((video) => video.videoId), [ids[3], ids[5], ids[6]]);
+  assert.deepEqual(next.videos.map((video) => video.videoId), [ids[3], ids[5], ids[6], ids[7]]);
   assert.equal(core.mapVideoItem(raw[ids[1]]).videoId, ids[1]);
   assert.equal(yt.calls.search[1].q, filters.query);
   assert.equal(yt.calls.search[1].pageToken, 'NEXT1');
