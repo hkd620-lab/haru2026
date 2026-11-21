@@ -297,6 +297,7 @@ test('동의한 긴 검색만 해석하고, 다음 페이지는 같은 검색어
   const first = await svc.search('uidA', { filters, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
   assert.deepEqual(calls, [{ uid: 'uidA', query: input }]);
   assert.match(first.notice, /최근 14일/);
+  assert.doesNotMatch(first.notice, /일반 검색/);
   const second = await svc.search('uidA', { filters, pageToken: first.nextPageToken, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
   assert.equal(calls.length, 1);
   assert.deepEqual(yt.calls.search[1], { ...yt.calls.search[0], pageToken: 'NEXT1' });
@@ -328,15 +329,18 @@ test('동의 없는 검색은 모델을 부르지 않고, 공급자 오류가 �
 
 test('최신순 보충 검색에도 AI가 해석한 검색어와 날짜를 그대로 사용한다', async () => {
   const store = memoryStore();
-  const yt = fakeYouTube({ searchPages: [items([vid(1)]), items([vid(2)])] });
+  const yt = fakeYouTube({ searchPages: [items([vid(1)]), { ...items([vid(2)]), nextPageToken: 'NEXT1' }, items([vid(3)])] });
   const svc = createVideoFinderService({ store, youtube: yt, now: () => NOW,
     interpretSearch: async () => ({ query: '부산 틀니 소식', recentDays: 7 }),
   });
-  await svc.search('uidA', { filters: { ...baseFilters, sort: 'date', query: '지난 일주일 동안 올라온 부산 틀니 영상' }, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
+  const filters = { ...baseFilters, sort: 'date', query: '지난 일주일 동안 올라온 부산 틀니 영상' };
+  const { nextPageToken } = await svc.search('uidA', { filters, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
   assert.equal(yt.calls.search.length, 2);
   assert.equal(yt.calls.search[0].q, '부산 틀니 소식');
   assert.equal(yt.calls.search[0].publishedAfter, '2026-11-13T15:00:00Z');
   assert.deepEqual(yt.calls.search[1], { ...yt.calls.search[0], order: 'relevance' });
+  await svc.search('uidA', { filters, pageToken: nextPageToken });
+  assert.deepEqual(yt.calls.search[2], { ...yt.calls.search[1], pageToken: 'NEXT1' });
 });
 
 test('페이지 토큰은 형식이 맞을 때만 받는다', () => {

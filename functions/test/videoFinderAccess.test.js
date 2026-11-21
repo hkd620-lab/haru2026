@@ -372,7 +372,7 @@ test('동시에 두 질문을 보내면 하나만 진행되고 나머지는 차�
 });
 
 test('모델 실패·잘못된 응답이면 예약을 풀어 횟수·분석 시간을 차감하지 않고, 자동 재시도도 하지 않는다', async () => {
-  for (const failure of [() => { throw new Error('boom'); }, () => ({ supported: true, answer: '' }), () => 'not-json-object']) {
+  for (const failure of [() => { throw new Error('boom'); }, () => ({ supported: true, answer: '' }), () => ({ supported: false, needsClarification: true }), () => 'not-json-object']) {
     const store = accessStore();
     const deps = fakeDeps({ answer: failure });
     const svc = service(store, deps);
