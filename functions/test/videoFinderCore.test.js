@@ -470,7 +470,8 @@ test('베스트 오퍼 줄거리에서 추정된 제목으로 검색하고 다�
   assert.equal(first.videos.length, 1);
   assert.equal(yt.calls.search[0].q, '베스트 오퍼 영화');
   assert.equal(modelRequests[0].contents[0].parts[0].text, input);
-  assert.ok(modelRequests[0].generationConfig.responseSchema.properties.movieTitle);
+  assert.ok(modelRequests[0].generationConfig.responseSchema.required.includes('movieTitle'));
+  assert.match(modelRequests[0].systemInstruction.parts[0].text, /미술품 경매사.*베스트 오퍼/);
   const next = await svc.search('uidA', { filters, pageToken: first.nextPageToken });
   assert.match(next.notice, /《베스트 오퍼》/);
   assert.equal(modelRequests.length, 1);
