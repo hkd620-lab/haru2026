@@ -7,6 +7,7 @@ import legacy, { cspHashes } from '@vitejs/plugin-legacy'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import path from 'path'
 import fs from 'node:fs'
+import { createHash } from 'node:crypto'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import {
@@ -19,17 +20,34 @@ import {
 
 const VIDEO_FINDER_HTML = 'video-finder.html'
 const VIDEO_FINDER_OUT_DIR = path.resolve(__dirname, '../video-finder-web/dist')
+const MODERN_SUPPORT_PROBE = 'if (!import.meta.resolve) throw Error("import.meta.resolve not supported");\n'
+const LEGACY_DATA_PROBE = /^import'data:text\/javascript,(?:"[^"\r\n]+";)?if\(!import\.meta\.resolve\)throw Error\("import\.meta\.resolve not supported"\)'(?=;)/
+
+function contentAssetPath(name: string, source: string) {
+  const hash = createHash('sha256').update(source).digest('hex').slice(0, 12)
+  return `assets/${name}-${hash}.js`
+}
+
+const modernProbePath = contentAssetPath('video-finder-modern-support', MODERN_SUPPORT_PROBE)
 
 // legacy 플러그인은 출력을 여러 번 만든다(legacy 묶음 출력에는 HTML이 없다).
 // HTML이 있는 출력에서만 CSP를 넣고, 빌드 마지막(closeBundle)에 실제 디스크의 최종 HTML을 다시 검사해 실패하면 빌드를 멈춘다.
 function videoFinderCspPlugin(connectOrigins: string[]): Plugin {
   let injected = 0
+  let modernGuards = 0
   return {
     name: 'haru-video-finder-csp',
     apply: 'build',
     enforce: 'post',
     buildStart() {
       injected = 0
+      modernGuards = 0
+    },
+    renderChunk(code, chunk) {
+      if (!chunk.isEntry || !LEGACY_DATA_PROBE.test(code)) return null
+      modernGuards += 1
+      // Safari의 모듈 캐시에서 HTML의 지원 검사와 진입점 검사가 섞이지 않도록 URL을 구분한다.
+      return { code: code.replace(LEGACY_DATA_PROBE, `import '/${modernProbePath}?entry'`), map: null }
     },
     generateBundle(_options, bundle) {
       const htmlAssets = Object.values(bundle).filter((file) => file.type === 'asset' && file.fileName.endsWith('.html'))
@@ -41,10 +59,21 @@ function videoFinderCspPlugin(connectOrigins: string[]): Plugin {
         if (file.type !== 'asset') continue
         injected += 1
         const html = typeof file.source === 'string' ? file.source : new TextDecoder().decode(file.source)
-        const hashes = inlineScriptHashes(html)
-        const unknown = hashes.filter((h) => !cspHashes.includes(h))
+        const unknown = inlineScriptHashes(html).filter((h) => !cspHashes.includes(h))
         if (unknown.length) this.error(`허용 목록에 없는 인라인 스크립트가 있어 빌드를 멈춥니다: ${unknown.join(', ')}`)
-        const withCsp = injectCspMeta(html, buildVideoFinderCsp({ scriptHashes: hashes, connectOrigins }))
+        let detectorCount = 0
+        const htmlWithExternalDetector = html.replace(/<script type="module">([^<]*)<\/script>/g, (tag, code: string) => {
+          if (!LEGACY_DATA_PROBE.test(code)) return tag
+          detectorCount += 1
+          const source = code.replace(LEGACY_DATA_PROBE, `import '/${modernProbePath}?detector'`)
+          const fileName = contentAssetPath('video-finder-modern-detector', source)
+          this.emitFile({ type: 'asset', fileName, source })
+          return `<script type="module" src="/${fileName}"></script>`
+        })
+        if (detectorCount !== 1 || modernGuards !== 1) this.error('독립 주소의 브라우저 지원 검사를 같은 출처로 옮기지 못했습니다.')
+        this.emitFile({ type: 'asset', fileName: modernProbePath, source: MODERN_SUPPORT_PROBE })
+        const hashes = inlineScriptHashes(htmlWithExternalDetector)
+        const withCsp = injectCspMeta(htmlWithExternalDetector, buildVideoFinderCsp({ scriptHashes: hashes, connectOrigins }))
         const problems = verifyVideoFinderHtml(withCsp, { allowedInlineHashes: cspHashes })
         if (problems.length) this.error(`독립 주소 CSP 점검 실패: ${problems.join(' / ')}`)
         file.source = withCsp
@@ -86,6 +115,8 @@ export default defineConfig(({ mode, command }) => {
       outDir: VIDEO_FINDER_OUT_DIR,
       emptyOutDir: true,
       cssTarget: ['chrome61', 'safari13', 'ios13'],
+      // 구형 브라우저도 CSP가 허용하는 같은 출처 스타일시트 한 개를 읽는다.
+      cssCodeSplit: false,
       // 작은 이미지·글꼴을 data: 주소로 넣지 않고 같은 출처 파일로 둔다.
       assetsInlineLimit: 0,
       rollupOptions: {

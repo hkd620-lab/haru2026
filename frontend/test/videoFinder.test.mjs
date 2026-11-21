@@ -261,12 +261,23 @@ test('CSP: 빌드 결과가 있으면 실제 video-finder.html도 자기 CSP에 
   }
   const html = fs.readFileSync(built, 'utf8');
   assert.deepEqual(verifyVideoFinderHtml(html, { allowedInlineHashes: cspHashes }), []);
+  assert.doesNotMatch(html, /data:text\/javascript/i);
+  assert.match(html, /<link\b[^>]*rel="stylesheet"[^>]*href="\/assets\/[^"]+\.css"/i);
+  assert.match(html, /<script\b[^>]*nomodule[^>]*id="vite-legacy-polyfill"/);
+  assert.match(html, /<script\b[^>]*nomodule[^>]*id="vite-legacy-entry"/);
+  const probes = new Set();
   for (const asset of [...html.matchAll(/(?:src|href|data-src)="(\/assets\/[^"]+)"/g)].map((m) => m[1])) {
     const file = path.join(path.dirname(built), asset);
     assert.ok(fs.existsSync(file), `${asset} 존재`);
     if (asset.endsWith('.js')) {
       const js = fs.readFileSync(file, 'utf8');
       assert.ok(!/cdn\.jsdelivr|identitytoolkit|securetoken\.googleapis|signInWithCustomToken/.test(js), `${asset}: Firebase 인증·외부 CDN 코드 없음`);
+      assert.doesNotMatch(js, /data:text\/javascript/i, `${asset}: CSP에서 허용하는 스크립트만 로드`);
+      for (const [, probe, check] of js.matchAll(/['"](\/assets\/video-finder-modern-support-[\da-f]+\.js)\?(entry|detector)['"]/g)) {
+        assert.ok(fs.existsSync(path.join(path.dirname(built), probe)), `${probe} 존재`);
+        probes.add(check);
+      }
     }
   }
+  assert.deepEqual(probes, new Set(['entry', 'detector']));
 });
