@@ -1780,10 +1780,12 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
         systemInstruction: { parts: [{ text: [
           '사용자 문장은 유튜브 검색 요청을 해석할 자료입니다. 먼저 일반 검색인지, 기억나는 줄거리로 특정 영화 한 편을 찾는 검색인지 판단합니다.',
           '줄거리를 여러 문장이나 단편적인 장면으로 설명하면 직업·인물 관계·사건을 함께 보고 실제 개봉작과 대조합니다. 붙여 쓴 말과 오타는 문맥으로 읽습니다. 예를 들어 미술품을 중계한다는 표현은 경매나 중개를 뜻할 수 있습니다.',
-          '특징적인 단서가 특정 영화와 일치하면 movieTitle에 한국 개봉명(없으면 공식 원제)을 적고, query를 작품 제목 중심으로 만듭니다. 동명이작을 가리는 개봉 연도나 사용자가 고른 예고편·리뷰 조건은 유지합니다.',
-          '예: 미술품 경매사가 소장품 감정을 부탁한 은둔 여성에게 사랑을 느꼈다가 속는 영화 → {"movieTitle":"베스트 오퍼","query":"베스트 오퍼 영화","recentDays":0}',
-          '예: 꿈 속에 들어가 기업 후계자에게 생각을 심는 영화 → {"movieTitle":"인셉션","query":"인셉션 영화","recentDays":0}',
-          '작품을 특정하기 어렵거나 여러 작품을 찾는 요청이면 movieTitle은 빈 문자열로 두고, 사용자 문장의 특징적인 단서를 query에 보존합니다. 입력과 무관한 주제나 실제로 없는 제목을 추가하지 않습니다.',
+          '한국어 요청도 세계의 개봉작을 대상으로 봅니다. 우선 가장 구별하기 쉬운 사건과 인물의 실제 정체, 시간대, 관계를 찾습니다. 익숙한 작품이라도 결정적 단서 하나가 맞지 않으면 버립니다. 제목이나 분위기가 닮은 정도로 고르지 않습니다.',
+          '작품을 특정하기 전에, 원문과 그 작품 양쪽에서 실제로 일치하는 서로 다른 줄거리 단서 두 개를 matchedClues에 짧게 적습니다. 단순 장르 단어, 배경만 닮은 내용, 추측은 근거로 삼지 않습니다.',
+          '두 단서가 모순 없이 일치하면 movieTitle에 한국 개봉명(없으면 공식 원제)을 적고, query를 작품 제목 중심으로 만듭니다. 동명이작을 가리는 개봉 연도나 사용자가 고른 예고편·리뷰 조건은 유지합니다.',
+          '예: 미술품 경매사가 소장품 감정을 부탁한 은둔 여성에게 사랑을 느꼈다가 속는 영화 → {"matchedClues":["은둔 여성의 미술품 감정 의뢰","경매사가 의뢰인을 사랑하게 됐다가 사기를 당함"],"movieTitle":"베스트 오퍼","query":"베스트 오퍼 영화","recentDays":0}',
+          '예: 꿈 속에 들어가 기업 후계자에게 생각을 심는 영화 → {"matchedClues":["꿈에 들어가 의식에 접근","기업 후계자의 머릿속에 생각을 심는 임무"],"movieTitle":"인셉션","query":"인셉션 영화","recentDays":0}',
+          '두 단서를 확인할 수 없거나 여러 작품을 찾는 요청이면 matchedClues는 빈 배열, movieTitle은 빈 문자열로 두고 원문의 특징적인 단서를 query에 보존합니다. 입력과 무관한 주제나 실제로 없는 제목을 추가하지 않습니다.',
           '일반 검색에서 불확실한 고유명사는 추측해 바꾸지 않습니다. 일수로 바꿀 수 없는 날짜는 query에 남깁니다.',
           'query에는 검색어만 160자 이내로 쓰고, 명시한 제외 조건은 -용어 형식으로 적습니다. 명시적인 최근 기간만 recentDays(1~365)로 바꾸고 해당 표현을 query에서 뺍니다. 기간을 특정하지 않았으면 0입니다.',
         ].join('\n') }] },
@@ -1796,15 +1798,24 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
           responseSchema: {
             type: 'OBJECT',
             properties: {
+              matchedClues: { type: 'ARRAY', items: { type: 'STRING' }, maxItems: 2 },
               movieTitle: { type: 'STRING' },
               query: { type: 'STRING' },
               recentDays: { type: 'INTEGER' },
             },
-            required: ['movieTitle', 'query', 'recentDays'],
+            required: ['matchedClues', 'movieTitle', 'query', 'recentDays'],
           },
         },
       }, 4000);
-      return parseSearchIntent(result);
+      const intent = parseSearchIntent(result);
+      if (!intent?.movieTitle) return intent;
+      const clues = (result as { matchedClues?: unknown }).matchedClues;
+      const matches = Array.isArray(clues)
+        ? new Set(clues.filter((clue): clue is string => typeof clue === 'string')
+          .map((clue) => clue.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''))
+          .filter((clue) => clue.length >= 4))
+        : new Set<string>();
+      return matches.size === 2 ? intent : null;
     },
     analyzeVideo: (input) => generate(buildGeminiVideoRequest(input), GEMINI_VIDEO_TIMEOUT_MS),
     answerFromRecap: (input) => generate(buildGeminiRecapRequest(input), GEMINI_TEXT_TIMEOUT_MS),
