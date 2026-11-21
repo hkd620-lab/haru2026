@@ -450,6 +450,66 @@ test('동의한 긴 검색만 해석하고, 다음 페이지는 같은 검색어
   assert.equal(calls.length, 2);
 });
 
+test('베스트 오퍼 줄거리에서 추정된 제목으로 검색하고 다음 페이지에서도 재사용한다', async () => {
+  const input = '명화를 중계하는 중계인이 어떤미모이 의뢰인을 사랑하게 되지만 이 여자에게 큰 사기를당하는 영화';
+  const modelRequests = [];
+  const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async (_url, init) => {
+    modelRequests.push(JSON.parse(init.body));
+    return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({
+      query: '명화 중개인 의뢰인 사랑 사기 영화', movieTitle: '베스트 오퍼', recentDays: 0,
+    }) }] } }] }) };
+  } });
+  const store = memoryStore();
+  const yt = fakeYouTube({ searchPages: [{ ...items([vid(1)]), nextPageToken: 'NEXT1' }, {}] });
+  const svc = createVideoFinderService({ store, youtube: yt, now: () => NOW,
+    interpretSearch: (_uid, query) => gemini.interpretSearch(query),
+  });
+  const filters = { ...baseFilters, query: input };
+  const first = await svc.search('uidA', { filters, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
+  assert.match(first.notice, /줄거리에서 《베스트 오퍼》로 추정/);
+  assert.equal(first.videos.length, 1);
+  assert.equal(yt.calls.search[0].q, '베스트 오퍼 영화');
+  assert.equal(modelRequests[0].contents[0].parts[0].text, input);
+  assert.ok(modelRequests[0].generationConfig.responseSchema.properties.movieTitle);
+  const next = await svc.search('uidA', { filters, pageToken: first.nextPageToken });
+  assert.match(next.notice, /《베스트 오퍼》/);
+  assert.equal(modelRequests.length, 1);
+  assert.deepEqual(yt.calls.search[1], { ...yt.calls.search[0], pageToken: 'NEXT1' });
+  assert.equal((await svc.library('uidA', { action: 'history' })).history[0].query, input);
+});
+
+test('추정 제목은 다른 작품명과 구분하고 검색 형식과 제외 조건을 유지한다', async () => {
+  const cases = [
+    { movieTitle: '괴물', query: '영화 괴물 2006 예고편', expected: '영화 괴물 2006 예고편' },
+    { movieTitle: '올드', query: '올드보이 영화 -예고편', expected: '올드 영화 -예고편' },
+    { movieTitle: '베스트 오퍼', query: '경매 사기 영화 -"결말 포함"', expected: '베스트 오퍼 영화 -"결말 포함"' },
+    { movieTitle: '베스트 오퍼', query: '경매 사기 영화 -"베스트 오퍼 해설"', expected: '베스트 오퍼 영화 -"베스트 오퍼 해설"' },
+  ];
+  for (const { movieTitle, query, expected } of cases) {
+    const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async () => ({
+      ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({
+        query, movieTitle, recentDays: 0,
+      }) }] } }] }),
+    }) });
+    assert.deepEqual(await gemini.interpretSearch('줄거리로 영화 찾아줘'), {
+      query: expected, recentDays: 0, movieTitle,
+    });
+  }
+});
+
+test('제목이 없거나 잘못된 모델 출력은 일반 키워드를 유지한다', async () => {
+  for (const movieTitle of [undefined, '', '영화 | 다른 작품']) {
+    const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async () => ({
+      ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({
+        query: '유럽 미술품 경매 영화', movieTitle, recentDays: 0,
+      }) }] } }] }),
+    }) });
+    assert.deepEqual(await gemini.interpretSearch('미술품 경매가 나오는 영화 추천'), {
+      query: '유럽 미술품 경매 영화', recentDays: 0,
+    });
+  }
+});
+
 test('동의 없는 검색은 모델을 부르지 않고, 공급자 오류가 나도 같은 필터로 일반 검색을 실행한다', async () => {
   const store = memoryStore();
   const yt = fakeYouTube();

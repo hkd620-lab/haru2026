@@ -762,7 +762,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
               <p id="vf-query-help" className="mt-2 text-base leading-7 text-[#46524a]">원하는 분야가 없거나 더 구체적으로 찾고 싶다면, 찾을 영상을 말하듯 적어 보세요.</p>
               {access.searchAiEnabled && (
                 <div className="mt-3 rounded-lg bg-[#f7faed] p-3">
-                  <p id="vf-ai-search-help" className="mb-2 text-base leading-7">긴 문장을 AI가 해석하도록 검색어를 Google Gemini에 보내요. 개인정보는 적지 마세요. <a href={`${haruOrigin}/privacy#video-finder-search-ai`} className="font-semibold underline" target="_blank" rel="noopener noreferrer">정보 전송 안내 ↗</a></p>
+                  <p id="vf-ai-search-help" className="mb-2 text-base leading-7">긴 문장을 검색어로 정리하거나 줄거리에서 영화 제목을 찾기 위해 Google Gemini에 보내요. 개인정보는 적지 마세요. <a href={`${haruOrigin}/privacy#video-finder-search-ai`} className="font-semibold underline" target="_blank" rel="noopener noreferrer">정보 전송 안내 ↗</a></p>
                   <button type="button" className={btnSecondary} aria-describedby="vf-ai-search-help" onClick={() => startSearch(true)} disabled={!draft.query.trim()}>동의하고 AI로 찾기</button>
                 </div>
               )}
