@@ -325,6 +325,14 @@ const MIXED_FILM_SCOPE = [
   /(?:외국|해외|일본|미국|중국)\s*영화(?:도|를)?\s*(?:포함|함께|섞)/u,
 ];
 
+const FIRST_LOVE_THEME = /첫\s*(?:사랑|연애)|\bfirst[-\s]+love\b/iu;
+const DENIES_FIRST_LOVE = /첫\s*(?:사랑|연애)(?:이|가|은|는|을|를)?\s*(?:주제(?:가|는)?\s*)?(?:말고|제외|빼고|아닌|아니)|\b(?:not|except|excluding)\s+first[-\s]+love\b/iu;
+type VideoSearchScope = 'korean-film' | 'korean-first-love-film';
+
+function withoutHashtags(text: string): string {
+  return text.replace(/#[\p{L}\p{M}\p{N}_-]+/gu, ' ');
+}
+
 function matchesKoreanFilmMaterial(title: string, description: string, tags: unknown[]): boolean {
   const normalizedTags = tags.map((tag) => cleanText(tag, 100).normalize('NFC'));
   const labels = [title, ...normalizedTags];
@@ -337,7 +345,7 @@ function matchesKoreanFilmMaterial(title: string, description: string, tags: unk
 
   // 추천 목록은 태그에 한국 영화 한 편이 언급되기만 해도 매치될 수 있다.
   // 여러 편을 소개할 때는 제목·설명 본문에서 목록의 범위가 한국 영화임을 확인한다.
-  const editorialText = [title, description].map((text) => text.replace(/#[\p{L}\p{M}\p{N}_-]+/gu, ' '));
+  const editorialText = [title, description].map(withoutHashtags);
   if (editorialText.some((text) => FILM_ROUNDUP.test(text))) {
     return editorialText.some((text) => KOREAN_FILM_ROUNDUP.test(text))
       && !editorialText.some((text) => MIXED_FILM_SCOPE.some((marker) => marker.test(text)));
@@ -352,6 +360,14 @@ function wantsKoreanFilms(query: string): boolean {
   const positiveQuery = normalized.replace(/(?:^|\s)-(?:"[^"]*"|한국\s*영화|국내\s*영화|\S+)/gu, '');
   return KOREAN_FILM_LABEL.test(positiveQuery) && !DENIES_KOREAN_FILM.test(positiveQuery)
     && !/(?:한국\s*영화|한국산\s*영화|국내\s*영화)(?:는|를)?\s*(?:말고|제외|빼고)/u.test(positiveQuery);
+}
+
+function videoSearchScope(query: string): VideoSearchScope | undefined {
+  if (!wantsKoreanFilms(query)) return undefined;
+  const original = query.normalize('NFC');
+  const positiveQuery = original.replace(/(?:^|\s)-(?:"[^"]*"|첫\s*(?:사랑|연애)|\S+)/gu, '');
+  return FIRST_LOVE_THEME.test(positiveQuery) && !DENIES_FIRST_LOVE.test(original)
+    ? 'korean-first-love-film' : 'korean-film';
 }
 
 export function normalizeSearchQuery(query: string): string {
@@ -501,15 +517,19 @@ export function sanitizeVideoMeta(raw: unknown): VideoMeta {
 }
 
 // videos.list 응답 1건을 VideoMeta로 바꾼다. 구독자 수는 channels.list 뒤에 채운다.
-export function mapVideoItem(item: unknown, koreanFilmsOnly = false): VideoMeta | null {
+export function mapVideoItem(item: unknown, scope?: VideoSearchScope): VideoMeta | null {
   const it = item as { id?: unknown; snippet?: any; statistics?: any; contentDetails?: any } | null;
   if (!it || typeof it.id !== 'string' || !VIDEO_ID_RE.test(it.id)) return null;
   const snippet = it.snippet || {};
-  if (koreanFilmsOnly) {
+  if (scope) {
     const title = cleanText(snippet.title, 200).normalize('NFC');
     const description = cleanText(snippet.description, 5000).normalize('NFC');
     const tags: unknown[] = Array.isArray(snippet.tags) ? snippet.tags : [];
     if (!matchesKoreanFilmMaterial(title, description, tags)) return null;
+    if (scope === 'korean-first-love-film') {
+      const summary = [title, description].map(withoutHashtags).join(' ');
+      if (!FIRST_LOVE_THEME.test(summary) || DENIES_FIRST_LOVE.test(summary)) return null;
+    }
   }
   const thumbs = snippet.thumbnails || {};
   return sanitizeVideoMeta({
@@ -795,7 +815,7 @@ export interface VideoFinderStore {
 
 export interface YouTubeClient {
   search(params: Record<string, string>): Promise<SearchResponse>;
-  videoDetails(videoIds: string[], koreanFilmsOnly?: boolean): Promise<Record<string, VideoMeta>>;
+  videoDetails(videoIds: string[], scope?: VideoSearchScope): Promise<Record<string, VideoMeta>>;
 }
 
 export type VideoFinderDeps = {
@@ -869,8 +889,8 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     }
 
     // AI가 문구를 바꾸더라도 검색 원문과 직접 선택한 관심 분야로 판단한다.
-    const koreanFilmsOnly = wantsKoreanFilms(`${filters.query} ${filters.category}`);
-    const details = ids.length ? await youtube.videoDetails(ids, koreanFilmsOnly) : {};
+    const scope = videoSearchScope(`${filters.query} ${filters.category}`);
+    const details = ids.length ? await youtube.videoDetails(ids, scope) : {};
     const videos = filterAndSortVideos(ids.map((id) => details[id]).filter(Boolean) as VideoMeta[], filters);
     const upstreamNext = nextToken ? (dateRelevance ? DATE_RELEVANCE_CURSOR + nextToken : nextToken) : null;
     const next = upstreamNext && intent
@@ -890,13 +910,14 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     const intentNotice = intent ? `AI가 ‘${intent.query}’${recentDays ? ` · 최근 ${recentDays}일` : ''} 조건으로 이해했어요. ` : '';
     const correctionNotice = normalizedQuery === filters.query ? '' : `‘${normalizedQuery}’로 검색했어요. `;
     const queryNotice = (requestedAi ? 'AI 해석을 적용하지 못해 일반 검색으로 찾았어요. ' : '') + correctionNotice;
-    const filmNotice = koreanFilmsOnly ? '한국 영화로 표시된 영상 중 추천 목록은 한국 영화로 범위가 명시된 것만 골랐어요. 분류 정보가 부족한 영상은 빠질 수 있어요. ' : '';
+    const filmNotice = scope ? '한국 영화로 표시된 영상 중 추천 목록은 한국 영화로 범위가 명시된 것만 골랐어요. 분류 정보가 부족한 영상은 빠질 수 있어요. ' : '';
+    const themeNotice = scope === 'korean-first-love-film' ? '제목이나 설명에서 첫사랑이 확인된 영상만 보여드려요. ' : '';
     return {
       videos,
       nextPageToken: filters.sort === 'likeCount' ? null : next,
       fetched: ids.length,
       remainingSearches,
-      notice: (intent ? intentNotice : queryNotice) + (dateRelevance || supplemented ? '관련 영상 후보를 더 확인해 올린 날짜가 최신인 순서로 보여드려요. ' : '') + (filters.sort === 'likeCount' ? 'YouTube 검색 후보 중 공개 좋아요 수가 많은 영상 최대 10개예요. ' : '') + filmNotice + SEARCH_NOTICE,
+      notice: (intent ? intentNotice : queryNotice) + (dateRelevance || supplemented ? '관련 영상 후보를 더 확인해 올린 날짜가 최신인 순서로 보여드려요. ' : '') + (filters.sort === 'likeCount' ? 'YouTube 검색 후보 중 공개 좋아요 수가 많은 영상 최대 10개예요. ' : '') + filmNotice + themeNotice + SEARCH_NOTICE,
     };
   }
 
