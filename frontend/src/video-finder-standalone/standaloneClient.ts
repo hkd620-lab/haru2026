@@ -55,6 +55,7 @@ export function createStandaloneClient(call: ReturnType<typeof createStandaloneC
     accessStatus: () => call<VideoFinderAccess>('access', { action: 'status' }),
     acceptPolicy: (version) => call<VideoFinderAccess>('access', { action: 'acceptPolicy', version }),
     acceptAiConsent: (version) => call<VideoFinderAccess>('access', { action: 'acceptAiConsent', version }),
+    revokeAiConsent: () => call<VideoFinderAccess>('access', { action: 'revokeAiConsent' }),
     askQuestion: (request) => call<VideoQuestionAnswer>('access', { action: 'ask', ...request }),
     searchVideos: (filters, pageToken) => call('search', pageToken ? { filters, pageToken } : { filters }),
     listSaved: () => library({ action: 'list' }),

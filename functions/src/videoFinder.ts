@@ -249,7 +249,7 @@ export const videoFinderLibrary = onCall(
   },
 );
 
-// 이용 안내·약관 동의(버전 1)와 프리미엄 영상 AI 질문: { action: 'status' | 'acceptPolicy' | 'acceptAiConsent' | 'ask' }.
+// 이용 안내·약관 동의(버전 1)와 프리미엄 영상 AI 질문: { action: 'status' | 'acceptPolicy' | 'acceptAiConsent' | 'revokeAiConsent' | 'ask' }.
 // 독립 주소의 op 'access'와 같은 구현을 쓴다. UID는 request.auth에서만 정한다.
 export const videoFinderAccess = onCall(
   {
@@ -352,10 +352,22 @@ export const purgeStaleVideoFinderMetadata = onSchedule(
         .limit(400)
         .get();
       if (expiredCache.empty) break;
-      const batch = db.batch();
-      expiredCache.docs.forEach((d) => batch.delete(d.ref));
-      await batch.commit();
-      counts.aiCache += expiredCache.size;
+      let deleted = 0;
+      // 같은 영상의 요약이 다시 생성되었다면 쿼리가 읽은 이전 버전만 지운다.
+      for (let offset = 0; offset < expiredCache.size; offset += 20) {
+        const results = await Promise.all(expiredCache.docs.slice(offset, offset + 20).map((doc) =>
+          db.runTransaction(async (tx) => {
+            const current = await tx.get(doc.ref);
+            const expiresAt = current.get('expiresAt');
+            if (typeof expiresAt !== 'number' || expiresAt > nowMs) return false;
+            tx.delete(doc.ref);
+            return true;
+          }),
+        ));
+        deleted += results.filter(Boolean).length;
+      }
+      counts.aiCache += deleted;
+      if (!deleted) break;
     }
     logger.info('videoFinder stale metadata purged', counts);
   },

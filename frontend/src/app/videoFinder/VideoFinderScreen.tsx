@@ -509,6 +509,22 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
     }
   };
 
+  async function revokeAiConsent() {
+    setDataBusy(true);
+    setActionError('');
+    accessRevision.current += 1;
+    try {
+      const latest = await client.revokeAiConsent();
+      accessRevision.current += 1;
+      setAccess(latest);
+      setStatus('AI 질문 정보 전송 동의를 철회했어요.');
+    } catch (error) {
+      setActionError(friendlyErrorMessage(error));
+    } finally {
+      setDataBusy(false);
+    }
+  }
+
   const deleteAll = async () => {
     if (!window.confirm('내 영상 찾기의 보관 영상, 메모, 지난 검색을 모두 지울까요? 지운 뒤에는 되돌릴 수 없어요. 먼저 백업을 받아 두면 안전해요.')) return;
     setActionError('');
@@ -742,6 +758,9 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" className={btnSecondary} disabled={dataBusy} onClick={() => void backup()}>백업 파일 받기</button>
                 <button type="button" className={btnDanger} disabled={dataBusy} onClick={() => void deleteAll()}>모두 지우기</button>
+                {access.aiConsentAccepted && (
+                  <button type="button" className={btnSecondary} disabled={dataBusy} onClick={() => void revokeAiConsent()}>AI 질문 동의 철회</button>
+                )}
               </div>
             </section>
           </section>

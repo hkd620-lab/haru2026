@@ -141,7 +141,7 @@ export function TermsPage() {
       <section id="video-finder" aria-labelledby="video-finder-terms-heading" className="mb-8 space-y-2 rounded-lg border border-[#e5e5e5] bg-[#F9FAFB] p-4 text-sm leading-relaxed text-[#333]">
         <h2 id="video-finder-terms-heading" className="font-bold text-[#1A3C6E]">내 영상 찾기 이용 안내</h2>
         <p>내 영상 찾기를 이용하면 <a className="underline" href="https://www.youtube.com/t/terms">YouTube 서비스 약관</a>도 적용됩니다. 영상은 YouTube 원본 페이지에서 시청할 수 있고, 보관함에는 영상 주소와 이용자가 작성한 메모를 담을 수 있습니다.</p>
-        <p>프리미엄 영상 질문에는 하루 10회와 구독 기간당 영상 분석 120분 한도가 적용됩니다. AI 답변의 출처와 시간은 원본 영상에서 확인할 수 있습니다.</p>
+        <p>프리미엄 영상 질문에는 하루 10회와 구독 기간당 영상 분석 120분 한도가 적용됩니다. 영상 한 편은 60분까지 분석할 수 있습니다. AI 답변의 출처와 시간은 원본 영상에서 확인할 수 있습니다.</p>
       </section>
       {articles.map((article) => (
         <div key={article.title} style={{ marginBottom: 28 }}>

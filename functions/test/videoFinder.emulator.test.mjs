@@ -151,7 +151,15 @@ test('실제 Firestore에서 프리미엄만 예약하고 동시 호출·재시�
   assert.equal((await access.handle(uid, { action: 'status' })).policyAccepted, false);
   await access.requirePolicyFor(uid, 'search', {});
   await db.doc('config/videoFinder').update({ policyRequired: true });
-  await access.requirePolicyFor(uid, 'library', { action: 'backup' });
+  const archiveId = vid(32);
+  await store.createSaved(uid, { ...savedDoc(archiveId), note: '기존 보관 메모' }, 10);
+  const library = core.createVideoFinderService({ store, now: () => NOW, youtube: {} });
+  const backupRequest = { action: 'backup' };
+  await access.requirePolicyFor(uid, 'library', backupRequest);
+  const { backup } = await library.library(uid, backupRequest);
+  assert.equal(backup.saved[0].note, '기존 보관 메모');
+  assert.equal(backup.saved[0].url, `https://www.youtube.com/watch?v=${archiveId}`);
+  assert.equal(backup.saved[0].meta, undefined);
   await assert.rejects(access.requirePolicyFor(uid, 'search', {}), (error) => error.code === 'failed-precondition');
   const accepted = await access.handle(uid, { action: 'acceptPolicy', version: core.VIDEO_FINDER_POLICY_VERSION });
   assert.equal(accepted.questionAccess, 'premium-required');
@@ -164,8 +172,6 @@ test('실제 Firestore에서 프리미엄만 예약하고 동시 호출·재시�
   assert.equal(modelCalls, 0);
   assert.equal((await access.handle(uid, aiConsent)).aiConsentAccepted, true);
 
-  const archiveId = vid(32);
-  await store.createSaved(uid, { ...savedDoc(archiveId), note: '기존 보관 메모' }, 10);
   const first = access.handle(uid, question);
   await Promise.race([started, first.then(() => { throw new Error('모의 모델 호출을 기다리지 않고 종료했습니다.'); })]);
   try {
@@ -185,5 +191,14 @@ test('실제 Firestore에서 프리미엄만 예약하고 동시 호출·재시�
 
   await store.deleteAll(uid);
   assert.equal((await db.collection(`users/${uid}/videoFinderAiCache`).get()).size, 0);
+  const keptUsage = (await db.doc(`users/${uid}/videoFinderAccess/usage`).get()).data();
+  assert.deepEqual(keptUsage.provider, usage.provider);
+  assert.equal(keptUsage.dayCount, usage.dayCount);
+  assert.equal(keptUsage.monthSeconds, usage.monthSeconds);
   assert.equal((await access.handle(uid, { action: 'status' })).remainingQuestions, 9);
+  const revoked = await access.handle(uid, { action: 'revokeAiConsent' });
+  assert.equal(revoked.policyAccepted, true);
+  assert.equal(revoked.aiConsentAccepted, false);
+  await assert.rejects(access.handle(uid, question), (error) => error.code === 'failed-precondition');
+  assert.equal(modelCalls, 1);
 });

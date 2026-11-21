@@ -976,9 +976,8 @@ export const QUESTION_TIME_ZONE = 'Asia/Seoul';
 // 허대표님 승인 기준: 프리미엄 활성 구독자만, 한국 시간 하루 답변 10회, 구독 한 달 분석 120분.
 export const QUESTION_DAILY_LIMIT = 10;
 export const ANALYSIS_MONTHLY_SECONDS = 7200;
-// 영상 1개 상한 120분. 모델 문서상 저해상도는 약 3시간까지 받지만 비용·응답 시간을 위해 120분으로 묶는다.
-// 120분 영상의 실제 응답 시간(GEMINI_VIDEO_TIMEOUT_MS 안)은 출시 전 실측 확인이 필요하다.
-export const MAX_ANALYSIS_VIDEO_SECONDS = 7200;
+// 공개 영상 1개는 첫 운영에서 60분까지 분석한다. 영상 길이에 따른 실제 응답 시간은 운영 공개 전 확인한다.
+export const MAX_ANALYSIS_VIDEO_SECONDS = 3600;
 // 공급자(Gemini) 비용 상한: 실패 포함 실제 호출 예약 기준. 사용자 차감과 별도이며 되돌리지 않는다.
 export const PROVIDER_DAILY_ATTEMPTS = 15;
 export const PROVIDER_CYCLE_SECONDS = 10800;
@@ -1066,7 +1065,7 @@ const PAID_AMENDED_END_MAX_MS = 62 * DAY_MS;
 // - endDate(없으면 expiresAt)가 없거나, 지났거나, 날짜 값이 잘못됐으면 거절(fail closed).
 //   만료일 없는 'active'(결제 대기·수동으로 고친 무기한 지급)는 유료 이용 중으로 보지 않는다.
 // - 사용량 기간 키:
-//   1) 최근 실제 결제일(lastPaidAt)이 있고 그 뒤 32일 안이면 그 결제 기간(pay:lastPaidAt ms).
+//   1) 가장 최근 실제 결제일(lastPaidAt)이 현재 결제 기간에 속하면 그 결제 기간(pay:lastPaidAt ms).
 //      결제 기간 중 endDate가 고쳐져도 키가 바뀌지 않아 한도가 두 번 생기지 않는다(월말 갱신 포함).
 //   2) 결제일이 없는 예전 문서는 [startDate, endDate)가 한 달 안이거나 [endDate-1개월, endDate)이면 p:endDate ms.
 //   3) 그 밖의 장기 지급은 한국 시간 달력 월(m:YYYY-MM)로 나눈다.
@@ -1081,11 +1080,11 @@ export function evaluateQuestionEntitlement(subscription: unknown, nowMs: number
   if (start !== undefined && start > nowMs + 60000) return { ok: false };
   if (end <= nowMs) return { ok: false };
   if (start !== undefined && start >= end) return { ok: false };
-  if (lastPaid !== undefined && lastPaid <= nowMs && nowMs - lastPaid < PAID_CYCLE_MAX_MS
-    && end > lastPaid && end - lastPaid <= PAID_AMENDED_END_MAX_MS) {
-    return { ok: true, monthKey: `pay:${lastPaid}` };
+  const paidAt = lastPaid !== undefined && (start === undefined || lastPaid >= start) ? lastPaid : undefined;
+  if (paidAt !== undefined && paidAt <= nowMs && end - paidAt <= PAID_AMENDED_END_MAX_MS) {
+    return { ok: true, monthKey: `pay:${paidAt}` };
   }
-  if (lastPaid === undefined) {
+  if (paidAt === undefined) {
     const legacyPeriod = start !== undefined && start <= nowMs && end - start <= PAID_CYCLE_MAX_MS;
     if (legacyPeriod || nowMs >= oneMonthBefore(end)) return { ok: true, monthKey: `p:${end}` };
   }
@@ -1595,7 +1594,7 @@ export type AccessKeys = { videoId?: string; requestId?: string; previousRequest
 
 export type AccessWrites = {
   // 같은 정책 문서에 병합(merge)한다. 일반 동의와 AI 동의 필드는 서로 덮어쓰지 않는다.
-  policy?: { version?: number; acceptedAt?: number; aiConsentVersion?: number; aiConsentAcceptedAt?: number };
+  policy?: { version?: number; acceptedAt?: number; aiConsentVersion?: number; aiConsentAcceptedAt?: number; aiConsentRevokedAt?: number };
   usage?: Record<string, unknown>;
   recap?: VideoRecap;
   answer?: Record<string, unknown>;
@@ -1723,6 +1722,23 @@ export function createVideoFinderAccessService(deps: {
     return status(uid);
   }
 
+  async function revokeAiConsent(uid: string): Promise<AccessStatus> {
+    const nowMs = now();
+    await store.transact(uid, {}, (snap) => {
+      assertActiveAccount(snap.account);
+      if (!isAiConsentAccepted(snap.policy)) return { writes: {}, result: null };
+      const usage = normalizeUsage(snap.usage);
+      return {
+        writes: {
+          policy: { aiConsentVersion: 0, aiConsentRevokedAt: nowMs },
+          usage: { lease: null, dataEpoch: usage.dataEpoch + 1 },
+        },
+        result: null,
+      };
+    });
+    return status(uid);
+  }
+
   async function acceptPolicy(uid: string, body: Record<string, unknown>): Promise<AccessStatus> {
     if (body.version !== VIDEO_FINDER_POLICY_VERSION) {
       throw new VideoFinderError('invalid-argument', '안내 내용이 바뀌었어요. 화면을 새로 불러와 다시 확인해 주세요.');
@@ -1749,11 +1765,16 @@ export function createVideoFinderAccessService(deps: {
     await requirePolicy(uid);
   }
 
-  async function release(uid: string, input: AskInput) {
+  function ownsLease(usage: QuestionUsage, lease: QuestionLease): boolean {
+    return usage.lease?.requestId === lease.requestId && usage.lease.expiresAt === lease.expiresAt
+      && usage.lease.epoch === lease.epoch;
+  }
+
+  async function release(uid: string, lease: QuestionLease) {
     try {
       await store.transact(uid, {}, (snap) => {
         const usage = normalizeUsage(snap.usage);
-        if (!usage.lease || usage.lease.requestId !== input.requestId) return { writes: {}, result: null };
+        if (!ownsLease(usage, lease)) return { writes: {}, result: null };
         return { writes: { usage: { lease: null } }, result: null };
       });
     } catch {
@@ -1811,7 +1832,7 @@ export function createVideoFinderAccessService(deps: {
     // 3) 예약 트랜잭션: 계정·동의·프리미엄·중복·한도를 최신 값으로 다시 확인하고 예약(lease)을 건다.
     //    같은 쓰기로 공급자 카운터(실패 포함 호출 1회·영상 분석 시간)를 네트워크 호출 전에 늘린다. 이 값은 되돌리지 않는다.
     type Reserved = { kind: 'done'; answer: string; timestamps: number[]; answerSource: AnswerSource; status: AccessStatus }
-      | { kind: 'reserved'; recap: VideoRecap | null };
+      | { kind: 'reserved'; recap: VideoRecap | null; lease: QuestionLease };
     const reservationMs = now();
     const reserved = await store.transact<Reserved>(uid, keys, (snap) => {
       assertActiveAccount(snap.account);
@@ -1820,12 +1841,13 @@ export function createVideoFinderAccessService(deps: {
       if (!ent.ok) throw ACCESS_ERRORS.premium();
       const usage = normalizeUsage(snap.usage);
       const done = readAnswerRecord(snap.answer, input, reservationMs);
+      if (usage.dataEpoch !== preUsage.dataEpoch) throw ACCESS_ERRORS.retry();
       if (done) return { writes: {}, result: { kind: 'done', ...done, status: readyStatus(ent, usage, reservationMs) } };
       const recap = preRecap ? readValidRecap(snap.recap, input.videoId, reservationMs) : null;
       if (preRecap && !recap) throw ACCESS_ERRORS.retry();
       const plan = planQuestionReservation({ usage, nowMs: reservationMs, monthKey: ent.monthKey, needSeconds, ...keys });
       if (!plan.ok) throw ACCESS_ERRORS[plan.reason]();
-      return { writes: { usage: { lease: plan.lease, provider: plan.provider } }, result: { kind: 'reserved', recap } };
+      return { writes: { usage: { lease: plan.lease, provider: plan.provider } }, result: { kind: 'reserved', recap, lease: plan.lease } };
     });
     if (reserved.kind === 'done') {
       return { answer: reserved.answer, timestamps: reserved.timestamps, status: reserved.status, answerSource: reserved.answerSource };
@@ -1842,7 +1864,7 @@ export function createVideoFinderAccessService(deps: {
       clean = sanitizeModelAnswer(raw, durationSeconds, !reserved.recap,
         reserved.recap ? reserved.recap.segments.map((s) => s.t) : undefined);
     } catch {
-      await release(uid, input);
+      await release(uid, reserved.lease);
       throw ACCESS_ERRORS.model();
     }
 
@@ -1852,6 +1874,7 @@ export function createVideoFinderAccessService(deps: {
     const completed = await store.transact<Completed>(uid, keys, (snap) => {
       assertActiveAccount(snap.account);
       const usage = normalizeUsage(snap.usage);
+      if (!ownsLease(usage, reserved.lease)) return { writes: {}, result: { kind: 'lost' } };
       const plan = planQuestionCompletion(usage, input.requestId, doneMs);
       if (!plan.ok) return { writes: {}, result: { kind: 'lost' } };
       const ent = evaluateQuestionEntitlement(snap.subscription, doneMs);
@@ -1895,6 +1918,7 @@ export function createVideoFinderAccessService(deps: {
     if (body.action === 'status') return status(uid);
     if (body.action === 'acceptPolicy') return acceptPolicy(uid, body);
     if (body.action === 'acceptAiConsent') return acceptAiConsent(uid, body);
+    if (body.action === 'revokeAiConsent') return revokeAiConsent(uid);
     if (body.action === 'ask') return ask(uid, body);
     throw new VideoFinderError('invalid-argument', '알 수 없는 요청입니다.');
   }

@@ -206,6 +206,7 @@ export interface VideoFinderClient {
   accessStatus(): Promise<VideoFinderAccess>;
   acceptPolicy(version: number): Promise<VideoFinderAccess>;
   acceptAiConsent(version: number): Promise<VideoFinderAccess>;
+  revokeAiConsent(): Promise<VideoFinderAccess>;
   askQuestion(request: VideoQuestionRequest): Promise<VideoQuestionAnswer>;
   searchVideos(filters: SearchFilters, pageToken?: string | null): Promise<SearchResult>;
   listSaved(): Promise<{ saved: SavedItem[]; searchEnabled: boolean }>;

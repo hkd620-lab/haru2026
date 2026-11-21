@@ -102,9 +102,9 @@ export function PrivacyPage() {
         <p>HARU 계정에 동의 기록, 지난 검색 조건, 영상 주소, 직접 쓴 메모·태그와 프리미엄 이용량을 연결합니다. 제목·썸네일 등 영상 정보는 필요한 기간 동안 보관하고 30일 이내에 갱신하거나 지웁니다. 작성 중인 메모는 브라우저에도 임시로 남을 수 있습니다.</p>
         <div id="video-finder-ai" className="space-y-2">
           <h3 className="font-bold">프리미엄 영상 질문 개인정보 국외 이전 안내</h3>
-          <p>별도 동의 후 질문을 보낼 때, 영상 분석과 답변 생성을 위해 Google의 유료 Gemini API에 공개 영상 주소(최초 분석 시), 질문, 필요한 범위의 이전 질문과 답변·근거 요약을 HTTPS로 전송합니다. Google은 미국 등 Google 또는 그 대리인이 시설을 운영하는 국가에 이 정보를 일시 저장할 수 있습니다.</p>
+          <p>별도 동의 후 질문을 보낼 때, 영상 분석과 답변 생성을 위해 Google의 유료 Gemini API에 공개 영상 주소(최초 분석 시), 질문, 필요한 범위의 이전 질문과 답변·근거 요약을 HTTPS로 전송합니다. Google(한국 청구 주소 기준 Google Asia Pacific Pte. Ltd. 및 그 계열사)은 미국 등 Google 또는 그 대리인이 시설을 운영하는 국가에 이 정보를 일시 저장할 수 있습니다.</p>
           <p>Google은 서비스 악용 방지 등을 위해 질문, 추가 문맥 및 응답을 55일간 보관합니다. Google의 처리 조건과 문의 방법은 <a className="underline" href="https://ai.google.dev/gemini-api/terms#data-use-paid">Gemini 유료 서비스 약관</a>과 <a className="underline" href="https://ai.google.dev/gemini-api/docs/usage-policies">악용 모니터링 안내</a>, <a className="underline" href="https://policies.google.com/privacy">Google 개인정보처리방침</a>에서 확인할 수 있습니다.</p>
-          <p>HARU에서는 근거 요약을 18시간, 요청 결과를 1시간 동안 재사용할 수 있도록 임시 보관하고 만료분은 주기적으로 지웁니다. 영상, 음원, 자막 파일은 HARU 서버에 저장하지 않습니다. 동의하지 않아도 영상 검색, 시청, 보관함을 이용할 수 있습니다.</p>
+          <p>HARU에서는 근거 요약을 18시간, 요청 결과를 1시간 동안 재사용할 수 있도록 임시 보관하고 만료분은 주기적으로 지웁니다. 영상, 음원, 자막 파일은 HARU 서버에 저장하지 않습니다. 동의하지 않아도 영상 검색, 시청, 보관함을 이용할 수 있습니다. 보관함 ‘내 기록 관리’에서 AI 질문 동의를 철회할 수 있습니다.</p>
         </div>
         <p>보관함의 ‘내 기록 관리’에서 보관 자료를 내보내거나 삭제할 수 있습니다. 개인정보 문의는 아래의 연락처를 이용해 주세요.</p>
       </section>

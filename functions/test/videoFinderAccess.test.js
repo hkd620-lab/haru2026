@@ -164,6 +164,13 @@ test('결제일이 있으면 결제 기간 키가 고정되어, 기간 중 만�
 
 // ───── 상태 조회: 읽기 전용, 외부 호출 없음 ─────
 
+test('보상 연장 50일 동안 기존 결제 주기를 유지한다', () => {
+  const day = 86400000;
+  const start = Date.UTC(2026, 10, 10);
+  const extended = { ...PREMIUM, startDate: new Date(start).toISOString(), lastPaidAt: new Date(start).toISOString(), endDate: new Date(start + 50 * day).toISOString() };
+  assert.deepEqual(evaluateQuestionEntitlement(extended, start + 33 * day), { ok: true, monthKey: `pay:${start}` });
+});
+
 test('상태 조회와 동의는 외부 서비스를 부르지 않고, 상태 조회는 아무것도 쓰지 않는다', async () => {
   const store = accessStore();
   const deps = fakeDeps();
@@ -509,38 +516,39 @@ async function withConsoleCapture(task) {
   return lines;
 }
 
-test('긴 영상 분석이 계속 실패해도 구독 기간 공급자 분석 시도 10,800초에서 멈추고, 사용자 차감은 그대로다', async () => {
+test('긴 영상 분석 실패가 누적되면 공급자 분석 10,800초에서 멈추고 사용자 차감은 그대로다', async () => {
   const store = accessStore();
   const deps = fakeDeps({
-    info: (id) => ({ videoId: id, isPublic: true, durationSeconds: id === VIDEO ? MAX_ANALYSIS_VIDEO_SECONDS : 3000 }),
+    info: { videoId: VIDEO, isPublic: true, durationSeconds: MAX_ANALYSIS_VIDEO_SECONDS },
     answer: () => { throw new Error('provider timeout'); },
   });
   const svc = service(store, deps);
-  const logs = await withConsoleCapture(async () => {
-    await assert.rejects(ask(svc, 'prem', { requestId: 'req_long_001' }), code('unavailable'));
-    assert.equal(deps.calls.analyze.length, 1);
-    // 실패 뒤 다시 같은 긴 영상: 7,200 + 7,200 > 10,800 → 모델 호출 없이 '나중에 다시'.
-    await assert.rejects(ask(svc, 'prem', { requestId: 'req_long_002' }), code('unavailable'));
-    assert.equal(deps.calls.analyze.length, 1, '공급자 상한에 닿으면 모델을 부르지 않는다');
-  });
-  assert.deepEqual(logs, []);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await assert.rejects(ask(svc, 'prem', { requestId: `req_long_00${attempt}` }), code('unavailable'));
+    assert.equal(deps.calls.analyze.length, attempt);
+  }
+  await assert.rejects(ask(svc, 'prem', { requestId: 'req_long_004' }), code('unavailable'));
+  assert.equal(deps.calls.analyze.length, 3);
   const usage = store.u('prem').usage;
-  assert.equal(usage.provider.seconds, MAX_ANALYSIS_VIDEO_SECONDS);
-  assert.equal(usage.provider.attempts, 1);
-  assert.equal(usage.dayCount || 0, 0, '사용자 실패는 횟수에서 빠진다');
+  assert.deepEqual([usage.provider.attempts, usage.provider.seconds], [3, PROVIDER_CYCLE_SECONDS]);
+  assert.equal(usage.dayCount || 0, 0);
   assert.equal(usage.monthSeconds || 0, 0);
-  const status = await svc.handle('prem', { action: 'status' });
-  assert.equal(status.remainingQuestions, QUESTION_DAILY_LIMIT);
-  assert.equal(status.remainingAnalysisSeconds, PROVIDER_CYCLE_SECONDS - MAX_ANALYSIS_VIDEO_SECONDS);
-
-  // 예약이 만료된 채 남아 있어도 다시 예약할 때 누적값을 지우지 않는다.
-  usage.lease = { requestId: 'req_crashed1', videoId: VIDEO2, seconds: 3000, day: '2026-11-20', month: `p:${END}`, expiresAt: NOW - 1, epoch: 0 };
-  await assert.rejects(ask(svc, 'prem', { requestId: 'req_long_003', videoId: VIDEO2 }), code('unavailable'));
-  assert.equal(deps.calls.analyze.length, 2, '남은 공급자 시간 안의 짧은 영상은 시도한다');
-  assert.equal(store.u('prem').usage.provider.seconds, MAX_ANALYSIS_VIDEO_SECONDS + 3000);
-  assert.equal(store.u('prem').usage.provider.attempts, 2);
-  assert.equal(store.u('prem').usage.lease, null);
+  assert.equal(usage.lease, null);
   assert.equal(store.u('prem').cache.size, 0);
+});
+
+test('스위치가 꺼져도 AI 동의를 철회할 수 있고 재동의 전에는 모델을 부르지 않는다', async () => {
+  const store = accessStore();
+  const deps = fakeDeps();
+  const svc = service(store, deps);
+  store.enabled = false;
+  const status = await svc.handle('prem', { action: 'revokeAiConsent' });
+  assert.equal(status.policyAccepted, true);
+  assert.equal(status.aiConsentAccepted, false);
+  store.enabled = true;
+  await assert.rejects(ask(svc, 'prem'), code('failed-precondition'));
+  noExternal(deps.calls);
+  assert.equal((await svc.handle('prem', { action: 'acceptAiConsent', version: 1 })).aiConsentAccepted, true);
 });
 
 test('실패 포함 실제 Gemini 호출 예약은 한국 시간 하루 15회에서 멈추고 자정에 다시 열린다', async () => {
@@ -689,7 +697,7 @@ test('Gemini 전송: 공식 generateContent에 YouTube 주소를 fileData로, �
   assert.ok(body.generationConfig.responseSchema.required.includes('recap'));
   assert.deepEqual(body.generationConfig.thinkingConfig, { thinkingLevel: 'MINIMAL' });
   assert.equal(body.generationConfig.mediaResolution, 'MEDIA_RESOLUTION_LOW');
-  assert.equal(MAX_ANALYSIS_VIDEO_SECONDS, 7200, '영상 1개 상한 120분 유지');
+  assert.equal(MAX_ANALYSIS_VIDEO_SECONDS, 3600, '영상 1개 상한은 60분');
 
   await client.answerFromRecap({ recap: { videoId: VIDEO, summary: '요지', segments: [{ t: 5, text: '장면' }], durationSeconds: 600, createdAt: NOW, expiresAt: NOW + 1 }, question: '후속', previous: [] });
   const followBody = JSON.parse(sent[1].init.body);

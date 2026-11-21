@@ -18,6 +18,7 @@ export const haruVideoFinderClient: VideoFinderClient = {
   accessStatus: () => access<VideoFinderAccess>({ action: 'status' }),
   acceptPolicy: (version) => access<VideoFinderAccess>({ action: 'acceptPolicy', version }),
   acceptAiConsent: (version) => access<VideoFinderAccess>({ action: 'acceptAiConsent', version }),
+  revokeAiConsent: () => access<VideoFinderAccess>({ action: 'revokeAiConsent' }),
   askQuestion: (request) => access<VideoQuestionAnswer>({ action: 'ask', ...request }),
   async searchVideos(filters, pageToken) {
     return (await searchCallable(pageToken ? { filters, pageToken } : { filters })).data;
