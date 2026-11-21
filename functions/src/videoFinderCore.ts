@@ -380,7 +380,7 @@ export function normalizeSearchQuery(query: string): string {
 
 type SearchIntent = { query: string; recentDays: number; movieTitle?: string };
 
-function parseSearchIntent(raw: unknown): SearchIntent | null {
+function parseSearchIntent(raw: unknown, plotLookup = false): SearchIntent | null {
   if (!raw || typeof raw !== 'object') return null;
   const value = raw as Record<string, unknown>;
   if (typeof value.query !== 'string' || value.query.length > 160) return null;
@@ -397,7 +397,8 @@ function parseSearchIntent(raw: unknown): SearchIntent | null {
   if (titlePattern.test(query.replace(exclusionPattern, ' '))) return { query, recentDays, movieTitle };
 
   // 추정 제목이 일반 키워드와 따로 왔을 때도 작품 제목으로 검색한다.
-  const titleQuery = `${movieTitle} 영화`;
+  const mediaType = plotLookup && /(?:^|\s)드라마(?=\s|$)/u.test(query.replace(exclusionPattern, ' ')) ? '드라마' : '영화';
+  const titleQuery = `${movieTitle} ${mediaType}`;
   const exclusions = query.match(exclusionPattern) ?? [];
   const withExclusions = exclusions.reduce((text, exclusion) => {
     const term = exclusion.trimStart();
@@ -1810,7 +1811,7 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
           },
         },
       }, plotLookup ? 12000 : 4000, plotLookup ? VIDEO_FINDER_PLOT_MODEL : model);
-      const intent = parseSearchIntent(result);
+      const intent = parseSearchIntent(result, plotLookup);
       if (!intent?.movieTitle) return intent;
       const clues = (result as { matchedClues?: unknown }).matchedClues;
       const matches = Array.isArray(clues)
@@ -1828,12 +1829,14 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
 function isPlotTitleLookup(query: string): boolean {
   const text = query.normalize('NFC').toLowerCase().trim();
   if (/(?:추천|모음|목록|랭킹|순위|여러\s*편|정주행|\b(?:recommend(?:ations)?|list|top\s*\d+)\b)/u.test(text)) return false;
-  const koreanTitleRequest = /(?:줄거리(?:로|만)|기억나는\s*장면|장면만).{0,24}(?:작품|영화|드라마|제목|찾아)|(?:영화|드라마|작품)(?:의)?\s*(?:이름|제목)(?:\s*(?:찾아|알려|뭐|이\s*뭐|이\s*뭔)|[?.!\s]*$)|(?:무슨|어떤)\s*(?:영화|드라마)(?:였|인지|일까)/u;
-  const englishTitleRequest = /\b(?:what(?:'s| is) (?:the|this) (?:movie|film|show)|find (?:the )?(?:movie|film|show) (?:from|by) (?:the |this )?plot)\b/u;
+  const koreanTitleRequest = /(?:줄거리(?:로|만)|기억나는\s*장면|장면만).{0,24}(?:작품|영화|드라마|제목|찾아)|(?:영화|드라마|작품)(?:의)?\s*(?:이름|제목)(?:\s*(?:찾아|알려|뭐|이\s*뭐|이\s*뭔)|[?.!\s]*$)|(?:무슨|어떤)\s*(?:영화|드라마)(?:였|인지|일까)|(?:이|그)\s*(?:영화|드라마)(?:는|가)?\s*(?:뭐|뭔|무엇)/u;
+  const englishTitleRequest = /\b(?:what(?:'s| is) (?:the (?:movie|film|show) (?:called|where|about)|this (?:movie|film|show) called)|find (?:the )?(?:movie|film|show) (?:from|by) (?:the |this )?plot)\b/u;
   if (koreanTitleRequest.test(text) || englishTitleRequest.test(text)) return true;
   // 작품 유형 앞에 사건이나 인물의 행동을 설명하는 관형절이 있는 경우만 올린다.
-  const eventClause = /(?:했던|됐던|였던|었던|았던|만났던|벌어지는|사라지는|사랑하는|속이는|속는|당하는|죽는|살아가는|돌아가는|알게\s*되는|찾아가는|만나는|되는)\s+(?:한국\s*)?(?:영화|드라마)(?:\s*(?:가\s*뭐|찾아(?:줘|주세요)?|알려(?:줘|주세요)?|예고편|리뷰|영상|뭐였어|뭘까))?[?.!\s]*$/u;
-  return eventClause.test(text);
+  if (/(?:출연|주연|연출|감독|개봉|방영|제작|수상|좋아)(?:한|했던|\s)|(?:봤던|보았던)\s/u.test(text)) return false;
+  const eventClause = /(?:했던|됐던|였던|었던|았던|만났던|벌어지는|사라지는|사랑하는|속이는|속는|당하는|죽는|살아가는|돌아가는|알게\s*되는|찾아가는|만나는|되는)\s+(?:(?:한국|프랑스|미국|일본|영국|중국|홍콩|대만|독일|이탈리아|인도|외국|외국의|해외)\s*)?(?:영화|드라마)(?:\s*(?:가\s*뭐|찾아(?:줘|주세요)?|알려(?:줘|주세요)?|예고편|리뷰|영상|뭐였어|뭘까))?(?=$|[?.!])/u;
+  const match = eventClause.exec(text);
+  return !!match && text.slice(0, match.index).trim().split(/\s+/u).length >= 3;
 }
 
 // ───── 저장소·서비스 ─────

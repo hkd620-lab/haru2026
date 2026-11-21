@@ -487,6 +487,7 @@ test('추정 제목은 다른 작품명과 구분하고 검색 형식과 제외 
     { movieTitle: '올드', query: '올드보이 영화 -예고편', expected: '올드 영화 -예고편' },
     { movieTitle: '베스트 오퍼', query: '경매 사기 영화 -"결말 포함"', expected: '베스트 오퍼 영화 -"결말 포함"' },
     { movieTitle: '베스트 오퍼', query: '경매 사기 영화 -"베스트 오퍼 해설"', expected: '베스트 오퍼 영화 -"베스트 오퍼 해설"' },
+    { movieTitle: '시그널', query: '과거 형사 무전기 드라마', expected: '시그널 드라마' },
   ];
   for (const { movieTitle, query, expected } of cases) {
     const gemini = core.createGeminiVideoClient({ apiKey: 'unit-test', fetch: async () => ({
@@ -522,10 +523,15 @@ test('작품 제목 찾기만 상위 모델로 보내고 일반 AI 검색은 기
   const inputs = [
     ['기억나는 줄거리로 드라마 제목을 찾아줘', 'gemini-3.8-flash'],
     ['기자가 용의자의 과거를 알게 되는 드라마', 'gemini-3.8-flash'],
+    ['할머니가 죽자 소녀가 어린 시절의 엄마를 만나는 프랑스 영화', 'gemini-3.8-flash'],
+    ['어떤 남자가 기억을 잃고 깨어나 보니 자신이 살인범으로 몰려요. 이 영화 뭔가요?', 'gemini-3.8-flash'],
+    ['주인공이 기억을 잃었다가 가족을 다시 만나는 영화 찾아줘. 리뷰 영상으로 보고 싶어', 'gemini-3.8-flash'],
     ['첫사랑을 주제로 한 한국영화', 'gemini-3.5-flash-lite'],
     ['미술품 경매에서 사기를 당하는 영화 추천', 'gemini-3.5-flash-lite'],
     ['쁘띠 마망 영화 예고편', 'gemini-3.5-flash-lite'],
     ['영화 제목 폰트 만드는 법', 'gemini-3.5-flash-lite'],
+    ['유명 배우가 출연했던 드라마 예고편', 'gemini-3.5-flash-lite'],
+    ["What's the movie soundtrack from Interstellar?", 'gemini-3.5-flash-lite'],
   ];
   for (const [query, expectedModel] of inputs) {
     const requests = [];
