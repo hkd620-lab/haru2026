@@ -316,6 +316,35 @@ const NON_KOREAN_FILM_OR_SERIES = [
 const DENIES_KOREAN_FILM = /(?:한국|국내)\s*영화(?:가|는)?\s*(?:아닌|아니)/u;
 const BROADCAST_EPISODE = /(?:^|[\s\[(-])\d{1,3}\s*(?:화|회)(?![가-힣])/u;
 const BROADCAST_NETWORK = /\b(?:KBS|MBC|SBS|tvN|JTBC|ENA)\b/iu;
+const ROUNDUP_SUFFIX = String.raw`(?:추천\s*)?(?:(?:[2-9]|[1-9]\d)\s*(?:편(?!집)|선)|(?:두|세|네|다섯|여섯|일곱|여덟|아홉|열|여러)\s*편|TOP\s*\d{1,2}|모음|리스트)`;
+const FILM_ROUNDUP = new RegExp(String.raw`(?:영화|작품)\s*${ROUNDUP_SUFFIX}|\b(?:films?|movies?)\s+(?:list|roundup|compilation)\b`, 'iu');
+const KOREAN_FILM_ROUNDUP = new RegExp(String.raw`(?:한국(?:산)?|국내)\s*(?:(?:첫사랑|로맨스|멜로|청춘|공포|장편)\s*)?영화\s*(?:만\s*)?${ROUNDUP_SUFFIX}|(?:오직|전부)\s*(?:한국|국내)\s*영화|(?:한국|국내)\s*영화만\s*(?:모|골|추천|소개)|\bkorean\s+(?:films?|movies?)\s+(?:list|roundup|compilation)\b`, 'iu');
+const MIXED_FILM_SCOPE = [
+  /국내\s*[·ㆍ]?\s*외\s*(?:(?:첫사랑|로맨스|멜로|청춘|공포)\s*)?영화/u,
+  /(?:한국|국내)\s*(?:영화)?\s*(?:와|과|및|[·/&])\s*(?:외국|해외|일본|미국|중국)\s*영화/u,
+  /(?:외국|해외|일본|미국|중국)\s*영화(?:도|를)?\s*(?:포함|함께|섞)/u,
+];
+
+function matchesKoreanFilmMaterial(title: string, description: string, tags: unknown[]): boolean {
+  const normalizedTags = tags.map((tag) => cleanText(tag, 100).normalize('NFC'));
+  const labels = [title, ...normalizedTags];
+  const isBroadcastEpisode = BROADCAST_EPISODE.test(title)
+    && (BROADCAST_NETWORK.test(title) || BROADCAST_NETWORK.test(description));
+  if (isBroadcastEpisode || DENIES_KOREAN_FILM.test(description)
+    || labels.some((text) => DENIES_KOREAN_FILM.test(text) || NON_KOREAN_FILM_OR_SERIES.some((marker) => marker.test(text)))) {
+    return false;
+  }
+
+  // 추천 목록은 태그에 한국 영화 한 편이 언급되기만 해도 매치될 수 있다.
+  // 여러 편을 소개할 때는 제목·설명 본문에서 목록의 범위가 한국 영화임을 확인한다.
+  const editorialText = [title, description].map((text) => text.replace(/#[\p{L}\p{M}\p{N}_-]+/gu, ' '));
+  if (editorialText.some((text) => FILM_ROUNDUP.test(text))) {
+    return editorialText.some((text) => KOREAN_FILM_ROUNDUP.test(text))
+      && !editorialText.some((text) => MIXED_FILM_SCOPE.some((marker) => marker.test(text)));
+  }
+  return [...labels, description].some((text) => KOREAN_FILM_LABEL.test(text));
+}
+
 
 function wantsKoreanFilms(query: string): boolean {
   const normalized = query.normalize('NFC');
@@ -480,13 +509,7 @@ export function mapVideoItem(item: unknown, koreanFilmsOnly = false): VideoMeta 
     const title = cleanText(snippet.title, 200).normalize('NFC');
     const description = cleanText(snippet.description, 5000).normalize('NFC');
     const tags: unknown[] = Array.isArray(snippet.tags) ? snippet.tags : [];
-    const labels = [title, ...tags.map((tag) => cleanText(tag, 100).normalize('NFC'))];
-    const isBroadcastEpisode = BROADCAST_EPISODE.test(title)
-      && (BROADCAST_NETWORK.test(title) || BROADCAST_NETWORK.test(description));
-    // 설명에 등장하는 다른 작품 언급은 장르 표지와 구분한다.
-    if (isBroadcastEpisode || DENIES_KOREAN_FILM.test(description)
-      || labels.some((text) => DENIES_KOREAN_FILM.test(text) || NON_KOREAN_FILM_OR_SERIES.some((marker) => marker.test(text)))
-      || ![...labels, description].some((text) => KOREAN_FILM_LABEL.test(text))) return null;
+    if (!matchesKoreanFilmMaterial(title, description, tags)) return null;
   }
   const thumbs = snippet.thumbnails || {};
   return sanitizeVideoMeta({
@@ -867,7 +890,7 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     const intentNotice = intent ? `AI가 ‘${intent.query}’${recentDays ? ` · 최근 ${recentDays}일` : ''} 조건으로 이해했어요. ` : '';
     const correctionNotice = normalizedQuery === filters.query ? '' : `‘${normalizedQuery}’로 검색했어요. `;
     const queryNotice = (requestedAi ? 'AI 해석을 적용하지 못해 일반 검색으로 찾았어요. ' : '') + correctionNotice;
-    const filmNotice = koreanFilmsOnly ? '제목·설명·태그에서 한국 영화로 표시된 영상만 골랐어요. 분류 정보가 부족한 영상은 빠질 수 있어요. ' : '';
+    const filmNotice = koreanFilmsOnly ? '한국 영화로 표시된 영상 중 추천 목록은 한국 영화로 범위가 명시된 것만 골랐어요. 분류 정보가 부족한 영상은 빠질 수 있어요. ' : '';
     return {
       videos,
       nextPageToken: filters.sort === 'likeCount' ? null : next,
