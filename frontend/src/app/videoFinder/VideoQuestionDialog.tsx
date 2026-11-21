@@ -36,6 +36,7 @@ export function VideoQuestionDialog({ video, access, client, haruOrigin, onAcces
   const lastAttempt = useRef<{ question: string; id: string } | undefined>(undefined);
   const sending = useRef(false);
   const eligible = access.questionAccess === 'ready';
+  const analysisPeriod = access.analysisPeriod === 'calendar-month' ? '이번 달 분석' : '이번 구독 기간 분석';
   const hasQuestions = access.remainingQuestions > 0;
 
   async function acceptAiConsent() {
@@ -105,7 +106,7 @@ export function VideoQuestionDialog({ video, access, client, haruOrigin, onAcces
         ) : eligible ? (
           <>
             <p className="text-base leading-7">
-              오늘 질문 <strong>{access.remainingQuestions}회</strong> · 이번 구독 기간 분석 <strong>{Math.floor(access.remainingAnalysisSeconds / 60)}분 {access.remainingAnalysisSeconds % 60}초</strong> 남았어요.
+              오늘 질문 <strong>{access.remainingQuestions}회</strong> · {analysisPeriod} <strong>{Math.floor(access.remainingAnalysisSeconds / 60)}분 {access.remainingAnalysisSeconds % 60}초</strong> 남았어요.
             </p>
             <p className="text-sm leading-6">이전 질문과 답변은 1시간 동안 후속 질문에 참고해요. 질문에 개인정보를 넣지 마세요.</p>
             {turns.length > 0 && (
