@@ -75,6 +75,8 @@
 - 모바일: `cd mobile && flutter analyze`
 - Functions: `cd functions && npm run build`
 
+웹 화면을 브라우저로 직접 확인할 때는 `.agents/skills/haru2026-browser-qa/SKILL.md`의 절차와 금지 사항을 따른다. 이 점검은 위 기본 검증과 실기기 운영 E2E를 대신하지 않는다.
+
 문서 작업에 전체 앱 빌드를 요구하지 않는다. 반대로 토큰 절약을 이유로 `git status`, `git diff`, 필요한 테스트·빌드와 변경 파일 확인을 생략하지 않는다.
 
 ## 7. 배포와 운영 판정
