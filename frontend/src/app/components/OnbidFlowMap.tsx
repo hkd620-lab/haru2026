@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Calculator, ChevronDown, CircleCheck, FileSearch, Gavel, Home, KeyRound, ShieldCheck, UserPlus, Wallet } from 'lucide-react';
+import { calculateOnbidDeposit } from '../utils/onbidDeposit';
 import { FlowTimeline, type FlowPhase, type FlowStep } from './FlowTimeline';
 
 // 온비드 공매 입찰 흐름도 + 보증금 연습 계산. 문구는 정해진 안내문이며 AI를 쓰지 않는다.
@@ -21,10 +22,7 @@ function DepositPractice() {
   const amount = digits ? Number(digits) : 0;
   const hasNonNumeric = /[^0-9,\s]/.test(amountText);
   // 비율은 입력한 글자 그대로 검사한다. '-10'·'1e2'처럼 기호를 지워 다른 숫자로 바꾸지 않고 안내한다.
-  const rateTrimmed = rate.trim();
-  const rateNumber = Number(rateTrimmed);
-  const validRate = /^(\d+\.?\d*|\.\d+)$/.test(rateTrimmed) && Number.isFinite(rateNumber) && rateNumber > 0 && rateNumber <= 100;
-  const deposit = amount > 0 && validRate ? Math.round((amount * rateNumber) / 100) : null;
+  const deposit = calculateOnbidDeposit(amount, rate);
   const inputStyle = { fontSize: 16 } as const; // 모바일 입력 확대 방지
   return (
     <div className="mt-3 rounded-lg border border-emerald-300 bg-white p-3">
@@ -60,18 +58,16 @@ function DepositPractice() {
         className="mt-1 min-h-[44px] w-full rounded-md border border-gray-300 px-3"
       />
       <p className="mt-1 text-gray-600">
-        보증금 비율과 무엇을 기준으로 계산하는지(최저입찰가, 입찰 금액 등)는 물건 공고문에 적혀 있습니다. 10%는 연습용 예시입니다. 실제 보증금과 잔금 납부기한은 해당 물건의 공고문을 확인하세요. 여기서는 연습으로 입력한 금액에 비율을 곱해 봅니다.
+        보증금 비율과 무엇을 기준으로 계산하는지(최저입찰가, 입찰 금액 등)는 물건 공고문에 적혀 있습니다. 10%는 연습용 예시입니다. 실제 보증금과 잔금 납부기한은 해당 물건의 공고문을 확인하세요. 입력한 금액에 비율을 곱한 뒤, 원 미만 금액이 있으면 1원 단위로 올립니다.
       </p>
       <p aria-live="polite" className="mt-2 rounded-md bg-emerald-50 px-3 py-2 font-bold text-emerald-900">
-        {!validRate
+        {deposit === null
           ? '보증금 비율은 0보다 크고 100 이하의 숫자로 넣어 주세요.'
           : hasNonNumeric
             ? '금액은 숫자로만 넣어 주세요. 예: 100000000'
-            : deposit === null
+            : amount === 0
               ? '기준 금액을 넣으면 보증금이 계산돼요.'
-              : deposit < 1
-                ? '계산된 보증금이 1원보다 작아요. 금액을 다시 확인해 주세요.'
-                : `연습 계산 보증금: 약 ${deposit.toLocaleString('ko-KR')}원`}
+              : `연습 계산 보증금: 약 ${deposit.toLocaleString('ko-KR')}원`}
       </p>
       <p className="mt-2 text-gray-700">
         보증금 말고도 낙찰 후 나머지 대금과 점유 정리·수리 등 별도 비용이 들 수 있어요. 이 계산은 연습이며 실제 금액이 아닙니다.
@@ -83,10 +79,10 @@ function DepositPractice() {
 const STEPS: FlowStep[] = [
   {
     short: '가입·인증서 준비', icon: UserPlus, phase: 'prepare',
-    easy: '온비드에 회원가입하고 입찰에 쓸 인증서를 등록하는 단계입니다.',
-    userTasks: ['온비드(onbid.co.kr) 회원가입', '온비드가 안내하는 인증서를 \'나의 온비드\'에 등록', '입찰에 쓸 본인 명의 계좌 준비'],
+    easy: '온비드에 회원가입하고 입찰서에 전자서명할 방법을 준비합니다.',
+    userTasks: ['온비드 회원가입', '개인회원은 간편인증서로 별도 등록 없이 입찰서에 전자서명 가능', '공동인증서를 쓰려면 본인 또는 사업자 명의의 전자거래 범용 공동인증서나 온비드 전용 공동인증서를 미리 등록', '입찰에 쓸 본인 명의 계좌 준비'],
     haruTasks: ['준비할 것 목록 안내', '이 화면에서 물건 조회'],
-    note: '가입과 인증서 등록은 온비드 사이트에서 직접 합니다. HARU가 대신하지 않습니다.',
+    note: '은행용·증권용 등 용도가 제한된 공동인증서는 입찰에 사용할 수 없습니다. 회원가입과 입찰 준비는 온비드에서 진행하세요.',
   },
   {
     short: '물건 고르기', icon: Home, phase: 'prepare',
