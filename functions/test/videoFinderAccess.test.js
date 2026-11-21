@@ -537,17 +537,28 @@ test('긴 영상 분석 실패가 누적되면 공급자 분석 10,800초에서 
   assert.equal(store.u('prem').cache.size, 0);
 });
 
-test('뜻이 여러 가지인 영상 질문은 되묻고 사용자의 성공 횟수를 차감하지 않는다', async () => {
+test('되묻기는 질문 횟수에서 제외하고 유효한 영상 분석을 이어 쓰며 재시도해도 한 번만 예약한다', async () => {
   const store = accessStore();
-  const deps = fakeDeps({ answer: () => ({ supported: false, needsClarification: true, answer: '모의 되묻기', timestamps: [100] }) });
+  const deps = fakeDeps({
+    info: { videoId: VIDEO, isPublic: true, durationSeconds: 3600 },
+    answer: () => ({ supported: false, needsClarification: true, timestamps: [100], recap: { summary: '전체 흐름', segments: [{ t: 120, text: '지지대' }] } }),
+  });
   const svc = service(store, deps);
   const result = await ask(svc, 'prem', { question: '그거?' });
   assert.equal(result.needsClarification, true);
   assert.match(result.answer, /어떤 부분/);
   assert.deepEqual(result.timestamps, []);
   assert.equal(result.status.remainingQuestions, 10);
-  assert.equal(store.u('prem').usage.provider.attempts, 1);
-  assert.equal(store.u('prem').cache.size, 0);
+  assert.equal(result.status.remainingAnalysisSeconds, 3600);
+  assert.deepEqual(await ask(svc, 'prem', { question: '그거?' }), result);
+  const followUp = await ask(svc, 'prem', { requestId: 'req_clear_text', question: '지지대 설치 순서', previousRequestIds: ['req_00000001'] });
+  assert.equal(followUp.status.remainingQuestions, 9);
+  assert.equal(followUp.status.remainingAnalysisSeconds, 3600);
+  assert.equal(deps.calls.analyze.length, 1);
+  assert.equal(deps.calls.recap.length, 1);
+  assert.deepEqual(deps.calls.recap[0].previous, []);
+  assert.equal(store.u('prem').usage.provider.seconds, 3600);
+  assert.equal(store.u('prem').usage.provider.attempts, 2);
 });
 
 test('스위치가 꺼져도 AI 동의를 철회할 수 있고 재동의 전에는 모델을 부르지 않는다', async () => {

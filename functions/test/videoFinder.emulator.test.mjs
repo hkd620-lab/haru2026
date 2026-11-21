@@ -227,6 +227,7 @@ test('개발자 초기화는 자신의 한국 시간 검색 횟수만 돌려놓�
     resetSearchQuota: (uid, ms) => store.resetUserSearchQuota(uid, ms),
   });
   const reset = { action: 'resetSearchQuota', uid: ordinary };
+  assert.equal((await access.handle(ordinary, { action: 'status' })).canResetSearchQuota, undefined);
   await assert.rejects(access.handle(ordinary, { ...reset, uid: developer }), (error) => error.code === 'permission-denied');
   assert.equal((await access.handle(developer, { action: 'status' })).canResetSearchQuota, true);
   assert.equal((await access.handle(developer, reset)).remainingSearches, (await store.getLimits()).userDailySearches);

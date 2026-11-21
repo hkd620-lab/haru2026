@@ -749,7 +749,8 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     let remainingSearches = await store.reserveQuota(uid, SEARCH_RESERVATION_UNITS, true, nowMs, limits);
 
     let intent = pageIntent;
-    if (!pageToken && body.searchAiConsentVersion === SEARCH_AI_CONSENT_VERSION && filters.query
+    const requestedAi = !pageToken && body.searchAiConsentVersion === SEARCH_AI_CONSENT_VERSION;
+    if (requestedAi && filters.query
       && !hasSearchOperators(filters.query) && deps.interpretSearch) {
       try {
         intent = await deps.interpretSearch(uid, filters.query);
@@ -811,7 +812,8 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
 
     const normalizedQuery = normalizeSearchQuery(filters.query);
     const intentNotice = intent ? `AI가 ‘${intent.query}’${recentDays ? ` · 최근 ${recentDays}일` : ''} 조건으로 이해했어요. ` : '';
-    const queryNotice = normalizedQuery === filters.query ? '' : `‘${normalizedQuery}’로 검색했어요. `;
+    const correctionNotice = normalizedQuery === filters.query ? '' : `‘${normalizedQuery}’로 검색했어요. `;
+    const queryNotice = (requestedAi ? 'AI 해석을 적용하지 못해 일반 검색으로 찾았어요. ' : '') + correctionNotice;
     return {
       videos,
       nextPageToken: next,
@@ -1310,7 +1312,7 @@ export function planQuestionReservation(args: {
 }
 
 // 답변이 확정될 때만 1회·분석 시간을 차감한다. 예약이 내 것이 아니면(만료 후 다른 요청이 가져감 등) 차감·저장하지 않는다.
-export function planQuestionCompletion(usage: QuestionUsage, requestId: string, nowMs: number):
+export function planQuestionCompletion(usage: QuestionUsage, requestId: string, nowMs: number, countQuestion = true):
   | { ok: true; next: Omit<QuestionUsage, 'dataEpoch' | 'provider'>; persist: boolean }
   | { ok: false } {
   const lease = activeLease(usage, nowMs);
@@ -1319,7 +1321,7 @@ export function planQuestionCompletion(usage: QuestionUsage, requestId: string, 
     ok: true,
     next: {
       day: lease.day,
-      dayCount: (usage.day === lease.day ? usage.dayCount : 0) + 1,
+      dayCount: (usage.day === lease.day ? usage.dayCount : 0) + (countQuestion ? 1 : 0),
       month: lease.month,
       monthSeconds: (usage.month === lease.month ? usage.monthSeconds : 0) + lease.seconds,
       lease: null,
@@ -1456,11 +1458,10 @@ export function sanitizeModelAnswer(raw: unknown, durationSeconds: number, wantR
   allowedTimestamps?: number[]): CleanModelAnswer {
   const d = (raw && typeof raw === 'object' ? raw : null) as Record<string, unknown> | null;
   if (!d || typeof d.supported !== 'boolean') throw new Error('model_response_invalid');
-  if (!d.supported && d.needsClarification === true) {
-    return { needsClarification: true, supported: false, answer: '어떤 부분이 궁금하세요? 장면이나 주제를 한두 단어로 적어 주세요.', timestamps: [], recap: null };
-  }
   const supported = d.supported;
-  const answer = supported
+  const needsClarification = !supported && d.needsClarification === true;
+  const answer = needsClarification ? '어떤 부분이 궁금하세요? 장면이나 주제를 한두 단어로 적어 주세요.'
+    : supported
     ? cleanMultiline(d.answer, MAX_ANSWER_LENGTH)
     : wantRecap
       ? '이 영상에서 질문과 관련된 내용을 확인하지 못했어요.'
@@ -1473,10 +1474,10 @@ export function sanitizeModelAnswer(raw: unknown, durationSeconds: number, wantR
     const segments = sanitizeSegments(r.segments, durationSeconds);
     if (summary || segments.length) recap = { summary, segments };
   }
-  if (supported && wantRecap && !recap) throw new Error('model_recap_missing');
+  if ((supported || needsClarification) && wantRecap && !recap) throw new Error('model_recap_missing');
   let timestamps = supported ? sanitizeTimestamps(d.timestamps, durationSeconds) : [];
   if (allowedTimestamps) timestamps = timestamps.filter((t) => allowedTimestamps.indexOf(t) >= 0);
-  return { supported, answer, timestamps, recap };
+  return { supported, answer, timestamps, recap, ...(needsClarification ? { needsClarification: true } : {}) };
 }
 
 // ───── Gemini 전송 (공식 generateContent, YouTube 공개 주소를 fileData.fileUri로 전달) ─────
@@ -1566,7 +1567,7 @@ export function buildGeminiVideoRequest(input: { videoId: string; durationSecond
     '사용자 질문:',
     input.question,
     '',
-    'recap에는 이후 추가 질문에 쓸 비공개 요약 노트를 만든다: summary는 영상 전체 요지(400자 이내),',
+    '되묻는 경우에도 recap에 이후 추가 질문에 쓸 비공개 요약을 만든다. summary는 영상 전체 요지(400자 이내),',
     'segments는 주요 장면·주제의 시작 초(t)와 짧은 설명(70자 이내)을 시간 순서로 최대 12개. 대사를 그대로 옮기지 않는다.',
   ].join('\n');
   return {
@@ -1758,7 +1759,7 @@ export function policyRequiredFor(op: 'search' | 'library', payload: unknown): b
 export type AnswerSource = 'recap' | 'video';
 
 function readAnswerRecord(raw: unknown, input: AskInput, nowMs: number):
-  { answer: string; timestamps: number[]; answerSource: AnswerSource } | null {
+  { answer: string; timestamps: number[]; answerSource: AnswerSource; needsClarification?: true } | null {
   const d = (raw && typeof raw === 'object' ? raw : null) as Record<string, unknown> | null;
   if (!d || d.requestId !== input.requestId) return null;
   if (typeof d.expiresAt !== 'number' || !(d.expiresAt > nowMs)) return null;
@@ -1769,6 +1770,7 @@ function readAnswerRecord(raw: unknown, input: AskInput, nowMs: number):
     answer: typeof d.answer === 'string' ? d.answer.slice(0, MAX_ANSWER_LENGTH) : '',
     timestamps: Array.isArray(d.timestamps) ? (d.timestamps as unknown[]).filter((t) => typeof t === 'number') as number[] : [],
     answerSource: d.answerSource === 'recap' ? 'recap' : 'video',
+    ...(d.needsClarification === true ? { needsClarification: true } : {}),
   };
 }
 
@@ -1777,7 +1779,7 @@ export function readPreviousTurns(raws: unknown[] | undefined, ids: string[], vi
   const out: PreviousTurn[] = [];
   ids.forEach((id, i) => {
     const d = (raws && raws[i] && typeof raws[i] === 'object' ? raws[i] : null) as Record<string, unknown> | null;
-    if (!d || d.requestId !== id || d.videoId !== videoId) return;
+    if (!d || d.requestId !== id || d.videoId !== videoId || d.needsClarification === true) return;
     if (typeof d.expiresAt !== 'number' || !(d.expiresAt > nowMs)) return;
     const question = cleanMultiline(d.question, MAX_QUESTION_LENGTH);
     const answer = cleanMultiline(d.answer, MAX_ANSWER_LENGTH);
@@ -1946,7 +1948,7 @@ export function createVideoFinderAccessService(deps: {
 
     // 3) 예약 트랜잭션: 계정·동의·프리미엄·중복·한도를 최신 값으로 다시 확인하고 예약(lease)을 건다.
     //    같은 쓰기로 공급자 카운터(실패 포함 호출 1회·영상 분석 시간)를 네트워크 호출 전에 늘린다. 이 값은 되돌리지 않는다.
-    type Reserved = { kind: 'done'; answer: string; timestamps: number[]; answerSource: AnswerSource; status: AccessStatus }
+    type Reserved = { kind: 'done'; answer: string; timestamps: number[]; answerSource: AnswerSource; needsClarification?: true; status: AccessStatus }
       | { kind: 'reserved'; recap: VideoRecap | null; lease: QuestionLease };
     const reservationMs = now();
     const reserved = await store.transact<Reserved>(uid, keys, (snap) => {
@@ -1965,7 +1967,8 @@ export function createVideoFinderAccessService(deps: {
       return { writes: { usage: { lease: plan.lease, provider: plan.provider } }, result: { kind: 'reserved', recap, lease: plan.lease } };
     });
     if (reserved.kind === 'done') {
-      return { answer: reserved.answer, timestamps: reserved.timestamps, status: reserved.status, answerSource: reserved.answerSource };
+      const { kind: _kind, ...answer } = reserved;
+      return answer;
     }
     const answerSource: AnswerSource = reserved.recap ? 'recap' : 'video';
 
@@ -1983,11 +1986,6 @@ export function createVideoFinderAccessService(deps: {
       throw ACCESS_ERRORS.model();
     }
 
-    if (clean.needsClarification) {
-      await release(uid, reserved.lease);
-      return { answer: clean.answer, timestamps: [], needsClarification: true, status: await status(uid) };
-    }
-
     // 5) 확정 트랜잭션: 예약이 아직 내 것이고 프리미엄·두 동의가 유지될 때만 1회·분석 시간을 차감하고 요약·답변을 저장한다.
     const doneMs = now();
     type Completed = { kind: 'ok'; status: AccessStatus } | { kind: 'revoked'; reason: 'premium' | 'policy' | 'aiConsent' } | { kind: 'lost' };
@@ -1995,7 +1993,8 @@ export function createVideoFinderAccessService(deps: {
       assertActiveAccount(snap.account);
       const usage = normalizeUsage(snap.usage);
       if (!ownsLease(usage, reserved.lease)) return { writes: {}, result: { kind: 'lost' } };
-      const plan = planQuestionCompletion(usage, input.requestId, doneMs);
+      // 되묻기에는 사용자 질문 횟수를 쓰지 않는다. 신규 영상을 실제 분석했다면 시간을 차감하고 요약을 재사용한다.
+      const plan = planQuestionCompletion(usage, input.requestId, doneMs, !clean.needsClarification);
       if (!plan.ok) return { writes: {}, result: { kind: 'lost' } };
       const ent = evaluateQuestionEntitlement(snap.subscription, doneMs);
       const revokedReason = !ent.ok ? 'premium' as const
@@ -2012,6 +2011,7 @@ export function createVideoFinderAccessService(deps: {
           answer: clean.answer,
           timestamps: clean.timestamps,
           answerSource,
+          ...(clean.needsClarification ? { needsClarification: true } : {}),
           createdAt: doneMs,
           expiresAt: doneMs + ANSWER_TTL_MS,
         };
@@ -2030,7 +2030,7 @@ export function createVideoFinderAccessService(deps: {
     });
     if (completed.kind === 'revoked') throw ACCESS_ERRORS[completed.reason]();
     if (completed.kind === 'lost') throw ACCESS_ERRORS.lost();
-    return { answer: clean.answer, timestamps: clean.timestamps, status: completed.status, answerSource };
+    return { answer: clean.answer, timestamps: clean.timestamps, status: completed.status, answerSource, ...(clean.needsClarification ? { needsClarification: true } : {}) };
   }
 
   async function handle(uid: string, data: unknown) {

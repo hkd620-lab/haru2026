@@ -319,10 +319,24 @@ test('동의 없는 검색은 모델을 부르지 않고, 공급자 오류가 �
   const filters = { ...baseFilters, period: 'week', query: '임플란투 비용 찾아줘' };
   await svc.search('uidA', { filters });
   assert.equal(calls, 0);
-  await svc.search('uidA', { filters, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
+  const fallback = await svc.search('uidA', { filters, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
+  assert.match(fallback.notice, /일반 검색/);
   assert.equal(calls, 1);
   assert.deepEqual(yt.calls.search[0], yt.calls.search[1]);
   assert.equal(yt.calls.search[0].q, '임플란트 비용');
+});
+
+test('최신순 보충 검색에도 AI가 해석한 검색어와 날짜를 그대로 사용한다', async () => {
+  const store = memoryStore();
+  const yt = fakeYouTube({ searchPages: [items([vid(1)]), items([vid(2)])] });
+  const svc = createVideoFinderService({ store, youtube: yt, now: () => NOW,
+    interpretSearch: async () => ({ query: '부산 틀니 소식', recentDays: 7 }),
+  });
+  await svc.search('uidA', { filters: { ...baseFilters, sort: 'date', query: '지난 일주일 동안 올라온 부산 틀니 영상' }, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
+  assert.equal(yt.calls.search.length, 2);
+  assert.equal(yt.calls.search[0].q, '부산 틀니 소식');
+  assert.equal(yt.calls.search[0].publishedAfter, '2026-11-13T15:00:00Z');
+  assert.deepEqual(yt.calls.search[1], { ...yt.calls.search[0], order: 'relevance' });
 });
 
 test('페이지 토큰은 형식이 맞을 때만 받는다', () => {

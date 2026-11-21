@@ -404,8 +404,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
     }
   };
 
-  const submitSearch = (event: FormEvent) => {
-    event.preventDefault();
+  const startSearch = (useAi: boolean) => {
     const filters = { ...draft, query: draft.query.replace(/\s+/g, ' ').trim() };
     if (!hasSearch(filters)) {
       setFormError('찾을 내용을 입력하거나 관심 분야를 골라 주세요.');
@@ -421,8 +420,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
     }
     setFormError('');
     const key = filtersToSearchParams(filters).toString();
-    const submitter = (event.nativeEvent as SubmitEvent).submitter;
-    const useAi = access.searchAiEnabled === true && submitter instanceof HTMLButtonElement && submitter.value === 'ai';
+
     if (key === searchKey && tab === 'search') {
       aiSearchLocation.current = useAi ? location.key : null;
       void runSearch(key, filters, searchState?.status === 'error', useAi);
@@ -431,6 +429,11 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
     pendingAiSearchKey.current = useAi ? key : null;
     navigate(`${pathFor('')}?${key}`);
   };
+
+  function submitSearch(event: FormEvent) {
+    event.preventDefault();
+    startSearch(false);
+  }
 
   async function resetSearchQuota() {
     setResettingQuota(true);
@@ -543,7 +546,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
       const latest = await client.revokeAiConsent();
       accessRevision.current += 1;
       setAccess(latest);
-      setStatus('AI 질문 정보 전송 동의를 철회했어요.');
+      setStatus('AI 질문 정보 전송 동의를 철회했어요. AI 검색은 이용할 때마다 동의할 수 있어요.');
     } catch (error) {
       setActionError(friendlyErrorMessage(error));
     } finally {
@@ -638,9 +641,9 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                   maxLength={MAX_SEARCH_QUERY_LENGTH}
                   onChange={(e) => setDraft({ ...draft, query: e.target.value })}
                   onKeyDown={(event) => {
-                    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+                    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing || event.keyCode === 229) return;
                     event.preventDefault();
-                    event.currentTarget.form?.requestSubmit();
+                    startSearch(false);
                   }}
                   aria-describedby="vf-query-help"
                   aria-invalid={formError ? true : undefined}
@@ -652,7 +655,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
               {access.searchAiEnabled && (
                 <div className="mt-3 rounded-lg bg-[#f7faed] p-3">
                   <p id="vf-ai-search-help" className="mb-2 text-base leading-7">긴 문장을 AI가 해석하도록 검색어를 Google Gemini에 보내요. 개인정보는 적지 마세요. <a href={`${haruOrigin}/privacy#video-finder-search-ai`} className="font-semibold underline" target="_blank" rel="noopener noreferrer">정보 전송 안내 ↗</a></p>
-                  <button type="submit" value="ai" className={btnSecondary} aria-describedby="vf-ai-search-help" disabled={!draft.query.trim()}>동의하고 AI로 찾기</button>
+                  <button type="button" className={btnSecondary} aria-describedby="vf-ai-search-help" onClick={() => startSearch(true)} disabled={!draft.query.trim()}>동의하고 AI로 찾기</button>
                 </div>
               )}
 
