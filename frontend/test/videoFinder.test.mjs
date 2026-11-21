@@ -166,17 +166,19 @@ test('전용 호출: 세션은 본문에만 싣고 주소·쿠키·리퍼러로 
 });
 
 test('전용 주소의 동의와 영상 질문은 같은 세션으로 서버 권한을 확인한다', async () => {
-  const access = { policyAccepted: true, questionAccess: 'ready', remainingQuestions: 10, remainingAnalysisSeconds: 7200 };
+  const access = { policyAccepted: true, aiConsentAccepted: true, questionAccess: 'ready', remainingQuestions: 10, remainingAnalysisSeconds: 7200 };
   const answer = { answer: '영상에서 확인한 내용', timestamps: [62], status: { ...access, remainingQuestions: 9 } };
-  const f = fakeFetch([access, access, answer].map((result) => ({ body: { result } })));
+  const f = fakeFetch([access, access, access, answer].map((result) => ({ body: { result } })));
   const client = createStandaloneClient(createStandaloneCaller(standaloneEndpoint('demo-project'), () => ISSUED.session, f.impl));
   await client.accessStatus();
   await client.acceptPolicy(1);
-  const request = { requestId: 'fixture-id', videoId: 'abcdefghijk', question: '무엇을 설명하나요?' };
+  await client.acceptAiConsent(1);
+  const request = { requestId: 'fixture-id', videoId: 'abcdefghijk', question: '무엇을 설명하나요?', previousRequestIds: ['earlier-request'] };
   assert.deepEqual(await client.askQuestion(request), answer);
   assert.deepEqual(f.calls.map(({ init }) => JSON.parse(init.body).data), [
     { op: 'access', session: ISSUED.session, payload: { action: 'status' } },
     { op: 'access', session: ISSUED.session, payload: { action: 'acceptPolicy', version: 1 } },
+    { op: 'access', session: ISSUED.session, payload: { action: 'acceptAiConsent', version: 1 } },
     { op: 'access', session: ISSUED.session, payload: { action: 'ask', ...request } },
   ]);
   assert.equal(youtubeWatchUrl(request.videoId, 62), 'https://www.youtube.com/watch?v=abcdefghijk&t=62s');

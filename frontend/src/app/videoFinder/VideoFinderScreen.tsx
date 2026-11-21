@@ -139,12 +139,27 @@ function WatchLink({ videoId, title }: { videoId: string; title: string }) {
   );
 }
 
+async function downloadVideoFinderBackup(client: VideoFinderClient) {
+  const data = await client.downloadBackup();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `haru2026-my-videos-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function VideoFinderScreen(props: VideoFinderScreenProps) {
   const { client, accountKey, onSignOut, haruOrigin = 'https://haru2026.com' } = props;
   const [access, setAccess] = useState<VideoFinderAccess | null>(null);
   const [error, setError] = useState('');
   const [accepting, setAccepting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
+  const [backupReady, setBackupReady] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
@@ -172,6 +187,20 @@ export function VideoFinderScreen(props: VideoFinderScreenProps) {
     }
   }
 
+  async function backupExistingData() {
+    setBackingUp(true);
+    setBackupReady(false);
+    setError('');
+    try {
+      await downloadVideoFinderBackup(client);
+      setBackupReady(true);
+    } catch (error) {
+      setError(friendlyErrorMessage(error));
+    } finally {
+      setBackingUp(false);
+    }
+  }
+
   async function deleteExistingData() {
     if (!window.confirm('보관한 영상, 메모, 지난 검색과 AI 질문의 임시 자료를 지울까요?')) return;
     setDeleting(true);
@@ -196,16 +225,22 @@ export function VideoFinderScreen(props: VideoFinderScreenProps) {
           <>
             <h2 className="text-xl font-bold">처음 이용하기 전에 확인해 주세요</h2>
             <div className="space-y-2 text-base leading-7"><VideoFinderPolicySummary /></div>
-            <button type="button" className={btnPrimary} disabled={accepting || deleting} onClick={() => void accept()}>
+            <VideoFinderPolicyLinks haruOrigin={haruOrigin} />
+            <button type="button" className={btnPrimary} disabled={accepting || deleting || backingUp} onClick={() => void accept()}>
               {accepting ? '동의를 저장하는 중…' : '동의하고 이용하기'}
             </button>
           </>
         ) : !error && <p role="status">이용 안내를 불러오는 중이에요…</p>}
         {error && <ErrorBox message={error} onRetry={access ? undefined : () => setAttempt((value) => value + 1)} />}
-        <VideoFinderPolicyLinks haruOrigin={haruOrigin} />
-        {access && <button type="button" className={btnDanger} disabled={deleting || accepting || deleted} onClick={() => void deleteExistingData()}>
-          {deleting ? '자료를 지우는 중…' : '기존 영상 찾기 자료 삭제'}
-        </button>}
+        {access && <div className="flex flex-wrap gap-2">
+          <button type="button" className={btnSecondary} disabled={backingUp || deleting || accepting} onClick={() => void backupExistingData()}>
+            {backingUp ? '백업을 준비하는 중…' : '기존 영상 찾기 자료 백업'}
+          </button>
+          <button type="button" className={btnDanger} disabled={deleting || accepting || backingUp || deleted} onClick={() => void deleteExistingData()}>
+            {deleting ? '자료를 지우는 중…' : '기존 영상 찾기 자료 삭제'}
+          </button>
+        </div>}
+        {backupReady && <p role="status">백업 파일을 내려받았어요.</p>}
         {deleted && <p role="status">기존 영상 찾기 자료를 지웠어요.</p>}
         {onSignOut ? <button type="button" className={btnSecondary} onClick={onSignOut}>로그아웃</button> : <a href="/" className={btnSecondary}>비서실로</a>}
       </section>
@@ -465,16 +500,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
     setActionError('');
     setDataBusy(true);
     try {
-      const data = await client.downloadBackup();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `haru2026-my-videos-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await downloadVideoFinderBackup(client);
       setStatus('백업 파일을 내려받았어요.');
     } catch (error) {
       setActionError(friendlyErrorMessage(error));
@@ -758,7 +784,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
           <VideoFinderPolicyLinks haruOrigin={haruOrigin} />
         </footer>
         {questionVideo && (
-          <VideoQuestionDialog key={questionVideo.videoId} video={questionVideo} access={access} client={client}
+          <VideoQuestionDialog key={questionVideo.videoId} video={questionVideo} access={access} client={client} haruOrigin={haruOrigin}
             onClose={() => setQuestionVideo(null)} onPrepareNote={prepareAnswerNote}
             onAccess={(latest) => { accessRevision.current += 1; setAccess(latest); }} />
         )}

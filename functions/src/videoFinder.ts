@@ -5,7 +5,10 @@
 // - YouTube 서버 키는 Secret Manager 참조(defineSecret)로만 바인딩한다.
 // - 영상·자막 다운로드나 페이지 수집은 하지 않고 YouTube Data API v3 search/videos/channels만 호출한다.
 // - 영상 AI 질문(videoFinderAccess, 독립 주소 op 'access')만 Gemini를 부른다. 프리미엄 활성 구독·서버 스위치
-//   config/videoFinder.questionsEnabled(기본 꺼짐)·하루 10회·구독 한 달 7,200초 한도를 서버에서 확인한다.
+//   config/videoFinder.questionsEnabled(기본 꺼짐)·일반 동의와 AI(Gemini 전송) 동의·하루 10회·구독 한 달 7,200초 한도와
+//   공급자 비용 상한(실패 포함 하루 15회 호출·구독 기간 10,800초 분석 시도)을 서버에서 확인한다.
+// - 일반 검색·보관함의 동의 확인은 config/videoFinder.policyRequired(기본 꺼짐)가 켜졌을 때만 적용한다
+//   (Functions 먼저 배포 → 두 사이트 배포 → 스위치 켜기 순서).
 //   Gemini 키는 VIDEO_FINDER_GEMINI_API_KEY 전용 시크릿으로, 질문 처리에서만 쓴다. Jev는 연결하지 않았다.
 // - 세션 원문·검색어·메모는 로그에 남기지 않는다.
 import * as admin from 'firebase-admin';
@@ -119,9 +122,15 @@ function createYouTubeClient(apiKey: string): YouTubeClient & VideoInfoClient {
     async search(params) {
       return await request('search', params) as SearchResponse;
     },
-    // AI 질문 전 공개 여부·공식 길이 확인용(videos.list 1단위). 클라이언트가 보낸 길이는 쓰지 않는다.
+    // AI 질문 전 공개 여부·실시간/예정 방송 여부·공식 길이 확인용(videos.list 1단위, part 수와 관계없이 같은 비용).
+    // fields로 필요한 값만 받는다(snippet은 liveBroadcastContent만). 클라이언트가 보낸 길이는 쓰지 않는다.
     async analysisInfo(videoId) {
-      const data = await request('videos', { part: 'contentDetails,status', id: videoId, maxResults: '1' });
+      const data = await request('videos', {
+        part: 'snippet,contentDetails,status',
+        id: videoId,
+        maxResults: '1',
+        fields: 'items(id,snippet/liveBroadcastContent,contentDetails/duration,status(privacyStatus,uploadStatus))',
+      });
       for (const item of Array.isArray(data.items) ? data.items : []) {
         const info = mapAnalysisInfo(item);
         if (info && info.videoId === videoId) return info;
@@ -240,7 +249,7 @@ export const videoFinderLibrary = onCall(
   },
 );
 
-// 이용 안내·약관 동의(버전 1)와 프리미엄 영상 AI 질문: { action: 'status' | 'acceptPolicy' | 'ask' }.
+// 이용 안내·약관 동의(버전 1)와 프리미엄 영상 AI 질문: { action: 'status' | 'acceptPolicy' | 'acceptAiConsent' | 'ask' }.
 // 독립 주소의 op 'access'와 같은 구현을 쓴다. UID는 request.auth에서만 정한다.
 export const videoFinderAccess = onCall(
   {

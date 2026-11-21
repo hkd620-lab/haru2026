@@ -110,6 +110,7 @@ test('Rules 기본 거부: 로그인한 본인도 내 영상 찾기·세션·레
   await db.doc(`users/${uid}/videoFinderSaved/${vid(1)}`).set(savedDoc(vid(1)));
   await db.doc(`videoFinderSessions/${'a'.repeat(64)}`).set({ uid, audience: 'https://videos.haru2026.com', createdAt: NOW, expiresAt: NOW + 1 });
   const denied = (p) => assert.rejects(p, (e) => e?.code === 'permission-denied');
+  await denied(setDoc(doc(clientDb, `users/${uid}/subscription/info`), { plan: 'premium', status: 'active', endDate: new Date(NOW + 86400000).toISOString() }));
   for (const p of [
     `users/${uid}/videoFinderSaved/${vid(1)}`,
     `users/${uid}/videoFinderHistory/${'b'.repeat(32)}`,
@@ -129,7 +130,7 @@ test('Rules 기본 거부: 로그인한 본인도 내 영상 찾기·세션·레
 test('실제 Firestore에서 프리미엄만 예약하고 동시 호출·재시도에도 한 번만 확정한다', async () => {
   const uid = `vf-premium-emulator-${Date.now()}`;
   await activeUser(uid);
-  await db.doc('config/videoFinder').set({ questionsEnabled: true }, { merge: true });
+  await db.doc('config/videoFinder').set({ questionsEnabled: true, policyRequired: false }, { merge: true });
   const subscription = db.doc(`users/${uid}/subscription/info`);
   await subscription.set({ plan: 'basic', status: 'active', endDate: new Date(NOW + 7 * 86400000).toISOString() });
   let modelCalls = 0;
@@ -148,13 +149,23 @@ test('실제 Firestore에서 프리미엄만 예약하고 동시 호출·재시�
   });
   const question = { action: 'ask', videoId: vid(31), question: '어떤 이야기인가요?', requestId: 'emulator-test-01' };
   assert.equal((await access.handle(uid, { action: 'status' })).policyAccepted, false);
+  await access.requirePolicyFor(uid, 'search', {});
+  await db.doc('config/videoFinder').update({ policyRequired: true });
+  await access.requirePolicyFor(uid, 'library', { action: 'backup' });
   await assert.rejects(access.requirePolicyFor(uid, 'search', {}), (error) => error.code === 'failed-precondition');
   const accepted = await access.handle(uid, { action: 'acceptPolicy', version: core.VIDEO_FINDER_POLICY_VERSION });
   assert.equal(accepted.questionAccess, 'premium-required');
-  await assert.rejects(access.handle(uid, question), (error) => error.code === 'permission-denied');
+  await assert.rejects(access.handle(uid, question), (error) => error.code === 'failed-precondition' && error.message.includes('Gemini'));
   assert.equal(modelCalls, 0);
+  const aiConsent = { action: 'acceptAiConsent', version: core.VIDEO_FINDER_AI_CONSENT_VERSION };
+  await assert.rejects(access.handle(uid, aiConsent), (error) => error.code === 'permission-denied');
   await subscription.update({ plan: 'premium' });
+  await assert.rejects(access.handle(uid, question), (error) => error.code === 'failed-precondition');
+  assert.equal(modelCalls, 0);
+  assert.equal((await access.handle(uid, aiConsent)).aiConsentAccepted, true);
 
+  const archiveId = vid(32);
+  await store.createSaved(uid, { ...savedDoc(archiveId), note: '기존 보관 메모' }, 10);
   const first = access.handle(uid, question);
   await Promise.race([started, first.then(() => { throw new Error('모의 모델 호출을 기다리지 않고 종료했습니다.'); })]);
   try {
@@ -167,6 +178,10 @@ test('실제 Firestore에서 프리미엄만 예약하고 동시 호출·재시�
   assert.equal(result.status.remainingAnalysisSeconds, 6600);
   assert.deepEqual(await access.handle(uid, question), result);
   assert.equal(modelCalls, 1);
+  const usage = (await db.doc(`users/${uid}/videoFinderAccess/usage`).get()).data();
+  assert.equal(usage.provider.attempts, 1);
+  assert.equal(usage.provider.seconds, 600);
+  assert.equal((await db.doc(`users/${uid}/videoFinderSaved/${archiveId}`).get()).data().note, '기존 보관 메모');
 
   await store.deleteAll(uid);
   assert.equal((await db.collection(`users/${uid}/videoFinderAiCache`).get()).size, 0);

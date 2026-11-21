@@ -954,25 +954,34 @@ export function createStandaloneGateway(deps: {
 
 // ═════ 이용 안내·약관 동의와 프리미엄 AI 질문 (2026-11-21) ═════
 // 데이터 경계(서버 Admin SDK 전용, 클라이언트 Rules 허용 없음):
-// - 동의 기록: users/{uid}/videoFinderAccess/policy { version, acceptedAt } — 전체 삭제(deleteAll)에도 남는다.
-// - 사용량·진행 중 예약: users/{uid}/videoFinderAccess/usage { day, dayCount, month, monthSeconds, lease, dataEpoch }
+// - 동의 기록: users/{uid}/videoFinderAccess/policy { version, acceptedAt, aiConsentVersion?, aiConsentAcceptedAt? }
+//   — 일반 이용 동의와 Gemini 전송 안내 동의(AI)를 같은 문서에 버전·시각만 따로 둔다. 전체 삭제(deleteAll)에도 남는다.
+// - 사용량·진행 중 예약: users/{uid}/videoFinderAccess/usage { day, dayCount, month, monthSeconds, lease, dataEpoch, provider }
 //   (문서 1개에 현재 날짜·구독 기간 키와 카운터만 둔다. 날짜별 문서가 쌓이지 않는다.)
+//   provider { day, attempts, cycle, seconds }는 실패 포함 실제 Gemini 호출 예약 수·영상 분석 시도 시간이다.
+//   사용자 차감(dayCount·monthSeconds)과 따로 두며 되돌리지 않는다(실패·예약 만료·재시도로 비용 상한을 넘지 못하게).
 // - 비공개 영상 요약: users/{uid}/videoFinderAiCache/recap_{videoId} (초 단위 시각 포함, 18시간 뒤 만료)
-// - 중복 요청 응답: users/{uid}/videoFinderAiCache/answer_{requestId} (1시간 뒤 만료)
+// - 답변 기록: users/{uid}/videoFinderAiCache/answer_{requestId} (질문 원문·답변, 1시간 뒤 만료)
+//   중복 요청 응답과 후속 질문의 이전 대화(previousRequestIds) 근거로만 쓴다.
 //   두 문서 모두 expiresAt(ms)를 두고 정리 작업(collectionGroup videoFinderAiCache.expiresAt)이 지운다.
 // 영상·음성·전체 자막은 내려받거나 저장하지 않는다. Gemini에는 공개 YouTube 주소만 fileData로 넘긴다.
-// 질문 원문은 답변 캐시 외에 로그·메타데이터에 남기지 않는다.
+// 질문 원문은 AI 동의 뒤 답변 기록(1시간)에만 저장하고 로그·메타데이터에 남기지 않는다.
 
 export const VIDEO_FINDER_POLICY_VERSION = 1;
+export const VIDEO_FINDER_AI_CONSENT_VERSION = 1;
 export const VIDEO_FINDER_ACCESS_COLLECTION = 'videoFinderAccess';
 export const VIDEO_FINDER_AI_CACHE_COLLECTION = 'videoFinderAiCache';
 export const VIDEO_FINDER_ACCESS_RATE_FEATURE = 'videoFinderAccess';
 export const QUESTION_TIME_ZONE = 'Asia/Seoul';
-// 허대표님 승인 기준: 프리미엄(월 6,000원) 활성 구독자만, 한국 시간 하루 답변 10회, 구독 한 달 분석 120분.
+// 허대표님 승인 기준: 프리미엄 활성 구독자만, 한국 시간 하루 답변 10회, 구독 한 달 분석 120분.
 export const QUESTION_DAILY_LIMIT = 10;
 export const ANALYSIS_MONTHLY_SECONDS = 7200;
-// Gemini의 기본 저해상도에서 지원하는 길이 안에서, 구독 기간의 분석 한도를 적용한다.
-export const MAX_ANALYSIS_VIDEO_SECONDS = ANALYSIS_MONTHLY_SECONDS;
+// 영상 1개 상한 120분. 모델 문서상 저해상도는 약 3시간까지 받지만 비용·응답 시간을 위해 120분으로 묶는다.
+// 120분 영상의 실제 응답 시간(GEMINI_VIDEO_TIMEOUT_MS 안)은 출시 전 실측 확인이 필요하다.
+export const MAX_ANALYSIS_VIDEO_SECONDS = 7200;
+// 공급자(Gemini) 비용 상한: 실패 포함 실제 호출 예약 기준. 사용자 차감과 별도이며 되돌리지 않는다.
+export const PROVIDER_DAILY_ATTEMPTS = 15;
+export const PROVIDER_CYCLE_SECONDS = 10800;
 export const GEMINI_VIDEO_TIMEOUT_MS = 75000;
 export const GEMINI_TEXT_TIMEOUT_MS = 25000;
 // 예약 유효시간은 모델 제한시간과 함수 제한시간(120초)보다 길게 둔다. 그 안에 끝나지 않은 예약은 무효(무료)로 본다.
@@ -992,6 +1001,7 @@ const REQUEST_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 export type QuestionAccess = 'disabled' | 'premium-required' | 'ready';
 export type AccessStatus = {
   policyAccepted: boolean;
+  aiConsentAccepted: boolean;
   questionAccess: QuestionAccess;
   remainingQuestions: number;
   remainingAnalysisSeconds: number;
@@ -1000,9 +1010,13 @@ export type AccessStatus = {
 const ACCESS_ERRORS = {
   disabled: () => new VideoFinderError('failed-precondition', '영상 AI 질문은 아직 준비 중이에요. 검색과 보관함은 그대로 이용할 수 있어요.'),
   policy: () => new VideoFinderError('failed-precondition', '내 영상 찾기 이용 안내와 약관에 먼저 동의해 주세요.'),
-  premium: () => new VideoFinderError('permission-denied', '영상 AI 질문은 프리미엄(월 6,000원) 구독 중에만 이용할 수 있어요.'),
+  aiConsent: () => new VideoFinderError('failed-precondition', '영상 AI 질문 안내(질문과 영상 주소를 Google Gemini로 보내는 내용)에 먼저 동의해 주세요.'),
+  premium: () => new VideoFinderError('permission-denied', '영상 AI 질문은 프리미엄 구독 중에만 이용할 수 있어요.'),
   daily: () => new VideoFinderError('resource-exhausted', `오늘 AI 질문 ${QUESTION_DAILY_LIMIT}회를 모두 사용했어요. 한국 시간 자정이 지나면 다시 질문할 수 있어요.`),
-  monthly: () => new VideoFinderError('resource-exhausted', '이번 구독 기간의 영상 분석 시간이 부족해요. 이미 분석한 영상에는 계속 질문할 수 있어요.'),
+  monthly: () => new VideoFinderError('resource-exhausted', '이번 구독 기간의 영상 분석 시간이 부족해요. 최근에 분석한 영상에는 계속 질문할 수 있어요.'),
+  // 공급자 비용 상한(실패 포함). 사용자 횟수와 별개라 '사용 불가·나중에 다시'로 알린다.
+  providerDaily: () => new VideoFinderError('unavailable', '오늘은 AI 답변 요청이 많아 더 처리할 수 없어요. 내일 다시 시도해 주세요.'),
+  providerCycle: () => new VideoFinderError('unavailable', '이번 구독 기간에는 새 영상 분석을 더 진행할 수 없어요. 최근에 분석한 영상에는 질문할 수 있어요. 다음 구독 기간에 다시 시도해 주세요.'),
   busy: () => new VideoFinderError('unavailable', '앞선 질문의 답변을 만드는 중이에요. 잠시 후 다시 시도해 주세요.'),
   notPublic: () => new VideoFinderError('failed-precondition', '공개된 YouTube 영상에만 질문할 수 있어요. 비공개·삭제된 영상은 분석하지 않아요.'),
   noDuration: () => new VideoFinderError('failed-precondition', '길이를 확인할 수 없는 영상(실시간 방송 등)에는 질문할 수 없어요.'),
@@ -1042,11 +1056,20 @@ function oneMonthBefore(ms: number): number {
 
 export type QuestionEntitlement = { ok: true; monthKey: string } | { ok: false };
 
+// 결제 한 번이 덮는 기간으로 보는 최대 길이. 이보다 길게 남은 지급은 장기 지급으로 보고 달력 월로 나눈다.
+const PAID_CYCLE_MAX_MS = 32 * DAY_MS;
+// 결제 뒤 만료일을 운영에서 고쳐 늘린 경우(보상 연장 등)도 같은 결제 기간으로 본다. 이보다 길면 장기 지급.
+const PAID_AMENDED_END_MAX_MS = 62 * DAY_MS;
+
 // users/{uid}/subscription/info 실제 문서만 본다(개발자·내부 계정 예외 없음).
 // - plan이 정확히 'premium', status가 'active' 또는 'cancelled'(만료일까지 이용)일 때만 통과.
-// - endDate(없으면 expiresAt)가 지났거나, 날짜 값이 잘못됐거나, 해지했는데 만료일이 없으면 거절(fail closed).
-// - 사용량 월 키: 현재 결제 기간 [endDate-1개월, endDate) 안이면 그 기간(p:endDate ms).
-//   만료일이 없는 활성 지급이거나 만료일이 한 달보다 멀면 한국 시간 달력 월(m:YYYY-MM)로 제한한다.
+// - endDate(없으면 expiresAt)가 없거나, 지났거나, 날짜 값이 잘못됐으면 거절(fail closed).
+//   만료일 없는 'active'(결제 대기·수동으로 고친 무기한 지급)는 유료 이용 중으로 보지 않는다.
+// - 사용량 기간 키:
+//   1) 최근 실제 결제일(lastPaidAt)이 있고 그 뒤 32일 안이면 그 결제 기간(pay:lastPaidAt ms).
+//      결제 기간 중 endDate가 고쳐져도 키가 바뀌지 않아 한도가 두 번 생기지 않는다(월말 갱신 포함).
+//   2) 결제일이 없는 예전 문서는 [startDate, endDate)가 한 달 안이거나 [endDate-1개월, endDate)이면 p:endDate ms.
+//   3) 그 밖의 장기 지급은 한국 시간 달력 월(m:YYYY-MM)로 나눈다.
 export function evaluateQuestionEntitlement(subscription: unknown, nowMs: number): QuestionEntitlement {
   const d = (subscription && typeof subscription === 'object' ? subscription : null) as Record<string, unknown> | null;
   if (!d || d.plan !== 'premium') return { ok: false };
@@ -1054,19 +1077,18 @@ export function evaluateQuestionEntitlement(subscription: unknown, nowMs: number
   const end = d.endDate !== undefined && d.endDate !== null ? toEpochMs(d.endDate) : toEpochMs(d.expiresAt);
   const start = toEpochMs(d.startDate);
   const lastPaid = toEpochMs(d.lastPaidAt);
-  if (end === null || start === null || lastPaid === null) return { ok: false };
+  if (end === null || end === undefined || start === null || lastPaid === null) return { ok: false };
   if (start !== undefined && start > nowMs + 60000) return { ok: false };
-  if (end === undefined) {
-    if (d.status === 'cancelled') return { ok: false };
-    return { ok: true, monthKey: `m:${kstMonthKey(nowMs)}` };
-  }
   if (end <= nowMs) return { ok: false };
   if (start !== undefined && start >= end) return { ok: false };
-  // 결제 갱신은 최초 startDate를 유지하고 lastPaidAt만 바꾼다. 실제 결제일이 있으면
-  // 월말 setMonth의 날짜 넘김 때문에 구독 중간에 분석 한도가 초기화되지 않게 한다.
-  const paidStart = lastPaid ?? start;
-  const currentPaidPeriod = paidStart !== undefined && paidStart <= nowMs && end > paidStart && end - paidStart <= 32 * DAY_MS;
-  if (currentPaidPeriod || nowMs >= oneMonthBefore(end)) return { ok: true, monthKey: `p:${end}` };
+  if (lastPaid !== undefined && lastPaid <= nowMs && nowMs - lastPaid < PAID_CYCLE_MAX_MS
+    && end > lastPaid && end - lastPaid <= PAID_AMENDED_END_MAX_MS) {
+    return { ok: true, monthKey: `pay:${lastPaid}` };
+  }
+  if (lastPaid === undefined) {
+    const legacyPeriod = start !== undefined && start <= nowMs && end - start <= PAID_CYCLE_MAX_MS;
+    if (legacyPeriod || nowMs >= oneMonthBefore(end)) return { ok: true, monthKey: `p:${end}` };
+  }
   return { ok: true, monthKey: `m:${kstMonthKey(nowMs)}` };
 }
 
@@ -1080,6 +1102,14 @@ export type QuestionLease = {
   epoch: number;
 };
 
+// 공급자 비용 카운터. 예약 트랜잭션에서만 늘리고 해제·실패·예약 만료에도 줄이지 않는다.
+export type ProviderUsage = {
+  day: string;
+  attempts: number;
+  cycle: string;
+  seconds: number;
+};
+
 export type QuestionUsage = {
   day: string;
   dayCount: number;
@@ -1087,6 +1117,7 @@ export type QuestionUsage = {
   monthSeconds: number;
   lease: QuestionLease | null;
   dataEpoch: number;
+  provider: ProviderUsage;
 };
 
 function nonNegInt(value: unknown): number {
@@ -1101,6 +1132,7 @@ export function normalizeUsage(raw: unknown): QuestionUsage {
     ? { requestId: l.requestId, videoId: l.videoId, seconds: nonNegInt(l.seconds), day: l.day, month: l.month,
       expiresAt: l.expiresAt, epoch: nonNegInt(l.epoch) }
     : null;
+  const p = (d.provider && typeof d.provider === 'object' ? d.provider : {}) as Record<string, unknown>;
   return {
     day: typeof d.day === 'string' ? d.day : '',
     dayCount: nonNegInt(d.dayCount),
@@ -1108,6 +1140,19 @@ export function normalizeUsage(raw: unknown): QuestionUsage {
     monthSeconds: nonNegInt(d.monthSeconds),
     lease,
     dataEpoch: nonNegInt(d.dataEpoch),
+    provider: {
+      day: typeof p.day === 'string' ? p.day : '',
+      attempts: nonNegInt(p.attempts),
+      cycle: typeof p.cycle === 'string' ? p.cycle : '',
+      seconds: nonNegInt(p.seconds),
+    },
+  };
+}
+
+function providerUsed(usage: QuestionUsage, day: string, cycle: string) {
+  return {
+    attempts: usage.provider.day === day ? usage.provider.attempts : 0,
+    seconds: usage.provider.cycle === cycle ? usage.provider.seconds : 0,
   };
 }
 
@@ -1127,27 +1172,37 @@ function usedAmounts(usage: QuestionUsage, day: string, month: string, nowMs: nu
 export function buildAccessStatus(args: {
   enabled: boolean;
   policyAccepted: boolean;
+  aiConsentAccepted: boolean;
   entitlement: QuestionEntitlement;
   usage: QuestionUsage;
   nowMs: number;
 }): AccessStatus {
-  const base = { policyAccepted: args.policyAccepted, remainingQuestions: 0, remainingAnalysisSeconds: 0 };
+  const base = {
+    policyAccepted: args.policyAccepted,
+    aiConsentAccepted: args.aiConsentAccepted,
+    remainingQuestions: 0,
+    remainingAnalysisSeconds: 0,
+  };
   if (!args.enabled) return { ...base, questionAccess: 'disabled' };
   if (!args.entitlement.ok) return { ...base, questionAccess: 'premium-required' };
-  const used = usedAmounts(args.usage, dayKey(args.nowMs, QUESTION_TIME_ZONE), args.entitlement.monthKey, args.nowMs);
+  const day = dayKey(args.nowMs, QUESTION_TIME_ZONE);
+  const used = usedAmounts(args.usage, day, args.entitlement.monthKey, args.nowMs);
+  const provider = providerUsed(args.usage, day, args.entitlement.monthKey);
+  // 공급자 상한이 사용자 한도보다 먼저 닿으면(실패 반복 등) 실제로 가능한 만큼만 보여 준다.
   return {
     ...base,
     questionAccess: 'ready',
-    remainingQuestions: Math.max(0, QUESTION_DAILY_LIMIT - used.questions),
-    remainingAnalysisSeconds: Math.max(0, ANALYSIS_MONTHLY_SECONDS - used.seconds),
+    remainingQuestions: Math.max(0, Math.min(QUESTION_DAILY_LIMIT - used.questions, PROVIDER_DAILY_ATTEMPTS - provider.attempts)),
+    remainingAnalysisSeconds: Math.max(0, Math.min(ANALYSIS_MONTHLY_SECONDS - used.seconds, PROVIDER_CYCLE_SECONDS - provider.seconds)),
   };
 }
 
 export type ReservationDecision =
-  | { ok: true; lease: QuestionLease }
-  | { ok: false; reason: 'busy' | 'daily' | 'monthly' };
+  | { ok: true; lease: QuestionLease; provider: ProviderUsage }
+  | { ok: false; reason: 'busy' | 'daily' | 'monthly' | 'providerDaily' | 'providerCycle' };
 
 // 예약 트랜잭션 안에서 최신 사용량으로 다시 판단한다. 사용자당 진행 중 질문은 1개뿐이다.
+// 통과하면 lease와 함께 공급자 카운터(실패 포함 호출 1회 + 영상 분석 시간)를 늘린 값을 돌려준다.
 export function planQuestionReservation(args: {
   usage: QuestionUsage;
   nowMs: number;
@@ -1162,6 +1217,9 @@ export function planQuestionReservation(args: {
   const used = usedAmounts(usage, day, args.monthKey, nowMs);
   if (used.questions >= QUESTION_DAILY_LIMIT) return { ok: false, reason: 'daily' };
   if (used.seconds + args.needSeconds > ANALYSIS_MONTHLY_SECONDS) return { ok: false, reason: 'monthly' };
+  const provider = providerUsed(usage, day, args.monthKey);
+  if (provider.attempts >= PROVIDER_DAILY_ATTEMPTS) return { ok: false, reason: 'providerDaily' };
+  if (provider.seconds + args.needSeconds > PROVIDER_CYCLE_SECONDS) return { ok: false, reason: 'providerCycle' };
   return {
     ok: true,
     lease: {
@@ -1173,12 +1231,13 @@ export function planQuestionReservation(args: {
       expiresAt: nowMs + QUESTION_LEASE_MS,
       epoch: usage.dataEpoch,
     },
+    provider: { day, attempts: provider.attempts + 1, cycle: args.monthKey, seconds: provider.seconds + args.needSeconds },
   };
 }
 
 // 답변이 확정될 때만 1회·분석 시간을 차감한다. 예약이 내 것이 아니면(만료 후 다른 요청이 가져감 등) 차감·저장하지 않는다.
 export function planQuestionCompletion(usage: QuestionUsage, requestId: string, nowMs: number):
-  | { ok: true; next: Omit<QuestionUsage, 'dataEpoch'>; persist: boolean }
+  | { ok: true; next: Omit<QuestionUsage, 'dataEpoch' | 'provider'>; persist: boolean }
   | { ok: false } {
   const lease = activeLease(usage, nowMs);
   if (!lease || lease.requestId !== requestId) return { ok: false };
@@ -1196,11 +1255,14 @@ export function planQuestionCompletion(usage: QuestionUsage, requestId: string, 
   };
 }
 
+export type PreviousTurn = { question: string; answer: string };
+
 export type AskInput = {
   requestId: string;
   videoId: string;
   question: string;
-  previous: Array<{ question: string; answer: string }>;
+  // 이전 대화는 클라이언트 문장을 받지 않고, 서버에 저장된 본인 답변 기록 ID만 받는다(최근 3개).
+  previousRequestIds: string[];
 };
 
 function cleanMultiline(value: unknown, max: number): string {
@@ -1220,17 +1282,18 @@ export function validateAskInput(body: Record<string, unknown>): AskInput {
   }
   const question = cleanMultiline(rawQuestion, MAX_QUESTION_LENGTH);
   if (question.length < 2) throw new VideoFinderError('invalid-argument', '질문을 입력해 주세요.');
-  const previous: AskInput['previous'] = [];
-  if (body.previous !== undefined && body.previous !== null) {
-    if (!Array.isArray(body.previous)) throw new VideoFinderError('invalid-argument', '이전 대화를 확인하지 못했어요.');
-    for (const turn of body.previous.slice(-MAX_PREVIOUS_TURNS)) {
-      const t = (turn && typeof turn === 'object' ? turn : {}) as Record<string, unknown>;
-      const q = cleanMultiline(t.question, MAX_QUESTION_LENGTH);
-      const a = cleanMultiline(t.answer, MAX_ANSWER_LENGTH);
-      if (q && a) previous.push({ question: q, answer: a });
+  // 예전 클라이언트가 보내는 이전 대화 문장(body.previous)은 믿지 않고 버린다.
+  const previousRequestIds: string[] = [];
+  if (body.previousRequestIds !== undefined && body.previousRequestIds !== null) {
+    if (!Array.isArray(body.previousRequestIds)) throw new VideoFinderError('invalid-argument', '이전 대화를 확인하지 못했어요.');
+    for (const id of body.previousRequestIds.slice(-MAX_PREVIOUS_TURNS)) {
+      if (typeof id !== 'string' || !REQUEST_ID_RE.test(id)) {
+        throw new VideoFinderError('invalid-argument', '이전 대화를 확인하지 못했어요.');
+      }
+      if (id !== body.requestId && previousRequestIds.indexOf(id) < 0) previousRequestIds.push(id);
     }
   }
-  return { requestId: body.requestId, videoId, question, previous };
+  return { requestId: body.requestId, videoId, question, previousRequestIds };
 }
 
 export function parseIsoDurationSeconds(value: unknown): number | null {
@@ -1243,7 +1306,7 @@ export function parseIsoDurationSeconds(value: unknown): number | null {
 
 export type VideoAnalysisInfo = { videoId: string; isPublic: boolean; durationSeconds: number | null };
 
-// videos.list(part=contentDetails,status) 응답 1건. 공개·처리 완료이고 실시간 방송이 아닌 영상만 공개로 본다.
+// videos.list(part=snippet,contentDetails,status, fields로 필요한 값만) 응답 1건. 공개·처리 완료이고 실시간 방송이 아닌 영상만 공개로 본다.
 export function mapAnalysisInfo(item: unknown): VideoAnalysisInfo | null {
   const it = item as { id?: unknown; status?: any; contentDetails?: any; snippet?: any } | null;
   if (!it || typeof it.id !== 'string' || !VIDEO_ID_RE.test(it.id)) return null;
@@ -1251,8 +1314,8 @@ export function mapAnalysisInfo(item: unknown): VideoAnalysisInfo | null {
   const live = it.snippet?.liveBroadcastContent;
   return {
     videoId: it.id,
-    isPublic: status.privacyStatus === 'public' && status.uploadStatus === 'processed'
-      && (live === undefined || live === 'none'),
+    // snippet.liveBroadcastContent를 함께 요청하므로, 값이 'none'으로 확인될 때만 통과한다(없으면 거절).
+    isPublic: status.privacyStatus === 'public' && status.uploadStatus === 'processed' && live === 'none',
     durationSeconds: parseIsoDurationSeconds(it.contentDetails?.duration),
   };
 }
@@ -1313,7 +1376,9 @@ export type CleanModelAnswer = {
 };
 
 // 모델 응답은 믿지 않고 형식·길이·시각 범위를 다시 맞춘다. 근거가 없다고 답하면 그대로 알린다.
-export function sanitizeModelAnswer(raw: unknown, durationSeconds: number, wantRecap: boolean): CleanModelAnswer {
+// allowedTimestamps를 주면(영상 재분석 없는 후속 질문) 요약 노트에 있는 시각만 남긴다.
+export function sanitizeModelAnswer(raw: unknown, durationSeconds: number, wantRecap: boolean,
+  allowedTimestamps?: number[]): CleanModelAnswer {
   const d = (raw && typeof raw === 'object' ? raw : null) as Record<string, unknown> | null;
   if (!d || typeof d.supported !== 'boolean') throw new Error('model_response_invalid');
   const supported = d.supported;
@@ -1331,7 +1396,9 @@ export function sanitizeModelAnswer(raw: unknown, durationSeconds: number, wantR
     if (summary || segments.length) recap = { summary, segments };
   }
   if (supported && wantRecap && !recap) throw new Error('model_recap_missing');
-  return { supported, answer, timestamps: supported ? sanitizeTimestamps(d.timestamps, durationSeconds) : [], recap };
+  let timestamps = supported ? sanitizeTimestamps(d.timestamps, durationSeconds) : [];
+  if (allowedTimestamps) timestamps = timestamps.filter((t) => allowedTimestamps.indexOf(t) >= 0);
+  return { supported, answer, timestamps, recap };
 }
 
 // ───── Gemini 전송 (공식 generateContent, YouTube 공개 주소를 fileData.fileUri로 전달) ─────
@@ -1353,10 +1420,14 @@ export class GeminiRequestError extends Error {
   }
 }
 
+// previous는 서버가 본인 답변 기록에서 다시 읽은 질문·답변이다(클라이언트 문장 아님).
 export interface VideoQuestionModel {
-  analyzeVideo(input: { videoId: string; durationSeconds: number; question: string; previous: AskInput['previous'] }): Promise<unknown>;
-  answerFromRecap(input: { recap: VideoRecap; question: string; previous: AskInput['previous'] }): Promise<unknown>;
+  analyzeVideo(input: { videoId: string; durationSeconds: number; question: string; previous: PreviousTurn[] }): Promise<unknown>;
+  answerFromRecap(input: { recap: VideoRecap; question: string; previous: PreviousTurn[] }): Promise<unknown>;
 }
+
+// Gemini 3.5 Flash-Lite 생각(thinking) 예산을 가장 낮게 고정한다(비용·응답 시간 상한).
+export const GEMINI_THINKING_CONFIG = { thinkingLevel: 'MINIMAL' };
 
 const GEMINI_SYSTEM_INSTRUCTION = [
   '너는 HARU 내 영상 찾기의 영상 질문 도우미다. 사용자가 고른 YouTube 영상 하나에 대해서만 한국어로 답한다.',
@@ -1399,16 +1470,16 @@ export const GEMINI_TEXT_RESPONSE_SCHEMA = {
   required: ['supported', 'answer', 'timestamps'],
 };
 
-function previousText(previous: AskInput['previous']): string {
+function previousText(previous: PreviousTurn[]): string {
   if (!previous.length) return '(없음)';
   return previous.map((p, i) => `${i + 1}. 질문: ${p.question}\n   답변: ${p.answer}`).join('\n');
 }
 
-export function buildGeminiVideoRequest(input: { videoId: string; durationSeconds: number; question: string; previous: AskInput['previous'] }) {
+export function buildGeminiVideoRequest(input: { videoId: string; durationSeconds: number; question: string; previous: PreviousTurn[] }) {
   const videoId = validateVideoId(input.videoId);
   const prompt = [
     `영상 길이: ${input.durationSeconds}초`,
-    '이전 대화(사용자 제공, 근거 아님):',
+    '이전 대화(이 영상에 대한 내 이전 질문·답변 기록, 근거 아님):',
     previousText(input.previous),
     '',
     '사용자 질문:',
@@ -1432,21 +1503,23 @@ export function buildGeminiVideoRequest(input: { videoId: string; durationSecond
       responseMimeType: 'application/json',
       responseSchema: GEMINI_VIDEO_RESPONSE_SCHEMA,
       mediaResolution: 'MEDIA_RESOLUTION_LOW',
+      thinkingConfig: GEMINI_THINKING_CONFIG,
     },
   };
 }
 
-export function buildGeminiRecapRequest(input: { recap: VideoRecap; question: string; previous: AskInput['previous'] }) {
+export function buildGeminiRecapRequest(input: { recap: VideoRecap; question: string; previous: PreviousTurn[] }) {
   const notes = input.recap.segments.map((s) => `[${s.t}초] ${s.text}`).join('\n');
   const prompt = [
     '아래는 이 영상을 앞서 분석해 만든 비공개 요약 노트다. 이 노트에 있는 내용만 근거로 답한다.',
     '노트에 없는 내용은 영상에서 확인하지 못했다고 답하고 supported를 false로 한다.',
+    'timestamps에는 아래 시각별 노트에 적힌 초만 넣는다. 다른 시각은 넣지 않는다.',
     `영상 길이: ${input.recap.durationSeconds}초`,
     `요지: ${input.recap.summary || '(없음)'}`,
     '시각별 노트:',
     notes || '(없음)',
     '',
-    '이전 대화(사용자 제공, 근거 아님):',
+    '이전 대화(이 영상에 대한 내 이전 질문·답변 기록, 근거 아님):',
     previousText(input.previous),
     '',
     '사용자 질문:',
@@ -1460,6 +1533,7 @@ export function buildGeminiRecapRequest(input: { recap: VideoRecap; question: st
       maxOutputTokens: 1024,
       responseMimeType: 'application/json',
       responseSchema: GEMINI_TEXT_RESPONSE_SCHEMA,
+      thinkingConfig: GEMINI_THINKING_CONFIG,
     },
   };
 }
@@ -1513,20 +1587,35 @@ export type AccessSnapshot = {
   usage: unknown;
   recap: unknown;
   answer: unknown;
+  // read()에서만 채운다: keys.previousRequestIds 순서대로 본인 answer_{id} 문서(없으면 null). 트랜잭션에서는 빈 배열.
+  previousAnswers?: unknown[];
 };
 
+export type AccessKeys = { videoId?: string; requestId?: string; previousRequestIds?: string[] };
+
 export type AccessWrites = {
-  policy?: { version: number; acceptedAt: number };
+  // 같은 정책 문서에 병합(merge)한다. 일반 동의와 AI 동의 필드는 서로 덮어쓰지 않는다.
+  policy?: { version?: number; acceptedAt?: number; aiConsentVersion?: number; aiConsentAcceptedAt?: number };
   usage?: Record<string, unknown>;
   recap?: VideoRecap;
   answer?: Record<string, unknown>;
 };
 
-export interface VideoFinderAccessStore {
+export type VideoFinderAccessConfig = {
   // config/videoFinder.questionsEnabled === true 일 때만 켜진다(기본 꺼짐). AI 질문에만 적용된다.
-  getQuestionsEnabled(): Promise<boolean>;
+  questionsEnabled: boolean;
+  // config/videoFinder.policyRequired === true 일 때만 일반 검색·보관함에 일반 동의를 요구한다(기본 꺼짐).
+  // 새 화면 배포 전 기존 클라이언트가 계속 동작하게 하는 단계적 전환 스위치다. AI 질문은 이 값과 관계없이 두 동의를 모두 요구한다.
+  policyRequired: boolean;
+};
+
+export interface VideoFinderAccessStore {
+  // config/videoFinder 문서 1건만 읽는다.
+  getConfig(): Promise<VideoFinderAccessConfig>;
+  // 동의 문서(users/{uid}/videoFinderAccess/policy) 1건만 읽는다. 없으면 null.
+  readPolicy(uid: string): Promise<unknown>;
   // 읽기 전용 조회. 쓰기 없음.
-  read(uid: string, keys: { videoId?: string; requestId?: string }): Promise<AccessSnapshot>;
+  read(uid: string, keys: AccessKeys): Promise<AccessSnapshot>;
   // 한 트랜잭션에서 users/{uid}·동의·구독·사용량·요약·답변 문서를 읽고 fn이 돌려준 쓰기만 적용한다.
   // fn은 재시도될 수 있으므로 부수효과가 없어야 한다. fn이 던지면 아무것도 쓰지 않는다.
   transact<T>(uid: string, keys: { videoId?: string; requestId?: string },
@@ -1542,8 +1631,16 @@ export function isPolicyAccepted(policy: unknown): boolean {
   return !!p && typeof p.version === 'number' && p.version >= VIDEO_FINDER_POLICY_VERSION;
 }
 
-// 동의 전에도 열어 두는 동작: 내 데이터 지우기(보관 빼기·이력 지우기·전체 삭제). 나머지 검색·보관함은 동의가 필요하다.
-const LIBRARY_ACTIONS_WITHOUT_POLICY = ['remove', 'deleteHistory', 'deleteAll'];
+// Gemini 전송 안내 동의. 일반 동의가 먼저 있어야 하며, 일반 동의만으로는 AI 동의가 되지 않는다.
+export function isAiConsentAccepted(policy: unknown): boolean {
+  if (!isPolicyAccepted(policy)) return false;
+  const p = policy as Record<string, unknown>;
+  return typeof p.aiConsentVersion === 'number' && p.aiConsentVersion >= VIDEO_FINDER_AI_CONSENT_VERSION;
+}
+
+// 동의 전(또는 동의 거부)에도 열어 두는 동작: 내 데이터 지우기(보관 빼기·이력 지우기·전체 삭제)와 내 데이터 백업.
+// 나머지 검색·보관함 조회·저장·편집은 policyRequired 스위치가 켜지면 일반 동의가 필요하다.
+const LIBRARY_ACTIONS_WITHOUT_POLICY = ['remove', 'deleteHistory', 'deleteAll', 'backup'];
 
 export function policyRequiredFor(op: 'search' | 'library', payload: unknown): boolean {
   if (op === 'search') return true;
@@ -1551,7 +1648,10 @@ export function policyRequiredFor(op: 'search' | 'library', payload: unknown): b
   return LIBRARY_ACTIONS_WITHOUT_POLICY.indexOf(action as string) < 0;
 }
 
-function readAnswerRecord(raw: unknown, input: AskInput, nowMs: number): { answer: string; timestamps: number[] } | null {
+export type AnswerSource = 'recap' | 'video';
+
+function readAnswerRecord(raw: unknown, input: AskInput, nowMs: number):
+  { answer: string; timestamps: number[]; answerSource: AnswerSource } | null {
   const d = (raw && typeof raw === 'object' ? raw : null) as Record<string, unknown> | null;
   if (!d || d.requestId !== input.requestId) return null;
   if (typeof d.expiresAt !== 'number' || !(d.expiresAt > nowMs)) return null;
@@ -1561,7 +1661,22 @@ function readAnswerRecord(raw: unknown, input: AskInput, nowMs: number): { answe
   return {
     answer: typeof d.answer === 'string' ? d.answer.slice(0, MAX_ANSWER_LENGTH) : '',
     timestamps: Array.isArray(d.timestamps) ? (d.timestamps as unknown[]).filter((t) => typeof t === 'number') as number[] : [],
+    answerSource: d.answerSource === 'recap' ? 'recap' : 'video',
   };
+}
+
+// 이전 대화: 서버가 읽은 본인 답변 기록 중 같은 영상·만료 전·질문과 답이 모두 있는 것만, 요청한 순서대로 쓴다.
+export function readPreviousTurns(raws: unknown[] | undefined, ids: string[], videoId: string, nowMs: number): PreviousTurn[] {
+  const out: PreviousTurn[] = [];
+  ids.forEach((id, i) => {
+    const d = (raws && raws[i] && typeof raws[i] === 'object' ? raws[i] : null) as Record<string, unknown> | null;
+    if (!d || d.requestId !== id || d.videoId !== videoId) return;
+    if (typeof d.expiresAt !== 'number' || !(d.expiresAt > nowMs)) return;
+    const question = cleanMultiline(d.question, MAX_QUESTION_LENGTH);
+    const answer = cleanMultiline(d.answer, MAX_ANSWER_LENGTH);
+    if (question && answer) out.push({ question, answer });
+  });
+  return out.slice(-MAX_PREVIOUS_TURNS);
 }
 
 export function createVideoFinderAccessService(deps: {
@@ -1577,14 +1692,35 @@ export function createVideoFinderAccessService(deps: {
 
   async function status(uid: string): Promise<AccessStatus> {
     const nowMs = now();
-    const [enabled, snap] = await Promise.all([store.getQuestionsEnabled(), store.read(uid, {})]);
+    const [config, snap] = await Promise.all([store.getConfig(), store.read(uid, {})]);
     return buildAccessStatus({
-      enabled,
+      enabled: config.questionsEnabled,
       policyAccepted: isPolicyAccepted(snap.policy),
+      aiConsentAccepted: isAiConsentAccepted(snap.policy),
       entitlement: evaluateQuestionEntitlement(snap.subscription, nowMs),
       usage: normalizeUsage(snap.usage),
       nowMs,
     });
+  }
+
+  // Gemini 전송 안내 동의(버전·시각만 기록). 서버 스위치가 켜져 있고, 프리미엄 이용 중이며, 일반 동의를 마친 경우에만 받는다.
+  async function acceptAiConsent(uid: string, body: Record<string, unknown>): Promise<AccessStatus> {
+    if (body.version !== VIDEO_FINDER_AI_CONSENT_VERSION) {
+      throw new VideoFinderError('invalid-argument', '안내 내용이 바뀌었어요. 화면을 새로 불러와 다시 확인해 주세요.');
+    }
+    if (!(await store.getConfig()).questionsEnabled) throw ACCESS_ERRORS.disabled();
+    const nowMs = now();
+    await store.transact(uid, {}, (snap) => {
+      assertActiveAccount(snap.account);
+      if (!isPolicyAccepted(snap.policy)) throw ACCESS_ERRORS.policy();
+      if (!evaluateQuestionEntitlement(snap.subscription, nowMs).ok) throw ACCESS_ERRORS.premium();
+      if (isAiConsentAccepted(snap.policy)) return { writes: {}, result: null };
+      return {
+        writes: { policy: { aiConsentVersion: VIDEO_FINDER_AI_CONSENT_VERSION, aiConsentAcceptedAt: nowMs } },
+        result: null,
+      };
+    });
+    return status(uid);
   }
 
   async function acceptPolicy(uid: string, body: Record<string, unknown>): Promise<AccessStatus> {
@@ -1600,13 +1736,17 @@ export function createVideoFinderAccessService(deps: {
     return status(uid);
   }
 
+  // 일반 동의 확인(스위치와 관계없이 항상 확인). 동의 문서 1건만 읽는다.
   async function requirePolicy(uid: string): Promise<void> {
-    const snap = await store.read(uid, {});
-    if (!isPolicyAccepted(snap.policy)) throw ACCESS_ERRORS.policy();
+    if (!isPolicyAccepted(await store.readPolicy(uid))) throw ACCESS_ERRORS.policy();
   }
 
+  // 일반 검색·보관함용. 운영 문서와 동의 문서만 읽는다(계정·구독·사용량은 읽지 않음).
+  // policyRequired 스위치가 꺼져 있으면 기존 클라이언트를 위해 통과시킨다. 삭제·백업은 항상 통과.
   async function requirePolicyFor(uid: string, op: 'search' | 'library', payload: unknown): Promise<void> {
-    if (policyRequiredFor(op, payload)) await requirePolicy(uid);
+    if (!policyRequiredFor(op, payload)) return;
+    if (!(await store.getConfig()).policyRequired) return;
+    await requirePolicy(uid);
   }
 
   async function release(uid: string, input: AskInput) {
@@ -1622,24 +1762,32 @@ export function createVideoFinderAccessService(deps: {
   }
 
   function readyStatus(entitlement: QuestionEntitlement, usage: QuestionUsage, nowMs: number): AccessStatus {
-    return buildAccessStatus({ enabled: true, policyAccepted: true, entitlement, usage, nowMs });
+    return buildAccessStatus({ enabled: true, policyAccepted: true, aiConsentAccepted: true, entitlement, usage, nowMs });
+  }
+
+  // AI 질문은 rollout 스위치(policyRequired)와 관계없이 일반 동의와 AI 동의를 모두 요구한다.
+  function assertBothConsents(policy: unknown) {
+    if (!isPolicyAccepted(policy)) throw ACCESS_ERRORS.policy();
+    if (!isAiConsentAccepted(policy)) throw ACCESS_ERRORS.aiConsent();
   }
 
   async function ask(uid: string, body: Record<string, unknown>) {
     const input = validateAskInput(body);
     const keys = { videoId: input.videoId, requestId: input.requestId };
     const nowMs = now();
-    if (!(await store.getQuestionsEnabled())) throw ACCESS_ERRORS.disabled();
+    if (!(await store.getConfig()).questionsEnabled) throw ACCESS_ERRORS.disabled();
 
-    // 1) 읽기 전용 사전 확인: 외부 호출 전에 동의·프리미엄·중복·한도를 거른다.
-    const pre = await store.read(uid, keys);
+    // 1) 읽기 전용 사전 확인: 외부 호출 전에 동의(일반·AI)·프리미엄·중복·한도(사용자·공급자)를 거른다.
+    //    이전 대화는 이때 본인 답변 기록(previousRequestIds)에서만 읽는다.
+    const pre = await store.read(uid, { ...keys, previousRequestIds: input.previousRequestIds });
     assertActiveAccount(pre.account);
-    if (!isPolicyAccepted(pre.policy)) throw ACCESS_ERRORS.policy();
+    assertBothConsents(pre.policy);
     const preEnt = evaluateQuestionEntitlement(pre.subscription, nowMs);
     if (!preEnt.ok) throw ACCESS_ERRORS.premium();
     const preUsage = normalizeUsage(pre.usage);
     const repeated = readAnswerRecord(pre.answer, input, nowMs);
     if (repeated) return { ...repeated, status: readyStatus(preEnt, preUsage, nowMs) };
+    const previous = readPreviousTurns(pre.previousAnswers, input.previousRequestIds, input.videoId, nowMs);
     const preRecap = readValidRecap(pre.recap, input.videoId, nowMs);
     // 새 영상이면 최소 1초가 남아 있어야 YouTube 확인으로 넘어간다.
     const preCheck = planQuestionReservation({ usage: preUsage, nowMs, monthKey: preEnt.monthKey, needSeconds: preRecap ? 0 : 1, ...keys });
@@ -1661,12 +1809,13 @@ export function createVideoFinderAccessService(deps: {
     }
 
     // 3) 예약 트랜잭션: 계정·동의·프리미엄·중복·한도를 최신 값으로 다시 확인하고 예약(lease)을 건다.
-    type Reserved = { kind: 'done'; answer: string; timestamps: number[]; status: AccessStatus }
+    //    같은 쓰기로 공급자 카운터(실패 포함 호출 1회·영상 분석 시간)를 네트워크 호출 전에 늘린다. 이 값은 되돌리지 않는다.
+    type Reserved = { kind: 'done'; answer: string; timestamps: number[]; answerSource: AnswerSource; status: AccessStatus }
       | { kind: 'reserved'; recap: VideoRecap | null };
     const reservationMs = now();
     const reserved = await store.transact<Reserved>(uid, keys, (snap) => {
       assertActiveAccount(snap.account);
-      if (!isPolicyAccepted(snap.policy)) throw ACCESS_ERRORS.policy();
+      assertBothConsents(snap.policy);
       const ent = evaluateQuestionEntitlement(snap.subscription, reservationMs);
       if (!ent.ok) throw ACCESS_ERRORS.premium();
       const usage = normalizeUsage(snap.usage);
@@ -1676,39 +1825,50 @@ export function createVideoFinderAccessService(deps: {
       if (preRecap && !recap) throw ACCESS_ERRORS.retry();
       const plan = planQuestionReservation({ usage, nowMs: reservationMs, monthKey: ent.monthKey, needSeconds, ...keys });
       if (!plan.ok) throw ACCESS_ERRORS[plan.reason]();
-      return { writes: { usage: { lease: plan.lease } }, result: { kind: 'reserved', recap } };
+      return { writes: { usage: { lease: plan.lease, provider: plan.provider } }, result: { kind: 'reserved', recap } };
     });
-    if (reserved.kind === 'done') return { answer: reserved.answer, timestamps: reserved.timestamps, status: reserved.status };
+    if (reserved.kind === 'done') {
+      return { answer: reserved.answer, timestamps: reserved.timestamps, status: reserved.status, answerSource: reserved.answerSource };
+    }
+    const answerSource: AnswerSource = reserved.recap ? 'recap' : 'video';
 
-    // 4) 모델 호출 1회. 실패하면 예약을 풀어 차감하지 않는다.
+    // 4) 모델 호출 1회. 실패하면 예약을 풀어 사용자 횟수·분석 시간은 차감하지 않는다(공급자 카운터는 그대로).
     let clean: CleanModelAnswer;
     try {
       const raw = reserved.recap
-        ? await deps.model().answerFromRecap({ recap: reserved.recap, question: input.question, previous: input.previous })
-        : await deps.model().analyzeVideo({ videoId: input.videoId, durationSeconds, question: input.question, previous: input.previous });
-      clean = sanitizeModelAnswer(raw, durationSeconds, !reserved.recap);
+        ? await deps.model().answerFromRecap({ recap: reserved.recap, question: input.question, previous })
+        : await deps.model().analyzeVideo({ videoId: input.videoId, durationSeconds, question: input.question, previous });
+      // 영상 재분석 없는 후속 질문은 요약 노트에 있는 시각만 돌려준다.
+      clean = sanitizeModelAnswer(raw, durationSeconds, !reserved.recap,
+        reserved.recap ? reserved.recap.segments.map((s) => s.t) : undefined);
     } catch {
       await release(uid, input);
       throw ACCESS_ERRORS.model();
     }
 
-    // 5) 확정 트랜잭션: 예약이 아직 내 것이고 프리미엄·동의가 유지될 때만 1회·분석 시간을 차감하고 요약·답변을 저장한다.
+    // 5) 확정 트랜잭션: 예약이 아직 내 것이고 프리미엄·두 동의가 유지될 때만 1회·분석 시간을 차감하고 요약·답변을 저장한다.
     const doneMs = now();
-    type Completed = { kind: 'ok'; status: AccessStatus } | { kind: 'revoked' } | { kind: 'lost' };
+    type Completed = { kind: 'ok'; status: AccessStatus } | { kind: 'revoked'; reason: 'premium' | 'policy' | 'aiConsent' } | { kind: 'lost' };
     const completed = await store.transact<Completed>(uid, keys, (snap) => {
       assertActiveAccount(snap.account);
       const usage = normalizeUsage(snap.usage);
       const plan = planQuestionCompletion(usage, input.requestId, doneMs);
       if (!plan.ok) return { writes: {}, result: { kind: 'lost' } };
       const ent = evaluateQuestionEntitlement(snap.subscription, doneMs);
-      if (!ent.ok || !isPolicyAccepted(snap.policy)) return { writes: { usage: { lease: null } }, result: { kind: 'revoked' } };
+      const revokedReason = !ent.ok ? 'premium' as const
+        : !isPolicyAccepted(snap.policy) ? 'policy' as const
+          : !isAiConsentAccepted(snap.policy) ? 'aiConsent' as const : null;
+      if (revokedReason) return { writes: { usage: { lease: null } }, result: { kind: 'revoked', reason: revokedReason } };
       const writes: AccessWrites = { usage: plan.next };
       if (plan.persist) {
+        // 질문 원문은 AI 동의 뒤 이 답변 기록(1시간)에만 둔다. 후속 질문의 이전 대화 근거로 서버가 다시 읽는다.
         writes.answer = {
           requestId: input.requestId,
           videoId: input.videoId,
+          question: input.question,
           answer: clean.answer,
           timestamps: clean.timestamps,
+          answerSource,
           createdAt: doneMs,
           expiresAt: doneMs + ANSWER_TTL_MS,
         };
@@ -1725,15 +1885,16 @@ export function createVideoFinderAccessService(deps: {
       }
       return { writes, result: { kind: 'ok', status: readyStatus(ent, { ...usage, ...plan.next }, doneMs) } };
     });
-    if (completed.kind === 'revoked') throw ACCESS_ERRORS.premium();
+    if (completed.kind === 'revoked') throw ACCESS_ERRORS[completed.reason]();
     if (completed.kind === 'lost') throw ACCESS_ERRORS.lost();
-    return { answer: clean.answer, timestamps: clean.timestamps, status: completed.status };
+    return { answer: clean.answer, timestamps: clean.timestamps, status: completed.status, answerSource };
   }
 
   async function handle(uid: string, data: unknown) {
     const body = (data && typeof data === 'object' && !Array.isArray(data) ? data : {}) as Record<string, unknown>;
     if (body.action === 'status') return status(uid);
     if (body.action === 'acceptPolicy') return acceptPolicy(uid, body);
+    if (body.action === 'acceptAiConsent') return acceptAiConsent(uid, body);
     if (body.action === 'ask') return ask(uid, body);
     throw new VideoFinderError('invalid-argument', '알 수 없는 요청입니다.');
   }

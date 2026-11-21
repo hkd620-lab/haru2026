@@ -25,6 +25,7 @@ import {
   planMetaUpdate,
   quotaErrorFor,
   resolveVideoFinderLimits,
+  type AccessKeys,
   type AccessSnapshot,
   type AccessWrites,
   type HistoryEntry,
@@ -253,10 +254,11 @@ export function createFirestoreVideoFinderStore(db: Firestore, auth: Auth): Vide
 
 // AI 질문·동의 저장소. 판정은 videoFinderCore.createVideoFinderAccessService가 하고 여기서는 읽기·트랜잭션 경계만 둔다.
 // 경로: users/{uid}/videoFinderAccess/{policy|usage}, users/{uid}/videoFinderAiCache/{recap_<videoId>|answer_<requestId>}
+// policy·usage 쓰기는 merge라 일반 동의/AI 동의, 사용자 차감/공급자 카운터(provider) 필드가 서로를 지우지 않는다.
 // 구독은 users/{uid}/subscription/info 실제 문서만 읽는다(쓰지 않음).
 export function createFirestoreVideoFinderAccessStore(db: Firestore): VideoFinderAccessStore {
   const userRef = (uid: string) => db.collection('users').doc(uid);
-  const refsFor = (uid: string, keys: { videoId?: string; requestId?: string }) => {
+  const refsFor = (uid: string, keys: AccessKeys) => {
     const access = userRef(uid).collection(VIDEO_FINDER_ACCESS_COLLECTION);
     const cache = userRef(uid).collection(VIDEO_FINDER_AI_CACHE_COLLECTION);
     return {
@@ -267,31 +269,41 @@ export function createFirestoreVideoFinderAccessStore(db: Firestore): VideoFinde
       // 키는 core에서 형식 검사를 마친 값만 들어온다(videoId 11자, requestId 8~64자 영숫자·_-).
       recap: keys.videoId ? cache.doc(`recap_${keys.videoId}`) : null,
       answer: keys.requestId ? cache.doc(`answer_${keys.requestId}`) : null,
+      // 이전 대화: 본인(uid) 답변 기록만 읽는다. 최대 3개(core에서 제한).
+      previous: (keys.previousRequestIds || []).map((id) => cache.doc(`answer_${id}`)),
     };
   };
   const dataOf = (snap: { exists: boolean; data(): DocumentData | undefined } | null) => (snap && snap.exists ? snap.data() : null);
 
   return {
-    async getQuestionsEnabled() {
+    async getConfig() {
       const snap = await db.doc(VIDEO_FINDER_CONFIG_DOC).get();
-      return snap.exists && snap.data()?.questionsEnabled === true;
+      const data = snap.exists ? snap.data() : undefined;
+      return { questionsEnabled: data?.questionsEnabled === true, policyRequired: data?.policyRequired === true };
+    },
+
+    async readPolicy(uid) {
+      return dataOf(await refsFor(uid, {}).policy.get());
     },
 
     async read(uid, keys) {
       const r = refsFor(uid, keys);
-      const [account, policy, subscription, usage, recap, answer] = await Promise.all([
+      const [account, policy, subscription, usage, recap, answer, ...previous] = await Promise.all([
         r.account.get(), r.policy.get(), r.subscription.get(), r.usage.get(),
         r.recap ? r.recap.get() : Promise.resolve(null),
         r.answer ? r.answer.get() : Promise.resolve(null),
+        ...r.previous.map((ref) => ref.get()),
       ]);
       return {
         account: dataOf(account), policy: dataOf(policy), subscription: dataOf(subscription),
         usage: dataOf(usage), recap: dataOf(recap), answer: dataOf(answer),
+        previousAnswers: previous.map((snap) => dataOf(snap)),
       } as AccessSnapshot;
     },
 
     async transact(uid, keys, fn) {
-      const r = refsFor(uid, keys);
+      // 트랜잭션에서는 이전 대화 문서를 읽지 않는다(사전 확인에서만 읽음).
+      const r = refsFor(uid, { videoId: keys.videoId, requestId: keys.requestId });
       return db.runTransaction(async (tx) => {
         const [account, policy, subscription, usage, recap, answer] = await Promise.all([
           tx.get(r.account), tx.get(r.policy), tx.get(r.subscription), tx.get(r.usage),

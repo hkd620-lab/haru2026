@@ -177,9 +177,11 @@ export type SearchResult = {
 };
 
 export const VIDEO_FINDER_POLICY_VERSION = 1;
+export const VIDEO_FINDER_AI_CONSENT_VERSION = 1;
 
 export type VideoFinderAccess = {
   policyAccepted: boolean;
+  aiConsentAccepted: boolean;
   questionAccess: 'disabled' | 'premium-required' | 'ready';
   remainingQuestions: number;
   remainingAnalysisSeconds: number;
@@ -189,7 +191,7 @@ export type VideoQuestionRequest = {
   requestId: string;
   videoId: string;
   question: string;
-  previous?: Array<{ question: string; answer: string }>;
+  previousRequestIds?: string[];
 };
 
 export type VideoQuestionAnswer = {
@@ -203,6 +205,7 @@ export type VideoQuestionAnswer = {
 export interface VideoFinderClient {
   accessStatus(): Promise<VideoFinderAccess>;
   acceptPolicy(version: number): Promise<VideoFinderAccess>;
+  acceptAiConsent(version: number): Promise<VideoFinderAccess>;
   askQuestion(request: VideoQuestionRequest): Promise<VideoQuestionAnswer>;
   searchVideos(filters: SearchFilters, pageToken?: string | null): Promise<SearchResult>;
   listSaved(): Promise<{ saved: SavedItem[]; searchEnabled: boolean }>;

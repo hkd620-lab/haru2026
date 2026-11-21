@@ -1,15 +1,16 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog';
 import { createNonce } from './videoFinderBridge';
-import { friendlyErrorMessage, youtubeWatchUrl, type VideoFinderAccess, type VideoFinderClient } from './videoFinderModel';
+import { VIDEO_FINDER_AI_CONSENT_VERSION, friendlyErrorMessage, youtubeWatchUrl, type VideoFinderAccess, type VideoFinderClient } from './videoFinderModel';
 
 export type VideoQuestionTarget = { videoId: string; title: string };
 
-type Turn = { question: string; answer: string; timestamps: number[] };
+type Turn = { requestId: string; question: string; answer: string; timestamps: number[] };
 type Props = {
   video: VideoQuestionTarget;
   access: VideoFinderAccess;
   client: VideoFinderClient;
+  haruOrigin: string;
   onAccess: (access: VideoFinderAccess) => void;
   onClose: () => void;
   onPrepareNote: (text: string) => Promise<void>;
@@ -24,10 +25,11 @@ function timeLabel(seconds: number) {
   return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-export function VideoQuestionDialog({ video, access, client, onAccess, onClose, onPrepareNote }: Props) {
+export function VideoQuestionDialog({ video, access, client, haruOrigin, onAccess, onClose, onPrepareNote }: Props) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [question, setQuestion] = useState('');
   const [note, setNote] = useState<string | null>(null);
+  const [acceptingAi, setAcceptingAi] = useState(false);
   const [pending, setPending] = useState(false);
   const [preparingNote, setPreparingNote] = useState(false);
   const [error, setError] = useState('');
@@ -36,20 +38,32 @@ export function VideoQuestionDialog({ video, access, client, onAccess, onClose, 
   const eligible = access.questionAccess === 'ready';
   const hasQuestions = access.remainingQuestions > 0;
 
+  async function acceptAiConsent() {
+    setAcceptingAi(true);
+    setError('');
+    try {
+      onAccess(await client.acceptAiConsent(VIDEO_FINDER_AI_CONSENT_VERSION));
+    } catch (error) {
+      setError(friendlyErrorMessage(error));
+    } finally {
+      setAcceptingAi(false);
+    }
+  }
+
   async function ask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const text = question.trim();
-    if (!eligible || !hasQuestions || !text || sending.current) return;
+    if (!eligible || !access.aiConsentAccepted || !hasQuestions || !text || sending.current) return;
     sending.current = true;
     setPending(true);
     setError('');
     try {
       const requestId = lastAttempt.current?.question === text ? lastAttempt.current.id : createNonce();
       lastAttempt.current = { question: text, id: requestId };
-      const previous = turns.slice(-3).map(({ question, answer }) => ({ question, answer }));
-      const { answer, timestamps, status } = await client.askQuestion({ requestId, videoId: video.videoId, question: text, previous });
+      const previousRequestIds = turns.slice(-3).map((turn) => turn.requestId);
+      const { answer, timestamps, status } = await client.askQuestion({ requestId, videoId: video.videoId, question: text, previousRequestIds });
       lastAttempt.current = undefined;
-      setTurns((current) => [...current, { question: text, answer, timestamps }]);
+      setTurns((current) => [...current, { requestId, question: text, answer, timestamps }]);
       setQuestion((current) => current.trim() === text ? '' : current);
       onAccess(status);
     } catch (error) {
@@ -79,16 +93,25 @@ export function VideoQuestionDialog({ video, access, client, onAccess, onClose, 
       <DialogContent className="max-h-[88dvh] min-w-0 overflow-y-auto bg-white text-[#27332e] sm:max-w-xl">
         <DialogTitle className="pr-6 text-xl leading-7">이 영상에 질문하기</DialogTitle>
         <DialogDescription className="break-words text-base">{video.title}</DialogDescription>
-        {eligible ? (
+        {eligible && !access.aiConsentAccepted ? (
+          <section className="space-y-3 text-base leading-7" aria-label="AI 질문 개인정보 국외 이전 동의">
+            <p>질문을 보낼 때 질문과 필요한 이전 답변, 공개 영상 주소를 Google Gemini에 국외 전송해 답변을 받습니다. Google은 서비스 악용 방지 등을 위해 입력 내용과 답변을 55일간 보관합니다.</p>
+            <p>동의 여부와 관계없이 영상 검색, 시청, 보관함을 이용할 수 있어요.</p>
+            <a className="block font-semibold underline underline-offset-4" href={`${haruOrigin}/privacy#video-finder-ai`} target="_blank" rel="noopener noreferrer">AI 질문 개인정보 처리 안내 ↗</a>
+            <button type="button" className={primary} disabled={acceptingAi} onClick={() => void acceptAiConsent()}>
+              {acceptingAi ? '동의를 저장하는 중…' : '동의하고 AI 질문 열기'}
+            </button>
+          </section>
+        ) : eligible ? (
           <>
             <p className="text-base leading-7">
               오늘 질문 <strong>{access.remainingQuestions}회</strong> · 이번 구독 기간 분석 <strong>{Math.floor(access.remainingAnalysisSeconds / 60)}분 {access.remainingAnalysisSeconds % 60}초</strong> 남았어요.
             </p>
-            <p className="text-sm leading-6">질문을 보내면 필요한 공개 영상 주소와 질문 문맥을 Google Gemini에 전달합니다. 답변의 근거는 원본 영상에서 확인할 수 있어요.</p>
+            <p className="text-sm leading-6">질문에 개인정보를 넣지 마세요. 답변의 근거는 원본 영상에서 확인할 수 있어요.</p>
             {turns.length > 0 && (
               <ol className="space-y-3" aria-live="polite" aria-label="영상 질문과 답변">
-                {turns.map((turn, index) => (
-                  <li key={index} className="min-w-0 space-y-2 rounded-xl bg-[#f7faed] p-3">
+                {turns.map((turn) => (
+                  <li key={turn.requestId} className="min-w-0 space-y-2 rounded-xl bg-[#f7faed] p-3">
                     <p className="break-words font-bold">{turn.question}</p>
                     <p className="whitespace-pre-wrap break-words leading-7">{turn.answer}</p>
                     {turn.timestamps.length > 0 && (
