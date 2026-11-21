@@ -37,10 +37,16 @@ const SESSION_TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
 export const ALL_TOPICS = '전체 분야';
 // v0.3.1 기본 관심 분야를 그대로 유지한다.
 export const VIDEO_FINDER_TOPICS = ['AI 관련 기술', '의학', '건강', '재미난 영상'];
+
+function normalizeTopic(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const topic = value.trim().replace(/ +/g, ' ');
+  return /^[\p{L}\p{N}][\p{L}\p{M}\p{N} .·&+#()-]{0,39}$/u.test(topic) ? topic : null;
+}
 export const VALID_MIN_SUBSCRIBERS = [0, 10000, 100000, 1000000, 10000000];
 export const VALID_PERIODS = ['all', 'today', 'week', 'month', 'year', 'custom'];
 export const VALID_DURATIONS = ['any', 'short', 'medium', 'long'];
-export const VALID_SORTS = ['relevance', 'date', 'viewCount', 'subscribers'];
+export const VALID_SORTS = ['relevance', 'date', 'viewCount', 'subscribers', 'likeCount'];
 export const DATE_RELEVANCE_CURSOR = 'date-relevance:';
 export const MIN_DATE_SEARCH_CANDIDATES = 5;
 export const MAX_QUERY_LENGTH = 500;
@@ -215,14 +221,14 @@ export function validateFilters(raw: unknown): SearchFilters {
   }
   const b = raw as Record<string, unknown>;
   const query = typeof b.query === 'string' ? b.query.replace(/\s+/g, ' ').trim() : '';
-  const category = typeof b.category === 'string' ? b.category.trim() : ALL_TOPICS;
+  const category = b.category === undefined ? ALL_TOPICS : normalizeTopic(b.category);
   if (query.length > MAX_QUERY_LENGTH) {
     throw new VideoFinderError('invalid-argument', `검색어는 ${MAX_QUERY_LENGTH}자 이하로 입력해 주세요.`);
   }
-  if (category !== ALL_TOPICS && VIDEO_FINDER_TOPICS.indexOf(category) < 0) {
+  if (category === null) {
     throw new VideoFinderError('invalid-argument', '관심 분야를 다시 골라 주세요.');
   }
-  if (category === ALL_TOPICS && !query) {
+  if (category === ALL_TOPICS && !query && b.sort !== 'likeCount') {
     throw new VideoFinderError('invalid-argument', '찾을 내용을 입력하거나 관심 분야를 골라 주세요.');
   }
   const minSubscribers = typeof b.minSubscribers === 'number' ? b.minSubscribers : 0;
@@ -299,6 +305,26 @@ function hasSearchOperators(query: string): boolean {
   return /["|]|(?:^|\s)-\S/u.test(query);
 }
 
+const KOREAN_FILM_LABEL = /(?:한국\s*영화|한국산\s*영화|국내\s*영화|\bkorean\s+(?:films?|movies?)\b)/iu;
+const NON_KOREAN_FILM_OR_SERIES = [
+  /(?:외국|해외|일본|중국|대만|홍콩|미국|영국|프랑스|인도|태국)\s*(?:의\s*)?(?:(?:청춘|로맨스|멜로|공포|장편)\s+)?(?:영화|드라마)/iu,
+  /할리우드\s*영화|한국\s*영화\s*(?:의\s*)?리메이크/u,
+  /(?:TV|방송|한국|웹|주말|일일|월화|수목|금토|토일|KBS(?:\s*[12]TV)?|MBC|SBS|tvN|JTBC|ENA)\s*드라마|드라마시티|숏(?:폼)?\s*드라마/iu,
+  /#(?:일드|중드|미드|한드)(?![가-힣])/u,
+  /\b(?:TV\s+(?:series|drama|show)|(?:Japanese|Chinese|American|British|French)\s+(?:film|movie|drama)|(?:Korean|K)[ -]drama)\b/iu,
+];
+const DENIES_KOREAN_FILM = /(?:한국|국내)\s*영화(?:가|는)?\s*(?:아닌|아니)/u;
+const BROADCAST_EPISODE = /(?:^|[\s\[(-])\d{1,3}\s*(?:화|회)(?![가-힣])/u;
+const BROADCAST_NETWORK = /\b(?:KBS|MBC|SBS|tvN|JTBC|ENA)\b/iu;
+
+function wantsKoreanFilms(query: string): boolean {
+  const normalized = query.normalize('NFC');
+  if (normalized.includes('|')) return false;
+  const positiveQuery = normalized.replace(/(?:^|\s)-(?:"[^"]*"|한국\s*영화|국내\s*영화|\S+)/gu, '');
+  return KOREAN_FILM_LABEL.test(positiveQuery) && !DENIES_KOREAN_FILM.test(positiveQuery)
+    && !/(?:한국\s*영화|한국산\s*영화|국내\s*영화)(?:는|를)?\s*(?:말고|제외|빼고)/u.test(positiveQuery);
+}
+
 export function normalizeSearchQuery(query: string): string {
   // 따옴표·OR·제외 연산자는 사용자가 고른 검색 방식 그대로 보낸다.
   if (hasSearchOperators(query)) return query;
@@ -348,11 +374,13 @@ export function buildSearchParams(filters: SearchFilters, pageToken: string, now
   dateRelevance: boolean;
 } {
   const dateRelevance = filters.sort === 'date' && pageToken.startsWith(DATE_RELEVANCE_CURSOR);
-  const order = dateRelevance || filters.sort === 'subscribers' ? 'relevance' : filters.sort;
+  const query = buildQuery(filters);
+  const order = filters.sort === 'likeCount' ? (query ? 'relevance' : 'viewCount')
+    : dateRelevance || filters.sort === 'subscribers' ? 'relevance' : filters.sort;
   const params: Record<string, string> = {
     part: 'snippet',
     type: 'video',
-    q: buildQuery(filters),
+    ...(query ? { q: query } : {}),
     maxResults: '50',
     regionCode: 'KR',
     relevanceLanguage: 'ko',
@@ -392,6 +420,7 @@ export type VideoMeta = {
   thumbnail: string;
   duration: string;
   views: number | null;
+  likes?: number | null;
   subscribers: number | null;
   description: string;
 };
@@ -436,16 +465,29 @@ export function sanitizeVideoMeta(raw: unknown): VideoMeta {
     thumbnail: cleanThumbnail(v.thumbnail),
     duration: cleanDuration(v.duration),
     views: cleanCount(v.views),
+    ...(v.likes !== undefined ? { likes: cleanCount(v.likes) } : {}),
     subscribers: cleanCount(v.subscribers),
     description: cleanText(v.description, 300),
   };
 }
 
 // videos.list 응답 1건을 VideoMeta로 바꾼다. 구독자 수는 channels.list 뒤에 채운다.
-export function mapVideoItem(item: unknown): VideoMeta | null {
+export function mapVideoItem(item: unknown, koreanFilmsOnly = false): VideoMeta | null {
   const it = item as { id?: unknown; snippet?: any; statistics?: any; contentDetails?: any } | null;
   if (!it || typeof it.id !== 'string' || !VIDEO_ID_RE.test(it.id)) return null;
   const snippet = it.snippet || {};
+  if (koreanFilmsOnly) {
+    const title = cleanText(snippet.title, 200).normalize('NFC');
+    const description = cleanText(snippet.description, 5000).normalize('NFC');
+    const tags: unknown[] = Array.isArray(snippet.tags) ? snippet.tags : [];
+    const labels = [title, ...tags.map((tag) => cleanText(tag, 100).normalize('NFC'))];
+    const isBroadcastEpisode = BROADCAST_EPISODE.test(title)
+      && (BROADCAST_NETWORK.test(title) || BROADCAST_NETWORK.test(description));
+    // 설명에 등장하는 다른 작품 언급은 장르 표지와 구분한다.
+    if (isBroadcastEpisode || DENIES_KOREAN_FILM.test(description)
+      || labels.some((text) => DENIES_KOREAN_FILM.test(text) || NON_KOREAN_FILM_OR_SERIES.some((marker) => marker.test(text)))
+      || ![...labels, description].some((text) => KOREAN_FILM_LABEL.test(text))) return null;
+  }
   const thumbs = snippet.thumbnails || {};
   return sanitizeVideoMeta({
     videoId: it.id,
@@ -456,6 +498,7 @@ export function mapVideoItem(item: unknown): VideoMeta | null {
     thumbnail: (thumbs.medium || thumbs.default || {}).url,
     duration: it.contentDetails?.duration,
     views: it.statistics?.viewCount,
+    likes: it.statistics?.likeCount,
     subscribers: null,
     description: snippet.description,
   });
@@ -475,6 +518,11 @@ export function mapChannelSubscribers(items: unknown): Record<string, number | n
 export function filterAndSortVideos(videos: VideoMeta[], filters: SearchFilters): VideoMeta[] {
   const out = videos.filter((v) => filters.minSubscribers === 0
     || (v.subscribers !== null && v.subscribers >= filters.minSubscribers));
+  if (filters.sort === 'likeCount') {
+    return out.filter((v): v is VideoMeta & { likes: number } => typeof v.likes === 'number')
+      .sort((a, b) => b.likes - a.likes || b.publishedAt.localeCompare(a.publishedAt) || a.videoId.localeCompare(b.videoId))
+      .slice(0, 10);
+  }
   if (filters.sort === 'subscribers') out.sort((a, b) => (b.subscribers ?? -1) - (a.subscribers ?? -1));
   else if (filters.sort === 'date') out.sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : a.publishedAt > b.publishedAt ? -1 : 0));
   return out;
@@ -572,7 +620,7 @@ export function sanitizeTags(raw: unknown): string[] {
 }
 
 export function sanitizeCategory(raw: unknown): string {
-  return typeof raw === 'string' && (raw === ALL_TOPICS || VIDEO_FINDER_TOPICS.indexOf(raw) >= 0) ? raw : ALL_TOPICS;
+  return normalizeTopic(raw) ?? ALL_TOPICS;
 }
 
 export function validateVideoId(raw: unknown): string {
@@ -724,7 +772,7 @@ export interface VideoFinderStore {
 
 export interface YouTubeClient {
   search(params: Record<string, string>): Promise<SearchResponse>;
-  videoDetails(videoIds: string[]): Promise<Record<string, VideoMeta>>;
+  videoDetails(videoIds: string[], koreanFilmsOnly?: boolean): Promise<Record<string, VideoMeta>>;
 }
 
 export type VideoFinderDeps = {
@@ -743,6 +791,9 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     const body = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>;
     const filters = validateFilters(body.filters);
     const { token: pageToken, intent: pageIntent } = unpackSearchCursor(validatePageToken(body.pageToken));
+    if (filters.sort === 'likeCount' && pageToken) {
+      throw new VideoFinderError('invalid-argument', '좋아요 순위는 최대 10개까지 보여드려요.');
+    }
     const nowMs = now();
     const limits = await store.getLimits();
     // 외부 호출 전에 사용자·전체 한도를 함께 선예약한다. 거절되면 YouTube 호출은 0회다.
@@ -794,7 +845,9 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
       }
     }
 
-    const details = ids.length ? await youtube.videoDetails(ids) : {};
+    // AI가 문구를 바꾸더라도 검색 원문과 직접 선택한 관심 분야로 판단한다.
+    const koreanFilmsOnly = wantsKoreanFilms(`${filters.query} ${filters.category}`);
+    const details = ids.length ? await youtube.videoDetails(ids, koreanFilmsOnly) : {};
     const videos = filterAndSortVideos(ids.map((id) => details[id]).filter(Boolean) as VideoMeta[], filters);
     const upstreamNext = nextToken ? (dateRelevance ? DATE_RELEVANCE_CURSOR + nextToken : nextToken) : null;
     const next = upstreamNext && intent
@@ -814,12 +867,13 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     const intentNotice = intent ? `AI가 ‘${intent.query}’${recentDays ? ` · 최근 ${recentDays}일` : ''} 조건으로 이해했어요. ` : '';
     const correctionNotice = normalizedQuery === filters.query ? '' : `‘${normalizedQuery}’로 검색했어요. `;
     const queryNotice = (requestedAi ? 'AI 해석을 적용하지 못해 일반 검색으로 찾았어요. ' : '') + correctionNotice;
+    const filmNotice = koreanFilmsOnly ? '제목·설명·태그에서 한국 영화로 표시된 영상만 골랐어요. 분류 정보가 부족한 영상은 빠질 수 있어요. ' : '';
     return {
       videos,
-      nextPageToken: next,
+      nextPageToken: filters.sort === 'likeCount' ? null : next,
       fetched: ids.length,
       remainingSearches,
-      notice: (intent ? intentNotice : queryNotice) + (dateRelevance || supplemented ? '관련 영상 후보를 더 확인해 올린 날짜가 최신인 순서로 보여드려요. ' : '') + SEARCH_NOTICE,
+      notice: (intent ? intentNotice : queryNotice) + (dateRelevance || supplemented ? '관련 영상 후보를 더 확인해 올린 날짜가 최신인 순서로 보여드려요. ' : '') + (filters.sort === 'likeCount' ? 'YouTube 검색 후보 중 공개 좋아요 수가 많은 영상 최대 10개예요. ' : '') + filmNotice + SEARCH_NOTICE,
     };
   }
 

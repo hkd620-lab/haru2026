@@ -119,12 +119,12 @@ function fakeYouTube({ searchPages = [], details } = {}) {
       i += 1;
       return typeof page === 'function' ? page(params) : page;
     },
-    async videoDetails(ids) {
+    async videoDetails(ids, koreanFilmsOnly) {
       calls.details.push(ids);
       if (this.gate) await this.gate;
       const out = {};
       for (const id of ids) {
-        const m = details ? details(id) : meta(id);
+        const m = details ? details(id, koreanFilmsOnly) : meta(id);
         if (m) out[id] = m;
       }
       return out;
@@ -269,6 +269,81 @@ test('기간은 한국 날짜 0시 기준 UTC로 바뀌고 관심 분야가 검�
   assert.equal(params.type, 'video');
   assert.equal(params.order, 'relevance');
   assert.equal('key' in params, false, '키는 검색 인자에 넣지 않는다');
+});
+
+test('직접 추가한 관심 분야를 최신순으로 검색하고 잘못된 이름은 거른다', () => {
+  const filters = validateFilters({ ...baseFilters, query: '', category: '  텃밭  가꾸기 ', sort: 'date' });
+  const { params } = buildSearchParams(filters, '', NOW);
+  assert.equal(params.q, '텃밭 가꾸기');
+  assert.equal(params.order, 'date');
+  assert.throws(() => validateFilters({ ...baseFilters, category: '<script>' }));
+});
+
+test('좋아요 순위는 공개 집계가 있는 후보만 최대 10개 반환한다', async () => {
+  const ids = Array.from({ length: 13 }, (_, index) => vid(index));
+  const details = Object.fromEntries(ids.map((id, index) => [id, meta(id, { likes: index === 12 ? null : index })]));
+  const yt = fakeYouTube({ searchPages: [{ ...items(ids), nextPageToken: 'MORE' }], details: (id) => details[id] });
+  const svc = service(memoryStore(), yt);
+  const filters = { ...baseFilters, query: '', sort: 'likeCount' };
+  const result = await svc.search('uidA', { filters });
+  assert.equal(yt.calls.search[0].order, 'viewCount');
+  assert.equal(yt.calls.search[0].q, undefined);
+  assert.deepEqual(result.videos.map((video) => video.likes), [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
+  assert.equal(result.nextPageToken, null);
+  assert.match(result.notice, /검색 후보 중/);
+});
+
+test('첫사랑을 주제로 한 한국영화 검색에서는 해외 영화, TV 드라마, 근거 없는 후보를 제외한다', async () => {
+  // 운영 검색에서 관찰한 제목을 기반으로 한 회귀 자료. 설명과 태그는 검사 분기를 재현하는 모의 자료다.
+  const candidates = [
+    { title: '첫사랑 전여친 결혼식 #너의결혼식 #한국영화' },
+    { title: '국민 첫사랑 수지 등장 #건축학개론', tags: ['한국 영화'] },
+    { title: '중국에서 한국영화 리메이크 후 흥행한 여름날 우리' },
+    { title: '첫사랑 영화 콜 미 바이 유어 네임', description: '첫사랑 로맨스 영화 리뷰' },
+    { title: '한국 넷플릭스에 공개된 일본 로맨스 영화 리뷰', tags: ['한국영화'] },
+    { title: '[드라마시티] 첫사랑 | KBS 방송', description: '한국 영화와 드라마 추천' },
+    { title: '첫사랑이 인생에 미치는 영향' },
+    { title: '첫사랑 1화 | KBS', description: 'KBS 2TV 주말드라마 첫사랑', tags: ['한국영화'] },
+    { title: '첫사랑 영화 추천', description: '한국영화가 아닌 일본 작품' },
+    { title: '윤희에게 〈우리시대의영화〉 / KBS', description: '한국 영화 윤희에게의 첫사랑 이야기. 외국영화도 별도로 소개합니다.' },
+  ];
+  const ids = candidates.map((_, index) => vid(index));
+  const raw = Object.fromEntries(candidates.map((snippet, index) => [ids[index], { id: ids[index], snippet }]));
+  const yt = fakeYouTube({
+    searchPages: [{ ...items(ids.slice(0, -1)), nextPageToken: 'NEXT1' }, items(ids.slice(-1))],
+    details: (id, koreanFilmsOnly) => core.mapVideoItem(raw[id], koreanFilmsOnly),
+  });
+  const svc = service(memoryStore(), yt);
+  const filters = { ...baseFilters, query: '첫사랑을 주제로 한 한국영화' };
+  const first = await svc.search('uidA', { filters });
+  assert.equal(yt.calls.search[0].q, filters.query);
+  assert.deepEqual(first.videos.map((video) => video.videoId), ids.slice(0, 2));
+  assert.match(first.notice, /분류 정보가 부족한 영상/);
+  const second = await svc.search('uidA', { filters, pageToken: first.nextPageToken });
+  assert.deepEqual(second.videos.map((video) => video.videoId), ids.slice(-1));
+  assert.equal(yt.calls.search.length, 2);
+  assert.equal(core.mapVideoItem(raw[ids[2]]).videoId, ids[2]);
+
+  const topicYouTube = fakeYouTube({
+    searchPages: [items(ids)],
+    details: (id, koreanFilmsOnly) => core.mapVideoItem(raw[id], koreanFilmsOnly),
+  });
+  const topic = await service(memoryStore(), topicYouTube).search('uidA', {
+    filters: { ...baseFilters, query: '', category: '한국영화' },
+  });
+  assert.deepEqual(topic.videos.map((video) => video.videoId), [ids[0], ids[1], ids.at(-1)]);
+});
+
+test('한국 영화를 제외하거나 OR를 지정한 검색에는 한국 영화 전용 선별을 적용하지 않는다', async () => {
+  const id = vid(1);
+  const yt = fakeYouTube({
+    searchPages: [items([id])],
+    details: (videoId, koreanFilmsOnly) => core.mapVideoItem({ id: videoId, snippet: { title: '일본 영화' } }, koreanFilmsOnly),
+  });
+  for (const query of ['첫사랑 일본 영화 -한국영화', '한국 영화가 아닌 일본 영화', '한국 영화 말고 일본 영화', '한국영화 | 일본영화']) {
+    const check = service(memoryStore(), yt);
+    assert.equal((await check.search('uidA', { filters: { ...baseFilters, query } })).videos.length, 1);
+  }
 });
 
 test('일반 검색은 흔한 맞춤법·띄어쓰기를 고치고 내가 쓴 원래 조건은 이력에 저장한다', async () => {
@@ -417,10 +492,10 @@ test('보관 정보는 정리하고, 메모·태그 한도를 지킨다', async 
   await svc.library('uidA', { action: 'save', video: meta(vid(5)) });
   await assert.rejects(svc.library('uidA', { action: 'update', videoId: vid(5), changes: { note: 'x'.repeat(2001) } }));
   await assert.rejects(svc.library('uidA', { action: 'update', videoId: vid(5), changes: { tags: Array.from({ length: 11 }, (_, i) => `t${i}`) } }));
-  const updated = await svc.library('uidA', { action: 'update', videoId: vid(5), changes: { note: '첫 줄\n둘째 줄', tags: ['토마토', '토마토', '텃밭'], favorite: true, category: '없는분야' } });
+  const updated = await svc.library('uidA', { action: 'update', videoId: vid(5), changes: { note: '첫 줄\n둘째 줄', tags: ['토마토', '토마토', '텃밭'], favorite: true, category: '텃밭 가꾸기' } });
   assert.equal(updated.item.note, '첫 줄\n둘째 줄');
   assert.deepEqual(updated.item.tags, ['토마토', '텃밭']);
-  assert.equal(updated.item.category, '전체 분야');
+  assert.equal(updated.item.category, '텃밭 가꾸기');
   // 같은 영상을 다시 담아도 메모가 지워지지 않는다.
   const again = await svc.library('uidA', { action: 'save', video: meta(vid(5)) });
   assert.equal(again.created, false);

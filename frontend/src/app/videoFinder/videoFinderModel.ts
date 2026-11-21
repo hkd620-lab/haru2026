@@ -3,6 +3,13 @@
 
 export const ALL_TOPICS = '전체 분야';
 export const VIDEO_FINDER_TOPICS = ['AI 관련 기술', '의학', '건강', '재미난 영상'];
+export const MAX_TOPIC_LENGTH = 40;
+
+export function normalizeTopic(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const topic = value.trim().replace(/ +/g, ' ');
+  return /^[\p{L}\p{N}][\p{L}\p{M}\p{N} .·&+#()-]{0,39}$/u.test(topic) ? topic : null;
+}
 
 export type SearchFilters = {
   query: string;
@@ -54,6 +61,7 @@ export const SORT_OPTIONS = [
   { value: 'relevance', label: '찾는 내용과 가까운 순' },
   { value: 'date', label: '최근에 올라온 순' },
   { value: 'viewCount', label: '많이 본 순' },
+  { value: 'likeCount', label: '좋아요 TOP 10' },
   { value: 'subscribers', label: '구독자 많은 채널 순' },
 ];
 
@@ -64,7 +72,7 @@ function optionValue<T>(options: { value: T }[], raw: unknown, fallback: T): T {
 }
 
 export function hasSearch(filters: SearchFilters): boolean {
-  return Boolean(filters.query.trim()) || filters.category !== ALL_TOPICS;
+  return Boolean(filters.query.trim()) || filters.category !== ALL_TOPICS || filters.sort === 'likeCount';
 }
 
 // 검색 조건을 주소에 남겨 뒤로가기·새로고침·지난 검색 다시 찾기가 같은 결과를 열게 한다.
@@ -83,13 +91,13 @@ export function filtersToSearchParams(filters: SearchFilters): URLSearchParams {
 }
 
 export function filtersFromSearchParams(params: URLSearchParams): SearchFilters {
-  const category = params.get('cat') || ALL_TOPICS;
+  const category = normalizeTopic(params.get('cat')) ?? ALL_TOPICS;
   const period = optionValue(PERIOD_OPTIONS, params.get('period') || 'all', 'all');
   const from = params.get('from') || '';
   const to = params.get('to') || '';
   return {
     query: (params.get('q') || '').slice(0, MAX_SEARCH_QUERY_LENGTH),
-    category: category === ALL_TOPICS || VIDEO_FINDER_TOPICS.includes(category) ? category : ALL_TOPICS,
+    category,
     minSubscribers: optionValue(SUBSCRIBER_OPTIONS, Number(params.get('subs') || 0), 0),
     period,
     dateFrom: period === 'custom' && DATE_RE.test(from) ? from : '',
@@ -149,6 +157,7 @@ export type VideoMeta = {
   thumbnail: string;
   duration: string;
   views: number | null;
+  likes?: number | null;
   subscribers: number | null;
   description: string;
 };
