@@ -334,6 +334,35 @@ test('첫사랑을 주제로 한 한국영화 검색에서는 해외 영화, TV 
   assert.deepEqual(topic.videos.map((video) => video.videoId), [ids[0], ids[1], ids.at(-1)]);
 });
 
+test('한국 영화 검색은 다음 페이지에서 국내외 혼합 추천을 걸러내고 국내 영화 모음은 유지한다', async () => {
+  const candidates = [
+    { title: '첫사랑 영화 1편 소개', description: '한국영화, 로맨스 멜로 영화' },
+    { title: '아프지만 아름다운 첫사랑... 잊을 수 없는 영화 5편! #패스트라이브즈',
+      description: '첫사랑의 감정을 담은 영화 다섯 편을 소개합니다.',
+      tags: ['한국 영화 추천', '건축학개론', '싱 스트리트', '워크 투 리멤버'] },
+    { title: '첫사랑 영화 5편 #한국영화', tags: ['한국 영화 추천'] },
+    { title: '한국 로맨스 영화 TOP 5', description: '첫사랑 영화 다섯 편을 소개합니다.' },
+    { title: '한국 영화 TOP 5', description: '#첫사랑\n외국 영화도 함께 소개합니다.' },
+    { title: '첫사랑 영화 5편', description: '오늘은 한국 영화만 골라 소개합니다.' },
+    { title: 'Korean movies list for first-love stories' },
+  ];
+  const ids = candidates.map((_, index) => vid(index));
+  const raw = Object.fromEntries(candidates.map((snippet, index) => [ids[index], { id: ids[index], snippet }]));
+  const yt = fakeYouTube({
+    searchPages: [{ ...items(ids.slice(0, 1)), nextPageToken: 'NEXT1' }, items(ids.slice(1))],
+    details: (id, koreanFilmsOnly) => core.mapVideoItem(raw[id], koreanFilmsOnly),
+  });
+  const svc = service(memoryStore(), yt);
+  const filters = { ...baseFilters, query: '첫사랑을 주제로 한 한국영화' };
+  const first = await svc.search('uidA', { filters });
+  const next = await svc.search('uidA', { filters, pageToken: first.nextPageToken });
+  assert.deepEqual(first.videos.map((video) => video.videoId), [ids[0]]);
+  assert.deepEqual(next.videos.map((video) => video.videoId), [ids[3], ids[5], ids[6]]);
+  assert.equal(core.mapVideoItem(raw[ids[1]]).videoId, ids[1]);
+  assert.equal(yt.calls.search[1].q, filters.query);
+  assert.equal(yt.calls.search[1].pageToken, 'NEXT1');
+});
+
 test('한국 영화를 제외하거나 OR를 지정한 검색에는 한국 영화 전용 선별을 적용하지 않는다', async () => {
   const id = vid(1);
   const yt = fakeYouTube({
