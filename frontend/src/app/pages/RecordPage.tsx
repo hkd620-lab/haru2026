@@ -17,6 +17,7 @@ import { applyDraftSaveTarget, buildDraftEditorData, filterFormatsForUser, readH
 import { isDeveloperUid } from '../utils/developerAccount';
 import { RecordFormatPicker } from '../components/RecordFormatPicker';
 import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
+import { RecordPhotoHelp } from '../components/RecordPhotoHelp';
 import { startSelectedRecordPhotoReads } from '../services/selectedRecordPhoto';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, arrayUnion } from 'firebase/firestore';
@@ -1007,6 +1008,7 @@ function RecordPageContent() {
             </button>
           </div>
           <p className="mt-1 text-xs text-gray-500">사진은 최대 5장까지 고를 수 있고, 편집창에서 최종 저장 전에 업로드됩니다.</p>
+          <RecordPhotoHelp />
           {draftPhotos.length > 0 && (
             <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label="선택한 사진 미리보기">
               {draftPhotos.map((photo, index) => (

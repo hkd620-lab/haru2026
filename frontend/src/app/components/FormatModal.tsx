@@ -14,6 +14,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getStorage, ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject, type StorageReference } from 'firebase/storage';
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { compressImage } from '../services/imageService';
+import { RecordPhotoHelp } from './RecordPhotoHelp';
 import { startSelectedRecordPhotoReads, readSelectedRecordPhotos } from '../services/selectedRecordPhoto';
 import { compressUploadPhoto } from '../services/photoUploadService';
 import { compressRecordPhoto } from '../services/recordPhotoCompression';
@@ -6690,6 +6691,8 @@ ${contentValues.slice(0, 4100)}`,
                       : `사진 추가 (${activeUploadedImages.length}/${recordPhotoLimit})`}
                   </button>
                 )}
+
+                <RecordPhotoHelp />
 
                 {activeUploadedImages.length > 0 && (
                   <div style={{ marginTop: 12 }}>

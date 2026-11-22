@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useSubscription } from '../hooks/useSubscription';
 import { useLoading } from '../contexts/LoadingContext';
 import { HaruLogoAnimation } from './HaruLogoAnimation';
+import { RecordPhotoHelp } from './RecordPhotoHelp';
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, arrayRemove } from 'firebase/firestore';
 import { ref, listAll, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable, getFunctions } from 'firebase/functions';
@@ -3104,6 +3105,7 @@ export function SayuModal({
                   <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9ca3af' }}>
                     PNG, JPG, JPEG, WEBP, HEIC · 압축한 JPG 확인용 이미지를 저장하며 원본 파일은 보관하지 않습니다
                   </p>
+                  <RecordPhotoHelp />
                 </div>
               )}
 
