@@ -1,0 +1,11 @@
+PR #439 — 독립 검토 실행 2
+대상 커밋: 1d4e3239cd10133b5ff2859d8337af9a521884f2
+날짜: 2026-11-22 KST
+Claude Code 인증 만료로 이 PR에 한해 사용자가 승인한 독립 Codex 검토.
+로컬 작업 경로는 공개 기록에서 생략했다.
+
+요청 원문
+Independent read-only ship decision for exact PR #439 code head 1d4e3239cd10133b5ff2859d8337af9a521884f2 versus aa37bcdd25989107bf0d58e18fdc390cf4f95571 in [로컬 작업 경로]. User wants guidance on adding photos on Mac and Windows, and after checking a box it should stop showing. Check diff for correctness/regression, persistence, security, and change-category stop conditions under docs/HARU2026_Slack_운영정책.md 8.1. Review code only using local read-only commands, no browser or escalated commands, no writing or external posting. Send your verdict in Korean promptly with exact findings if applicable, or 승인. User explicitly approved independent Codex for this review.
+
+결과 원문
+PR #439 코드 검토 판정: 승인. aa37bcdd25989107bf0d58e18fdc390cf4f95571 → 1d4e3239cd10133b5ff2859d8337af9a521884f2의 프론트 4파일(64줄)과 기존 업로드 진입점 3곳을 검토했고 `git diff --check` 통과. 체크 시 같은 문서의 모든 안내가 즉시 숨겨지고 동일 출처의 다른 탭은 `storage` 이벤트, 새로고침은 localStorage로 반영됩니다. 저장소 쓰기가 차단된 브라우저에서는 현재 페이지가 살아 있는 동안에만 숨김을 유지합니다. 브라우저를 가리지 않고 웹 모바일에도 접힌 안내 제목이 보입니다(제공된 요청은 Mac·Windows 안내 내용으로 해석). 운영 데이터·경로·Rules·결제·인증·AI 비용·홈·라우터의 변경 없이 기존 업로드 아래 안내를 넣은 소규모 변경으로 8.1의 변경 유형별 멈춤 조건에 해당하지 않습니다. 병합·배포 승인과 실제 브라우저 검증은 이 코드 검토 범위 밖입니다.
