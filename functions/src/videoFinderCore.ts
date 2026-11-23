@@ -928,17 +928,29 @@ const SEARCH_JUDGE_LIMIT = 12;
 const SEARCH_JUDGE_HIGH_CONFIDENCE = 0.85;
 const PRIVATE_SEARCH_PATTERN = /[\w.+-]+@[\w.-]+\.[a-z]{2,}|(?:https?:\/\/|www\.)\S+|(?:\+82[- .]?)?0?1[016789][- .]?\d{3,4}[- .]?\d{4}|\d{6}[- ]?[1-8]\d{6}/iu;
 
-function hasEnglishCaptionEvidence(video: VideoMeta, lyricsAllowed: boolean): boolean {
-  const metadata = `${video.title}\n${video.description}`;
-  return (ENGLISH_SUBTITLE_LABEL.test(metadata) && !NO_ENGLISH_SUBTITLES.test(metadata))
-    || (lyricsAllowed && ENGLISH_LYRICS_LABEL.test(metadata) && !DENIES_ENGLISH_LYRICS.test(metadata));
+type EnglishCaptionCondition = 'lyrics' | 'subtitles' | 'both' | 'either';
+
+function englishCaptionCondition(query: string): EnglishCaptionCondition | undefined {
+  const positiveQuery = query.replace(/(?:^|\s)-(?:"[^"]+"|\S+)/gu, ' ');
+  const lyrics = !DENIES_ENGLISH_LYRICS.test(positiveQuery) && ENGLISH_LYRICS_LABEL.exec(positiveQuery);
+  const subtitles = !NO_ENGLISH_SUBTITLES.test(positiveQuery) && ENGLISH_SUBTITLE_LABEL.exec(positiveQuery);
+  if (!lyrics || !subtitles) return lyrics ? 'lyrics' : subtitles ? 'subtitles' : undefined;
+
+  const [first, second] = lyrics.index < subtitles.index ? [lyrics, subtitles] : [subtitles, lyrics];
+  const between = positiveQuery.slice(first.index + first[0].length, second.index);
+  return /^(?:이나|나|거나)(?=\s|$)|또는|혹은|아니면|\/|\bor\b/iu.test(between.trimStart()) ? 'either' : 'both';
 }
 
-function contradictsEnglishCaption(video: VideoMeta, lyricsAllowed: boolean, subtitlesRequired: boolean, englishAlternatives: boolean): boolean {
+function englishCaptionStatus(video: VideoMeta, condition: EnglishCaptionCondition): 'evidence' | 'unknown' | 'conflict' {
   const metadata = `${video.title}\n${video.description}`;
-  if (englishAlternatives) return NO_ENGLISH_SUBTITLES.test(metadata) && DENIES_ENGLISH_LYRICS.test(metadata);
-  return (subtitlesRequired && NO_ENGLISH_SUBTITLES.test(metadata))
-    || (lyricsAllowed && DENIES_ENGLISH_LYRICS.test(metadata) && !hasEnglishCaptionEvidence(video, true));
+  const noLyrics = DENIES_ENGLISH_LYRICS.test(metadata);
+  const noSubtitles = NO_ENGLISH_SUBTITLES.test(metadata);
+  const lyrics = !noLyrics && ENGLISH_LYRICS_LABEL.test(metadata);
+  const subtitles = !noSubtitles && ENGLISH_SUBTITLE_LABEL.test(metadata);
+  if (condition === 'both') return noLyrics || noSubtitles ? 'conflict' : lyrics && subtitles ? 'evidence' : 'unknown';
+  if (condition === 'subtitles') return noSubtitles ? 'conflict' : subtitles ? 'evidence' : 'unknown';
+  if (condition === 'lyrics') return noLyrics && !subtitles ? 'conflict' : lyrics || subtitles ? 'evidence' : 'unknown';
+  return noLyrics && noSubtitles ? 'conflict' : lyrics || subtitles ? 'evidence' : 'unknown';
 }
 
 const SEARCH_NOTICE = '구독자 조건은 YouTube 검색 후보를 받은 뒤 적용해요. 구독자 수를 숨긴 채널은 구독자 조건을 고르면 빠져요.';
@@ -1055,15 +1067,14 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     let judgmentNotice = '';
     let priority: ((a: VideoMeta, b: VideoMeta) => number) | undefined;
     if (judgeSearch) {
-      const positiveQuery = filters.query.replace(/(?:^|\s)-(?:"[^"]+"|\S+)/gu, ' ');
-      const lyricsAllowed = ENGLISH_LYRICS_LABEL.test(positiveQuery) && !DENIES_ENGLISH_LYRICS.test(positiveQuery);
-      const subtitlesRequired = ENGLISH_SUBTITLE_LABEL.test(positiveQuery) && !NO_ENGLISH_SUBTITLES.test(positiveQuery);
-      const englishRequired = lyricsAllowed || subtitlesRequired;
-      const englishAlternatives = lyricsAllowed && subtitlesRequired && /또는|혹은|아니면|거나|\/|\bor\b/iu.test(positiveQuery);
+      const captionCondition = englishCaptionCondition(filters.query);
+      const englishRequired = captionCondition !== undefined;
+      const lyricsAllowed = englishRequired && captionCondition !== 'subtitles';
+      const captionStatus = (video: VideoMeta) => captionCondition ? englishCaptionStatus(video, captionCondition) : 'evidence';
       const eligible = (video: VideoMeta) =>
-        !contradictsEnglishCaption(video, lyricsAllowed, subtitlesRequired, englishAlternatives)
+        captionStatus(video) !== 'conflict'
         && (filters.minSubscribers === 0 || (video.subscribers !== null && video.subscribers >= filters.minSubscribers));
-      const firstEligible = matched.filter((video) => eligible(video) && (!englishRequired || hasEnglishCaptionEvidence(video, lyricsAllowed)));
+      const firstEligible = matched.filter((video) => eligible(video) && captionStatus(video) === 'evidence');
       const broadCanzone = (filters.category === ALL_TOPICS || CANZONE_LABEL.test(filters.category))
         && CANZONE_LABEL.test(filters.query)
         && GENERIC_CHANSON_WORDS.test(originalChansonQuery.replace(CANZONE_LABEL, '')
@@ -1108,7 +1119,7 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
       const knownReferences = eligibleVideos.filter(classifyReference);
       const otherCandidates = eligibleVideos.filter((video) => !classifyReference(video));
       if (englishRequired) otherCandidates.sort((a, b) =>
-        Number(hasEnglishCaptionEvidence(b, lyricsAllowed)) - Number(hasEnglishCaptionEvidence(a, lyricsAllowed)));
+        Number(captionStatus(b) === 'evidence') - Number(captionStatus(a) === 'evidence'));
       const shortlist = knownReferences.concat(otherCandidates).slice(0, SEARCH_JUDGE_LIMIT);
       const verifiedMetadataCount = matched.length;
       try {
@@ -1127,8 +1138,7 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
         matched = shortlist.flatMap((video) => {
           const score = scores.get(video.videoId);
           if (!score || score.conflict >= SEARCH_JUDGE_HIGH_CONFIDENCE) return [];
-          const searchNeedsReview = score.match < SEARCH_JUDGE_HIGH_CONFIDENCE
-            || (englishRequired && !hasEnglishCaptionEvidence(video, lyricsAllowed));
+          const searchNeedsReview = score.match < SEARCH_JUDGE_HIGH_CONFIDENCE || captionStatus(video) !== 'evidence';
           const pattern = englishRequired
             ? new RegExp(lyricsAllowed ? `${ENGLISH_SUBTITLE_LABEL.source}|${ENGLISH_LYRICS_LABEL.source}` : ENGLISH_SUBTITLE_LABEL.source, 'iu')
             : /배경음악|영화\s*음악|촬영|풍경|\b(?:cinematography|soundtrack|film score|scenery)\b/iu;

@@ -571,19 +571,26 @@ test('자막이 없다고만 표시된 영상은 영어 가사 요청에서 확�
 });
 
 test('영어 가사나 자막 중 하나를 요청하면 자막 없는 영어 가사 영상도 남긴다', async () => {
-  const candidate = meta(vid(1), { title: 'Canzone (English lyrics)', description: 'No English subtitles.' });
+  const rows = [
+    meta(vid(1), { title: 'Canzone (English lyrics)', description: 'No English subtitles.' }),
+    meta(vid(2), { title: 'Canzone (English subtitles)', description: 'No English lyrics.' }),
+    meta(vid(3), { title: 'Canzone (English lyrics)', description: 'Live performance.' }),
+    meta(vid(4), { title: 'Canzone (English lyrics and English subtitles)' }),
+  ];
   const yt = fakeYouTube({
-    searchPages: [items([candidate.videoId])], details: (id) => id === candidate.videoId ? candidate : undefined,
+    searchPages: [items(rows.map((video) => video.videoId))], details: (id) => rows.find((video) => video.videoId === id),
   });
   const svc = createVideoFinderService({
     store: memoryStore(), youtube: yt, now: () => NOW,
     judgeSearch: async (_uid, input) => input.videos.map(v => positiveJudgment(v.videoId)),
   });
   const request = { searchAiConsentVersion: core.SEARCH_JEV_CONSENT_VERSION };
-  const either = await svc.search('uidA', { ...request, filters: { ...baseFilters, query: '영어 가사 또는 영어 자막 있는 칸초네' } });
-  assert.deepEqual(either.videos.map(v => [v.videoId, v.searchNeedsReview]), [[candidate.videoId, false]]);
-  const both = await svc.search('uidB', { ...request, filters: { ...baseFilters, query: '영어 가사와 영어 자막이 있는 칸초네' } });
-  assert.deepEqual(both.videos, []);
+  for (const query of ['영어 가사 또는 영어 자막 있는 칸초네', '영어 가사나 영어 자막 있는 칸초네', '영어 자막이나 영어 가사가 있는 칸초네']) {
+    const either = await svc.search('uidA', { ...request, filters: { ...baseFilters, query } });
+    assert.deepEqual(either.videos.map(v => [v.videoId, v.searchNeedsReview]), rows.map(v => [v.videoId, false]));
+  }
+  const both = await svc.search('uidB', { ...request, filters: { ...baseFilters, query: '영어 가사와 영어 자막이 둘 다 있는 샹송 또는 칸초네' } });
+  assert.deepEqual(both.videos.map(v => [v.videoId, v.searchNeedsReview]), [[vid(4), false], [vid(3), true]]);
 });
 
 test('첫사랑을 주제로 한 한국영화 검색에서는 해외 영화, TV 드라마, 근거 없는 후보를 제외한다', async () => {
