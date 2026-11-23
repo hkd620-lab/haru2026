@@ -329,7 +329,8 @@ const FIRST_LOVE_THEME = /첫\s*(?:사랑|연애)|\bfirst[-\s]+love\b/iu;
 const DENIES_FIRST_LOVE = /첫\s*(?:사랑|연애)(?:이|가|은|는|을|를)?\s*(?:주제(?:가|는)?\s*)?(?:말고|제외|빼고|아닌|아니)|\b(?:not|except|excluding)\s+first[-\s]+love\b/iu;
 const CHANSON_LABEL = /샹송|\bchansons?\b/iu;
 const ENGLISH_SUBTITLE_LABEL = /(?:영어|영문)\s*자막|\benglish[-\s]+(?:subtitles?|subs|captions?|cc)\b/iu;
-const NO_ENGLISH_SUBTITLES = /(?:영어|영문)\s*자막\s*(?:은|이|을|는)?\s*(?:없|미제공|미지원|제외|말고|빼고)|\b(?:no|without)\s+english[-\s]+(?:subtitles?|subs|captions?|cc)\b|\benglish[-\s]+(?:subtitles?|subs|captions?|cc)\s+(?:unavailable|not\s+(?:available|provided))\b/iu;
+const NO_ENGLISH_SUBTITLES = /(?:영어|영문)\s*자막\s*(?:은|이|을|는)?\s*(?:없|미제공|미지원|(?:제공|지원)(?:하지|되지)\s*않|제외|말고|빼고)|\b(?:no|without)\s+english[-\s]+(?:subtitles?|subs|captions?|cc)\b|\benglish[-\s]+(?:subtitles?|subs|captions?|cc)\s+(?:(?:are|is)\s+)?(?:unavailable|not\s+(?:available|provided))\b/iu;
+const EXCLUDES_CHANSON = /(?:샹송|\bchansons?\b)\s*(?:은|을|이|이랑)?\s*(?:말고|제외|빼고|빼줘|아닌)|\b(?:without|except|excluding|not)\s+(?:french\s+)?chansons?\b/iu;
 const CHANSON_TYPO = /(?<![가-힣])상송(?=$|[^가-힣]|을|이|은|만)/gu;
 type VideoSearchScope = 'korean-film' | 'korean-first-love-film' | 'chanson-english-subtitles';
 
@@ -367,8 +368,9 @@ function wantsKoreanFilms(query: string): boolean {
 }
 
 function videoSearchScope(query: string): VideoSearchScope | undefined {
-  if (!hasSearchOperators(query) && ENGLISH_SUBTITLE_LABEL.test(query) && !NO_ENGLISH_SUBTITLES.test(query)
-    && CHANSON_LABEL.test(query.replace(CHANSON_TYPO, '샹송'))) return 'chanson-english-subtitles';
+  const corrected = query.replace(CHANSON_TYPO, '샹송');
+  if (!hasSearchOperators(query) && !EXCLUDES_CHANSON.test(corrected) && ENGLISH_SUBTITLE_LABEL.test(query) && !NO_ENGLISH_SUBTITLES.test(query)
+    && CHANSON_LABEL.test(corrected)) return 'chanson-english-subtitles';
   if (!wantsKoreanFilms(query)) return undefined;
   const original = query.normalize('NFC');
   const positiveQuery = original.replace(/(?:^|\s)-(?:"[^"]*"|첫\s*(?:사랑|연애)|\S+)/gu, '');

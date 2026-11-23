@@ -300,8 +300,10 @@ test('영어 자막 샹송 검색은 AI가 빠뜨린 조건을 유지하고 조�
     { title: 'La Vie en rose | French chanson', description: 'English subtitles not available' },
     { title: 'Non, je ne regrette rien | French chanson', description: 'With English subtitles' },
     { title: 'La Bohème | 샹송 · 영문 자막' },
+    { title: '샹송', description: 'English subtitles are not available.' },
+    { title: '샹송', description: '영어 자막은 제공하지 않습니다.' },
   ];
-  const likes = [97000, 49000, 32000, 400, 900];
+  const likes = [97000, 49000, 32000, 400, 900, 95000, 96000];
   const ids = snippets.map((_, index) => vid(index));
   const raw = Object.fromEntries(snippets.map((snippet, index) => [ids[index], {
     id: ids[index], snippet, statistics: { likeCount: String(likes[index]) },
@@ -331,6 +333,9 @@ test('영어 자막 샹송 검색은 AI가 빠뜨린 조건을 유지하고 조�
   const excluded = await svc.search('uidA', { filters: { ...filters, query: '샹송 -영어자막' } });
   assert.equal(yt.calls.search[2].q, '샹송 -영어자막');
   assert.equal(excluded.videos.length, ids.length);
+  const pop = await svc.search('uidB', { filters: { ...filters, query: '샹송 말고 영어 자막 팝송' } });
+  assert.doesNotMatch(pop.notice, /샹송과 영어 자막이 모두/);
+  assert.equal(pop.videos.length, ids.length);
 });
 
 test('첫사랑을 주제로 한 한국영화 검색에서는 해외 영화, TV 드라마, 근거 없는 후보를 제외한다', async () => {
