@@ -139,14 +139,14 @@ function createYouTubeClient(apiKey: string): YouTubeClient & VideoInfoClient {
       }
       return null;
     },
-    async videoDetails(videoIds, scope) {
+    async videoDetails(videoIds, scope, candidates) {
       const unique = videoIds.filter((id, index) => videoIds.indexOf(id) === index);
       const result: Record<string, VideoMeta> = {};
       for (let i = 0; i < unique.length; i += 50) {
         const piece = unique.slice(i, i + 50);
         const data = await request('videos', { part: 'snippet,statistics,contentDetails', id: piece.join(','), maxResults: '50' });
         for (const item of Array.isArray(data.items) ? data.items : []) {
-          const meta = mapVideoItem(item, scope);
+          const meta = mapVideoItem(item, scope, candidates);
           if (meta) result[meta.videoId] = meta;
         }
       }

@@ -30,6 +30,11 @@ const postLoginReturn = read('frontend/src/app/utils/postLoginReturn.ts');
 const viteMain = read('frontend/vite.config.ts');
 const viteVideo = read('frontend/vite.video-finder.config.ts');
 
+// 입력 제출과 실패 후 재시도 모두 AI 모드의 현재 동의를 확인한다.
+assert(page.includes('if (useSearchAi && (!searchAiConsent || !draft.query.trim())) return;'));
+assert(page.includes('!useSearchAi || (searchAiConsent && aiSearchLocation.current === location.key)'));
+assert(page.includes('event.currentTarget.form?.requestSubmit()'));
+
 // 1) 하단 탭과 재미 영상은 그대로다.
 assert(bottomNav.includes("{ path: '/fun-videos', icon: Clapperboard, label: '재미 영상' }"), '재미 영상 하단 탭 유지');
 assert(!bottomNav.includes('/video-finder'), '내 영상 찾기는 하단 탭에 넣지 않는다');
