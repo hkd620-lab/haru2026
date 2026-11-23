@@ -570,6 +570,22 @@ test('자막이 없다고만 표시된 영상은 영어 가사 요청에서 확�
   assert.deepEqual(result.videos.map(v => [v.videoId, v.searchNeedsReview]), [[candidate.videoId, true]]);
 });
 
+test('영어 가사나 자막 중 하나를 요청하면 자막 없는 영어 가사 영상도 남긴다', async () => {
+  const candidate = meta(vid(1), { title: 'Canzone (English lyrics)', description: 'No English subtitles.' });
+  const yt = fakeYouTube({
+    searchPages: [items([candidate.videoId])], details: (id) => id === candidate.videoId ? candidate : undefined,
+  });
+  const svc = createVideoFinderService({
+    store: memoryStore(), youtube: yt, now: () => NOW,
+    judgeSearch: async (_uid, input) => input.videos.map(v => positiveJudgment(v.videoId)),
+  });
+  const request = { searchAiConsentVersion: core.SEARCH_JEV_CONSENT_VERSION };
+  const either = await svc.search('uidA', { ...request, filters: { ...baseFilters, query: '영어 가사 또는 영어 자막 있는 칸초네' } });
+  assert.deepEqual(either.videos.map(v => [v.videoId, v.searchNeedsReview]), [[candidate.videoId, false]]);
+  const both = await svc.search('uidB', { ...request, filters: { ...baseFilters, query: '영어 가사와 영어 자막이 있는 칸초네' } });
+  assert.deepEqual(both.videos, []);
+});
+
 test('첫사랑을 주제로 한 한국영화 검색에서는 해외 영화, TV 드라마, 근거 없는 후보를 제외한다', async () => {
   // 운영 검색에서 관찰한 제목을 기반으로 한 회귀 자료. 설명과 태그는 검사 분기를 재현하는 모의 자료다.
   const candidates = [

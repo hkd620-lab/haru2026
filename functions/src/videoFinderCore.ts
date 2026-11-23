@@ -934,8 +934,9 @@ function hasEnglishCaptionEvidence(video: VideoMeta, lyricsAllowed: boolean): bo
     || (lyricsAllowed && ENGLISH_LYRICS_LABEL.test(metadata) && !DENIES_ENGLISH_LYRICS.test(metadata));
 }
 
-function contradictsEnglishCaption(video: VideoMeta, lyricsAllowed: boolean, subtitlesRequired: boolean): boolean {
+function contradictsEnglishCaption(video: VideoMeta, lyricsAllowed: boolean, subtitlesRequired: boolean, englishAlternatives: boolean): boolean {
   const metadata = `${video.title}\n${video.description}`;
+  if (englishAlternatives) return NO_ENGLISH_SUBTITLES.test(metadata) && DENIES_ENGLISH_LYRICS.test(metadata);
   return (subtitlesRequired && NO_ENGLISH_SUBTITLES.test(metadata))
     || (lyricsAllowed && DENIES_ENGLISH_LYRICS.test(metadata) && !hasEnglishCaptionEvidence(video, true));
 }
@@ -1058,8 +1059,9 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
       const lyricsAllowed = ENGLISH_LYRICS_LABEL.test(positiveQuery) && !DENIES_ENGLISH_LYRICS.test(positiveQuery);
       const subtitlesRequired = ENGLISH_SUBTITLE_LABEL.test(positiveQuery) && !NO_ENGLISH_SUBTITLES.test(positiveQuery);
       const englishRequired = lyricsAllowed || subtitlesRequired;
+      const englishAlternatives = lyricsAllowed && subtitlesRequired && /또는|혹은|아니면|거나|\/|\bor\b/iu.test(positiveQuery);
       const eligible = (video: VideoMeta) =>
-        !contradictsEnglishCaption(video, lyricsAllowed, subtitlesRequired)
+        !contradictsEnglishCaption(video, lyricsAllowed, subtitlesRequired, englishAlternatives)
         && (filters.minSubscribers === 0 || (video.subscribers !== null && video.subscribers >= filters.minSubscribers));
       const firstEligible = matched.filter((video) => eligible(video) && (!englishRequired || hasEnglishCaptionEvidence(video, lyricsAllowed)));
       const broadCanzone = (filters.category === ALL_TOPICS || CANZONE_LABEL.test(filters.category))
