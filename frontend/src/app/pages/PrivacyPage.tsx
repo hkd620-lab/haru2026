@@ -103,6 +103,7 @@ export function PrivacyPage() {
         <div id="video-finder-search-ai" className="space-y-2">
           <h3 className="font-bold">자연어 검색 정보 전송 안내</h3>
           <p>‘AI 검색’을 선택하고 전송에 동의한 뒤 ‘찾기’를 누르면 입력한 문장을 해석하고 관련 곡이나 작품을 찾기 위해 Google의 유료 Gemini API에 HTTPS로 전송합니다. 전송받는 주체와 처리 국가, Google의 55일간 보관 기준은 아래 안내와 같습니다. 검색어에 개인정보를 넣지 마세요. 전송에 동의하지 않아도 ‘일반 검색’으로 YouTube에서 찾을 수 있습니다.</p>
+          <p>AI 검색 화면에 TypeSafe Jev가 함께 표시되는 경우, 동의한 검색에 한해 입력한 검색 문장과 공개 영상 제목·설명을 TypeSafe API에 HTTPS로 전송하여 조건에 맞는지 판정합니다. 전송을 원하지 않으면 동의하지 않고 일반 검색을 이용할 수 있습니다.</p>
         </div>
         <div id="video-finder-ai" className="space-y-2">
           <h3 className="font-bold">프리미엄 영상 질문 개인정보 국외 이전 안내</h3>

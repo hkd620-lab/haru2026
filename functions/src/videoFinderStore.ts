@@ -289,7 +289,7 @@ export function createFirestoreVideoFinderAccessStore(db: Firestore): VideoFinde
     async getConfig() {
       const snap = await db.doc(VIDEO_FINDER_CONFIG_DOC).get();
       const data = snap.exists ? snap.data() : undefined;
-      return { questionsEnabled: data?.questionsEnabled === true, policyRequired: data?.policyRequired === true, searchAiEnabled: data?.searchAiEnabled === true };
+      return { questionsEnabled: data?.questionsEnabled === true, policyRequired: data?.policyRequired === true, searchAiEnabled: data?.searchAiEnabled === true, searchJevEnabled: data?.searchJevEnabled === true };
     },
 
     async readPolicy(uid) {

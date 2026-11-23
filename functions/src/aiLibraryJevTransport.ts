@@ -42,6 +42,10 @@ function requestBody(request: JevChoiceRequest): string {
  * Errors intentionally have no cause/status/body/key; downstream records uncertainty, never retries.
  */
 export function createJevChoiceHttpTransport(options: JevHttpTransportOptions): JevChoiceTransport {
+  return createJevHttpTransport(options, requestBody);
+}
+
+export function createJevHttpTransport<T>(options: JevHttpTransportOptions, serialize: (request: T) => string): (request: T) => Promise<unknown> {
   const { fetchImpl, getApiKey, isRuntimePermitted, signal } = options;
   const timeoutMs = options.timeoutMs ?? 15000;
   if (typeof fetchImpl !== 'function' || typeof getApiKey !== 'function' ||
@@ -68,7 +72,7 @@ export function createJevChoiceHttpTransport(options: JevHttpTransportOptions): 
       // Attach the race before the work runs, including a pre-aborted signal.
       const operation = Promise.resolve().then(async () => {
         await checkPermit();
-        const body = requestBody(request);
+        const body = serialize(request);
         const key = await getApiKey();
         await checkPermit();
         if (typeof key !== 'string' || !/^[\x21-\x7e]{1,4096}$/.test(key)) throw failure();

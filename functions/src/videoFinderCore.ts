@@ -51,6 +51,7 @@ export const DATE_RELEVANCE_CURSOR = 'date-relevance:';
 export const MIN_DATE_SEARCH_CANDIDATES = 5;
 export const MAX_QUERY_LENGTH = 500;
 export const SEARCH_AI_CONSENT_VERSION = 1;
+export const SEARCH_JEV_CONSENT_VERSION = 2;
 const SEARCH_AI_CURSOR = 'ai-search:';
 export const MAX_NOTE_LENGTH = 2000;
 export const MAX_TAGS = 10;
@@ -329,6 +330,8 @@ const FIRST_LOVE_THEME = /첫\s*(?:사랑|연애)|\bfirst[-\s]+love\b/iu;
 const DENIES_FIRST_LOVE = /첫\s*(?:사랑|연애)(?:이|가|은|는|을|를)?\s*(?:주제(?:가|는)?\s*)?(?:말고|제외|빼고|아닌|아니)|\b(?:not|except|excluding)\s+first[-\s]+love\b/iu;
 const CHANSON_LABEL = /샹송|\bchansons?\b/iu;
 const ENGLISH_SUBTITLE_LABEL = /(?:영어|영문)\s*자막|\benglish[-\s]+(?:subtitles?|subs|captions?|cc)\b/iu;
+const ENGLISH_LYRICS_LABEL = /(?:영어|영문)\s*(?:번역\s*)?가사|\benglish[-\s]+(?:translated\s+)?lyrics\b|\blyrics\s+in\s+english\b/iu;
+const DENIES_ENGLISH_LYRICS = /(?:영어|영문)\s*가사\s*(?:은|이|는)?\s*(?:없|미제공)|\b(?:no|without)\s+english\s+lyrics\b/iu;
 const NO_ENGLISH_SUBTITLES = /(?:영어|영문)\s*자막\s*(?:은|이|을|는)?\s*(?:없|미제공|미지원|(?:제공|지원)(?:하지|되지)\s*않|제외|말고|빼고)|\b(?:no|without)\s+english[-\s]+(?:subtitles?|subs|captions?|cc)\b|\benglish[-\s]+(?:subtitles?|subs|captions?|cc)\s+(?:(?:are|is)\s+)?(?:unavailable|not\s+(?:available|provided))\b/iu;
 const EXCLUDES_CHANSON = /(?:샹송|\bchansons?\b)\s*(?:은|을|이|이랑)?\s*(?:말고|제외|빼고|빼줘|아닌)|\b(?:without|except|excluding|not)\s+(?:french\s+)?chansons?\b/iu;
 const CHANSON_TYPO = /(?<![가-힣])상송(?=$|[^가-힣]|을|이|은|만)/gu;
@@ -339,6 +342,7 @@ const CHANSON_STANDARDS = [
   ['Les Champs Elysees', 'Joe Dassin'],
   ['Non Je Ne Regrette Rien', 'Edith Piaf'],
 ] as const;
+const CANZONE_LABEL = /칸초네|칸소네|깐소네|깐초네|\bcanzon[ei]\b/iu;
 type SearchCandidate = readonly [title: string, creator: string];
 const GENERIC_CHANSON_WORDS = /^(?:(?:프랑스(?:어)?|볼\s*수\s*있(?:는|게)|있는|달린|명곡|추천|명곡들|노래|영상|듣기\s*좋은|모음|with|french|songs?|classics?)\s*)*$/iu;
 const CHANSON_QUERY_LABEL = /샹송(?:을|이|은|만)?|\bchansons?\b/iu;
@@ -523,6 +527,7 @@ function nextTokenOf(response: SearchResponse | null | undefined): string | null
 }
 
 export type VideoMeta = {
+  searchEvidence?: string;
   videoId: string;
   title: string;
   channel: string;
@@ -894,7 +899,20 @@ export type VideoFinderDeps = {
   youtube: YouTubeClient;
   now: () => number;
   interpretSearch?: (uid: string, query: string) => Promise<SearchIntent | null>;
+  judgeSearch?: (uid: string, input: SearchJudgeInput) => Promise<SearchJudgeResult>;
+  searchJudgeEnabled?: () => Promise<boolean>;
 };
+
+export type SearchJudgeInput = { query: string; videos: Array<Pick<VideoMeta, 'videoId' | 'title' | 'description'>> };
+export type SearchJudgeResult = string[] | null;
+const SEARCH_JUDGE_LIMIT = 12;
+const PRIVATE_SEARCH_PATTERN = /[\w.+-]+@[\w.-]+\.[a-z]{2,}|(?:https?:\/\/|www\.)\S+|(?:\+82[- .]?)?0?1[016789][- .]?\d{3,4}[- .]?\d{4}|\d{6}[- ]?[1-8]\d{6}/iu;
+
+function hasEnglishCaptionEvidence(video: VideoMeta, lyricsAllowed: boolean): boolean {
+  const metadata = `${video.title}\n${video.description}`;
+  return (ENGLISH_SUBTITLE_LABEL.test(metadata) && !NO_ENGLISH_SUBTITLES.test(metadata))
+    || (lyricsAllowed && ENGLISH_LYRICS_LABEL.test(metadata) && !DENIES_ENGLISH_LYRICS.test(metadata));
+}
 
 const SEARCH_NOTICE = '구독자 조건은 YouTube 검색 후보를 받은 뒤 적용해요. 구독자 수를 숨긴 채널은 구독자 조건을 고르면 빠져요.';
 
@@ -908,13 +926,21 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     if (filters.sort === 'likeCount' && pageToken) {
       throw new VideoFinderError('invalid-argument', '좋아요 순위는 최대 10개까지 보여드려요.');
     }
+    const requestedJudgment = !pageToken && body.searchAiConsentVersion === SEARCH_JEV_CONSENT_VERSION;
+    const judgeSearch = requestedJudgment ? deps.judgeSearch : undefined;
+    if (requestedJudgment && (!judgeSearch || (deps.searchJudgeEnabled && !await deps.searchJudgeEnabled()))) {
+      throw new VideoFinderError('unavailable', 'AI 결과 확인을 잠시 이용하기 어려워요. 일반 검색을 이용해 주세요.');
+    }
+    if (requestedJudgment && PRIVATE_SEARCH_PATTERN.test(filters.query)) {
+      throw new VideoFinderError('invalid-argument', '연락처, 주소 링크나 식별번호를 빼고 다시 찾아 주세요.');
+    }
     const nowMs = now();
     const limits = await store.getLimits();
     // 외부 호출 전에 사용자·전체 한도를 함께 선예약한다. 거절되면 YouTube 호출은 0회다.
     let remainingSearches = await store.reserveQuota(uid, SEARCH_RESERVATION_UNITS, true, nowMs, limits);
 
+    const requestedAi = !pageToken && (requestedJudgment || body.searchAiConsentVersion === SEARCH_AI_CONSENT_VERSION);
     let intent = pageIntent;
-    const requestedAi = !pageToken && body.searchAiConsentVersion === SEARCH_AI_CONSENT_VERSION;
     if (requestedAi && filters.query
       && !hasSearchOperators(filters.query) && deps.interpretSearch) {
       try {
@@ -971,7 +997,7 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     let supplemented = false;
 
     // v0.3.1 보완 규칙: 최신순 첫 조회 후보가 5개 미만이고 다음 페이지가 없으면 관련 후보를 한 번 더 가져온다.
-    if (filters.sort === 'date' && !pageToken && !nextToken && ids.length < MIN_DATE_SEARCH_CANDIDATES) {
+    if (!judgeSearch && filters.sort === 'date' && !pageToken && !nextToken && ids.length < MIN_DATE_SEARCH_CANDIDATES) {
       let additional: SearchResponse | null = null;
       try {
         remainingSearches = Math.min(remainingSearches,
@@ -993,8 +1019,65 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
       }
     }
 
-    const details = ids.length ? await youtube.videoDetails(ids, scope, broadChanson ? candidates : undefined) : {};
-    const videos = filterAndSortVideos(ids.map((id) => details[id]).filter(Boolean) as VideoMeta[], filters);
+    const lookup = async (videoIds: string[]) => {
+      const details = videoIds.length ? await youtube.videoDetails(videoIds, judgeSearch ? undefined : scope, broadChanson ? candidates : undefined) : {};
+      return videoIds.map((id) => details[id]).filter(Boolean) as VideoMeta[];
+    };
+    let matched = await lookup(ids);
+    let judgmentNotice = '';
+    if (judgeSearch) {
+      const positiveQuery = filters.query.replace(/(?:^|\s)-(?:"[^"]+"|\S+)/gu, ' ');
+      const lyricsAllowed = ENGLISH_LYRICS_LABEL.test(positiveQuery) && !DENIES_ENGLISH_LYRICS.test(positiveQuery);
+      const englishRequired = lyricsAllowed
+        || (ENGLISH_SUBTITLE_LABEL.test(positiveQuery) && !NO_ENGLISH_SUBTITLES.test(positiveQuery));
+      const eligible = (video: VideoMeta) =>
+        (!englishRequired || hasEnglishCaptionEvidence(video, lyricsAllowed))
+        && (filters.minSubscribers === 0 || (video.subscribers !== null && video.subscribers >= filters.minSubscribers));
+      const firstEligible = matched.filter(eligible);
+      const target = candidates[0] ?? (broadChanson ? CHANSON_STANDARDS[0]
+        : englishRequired && CANZONE_LABEL.test(filters.query) ? ['Volare', 'Domenico Modugno'] : undefined);
+      const targetHasEvidence = target && firstEligible.some((video) =>
+        chansonMetadataWords(video.title).includes(chansonMetadataWords(target[0])));
+      if (!hasSearchOperators(filters.query) && (target ? !targetHasEvidence : firstEligible.length < 3)) {
+        try {
+          remainingSearches = Math.min(remainingSearches,
+            await store.reserveQuota(uid, SUPPLEMENT_RESERVATION_UNITS, false, nowMs, limits));
+          const q = target ? `${target.join(' ')} ${englishRequired ? (lyricsAllowed ? 'English lyrics' : 'English subtitles') : searchQuery}`.slice(0, 300)
+            : searchQuery;
+          const extra = await youtube.search({ ...params, q, order: 'relevance', ...(englishRequired ? { relevanceLanguage: 'en' } : {}) });
+          const extraIds = searchVideoIds(extra).filter((id) => !ids.includes(id));
+          ids = ids.concat(extraIds);
+          matched = (await lookup(extraIds)).concat(matched);
+        } catch {
+          // 보충 할당량이 없거나 조회에 실패하면 첫 후보에서만 판정한다.
+        }
+      }
+      const shortlist = matched.filter(eligible).slice(0, SEARCH_JUDGE_LIMIT);
+      try {
+        const accepted = shortlist.length ? await judgeSearch(uid, {
+          query: filters.query,
+          videos: shortlist.map(({ videoId, title, description }) => ({
+            videoId,
+            title: title.replace(new RegExp(PRIVATE_SEARCH_PATTERN.source, 'giu'), '[숨김]'),
+            description: description.replace(new RegExp(PRIVATE_SEARCH_PATTERN.source, 'giu'), '[숨김]'),
+          })),
+        }) : [];
+        if (accepted === null) throw new Error('Search judgment unavailable');
+        const approved = new Set(accepted);
+        matched = shortlist.filter(({ videoId }) => approved.has(videoId)).map((video) => {
+          const excerpt = [video.title, ...video.description.split(/(?<=[.!?。])\s+|\n/u)].find((part) =>
+            englishRequired ? ENGLISH_SUBTITLE_LABEL.test(part) || (lyricsAllowed && ENGLISH_LYRICS_LABEL.test(part))
+              : /배경음악|영화\s*음악|촬영|풍경|\b(?:cinematography|soundtrack|film score|scenery)\b/iu.test(part));
+          return excerpt ? { ...video, searchEvidence: excerpt.slice(0, 200) } : video;
+        });
+        judgmentNotice = '확인한 후보 중 제목과 설명이 검색 조건과 맞는 영상만 골랐어요. ';
+        if (englishRequired) judgmentNotice += '영어 가사·자막 표기는 영상 제목과 설명을 기준으로 확인했어요. ';
+      } catch {
+        throw new VideoFinderError('unavailable', 'AI 결과 확인을 마치지 못했어요. 다시 시도하거나 일반 검색을 이용해 주세요.');
+      }
+      nextToken = null;
+    }
+    const videos = filterAndSortVideos(matched, filters);
     const upstreamNext = nextToken ? (dateRelevance ? DATE_RELEVANCE_CURSOR + nextToken : nextToken) : null;
     const next = upstreamNext && intent
       ? `${SEARCH_AI_CURSOR}${Buffer.from(JSON.stringify(intent)).toString('base64url')}:${upstreamNext}`
@@ -1023,7 +1106,7 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     const filmNotice = scope === 'korean-film' || scope === 'korean-first-love-film'
       ? '한국 영화로 표시된 영상 중 추천 목록은 한국 영화로 범위가 명시된 것만 골랐어요. 분류 정보가 부족한 영상은 빠질 수 있어요. ' : '';
     const themeNotice = scope === 'korean-first-love-film' ? '제목이나 설명에서 첫사랑이 확인된 영상만 보여드려요. ' : '';
-    const captionNotice = scope === 'chanson-english-subtitles'
+    const captionNotice = !judgeSearch && scope === 'chanson-english-subtitles'
       ? '샹송 표기 또는 곡명·가수로 샹송을 찾고, 제목이나 설명에 영어 자막이 표시된 영상만 골랐어요. 재생할 때 영어 자막을 볼 수 있는지는 YouTube에서 확인해 주세요. ' : '';
     const likesNotice = filters.sort === 'likeCount'
       ? (captionNotice ? '이 조건에 맞는 후보 중 공개 좋아요 수가 많은 영상 최대 10개예요. '
@@ -1033,7 +1116,7 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
       nextPageToken: filters.sort === 'likeCount' ? null : next,
       fetched: ids.length,
       remainingSearches,
-      notice: (intent ? intentNotice : queryNotice) + (dateRelevance || supplemented ? '관련 영상 후보를 더 확인해 올린 날짜가 최신인 순서로 보여드려요. ' : '') + captionNotice + likesNotice + filmNotice + themeNotice + SEARCH_NOTICE,
+      notice: (intent ? intentNotice : queryNotice) + (dateRelevance || supplemented ? '관련 영상 후보를 더 확인해 올린 날짜가 최신인 순서로 보여드려요. ' : '') + judgmentNotice + captionNotice + likesNotice + (judgeSearch ? '' : filmNotice + themeNotice) + SEARCH_NOTICE,
     };
   }
 
@@ -1293,6 +1376,8 @@ export type QuestionAccess = 'disabled' | 'premium-required' | 'ready';
 export type AccessStatus = {
   policyAccepted: boolean;
   aiConsentAccepted: boolean;
+  searchAiEnabled?: boolean;
+  searchJevEnabled?: boolean;
   questionAccess: QuestionAccess;
   remainingQuestions: number;
   remainingAnalysisSeconds: number;
@@ -1887,6 +1972,7 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
           '두 단서를 확인할 수 없거나 여러 작품을 찾는 요청이면 matchedClues는 빈 배열, movieTitle은 빈 문자열로 두고 원문의 특징적인 단서를 query에 보존합니다. 입력과 무관한 주제나 실제로 없는 제목을 추가하지 않습니다.',
           '일반 검색에서 불확실한 고유명사는 추측해 바꾸지 않습니다. 일수로 바꿀 수 없는 날짜는 query에 남깁니다.',
           '조건을 만족하는 노래나 작품을 추천해 달라는 요청이면 candidates에 아는 실제 작품을 최대 세 개까지 [원제, 가수 또는 창작자] 쌍으로 제안합니다. 영어 자막 샹송 요청에는 프랑스어 샹송의 원제와 가수를 쓰고 영상 URL이나 자막 유무를 추측하지 않습니다. 특정 제목을 이미 요청했거나 확신이 없으면 candidates를 생략합니다.',
+          '칸초네·칸소네·깐소네는 이탈리아 노래 canzone을 뜻할 수 있습니다. 영화에 관한 요청은 작품 추천, 영화의 OST 영상, 일반 촬영 팁을 서로 바꾸지 않습니다.',
           'query에는 검색어만 160자 이내로 쓰고, 명시한 제외 조건은 -용어 형식으로 적습니다. 명시적인 최근 기간만 recentDays(1~365)로 바꾸고 해당 표현을 query에서 뺍니다. 기간을 특정하지 않았으면 0입니다.',
           ...(plotLookup ? ['드라마의 줄거리도 동일한 기준으로 확인하고, 드라마가 맞으면 query에 드라마라고 적습니다.'] : []),
         ].join('\n') }] },
@@ -1968,6 +2054,7 @@ export type VideoFinderAccessConfig = {
   // 새 화면 배포 전 기존 클라이언트가 계속 동작하게 하는 단계적 전환 스위치다. AI 질문은 이 값과 관계없이 두 동의를 모두 요구한다.
   policyRequired: boolean;
   searchAiEnabled?: boolean;
+  searchJevEnabled?: boolean;
 };
 
 export interface VideoFinderAccessStore {
@@ -2075,6 +2162,7 @@ export function createVideoFinderAccessService(deps: {
     return {
       ...current,
       ...(config.searchAiEnabled ? { searchAiEnabled: true } : {}),
+      ...(config.searchAiEnabled && config.searchJevEnabled ? { searchJevEnabled: true } : {}),
       ...(deps.isDeveloper?.(uid) ? { canResetSearchQuota: true } : {}),
     };
   }

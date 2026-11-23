@@ -379,6 +379,87 @@ test('Gemini가 제안한 곡명과 가수는 영어 자막 조건과 함께 조
   }
 });
 
+test('Jev 동의 검색은 조건 보강을 한 번만 하고 통과 결과만 좋아요순으로 정렬한다', async () => {
+  const cases = [
+    ['영어 자막 볼수있는 상송', '샹송 영어 자막', 'La Vie en Rose', 'Edith Piaf', 'La Vie en Rose (English subtitles)', '한국 노래 (한국어 자막)'],
+    ['영어 가사를 볼수있는 칸소네', '칸초네 영어 가사', 'Volare', 'Domenico Modugno', 'Domenico Modugno · Volare (English lyrics)', '칸초네 (스페인어 자막)'],
+    ['풍경이나 촬영지가 인상적인 영화 추천', '풍경 촬영지 영화 추천', '리틀 포레스트', '임순례', '리틀 포레스트의 사계절 풍경과 촬영지', '스마트폰 촬영 꿀팁'],
+    ['배경이 음악이 좋은 영화', '배경음악 영화 추천', '미션', '롤랑 조페', '미션 · 배경음악이 영화의 이야기를 이끄는 방식', '영화 OST 재생목록'],
+  ];
+  for (const [query, interpreted, title, creator, good, bad] of cases) {
+    const accept = meta(vid(70), { title: good, likes: 5 });
+    const reject = meta(vid(71), { title: bad, likes: 1000 });
+    const details = { [accept.videoId]: accept, [reject.videoId]: reject };
+    const yt = fakeYouTube({ searchPages: [items([reject.videoId]), items([accept.videoId])], details: (id) => details[id] });
+    const calls = [];
+    const svc = createVideoFinderService({
+      store: memoryStore(), youtube: yt, now: () => NOW,
+      interpretSearch: async () => ({ query: interpreted, recentDays: 0, candidates: [[title, creator]] }),
+      judgeSearch: async (_uid, input) => {
+        calls.push(input);
+        return [accept.videoId, vid(90)];
+      },
+    });
+    const result = await svc.search('uidA', {
+      filters: { ...baseFilters, query, sort: 'likeCount' }, searchAiConsentVersion: core.SEARCH_JEV_CONSENT_VERSION,
+    });
+    assert.equal(yt.calls.search.length, 2);
+    assert(yt.calls.search[1].q.includes(title));
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].query, query);
+    if (query.startsWith('영어')) assert.deepEqual(calls[0].videos.map(v => v.videoId), [accept.videoId]);
+    assert.deepEqual(result.videos.map(v => v.videoId), [accept.videoId]);
+    assert.equal(result.videos[0].searchEvidence, good);
+  }
+});
+
+test('자막 조건 없는 음악 검색도 보충할 때 음악 검색어를 유지한다', async () => {
+  const yt = fakeYouTube();
+  const svc = createVideoFinderService({
+    store: memoryStore(), youtube: yt, now: () => NOW,
+    interpretSearch: async () => ({ query: '이탈리아 칸초네 추천', recentDays: 0, candidates: [['Volare', 'Domenico Modugno']] }),
+    judgeSearch: async () => [],
+  });
+  await svc.search('uidA', { filters: { ...baseFilters, query: '이탈리아 칸초네 추천' }, searchAiConsentVersion: core.SEARCH_JEV_CONSENT_VERSION });
+  assert.equal(yt.calls.search[1].q, 'Volare Domenico Modugno 이탈리아 칸초네 추천');
+});
+
+test('Jev 전송 동의·설정·오류가 확인되지 않으면 판정 결과를 표시하지 않는다', async () => {
+  const yt = fakeYouTube({ searchPages: [items([vid(1)])] });
+  let allowed = false;
+  let calls = 0;
+  const svc = createVideoFinderService({
+    store: memoryStore(), youtube: yt, now: () => NOW,
+    searchJudgeEnabled: async () => allowed,
+    judgeSearch: async () => { calls++; throw new Error('provider failed'); },
+  });
+  await svc.search('uidA', { filters: baseFilters, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
+  assert.equal(calls, 0);
+  const request = { filters: baseFilters, searchAiConsentVersion: core.SEARCH_JEV_CONSENT_VERSION };
+  await assert.rejects(svc.search('uidA', request), (error) => error.code === 'unavailable');
+  allowed = true;
+  await assert.rejects(svc.search('uidA', { ...request, filters: { ...baseFilters, query: 'test@example.com 영화' } }),
+    (error) => error.code === 'invalid-argument');
+  await assert.rejects(svc.search('uidA', request), (error) =>
+    error.code === 'unavailable' && /확인을 마치지 못했어요/.test(error.message));
+  assert.equal(calls, 1);
+});
+
+test('영어 자막을 제외한 요청은 자막이 없는 후보를 판정 전에 버리지 않는다', async () => {
+  const video = meta(vid(1), { title: '샹송 공연', description: '영어 자막 없음' });
+  const yt = fakeYouTube({ searchPages: [items([video.videoId])], details: () => video });
+  const svc = createVideoFinderService({
+    store: memoryStore(), youtube: yt, now: () => NOW,
+    judgeSearch: async (_uid, input) => input.videos.map(v => v.videoId),
+  });
+  for (const query of ['영어 자막 없는 샹송', '샹송 -영어자막']) {
+    const result = await svc.search('uidA', {
+      filters: { ...baseFilters, query }, searchAiConsentVersion: core.SEARCH_JEV_CONSENT_VERSION,
+    });
+    assert.equal(result.videos[0].videoId, video.videoId);
+  }
+});
+
 test('첫사랑을 주제로 한 한국영화 검색에서는 해외 영화, TV 드라마, 근거 없는 후보를 제외한다', async () => {
   // 운영 검색에서 관찰한 제목을 기반으로 한 회귀 자료. 설명과 태그는 검사 분기를 재현하는 모의 자료다.
   const candidates = [
@@ -1121,7 +1202,7 @@ test('기본 전체 상한 8,000단위와 102단위 선예약은 표준 할당�
 
 // ───── 연결부 정적 점검 ─────
 
-test('Functions 연결부: 리전·Secret 참조·UID 도출·유료 AI는 질문 경로에만 연결', () => {
+test('Functions 연결부: 리전·Secret 참조·UID 도출과 유료 AI 경로 분리', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'videoFinder.ts'), 'utf8');
   const regionUses = src.match(/region: REGION/g) || [];
   assert.equal(regionUses.length, 6);
@@ -1148,13 +1229,15 @@ test('Functions 연결부: 리전·Secret 참조·UID 도출·유료 AI는 질�
   assert.ok(!/request\.data\??\.uid/.test(src), '클라이언트가 보낸 uid를 쓰지 않는다');
   // Gemini는 영상 질문·동의한 자연어 검색에만 사용. 보관함·세션 발급에 시크릿을 바인딩하지 않는다.
   const code = src.replace(/\/\/.*$/gm, '');
-  assert.ok(!/typesafe|jev/i.test(code), 'Jev 등 다른 유료 AI 호출 코드가 없어야 한다');
+  assert.ok(code.includes("defineSecret('VIDEO_FINDER_JEV_API_KEY')"));
+  assert.equal((code.match(/createVideoFinderSearchJudge\(/g) || []).length, 1);
+  assert.ok(code.includes('isRuntimePermitted: searchJudgeEnabled'));
   assert.ok(src.includes("defineSecret('VIDEO_FINDER_GEMINI_API_KEY')"));
   assert.equal((code.match(/createGeminiVideoClient\(/g) || []).length, 2);
   for (const name of ['videoFinderLibrary', 'createVideoFinderSession']) {
     const start = code.indexOf(`export const ${name}`);
     const fn = code.slice(start, code.indexOf('export const', start + 10));
-    assert.ok(!/GEMINI/.test(fn), `${name}에는 Gemini 시크릿을 바인딩하지 않는다`);
+    assert.ok(!/GEMINI|JEV/.test(fn), `${name}에는 유료 AI 시크릿을 바인딩하지 않는다`);
   }
   for (const name of ['videoFinderSearch', 'videoFinderAccess', 'videoFinderStandalone']) {
     const start = code.indexOf(`export const ${name}`);
