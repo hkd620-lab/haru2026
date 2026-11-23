@@ -119,12 +119,12 @@ function fakeYouTube({ searchPages = [], details } = {}) {
       i += 1;
       return typeof page === 'function' ? page(params) : page;
     },
-    async videoDetails(ids, scope, candidates) {
+    async videoDetails(ids, scope, candidates, includeFullDescription) {
       calls.details.push(ids);
       if (this.gate) await this.gate;
       const out = {};
       for (const id of ids) {
-        const m = details ? details(id, scope, candidates) : meta(id);
+        const m = details ? details(id, scope, candidates, includeFullDescription) : meta(id);
         if (m) out[id] = m;
       }
       return out;
@@ -458,6 +458,31 @@ test('영어 자막을 제외한 요청은 자막이 없는 후보를 판정 전
     });
     assert.equal(result.videos[0].videoId, video.videoId);
   }
+});
+
+test('Jev는 상세 설명 뒷부분의 자막 근거와 사용자가 선택한 분야를 함께 확인한다', async () => {
+  const id = vid(75);
+  const description = `${'공개 곡 소개입니다. '.repeat(40)} English subtitles are included.`;
+  const yt = fakeYouTube({
+    searchPages: [items([id])],
+    details: (_id, scope, candidates, includeFullDescription) => core.mapVideoItem({
+      id, snippet: { title: 'Chanson concert', description },
+    }, scope, candidates, includeFullDescription),
+  });
+  const svc = createVideoFinderService({
+    store: memoryStore(), youtube: yt, now: () => NOW,
+    judgeSearch: async (_uid, input) => {
+      assert.equal(input.category, '샹송');
+      assert.match(input.videos[0].description, /English subtitles are included/);
+      return [id];
+    },
+  });
+  const result = await svc.search('uidA', {
+    filters: { ...baseFilters, query: '영어 자막이 있는 영상', category: '샹송' },
+    searchAiConsentVersion: core.SEARCH_JEV_CONSENT_VERSION,
+  });
+  assert.equal(result.videos[0].description.length, 300);
+  assert.match(result.videos[0].searchEvidence, /English subtitles are included/);
 });
 
 test('첫사랑을 주제로 한 한국영화 검색에서는 해외 영화, TV 드라마, 근거 없는 후보를 제외한다', async () => {

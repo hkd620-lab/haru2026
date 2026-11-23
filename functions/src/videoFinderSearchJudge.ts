@@ -11,7 +11,7 @@ export function createVideoFinderSearchJudge(options: JevHttpTransportOptions) {
     if (Buffer.byteLength(body) > MAX_REQUEST_BYTES) throw new Error('Search judgment request too large');
     return body;
   });
-  return async ({ query, videos }: SearchJudgeInput): Promise<SearchJudgeResult> => {
+  return async ({ query, category, videos }: SearchJudgeInput): Promise<SearchJudgeResult> => {
     const metadata = videos.map((video, index) => ({
       index, title: video.title, description: video.description,
     }));
@@ -25,7 +25,7 @@ export function createVideoFinderSearchJudge(options: JevHttpTransportOptions) {
     }]));
     const request = { model: JEV_MODEL, state: '', questions };
     while (metadata.length) {
-      request.state = JSON.stringify({ request: query, videos: metadata });
+      request.state = JSON.stringify({ request: query, category, videos: metadata });
       if (Buffer.byteLength(JSON.stringify(request)) <= MAX_REQUEST_BYTES) break;
       const last = metadata.pop()!;
       delete questions[`video_${last.index}`];

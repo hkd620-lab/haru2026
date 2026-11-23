@@ -588,7 +588,7 @@ export function sanitizeVideoMeta(raw: unknown): VideoMeta {
 }
 
 // videos.list 응답 1건을 VideoMeta로 바꾼다. 구독자 수는 channels.list 뒤에 채운다.
-export function mapVideoItem(item: unknown, scope?: VideoSearchScope, candidates: readonly SearchCandidate[] = []): VideoMeta | null {
+export function mapVideoItem(item: unknown, scope?: VideoSearchScope, candidates: readonly SearchCandidate[] = [], includeFullDescription = false): VideoMeta | null {
   const it = item as { id?: unknown; snippet?: any; statistics?: any; contentDetails?: any } | null;
   if (!it || typeof it.id !== 'string' || !VIDEO_ID_RE.test(it.id)) return null;
   const snippet = it.snippet || {};
@@ -608,7 +608,7 @@ export function mapVideoItem(item: unknown, scope?: VideoSearchScope, candidates
     }
   }
   const thumbs = snippet.thumbnails || {};
-  return sanitizeVideoMeta({
+  const meta = sanitizeVideoMeta({
     videoId: it.id,
     title: snippet.title,
     channel: snippet.channelTitle,
@@ -621,6 +621,8 @@ export function mapVideoItem(item: unknown, scope?: VideoSearchScope, candidates
     subscribers: null,
     description: snippet.description,
   });
+  if (includeFullDescription) meta.description = cleanText(snippet.description, 5000);
+  return meta;
 }
 
 export function mapChannelSubscribers(items: unknown): Record<string, number | null> {
@@ -891,7 +893,7 @@ export interface VideoFinderStore {
 
 export interface YouTubeClient {
   search(params: Record<string, string>): Promise<SearchResponse>;
-  videoDetails(videoIds: string[], scope?: VideoSearchScope, candidates?: readonly SearchCandidate[]): Promise<Record<string, VideoMeta>>;
+  videoDetails(videoIds: string[], scope?: VideoSearchScope, candidates?: readonly SearchCandidate[], includeFullDescription?: boolean): Promise<Record<string, VideoMeta>>;
 }
 
 export type VideoFinderDeps = {
@@ -903,7 +905,7 @@ export type VideoFinderDeps = {
   searchJudgeEnabled?: () => Promise<boolean>;
 };
 
-export type SearchJudgeInput = { query: string; videos: Array<Pick<VideoMeta, 'videoId' | 'title' | 'description'>> };
+export type SearchJudgeInput = { query: string; category?: string; videos: Array<Pick<VideoMeta, 'videoId' | 'title' | 'description'>> };
 export type SearchJudgeResult = string[] | null;
 const SEARCH_JUDGE_LIMIT = 12;
 const PRIVATE_SEARCH_PATTERN = /[\w.+-]+@[\w.-]+\.[a-z]{2,}|(?:https?:\/\/|www\.)\S+|(?:\+82[- .]?)?0?1[016789][- .]?\d{3,4}[- .]?\d{4}|\d{6}[- ]?[1-8]\d{6}/iu;
@@ -1020,7 +1022,8 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     }
 
     const lookup = async (videoIds: string[]) => {
-      const details = videoIds.length ? await youtube.videoDetails(videoIds, judgeSearch ? undefined : scope, broadChanson ? candidates : undefined) : {};
+      const retainedScope = judgeSearch && scope === 'chanson-english-subtitles' ? undefined : scope;
+      const details = videoIds.length ? await youtube.videoDetails(videoIds, retainedScope, broadChanson ? candidates : undefined, Boolean(judgeSearch)) : {};
       return videoIds.map((id) => details[id]).filter(Boolean) as VideoMeta[];
     };
     let matched = await lookup(ids);
@@ -1056,6 +1059,7 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
       try {
         const accepted = shortlist.length ? await judgeSearch(uid, {
           query: filters.query,
+          ...(filters.category === ALL_TOPICS ? {} : { category: filters.category.replace(new RegExp(PRIVATE_SEARCH_PATTERN.source, 'giu'), '[숨김]') }),
           videos: shortlist.map(({ videoId, title, description }) => ({
             videoId,
             title: title.replace(new RegExp(PRIVATE_SEARCH_PATTERN.source, 'giu'), '[숨김]'),
@@ -1065,10 +1069,13 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
         if (accepted === null) throw new Error('Search judgment unavailable');
         const approved = new Set(accepted);
         matched = shortlist.filter(({ videoId }) => approved.has(videoId)).map((video) => {
-          const excerpt = [video.title, ...video.description.split(/(?<=[.!?。])\s+|\n/u)].find((part) =>
-            englishRequired ? ENGLISH_SUBTITLE_LABEL.test(part) || (lyricsAllowed && ENGLISH_LYRICS_LABEL.test(part))
-              : /배경음악|영화\s*음악|촬영|풍경|\b(?:cinematography|soundtrack|film score|scenery)\b/iu.test(part));
-          return excerpt ? { ...video, searchEvidence: excerpt.slice(0, 200) } : video;
+          const pattern = englishRequired
+            ? new RegExp(lyricsAllowed ? `${ENGLISH_SUBTITLE_LABEL.source}|${ENGLISH_LYRICS_LABEL.source}` : ENGLISH_SUBTITLE_LABEL.source, 'iu')
+            : /배경음악|영화\s*음악|촬영|풍경|\b(?:cinematography|soundtrack|film score|scenery)\b/iu;
+          const marked = [video.title, video.description].find((part) => pattern.test(part));
+          const offset = marked ? Math.max(0, marked.search(pattern) - 70) : 0;
+          const searchEvidence = marked?.slice(offset, offset + 200);
+          return { ...video, description: cleanText(video.description, 300), ...(searchEvidence ? { searchEvidence } : {}) };
         });
         judgmentNotice = '확인한 후보 중 제목과 설명이 검색 조건과 맞는 영상만 골랐어요. ';
         if (englishRequired) judgmentNotice += '영어 가사·자막 표기는 영상 제목과 설명을 기준으로 확인했어요. ';

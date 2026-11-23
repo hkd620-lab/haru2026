@@ -782,7 +782,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                   )}
                   {useSearchAi && (
                     <div className="mt-3 rounded-lg bg-[#f7faed] p-3">
-                      <p id="vf-ai-search-help" className="text-base leading-7">검색 문장을 해석하고 관련 곡이나 작품을 찾기 위해 Google Gemini로 전송해요. {searchJevEnabled && '조건을 확인하기 위해 입력한 검색 문장과 공개 영상 제목·설명을 TypeSafe Jev에도 보내요. '}개인정보는 입력하지 마세요. <a href={`${haruOrigin}/privacy#video-finder-search-ai`} className="font-semibold underline" target="_blank" rel="noopener noreferrer">정보 전송 안내 ↗</a></p>
+                      <p id="vf-ai-search-help" className="text-base leading-7">검색 문장을 해석하고 관련 곡이나 작품을 찾기 위해 Google Gemini로 전송해요. {searchJevEnabled && '조건을 확인하기 위해 검색 문장, 선택한 관심 분야, 공개 영상 제목·설명을 TypeSafe Jev에도 보내요. '}개인정보는 입력하지 마세요. <a href={`${haruOrigin}/privacy#video-finder-search-ai`} className="font-semibold underline" target="_blank" rel="noopener noreferrer">정보 전송 안내 ↗</a></p>
                       <label className="flex min-h-[44px] items-center gap-2">
                         <input type="checkbox" checked={searchAiConsent} onChange={(event) => {
                           setSearchAiConsentFor(event.target.checked ? (searchJevEnabled ? 'both' : 'gemini') : null);
