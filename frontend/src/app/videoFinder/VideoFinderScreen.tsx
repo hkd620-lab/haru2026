@@ -918,9 +918,10 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                             <div className="min-w-0 flex-1">
                               <SourceLabel />
                               {urlFilters.sort === 'likeCount' && typeof video.likes === 'number' && (
-                                <p className="mt-1 text-base font-bold text-[#285843]">{index + 1}위 · 좋아요 {formatCount(video.likes)}</p>
+                                <p className="mt-1 text-base font-bold text-[#285843]">{video.searchNeedsReview === undefined && `${index + 1}위 · `}좋아요 {formatCount(video.likes)}</p>
                               )}
                               <h3 className="mt-2 break-words text-lg font-bold leading-7">{video.title}</h3>
+                              {video.searchNeedsReview && <p className="mt-1 text-sm font-semibold text-[#5d4820]">조건 확인 필요</p>}
                               {video.searchEvidence && <p className="mt-1 break-words text-sm text-[#46524a]">영상에 표시된 근거 · {video.searchEvidence}</p>}
                               <MetaLine meta={video} />
                               <div className="mt-3 flex flex-wrap gap-2">

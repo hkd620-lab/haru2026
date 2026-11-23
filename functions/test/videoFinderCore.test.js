@@ -133,6 +133,7 @@ function fakeYouTube({ searchPages = [], details } = {}) {
 }
 
 const items = (ids) => ({ items: ids.map((id) => ({ id: { videoId: id } })) });
+const positiveJudgment = (videoId) => ({ videoId, match: 0.95, conflict: 0.01 });
 
 function service(store, youtube, now = () => NOW) {
   return createVideoFinderService({ store, youtube, now });
@@ -397,7 +398,7 @@ test('Jev 동의 검색은 조건 보강을 한 번만 하고 통과 결과만 �
       interpretSearch: async () => ({ query: interpreted, recentDays: 0, candidates: [[title, creator]] }),
       judgeSearch: async (_uid, input) => {
         calls.push(input);
-        return [accept.videoId, vid(90)];
+        return [positiveJudgment(accept.videoId), positiveJudgment(vid(90)), { videoId: reject.videoId, match: 0.01, conflict: 0.96 }];
       },
     });
     const result = await svc.search('uidA', {
@@ -407,7 +408,6 @@ test('Jev 동의 검색은 조건 보강을 한 번만 하고 통과 결과만 �
     assert(yt.calls.search[1].q.includes(title));
     assert.equal(calls.length, 1);
     assert.equal(calls[0].query, query);
-    if (query.startsWith('영어')) assert.deepEqual(calls[0].videos.map(v => v.videoId), [accept.videoId]);
     assert.deepEqual(result.videos.map(v => v.videoId), [accept.videoId]);
     assert.equal(result.videos[0].searchEvidence, good);
   }
@@ -450,7 +450,7 @@ test('영어 자막을 제외한 요청은 자막이 없는 후보를 판정 전
   const yt = fakeYouTube({ searchPages: [items([video.videoId])], details: () => video });
   const svc = createVideoFinderService({
     store: memoryStore(), youtube: yt, now: () => NOW,
-    judgeSearch: async (_uid, input) => input.videos.map(v => v.videoId),
+    judgeSearch: async (_uid, input) => input.videos.map(v => positiveJudgment(v.videoId)),
   });
   for (const query of ['영어 자막 없는 샹송', '샹송 -영어자막']) {
     const result = await svc.search('uidA', {
@@ -474,7 +474,7 @@ test('Jev는 상세 설명 뒷부분의 자막 근거와 사용자가 선택한 
     judgeSearch: async (_uid, input) => {
       assert.equal(input.category, '샹송');
       assert.match(input.videos[0].description, /English subtitles are included/);
-      return [id];
+      return [positiveJudgment(id)];
     },
   });
   const result = await svc.search('uidA', {
@@ -498,7 +498,7 @@ test('샹송·칸초네의 일반 장르 요청은 검색에 없던 공개 곡 �
       store: memoryStore(), youtube: yt, now: () => NOW,
       judgeSearch: async (_uid, input) => {
         called.push(input);
-        return input.videos.filter(v => v.referenceGenre === genre).map(v => v.videoId);
+        return input.videos.filter(v => v.referenceGenre === genre).map(v => positiveJudgment(v.videoId));
       },
     });
     const filters = { ...baseFilters, query, sort: 'likeCount' };
@@ -515,21 +515,59 @@ test('샹송·칸초네의 일반 장르 요청은 검색에 없던 공개 곡 �
   }
 });
 
-test('Jev 판정 전 후보 부족과 판정 후 공개 좋아요 부족을 구별한다', async () => {
+test('영어 자막 근거가 없으면 확인 필요로 표시하고 좋아요가 없으면 순위에서 제외한다', async () => {
   const movie = meta(vid(10), { title: '풍경이 아름다운 영화', likes: null });
   const yt = fakeYouTube({ searchPages: [items([movie.videoId])], details: (id) => id === movie.videoId ? movie : undefined });
   const svc = createVideoFinderService({
     store: memoryStore(), youtube: yt, now: () => NOW,
-    judgeSearch: async (_uid, input) => input.videos.map(video => video.videoId),
+    judgeSearch: async (_uid, input) => input.videos.map(video => positiveJudgment(video.videoId)),
   });
   const sort = 'likeCount';
   const request = { searchAiConsentVersion: core.SEARCH_JEV_CONSENT_VERSION };
   const missingLikes = await svc.search('uidA', { ...request, filters: { ...baseFilters, query: '풍경이 아름다운 영화', sort } });
   assert.deepEqual(missingLikes.videos, []);
-  assert.match(missingLikes.notice, /조건을 통과한 영상은 있지만, 공개 좋아요 수가 없어/);
-  const missingCaption = await svc.search('uidB', { ...request, filters: { ...baseFilters, query: '영어 자막이 있는 영화', sort } });
-  assert.deepEqual(missingCaption.videos, []);
-  assert.match(missingCaption.notice, /Jev 판정까지 가지 않았어요/);
+  assert.match(missingLikes.notice, /공개 좋아요 수가 없어/);
+  const missingCaption = await svc.search('uidB', { ...request, filters: { ...baseFilters, query: '영어 자막이 있는 영화' } });
+  assert.equal(missingCaption.videos[0].videoId, movie.videoId);
+  assert.equal(missingCaption.videos[0].searchNeedsReview, true);
+});
+
+test('명시적 충돌만 제외하고 높은 좋아요의 불확실한 후보는 근거가 있는 후보 뒤에 남긴다', async () => {
+  const rows = [
+    meta(vid(1), { title: '샹송 공연 (English subtitles)', likes: 2 }),
+    meta(vid(2), { title: '샹송 공연', likes: 100 }),
+    meta(vid(3), { title: '샹송 공연 (영어 자막 없음)', likes: 1000 }),
+    meta(vid(4), { title: '촬영 장비 소개', likes: 2000 }),
+  ];
+  const yt = fakeYouTube({ searchPages: [items(rows.map(v => v.videoId))], details: (id) => rows.find(v => v.videoId === id) });
+  const svc = createVideoFinderService({
+    store: memoryStore(), youtube: yt, now: () => NOW,
+    judgeSearch: async (_uid, input) => {
+      assert(!input.videos.some(v => v.videoId === vid(3)));
+      return [positiveJudgment(vid(1)), { videoId: vid(2), match: 0.32, conflict: 0.03 },
+        { videoId: vid(4), match: 0.01, conflict: 0.98 }];
+    },
+  });
+  const result = await svc.search('uidA', {
+    filters: { ...baseFilters, query: '영어 자막 샹송', sort: 'likeCount' }, searchAiConsentVersion: core.SEARCH_JEV_CONSENT_VERSION,
+  });
+  assert.deepEqual(result.videos.map(v => [v.videoId, v.searchNeedsReview]), [[vid(1), false], [vid(2), true]]);
+});
+
+test('자막이 없다고만 표시된 영상은 영어 가사 요청에서 확인 필요로 남긴다', async () => {
+  const candidate = meta(vid(1), { title: 'Canzone italiana', description: 'No English subtitles.' });
+  const yt = fakeYouTube({
+    searchPages: [items([candidate.videoId])], details: (id) => id === candidate.videoId ? candidate : undefined,
+  });
+  const svc = createVideoFinderService({
+    store: memoryStore(), youtube: yt, now: () => NOW,
+    judgeSearch: async (_uid, input) => input.videos.map(v => ({ videoId: v.videoId, match: 0.35, conflict: 0.1 })),
+  });
+  const result = await svc.search('uidA', {
+    filters: { ...baseFilters, query: '영어 가사를 볼 수 있는 칸초네' },
+    searchAiConsentVersion: core.SEARCH_JEV_CONSENT_VERSION,
+  });
+  assert.deepEqual(result.videos.map(v => [v.videoId, v.searchNeedsReview]), [[candidate.videoId, true]]);
 });
 
 test('첫사랑을 주제로 한 한국영화 검색에서는 해외 영화, TV 드라마, 근거 없는 후보를 제외한다', async () => {

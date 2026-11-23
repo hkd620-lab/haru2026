@@ -21,16 +21,17 @@ const request = () => buildJevChoiceRequest('synthetic public AI technology arti
 const syntheticKey = 'synthetic-test-token-not-a-credential';
 const json = (body = '{}', options = {}) => new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8' }, ...options });
 
-test('영상 결과 판정은 후보 묶음을 한 번 보내고 불확실한 Noul을 보류한다', async () => {
+test('영상 결과 판정은 후보를 한 번 보내고 일치와 충돌 점수를 반환한다', async () => {
   const { createVideoFinderSearchJudge } = loadSource('videoFinderSearchJudge');
   const calls = [];
   const judge = createVideoFinderSearchJudge({
     fetchImpl: async (_url, init) => {
       calls.push(JSON.parse(init.body));
       return json(JSON.stringify({ answers: {
-        video_0: { type: 'noul', noul: 0.91 },
-        video_1: { type: 'noul', noul: 0.51 },
-        video_2: { type: 'noul', noul: '0.99' },
+        video_0: { type: 'choice', choice: 'match', confidence: 0.8, probabilities: { match: 0.91, uncertain: 0.07, conflict: 0.02 } },
+        video_1: { type: 'choice', choice: 'uncertain', confidence: 0.6, probabilities: { match: 0.2, uncertain: 0.7, conflict: 0.1 } },
+        video_2: { type: 'choice', choice: 'match', confidence: '0.98', probabilities: { match: 0.96, uncertain: 0.03, conflict: 0.01 } },
+        video_3: { type: 'choice', choice: 'match', confidence: 0.9, probabilities: { match: 0.96, uncertain: 0.03, conflict: 0.01, extra: 0 } },
       } }));
     },
     getApiKey: () => syntheticKey,
@@ -40,15 +41,20 @@ test('영상 결과 판정은 후보 묶음을 한 번 보내고 불확실한 No
     { videoId: 'v1', title: 'English subtitles', description: 'French chanson' },
     { videoId: 'v2', title: 'Playlist', description: '' },
     { videoId: 'v3', title: 'Other', description: '' },
+    { videoId: 'v4', title: 'Other again', description: '' },
   ];
-  assert.deepEqual(await judge({ query: '영어 자막 샹송', videos }), ['v1']);
+  assert.deepEqual(await judge({ query: '영어 자막 샹송', videos }), [
+    { videoId: 'v1', match: 0.91, conflict: 0.02 }, { videoId: 'v2', match: 0.2, conflict: 0.1 },
+  ]);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].questions.video_1.type, 'noul');
+  assert.equal(calls[0].questions.video_1.type, 'choice');
   assert.deepEqual(JSON.parse(calls[0].state).videos[0], { index: 0, title: videos[0].title, description: videos[0].description });
   const longVideos = Array.from({ length: 12 }, (_, index) => ({
     videoId: `long-${index}`, title: '한국영화가'.repeat(18), description: '영상설명문장'.repeat(50),
   }));
-  assert.deepEqual(await judge({ query: '풍경이 좋은 영화', videos: longVideos }), ['long-0']);
+  assert.deepEqual(await judge({ query: '풍경이 좋은 영화', videos: longVideos }), [
+    { videoId: 'long-0', match: 0.91, conflict: 0.02 }, { videoId: 'long-1', match: 0.2, conflict: 0.1 },
+  ]);
   assert.equal(calls.length, 2);
   assert(Buffer.byteLength(JSON.stringify(calls[1])) <= 24000);
   const submittedVideos = JSON.parse(calls[1].state).videos;
