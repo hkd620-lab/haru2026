@@ -149,6 +149,7 @@ export function formatDate(iso: string | null | undefined): string {
 }
 
 export type VideoMeta = {
+  searchEvidence?: string;
   videoId: string;
   title: string;
   channel: string;
@@ -187,6 +188,7 @@ export type SearchResult = {
 
 export const MAX_SEARCH_QUERY_LENGTH = 500;
 export const SEARCH_AI_CONSENT_VERSION = 1;
+export const SEARCH_JEV_CONSENT_VERSION = 2;
 export const VIDEO_FINDER_POLICY_VERSION = 1;
 export const VIDEO_FINDER_AI_CONSENT_VERSION = 1;
 
@@ -194,6 +196,7 @@ export type VideoFinderAccess = {
   policyAccepted: boolean;
   aiConsentAccepted: boolean;
   searchAiEnabled?: boolean;
+  searchJevEnabled?: boolean;
   canResetSearchQuota?: boolean;
   questionAccess: 'disabled' | 'premium-required' | 'ready';
   analysisPeriod?: 'calendar-month';
@@ -223,7 +226,7 @@ export interface VideoFinderClient {
   acceptAiConsent(version: number): Promise<VideoFinderAccess>;
   revokeAiConsent(): Promise<VideoFinderAccess>;
   askQuestion(request: VideoQuestionRequest): Promise<VideoQuestionAnswer>;
-  searchVideos(filters: SearchFilters, pageToken?: string | null, useAi?: boolean): Promise<SearchResult>;
+  searchVideos(filters: SearchFilters, pageToken?: string | null, useAi?: boolean, useJudge?: boolean): Promise<SearchResult>;
   resetSearchQuota(): Promise<{ remainingSearches: number }>;
   listSaved(): Promise<{ saved: SavedItem[]; searchEnabled: boolean }>;
   saveVideo(video: VideoMeta, category: string): Promise<{ item: SavedItem; created: boolean }>;

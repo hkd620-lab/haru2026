@@ -42,6 +42,7 @@ import {
   type YouTubeClient,
 } from './videoFinderCore';
 import { isInternalDeveloperUid } from './internalEntitlements';
+import { createVideoFinderSearchJudge } from './videoFinderSearchJudge';
 import { createFirestoreVideoFinderAccessStore, createFirestoreVideoFinderStore, expireSavedMetaIfStale } from './videoFinderStore';
 
 if (!admin.apps.length) {
@@ -55,6 +56,7 @@ const REGION = 'asia-northeast3';
 const VIDEO_FINDER_YOUTUBE_API_KEY = defineSecret('VIDEO_FINDER_YOUTUBE_API_KEY');
 // 내 영상 찾기 Gemini 키. 영상 질문과 선택형 자연어 검색의 한도는 각 호출 경로에서 관리한다.
 const VIDEO_FINDER_GEMINI_API_KEY = defineSecret('VIDEO_FINDER_GEMINI_API_KEY');
+const VIDEO_FINDER_JEV_API_KEY = defineSecret('VIDEO_FINDER_JEV_API_KEY');
 
 const firestoreStore = createFirestoreVideoFinderStore(db, admin.auth());
 const firestoreAccessStore = createFirestoreVideoFinderAccessStore(db);
@@ -139,14 +141,14 @@ function createYouTubeClient(apiKey: string): YouTubeClient & VideoInfoClient {
       }
       return null;
     },
-    async videoDetails(videoIds, scope, candidates) {
+    async videoDetails(videoIds, scope, candidates, includeFullDescription) {
       const unique = videoIds.filter((id, index) => videoIds.indexOf(id) === index);
       const result: Record<string, VideoMeta> = {};
       for (let i = 0; i < unique.length; i += 50) {
         const piece = unique.slice(i, i + 50);
         const data = await request('videos', { part: 'snippet,statistics,contentDetails', id: piece.join(','), maxResults: '50' });
         for (const item of Array.isArray(data.items) ? data.items : []) {
-          const meta = mapVideoItem(item, scope, candidates);
+          const meta = mapVideoItem(item, scope, candidates, includeFullDescription);
           if (meta) result[meta.videoId] = meta;
         }
       }
@@ -191,6 +193,10 @@ async function runService<T>(task: () => Promise<T>): Promise<T> {
 }
 
 function serviceFor(withSearchAi = false) {
+  const searchJudgeEnabled = async () => {
+    const config = await firestoreAccessStore.getConfig();
+    return config.searchAiEnabled === true && config.searchJevEnabled === true;
+  };
   return createVideoFinderService({
     store: firestoreStore,
     youtube: createYouTubeClient(VIDEO_FINDER_YOUTUBE_API_KEY.value()),
@@ -199,6 +205,16 @@ function serviceFor(withSearchAi = false) {
       if (!(await firestoreAccessStore.getConfig()).searchAiEnabled) return null;
       if (!isPolicyAccepted(await firestoreAccessStore.readPolicy(uid))) return null;
       return createGeminiVideoClient({ apiKey: VIDEO_FINDER_GEMINI_API_KEY.value() }).interpretSearch(query);
+    } : undefined,
+    searchJudgeEnabled,
+    judgeSearch: withSearchAi ? async (uid, input) => {
+      if (!isPolicyAccepted(await firestoreAccessStore.readPolicy(uid))) return null;
+      return createVideoFinderSearchJudge({
+        fetchImpl: fetch,
+        getApiKey: () => VIDEO_FINDER_JEV_API_KEY.value(),
+        isRuntimePermitted: searchJudgeEnabled,
+        timeoutMs: 9000,
+      })(input);
     } : undefined,
   });
 }
@@ -240,7 +256,7 @@ function accessServiceFor(withAi: boolean) {
 }
 
 export const videoFinderSearch = onCall(
-  { region: REGION, secrets: [VIDEO_FINDER_YOUTUBE_API_KEY, VIDEO_FINDER_GEMINI_API_KEY], timeoutSeconds: 60, memory: '256MiB', maxInstances: 10 },
+  { region: REGION, secrets: [VIDEO_FINDER_YOUTUBE_API_KEY, VIDEO_FINDER_GEMINI_API_KEY, VIDEO_FINDER_JEV_API_KEY], timeoutSeconds: 60, memory: '256MiB', maxInstances: 10 },
   async (request) => {
     const uid = await requireActiveUid(request);
     await runService(() => accessServiceFor(false).requirePolicyFor(uid, 'search', request.data));
@@ -292,7 +308,7 @@ export const createVideoFinderSession = onCall(
 export const videoFinderStandalone = onCall(
   {
     region: REGION,
-    secrets: [VIDEO_FINDER_YOUTUBE_API_KEY, VIDEO_FINDER_GEMINI_API_KEY],
+    secrets: [VIDEO_FINDER_YOUTUBE_API_KEY, VIDEO_FINDER_GEMINI_API_KEY, VIDEO_FINDER_JEV_API_KEY],
     cors: VIDEO_FINDER_STANDALONE_ORIGINS,
     // AI 질문(op 'access')의 모델 제한시간(75초)보다 길고 예약 유효시간(3분)보다 짧게 둔다.
     timeoutSeconds: 120,

@@ -341,9 +341,12 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
   const topics = [...new Set([ALL_TOPICS, ...VIDEO_FINDER_TOPICS, ...customTopics, draft.category])];
   const [formError, setFormError] = useState('');
   const [searchMode, setSearchMode] = useState<'plain' | 'ai'>('plain');
-  const [searchAiConsent, setSearchAiConsent] = useState(false);
+  const [searchAiConsentFor, setSearchAiConsentFor] = useState<'gemini' | 'both' | null>(null);
   const [searchGuideVisible, setSearchGuideVisible] = useState(true);
+  const [clarifyFilmBackground, setClarifyFilmBackground] = useState(false);
   const useSearchAi = access.searchAiEnabled && searchMode === 'ai';
+  const searchJevEnabled = access.searchJevEnabled === true;
+  const searchAiConsent = searchAiConsentFor === (searchJevEnabled ? 'both' : 'gemini');
   const [searchState, setSearchState] = useState<SearchState | null>(null);
   const [remainingSearches, setRemainingSearches] = useState<number | null>(null);
 
@@ -352,12 +355,14 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
   const [resettingQuota, setResettingQuota] = useState(false);
   const pendingAiSearchKey = useRef<string | null>(null);
   const aiSearchLocation = useRef<string | null>(null);
+  const sendToJev = useRef(false);
   const activeSearch = useRef<{ key: string; cacheKey: string } | null>(null);
   const lastSearchKey = useRef('');
   if (searchKey) lastSearchKey.current = searchKey;
 
   const runSearch = useCallback(async (key: string, filters: SearchFilters, force = false, useAi = false) => {
-    const cacheKey = `${uid}|${useAi ? 'ai|' : ''}${key}`;
+    const useJudge = useAi && sendToJev.current;
+    const cacheKey = `${uid}|${useAi ? (useJudge ? 'judge|' : 'ai|') : ''}${key}`;
     const request = { key, cacheKey };
     activeSearch.current = request;
     if (!force && searchCache.has(cacheKey)) {
@@ -370,7 +375,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
     try {
       let pending = pendingSearches.get(cacheKey);
       if (!pending) {
-        pending = client.searchVideos(filters, undefined, useAi);
+        pending = client.searchVideos(filters, undefined, useAi, useJudge);
         pendingSearches.set(cacheKey, pending);
       }
       const result = await pending.finally(() => pendingSearches.delete(cacheKey));
@@ -443,6 +448,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
       return;
     }
     setFormError('');
+    sendToJev.current = useAi && searchJevEnabled && searchAiConsent;
     const key = filtersToSearchParams(filters).toString();
 
     if (key === searchKey && tab === 'search') {
@@ -457,7 +463,8 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
   function selectTopic(category: string) {
     const filters = { ...DEFAULT_FILTERS, category, sort: category === ALL_TOPICS ? 'relevance' : 'date' };
     setSearchMode('plain');
-    setSearchAiConsent(false);
+    setSearchAiConsentFor(null);
+    sendToJev.current = false;
     pendingAiSearchKey.current = null;
     aiSearchLocation.current = null;
     setDraft(filters);
@@ -496,6 +503,11 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
   function submitSearch(event: FormEvent) {
     event.preventDefault();
     if (useSearchAi && (!searchAiConsent || !draft.query.trim())) return;
+    if (useSearchAi && searchJevEnabled && /^배경(?:이|은|도)?\s*좋은\s*영화\s*(?:(?:추천|찾아\s*줘|보여\s*줘)(?:요)?)?[.!?\s]*$/u.test(draft.query.trim())) {
+      setClarifyFilmBackground(true);
+      return;
+    }
+    setClarifyFilmBackground(false);
     startSearch(useSearchAi);
   }
 
@@ -748,8 +760,10 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                       <label key={mode} className="flex min-h-[44px] items-center gap-2 rounded-lg border border-[#bac9ae] px-3 has-[:checked]:bg-[#f1f5e8]">
                         <input type="radio" name="vf-search-mode" checked={searchMode === mode} onChange={() => {
                           setSearchMode(mode);
-                          setSearchAiConsent(false);
+                          setSearchAiConsentFor(null);
+                          sendToJev.current = false;
                           setSearchGuideVisible(false);
+                          setClarifyFilmBackground(false);
                           pendingAiSearchKey.current = null;
                           aiSearchLocation.current = null;
                         }} />
@@ -768,16 +782,18 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                   )}
                   {useSearchAi && (
                     <div className="mt-3 rounded-lg bg-[#f7faed] p-3">
-                      <p id="vf-ai-search-help" className="text-base leading-7">검색 문장을 해석하고 관련 곡이나 작품을 찾기 위해 Google Gemini로 전송해요. 개인정보는 입력하지 마세요. <a href={`${haruOrigin}/privacy#video-finder-search-ai`} className="font-semibold underline" target="_blank" rel="noopener noreferrer">정보 전송 안내 ↗</a></p>
+                      <p id="vf-ai-search-help" className="text-base leading-7">검색 문장을 해석하고 관련 곡이나 작품을 찾기 위해 Google Gemini로 전송해요. {searchJevEnabled && '조건을 확인하기 위해 검색 문장, 선택한 관심 분야, 공개 영상 제목·설명을 TypeSafe Jev에도 보내요. '}개인정보는 입력하지 마세요. <a href={`${haruOrigin}/privacy#video-finder-search-ai`} className="font-semibold underline" target="_blank" rel="noopener noreferrer">정보 전송 안내 ↗</a></p>
                       <label className="flex min-h-[44px] items-center gap-2">
                         <input type="checkbox" checked={searchAiConsent} onChange={(event) => {
-                          setSearchAiConsent(event.target.checked);
+                          setSearchAiConsentFor(event.target.checked ? (searchJevEnabled ? 'both' : 'gemini') : null);
                           if (!event.target.checked) {
+                            sendToJev.current = false;
+                            setClarifyFilmBackground(false);
                             pendingAiSearchKey.current = null;
                             aiSearchLocation.current = null;
                           }
                         }} />
-                        Gemini로 검색 문장을 보내는 데 동의해요
+                        {searchJevEnabled ? 'Gemini와 TypeSafe Jev로 보내는 데 동의해요' : 'Gemini로 검색 문장을 보내는 데 동의해요'}
                       </label>
                     </div>
                   )}
@@ -794,6 +810,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                   maxLength={MAX_SEARCH_QUERY_LENGTH}
                   onChange={(event) => {
                     const query = event.target.value;
+                    setClarifyFilmBackground(false);
                     setDraft((previous) => {
                       const leavingTopic = !previous.query.trim() && previous.category !== ALL_TOPICS;
                       const sort = leavingTopic && previous.sort === 'date' ? DEFAULT_FILTERS.sort : previous.sort;
@@ -812,6 +829,24 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                 <button type="submit" disabled={useSearchAi && (!searchAiConsent || !draft.query.trim())} className={`${btnPrimary} min-h-[52px] flex-[0_0_auto] self-start px-6 text-lg disabled:opacity-50`}>찾기</button>
               </div>
               <p id="vf-query-help" className="mt-2 text-base leading-7 text-[#46524a]">원하는 분야가 없거나 더 구체적으로 찾고 싶다면, 찾을 영상을 말하듯 적어 보세요.</p>
+              {clarifyFilmBackground && useSearchAi && searchAiConsent && (
+                <fieldset className="mt-3 rounded-lg bg-[#f7faed] p-3">
+                  <legend className="font-bold">어떤 배경이 좋은 영화를 찾으세요?</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      ['풍경·촬영지', '풍경이나 촬영지가 인상적인 영화 추천'],
+                      ['배경음악', '배경음악이 돋보이는 영화 추천'],
+                    ] as const).map(([label, query]) => (
+                      <button type="button" key={label} className={btnSecondary} onClick={() => {
+                        const filters = { ...draft, query };
+                        setDraft(filters);
+                        setClarifyFilmBackground(false);
+                        startSearch(true, filters);
+                      }}>{label}</button>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
 
               <details className="mt-4 rounded-xl border border-[#dce3d2] bg-[#fbfcf6] p-3" open={draft.minSubscribers !== 0 || draft.period !== 'all' || draft.duration !== 'any' || draft.sort === 'viewCount' || draft.sort === 'subscribers' ? true : undefined}>
                 <summary className="flex min-h-[44px] cursor-pointer items-center text-base font-bold">조건 더 고르기 (구독자·기간·길이·순서)</summary>
@@ -886,6 +921,7 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                                 <p className="mt-1 text-base font-bold text-[#285843]">{index + 1}위 · 좋아요 {formatCount(video.likes)}</p>
                               )}
                               <h3 className="mt-2 break-words text-lg font-bold leading-7">{video.title}</h3>
+                              {video.searchEvidence && <p className="mt-1 break-words text-sm text-[#46524a]">영상에 표시된 근거 · {video.searchEvidence}</p>}
                               <MetaLine meta={video} />
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <WatchLink videoId={video.videoId} title={video.title} />

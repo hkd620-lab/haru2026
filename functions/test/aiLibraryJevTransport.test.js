@@ -10,7 +10,7 @@ function loadSource(name) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2019 },
   }).outputText;
   vm.runInThisContext(`(function(require,exports){${code}\n})`)(id => {
-    if (['./aiLibraryJevChoice', './aiLibraryCategory'].includes(id)) return loadSource(id.slice(2));
+    if (['./aiLibraryJevChoice', './aiLibraryCategory', './aiLibraryJevTransport'].includes(id)) return loadSource(id.slice(2));
     throw new Error(`Unexpected dependency: ${id}`);
   }, exports);
   return exports;
@@ -20,6 +20,41 @@ const { buildJevChoiceRequest, classifyApprovedText } = loadSource('aiLibraryJev
 const request = () => buildJevChoiceRequest('synthetic public AI technology article');
 const syntheticKey = 'synthetic-test-token-not-a-credential';
 const json = (body = '{}', options = {}) => new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8' }, ...options });
+
+test('영상 결과 판정은 후보 묶음을 한 번 보내고 불확실한 Noul을 보류한다', async () => {
+  const { createVideoFinderSearchJudge } = loadSource('videoFinderSearchJudge');
+  const calls = [];
+  const judge = createVideoFinderSearchJudge({
+    fetchImpl: async (_url, init) => {
+      calls.push(JSON.parse(init.body));
+      return json(JSON.stringify({ answers: {
+        video_0: { type: 'noul', noul: 0.91 },
+        video_1: { type: 'noul', noul: 0.51 },
+        video_2: { type: 'noul', noul: '0.99' },
+      } }));
+    },
+    getApiKey: () => syntheticKey,
+    isRuntimePermitted: () => true,
+  });
+  const videos = [
+    { videoId: 'v1', title: 'English subtitles', description: 'French chanson' },
+    { videoId: 'v2', title: 'Playlist', description: '' },
+    { videoId: 'v3', title: 'Other', description: '' },
+  ];
+  assert.deepEqual(await judge({ query: '영어 자막 샹송', videos }), ['v1']);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].questions.video_1.type, 'noul');
+  assert.deepEqual(JSON.parse(calls[0].state).videos[0], { index: 0, title: videos[0].title, description: videos[0].description });
+  const longVideos = Array.from({ length: 12 }, (_, index) => ({
+    videoId: `long-${index}`, title: '한국영화가'.repeat(18), description: '영상설명문장'.repeat(50),
+  }));
+  assert.deepEqual(await judge({ query: '풍경이 좋은 영화', videos: longVideos }), ['long-0']);
+  assert.equal(calls.length, 2);
+  assert(Buffer.byteLength(JSON.stringify(calls[1])) <= 24000);
+  const submittedVideos = JSON.parse(calls[1].state).videos;
+  assert(submittedVideos.length > 0 && submittedVideos.length < longVideos.length);
+  assert.equal(Object.keys(calls[1].questions).length, submittedVideos.length);
+});
 function fixture(extra = {}) {
   const calls = [];
   let reads = 0;

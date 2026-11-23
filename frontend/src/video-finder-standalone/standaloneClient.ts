@@ -1,6 +1,6 @@
 // videos.haru2026.com 전용 서버 호출. Firebase SDK·HARU 로그인 없이 videoFinderStandalone 한 곳만 부른다.
 // 전용 세션은 요청 본문에만 싣는다(주소·머리글·로그에 남기지 않음). Firebase 호출 규약(POST {data} → {result}|{error})을 그대로 쓴다.
-import { SEARCH_AI_CONSENT_VERSION, type VideoFinderAccess, type VideoFinderClient, type VideoQuestionAnswer } from '../app/videoFinder/videoFinderModel';
+import { SEARCH_AI_CONSENT_VERSION, SEARCH_JEV_CONSENT_VERSION, type VideoFinderAccess, type VideoFinderClient, type VideoQuestionAnswer } from '../app/videoFinder/videoFinderModel';
 
 export const STANDALONE_FUNCTION_NAME = 'videoFinderStandalone';
 const FUNCTIONS_REGION = 'asia-northeast3';
@@ -57,8 +57,8 @@ export function createStandaloneClient(call: ReturnType<typeof createStandaloneC
     acceptAiConsent: (version) => call<VideoFinderAccess>('access', { action: 'acceptAiConsent', version }),
     revokeAiConsent: () => call<VideoFinderAccess>('access', { action: 'revokeAiConsent' }),
     askQuestion: (request) => call<VideoQuestionAnswer>('access', { action: 'ask', ...request }),
-    searchVideos: (filters, pageToken, useAi) => call('search', {
-      filters, ...(pageToken ? { pageToken } : {}), ...(useAi ? { searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION } : {}),
+    searchVideos: (filters, pageToken, useAi, useJudge) => call('search', {
+      filters, ...(pageToken ? { pageToken } : {}), ...(!pageToken && useAi ? { searchAiConsentVersion: useJudge ? SEARCH_JEV_CONSENT_VERSION : SEARCH_AI_CONSENT_VERSION } : {}),
     }),
     resetSearchQuota: () => call('access', { action: 'resetSearchQuota' }),
     listSaved: () => library({ action: 'list' }),

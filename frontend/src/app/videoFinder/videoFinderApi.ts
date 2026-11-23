@@ -2,7 +2,7 @@
 // UID는 서버가 로그인 정보에서 정한다. 독립 주소는 이 파일을 쓰지 않는다(standaloneClient.ts 사용).
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
-import { SEARCH_AI_CONSENT_VERSION, type SearchFilters, type SearchResult, type VideoFinderAccess, type VideoFinderClient, type VideoQuestionAnswer } from './videoFinderModel';
+import { SEARCH_AI_CONSENT_VERSION, SEARCH_JEV_CONSENT_VERSION, type SearchFilters, type SearchResult, type VideoFinderAccess, type VideoFinderClient, type VideoQuestionAnswer } from './videoFinderModel';
 
 export type { SearchResult } from './videoFinderModel';
 
@@ -20,8 +20,8 @@ export const haruVideoFinderClient: VideoFinderClient = {
   acceptAiConsent: (version) => access<VideoFinderAccess>({ action: 'acceptAiConsent', version }),
   revokeAiConsent: () => access<VideoFinderAccess>({ action: 'revokeAiConsent' }),
   askQuestion: (request) => access<VideoQuestionAnswer>({ action: 'ask', ...request }),
-  async searchVideos(filters, pageToken, useAi) {
-    return (await searchCallable({ filters, ...(pageToken ? { pageToken } : {}), ...(useAi ? { searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION } : {}) })).data;
+  async searchVideos(filters, pageToken, useAi, useJudge) {
+    return (await searchCallable({ filters, ...(pageToken ? { pageToken } : {}), ...(!pageToken && useAi ? { searchAiConsentVersion: useJudge ? SEARCH_JEV_CONSENT_VERSION : SEARCH_AI_CONSENT_VERSION } : {}) })).data;
   },
   resetSearchQuota: () => access<{ remainingSearches: number }>({ action: 'resetSearchQuota' }),
   listSaved: () => library({ action: 'list' }),

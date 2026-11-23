@@ -196,15 +196,19 @@ test('전용 주소의 동의와 영상 질문은 같은 세션으로 서버 권
 });
 
 test('독립 사이트도 AI 검색에 동의한 첫 페이지에만 동의 버전을 보내고 초기화 대상 계정을 보내지 않는다', async () => {
-  const f = fakeFetch([{}, {}, { remainingSearches: 20 }].map((result) => ({ body: { result } })));
+  const f = fakeFetch([{}, {}, {}, {}, { remainingSearches: 20 }].map((result) => ({ body: { result } })));
   const client = createStandaloneClient(createStandaloneCaller(standaloneEndpoint('demo-project'), () => ISSUED.session, f.impl));
   const filters = { ...DEFAULT_FILTERS, query: '최근 2주 부산 치과 소식' };
   await client.searchVideos(filters);
   await client.searchVideos(filters, undefined, true);
+  await client.searchVideos(filters, undefined, true, true);
+  await client.searchVideos(filters, 'NEXT1', true, true);
   assert.equal((await client.resetSearchQuota()).remainingSearches, 20);
   assert.deepEqual(f.calls.map(({ init }) => JSON.parse(init.body).data.payload), [
     { filters },
     { filters, searchAiConsentVersion: 1 },
+    { filters, searchAiConsentVersion: 2 },
+    { filters, pageToken: 'NEXT1' },
     { action: 'resetSearchQuota' },
   ]);
 });
