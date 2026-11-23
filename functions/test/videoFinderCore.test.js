@@ -119,12 +119,12 @@ function fakeYouTube({ searchPages = [], details } = {}) {
       i += 1;
       return typeof page === 'function' ? page(params) : page;
     },
-    async videoDetails(ids, scope) {
+    async videoDetails(ids, scope, candidates) {
       calls.details.push(ids);
       if (this.gate) await this.gate;
       const out = {};
       for (const id of ids) {
-        const m = details ? details(id, scope) : meta(id);
+        const m = details ? details(id, scope, candidates) : meta(id);
         if (m) out[id] = m;
       }
       return out;
@@ -298,12 +298,14 @@ test('영어 자막 샹송 검색은 AI가 빠뜨린 조건을 유지하고 조�
     { title: '한국 노래를 소개하는 영상', description: '영어 자막' },
     { title: 'Tombe la Neige | 샹송', description: '한국어 자막' },
     { title: 'La Vie en rose | French chanson', description: 'English subtitles not available' },
-    { title: 'Non, je ne regrette rien | French chanson', description: 'With English subtitles' },
+    { title: '« LA VIE EN ROSE » (English subtitles) by Édith Piaf' },
     { title: 'La Bohème | 샹송 · 영문 자막' },
     { title: '샹송', description: 'English subtitles are not available.' },
     { title: '샹송', description: '영어 자막은 제공하지 않습니다.' },
+    { title: 'Les Champs-Élysées · English subtitles', description: 'Cover by a pop band' },
+    { title: 'Les Champs-Élysées · Joe Dassin', description: 'English subtitles not provided' },
   ];
-  const likes = [97000, 49000, 32000, 400, 900, 95000, 96000];
+  const likes = [97000, 49000, 32000, 400, 900, 95000, 96000, 98000, 99000];
   const ids = snippets.map((_, index) => vid(index));
   const raw = Object.fromEntries(snippets.map((snippet, index) => [ids[index], {
     id: ids[index], snippet, statistics: { likeCount: String(likes[index]) },
@@ -318,15 +320,17 @@ test('영어 자막 샹송 검색은 AI가 빠뜨린 조건을 유지하고 조�
   });
   const filters = { ...baseFilters, query: '영어 자막 볼수있는 상송', sort: 'likeCount' };
   const found = await svc.search('uidA', { filters, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
-  assert.equal(yt.calls.search[0].q, '영어 자막 볼수있는 샹송');
+  assert.match(yt.calls.search[0].q, /^French chanson English subtitles\|La Vie en Rose Edith Piaf English subtitles\|/);
+  assert.match(yt.calls.search[0].q, /Les Champs Elysees Joe Dassin English subtitles/);
+  assert.equal(yt.calls.search[0].relevanceLanguage, 'en');
   assert.equal(yt.calls.search[0].order, 'relevance');
   assert.deepEqual(found.videos.map((video) => video.videoId), [ids[4], ids[3]]);
-  assert.match(found.notice, /제목과 설명에서 샹송과 영어 자막/);
+  assert.match(found.notice, /곡명·가수로 샹송을 찾고/);
   assert.match(found.notice, /YouTube에서 확인/);
   assert.equal(found.nextPageToken, null);
 
   const empty = await svc.search('uidA', { filters });
-  assert.equal(yt.calls.search[1].q, '영어 자막 볼수있는 샹송');
+  assert.equal(yt.calls.search[1].q, yt.calls.search[0].q);
   assert.deepEqual(empty.videos, []);
   assert.match(empty.notice, /최대 10개/);
 
@@ -334,8 +338,45 @@ test('영어 자막 샹송 검색은 AI가 빠뜨린 조건을 유지하고 조�
   assert.equal(yt.calls.search[2].q, '샹송 -영어자막');
   assert.equal(excluded.videos.length, ids.length);
   const pop = await svc.search('uidB', { filters: { ...filters, query: '샹송 말고 영어 자막 팝송' } });
-  assert.doesNotMatch(pop.notice, /샹송과 영어 자막이 모두/);
+  assert.doesNotMatch(pop.notice, /곡명·가수로 샹송을 찾고/);
   assert.equal(pop.videos.length, ids.length);
+  await svc.search('uidB', { filters: { ...filters, query: '영어 자막 샹송 에디트 피아프' } });
+  assert.equal(yt.calls.search[4].q, '영어 자막 샹송 에디트 피아프');
+});
+
+test('Gemini가 제안한 곡명과 가수는 영어 자막 조건과 함께 조회하고 다음 페이지에서도 유지한다', async () => {
+  const model = core.createGeminiVideoClient({
+    apiKey: 'unit-test',
+    fetch: async () => ({
+      ok: true,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: JSON.stringify({
+          query: '샹송 영어 자막', recentDays: 0, movieTitle: '',
+          candidates: [['Amsterdam', 'Jacques Brel'], ['pop|music', 'Unknown']],
+        }) }] } }],
+      }),
+    }),
+  });
+  const matched = { id: vid(60), snippet: { title: 'Amsterdam – Jacques Brel (English subtitles)' } };
+  const yt = fakeYouTube({
+    searchPages: [{ ...items([matched.id]), nextPageToken: 'NEXT1' }, items([matched.id])],
+    details: (_id, scope, candidates) => core.mapVideoItem(matched, scope, candidates),
+  });
+  const svc = createVideoFinderService({ store: memoryStore(), youtube: yt, now: () => NOW,
+    interpretSearch: (_uid, query) => model.interpretSearch(query) });
+  const filters = { ...baseFilters, query: '영어 자막 볼수있는 상송' };
+  const first = await svc.search('uidA', { filters, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
+  assert.match(yt.calls.search[0].q, /Amsterdam Jacques Brel English subtitles/);
+  assert.doesNotMatch(yt.calls.search[0].q, /pop\|music/);
+  assert.equal(first.videos[0].videoId, matched.id);
+  const next = await svc.search('uidA', { filters, pageToken: first.nextPageToken });
+  assert.deepEqual(yt.calls.search[1], { ...yt.calls.search[0], pageToken: 'NEXT1' });
+  assert.equal(next.videos[0].videoId, matched.id);
+  for (const query of ['영어 자막이 있는 샹송', '영어 자막으로 볼 수 있는 샹송', '영어 자막 샹송을 찾아줘']) {
+    const result = await svc.search(query, { filters: { ...filters, query }, searchAiConsentVersion: SEARCH_AI_CONSENT_VERSION });
+    assert.match(yt.calls.search.at(-1).q, /Amsterdam Jacques Brel English subtitles/);
+    assert.equal(result.videos[0].videoId, matched.id);
+  }
 });
 
 test('첫사랑을 주제로 한 한국영화 검색에서는 해외 영화, TV 드라마, 근거 없는 후보를 제외한다', async () => {

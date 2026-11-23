@@ -102,7 +102,7 @@ export function PrivacyPage() {
         <p>HARU 계정에 동의 기록, 지난 검색 조건, 영상 주소, 직접 쓴 메모·태그와 프리미엄 이용량을 연결합니다. 제목·썸네일 등 영상 정보는 필요한 기간 동안 보관하고 30일 이내에 갱신하거나 지웁니다. 작성 중인 메모는 브라우저에도 임시로 남을 수 있습니다.</p>
         <div id="video-finder-search-ai" className="space-y-2">
           <h3 className="font-bold">자연어 검색 정보 전송 안내</h3>
-          <p>‘동의하고 AI로 찾기’를 누르면 검색 문장을 해석하기 위해 Google의 유료 Gemini API에 HTTPS로 전송합니다. 전송 받는 주체와 처리 국가, Google의 55일간 보관 기준은 아래 안내와 같습니다. 검색어에 개인정보를 넣지 마세요. ‘찾기’를 사용하면 이 해석 절차 없이 YouTube에서 찾습니다.</p>
+          <p>‘AI 검색’을 선택하고 전송에 동의한 뒤 ‘찾기’를 누르면 입력한 문장을 해석하고 관련 곡이나 작품을 찾기 위해 Google의 유료 Gemini API에 HTTPS로 전송합니다. 전송받는 주체와 처리 국가, Google의 55일간 보관 기준은 아래 안내와 같습니다. 검색어에 개인정보를 넣지 마세요. 전송에 동의하지 않아도 ‘일반 검색’으로 YouTube에서 찾을 수 있습니다.</p>
         </div>
         <div id="video-finder-ai" className="space-y-2">
           <h3 className="font-bold">프리미엄 영상 질문 개인정보 국외 이전 안내</h3>

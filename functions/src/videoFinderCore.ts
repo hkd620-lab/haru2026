@@ -332,7 +332,32 @@ const ENGLISH_SUBTITLE_LABEL = /(?:영어|영문)\s*자막|\benglish[-\s]+(?:sub
 const NO_ENGLISH_SUBTITLES = /(?:영어|영문)\s*자막\s*(?:은|이|을|는)?\s*(?:없|미제공|미지원|(?:제공|지원)(?:하지|되지)\s*않|제외|말고|빼고)|\b(?:no|without)\s+english[-\s]+(?:subtitles?|subs|captions?|cc)\b|\benglish[-\s]+(?:subtitles?|subs|captions?|cc)\s+(?:(?:are|is)\s+)?(?:unavailable|not\s+(?:available|provided))\b/iu;
 const EXCLUDES_CHANSON = /(?:샹송|\bchansons?\b)\s*(?:은|을|이|이랑)?\s*(?:말고|제외|빼고|빼줘|아닌)|\b(?:without|except|excluding|not)\s+(?:french\s+)?chansons?\b/iu;
 const CHANSON_TYPO = /(?<![가-힣])상송(?=$|[^가-힣]|을|이|은|만)/gu;
+const CHANSON_STANDARDS = [
+  ['La Vie en Rose', 'Edith Piaf'],
+  ['Ne Me Quitte Pas', 'Jacques Brel'],
+  ['Les Feuilles Mortes', 'Yves Montand'],
+  ['Les Champs Elysees', 'Joe Dassin'],
+  ['Non Je Ne Regrette Rien', 'Edith Piaf'],
+] as const;
+type SearchCandidate = readonly [title: string, creator: string];
+const GENERIC_CHANSON_WORDS = /^(?:(?:프랑스(?:어)?|볼\s*수\s*있(?:는|게)|있는|달린|명곡|추천|명곡들|노래|영상|듣기\s*좋은|모음|with|french|songs?|classics?)\s*)*$/iu;
+const CHANSON_QUERY_LABEL = /샹송(?:을|이|은|만)?|\bchansons?\b/iu;
+const ENGLISH_SUBTITLE_QUERY_LABEL = /(?:영어|영문)\s*자막(?:으로|을|이|은|만)?|\benglish[-\s]+(?:subtitles?|subs|captions?|cc)\b/iu;
 type VideoSearchScope = 'korean-film' | 'korean-first-love-film' | 'chanson-english-subtitles';
+
+function chansonMetadataWords(text: string): string {
+  return ` ${text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()} `;
+}
+
+function matchesChanson(title: string, description: string, candidates: readonly SearchCandidate[]): boolean {
+  if (CHANSON_LABEL.test(title) || CHANSON_LABEL.test(description)) return true;
+  const titleWords = chansonMetadataWords(title);
+  const descriptionWords = chansonMetadataWords(description);
+  return [...CHANSON_STANDARDS, ...candidates].some(([song, artist]) =>
+    titleWords.includes(chansonMetadataWords(song))
+    && [titleWords, descriptionWords].some((words) => words.includes(chansonMetadataWords(artist))),
+  );
+}
 
 function withoutHashtags(text: string): string {
   return text.replace(/#[\p{L}\p{M}\p{N}_-]+/gu, ' ');
@@ -386,7 +411,24 @@ export function normalizeSearchQuery(query: string): string {
   return keywords.replace(/[가-힣]+/gu, (word) => SEARCH_WORD_CORRECTIONS.get(word) ?? word);
 }
 
-type SearchIntent = { query: string; recentDays: number; movieTitle?: string };
+type SearchIntent = { query: string; recentDays: number; movieTitle?: string; candidates?: SearchCandidate[] };
+
+function parseSearchCandidates(raw: unknown, base: SearchIntent): SearchIntent {
+  if (!Array.isArray(raw)) return base;
+  const candidates: SearchCandidate[] = [];
+  for (const item of raw.slice(0, 3)) {
+    if (!Array.isArray(item) || item.length !== 2) continue;
+    const [title, creator] = item.map((part) => typeof part === 'string' ? part.normalize('NFC').trim() : '');
+    if (![title, creator].every((part) => part.length <= 64 && /[\p{L}\p{N}]/u.test(part)
+      && !/[\p{Cc}\p{Cf}]/u.test(part) && !hasSearchOperators(part))) continue;
+    const next = [...candidates, [title, creator] as const];
+    // 다음 페이지의 기존 커서 크기 제한을 넘지 않게 한다.
+    if (Buffer.byteLength(JSON.stringify({ ...base, candidates: next }), 'utf8') <= 825) {
+      candidates.push([title, creator]);
+    }
+  }
+  return candidates.length ? { ...base, candidates } : base;
+}
 
 function parseSearchIntent(raw: unknown, plotLookup = false): SearchIntent | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -398,7 +440,7 @@ function parseSearchIntent(raw: unknown, plotLookup = false): SearchIntent | nul
     ? Number(value.recentDays) : 0;
   const movieTitle = typeof value.movieTitle === 'string' ? value.movieTitle.normalize('NFC').replace(/\s+/g, ' ').trim() : '';
   if (movieTitle.length > 80 || !/[\p{L}\p{N}]/u.test(movieTitle)
-    || /[\p{Cc}\p{Cf}]/u.test(movieTitle) || hasSearchOperators(movieTitle)) return { query, recentDays };
+    || /[\p{Cc}\p{Cf}]/u.test(movieTitle) || hasSearchOperators(movieTitle)) return parseSearchCandidates(value.candidates, { query, recentDays });
   const exclusionPattern = /(?:^|\s)-(?:"[^"]+"|[^\s"]+)(?=\s|$)/gu;
   const escapedTitle = movieTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const titlePattern = new RegExp(String.raw`(?<![\p{L}\p{M}\p{N}])${escapedTitle}(?![\p{L}\p{M}\p{N}])`, 'iu');
@@ -541,7 +583,7 @@ export function sanitizeVideoMeta(raw: unknown): VideoMeta {
 }
 
 // videos.list 응답 1건을 VideoMeta로 바꾼다. 구독자 수는 channels.list 뒤에 채운다.
-export function mapVideoItem(item: unknown, scope?: VideoSearchScope): VideoMeta | null {
+export function mapVideoItem(item: unknown, scope?: VideoSearchScope, candidates: readonly SearchCandidate[] = []): VideoMeta | null {
   const it = item as { id?: unknown; snippet?: any; statistics?: any; contentDetails?: any } | null;
   if (!it || typeof it.id !== 'string' || !VIDEO_ID_RE.test(it.id)) return null;
   const snippet = it.snippet || {};
@@ -550,7 +592,7 @@ export function mapVideoItem(item: unknown, scope?: VideoSearchScope): VideoMeta
     const description = cleanText(snippet.description, 5000).normalize('NFC');
     if (scope === 'chanson-english-subtitles') {
       const summary = `${title}\n${description}`;
-      if (!CHANSON_LABEL.test(summary) || !ENGLISH_SUBTITLE_LABEL.test(summary) || NO_ENGLISH_SUBTITLES.test(summary)) return null;
+      if (!matchesChanson(title, description, candidates) || !ENGLISH_SUBTITLE_LABEL.test(summary) || NO_ENGLISH_SUBTITLES.test(summary)) return null;
     } else {
       const tags: unknown[] = Array.isArray(snippet.tags) ? snippet.tags : [];
       if (!matchesKoreanFilmMaterial(title, description, tags)) return null;
@@ -844,7 +886,7 @@ export interface VideoFinderStore {
 
 export interface YouTubeClient {
   search(params: Record<string, string>): Promise<SearchResponse>;
-  videoDetails(videoIds: string[], scope?: VideoSearchScope): Promise<Record<string, VideoMeta>>;
+  videoDetails(videoIds: string[], scope?: VideoSearchScope, candidates?: readonly SearchCandidate[]): Promise<Record<string, VideoMeta>>;
 }
 
 export type VideoFinderDeps = {
@@ -895,6 +937,28 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     }
     const searchFilters = { ...filters, query: searchQuery };
     const { params, dateRelevance: startedAsDateRelevance } = buildSearchParams(searchFilters, pageToken, nowMs);
+    const originalChansonQuery = normalizeSearchQuery(filters.query.replace(CHANSON_TYPO, '샹송'));
+    const broadChanson = scope === 'chanson-english-subtitles'
+      && (filters.category === ALL_TOPICS || /^샹송$|^상송$/u.test(filters.category))
+      && GENERIC_CHANSON_WORDS.test(originalChansonQuery.replace(CHANSON_QUERY_LABEL, '').replace(ENGLISH_SUBTITLE_QUERY_LABEL, '').trim());
+    const candidates = intent?.candidates ?? [];
+    if (broadChanson) {
+      // 일반 장르 검색에도 곡명으로 등록된 영상을 같은 YouTube 요청에서 찾는다.
+      const queries = ['French chanson English subtitles'];
+      for (const [song, artist] of [...candidates, ...CHANSON_STANDARDS]) {
+        const term = `${song} ${artist} English subtitles`;
+        if (!queries.includes(term) && queries.join('|').length + term.length + 1 <= 300) queries.push(term);
+      }
+      params.q = queries.join('|');
+      params.relevanceLanguage = 'en';
+    } else if (scope !== 'chanson-english-subtitles' && params.q && !hasSearchOperators(params.q)) {
+      // 각 후보가 원래 검색 조건을 함께 갖도록 하고, 기존 요청 크기 한도를 유지한다.
+      const base = params.q;
+      for (const [title, creator] of candidates) {
+        const term = `${base} ${title} ${creator}`;
+        if (params.q.length + term.length + 1 <= 300) params.q += `|${term}`;
+      }
+    }
     const recentDays = filters.period === 'all' ? intent?.recentDays ?? 0 : 0;
     if (recentDays) {
       const today = kstDayStartUtcMs(dayKey(nowMs, USER_QUOTA_TIME_ZONE));
@@ -929,7 +993,7 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
       }
     }
 
-    const details = ids.length ? await youtube.videoDetails(ids, scope) : {};
+    const details = ids.length ? await youtube.videoDetails(ids, scope, broadChanson ? candidates : undefined) : {};
     const videos = filterAndSortVideos(ids.map((id) => details[id]).filter(Boolean) as VideoMeta[], filters);
     const upstreamNext = nextToken ? (dateRelevance ? DATE_RELEVANCE_CURSOR + nextToken : nextToken) : null;
     const next = upstreamNext && intent
@@ -960,7 +1024,7 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
       ? '한국 영화로 표시된 영상 중 추천 목록은 한국 영화로 범위가 명시된 것만 골랐어요. 분류 정보가 부족한 영상은 빠질 수 있어요. ' : '';
     const themeNotice = scope === 'korean-first-love-film' ? '제목이나 설명에서 첫사랑이 확인된 영상만 보여드려요. ' : '';
     const captionNotice = scope === 'chanson-english-subtitles'
-      ? '제목과 설명에서 샹송과 영어 자막이 모두 표시된 영상만 골랐어요. 재생할 때 영어 자막을 볼 수 있는지는 YouTube에서 확인해 주세요. ' : '';
+      ? '샹송 표기 또는 곡명·가수로 샹송을 찾고, 제목이나 설명에 영어 자막이 표시된 영상만 골랐어요. 재생할 때 영어 자막을 볼 수 있는지는 YouTube에서 확인해 주세요. ' : '';
     const likesNotice = filters.sort === 'likeCount'
       ? (captionNotice ? '이 조건에 맞는 후보 중 공개 좋아요 수가 많은 영상 최대 10개예요. '
         : 'YouTube 검색 후보 중 공개 좋아요 수가 많은 영상 최대 10개예요. ') : '';
@@ -1822,6 +1886,7 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
           '예: 꿈 속에 들어가 기업 후계자에게 생각을 심는 영화 → {"matchedClues":["꿈에 들어가 의식에 접근","기업 후계자의 머릿속에 생각을 심는 임무"],"movieTitle":"인셉션","query":"인셉션 영화","recentDays":0}',
           '두 단서를 확인할 수 없거나 여러 작품을 찾는 요청이면 matchedClues는 빈 배열, movieTitle은 빈 문자열로 두고 원문의 특징적인 단서를 query에 보존합니다. 입력과 무관한 주제나 실제로 없는 제목을 추가하지 않습니다.',
           '일반 검색에서 불확실한 고유명사는 추측해 바꾸지 않습니다. 일수로 바꿀 수 없는 날짜는 query에 남깁니다.',
+          '조건을 만족하는 노래나 작품을 추천해 달라는 요청이면 candidates에 아는 실제 작품을 최대 세 개까지 [원제, 가수 또는 창작자] 쌍으로 제안합니다. 영어 자막 샹송 요청에는 프랑스어 샹송의 원제와 가수를 쓰고 영상 URL이나 자막 유무를 추측하지 않습니다. 특정 제목을 이미 요청했거나 확신이 없으면 candidates를 생략합니다.',
           'query에는 검색어만 160자 이내로 쓰고, 명시한 제외 조건은 -용어 형식으로 적습니다. 명시적인 최근 기간만 recentDays(1~365)로 바꾸고 해당 표현을 query에서 뺍니다. 기간을 특정하지 않았으면 0입니다.',
           ...(plotLookup ? ['드라마의 줄거리도 동일한 기준으로 확인하고, 드라마가 맞으면 query에 드라마라고 적습니다.'] : []),
         ].join('\n') }] },
@@ -1838,6 +1903,7 @@ export function createGeminiVideoClient(opts: { apiKey: string; fetch?: GeminiFe
               movieTitle: { type: 'STRING' },
               query: { type: 'STRING' },
               recentDays: { type: 'INTEGER' },
+              candidates: { type: 'ARRAY', maxItems: 3, items: { type: 'ARRAY', items: { type: 'STRING' }, minItems: 2, maxItems: 2 } },
             },
             required: ['matchedClues', 'movieTitle', 'query', 'recentDays'],
           },

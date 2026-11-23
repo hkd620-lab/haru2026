@@ -340,6 +340,10 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
   const [topicError, setTopicError] = useState('');
   const topics = [...new Set([ALL_TOPICS, ...VIDEO_FINDER_TOPICS, ...customTopics, draft.category])];
   const [formError, setFormError] = useState('');
+  const [searchMode, setSearchMode] = useState<'plain' | 'ai'>('plain');
+  const [searchAiConsent, setSearchAiConsent] = useState(false);
+  const [searchGuideVisible, setSearchGuideVisible] = useState(true);
+  const useSearchAi = access.searchAiEnabled && searchMode === 'ai';
   const [searchState, setSearchState] = useState<SearchState | null>(null);
   const [remainingSearches, setRemainingSearches] = useState<number | null>(null);
 
@@ -452,6 +456,10 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
 
   function selectTopic(category: string) {
     const filters = { ...DEFAULT_FILTERS, category, sort: category === ALL_TOPICS ? 'relevance' : 'date' };
+    setSearchMode('plain');
+    setSearchAiConsent(false);
+    pendingAiSearchKey.current = null;
+    aiSearchLocation.current = null;
     setDraft(filters);
     if (category === ALL_TOPICS) {
       setFormError('');
@@ -487,7 +495,8 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
 
   function submitSearch(event: FormEvent) {
     event.preventDefault();
-    startSearch(false);
+    if (useSearchAi && (!searchAiConsent || !draft.query.trim())) return;
+    startSearch(useSearchAi);
   }
 
   async function resetSearchQuota() {
@@ -703,10 +712,10 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                       {topic}
                     </button>
                   ))}
-                  <button type="button" className={btnSecondary} aria-pressed={urlFilters.sort === 'likeCount'} onClick={() => {
+                  <button type="button" className={btnSecondary} aria-pressed={(useSearchAi ? draft.sort : urlFilters.sort) === 'likeCount'} onClick={() => {
                     const filters = { ...draft, sort: 'likeCount' };
                     setDraft(filters);
-                    startSearch(false, filters);
+                    if (!useSearchAi) startSearch(false, filters);
                   }}>좋아요 TOP 10</button>
                   <button type="button" className={btnSecondary} aria-expanded={addingTopic} onClick={() => {
                     setAddingTopic(!addingTopic);
@@ -731,7 +740,50 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                 )}
               </fieldset>
 
-              <label htmlFor="vf-query" className="mt-5 block text-lg font-bold">무엇을 찾을까요?</label>
+              {access.searchAiEnabled && (
+                <fieldset className="mt-5">
+                  <legend className="sr-only">검색 방식</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {(['plain', 'ai'] as const).map((mode) => (
+                      <label key={mode} className="flex min-h-[44px] items-center gap-2 rounded-lg border border-[#bac9ae] px-3 has-[:checked]:bg-[#f1f5e8]">
+                        <input type="radio" name="vf-search-mode" checked={searchMode === mode} onChange={() => {
+                          setSearchMode(mode);
+                          setSearchAiConsent(false);
+                          setSearchGuideVisible(false);
+                          pendingAiSearchKey.current = null;
+                          aiSearchLocation.current = null;
+                        }} />
+                        {mode === 'ai' ? 'AI 검색' : '일반 검색'}
+                      </label>
+                    ))}
+                  </div>
+                  {searchGuideVisible && (
+                    <div className="mt-2 flex items-start justify-between gap-2 rounded-lg bg-[#f7faed] px-3 py-2">
+                      <div role="status" className="text-base leading-7">
+                        <p><strong>일반 검색</strong> · 곡명이나 영상 제목을 알 때</p>
+                        <p><strong>AI 검색</strong> · 제목을 모르고 조건이나 줄거리로 찾을 때</p>
+                      </div>
+                      <button type="button" className={btnSecondary} aria-label="검색 방식 안내 닫기" onClick={() => setSearchGuideVisible(false)}>닫기</button>
+                    </div>
+                  )}
+                  {useSearchAi && (
+                    <div className="mt-3 rounded-lg bg-[#f7faed] p-3">
+                      <p id="vf-ai-search-help" className="text-base leading-7">검색 문장을 해석하고 관련 곡이나 작품을 찾기 위해 Google Gemini로 전송해요. 개인정보는 입력하지 마세요. <a href={`${haruOrigin}/privacy#video-finder-search-ai`} className="font-semibold underline" target="_blank" rel="noopener noreferrer">정보 전송 안내 ↗</a></p>
+                      <label className="flex min-h-[44px] items-center gap-2">
+                        <input type="checkbox" checked={searchAiConsent} onChange={(event) => {
+                          setSearchAiConsent(event.target.checked);
+                          if (!event.target.checked) {
+                            pendingAiSearchKey.current = null;
+                            aiSearchLocation.current = null;
+                          }
+                        }} />
+                        Gemini로 검색 문장을 보내는 데 동의해요
+                      </label>
+                    </div>
+                  )}
+                </fieldset>
+              )}
+              <label htmlFor="vf-query" className="mt-4 block text-lg font-bold">무엇을 찾을까요?</label>
               <div className="mt-2 flex flex-wrap gap-2">
                 <textarea
                   id="vf-query"
@@ -751,21 +803,15 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
                   onKeyDown={(event) => {
                     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing || event.keyCode === 229) return;
                     event.preventDefault();
-                    startSearch(false);
+                    event.currentTarget.form?.requestSubmit();
                   }}
-                  aria-describedby="vf-query-help"
+                  aria-describedby={useSearchAi ? 'vf-ai-search-help vf-query-help' : 'vf-query-help'}
                   aria-invalid={formError ? true : undefined}
                   className={`${fieldClass} min-h-[52px] flex-[1_1_14rem] resize-y text-lg`}
                 />
-                <button type="submit" className={`${btnPrimary} min-h-[52px] flex-[0_0_auto] self-start px-6 text-lg`}>찾기</button>
+                <button type="submit" disabled={useSearchAi && (!searchAiConsent || !draft.query.trim())} className={`${btnPrimary} min-h-[52px] flex-[0_0_auto] self-start px-6 text-lg disabled:opacity-50`}>찾기</button>
               </div>
               <p id="vf-query-help" className="mt-2 text-base leading-7 text-[#46524a]">원하는 분야가 없거나 더 구체적으로 찾고 싶다면, 찾을 영상을 말하듯 적어 보세요.</p>
-              {access.searchAiEnabled && (
-                <div className="mt-3 rounded-lg bg-[#f7faed] p-3">
-                  <p id="vf-ai-search-help" className="mb-2 text-base leading-7">긴 문장을 검색어로 정리하거나 줄거리에서 영화 제목을 찾기 위해 Google Gemini에 보내요. 개인정보는 적지 마세요. <a href={`${haruOrigin}/privacy#video-finder-search-ai`} className="font-semibold underline" target="_blank" rel="noopener noreferrer">정보 전송 안내 ↗</a></p>
-                  <button type="button" className={btnSecondary} aria-describedby="vf-ai-search-help" onClick={() => startSearch(true)} disabled={!draft.query.trim()}>동의하고 AI로 찾기</button>
-                </div>
-              )}
 
               <details className="mt-4 rounded-xl border border-[#dce3d2] bg-[#fbfcf6] p-3" open={draft.minSubscribers !== 0 || draft.period !== 'all' || draft.duration !== 'any' || draft.sort === 'viewCount' || draft.sort === 'subscribers' ? true : undefined}>
                 <summary className="flex min-h-[44px] cursor-pointer items-center text-base font-bold">조건 더 고르기 (구독자·기간·길이·순서)</summary>
@@ -814,7 +860,11 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
 
             {searchState?.status === 'loading' && <p className="mt-6 text-lg">영상을 찾고 있어요…</p>}
             {searchState?.status === 'error' && (
-              <ErrorBox message={searchState.error} onRetry={() => void runSearch(searchKey, urlFilters, true, aiSearchLocation.current === location.key)} />
+              <ErrorBox message={searchState.error} onRetry={
+                !useSearchAi || (searchAiConsent && aiSearchLocation.current === location.key)
+                  ? () => void runSearch(searchKey, urlFilters, true, useSearchAi)
+                  : undefined
+              } />
             )}
             {searchState?.status === 'ready' && (
               <div className="mt-6">
