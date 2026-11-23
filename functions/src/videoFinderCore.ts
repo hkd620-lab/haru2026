@@ -539,6 +539,7 @@ function nextTokenOf(response: SearchResponse | null | undefined): string | null
 
 export type VideoMeta = {
   searchEvidence?: string;
+  searchNeedsReview?: boolean;
   videoId: string;
   title: string;
   channel: string;
@@ -647,16 +648,17 @@ export function mapChannelSubscribers(items: unknown): Record<string, number | n
   return out;
 }
 
-export function filterAndSortVideos(videos: VideoMeta[], filters: SearchFilters): VideoMeta[] {
+export function filterAndSortVideos(videos: VideoMeta[], filters: SearchFilters, priority?: (a: VideoMeta, b: VideoMeta) => number): VideoMeta[] {
   const out = videos.filter((v) => filters.minSubscribers === 0
     || (v.subscribers !== null && v.subscribers >= filters.minSubscribers));
   if (filters.sort === 'likeCount') {
     return out.filter((v): v is VideoMeta & { likes: number } => typeof v.likes === 'number')
-      .sort((a, b) => b.likes - a.likes || b.publishedAt.localeCompare(a.publishedAt) || a.videoId.localeCompare(b.videoId))
+      .sort((a, b) => (priority?.(a, b) || 0) || b.likes - a.likes || b.publishedAt.localeCompare(a.publishedAt) || a.videoId.localeCompare(b.videoId))
       .slice(0, 10);
   }
-  if (filters.sort === 'subscribers') out.sort((a, b) => (b.subscribers ?? -1) - (a.subscribers ?? -1));
-  else if (filters.sort === 'date') out.sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : a.publishedAt > b.publishedAt ? -1 : 0));
+  if (filters.sort === 'subscribers') out.sort((a, b) => (priority?.(a, b) || 0) || (b.subscribers ?? -1) - (a.subscribers ?? -1));
+  else if (filters.sort === 'date') out.sort((a, b) => (priority?.(a, b) || 0) || b.publishedAt.localeCompare(a.publishedAt));
+  else if (priority) out.sort(priority);
   return out;
 }
 
@@ -921,14 +923,34 @@ export type SearchJudgeInput = {
   category?: string;
   videos: Array<Pick<VideoMeta, 'videoId' | 'title' | 'description'> & { referenceGenre?: ReferenceGenre }>;
 };
-export type SearchJudgeResult = string[] | null;
+export type SearchJudgeResult = Array<{ videoId: string; match: number; conflict: number }> | null;
 const SEARCH_JUDGE_LIMIT = 12;
+const SEARCH_JUDGE_HIGH_CONFIDENCE = 0.85;
 const PRIVATE_SEARCH_PATTERN = /[\w.+-]+@[\w.-]+\.[a-z]{2,}|(?:https?:\/\/|www\.)\S+|(?:\+82[- .]?)?0?1[016789][- .]?\d{3,4}[- .]?\d{4}|\d{6}[- ]?[1-8]\d{6}/iu;
 
-function hasEnglishCaptionEvidence(video: VideoMeta, lyricsAllowed: boolean): boolean {
+type EnglishCaptionCondition = 'lyrics' | 'subtitles' | 'both' | 'either';
+
+function englishCaptionCondition(query: string): EnglishCaptionCondition | undefined {
+  const positiveQuery = query.replace(/(?:^|\s)-(?:"[^"]+"|\S+)/gu, ' ');
+  const lyrics = !DENIES_ENGLISH_LYRICS.test(positiveQuery) && ENGLISH_LYRICS_LABEL.exec(positiveQuery);
+  const subtitles = !NO_ENGLISH_SUBTITLES.test(positiveQuery) && ENGLISH_SUBTITLE_LABEL.exec(positiveQuery);
+  if (!lyrics || !subtitles) return lyrics ? 'lyrics' : subtitles ? 'subtitles' : undefined;
+
+  const [first, second] = lyrics.index < subtitles.index ? [lyrics, subtitles] : [subtitles, lyrics];
+  const between = positiveQuery.slice(first.index + first[0].length, second.index);
+  return /^(?:이나|나|거나)(?=\s|$)|또는|혹은|아니면|\/|\bor\b/iu.test(between.trimStart()) ? 'either' : 'both';
+}
+
+function englishCaptionStatus(video: VideoMeta, condition: EnglishCaptionCondition): 'evidence' | 'unknown' | 'conflict' {
   const metadata = `${video.title}\n${video.description}`;
-  return (ENGLISH_SUBTITLE_LABEL.test(metadata) && !NO_ENGLISH_SUBTITLES.test(metadata))
-    || (lyricsAllowed && ENGLISH_LYRICS_LABEL.test(metadata) && !DENIES_ENGLISH_LYRICS.test(metadata));
+  const noLyrics = DENIES_ENGLISH_LYRICS.test(metadata);
+  const noSubtitles = NO_ENGLISH_SUBTITLES.test(metadata);
+  const lyrics = !noLyrics && ENGLISH_LYRICS_LABEL.test(metadata);
+  const subtitles = !noSubtitles && ENGLISH_SUBTITLE_LABEL.test(metadata);
+  if (condition === 'both') return noLyrics || noSubtitles ? 'conflict' : lyrics && subtitles ? 'evidence' : 'unknown';
+  if (condition === 'subtitles') return noSubtitles ? 'conflict' : subtitles ? 'evidence' : 'unknown';
+  if (condition === 'lyrics') return noLyrics && !subtitles ? 'conflict' : lyrics || subtitles ? 'evidence' : 'unknown';
+  return noLyrics && noSubtitles ? 'conflict' : lyrics || subtitles ? 'evidence' : 'unknown';
 }
 
 const SEARCH_NOTICE = '구독자 조건은 YouTube 검색 후보를 받은 뒤 적용해요. 구독자 수를 숨긴 채널은 구독자 조건을 고르면 빠져요.';
@@ -1043,15 +1065,16 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     };
     let matched = await lookup(ids);
     let judgmentNotice = '';
+    let priority: ((a: VideoMeta, b: VideoMeta) => number) | undefined;
     if (judgeSearch) {
-      const positiveQuery = filters.query.replace(/(?:^|\s)-(?:"[^"]+"|\S+)/gu, ' ');
-      const lyricsAllowed = ENGLISH_LYRICS_LABEL.test(positiveQuery) && !DENIES_ENGLISH_LYRICS.test(positiveQuery);
-      const englishRequired = lyricsAllowed
-        || (ENGLISH_SUBTITLE_LABEL.test(positiveQuery) && !NO_ENGLISH_SUBTITLES.test(positiveQuery));
+      const captionCondition = englishCaptionCondition(filters.query);
+      const englishRequired = captionCondition !== undefined;
+      const lyricsAllowed = englishRequired && captionCondition !== 'subtitles';
+      const captionStatus = (video: VideoMeta) => captionCondition ? englishCaptionStatus(video, captionCondition) : 'evidence';
       const eligible = (video: VideoMeta) =>
-        (!englishRequired || hasEnglishCaptionEvidence(video, lyricsAllowed))
+        captionStatus(video) !== 'conflict'
         && (filters.minSubscribers === 0 || (video.subscribers !== null && video.subscribers >= filters.minSubscribers));
-      const firstEligible = matched.filter(eligible);
+      const firstEligible = matched.filter((video) => eligible(video) && captionStatus(video) === 'evidence');
       const broadCanzone = (filters.category === ALL_TOPICS || CANZONE_LABEL.test(filters.category))
         && CANZONE_LABEL.test(filters.query)
         && GENERIC_CHANSON_WORDS.test(originalChansonQuery.replace(CANZONE_LABEL, '')
@@ -1094,10 +1117,13 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
       }
       const eligibleVideos = matched.filter(eligible);
       const knownReferences = eligibleVideos.filter(classifyReference);
-      const shortlist = knownReferences.concat(eligibleVideos.filter((video) => !classifyReference(video))).slice(0, SEARCH_JUDGE_LIMIT);
+      const otherCandidates = eligibleVideos.filter((video) => !classifyReference(video));
+      if (englishRequired) otherCandidates.sort((a, b) =>
+        Number(captionStatus(b) === 'evidence') - Number(captionStatus(a) === 'evidence'));
+      const shortlist = knownReferences.concat(otherCandidates).slice(0, SEARCH_JUDGE_LIMIT);
       const verifiedMetadataCount = matched.length;
       try {
-        const accepted = shortlist.length ? await judgeSearch(uid, {
+        const judgments = shortlist.length ? await judgeSearch(uid, {
           query: filters.query,
           ...(filters.category === ALL_TOPICS ? {} : { category: filters.category.replace(new RegExp(PRIVATE_SEARCH_PATTERN.source, 'giu'), '[숨김]') }),
           videos: shortlist.map((video) => ({
@@ -1107,23 +1133,29 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
             referenceGenre: classifyReference(video),
           })),
         }) : [];
-        if (accepted === null) throw new Error('Search judgment unavailable');
-        const approved = new Set(accepted);
-        matched = shortlist.filter(({ videoId }) => approved.has(videoId)).map((video) => {
+        if (judgments === null) throw new Error('Search judgment unavailable');
+        const scores = new Map(judgments.map((judgment) => [judgment.videoId, judgment]));
+        matched = shortlist.flatMap((video) => {
+          const score = scores.get(video.videoId);
+          if (!score || score.conflict >= SEARCH_JUDGE_HIGH_CONFIDENCE) return [];
+          const searchNeedsReview = score.match < SEARCH_JUDGE_HIGH_CONFIDENCE || captionStatus(video) !== 'evidence';
           const pattern = englishRequired
             ? new RegExp(lyricsAllowed ? `${ENGLISH_SUBTITLE_LABEL.source}|${ENGLISH_LYRICS_LABEL.source}` : ENGLISH_SUBTITLE_LABEL.source, 'iu')
             : /배경음악|영화\s*음악|촬영|풍경|\b(?:cinematography|soundtrack|film score|scenery)\b/iu;
           const marked = [video.title, video.description].find((part) => pattern.test(part));
           const offset = marked ? Math.max(0, marked.search(pattern) - 70) : 0;
           const searchEvidence = marked?.slice(offset, offset + 200);
-          return { ...video, description: cleanText(video.description, 300), ...(searchEvidence ? { searchEvidence } : {}) };
+          return [{ ...video, description: cleanText(video.description, 300), searchNeedsReview, ...(searchEvidence ? { searchEvidence } : {}) }];
         });
-        judgmentNotice = 'Jev로 제목과 설명을 확인해 검색 조건과 맞는 영상만 골랐어요. ';
+        priority = (a, b) =>
+          Number(a.searchNeedsReview) - Number(b.searchNeedsReview)
+          || (filters.sort === 'relevance' ? (scores.get(b.videoId)?.match ?? 0) - (scores.get(a.videoId)?.match ?? 0) : 0);
+        judgmentNotice = '조건에 맞는 근거가 뚜렷한 후보를 먼저 보여드려요. ‘조건 확인 필요’는 제목과 설명만으로 일부 조건을 확인하기 어려운 영상이에요. ';
         if (englishRequired) judgmentNotice += '영어 가사·자막 표기는 영상 제목과 설명을 기준으로 확인했어요. ';
         if (!matched.length) judgmentNotice = verifiedMetadataCount === 0
           ? 'YouTube에서 확인할 수 있는 후보 영상을 가져오지 못했어요. '
           : englishRequired && eligibleVideos.length === 0
-            ? `YouTube 후보 ${verifiedMetadataCount}개를 확인했지만 영어 가사·자막 표기 등 선택한 조건에 맞는 후보가 없어 Jev 판정까지 가지 않았어요. `
+            ? `YouTube 후보 ${verifiedMetadataCount}개를 확인했지만 자막이나 구독자 조건에 맞는 후보가 없어 Jev 판정까지 가지 않았어요. `
             : eligibleVideos.length
               ? `YouTube 후보 ${verifiedMetadataCount}개를 찾았지만, 그중 Jev로 확인한 후보에서 조건을 통과한 영상이 없었어요. `
               : `YouTube 후보 ${verifiedMetadataCount}개가 구독자 조건을 충족하지 않아 Jev 판정까지 가지 않았어요. `;
@@ -1132,9 +1164,9 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
       }
       nextToken = null;
     }
-    const videos = filterAndSortVideos(matched, filters);
+    const videos = filterAndSortVideos(matched, filters, priority);
     if (judgeSearch && filters.sort === 'likeCount' && matched.length && !videos.length) {
-      judgmentNotice = 'Jev에서 조건을 통과한 영상은 있지만, 공개 좋아요 수가 없어 좋아요 순위에 표시할 수 없어요. ';
+      judgmentNotice = '검색 후보에 공개 좋아요 수가 없어 좋아요 순위에 표시할 수 없어요. ';
     }
     const upstreamNext = nextToken ? (dateRelevance ? DATE_RELEVANCE_CURSOR + nextToken : nextToken) : null;
     const next = upstreamNext && intent
@@ -1167,7 +1199,8 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
     const captionNotice = !judgeSearch && scope === 'chanson-english-subtitles'
       ? '샹송 표기 또는 곡명·가수로 샹송을 찾고, 제목이나 설명에 영어 자막이 표시된 영상만 골랐어요. 재생할 때 영어 자막을 볼 수 있는지는 YouTube에서 확인해 주세요. ' : '';
     const likesNotice = filters.sort === 'likeCount'
-      ? (captionNotice ? '이 조건에 맞는 후보 중 공개 좋아요 수가 많은 영상 최대 10개예요. '
+      ? (judgeSearch ? '조건 확인 상태가 같은 영상끼리는 공개 좋아요 수가 많은 순서예요. 최대 10개를 보여드려요. '
+        : captionNotice ? '이 조건에 맞는 후보 중 공개 좋아요 수가 많은 영상 최대 10개예요. '
         : 'YouTube 검색 후보 중 공개 좋아요 수가 많은 영상 최대 10개예요. ') : '';
     return {
       videos,

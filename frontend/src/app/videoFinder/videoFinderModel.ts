@@ -150,6 +150,7 @@ export function formatDate(iso: string | null | undefined): string {
 
 export type VideoMeta = {
   searchEvidence?: string;
+  searchNeedsReview?: boolean;
   videoId: string;
   title: string;
   channel: string;
