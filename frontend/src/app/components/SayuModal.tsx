@@ -1768,6 +1768,7 @@ export function SayuModal({
         format: formatKey,
         mode: 'PREMIUM',
         strength,
+        strengthProfile: 'expanded',
         includeAiComment: false,
       });
       if (repolishRequestRef.current !== request) return;

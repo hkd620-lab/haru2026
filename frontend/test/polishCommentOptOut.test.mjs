@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { transformSync } from 'esbuild';
+import { getFormatDisplayName } from '../src/app/records/recordFormatDescriptions.ts';
 import { buildReadingSnapshot, parseReadingAiReference, readingAiReferenceText } from '../src/app/services/readingAiCore.ts';
 
 // Execute actual handlers using fake callables and memory writes, without app/Firebase imports.
@@ -24,6 +25,7 @@ function formatFixture(reading = false) {
     photoEditorSessionRef: { current: 1 }, polishRequestRef: { current: null }, polishPreviewSourceRef: { current: undefined },
     setSayuMode() {}, setPolishStrength: value => { state.strength = value; }, setIsPolishing: value => { state.busy = value; },
     toast: { info() {}, warning() {}, success() {}, error: value => state.errors.push(value) }, console: { error: error => state.errors.push(String(error)) },
+    getFormatDisplayName,
     getFunctions: (_app, region) => { assert.equal(region, 'asia-northeast3'); return {}; },
     httpsCallable: (_functions, name) => { assert.equal(name, 'polishContent'); return async payload => {
       state.requests.push(structuredClone(payload));

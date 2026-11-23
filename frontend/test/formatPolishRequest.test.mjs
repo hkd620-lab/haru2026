@@ -33,7 +33,7 @@ function fixture({ format = '일기', prefix = 'diary', formData = {}, fields = 
     onSave: async data => { state.saved = JSON.parse(JSON.stringify(data)); return data._recordId; },
     navigate: (path, options) => { state.navigation = { path, options }; },
     DIARY_PREMIUM_FIELDS: [{ key: 'diary_a' }, { key: 'diary_b' }],
-    toast, console: { error() {} },
+    getFormatDisplayName: name => name, toast, console: { error() {} },
     setSayuMode: v => { state.mode = v; context.sayuMode = v; }, setIsPolishing: v => { state.busy = v; context.isPolishing = v; },
     setPolishStrength: v => { state.strength = v; },
     setPolishedContent: v => { state.polished = v; context.polishedContent = v; }, setPolishStats: v => { state.stats = v; context.polishStats = v; }, setShowPolishModal: v => { state.modal = v; },
@@ -66,8 +66,9 @@ test('원문은 말투·명령·인용 그대로 원문 표시 사이에 넣고,
   for (const [i, mode] of ['PREMIUM', 'BASIC'].entries()) {
     const { region, name, payload } = f.requests[i];
     assert.deepEqual([region, name], ['asia-northeast3', 'polishContent']);
-    assert.deepEqual(Object.keys(payload).sort(), ['format', 'includeAiComment', 'mode', 'strength', 'text']);
+    assert.deepEqual(Object.keys(payload).sort(), ['format', 'includeAiComment', 'mode', 'strength', 'strengthProfile', 'text']);
     assert.equal(payload.strength, 'WEAK');
+    assert.equal(payload.strengthProfile, 'expanded');
     assert.deepEqual([payload.format, payload.mode, payload.includeAiComment], ['diary', mode, false]);
     assert.equal(between(payload.text), diary);
     assert.ok(payload.text.endsWith(`[원문 시작]\n${diary}\n[원문 끝]`));
