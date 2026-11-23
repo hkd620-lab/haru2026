@@ -1,30 +1,11 @@
 export const CONVERTED_JPEG_MAX_BYTES = 6 * 1024 * 1024;
 export const CONVERT_HEIC_MAX_SERIALIZED_RESPONSE_BYTES = 30 * 1024 * 1024;
 export const HEIC_TEMP_MAX_AGE_MS = 60 * 60 * 1000;
-export const HEIC_UPLOAD_TRANSFORMATION = {
-  width: 2560,
-  height: 2560,
-  crop: 'limit',
-  angle: 'auto',
-  quality: 80,
-  flags: 'strip_profile',
-} as const;
 
 export type ConvertHeicResponse = {
   imageBase64: string;
   contentType: 'image/jpeg';
   url: string;
-};
-
-type CloudinaryUploadResult = {
-  public_id?: string;
-  secure_url?: string;
-};
-
-type ConvertHeicDependencies = {
-  upload: (dataUri: string, publicId: string) => Promise<CloudinaryUploadResult>;
-  download: (url: string, maxBytes: number) => Promise<Buffer>;
-  destroy: (publicId: string) => Promise<void>;
 };
 
 type HeicTempResource = {
@@ -41,19 +22,6 @@ type SweepHeicTempDependencies = {
   list: (nextCursor?: string) => Promise<HeicTempResourcePage>;
   destroy: (publicId: string) => Promise<void>;
 };
-
-async function destroyTemporaryObject(publicId: string, destroy: (publicId: string) => Promise<void>) {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      await destroy(publicId);
-      return;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  throw lastError;
-}
 
 export function buildConvertHeicResponse(jpeg: Buffer): ConvertHeicResponse {
   if (jpeg.length === 0 || jpeg.length > CONVERTED_JPEG_MAX_BYTES) {
@@ -107,23 +75,15 @@ export async function sweepExpiredHeicTempObjects(
   return { deleted, failed };
 }
 
-export async function convertHeicToJpegBase64(
+// 서버 내부 변환 경로. convert는 HEIC 원본 바이트를 받아 메타데이터 없는 JPEG를 돌려준다
+// (index.ts에서 heicLocalConversion.convertHeicBufferToJpeg를 주입).
+export async function convertHeicLocallyToJpegBase64(
   imageBase64: string,
-  temporaryPublicId: string,
-  dependencies: ConvertHeicDependencies,
+  convert: (input: Buffer) => Promise<Buffer>,
 ): Promise<ConvertHeicResponse> {
-  try {
-    const uploaded = await dependencies.upload(`data:image/heic;base64,${imageBase64}`, temporaryPublicId);
-    if (uploaded.public_id && uploaded.public_id !== temporaryPublicId) {
-      throw new Error('Cloudinary temporary object id mismatch');
-    }
-    if (!uploaded.secure_url) {
-      throw new Error('Cloudinary conversion URL is missing');
-    }
-
-    const jpeg = await dependencies.download(uploaded.secure_url, CONVERTED_JPEG_MAX_BYTES);
-    return buildConvertHeicResponse(jpeg);
-  } finally {
-    await destroyTemporaryObject(temporaryPublicId, dependencies.destroy);
+  const jpeg = await convert(Buffer.from(imageBase64, 'base64'));
+  if (!Buffer.isBuffer(jpeg) || jpeg.length < 4 || jpeg[0] !== 0xff || jpeg[1] !== 0xd8) {
+    throw new Error('Local HEIC conversion did not return JPEG data');
   }
+  return buildConvertHeicResponse(jpeg);
 }
