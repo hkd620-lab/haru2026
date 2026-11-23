@@ -485,6 +485,53 @@ test('Jev는 상세 설명 뒷부분의 자막 근거와 사용자가 선택한 
   assert.match(result.videos[0].searchEvidence, /English subtitles are included/);
 });
 
+test('샹송·칸초네의 일반 장르 요청은 검색에 없던 공개 곡 후보를 보강하고 날짜 조건을 존중한다', async () => {
+  const examples = [
+    ['영어 자막 볼수있는 상송', 'EDpYO9FKnT0', 'La Vie en Rose · Édith Piaf (English subtitles)', '', 'chanson'],
+    ['영어 가사를 볼수있는 칸소네', 'qivzSaALee8', 'Nel Blu Dipinto Di Blu', 'Volare di Domenico Modugno with Italian and English Subtitles.', 'canzone'],
+  ];
+  for (const [query, videoId, title, description, genre] of examples) {
+    const raw = meta(videoId, { title, description, likes: 10 });
+    const yt = fakeYouTube({ searchPages: [items([vid(2)])], details: id => id === videoId ? raw : undefined });
+    const called = [];
+    const svc = createVideoFinderService({
+      store: memoryStore(), youtube: yt, now: () => NOW,
+      judgeSearch: async (_uid, input) => {
+        called.push(input);
+        return input.videos.filter(v => v.referenceGenre === genre).map(v => v.videoId);
+      },
+    });
+    const filters = { ...baseFilters, query, sort: 'likeCount' };
+    const request = { filters, searchAiConsentVersion: core.SEARCH_JEV_CONSENT_VERSION };
+    const result = await svc.search('uidA', request);
+    assert.equal(result.videos[0].videoId, videoId);
+    assert.equal(called[0].videos[0].referenceGenre, genre);
+    assert.match(result.videos[0].searchEvidence, /English subtitles/i);
+    assert.equal(yt.calls.search.length, 2);
+    const recent = await svc.search('uidB', { ...request, filters: { ...filters, period: 'today' } });
+    assert.equal(recent.videos.length, 0);
+    assert.match(recent.notice, /후보 영상을 가져오지 못했어요/);
+    assert.equal(called.length, 1);
+  }
+});
+
+test('Jev 판정 전 후보 부족과 판정 후 공개 좋아요 부족을 구별한다', async () => {
+  const movie = meta(vid(10), { title: '풍경이 아름다운 영화', likes: null });
+  const yt = fakeYouTube({ searchPages: [items([movie.videoId])], details: (id) => id === movie.videoId ? movie : undefined });
+  const svc = createVideoFinderService({
+    store: memoryStore(), youtube: yt, now: () => NOW,
+    judgeSearch: async (_uid, input) => input.videos.map(video => video.videoId),
+  });
+  const sort = 'likeCount';
+  const request = { searchAiConsentVersion: core.SEARCH_JEV_CONSENT_VERSION };
+  const missingLikes = await svc.search('uidA', { ...request, filters: { ...baseFilters, query: '풍경이 아름다운 영화', sort } });
+  assert.deepEqual(missingLikes.videos, []);
+  assert.match(missingLikes.notice, /조건을 통과한 영상은 있지만, 공개 좋아요 수가 없어/);
+  const missingCaption = await svc.search('uidB', { ...request, filters: { ...baseFilters, query: '영어 자막이 있는 영화', sort } });
+  assert.deepEqual(missingCaption.videos, []);
+  assert.match(missingCaption.notice, /Jev 판정까지 가지 않았어요/);
+});
+
 test('첫사랑을 주제로 한 한국영화 검색에서는 해외 영화, TV 드라마, 근거 없는 후보를 제외한다', async () => {
   // 운영 검색에서 관찰한 제목을 기반으로 한 회귀 자료. 설명과 태그는 검사 분기를 재현하는 모의 자료다.
   const candidates = [
