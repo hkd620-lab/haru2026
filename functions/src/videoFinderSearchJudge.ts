@@ -30,7 +30,7 @@ export function createVideoFinderSearchJudge(options: JevHttpTransportOptions) {
       const last = metadata.pop()!;
       delete questions[`video_${last.index}`];
     }
-    if (!metadata.length) return [];
+    if (!metadata.length) throw new Error('No search judgment candidates fit the request');
     const response = await send(request);
     const answers = (response as { answers?: Record<string, { type?: unknown; noul?: unknown }> } | null)?.answers;
     if (!answers || typeof answers !== 'object' || Array.isArray(answers)) throw new Error('Invalid search judgment response');

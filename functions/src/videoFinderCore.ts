@@ -1067,7 +1067,7 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
       };
       const referenceIds = Object.keys(references).filter((id) => !ids.includes(id));
       const target = candidates[0] ?? (broadChanson ? CHANSON_STANDARDS[0]
-        : englishRequired && CANZONE_LABEL.test(filters.query) ? ['Volare', 'Domenico Modugno'] : undefined);
+        : englishRequired && broadCanzone ? ['Volare', 'Domenico Modugno'] : undefined);
       const targetHasEvidence = target && firstEligible.some((video) =>
         chansonMetadataWords(video.title).includes(chansonMetadataWords(target[0])));
       const searchAgain = target ? !targetHasEvidence : firstEligible.length < 3;
@@ -1118,19 +1118,24 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
           const searchEvidence = marked?.slice(offset, offset + 200);
           return { ...video, description: cleanText(video.description, 300), ...(searchEvidence ? { searchEvidence } : {}) };
         });
-        judgmentNotice = '확인한 후보 중 제목과 설명이 검색 조건과 맞는 영상만 골랐어요. ';
+        judgmentNotice = 'Jev로 제목과 설명을 확인해 검색 조건과 맞는 영상만 골랐어요. ';
         if (englishRequired) judgmentNotice += '영어 가사·자막 표기는 영상 제목과 설명을 기준으로 확인했어요. ';
         if (!matched.length) judgmentNotice = verifiedMetadataCount === 0
           ? 'YouTube에서 확인할 수 있는 후보 영상을 가져오지 못했어요. '
           : englishRequired && eligibleVideos.length === 0
-            ? `YouTube 후보 ${verifiedMetadataCount}개를 확인했지만 영어 가사·자막 표기 등 선택한 조건에 맞는 후보가 없었어요. `
-            : `YouTube 후보 ${verifiedMetadataCount}개 중 판정 대상으로 고른 ${shortlist.length}개에서 조건을 통과한 영상이 없었어요. `;
+            ? `YouTube 후보 ${verifiedMetadataCount}개를 확인했지만 영어 가사·자막 표기 등 선택한 조건에 맞는 후보가 없어 Jev 판정까지 가지 않았어요. `
+            : eligibleVideos.length
+              ? `YouTube 후보 ${verifiedMetadataCount}개를 찾았지만, 그중 Jev로 확인한 후보에서 조건을 통과한 영상이 없었어요. `
+              : `YouTube 후보 ${verifiedMetadataCount}개가 구독자 조건을 충족하지 않아 Jev 판정까지 가지 않았어요. `;
       } catch {
         throw new VideoFinderError('unavailable', 'AI 결과 확인을 마치지 못했어요. 다시 시도하거나 일반 검색을 이용해 주세요.');
       }
       nextToken = null;
     }
     const videos = filterAndSortVideos(matched, filters);
+    if (judgeSearch && filters.sort === 'likeCount' && matched.length && !videos.length) {
+      judgmentNotice = 'Jev에서 조건을 통과한 영상은 있지만, 공개 좋아요 수가 없어 좋아요 순위에 표시할 수 없어요. ';
+    }
     const upstreamNext = nextToken ? (dateRelevance ? DATE_RELEVANCE_CURSOR + nextToken : nextToken) : null;
     const next = upstreamNext && intent
       ? `${SEARCH_AI_CURSOR}${Buffer.from(JSON.stringify(intent)).toString('base64url')}:${upstreamNext}`
