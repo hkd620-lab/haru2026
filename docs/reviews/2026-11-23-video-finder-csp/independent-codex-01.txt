@@ -1,0 +1,17 @@
+PR #438 — 독립 Codex 검토 실행 1
+검토 대상: e6f43aa7f7cb3ce18109049c3a289f9b5637ad06
+검증용 병합본: 526308e3c771d63425cf0cd87c750835aca4ef87
+실행일: 2026-11-23 KST
+Claude 인증 만료로 사용자 승인에 따라 이 건의 독립 검토를 Codex가 수행했다.
+공개 기록에서 로컬 경로는 생략했다.
+
+요청 원문
+User expressly authorized independent Codex review replacing Claude for HARU2026 PR #438, then merge/standalone Hosting deploy only if gates pass. Independently review exact head e6f43aa7f7cb3ce18109049c3a289f9b5637ad06, merged snapshot 526308e3 in [로컬 작업 경로] or local PR path [로컬 작업 경로] (untracked audit notes are ours). Read-only, do not edit/push/post or operate production. Review Vite legacy CSP compatibility correctness/security (defensive review), test coverage, regression risks modern/legacy, workflow and §8.1 change stops. Existing Node 22 standalone build, mainstream web build, 17 tests + policy passed on merge snapshot, prior Chromium mocked modern/forced-fallback smoke. Return Korean verdict 승인 / 수정 후 승인 / 재설계 and findings if any. Do not wait for GUI/credential prompts. Please report promptly.
+
+결과 원문
+**승인.** PR #438의 `e6f43aa7` 변경에서 수정이 필요한 사항을 발견하지 못했습니다.
+
+- 같은 출처의 스크립트와 스타일시트를 사용해 독립 사이트의 CSP를 유지합니다. 브라우저 감지와 앱 진입 검사는 서로 다른 모듈 URL을 사용하며 Vite의 레거시 전환 로직을 보존합니다.
+- Node.js 22에서 기존 독립 빌드 산출물을 대상으로 영상 찾기 테스트 17개와 정책 검사를 다시 실행해 모두 통과했습니다. GitHub CI 통과와 같은 HEAD의 Codex 자동 리뷰 완료도 확인했습니다. 구형 Safari 실기기와 운영 E2E는 이번 검토에서 확인하지 않았습니다.
+- §8.1의 코드 변경 관련 멈춤 조건에 해당하는 사항은 발견하지 못했습니다. 검증한 병합 스냅샷 이후 실제 `main`의 `853f7bd4`까지 추가된 변경은 HEIC Functions와 전용 워크플로·검토 기록에 한정됩니다. 프런트와 Hosting 빌드 입력은 동일합니다.
+- `main` 병합은 기존 워크플로를 통해 일반 HARU Hosting 자동 배포를 시작합니다. 영상 찾기 독립 Hosting 배포는 별도로 실행됩니다.
