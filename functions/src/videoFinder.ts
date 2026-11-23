@@ -146,8 +146,15 @@ function createYouTubeClient(apiKey: string): YouTubeClient & VideoInfoClient {
       const result: Record<string, VideoMeta> = {};
       for (let i = 0; i < unique.length; i += 50) {
         const piece = unique.slice(i, i + 50);
-        const data = await request('videos', { part: 'snippet,statistics,contentDetails', id: piece.join(','), maxResults: '50' });
+        const part = includeFullDescription ? 'snippet,statistics,contentDetails,status' : 'snippet,statistics,contentDetails';
+        const data = await request('videos', { part, id: piece.join(','), maxResults: '50' });
         for (const item of Array.isArray(data.items) ? data.items : []) {
+          if (includeFullDescription) {
+            const restrictions = item?.contentDetails?.regionRestriction;
+            if (item?.status?.privacyStatus !== 'public' || item?.status?.uploadStatus !== 'processed'
+              || (Array.isArray(restrictions?.allowed) && !restrictions.allowed.includes('KR'))
+              || (Array.isArray(restrictions?.blocked) && restrictions.blocked.includes('KR'))) continue;
+          }
           const meta = mapVideoItem(item, scope, candidates, includeFullDescription);
           if (meta) result[meta.videoId] = meta;
         }

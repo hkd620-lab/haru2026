@@ -343,6 +343,17 @@ const CHANSON_STANDARDS = [
   ['Non Je Ne Regrette Rien', 'Edith Piaf'],
 ] as const;
 const CANZONE_LABEL = /칸초네|칸소네|깐소네|깐초네|\bcanzon[ei]\b/iu;
+// 공개 YouTube 제목과 설명으로 확인한 곡. 검색 보강 시 API에서 상태와 메타데이터를 다시 조회한다.
+const CAPTION_SONG_REFERENCES = {
+  chanson: {
+    EDpYO9FKnT0: ['La Vie en Rose', 'Edith Piaf'],
+    q_bq5mStroM: ['Ne Me Quitte Pas', 'Jacques Brel'],
+  },
+  canzone: {
+    qivzSaALee8: ['Volare', 'Domenico Modugno'],
+  },
+} as const;
+type ReferenceGenre = keyof typeof CAPTION_SONG_REFERENCES;
 type SearchCandidate = readonly [title: string, creator: string];
 const GENERIC_CHANSON_WORDS = /^(?:(?:프랑스(?:어)?|볼\s*수\s*있(?:는|게)|있는|달린|명곡|추천|명곡들|노래|영상|듣기\s*좋은|모음|with|french|songs?|classics?)\s*)*$/iu;
 const CHANSON_QUERY_LABEL = /샹송(?:을|이|은|만)?|\bchansons?\b/iu;
@@ -905,7 +916,11 @@ export type VideoFinderDeps = {
   searchJudgeEnabled?: () => Promise<boolean>;
 };
 
-export type SearchJudgeInput = { query: string; category?: string; videos: Array<Pick<VideoMeta, 'videoId' | 'title' | 'description'>> };
+export type SearchJudgeInput = {
+  query: string;
+  category?: string;
+  videos: Array<Pick<VideoMeta, 'videoId' | 'title' | 'description'> & { referenceGenre?: ReferenceGenre }>;
+};
 export type SearchJudgeResult = string[] | null;
 const SEARCH_JUDGE_LIMIT = 12;
 const PRIVATE_SEARCH_PATTERN = /[\w.+-]+@[\w.-]+\.[a-z]{2,}|(?:https?:\/\/|www\.)\S+|(?:\+82[- .]?)?0?1[016789][- .]?\d{3,4}[- .]?\d{4}|\d{6}[- ]?[1-8]\d{6}/iu;
@@ -1037,33 +1052,59 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
         (!englishRequired || hasEnglishCaptionEvidence(video, lyricsAllowed))
         && (filters.minSubscribers === 0 || (video.subscribers !== null && video.subscribers >= filters.minSubscribers));
       const firstEligible = matched.filter(eligible);
+      const broadCanzone = (filters.category === ALL_TOPICS || CANZONE_LABEL.test(filters.category))
+        && CANZONE_LABEL.test(filters.query)
+        && GENERIC_CHANSON_WORDS.test(originalChansonQuery.replace(CANZONE_LABEL, '')
+          .replace(ENGLISH_SUBTITLE_QUERY_LABEL, '').replace(/(?:영어|영문)\s*(?:번역\s*)?가사(?:를|가|는|로)?|english\s+lyrics/iu, '').trim());
+      const referenceGenre = englishRequired && filters.duration === 'any' && filters.period === 'all' && !recentDays
+        ? broadChanson ? 'chanson' : broadCanzone ? 'canzone' : undefined
+        : undefined;
+      const references: Readonly<Record<string, SearchCandidate>> = referenceGenre ? CAPTION_SONG_REFERENCES[referenceGenre] : {};
+      const classifyReference = (video: VideoMeta) => {
+        const pair = references[video.videoId];
+        const words = chansonMetadataWords(`${video.title}\n${video.description}`);
+        return pair?.every((part) => words.includes(chansonMetadataWords(part))) ? referenceGenre : undefined;
+      };
+      const referenceIds = Object.keys(references).filter((id) => !ids.includes(id));
       const target = candidates[0] ?? (broadChanson ? CHANSON_STANDARDS[0]
         : englishRequired && CANZONE_LABEL.test(filters.query) ? ['Volare', 'Domenico Modugno'] : undefined);
       const targetHasEvidence = target && firstEligible.some((video) =>
         chansonMetadataWords(video.title).includes(chansonMetadataWords(target[0])));
-      if (!hasSearchOperators(filters.query) && (target ? !targetHasEvidence : firstEligible.length < 3)) {
+      const searchAgain = target ? !targetHasEvidence : firstEligible.length < 3;
+      const useReferences = referenceIds.length > 0 && !firstEligible.some(classifyReference);
+      if (!hasSearchOperators(filters.query) && (searchAgain || useReferences)) {
         try {
           remainingSearches = Math.min(remainingSearches,
-            await store.reserveQuota(uid, SUPPLEMENT_RESERVATION_UNITS, false, nowMs, limits));
+            await store.reserveQuota(uid, searchAgain ? SUPPLEMENT_RESERVATION_UNITS : DETAIL_UNITS_PER_BATCH, false, nowMs, limits));
           const q = target ? `${target.join(' ')} ${englishRequired ? (lyricsAllowed ? 'English lyrics' : 'English subtitles') : searchQuery}`.slice(0, 300)
             : searchQuery;
-          const extra = await youtube.search({ ...params, q, order: 'relevance', ...(englishRequired ? { relevanceLanguage: 'en' } : {}) });
-          const extraIds = searchVideoIds(extra).filter((id) => !ids.includes(id));
+          const extra = searchAgain
+            ? await youtube.search({ ...params, q, order: 'relevance', ...(englishRequired ? { relevanceLanguage: 'en' } : {}) }).catch((error: unknown) => {
+              if (!useReferences) throw error;
+              return null;
+            })
+            : null;
+          const extraIds = [...new Set([...(useReferences ? referenceIds : []), ...searchVideoIds(extra)])]
+            .filter((id) => !ids.includes(id)).slice(0, 50);
           ids = ids.concat(extraIds);
           matched = (await lookup(extraIds)).concat(matched);
         } catch {
           // 보충 할당량이 없거나 조회에 실패하면 첫 후보에서만 판정한다.
         }
       }
-      const shortlist = matched.filter(eligible).slice(0, SEARCH_JUDGE_LIMIT);
+      const eligibleVideos = matched.filter(eligible);
+      const knownReferences = eligibleVideos.filter(classifyReference);
+      const shortlist = knownReferences.concat(eligibleVideos.filter((video) => !classifyReference(video))).slice(0, SEARCH_JUDGE_LIMIT);
+      const verifiedMetadataCount = matched.length;
       try {
         const accepted = shortlist.length ? await judgeSearch(uid, {
           query: filters.query,
           ...(filters.category === ALL_TOPICS ? {} : { category: filters.category.replace(new RegExp(PRIVATE_SEARCH_PATTERN.source, 'giu'), '[숨김]') }),
-          videos: shortlist.map(({ videoId, title, description }) => ({
-            videoId,
-            title: title.replace(new RegExp(PRIVATE_SEARCH_PATTERN.source, 'giu'), '[숨김]'),
-            description: description.replace(new RegExp(PRIVATE_SEARCH_PATTERN.source, 'giu'), '[숨김]'),
+          videos: shortlist.map((video) => ({
+            videoId: video.videoId,
+            title: video.title.replace(new RegExp(PRIVATE_SEARCH_PATTERN.source, 'giu'), '[숨김]'),
+            description: video.description.replace(new RegExp(PRIVATE_SEARCH_PATTERN.source, 'giu'), '[숨김]'),
+            referenceGenre: classifyReference(video),
           })),
         }) : [];
         if (accepted === null) throw new Error('Search judgment unavailable');
@@ -1079,6 +1120,11 @@ export function createVideoFinderService(deps: VideoFinderDeps) {
         });
         judgmentNotice = '확인한 후보 중 제목과 설명이 검색 조건과 맞는 영상만 골랐어요. ';
         if (englishRequired) judgmentNotice += '영어 가사·자막 표기는 영상 제목과 설명을 기준으로 확인했어요. ';
+        if (!matched.length) judgmentNotice = verifiedMetadataCount === 0
+          ? 'YouTube에서 확인할 수 있는 후보 영상을 가져오지 못했어요. '
+          : englishRequired && eligibleVideos.length === 0
+            ? `YouTube 후보 ${verifiedMetadataCount}개를 확인했지만 영어 가사·자막 표기 등 선택한 조건에 맞는 후보가 없었어요. `
+            : `YouTube 후보 ${verifiedMetadataCount}개 중 판정 대상으로 고른 ${shortlist.length}개에서 조건을 통과한 영상이 없었어요. `;
       } catch {
         throw new VideoFinderError('unavailable', 'AI 결과 확인을 마치지 못했어요. 다시 시도하거나 일반 검색을 이용해 주세요.');
       }
