@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone, Sparkles, CreditCard, Mail, UserX } from 'lucide-react';
+import { Settings, Database, Download, Trash2, BarChart3, LogOut, User, Moon, Sun, Bell, BellOff, Clock, Megaphone, Sparkles, CreditCard, Mail, UserX, CircleHelp, ExternalLink } from 'lucide-react';
 import { firestoreService } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -848,6 +848,19 @@ export function SettingsPage() {
       </div>
 
       <div className="space-y-4">
+        <a
+          href="https://haru2026.com/welcome/#faq"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex min-h-14 items-center gap-3 rounded-lg bg-white px-4 py-3 text-base font-semibold text-[#1A3C6E] shadow-sm hover:bg-[#F8F7FB] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A3C6E]"
+        >
+          <CircleHelp aria-hidden="true" className="h-5 w-5 shrink-0" />
+          <span className="min-w-0 flex-1">
+            자주 묻는 질문<span className="sr-only"> (새 창에서 열림)</span>
+          </span>
+          <ExternalLink aria-hidden="true" className="h-4 w-4 shrink-0" />
+        </a>
+
         {/* ⭐ 프리미엄 구독 섹션 (심사용) */}
         <section 
           className="bg-[#1A3C6E] rounded-xl p-5 shadow-md border-2 border-[#10b981]/30 overflow-hidden relative"
