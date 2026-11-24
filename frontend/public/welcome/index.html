@@ -414,6 +414,102 @@
     word-break: keep-all;
   }
 
+  .faq-shortcut {
+    display: none;
+  }
+
+  .faq-shortcut:focus-visible,
+  .nav a[href="#faq"]:focus-visible,
+  .faq-list summary:focus-visible {
+    outline: 2px solid var(--green);
+    outline-offset: -2px;
+  }
+
+  #faq {
+    scroll-margin-top: 88px;
+  }
+
+  .faq-group + .faq-group {
+    margin-top: 28px;
+  }
+
+  .faq-group h3 {
+    margin: 0 0 10px;
+    color: var(--blue);
+    font-size: 18px;
+    line-height: 1.5;
+  }
+
+  .faq-list {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  .faq-list details + details {
+    border-top: 1px solid var(--line);
+  }
+
+  .faq-list summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 12px;
+    align-items: center;
+    gap: 16px;
+    min-height: 56px;
+    padding: 14px clamp(14px, 3vw, 22px);
+    color: var(--ink);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.5;
+    list-style: none;
+    cursor: pointer;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  .faq-list summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq-list summary::after {
+    content: "";
+    width: 9px;
+    height: 9px;
+    justify-self: center;
+    border: solid var(--green);
+    border-width: 0 2px 2px 0;
+    transform: translateY(-2px) rotate(45deg);
+  }
+
+  .faq-list details[open] summary {
+    color: var(--green);
+  }
+
+  .faq-list details[open] summary::after {
+    transform: translateY(2px) rotate(225deg);
+  }
+
+  .faq-answer {
+    max-width: 48rem;
+    margin: 0;
+    padding: 0 clamp(14px, 3vw, 22px) 16px;
+    color: var(--ink-soft);
+    font-size: 16px;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  .faq-help {
+    margin: 24px 0 0;
+    overflow-wrap: anywhere;
+  }
+
+  .faq-help a {
+    color: var(--green);
+    font-weight: 700;
+    text-underline-offset: 3px;
+  }
+
   .contact-area {
     display: grid;
     grid-template-columns: 1fr minmax(320px, .68fr);
@@ -525,6 +621,19 @@
       display: none;
     }
 
+    .faq-shortcut {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      min-height: 44px;
+      padding: 0 12px;
+      color: var(--green);
+      font-size: 15px;
+      font-weight: 700;
+      text-underline-offset: 3px;
+    }
+
     .hero {
       padding-top: 54px;
     }
@@ -614,8 +723,10 @@
         <a href="#about">회사 소개</a>
         <a href="#message">대표 인사</a>
         <a href="#business">사업 소개</a>
+        <a href="#faq">자주 묻는 질문</a>
         <a href="#contact">문의</a>
       </nav>
+      <a class="faq-shortcut" href="#faq">자주 묻는 질문</a>
       <a class="button button--quiet" href="https://haru2026.com" rel="noopener">haru2026</a>
     </div>
   </header>
@@ -725,6 +836,74 @@
             <p>HARU AI 비서는 건강·재무·법률 등 생활기록을 바탕으로 필요한 정보를 찾고, 전자소송 준비 체크리스트, 페이스북 게시물 분석, 인스타그램 게시물 분석, 식물 탐색처럼 일상에서 필요한 기록 활용을 돕습니다.</p>
           </article>
         </div>
+      </div>
+    </section>
+
+    <section class="band" id="faq" aria-labelledby="faq-title">
+      <div class="wrap">
+        <div class="section-head">
+          <h2 id="faq-title">자주 묻는 질문</h2>
+        </div>
+
+        <div class="faq-group">
+          <h3>기록 쓰기와 찾아보기</h3>
+          <div class="faq-list">
+            <details>
+              <summary>첫 일기는 어디에서 쓰나요?</summary>
+              <p class="faq-answer">하루2026에 로그인하고 홈 화면의 <strong>기록 입력</strong> 칸에 오늘 있었던 일을 한 줄 적어보세요. <strong>다음 · 기록 형식 고르기 → 일기</strong>를 누른 뒤, 내용을 확인하고 저장하면 됩니다.</p>
+            </details>
+            <details>
+              <summary>저장한 글은 어디에서 찾나요?</summary>
+              <p class="faq-answer">화면 아래 <strong>SAYU·나의 기록 → 전체보기</strong>를 누르세요. 글 제목이나 기억나는 단어로 검색할 수 있습니다. 그래도 글이 보이지 않으면 기록한 날짜와 저장할 때 화면에 나온 안내를 고객센터에 알려주세요.</p>
+            </details>
+            <details>
+              <summary>휴대폰을 바꿨더니 예전 기록이 안 보여요.</summary>
+              <p class="faq-answer">이전과 같은 로그인 버튼을 눌러 같은 계정으로 접속해 보세요. 예전에 카카오로 로그인했다면 새 휴대폰에서도 같은 카카오 계정을 사용하시면 됩니다. 이전 휴대폰에서 기록이 보이는지 확인해 보면 원인을 찾는 데 도움이 됩니다.</p>
+            </details>
+            <details>
+              <summary>사진이 제대로 첨부됐는지 어떻게 확인하나요?</summary>
+              <p class="faq-answer"><strong>사진 준비 중</strong> 표시가 사라지고 작은 미리보기 사진이 보이면, 사진이 선택된 상태입니다. 글을 저장한 뒤 <strong>SAYU·나의 기록</strong>에서 해당 글을 다시 열어 사진이 함께 저장됐는지 확인할 수 있습니다.</p>
+            </details>
+            <details>
+              <summary>AI가 다듬기 전에 제가 쓴 글을 볼 수 있나요?</summary>
+              <p class="faq-answer">네. <strong>SAYU·나의 기록</strong>에서 해당 글을 열고 <strong>원본</strong> 탭을 누르세요. 표현을 조금만 다듬고 싶다면 <strong>약</strong>을 선택해 보세요. 마음에 들지 않는 문장은 직접 고쳐서 저장할 수 있습니다.</p>
+            </details>
+          </div>
+        </div>
+
+        <div class="faq-group">
+          <h3>자서전, 이용 요금과 공개 설정</h3>
+          <div class="faq-list">
+            <details>
+              <summary>하루2026에서 자서전은 어떻게 시작하나요?</summary>
+              <p class="faq-answer">기억에 남는 사진 한 장을 고르고, 그날의 이야기를 짧게 적어보세요. 이렇게 쌓은 일기나 여행기는 <strong>기록합본</strong>에서 한데 모을 수 있습니다. 현재 일반 회원이 이용할 수 있는 방법은 직접 남긴 기록을 모아 자서전의 재료로 쓰는 것입니다.</p>
+            </details>
+            <details>
+              <summary>무료로 어디까지 이용할 수 있나요?</summary>
+              <p class="faq-answer">글을 쓰고 다시 보는 기본 기능은 무료입니다. 일부 AI 기능도 무료 한도 안에서 쓸 수 있어요. <strong>전자책 파일(EPUB)로 저장</strong>하려면 월 4,000원 베이직이 필요합니다. 베이직은 직접 가입하시면 시작되며, 가입 후에는 매월 자동 결제됩니다.</p>
+            </details>
+            <details>
+              <summary>제 글이나 가족사진을 다른 사람도 볼 수 있나요?</summary>
+              <p class="faq-answer">일기와 여행기는 기본적으로 비공개입니다. 기록에서 <strong>공개하기</strong>를 누르고 확인하면, 공개된 글과 사진을 다른 회원이 <strong>함께보기</strong>에서 볼 수 있습니다. 이미 올린 글을 내리려면 해당 기록을 열고 <strong>공개 취소</strong>를 누르세요.</p>
+            </details>
+          </div>
+        </div>
+
+        <div class="faq-group">
+          <h3>내 영상 찾기와 하루LAW</h3>
+          <div class="faq-list">
+            <details>
+              <summary>검색한 유튜브 영상에 영어 자막이 있는지 어떻게 확인하나요?</summary>
+              <p class="faq-answer">검색 결과에 <strong>조건 확인 필요</strong>가 표시되면 영어 자막이 있는지 유튜브에서 직접 확인해 주세요. <strong>YouTube에서 보기</strong>를 눌러 영상을 열고, 재생 화면의 자막 메뉴에서 <strong>영어</strong>를 선택할 수 있는지 확인하시면 됩니다.</p>
+            </details>
+            <details>
+              <summary>하루LAW 답변의 근거는 어디서 보나요?</summary>
+              <p class="faq-answer">답변 아래의 <strong>관련 법령 목록</strong>에서 법령 이름, 조문 번호, 조문 내용을 확인할 수 있습니다. 같은 조문도 계약 내용이나 실제 상황에 따라 적용이 달라질 수 있으니, 구체적인 대응을 결정하기 전에는 해당 조문을 가지고 법률 전문가에게 확인해 주세요.</p>
+            </details>
+          </div>
+        </div>
+
+        <p class="faq-help"><strong>찾으시는 답이 없나요?</strong> 이용하던 화면 이름과 화면에 나온 문구를 알려주시면 확인에 도움이 됩니다. <a href="mailto:harul2026lab@gmail.com">하루랩 고객센터에 이메일 보내기</a></p>
       </div>
     </section>
 
