@@ -3539,7 +3539,7 @@ ${SOURCE_PRESERVATION_RULES}`;
 강: 퇴근길에 비가 내렸다. 비 오는 길을 지나 집에 돌아와 라면을 끓였다. 보글보글 끓는 냄비 위로 김이 피어올랐고, 집 안에는 라면 냄새가 퍼졌다.
 
 비 오는 날 집에서 먹는 라면 한 그릇은 유난히 따뜻하게 느껴진다. 비 내리던 퇴근길과 함께 집에서 먹은 라면의 따뜻함도 기억에 남을 것 같다.
-김과 라면 냄새는 끓여 먹은 장면의 묘사입니다. 비가 더 내렸는지, 먹을 때 무엇을 했는지, 날짜나 시각이 언제인지는 새로 정하지 않습니다.
+김과 라면 냄새는 끓여 먹은 장면의 묘사입니다. 날씨를 작성자의 경험으로 바꾸지 않습니다. 비가 왔다는 사실만으로 비를 맞았다거나 옷이 젖었다고 쓰지 않습니다. 비가 더 내렸는지, 먹을 때 무엇을 했는지, 날짜나 시각이 언제인지는 새로 정하지 않습니다.
 
 [출력 형식]
 원문 문단 ${groundedParagraphs.length}개에 각각 같은 순번의 결과를 씁니다. 원문 문단을 빼거나 합치거나 순서를 바꾸지 않습니다. 하나의 원문 문단을 더 길게 펼칠 때에는 그 순번의 "text" 안에 빈 줄로 새 문단을 씁니다. JSON {"paragraphs":[{"index":1,"text":"편집한 1번 문단"}]}만 출력합니다.${pageLimit}`;
@@ -3580,6 +3580,13 @@ ${SOURCE_PRESERVATION_RULES}`;
           const paragraph = paragraphs[index];
           if (paragraph.kept) return paragraph.original;
           if (protectedActors?.hasActor(responseText)) return paragraph.original;
+          if (expandedStrong) {
+            // 강수 상황에서 사람이 비를 맞거나 젖었는지를 추측한 문단은 원문을 보존한다.
+            const exposedToRain = /(?:비|빗방울|빗줄기)(?:를|을)?[ \t]*(?:(?:흠뻑|그대로|고스란히|직접|조금|잔뜩)[ \t]*)?맞(?:았|고|으|는|은|아|지|게)/;
+            const soakedByRain = /(?:비|빗물)(?:에|로)[^.!?。！？\n]{0,18}젖|(?:옷(?:자락|소매)?|머리카락|어깨|몸)(?:이|가|은|는|까지)?[ \t]*(?:흠뻑[ \t]*)?젖/;
+            if ([exposedToRain, soakedByRain].some(expression =>
+              expression.test(responseText) && !expression.test(paragraph.original))) return paragraph.original;
+          }
           let candidateText = polishSprout ? repairSproutConclusion(responseText, paragraph.original) : responseText;
           const previous = paragraphs[index - 1];
           if (polishPresentationParagraphs && previous && !previous.kept) {

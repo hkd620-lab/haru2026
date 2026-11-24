@@ -146,6 +146,21 @@ test('새 강은 원문 장면의 감각과 여운을 둘째 문단까지 살린
   assert.notEqual(result.originalPreserved, true);
 });
 
+test('새 강은 비가 왔다는 사실을 비를 맞거나 옷이 젖었다는 경험으로 바꾸지 않는다', async () => {
+  const text = '퇴근길에 비가 왔다. 집에 와서 라면을 끓여 먹었다. 따뜻해서 좋았다.';
+  const request = { text, format: 'diary', mode: 'BASIC', strength: 'STRONG', strengthProfile: 'expanded', includeAiComment: false };
+  for (const extra of ['비를 맞고 돌아온 뒤 집에서 먹은 라면의 따뜻함이 한층 선명하게 느껴졌다.', '비를 흠뻑 맞고 돌아왔다.', '옷이 흠뻑 젖었다.']) {
+    const f = fixture({ polishText: text + ' ' + extra });
+    const result = await f.request(request);
+    assert.equal(result.text, text);
+  }
+
+  const wet = '퇴근길에 비를 맞았다. 집에 와서 라면을 끓였다.';
+  const edited = wet + ' 냄비에서 김이 피어올랐다.';
+  const result = await fixture({ polishText: edited }).request({ ...request, text: wet });
+  assert.equal(result.text, edited);
+});
+
 test('새 강도 새 날짜와 바뀐 부정 표현이 있는 문단을 원문으로 되돌린다', async () => {
   const source = '11월 23일에 첫 화면을 확인했다. 로그인은 하지 않았다.';
   const f = fixture({ polishText: '11월 24일에 첫 화면을 확인했다. 그 후 로그인도 했다.' });
