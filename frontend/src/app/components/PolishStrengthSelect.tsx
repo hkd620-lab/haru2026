@@ -1,46 +1,85 @@
-import { useEffect } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { toast } from 'sonner';
 
 export type PolishStrength = 'WEAK' | 'STRONG';
-const GUIDE_STORAGE_KEY = 'haru-polish-strength-guide-hidden-v1';
-const GUIDE_TOAST_ID = 'haru-polish-strength-guide';
+const GUIDE_STORAGE_KEY = 'haru-polish-strong-guide-hidden';
 
-export function PolishStrengthSelect({ onChange, disabled = false, showGuide = true }: {
+export function PolishStrengthSelect({ onChange, disabled = false }: {
   onChange: (value: PolishStrength) => void;
   disabled?: boolean;
-  showGuide?: boolean;
 }) {
-  useEffect(() => {
-    if (!showGuide) return;
-    try {
-      if (window.localStorage.getItem(GUIDE_STORAGE_KEY) === '1') return;
-    } catch { /* 저장소를 사용할 수 없어도 안내는 표시한다. */ }
+  const toastId = useId();
+  const pending = useRef(false);
+  const current = useRef({ onChange, disabled });
 
-    toast.custom((toastId) => (
+  useEffect(() => {
+    current.current = { onChange, disabled };
+  }, [onChange, disabled]);
+
+  useEffect(() => () => {
+    if (pending.current) toast.dismiss(toastId);
+    pending.current = false;
+  }, [disabled, toastId]);
+
+  function chooseStrength(strength: PolishStrength) {
+    if (disabled) return;
+    if (strength === 'WEAK') {
+      if (pending.current) toast.dismiss(toastId);
+      pending.current = false;
+      onChange(strength);
+      return;
+    }
+    if (pending.current) return;
+
+    let hideGuide = false;
+    try {
+      hideGuide = window.localStorage.getItem(GUIDE_STORAGE_KEY) === '1';
+    } catch { /* 저장소를 사용할 수 없어도 안내는 표시한다. */ }
+    if (hideGuide) {
+      onChange(strength);
+      return;
+    }
+
+    pending.current = true;
+    const closeGuide = () => {
+      pending.current = false;
+      toast.dismiss(toastId);
+    };
+    toast.custom(() => (
       <div className="w-[min(92vw,420px)] rounded-xl border border-[#bfd1e8] bg-white p-4 text-left shadow-xl">
-        <p className="text-base font-bold text-[#1A3C6E]">약·강 다듬기 안내</p>
-        <p className="mt-2 text-sm leading-6 text-[#374151]"><strong>약</strong>은 원문의 문장과 흐름을 자연스럽게 정돈합니다.</p>
-        <p className="mt-1 text-sm leading-6 text-[#374151]"><strong>강</strong>은 원문에 있는 사실과 감정을 바탕으로 표현을 더 풍성하게 풀어 씁니다.</p>
-        <p className="mt-1 text-xs leading-5 text-[#6B7280]">보고·관찰 기록은 사실 중심으로 다듬습니다. 결과를 확인한 뒤 저장해 주세요.</p>
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-[#374151]">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              onChange={(event) => {
-                if (!event.target.checked) return;
-                try { window.localStorage.setItem(GUIDE_STORAGE_KEY, '1'); } catch { /* 저장소를 사용할 수 없으면 다음에 다시 안내한다. */ }
-                toast.dismiss(toastId);
-              }}
-            />
-            다시 보지 않기
-          </label>
-          <button type="button" onClick={() => toast.dismiss(toastId)} className="min-h-9 rounded-lg bg-[#1A3C6E] px-4 text-sm font-semibold text-white">닫기</button>
+        <p className="text-base font-bold text-[#1A3C6E]">강하게 다듬기</p>
+        <p className="mt-2 text-sm leading-6 text-[#374151]">
+          원본을 바탕으로 글을 더 풍성하게 다듬어요. 장면과 분위기를 살리기 위해 묘사나 문장이 추가될 수 있어요.
+        </p>
+        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-[#374151]">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            onChange={(event) => {
+              try {
+                if (event.target.checked) window.localStorage.setItem(GUIDE_STORAGE_KEY, '1');
+                else window.localStorage.removeItem(GUIDE_STORAGE_KEY);
+              } catch { /* 저장소를 사용할 수 없으면 다음에 다시 안내한다. */ }
+            }}
+          />
+          이 안내 다시 보지 않기
+        </label>
+        <div className="mt-3 flex justify-end gap-2">
+          <button type="button" onClick={closeGuide} className="min-h-9 rounded-lg border border-[#93a9c2] px-4 text-sm font-semibold text-[#1A3C6E]">닫기</button>
+          <button type="button" onClick={() => {
+            if (!pending.current) return;
+            closeGuide();
+            if (!current.current.disabled) current.current.onChange(strength);
+          }} className="min-h-9 rounded-lg bg-[#1A3C6E] px-4 text-sm font-semibold text-white">다듬기</button>
         </div>
       </div>
-    ), { id: GUIDE_TOAST_ID, duration: Infinity, position: 'top-center' });
-    return () => toast.dismiss(GUIDE_TOAST_ID);
-  }, [showGuide]);
+    ), {
+      id: toastId,
+      duration: Infinity,
+      position: 'top-center',
+      dismissible: false,
+    });
+  }
 
   return (
     <fieldset disabled={disabled} style={{ border: 0, padding: 0, margin: '16px 0', minWidth: 0 }}>
@@ -53,7 +92,7 @@ export function PolishStrengthSelect({ onChange, disabled = false, showGuide = t
           <button
             key={strength}
             type="button"
-            onClick={() => onChange(strength)}
+            onClick={() => chooseStrength(strength)}
             className="rounded-lg border border-[#93a9c2] bg-white p-3 text-left text-[#1A3C6E] disabled:opacity-50"
           >
             <span className="block font-bold">{label}</span>

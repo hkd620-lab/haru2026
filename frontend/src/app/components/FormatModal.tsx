@@ -1652,6 +1652,7 @@ ${contentValues}
         format: prefix,
         mode: mode,
         strength,
+        strengthProfile: 'expanded',
         includeAiComment: false,
       });
 
@@ -7173,7 +7174,6 @@ ${contentValues.slice(0, 4100)}`,
               <PolishStrengthSelect
                 onChange={(strength) => void handlePolishWithMode(sayuMode, strength, polishPreviewSourceRef.current ?? polishedContent)}
                 disabled={isPolishing || isSaving}
-                showGuide={false}
               />
               <textarea
                 value={polishedContent}

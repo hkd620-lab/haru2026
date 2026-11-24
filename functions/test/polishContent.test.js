@@ -104,6 +104,71 @@ test('약·강 선택은 모든 일반 기록에서 내용 보존 지시와 함�
   }
 });
 
+test('새 화면의 약은 이전 강과 같은 편집 지시·검사를 사용하고 새 강만 문장 확장을 적용한다', async () => {
+  const source = '그림의 구도를 여러 번 고쳤다. 오늘 처음 액자에 넣었다.';
+  const edited = '그림의 구도를 여러 번 고쳤다. 오늘 처음 액자에 넣었다. 고쳐 오던 그림이 액자에 들어갈 만큼 형태를 갖췄다.';
+  for (const format of ['diary', 'essay', 'travel', 'garden', 'report', 'voiding']) {
+    const input = { text: source, format, mode: 'PREMIUM', includeAiComment: false };
+    const previous = fixture();
+    const weak = fixture();
+    const strong = fixture({ polishText: edited });
+    await previous.request({ ...input, strength: 'STRONG' });
+    await weak.request({ ...input, strength: 'WEAK', strengthProfile: 'expanded' });
+    const result = await strong.request({ ...input, strength: 'STRONG', strengthProfile: 'expanded' });
+    assert.deepEqual(weak.calls, previous.calls, format);
+    assert.deepEqual(purposes(strong), purposes(previous), format);
+    const prompt = strong.calls[0].systemInstruction;
+    if (['diary', 'essay', 'travel'].includes(format)) {
+      assert.match(prompt, /문장과 문단을 보태어/);
+      assert.match(prompt, /가벼운 비유/);
+      assert.match(prompt, /장면에서 직접 떠올릴 수 있는 감각/);
+      assert.match(prompt, /새 사건·인물·대화·구체적인 장소·시간·날씨·행동 방식·원인·감정을 만들지 않습니다/);
+      assert.equal(result.text, edited, format);
+    } else if (format === 'voiding') {
+      assert.deepEqual(strong.calls[0], previous.calls[0]);
+    } else {
+      assert.match(prompt, /원문에 명시된 여러 사실과 관계를 각각 완결된 문장으로/);
+      assert.doesNotMatch(prompt, /가벼운 비유/);
+    }
+  }
+});
+
+test('새 강은 원문 장면의 감각과 여운을 둘째 문단까지 살린다', async () => {
+  const source = '퇴근길에 비가 왔다. 집에 와서 라면을 끓여 먹었다. 따뜻해서 좋았다.';
+  const edited = [
+    '퇴근길에 비가 내렸다. 비 오는 길을 지나 집에 돌아와 라면을 끓였다. 보글보글 끓는 냄비 위로 김이 피어올랐고, 집 안에는 라면 냄새가 퍼졌다.',
+    '비 오는 날 집에서 먹는 라면 한 그릇은 유난히 따뜻하게 느껴진다. 비 내리던 퇴근길과 함께 집에서 먹은 라면의 따뜻함도 기억에 남을 것 같다.',
+  ].join('\n\n');
+  const f = fixture({ polishText: edited });
+  const result = await f.request({ text: source, format: 'diary', strength: 'STRONG', strengthProfile: 'expanded', includeAiComment: false });
+
+  assert.equal(result.text, edited);
+  assert.notEqual(result.originalPreserved, true);
+});
+
+test('새 강은 비가 왔다는 사실을 비를 맞거나 옷이 젖었다는 경험으로 바꾸지 않는다', async () => {
+  const text = '퇴근길에 비가 왔다. 집에 와서 라면을 끓여 먹었다. 따뜻해서 좋았다.';
+  const request = { text, format: 'diary', mode: 'BASIC', strength: 'STRONG', strengthProfile: 'expanded', includeAiComment: false };
+  for (const extra of ['비를 맞고 돌아온 뒤 집에서 먹은 라면의 따뜻함이 한층 선명하게 느껴졌다.', '비를 흠뻑 맞고 돌아왔다.', '옷이 흠뻑 젖었다.']) {
+    const f = fixture({ polishText: text + ' ' + extra });
+    const result = await f.request(request);
+    assert.equal(result.text, text);
+  }
+
+  const wet = '퇴근길에 비를 맞았다. 집에 와서 라면을 끓였다.';
+  const edited = wet + ' 냄비에서 김이 피어올랐다.';
+  const result = await fixture({ polishText: edited }).request({ ...request, text: wet });
+  assert.equal(result.text, edited);
+});
+
+test('새 강도 새 날짜와 바뀐 부정 표현이 있는 문단을 원문으로 되돌린다', async () => {
+  const source = '11월 23일에 첫 화면을 확인했다. 로그인은 하지 않았다.';
+  const f = fixture({ polishText: '11월 24일에 첫 화면을 확인했다. 그 후 로그인도 했다.' });
+  const result = await f.request({ text: source, strength: 'STRONG', strengthProfile: 'expanded', includeAiComment: false });
+  assert.equal(result.text, source);
+  assert.equal(result.originalPreserved, true);
+});
+
 test('잘못된 강도는 사용량 예약과 모델 호출 전에 거절한다', async () => {
   for (const strength of [null, '', 'strong', 1, true, [], {}]) {
     const f = fixture();
