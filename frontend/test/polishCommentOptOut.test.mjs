@@ -35,7 +35,7 @@ function formatFixture(reading = false) {
     selectedExistingBookId: 'synthetic-book', knownReadingBooks: [], setBlockedBookMessage() {}, makeReadingBookId: () => 'synthetic-book',
     setIsReadingFinishing() {}, getFirestore: () => ({}), collection: () => ({}), query: () => ({}), where: () => ({}),
     getDocs: async () => ({ forEach() {} }), buildCurrentReadingEntry: () => '사용자가 직접 쓴 독서장', buildReadingSnapshot,
-    setShowReadingQuestions() {}, setReadingReflectionAnswers() {}, setReadingEntriesSnapshot() {}, setReadingAnalysis: value => { state.analysis = value; }, setShowReadingFinishModal: value => { state.showFinish = value; },
+    setReadingAnalysisFailed() {}, setShowReadingQuestions() {}, setReadingReflectionAnswers() {}, setReadingEntriesSnapshot() {}, setReadingAnalysis: value => { state.analysis = value; }, setShowReadingFinishModal: value => { state.showFinish = value; },
     readingAiReferenceText, parseReadingAiReference, imagesKey: `${prefix}_images`, imageMetaKey: `${prefix}_image_meta`, uploadedImages: [], getUploadedImageMetaForSave: () => '[]',
     editingReadingEntryId: '', editingReadingEntryDate: '', buildReadingMeta: () => ({ entryType: 'readingNote' }),
     setIsSaving() {}, onSave: async payload => { state.saves.push(structuredClone(payload)); return 'synthetic-record'; }, closeAfterCommit() {},

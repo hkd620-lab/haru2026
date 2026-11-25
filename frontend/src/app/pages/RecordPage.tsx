@@ -950,7 +950,7 @@ function RecordPageContent() {
         }
       }
       finishDraftAfterSave(recordId);
-      toast.success('내용이 저장되었습니다!');
+      if (!savedFormats.includes('독서사유')) toast.success('내용이 저장되었습니다!');
       return recordId;
     } catch (error) {
       console.error('저장 실패:', error);

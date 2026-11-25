@@ -4317,9 +4317,12 @@ export function SayuPage() {
     : sayuScope === 'all'
       ? '전체 기록 검색'
       : `${monthName} 기록 검색`;
-  const resultCountLabel = debouncedSayuSearch
+  const listedResultCount = debouncedSayuSearch
     ? `검색 결과 ${filteredActiveEntries.length}건`
     : `${countScopeLabel} 결과 ${filteredActiveEntries.length}건`;
+  const readingBookCount = visibleReadingBooks.length > 0 ? `읽는 중 ${visibleReadingBooks.length}권` : '';
+  const resultCountLabel = [readingBookCount, (!readingBookCount || filteredActiveEntries.length > 0) && listedResultCount]
+    .filter(Boolean).join(' · ');
   const formatCountLabel = (count: number) => `${countScopeLabel} ${count}건`;
 
   useEffect(() => {
@@ -4532,6 +4535,7 @@ export function SayuPage() {
     }
     const rangeLabel = sayuScope === 'all' ? '전체' : '이 달의';
     if (entries.length === 0) {
+      if (readingBookCount) return null;
       return (
         <div className="bg-white rounded-lg p-8 shadow-sm text-center">
           <p className="text-sm" style={{ color: '#999' }}>
@@ -4775,6 +4779,7 @@ export function SayuPage() {
     }
     const rangeLabel = sayuScope === 'all' ? '전체' : '이 달의';
     if (entries.length === 0) {
+      if (readingBookCount) return null;
       return (
         <div className="bg-white rounded-lg p-8 shadow-sm text-center">
           <p className="text-sm" style={{ color: '#999' }}>
