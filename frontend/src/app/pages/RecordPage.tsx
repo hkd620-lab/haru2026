@@ -243,6 +243,7 @@ function RecordPageContent() {
   const photoReadBusyRef = useRef(false);
   const [photoReadBusy, setPhotoReadBusy] = useState(false);
   const [formatPickerOpen, setFormatPickerOpen] = useState(false);
+  const [continueReadingId, setContinueReadingId] = useState<string>();
   const [draftEditorData, setDraftEditorData] = useState<Record<string, string> | undefined>();
   const [draftEditorPhotos, setDraftEditorPhotos] = useState<File[]>([]);
   const [draftEditorRecordId, setDraftEditorRecordId] = useState<string | null>(null);
@@ -583,6 +584,9 @@ function RecordPageContent() {
     if (incomingFrom) setFromPath(incomingFrom);
     if (!incomingFormat) return;
     autoOpenedRef.current = true;
+    if (incomingFormat === '독서사유' && typeof location.state?.continueReadingId === 'string') {
+      setContinueReadingId(location.state.continueReadingId);
+    }
     openFormatDirectly(incomingFormat as RecordFormat);
     if (incomingFormat === 'HARU가계부') setHouseholdEntryMode(incomingHouseholdEntry);
     // state 소비 후 history에서 제거 — 새로고침/뒤로가기 시 재열림 방지
@@ -1238,6 +1242,7 @@ function RecordPageContent() {
         isOpen={formatModalOpen}
         onClose={() => {
           setFormatModalOpen(false);
+          setContinueReadingId(undefined);
           setHouseholdEntryMode(undefined);
           if (draftEditorRecordId) {
             setDraftEditorRecordId(null);
@@ -1249,6 +1254,7 @@ function RecordPageContent() {
         }}
         format={savedFormat}
         recordId={draftEditorRecordId || savedDateStr}
+        continueReadingId={continueReadingId}
         initialData={draftEditorData}
         initialPhotos={draftEditorPhotos}
         initialWritingDraft={!!draftEditorRecordId}

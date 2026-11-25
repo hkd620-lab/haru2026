@@ -2,7 +2,7 @@ import { getFormatDisplayName } from '../records/recordFormatDescriptions';
 import { readSelectedRecordPhoto } from '../services/selectedRecordPhoto';
 import { getHaruLawAttachmentLabel } from '../utils/haruLawAttachment';
 import { HaruLawAnswer, splitHaruLawAnswer } from '../components/HaruLawAnswer';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, Info, Leaf, Briefcase, BookOpen, Scale, Cpu, Volume2, Pause, Search } from 'lucide-react';
@@ -53,7 +53,7 @@ import { buildStructuredAssistantView, hasStructuredAssistantRecord, isStructure
 import { ResultChatButton } from '../components/ResultChatButton';
 import { ResultChatModal } from '../components/ResultChatModal';
 import { GrowthTimelineLibrary } from '../components/GrowthTimelineCreator';
-import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, READING_ENTRY_TYPES, READING_STATUS } from '../types/haruTypes';
+import { CATEGORY_FORMATS, FORMAT_PREFIX, FORMAT_EMOJI, getBooksInProgress, isFinishedReading } from '../types/haruTypes';
 import type { RecordFormat } from '../types/haruTypes';
 import { getFormatKey } from '../records/formatRegistry';
 import { getResultChatConfig, getResultChatConfigForFormatKey, type ResultChatConfig } from '../config/resultChatConfig';
@@ -3263,7 +3263,7 @@ export function SayuPage() {
         const prefix = FORMAT_PREFIX[format];
         const entries = monthRecords
           .filter((r) => {
-            if (prefix === 'reading' && !isCompletedReadingRecord(r)) return false;
+            if (prefix === 'reading' && !isFinishedReading(r)) return false;
             if (r.formats && r.formats.includes(format)) return true;
             return Object.keys(r).some((k) => k.startsWith(`${prefix}_`) && !k.endsWith('_sayu') && !k.endsWith('_rating') && !k.endsWith('_polished') && !k.endsWith('_images') && !k.endsWith('_stats'));
           })
@@ -4016,18 +4016,6 @@ export function SayuPage() {
     );
   };
 
-  const isCompletedReadingRecord = (record: HaruRecord) => {
-    const finalSayu = String((record as any).reading_final_sayu || '').trim();
-    const status = String((record as any).readingStatus || (record as any).reading_status || '').trim();
-    const entryType = String((record as any).entryType || (record as any).readingEntryType || '').trim();
-    return (
-      finalSayu.length > 0 ||
-      status === READING_STATUS.COMPLETED ||
-      entryType === READING_ENTRY_TYPES.FINAL ||
-      entryType === READING_ENTRY_TYPES.LEGACY_FINAL
-    );
-  };
-
   const hasCompletedFormatForRecord = (record: HaruRecord, prefix: string) => {
     if (isCompletedSnsStoryRecord(record)) return false;
     if (isKnowledgeWarehouseRecord(record)) return false;
@@ -4039,7 +4027,7 @@ export function SayuPage() {
       return isCompletedGrowthTimelineRecord(record);
     }
     if (prefix === 'reading') {
-      return isCompletedReadingRecord(record);
+      return isFinishedReading(record);
     }
     const sayu = record[`${prefix}_sayu`];
     const finalSayu = record[`${prefix}_final_sayu`];
@@ -4306,6 +4294,11 @@ export function SayuPage() {
     const displayName = getFormatDisplayName(entry.label).toLowerCase();
     return (entry.searchText || fallbackText).includes(normalizedSayuSearch) || displayName.includes(normalizedSayuSearch);
   };
+  const readingBooks = useMemo(() => getBooksInProgress(records), [records]);
+  const visibleReadingBooks = sayuTab === 'records' && recordsOwnerUid === user?.uid &&
+    (!effectiveSayuLabel || effectiveSayuLabel === '독서사유')
+    ? readingBooks.filter(book => buildSearchText('독서사유 읽는 중', book.title, book.author).includes(normalizedSayuSearch))
+    : [];
   const filteredActiveEntries = labelScopedActiveEntries.filter(matchesSayuSearch);
   const filteredActiveCalendarEntries = labelScopedCalendarEntries.filter(matchesSayuSearch);
   const displayedAllEntries = filteredActiveEntries.slice(0, allVisibleCount);
@@ -5120,6 +5113,18 @@ export function SayuPage() {
         )}
       </div>
 
+      {visibleReadingBooks.length > 0 && (
+        <section aria-label="읽는 중인 책" className="mb-4 rounded-lg bg-white p-4">
+          <h2 className="mb-2 font-bold">읽는 중인 책</h2>
+          {visibleReadingBooks.map(book => (
+            <button type="button" key={book.id} className="flex w-full items-center justify-between gap-3 border-t py-3 text-left"
+              onClick={() => navigate('/record', { state: { format: '독서사유', continueReadingId: book.id, from: '/sayu' } })}>
+              <span><strong>{book.title}</strong><small className="block">{book.author && book.author + ' · '}기록 {book.count}개</small></span>
+              <span className="shrink-0">이어 쓰기</span>
+            </button>
+          ))}
+        </section>
+      )}
       {renderSayuSearchBox()}
       {renderSayuFormatSelector()}
 

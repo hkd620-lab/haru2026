@@ -155,6 +155,40 @@ export const READING_STATUS = {
   COMPLETED: 'completed',
 } as const;
 
+export function isFinishedReading(record: Record<string, any>): boolean {
+  return Boolean(String(record.reading_final_sayu || '').trim()) ||
+    [record.readingStatus, record.reading_status].includes(READING_STATUS.COMPLETED) ||
+    [record.entryType, record.readingEntryType].some(type =>
+      type === READING_ENTRY_TYPES.FINAL || type === READING_ENTRY_TYPES.LEGACY_FINAL);
+}
+
+export function readingBookIdOf(record: Record<string, any>): string {
+  return record.readingId || record.readingBookId || makeReadingBookId(
+    record.bookTitle || record.reading_book_title || record.reading_title,
+    record.author || record.reading_author,
+  );
+}
+
+export function getBooksInProgress(records: readonly Record<string, any>[]) {
+  const books = new Map<string, { id: string; title: string; author: string; date: string; count: number }>();
+  const finished = new Set<string>();
+  for (const record of records) {
+    if (!record.formats?.includes('독서사유')) continue;
+    const id = readingBookIdOf(record);
+    const title = record.bookTitle || record.reading_book_title || record.reading_title;
+    if (!id || !title) continue;
+    if (isFinishedReading(record)) {
+      finished.add(id);
+      continue;
+    }
+    const book = books.get(id) || { id, title, author: record.author || record.reading_author || '', date: '', count: 0 };
+    book.count++;
+    if (record.date > book.date) book.date = record.date;
+    books.set(id, book);
+  }
+  return [...books.values()].filter(book => !finished.has(book.id)).sort((a, b) => b.date.localeCompare(a.date));
+}
+
 // chapter_note ↔ readingNote, final_reflection ↔ finalReflection 매핑
 export function entryTypeOldToNew(t: ReadingEntryType): ReadingEntryTypeV2 {
   return t === READING_ENTRY_TYPES.LEGACY_FINAL ? READING_ENTRY_TYPES.FINAL : READING_ENTRY_TYPES.NOTE;

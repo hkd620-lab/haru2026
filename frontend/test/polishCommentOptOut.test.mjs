@@ -35,7 +35,7 @@ function formatFixture(reading = false) {
     selectedExistingBookId: 'synthetic-book', knownReadingBooks: [], setBlockedBookMessage() {}, makeReadingBookId: () => 'synthetic-book',
     setIsReadingFinishing() {}, getFirestore: () => ({}), collection: () => ({}), query: () => ({}), where: () => ({}),
     getDocs: async () => ({ forEach() {} }), buildCurrentReadingEntry: () => '사용자가 직접 쓴 독서장', buildReadingSnapshot,
-    setReadingEntriesSnapshot() {}, setReadingAnalysis: value => { state.analysis = value; }, setShowReadingFinishModal: value => { state.showFinish = value; },
+    setShowReadingQuestions() {}, setReadingReflectionAnswers() {}, setReadingEntriesSnapshot() {}, setReadingAnalysis: value => { state.analysis = value; }, setShowReadingFinishModal: value => { state.showFinish = value; },
     readingAiReferenceText, parseReadingAiReference, imagesKey: `${prefix}_images`, imageMetaKey: `${prefix}_image_meta`, uploadedImages: [], getUploadedImageMetaForSave: () => '[]',
     editingReadingEntryId: '', editingReadingEntryDate: '', buildReadingMeta: () => ({ entryType: 'readingNote' }),
     setIsSaving() {}, onSave: async payload => { state.saves.push(structuredClone(payload)); return 'synthetic-record'; }, closeAfterCommit() {},
@@ -117,20 +117,24 @@ test('새 다듬기 안내는 사용량 조회를 유지한다', () => {
   assert.deepEqual(state, { mode: 'BASIC', quota: null, open: true, fetched: true });
 });
 
-test('독서 마무리는 false를 보내고 분석 본문을 기존 미리보기에 전달한다', async () => {
-  const f = formatFixture(true); await f.call('handleReadingFinishClick')();
+test('선택한 독서 마무리 분석은 false를 보내고 분석 본문을 기존 미리보기에 전달한다', async () => {
+  const f = formatFixture(true); await f.call('handleReadingFinishClick')(true);
   assert.equal(f.state.requests.length, 1); assert.equal(f.state.requests[0].includeAiComment, false);
   assert.equal(f.state.requests[0].format, 'reading'); assert.match(f.state.requests[0].text, /사용자가 직접 쓴 독서장/);
   assert.equal(f.state.analysis, '합성 본문'); assert.equal(f.state.showFinish, true); assert.deepEqual(f.state.errors, []);
 });
 
-test('중간 독서장은 false를 보내고 본문·기존 한마디를 저장 payload에 유지한다', async () => {
-  const f = formatFixture(true); await f.call('handleSaveChapterNote')();
-  assert.equal(f.state.requests.length, 1); assert.equal(f.state.requests[0].includeAiComment, false);
-  assert.equal(f.state.requests[0].format, 'reading'); assert.match(f.state.requests[0].text, /직접 쓴 생각/);
-  assert.equal(f.state.saves.length, 1); const saved = f.state.saves[0];
-  assert.equal(saved.reading_sayu, '합성 본문'); assert.equal(saved.reading_ai_comment, '기존 한마디');
-  assert.equal(saved.entryType, 'readingNote'); assert.deepEqual(f.state.errors, []);
+test('저자 없는 중간 기록과 기본 완독은 AI 호출 없이 진행한다', async () => {
+  const f = formatFixture(true);
+  f.formData.reading_author = '';
+  await f.call('handleSaveChapterNote')();
+  assert.equal(f.state.saves.length, 1);
+  assert.equal(f.state.saves[0].reading_sayu, '직접 쓴 생각');
+  assert.equal(f.state.saves[0].reading_ai_comment, '기존 한마디');
+  await f.call('handleReadingFinishClick')();
+  assert.equal(f.state.showFinish, true);
+  assert.deepEqual(f.state.requests, []);
+  assert.deepEqual(f.state.errors, []);
 });
 
 test('저장된 메모와 일기 다듬기는 미리보기만 제공하고 배뇨는 현재 전용 경로를 사용한다', async () => {

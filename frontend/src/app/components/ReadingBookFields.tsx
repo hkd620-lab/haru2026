@@ -2,15 +2,17 @@ export function ReadingBookFields({ title, author, locked, disabled, onChange }:
   title: string; author: string; locked: boolean; disabled: boolean;
   onChange: (key: 'reading_book_title' | 'reading_author', value: string) => void;
 }) {
-  return <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
-    {([
-      ['reading_book_title', '책 제목', title, 200, '예: 노인과 바다'],
-      ['reading_author', '저자', author, 120, '예: 어니스트 헤밍웨이'],
-    ] as const).map(([key, label, value, maxLength, placeholder]) => <label key={key} style={{ fontSize: 13, color: '#555' }}>
-      {label}{locked && <span style={{ marginLeft: 8, color: '#047857', fontSize: 11 }}>이어쓰기 모드 · 잠금</span>}
-      <input aria-label={label} value={value} maxLength={maxLength} placeholder={placeholder} readOnly={locked} disabled={disabled}
-        onChange={(e) => onChange(key, e.target.value)}
-        style={{ display: 'block', width: '100%', boxSizing: 'border-box', padding: 12, marginTop: 6, border: '1px solid #d0dff0', borderRadius: 8, font: 'inherit', fontSize: 14, background: locked ? '#f3f4f6' : '#fff' }} />
-    </label>)}
+  const inputStyle = { display: 'block', width: '100%', boxSizing: 'border-box' as const, padding: 12,
+    marginTop: 6, border: '1px solid #d0dff0', borderRadius: 8, fontSize: 16 };
+  return <div style={{ marginBottom: 16 }}>
+    <label>책 제목
+      <input aria-label="책 제목" value={title} maxLength={200} placeholder="예: 노인과 바다"
+        readOnly={locked} disabled={disabled} onChange={e => onChange('reading_book_title', e.target.value)} style={inputStyle} />
+    </label>
+    {locked ? author && <small>{author}</small> : <details style={{ marginTop: 8 }}>
+      <summary>저자 추가 (선택)</summary>
+      <input aria-label="저자" value={author} maxLength={120} placeholder="저자 이름"
+        disabled={disabled} onChange={e => onChange('reading_author', e.target.value)} style={inputStyle} />
+    </details>}
   </div>;
 }

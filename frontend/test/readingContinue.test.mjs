@@ -8,6 +8,8 @@ import { transform } from 'esbuild';
 import { parseReadingAiReference, readingAiReferenceText, resetReadingBookDraft } from '../src/app/services/readingAiCore.ts';
 import { mergeReadingBookDates, resolveReadingBookStartDate } from '../src/app/services/readingBookDates.ts';
 
+import { getBooksInProgress } from '../src/app/types/haruTypes.ts';
+
 const source = readFileSync(new URL('../src/app/components/FormatModal.tsx', import.meta.url), 'utf8');
 function slice(startMark, endMark) {
   const start = source.indexOf(startMark);
@@ -155,4 +157,15 @@ test('이어작성 카드는 기존 버튼 패턴을 쓰고 책 목록과 같은
   assert.match(source, /<button\s+type="button"\s+onClick=\{handleContinueReadingCard\}/);
   assert.match(source, /onClick=\{\(\) => continueReadingBook\(b\.readingBookId\)\}/);
   assert.match(source, /\.\.\.mergeReadingBookDates\(\{ startedAt: '', firstDate: '', lastDate: '' \}, recordDates\)/);
+});
+
+
+test('SAYU는 저자 없는 회차를 같은 책으로 묶고 구형 완독 기록도 반영한다', () => {
+  const note = { formats: ['독서사유'], reading_book_title: '산책', date: '2026-11-03' };
+  const other = { ...note, reading_author: '다른 저자' };
+  const books = getBooksInProgress([note, { ...note, date: '2026-10-01' }, other]);
+  assert.equal(books.length, 2);
+  assert.equal(books.find(book => !book.author)?.count, 2);
+  const finished = { ...note, readingEntryType: 'final_reflection' };
+  assert.deepEqual(getBooksInProgress([finished, note, other]).map(book => book.author), ['다른 저자']);
 });
