@@ -552,6 +552,19 @@ export interface SayuEditMeta {
   mood?: string;
 }
 
+const FINAL_READING_EDIT_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  reading_journal: '오늘 읽고 든 생각',
+  reading_book_text: '책에서 옮긴 문장',
+  reading_today_part: '읽은 부분',
+  reading_simple: '간편 기록',
+  reading_sentence: '기억하고 싶은 문장',
+  reading_thought: '떠오른 생각',
+  reading_life_link: '내 삶과 연결',
+  reading_space: '여백',
+});
+
+const isEditableFinalReadingField = (key: string) => Object.prototype.hasOwnProperty.call(FINAL_READING_EDIT_LABELS, key);
+
 export interface SayuModalProps {
   isOpen: boolean;
   onClose: (deleted?: boolean) => void;
@@ -636,6 +649,7 @@ export function SayuModal({
   const [isSpecialDay, setIsSpecialDay] = useState(false);
   const [viewMode, setViewMode] = useState<'ai' | 'original'>('ai');
   const [editedOriginalData, setEditedOriginalData] = useState<Record<string, string>>(originalData || {});
+  const hasEditableOriginal = Object.keys(editedOriginalData).some(key => !isFinalReading || isEditableFinalReadingField(key));
   const openedHouseholdOriginalRef = useRef<Record<string, string>>({});
   const [isSavingOriginal, setIsSavingOriginal] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
@@ -1737,7 +1751,13 @@ export function SayuModal({
       if (isHouseholdSayu) {
         await saveHouseholdOriginal(db, currentUser.uid, docId, openedHouseholdOriginalRef.current, editedOriginalData);
         openedHouseholdOriginalRef.current = { ...editedOriginalData };
-      } else await updateDoc(recordRef, editedOriginalData);
+      } else {
+        const updates = isFinalReading
+          ? Object.fromEntries(Object.entries(editedOriginalData).filter(([key]) => isEditableFinalReadingField(key)))
+          : editedOriginalData;
+        if (Object.keys(updates).length === 0) return;
+        await updateDoc(recordRef, updates);
+      }
       toast.success('SAYU·나의 기록에서 확인하실 수 있습니다.');
     } catch (error) {
       if (isHouseholdSayu) toast.error(error instanceof HouseholdOriginalConflict ? error.message : '가계부를 저장하지 못했습니다. 인터넷 연결과 접근 권한을 확인한 뒤 다시 시도해 주세요.');
@@ -1836,7 +1856,9 @@ export function SayuModal({
     }
 
     // garden_crop을 상단에 먼저 표시하기 위해 정렬
-    const sortedEntries = Object.entries(editedOriginalData).sort(([keyA], [keyB]) => {
+    const sortedEntries = Object.entries(editedOriginalData)
+      .filter(([key]) => !isFinalReading || key === 'reading_entries_snapshot' || isEditableFinalReadingField(key))
+      .sort(([keyA], [keyB]) => {
       if (keyA === 'garden_crop') return -1;
       if (keyB === 'garden_crop') return 1;
       return 0;
@@ -1858,6 +1880,16 @@ export function SayuModal({
             displayLabel = key.charAt(0).toUpperCase() + key.slice(1);
           }
 
+          if (key === 'reading_entries_snapshot') {
+            return value.trim() ? (
+              <section key={key} aria-label="지금까지 남긴 독서 기록" style={{ backgroundColor: '#fff', padding: 16, borderRadius: 8 }}>
+                <h3>지금까지 남긴 독서 기록</h3>
+                <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{value}</p>
+              </section>
+            ) : null;
+          }
+
+          if (isFinalReading) displayLabel = FINAL_READING_EDIT_LABELS[key];
           const isTitle = key.endsWith('_title');
 
           return (
@@ -1876,6 +1908,7 @@ export function SayuModal({
               </span>
               {isTitle ? (
                 <input
+                  aria-label={displayLabel}
                   value={value}
                   readOnly={isRefining}
                   onChange={(e) => setEditedOriginalData(prev => ({ ...prev, [key]: e.target.value }))}
@@ -1896,6 +1929,7 @@ export function SayuModal({
                 />
               ) : (
                 <textarea
+                  aria-label={displayLabel}
                   value={value}
                   readOnly={isRefining}
                   onChange={(e) => {
@@ -2602,8 +2636,10 @@ export function SayuModal({
               lineHeight: 1.5,
             }}
           >
-            <span aria-hidden="true">✏️</span>
-            <span>이 기록은 바로 수정할 수 있습니다. 수정한 뒤 아래 ‘저장’ 버튼을 눌러주세요.</span>
+            <span aria-hidden="true">{isFinalReading && !hasEditableOriginal ? '📖' : '✏️'}</span>
+            <span>{isFinalReading && !hasEditableOriginal
+              ? '완독할 때 모아 둔 독서 기록을 볼 수 있어요.'
+              : '이 기록은 바로 수정할 수 있습니다. 수정한 뒤 아래 ‘저장’ 버튼을 눌러주세요.'}</span>
           </div>
           )}
           {viewMode === 'ai' ? (
@@ -3511,7 +3547,7 @@ export function SayuModal({
         )}
 
         {/* Footer - 원본 탭: 저장 + 다시 다듬기 */}
-        {viewMode === 'original' && editedOriginalData && Object.keys(editedOriginalData).length > 0 && (
+        {viewMode === 'original' && hasEditableOriginal && (
           <div
             style={{
               padding: '16px 20px',

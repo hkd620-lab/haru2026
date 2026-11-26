@@ -2,7 +2,8 @@ import { getFormatDisplayName } from '../records/recordFormatDescriptions';
 import { getRecordPhotoLimit } from '../services/recordPhotoLimit';
 import { isStockOcrQuotaExceeded, STOCK_OCR_QUOTA_NOTICE } from '../services/stockOcrQuota';
 import { X, TestTube2, Wand2, Upload, Trash2, Plus, Camera, FileText, Pencil } from 'lucide-react';
-import { useState, useEffect, useRef, Fragment } from 'react';
+import { useState, useEffect, useId, useRef, Fragment } from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { ReadingAiChat } from './ReadingAiChat';
 import { ReadingBookFields } from './ReadingBookFields';
 import { useReadingDraft } from '../hooks/useReadingDraft';
@@ -37,8 +38,7 @@ import {
   makeReadingBookId,
   normalizeBookField,
   buildReadingMetaCombined,
-  READING_ENTRY_TYPES,
-  READING_STATUS,
+  isFinishedReading, readingBookIdOf,
 } from '../types/haruTypes';
 import { buildFormatKeyMap } from '../records/formatRegistry';
 import { WRITABLE_FORMATS } from '../records/writeBeforeFormat';
@@ -105,12 +105,13 @@ type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose: (savedReadingId?: string) => void;
   format: RecordFormat;
   recordId: string;
   initialData?: Record<string, string>;
   initialPhotos?: File[];
   initialWritingDraft?: boolean;
+  continueReadingId?: string;
   // 가계부 화면의 '은행 내역 가져오기'로 열었을 때만 'bank'. 없으면 기존 화면 그대로다.
   householdEntryMode?: 'bank';
   onSave: (formatData: Record<string, string>) => Promise<string | void | HouseholdSaveResult>;
@@ -480,7 +481,7 @@ const LEDGER_OCR_PREVIEW_FIELDS: { key: keyof LedgerOcrFields; label: string }[]
   { key: 'memo', label: '메모' },
 ];
 
-export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, initialPhotos = [], initialWritingDraft = false, householdEntryMode, onSave: onSaveRequest }: FormatModalProps) {
+export function FormatModal({ isOpen, onClose, format, recordId, initialData = {}, initialPhotos = [], initialWritingDraft = false, continueReadingId, householdEntryMode, onSave: onSaveRequest }: FormatModalProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
@@ -788,7 +789,21 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [growthSubjectGender, setGrowthSubjectGender] = useState<GrowthGender | ''>('');
   const [isReadingFinishing, setIsReadingFinishing] = useState(false);
   const [showReadingFinishModal, setShowReadingFinishModal] = useState(false);
+  const [bookListStatus, setBookListStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const bookListLoaded = bookListStatus === 'ready';
+  const [showReadingQuestions, setShowReadingQuestions] = useState(false);
   const [readingAnalysis, setReadingAnalysis] = useState('');
+  const [readingAnalysisStatus, setReadingAnalysisStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const readingAnalysisRequest = useRef(0);
+  const readingReflectionBookId = useRef('');
+  const [readingAnalysisLimitReached, setReadingAnalysisLimitReached] = useState(false);
+  const readingSaveNotice = useRef<string | number | undefined>(undefined);
+  const readingDialogId = useId();
+  const readingFinishTriggerRef = useRef<HTMLButtonElement>(null);
+  const readingAnalysisStatusRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (showReadingFinishModal && readingAnalysisStatus === 'loading') readingAnalysisStatusRef.current?.focus();
+  }, [showReadingFinishModal, readingAnalysisStatus]);
   const [readingReflectionAnswers, setReadingReflectionAnswers] = useState<Record<string, string>>({});
   const [readingEntriesSnapshot, setReadingEntriesSnapshot] = useState<string>('');
   // 📚 독서사유 — 책 묶음(readingId canonical, readingBookId legacy compatibility) 관리
@@ -809,6 +824,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     readingJournal: string;
     readingSayu: string;
     readingAiContext: string;
+    legacyMerged: boolean;
   };
   const [knownReadingBooks, setKnownReadingBooks] = useState<KnownReadingBook[]>([]);
   const [readingEntriesByBook, setReadingEntriesByBook] = useState<Record<string, KnownReadingEntry[]>>({});
@@ -866,6 +882,13 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setPolishedContent('');
       setShowPolishModal(false);
       setShowReadingFinishModal(false);
+      setBookListStatus('loading');
+      setShowReadingQuestions(false);
+      setIsReadingFinishing(false);
+      readingAnalysisRequest.current += 1;
+      readingReflectionBookId.current = '';
+      setReadingAnalysisLimitReached(false);
+      setReadingAnalysisStatus('idle');
       setReadingAnalysis('');
       setReadingReflectionAnswers({});
       setReadingEntriesSnapshot('');
@@ -1017,12 +1040,14 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setIsReadingBookLocked(false);
       setBlockedBookMessage('');
       if (format === '독서사유' && user?.uid) {
+        const session = photoEditorSessionRef.current;
         (async () => {
           try {
             const db = getFirestore();
             const ref = collection(db, 'users', user.uid, 'records');
             const q = query(ref, where('formats', 'array-contains', '독서사유'));
             const snap = await getDocs(q);
+            if (session !== photoEditorSessionRef.current) return;
             const byBookId = new Map<string, KnownReadingBook>();
             const entriesByBookId = new Map<string, KnownReadingEntry[]>();
             snap.forEach((docSnap) => {
@@ -1032,23 +1057,24 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
               if (!title) return;
               // TODO(HARU-v3): legacy compatibility 제거 예정.
               // 신규 구조(entryType/readingStatus/readingId) 기준으로 migration 계획.
-              const bookId: string = data.readingId || data.readingBookId || makeReadingBookId(title, author);
+              const bookId = readingBookIdOf(data);
               if (!bookId) return;
-              const isFinal =
-                String(data.entryType || '') === READING_ENTRY_TYPES.FINAL ||
-                String(data.readingStatus || '') === READING_STATUS.COMPLETED ||
-                String(data.readingEntryType || '') === READING_ENTRY_TYPES.LEGACY_FINAL ||
-                String(data.reading_status || '') === 'completed';
+              const isFinal = isFinishedReading(data);
               const date = String(data.date || '');
               if (!isFinal) {
+                const hasJournal = data.reading_legacy_merged === 'yes' || Boolean(String(data.reading_journal || '').trim());
                 const entry: KnownReadingEntry = {
                   id: docSnap.id,
                   date,
                   noteCreatedAt: String(data.reading_note_createdAt || data.updatedAt || data.createdAt || ''),
                   readingBookText: String(data.reading_book_text || ''),
-                  readingJournal: String(data.reading_journal || ''),
+                  readingJournal: hasJournal
+                    ? String(data.reading_journal || '')
+                    : [data.reading_today_part, data.reading_simple, data.reading_sentence, data.reading_thought, data.reading_life_link, data.reading_space]
+                        .filter(value => typeof value === 'string' && value.trim()).join('\n\n'),
                   readingSayu: String(data.reading_sayu || ''),
                   readingAiContext: String(data.reading_ai_context || ''),
+                  legacyMerged: data.reading_legacy_merged === 'yes' || !hasJournal,
                 };
                 if (entry.readingBookText.trim() || entry.readingJournal.trim() || entry.readingSayu.trim()) {
                   const entries = entriesByBookId.get(bookId) || [];
@@ -1062,10 +1088,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                 existing.hasFinalReflection = existing.hasFinalReflection || isFinal;
                 Object.assign(existing, mergeReadingBookDates(existing, recordDates));
                 // 더 최근 데이터의 저자/제목으로 갱신
-                if (date === existing.lastDate || !existing.author) {
-                  existing.bookTitle = title || existing.bookTitle;
-                  existing.author = author || existing.author;
-                }
+                if (date === existing.lastDate) existing.bookTitle = title;
+                if (author && (date === existing.lastDate || !existing.author)) existing.author = author;
               } else {
                 byBookId.set(bookId, {
                   readingBookId: bookId,
@@ -1092,8 +1116,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
             // initialData에 책 정보가 있으면 자동으로 이어쓰기 모드 인식
             const initTitle = String((initialData as any)?.reading_book_title || '').trim();
             const initAuthor = String((initialData as any)?.reading_author || '').trim();
-            if (initTitle && initAuthor) {
-              const initId = String((initialData as any)?.readingId || (initialData as any)?.readingBookId || makeReadingBookId(initTitle, initAuthor));
+            if (continueReadingId || initTitle) {
+              const initId = continueReadingId || String((initialData as any)?.readingId || (initialData as any)?.readingBookId || makeReadingBookId(initTitle, initAuthor));
               const matched = list.find((b) => b.readingBookId === initId);
               if (matched && !matched.hasFinalReflection) {
                 setSelectedExistingBookId(initId);
@@ -1102,7 +1126,10 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                 setBlockedBookMessage('이미 마무리한 책입니다. 다시 읽는 기록은 새 독서사유로 시작해 주세요.');
               }
             }
+            setBookListStatus('ready');
           } catch (e) {
+            if (session !== photoEditorSessionRef.current) return;
+            setBookListStatus('error');
             console.warn('독서사유 책 목록 로드 실패:', e);
             setKnownReadingBooks([]);
             setReadingEntriesByBook({});
@@ -1197,6 +1224,19 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || format !== '독서사유' || !bookListLoaded || recordStep !== 'select' || readingDraft.recoverable) return;
+    if (continueReadingId) {
+      const book = knownReadingBooks.find(item => item.readingBookId === continueReadingId);
+      if (book && !book.hasFinalReflection) {
+        setFormData(prev => resetReadingBookDraft(prev, book.bookTitle, book.author, resolveReadingBookStartDate(book), ''));
+        setRecordStep('input');
+      }
+    } else if (!knownReadingBooks.some(book => !book.hasFinalReflection)) {
+      setRecordStep('input');
+    }
+  }, [isOpen, format, bookListLoaded, recordStep, continueReadingId, readingDraft.recoverable, knownReadingBooks]);
 
   // HARU보조장부 XLSX 작업 중 상태 자동 저장 (분류/구분 변경마다 500ms debounce)
   useEffect(() => {
@@ -1752,13 +1792,11 @@ ${contentValues}
       return;
     }
     const bookTitle = String(formData.reading_book_title || '').trim();
-    const author = String(formData.reading_author || '').trim();
+    const author = selectedExistingBookId && selectedExistingBookId === makeReadingBookId(bookTitle, '')
+      ? ''
+      : String(formData.reading_author || '').trim();
     if (!bookTitle) {
       toast.warning('책 제목을 먼저 입력해 주세요.');
-      return;
-    }
-    if (!author) {
-      toast.warning('저자를 먼저 입력해 주세요.');
       return;
     }
 
@@ -2425,11 +2463,11 @@ ${contentValues}
     return true;
   };
 
-  const closeAfterCommit = () => {
+  const closeAfterCommit = (savedReadingId?: string) => {
     ocrPhotoSelectionVersionRef.current += 1;
     if (format === '독서사유') readingDraft.clear(selectedExistingBookId || makeReadingBookId(formData.reading_book_title || '', formData.reading_author || ''));
     committedCloseRef.current = true;
-    onClose();
+    onClose(savedReadingId);
   };
 
   const handleCloseRequest = async () => {
@@ -3542,39 +3580,6 @@ ${contentValues}
   };
 
   // 📚 "새 책 시작" — 잠금 해제 + 책 제목/저자 비우기
-  const onStartNewBook = () => {
-    if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
-    ocrPhotoSelectionVersionRef.current += 1;
-    setSelectedExistingBookId('');
-    setEditingReadingEntryId('');
-    setEditingReadingEntryDate('');
-    setIsReadingBookLocked(false);
-    setBlockedBookMessage('');
-    setReadingBookTextMode('photo');
-    setSelectedBookOcrFiles([]);
-    setReadingOcrUsedCount(null);
-    resetReadingForBook('', '', new Date().toISOString().slice(0, 10));
-  };
-
-  const prepareReadingAppend = (bookId: string) => {
-    if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
-    onSelectExistingBook(bookId);
-    setEditingReadingEntryId('');
-    setEditingReadingEntryDate('');
-    setReadingBookTextMode('manual');
-    setFormData((prev) => ({
-      ...prev,
-      reading_book_text: '',
-      reading_journal: '',
-      reading_ai_context: '',
-    }));
-    window.setTimeout(() => {
-      readingJournalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      readingJournalRef.current?.focus();
-    }, 0);
-    toast.info('독서장 칸에 오늘 소감을 쓰면 새 회차로 추가됩니다.');
-  };
-
   const prepareReadingEdit = (bookId: string, entry: KnownReadingEntry, entryIndex: number) => {
     if (isReadingChatBusy || isExtractingBookText || isSaving || isPolishing || isReadingFinishing) { toast.info('현재 처리가 끝난 뒤 책이나 회차를 바꿔 주세요.'); return; }
     ocrPhotoSelectionVersionRef.current += 1;
@@ -3592,6 +3597,7 @@ ${contentValues}
       reading_started_at: prev.reading_started_at || entry.date || book.lastDate || '',
       reading_book_text: entry.readingBookText,
       reading_journal: entry.readingJournal,
+      reading_legacy_merged: entry.legacyMerged ? 'yes' : '',
       reading_sayu: entry.readingSayu,
       reading_ai_context: entry.readingAiContext,
       reading_note_createdAt: entry.noteCreatedAt || prev.reading_note_createdAt || '',
@@ -3613,6 +3619,7 @@ ${contentValues}
       ...prev,
       reading_book_text: '',
       reading_journal: '',
+      reading_legacy_merged: '',
       reading_sayu: '',
       reading_ai_context: '',
     }));
@@ -3655,58 +3662,78 @@ ${contentValues}
       return;
     }
     setIsReadingFinishing(true);
+    const session = photoEditorSessionRef.current;
+    if (readingSaveNotice.current !== undefined) toast.dismiss(readingSaveNotice.current);
     try {
       const db = getFirestore();
       const recordsRef = collection(db, 'users', user.uid, 'records');
       const q = query(recordsRef, where('formats', 'array-contains', '독서사유'));
       const snap = await getDocs(q);
+      if (session !== photoEditorSessionRef.current) return;
       const entries: Array<{ date: string; text: string }> = [];
       snap.forEach((recordSnap) => {
         const data = recordSnap.data() as Record<string, any>;
         // readingId(v2) → readingBookId(legacy) → fallback 계산 순으로 식별자 결정
         // TODO(HARU-v3): legacy compatibility 제거 예정.
         // 신규 구조(entryType/readingStatus/readingId) 기준으로 migration 계획.
-        const savedBookId: string =
-          data.readingId ||
-          data.readingBookId ||
-          makeReadingBookId(
-            String(data.bookTitle || data.reading_book_title || data.reading_title || ''),
-            String(data.author || data.reading_author || ''),
-          );
-        if (savedBookId !== currentBookId) return;
-        // 현재는 운영 안정성을 위해 legacy OR 호환을 유지한다.
-        // TODO(HARU-v3): legacy compatibility 제거 예정.
-        // 신규 구조(entryType/readingStatus/readingId) 기준으로 migration 계획.
-        // 독서마무리 수집은 향후 entryType === "readingNote"
-        // 또는 readingEntryType === "chapter_note" 만 수집하도록 전환 예정.
-        if (data.entryType === READING_ENTRY_TYPES.FINAL) return;
-        if (data.readingEntryType === READING_ENTRY_TYPES.LEGACY_FINAL) return;
-        const text = [
+        if (readingBookIdOf(data) !== currentBookId || isFinishedReading(data)) return;
+        const legacyNotes = data.reading_legacy_merged === 'yes' ? [] : [
           data.reading_today_part ? `오늘 읽은 챕터: ${data.reading_today_part}` : '',
-          data.reading_journal ? `독서장(사용자가 작성): ${data.reading_journal}` : '',
-          readingAiReferenceText(data.reading_ai_context, currentBookId),
-          data.reading_book_text ? `본문 내용(책 인용): ${data.reading_book_text}` : '',
           data.reading_sentence ? `기억 문장: ${data.reading_sentence}` : '',
           data.reading_thought ? `떠오른 생각: ${data.reading_thought}` : '',
           data.reading_life_link ? `내 삶과 연결: ${data.reading_life_link}` : '',
           data.reading_space ? `여백: ${data.reading_space}` : '',
           data.reading_simple ? `간편 기록: ${data.reading_simple}` : '',
+        ];
+        const text = [
+          data.reading_journal ? `독서장(사용자가 작성): ${data.reading_journal}` : '',
+          readingAiReferenceText(data.reading_ai_context, currentBookId),
+          data.reading_book_text ? `본문 내용(책 인용): ${data.reading_book_text}` : '',
+          ...legacyNotes,
         ].filter(Boolean).join('\n');
-        if (text.trim()) entries.push({ date: String(data.date || ''), text });
+        const savedText = text.trim() || String(data.reading_sayu || '').trim();
+        if (savedText) entries.push({ date: String(data.date || ''), text: savedText });
       });
       const currentEntry = buildCurrentReadingEntry();
       if (currentEntry.trim()) {
         entries.push({ date: new Date().toISOString().slice(0, 10), text: currentEntry });
       }
       if (entries.length === 0) {
-        toast.warning('분석할 독서 기록이 없습니다.');
+        toast.warning('완독으로 저장할 독서 기록을 한 줄 적어 주세요.');
         return;
       }
       entries.sort((a, b) => a.date.localeCompare(b.date));
-      const entriesText = buildReadingSnapshot(entries);
+      const snapshot = buildReadingSnapshot(entries);
+      if (readingReflectionBookId.current !== currentBookId || snapshot !== readingEntriesSnapshot) {
+        setShowReadingQuestions(false);
+        setReadingAnalysis('');
+        setReadingAnalysisStatus('idle');
+        setReadingAnalysisLimitReached(false);
+        if (readingReflectionBookId.current !== currentBookId) setReadingReflectionAnswers({});
+      }
+      readingReflectionBookId.current = currentBookId;
+      setReadingEntriesSnapshot(snapshot);
+      setShowReadingFinishModal(true);
+    } catch (error) {
+      if (session !== photoEditorSessionRef.current) return;
+      console.error('독서 기록 불러오기 실패:', error);
+      toast.error('책의 기록을 불러오지 못했어요. 다시 시도해 주세요.');
+    } finally {
+      if (session === photoEditorSessionRef.current) setIsReadingFinishing(false);
+    }
+  };
 
+  const requestReadingAnalysis = async () => {
+    if (!readingEntriesSnapshot || readingAnalysisStatus === 'loading') return;
+    const request = ++readingAnalysisRequest.current;
+    const session = photoEditorSessionRef.current;
+    const bookTitle = String(formData.reading_book_title || formData[`${prefix}_title`] || '').trim();
+    setShowReadingQuestions(true);
+    setReadingAnalysisStatus('loading');
+    setReadingAnalysisLimitReached(false);
+    try {
       const functions = getFunctions(undefined, 'asia-northeast3');
-      const polishContentFunc = httpsCallable(functions, 'polishContent');
+      const polishContentFunc = httpsCallable(functions, 'polishContent', { timeout: 20_000 });
       const result = await polishContentFunc({
         text: `다음은 한 권의 책 "${bookTitle.slice(0, 200)}"을 읽는 동안 남긴 독서사유 누적 기록입니다.
 사용자가 쓰지 않은 사건, 감정, 판단을 추가하지 말고, 기록에 드러난 흐름만 차분히 분석하세요.
@@ -3721,26 +3748,23 @@ AI 참고 메모는 보조자료이며 사용자의 생각·경험·판단으로
 5. 장기 자산으로 남길 최종 독서사유
 
 누적 기록:
-${entriesText}`,
+${readingEntriesSnapshot}`,
         format: 'reading',
         mode: 'PREMIUM',
         includeAiComment: false,
       });
-      const responseData = result.data as any;
-      setReadingEntriesSnapshot(entriesText);
-      setReadingAnalysis(responseData.text || '');
-      setShowReadingFinishModal(true);
-      toast.success('독서사유 마무리 분석이 준비되었습니다.');
+      if (session !== photoEditorSessionRef.current || request !== readingAnalysisRequest.current) return;
+      const analysis = (result.data as { text?: string }).text?.trim();
+      setReadingAnalysis(analysis || '');
+      setReadingAnalysisStatus(analysis ? 'ready' : 'error');
     } catch (error) {
-      console.error('독서사유 마무리 실패:', error);
-      toast.error('독서사유 마무리 분석에 실패했습니다.');
-    } finally {
-      setIsReadingFinishing(false);
+      if (session !== photoEditorSessionRef.current || request !== readingAnalysisRequest.current) return;
+      console.error('독서사유 마무리 분석 실패:', error);
+      setReadingAnalysisLimitReached((error as { code?: string })?.code === 'functions/resource-exhausted');
+      setReadingAnalysisStatus('error');
     }
   };
 
-  // 📚 독서사유 — 중간기록저장하기 (polishContent 강도 6 자동 다듬기 + chapter_note 자동 저장)
-  // 미리보기 모달 없이 자동 저장. polishContent 시그니처에 strength 가 없으므로 prompt 안에서 "강도 6 수준"을 지시.
   const handleSaveChapterNote = async () => {
     if (format !== '독서사유') return;
     const bookTitle = (formData.reading_book_title || '').trim();
@@ -3748,10 +3772,6 @@ ${entriesText}`,
     const startedAt = (formData.reading_started_at || new Date().toISOString().slice(0, 10)).trim();
     if (!bookTitle) {
       toast.warning('책 제목을 먼저 입력해 주세요.');
-      return;
-    }
-    if (!bookAuthor) {
-      toast.warning('저자를 입력해 주세요.');
       return;
     }
     // 마무리한 책 차단
@@ -3763,41 +3783,14 @@ ${entriesText}`,
       return;
     }
 
-    const contentValues = [
-      formData.reading_journal ? `독서장(사용자가 작성):\n${formData.reading_journal}` : '',
-      readingAiReferenceText(formData.reading_ai_context, currentBookId),
-      formData.reading_book_text ? `본문 내용(책 인용):\n${formData.reading_book_text}` : '',
-    ].filter((v) => typeof v === 'string' && v.trim()).join('\n\n');
-    if (!contentValues.trim()) {
-      toast.error('본문 내용이나 독서장을 한 줄이라도 작성해 주세요.');
+    const note = (formData.reading_journal || '').trim() ||
+      (formData.reading_book_text || '').trim() || readingAiReferenceText(formData.reading_ai_context, currentBookId);
+    if (!note) {
+      toast.warning('오늘 읽고 든 생각을 한 줄 적어 주세요.');
       return;
     }
-    setIsPolishing(true);
-    toast.info('AI가 중간기록을 다듬는 중...');
+    setIsSaving(true);
     try {
-      const fns = getFunctions(undefined, 'asia-northeast3');
-      const polishContentFunc = httpsCallable(fns, 'polishContent');
-      const result = await polishContentFunc({
-        text: `다음은 "독서장" 형식으로 작성된 중간 독서기록입니다.
-AI 다듬기 강도 6 수준(10단계 중 6)으로 다듬어 주세요 — 사실·인용은 원문 보존, 표현은 자연스럽게 정돈.
-
-**절대 준수 사항:**
-1. 말투는 "~다", "~했다", "~이다" 체.
-2. 원문에 없는 사실·감정·해석을 추가하지 마세요. 책 인용 문장은 원문 그대로 보존.
-3. 짧은 글이어도 강제로 늘리지 말 것. 한 줄이면 한 줄로 정돈.
-4. 공백 제외 2500자 이내.
-5. 사용자 질문과 직접 쓴 생각이 중심입니다. AI 참고 메모는 사용자의 생각이 아니므로 1인칭 의견으로 바꾸지 말고 출처를 구분하세요.
-
-책: ${bookTitle.slice(0, 200)}${bookAuthor ? ` / 저자: ${bookAuthor.slice(0, 120)}` : ''}
-
-${contentValues.slice(0, 4100)}`,
-        format: 'reading',
-        mode: 'PREMIUM',
-        includeAiComment: false,
-      });
-      const responseData = result.data as any;
-      const polished = String(responseData?.text || '');
-      const stats = responseData?.stats;
       const now = new Date().toISOString();
       const targetRecordId = editingReadingEntryId || `reading_note_${currentBookId}_${Date.now()}`;
 
@@ -3811,37 +3804,36 @@ ${contentValues.slice(0, 4100)}`,
         [imageMetaKey]: getUploadedImageMetaForSave(),
         [`${prefix}_style`]: 'premium',
         [`${prefix}_mode`]: 'PREMIUM',
-        [`${prefix}_sayu`]: polished,
-        [`${prefix}_polished`]: true,
-        [`${prefix}_polishedAt`]: now,
+        [`${prefix}_sayu`]: note,
         [`${prefix}_note_createdAt`]: editingReadingEntryId
           ? (formData.reading_note_createdAt || now)
           : now,
         [`${prefix}_note_updatedAt`]: now,
         [`${prefix}_accumulation_mode`]: editingReadingEntryId ? 'edit' : 'append',
+        reading_legacy_merged: editingReadingEntryId ? formData.reading_legacy_merged || '' : '',
         ...buildReadingMeta('chapter_note'),
       };
-      if (stats) updateData[`${prefix}_stats`] = stats;
       if (bookTitle) updateData[`${prefix}_title`] = bookTitle;
 
-      setIsSaving(true);
       await onSave(updateData);
-      toast.success(editingReadingEntryId ? '📖 독서장 회차가 수정되었습니다.' : '📖 독서장이 누적 저장되었습니다.');
+      readingSaveNotice.current = toast.success(editingReadingEntryId ? '독서 기록을 수정했어요.' : '오늘 독서 기록을 저장했어요.');
       closeAfterCommit();
     } catch (error: any) {
       console.error('중간기록 저장 실패:', error);
       toast.error('중간기록 저장에 실패했습니다.');
     } finally {
-      setIsPolishing(false);
       setIsSaving(false);
     }
   };
 
   const handleSaveReadingFinal = async () => {
+    readingAnalysisRequest.current += 1;
+    if (readingAnalysisStatus === 'loading') setReadingAnalysisStatus('idle');
     const answers = readingReflectionQuestions
+      .filter(question => showReadingQuestions && readingReflectionAnswers[question]?.trim())
       .map((question) => `${question}\n${(readingReflectionAnswers[question] || '').trim()}`)
       .join('\n\n');
-    const finalSayu = `${readingAnalysis.trim()}\n\n[자기성찰 답변]\n${answers}`.trim();
+    const finalSayu = [readingAnalysis.trim() || readingEntriesSnapshot, answers && '[자기성찰 답변]\n' + answers].filter(Boolean).join('\n\n');
     const updateData: Record<string, any> = {
       ...formData,
       reading_ai_context: JSON.stringify(parseReadingAiReference(formData.reading_ai_context, selectedExistingBookId || makeReadingBookId(formData.reading_book_title || '', formData.reading_author || ''))),
@@ -3849,9 +3841,9 @@ ${contentValues.slice(0, 4100)}`,
       [imageMetaKey]: getUploadedImageMetaForSave(),
       [`${prefix}_style`]: recordStyle,
       [`${prefix}_mode`]: 'READING_FINAL',
-      [`${prefix}_sayu`]: readingAnalysis,
+      [`${prefix}_sayu`]: readingAnalysis.trim() || finalSayu,
       [`${prefix}_final_sayu`]: finalSayu,
-      [`${prefix}_reflection_questions`]: JSON.stringify(readingReflectionQuestions),
+      [`${prefix}_reflection_questions`]: JSON.stringify(showReadingQuestions ? readingReflectionQuestions : []),
       [`${prefix}_reflection_answers`]: JSON.stringify(readingReflectionAnswers),
       [`${prefix}_entries_snapshot`]: readingEntriesSnapshot,
       [`${prefix}_status`]: 'completed',
@@ -3864,10 +3856,17 @@ ${contentValues.slice(0, 4100)}`,
     }
     setIsSaving(true);
     try {
-      await onSave(updateData);
-      toast.success('SAYU-나의기록에 저장되었습니다.');
+      const savedRecordId = await onSave(updateData);
+      const title = formData.reading_book_title?.trim() || '독서장';
+      toast.success(`「${title}」 완독으로 저장했어요.`, {
+        duration: 12000,
+        action: savedRecordId ? {
+          label: '기록 보기',
+          onClick: () => navigate('/sayu', { state: { filterFormat: '독서사유', openRecordId: savedRecordId } }),
+        } : undefined,
+      });
       setShowReadingFinishModal(false);
-      closeAfterCommit();
+      closeAfterCommit(savedRecordId);
     } catch (error) {
       console.error('최종 독서사유 저장 실패:', error);
       toast.error('최종 저장에 실패했습니다.');
@@ -3939,9 +3938,25 @@ ${contentValues.slice(0, 4100)}`,
     return preview.trim().replace(/\s+/g, ' ').slice(0, 180);
   };
 
+  const isReadingEditor = format === '독서사유';
+  const matchingReadingBooks = isReadingEditor && !selectedExistingBookId && formData.reading_book_title?.trim()
+    ? knownReadingBooks.filter(book => !book.hasFinalReflection &&
+      normalizeBookField(book.bookTitle) === normalizeBookField(formData.reading_book_title))
+    : [];
+  const EditorSurface = isReadingEditor ? DialogPrimitive.Content : 'div';
+  const EditorTitle = isReadingEditor ? DialogPrimitive.Title : 'h2';
+  const finishActionsDisabled = isSaving || isReadingFinishing;
+  const closeReadingFinish = () => {
+    if (finishActionsDisabled) return;
+    readingAnalysisRequest.current += 1;
+    if (readingAnalysisStatus === 'loading') setReadingAnalysisStatus('idle');
+    setShowReadingFinishModal(false);
+  };
+
   return (
     <>
       {/* 메인 모달 */}
+      <DialogPrimitive.Root open={isReadingEditor} onOpenChange={open => { if (!open) void handleCloseRequest(); }}>
       <div
         style={{
           position: 'fixed',
@@ -3956,9 +3971,12 @@ ${contentValues.slice(0, 4100)}`,
           zIndex: 1000,
           padding: '20px',
         }}
-        onClick={handleCloseRequest}
+        onClick={isReadingEditor ? undefined : handleCloseRequest}
       >
-        <div
+        <EditorSurface
+          aria-modal={isReadingEditor || undefined}
+          onPointerDownOutside={isReadingEditor ? event => event.preventDefault() : undefined}
+          aria-describedby={undefined}
           style={{
             backgroundColor: '#FAF9F6',
             borderRadius: 12,
@@ -3983,9 +4001,9 @@ ${contentValues.slice(0, 4100)}`,
             }}
           >
             <div>
-              <h2 style={{ fontSize: 18, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
+              <EditorTitle style={{ fontSize: 18, color: '#1A3C6E', fontWeight: 600, margin: 0 }}>
                 {format === '독서사유' ? (isEditingReadingEntry ? '독서장 회차 수정' : '독서장 작성') : `${getFormatDisplayName(format)} 작성`}
-              </h2>
+              </EditorTitle>
               {existingSayu && (
                 <p style={{ fontSize: 12, color: '#10b981', margin: '4px 0 0 0' }}>
                   ✅ SAYU 완료
@@ -4044,7 +4062,9 @@ ${contentValues.slice(0, 4100)}`,
 
           {/* Content */}
           {/* Step 1 — 공통 선택 화면 (독서사유는 이어작성/새작성 분기) */}
-          {format === '독서사유' && readingDraft.recoverable && recordStep === 'select' && (
+          {format === '독서사유' && bookListStatus === 'loading' && <p role="status">책 목록을 확인하고 있어요.</p>}
+          {format === '독서사유' && bookListStatus === 'error' && <p role="alert">책 목록을 불러오지 못했어요. 닫고 다시 열어 주세요.</p>}
+          {format === '독서사유' && bookListLoaded && readingDraft.recoverable && recordStep === 'select' && (
             <div role="status" style={{ marginBottom: 12, padding: 12, border: '1px solid #d0dff0', borderRadius: 8 }}>
               <p style={{ fontSize: 13 }}>이 기기에 저장 전 독서 초안이 있습니다: {readingDraft.recoverable.formData.reading_book_title || '제목 없음'}</p>
               <button type="button" onClick={() => {
@@ -4062,7 +4082,7 @@ ${contentValues.slice(0, 4100)}`,
           )}
           {format === '독서사유' && readingDraft.storageError && <p role="alert">이 기기에 독서 초안을 보관할 수 없습니다. 닫기 전에 저장해 주세요.</p>}
 
-          {recordStep === 'select' && format === '독서사유' && (
+          {recordStep === 'select' && format === '독서사유' && bookListLoaded && (
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
               <p style={{ textAlign: 'center', fontSize: '14px', fontWeight: 600, color: '#1A3C6E', marginBottom: '4px' }}>
                 📚 독서장을 어떻게 시작할까요?
@@ -4093,7 +4113,7 @@ ${contentValues.slice(0, 4100)}`,
                   </span>
                 </button>
                 {/* 새작성 카드 */}
-                <div
+                <button type="button"
                   onClick={() => {
                     // 공통 작성창의 초안은 첫 책 선택에서 유지한다.
                     setSelectedExistingBookId('');
@@ -4116,7 +4136,7 @@ ${contentValues.slice(0, 4100)}`,
                   <div style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}>
                     새 책으로 시작
                   </div>
-                </div>
+                </button>
               </div>
 
               {/* 작성중인 책 리스트 — 클릭 시 이어쓰기 모드로 input 진입 */}
@@ -4160,7 +4180,7 @@ ${contentValues.slice(0, 4100)}`,
               )}
               {knownReadingBooks.filter((b) => b.hasFinalReflection).length > 0 && (
                 <p style={{ fontSize: 11, color: '#9ca3af', margin: '12px 0 0', textAlign: 'center' }}>
-                  ✅ 마무리한 책 {knownReadingBooks.filter((b) => b.hasFinalReflection).length}권은 SAYU → "내가 읽은 책"에서 볼 수 있어요.
+                  ✅ 마무리한 책 {knownReadingBooks.filter((b) => b.hasFinalReflection).length}권은 SAYU → 독서사유에서 볼 수 있어요.
                 </p>
               )}
             </div>
@@ -4249,66 +4269,48 @@ ${contentValues.slice(0, 4100)}`,
 
               {format === '독서사유' && <ReadingBookFields
                 title={formData.reading_book_title || ''} author={formData.reading_author || ''}
-                locked={isReadingBookLocked} disabled={isReadingChatBusy || isExtractingBookText || isPolishing || isSaving || isReadingFinishing}
+                locked={isReadingBookLocked}
+                authorLocked={Boolean(knownReadingBooks.find(book => book.readingBookId === selectedExistingBookId)?.author)}
+                disabled={isReadingChatBusy || isExtractingBookText || isPolishing || isSaving || isReadingFinishing}
                 onChange={(key, value) => {
                   handleChange(key, value);
+                  if (selectedExistingBookId) return;
                   checkFinalReflectionBlock(key === 'reading_book_title' ? value : formData.reading_book_title || '', key === 'reading_author' ? value : formData.reading_author || '');
                 }}
               />}
+              {matchingReadingBooks.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <p role="status">이 제목으로 읽는 중인 책이 있어요.</p>
+                  {matchingReadingBooks.map(book => (
+                    <button type="button" key={book.readingBookId} disabled={isSaving || isReadingFinishing || isReadingChatBusy || isExtractingBookText}
+                      onClick={() => {
+                        if (!onSelectExistingBook(book.readingBookId)) return;
+                        setFormData(prev => ({
+                          ...prev,
+                          reading_author: book.author || formData.reading_author || '',
+                          reading_journal: formData.reading_journal || '',
+                          reading_book_text: formData.reading_book_text || '',
+                          reading_ai_context: JSON.stringify(parseReadingAiReference(formData.reading_ai_context, book.readingBookId)),
+                        }));
+                      }}>
+                      {book.bookTitle}{book.author ? ` · ${book.author}` : ''}에 이어 쓰기
+                    </button>
+                  ))}
+                </div>
+              )}
+              {format === '독서사유' && <label style={{ display: 'block', marginBottom: 16 }}>
+                오늘 읽고 든 생각
+                <textarea ref={readingJournalRef} aria-label="내 독서장" rows={4}
+                  placeholder="기억하고 싶은 생각을 한 줄 적어 보세요."
+                  disabled={isSaving || isReadingFinishing}
+                  value={formData.reading_journal || ''}
+                  onChange={e => handleChange('reading_journal', e.target.value)}
+                  style={{ display: 'block', width: '100%', padding: 12, marginTop: 6, border: '1px solid #d0dff0', borderRadius: 8, fontSize: 16 }} />
+              </label>}
 
               {/* 📚 독서사유 — 새 책 / 기존 책 이어쓰기 선택 UI */}
               {format === '독서사유' && (
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 600 }}>
-                    📚 어떤 책의 기록인가요?
-                  </label>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                    <button
-                      type="button"
-                      onClick={onStartNewBook}
-                      style={{
-                        padding: '8px 14px', fontSize: 13, fontWeight: 600,
-                        border: selectedExistingBookId ? '1px solid #d0dff0' : '1.5px solid #10b981',
-                        borderRadius: 8,
-                        backgroundColor: selectedExistingBookId ? '#fff' : '#ecfdf5',
-                        color: selectedExistingBookId ? '#1A3C6E' : '#047857',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      + 새 책 시작
-                    </button>
-                    {knownReadingBooks
-                      .filter((b) => !b.hasFinalReflection)
-                      .slice(0, 8)
-                      .map((b) => (
-                        <button
-                          key={b.readingBookId}
-                          type="button"
-                          onClick={() => onSelectExistingBook(b.readingBookId)}
-                          title={b.author ? `${b.bookTitle} — ${b.author}` : b.bookTitle}
-                          style={{
-                            padding: '8px 14px', fontSize: 13, fontWeight: 500,
-                            border: selectedExistingBookId === b.readingBookId ? '1.5px solid #1A3C6E' : '1px solid #d0dff0',
-                            borderRadius: 8,
-                            backgroundColor: selectedExistingBookId === b.readingBookId ? '#dbeafe' : '#fff',
-                            color: '#1A3C6E',
-                            cursor: 'pointer',
-                            maxWidth: '100%',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          📖 {b.bookTitle}
-                          {` (${readingEntriesByBook[b.readingBookId]?.length || 0}회)`}
-                        </button>
-                      ))}
-                  </div>
-                  {knownReadingBooks.filter((b) => b.hasFinalReflection).length > 0 && (
-                    <p style={{ fontSize: 11, color: '#9ca3af', margin: '4px 0 0' }}>
-                      ✅ 마무리한 책 {knownReadingBooks.filter((b) => b.hasFinalReflection).length}권은 SAYU → "내가 읽은 책"에서 볼 수 있습니다.
-                    </p>
-                  )}
                   {blockedBookMessage && (
                     <div
                       style={{
@@ -4325,112 +4327,7 @@ ${contentValues.slice(0, 4100)}`,
                       ⚠️ {blockedBookMessage}
                     </div>
                   )}
-                  {selectedExistingBookId && (
-                    <div
-                      style={{
-                        marginTop: 12,
-                        padding: 12,
-                        border: '1px solid #d0dff0',
-                        borderRadius: 10,
-                        backgroundColor: '#fff',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
-                        <div>
-                          <p style={{ margin: 0, fontSize: 13, color: '#1A3C6E', fontWeight: 800 }}>
-                            {isEditingReadingEntry ? `${editingReadingEntryLabel} 수정 중` : `누적 독서장 ${selectedReadingEntries.length}회`}
-                          </p>
-                          <p style={{ margin: '3px 0 0', fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>
-                            {isEditingReadingEntry
-                              ? '책 본문 사진 추출이나 직접 입력으로 기존 회차 내용을 보강할 수 있습니다.'
-                              : '이전 내용은 보존하고 오늘 내용은 새 회차로 추가됩니다.'}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => prepareReadingAppend(selectedExistingBookId)}
-                          style={{
-                            flexShrink: 0,
-                            padding: '8px 10px',
-                            border: '1px solid #10b981',
-                            borderRadius: 8,
-                            backgroundColor: '#ecfdf5',
-                            color: '#047857',
-                            cursor: 'pointer',
-                            fontSize: 12,
-                            fontWeight: 800,
-                          }}
-                        >
-                          + 오늘 소감 쓰기
-                        </button>
-                      </div>
-                      {selectedReadingEntries.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          {selectedReadingEntries.map((entry, index) => (
-                            <div
-                              key={entry.id}
-                              style={{
-                                padding: '10px 12px',
-                                border: editingReadingEntryId === entry.id ? '1.5px solid #1A3C6E' : '1px solid #e5edf5',
-                                borderRadius: 8,
-                                backgroundColor: editingReadingEntryId === entry.id ? '#EEF3FA' : '#f8fbff',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                                <span style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 800 }}>
-                                  {index + 1}회차{entry.date ? ` · ${entry.date}` : ''}
-                                  {editingReadingEntryId === entry.id ? ' · 수정 중' : ''}
-                                </span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => prepareReadingEdit(selectedExistingBookId, entry, index)}
-                                    style={{
-                                      border: 'none',
-                                      background: 'transparent',
-                                      color: '#1A3C6E',
-                                      cursor: 'pointer',
-                                      fontSize: 11,
-                                      fontWeight: 800,
-                                      padding: 0,
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: 3,
-                                    }}
-                                  >
-                                    <Pencil style={{ width: 12, height: 12 }} />
-                                    수정
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => prepareReadingAppend(selectedExistingBookId)}
-                                    style={{
-                                      border: 'none',
-                                      background: 'transparent',
-                                      color: '#10b981',
-                                      cursor: 'pointer',
-                                      fontSize: 11,
-                                      fontWeight: 800,
-                                      padding: 0,
-                                    }}
-                                  >
-                                    + 다음 회차
-                                  </button>
-                                </div>
-                              </div>
-                              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#4b5563', lineHeight: 1.5 }}>
-                                {getReadingEntryPreview(entry) || '내용 미리보기 없음'}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p style={{ margin: 0, fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
-                          아직 표시할 회차가 없습니다. 오늘 내용을 추가하면 이 책의 첫 회차로 쌓입니다.
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  <details><summary style={{ cursor: 'pointer', paddingBlock: 10 }}>책 속 문장 입력·사진 글자 추출</summary>
                   <div
                     style={{
                       marginTop: 12,
@@ -4582,7 +4479,7 @@ ${contentValues.slice(0, 4100)}`,
                         outline: 'none',
                       }}
                     />
-                  </div>
+                  </div></details>
                 </div>
               )}
 
@@ -4609,6 +4506,83 @@ ${contentValues.slice(0, 4100)}`,
                   onClearReference={() => handleChange('reading_ai_context', '')}
                   onAddThought={() => { readingJournalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); readingJournalRef.current?.focus(); }}
                 />
+              )}
+
+              {format === '독서사유' && selectedExistingBookId && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    border: '1px solid #d0dff0',
+                    borderRadius: 10,
+                    backgroundColor: '#fff',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 13, color: '#1A3C6E', fontWeight: 800 }}>
+                        {isEditingReadingEntry ? `${editingReadingEntryLabel} 수정 중` : `이전 기록 ${selectedReadingEntries.length}개`}
+                      </p>
+                      <p style={{ margin: '3px 0 0', fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>
+                        {isEditingReadingEntry
+                          ? '책 본문 사진 추출이나 직접 입력으로 기존 회차 내용을 보강할 수 있습니다.'
+                          : '이전 내용은 보존하고 오늘 내용은 새 회차로 추가됩니다.'}
+                      </p>
+                    </div>
+                  </div>
+                  {selectedReadingEntries.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {selectedReadingEntries.map((entry, index) => (
+                        <div
+                          key={entry.id}
+                          style={{
+                            padding: '10px 12px',
+                            border: editingReadingEntryId === entry.id ? '1.5px solid #1A3C6E' : '1px solid #e5edf5',
+                            borderRadius: 8,
+                            backgroundColor: editingReadingEntryId === entry.id ? '#EEF3FA' : '#f8fbff',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <span style={{ fontSize: 12, color: '#1A3C6E', fontWeight: 800 }}>
+                              {index + 1}회차{entry.date ? ` · ${entry.date}` : ''}
+                              {editingReadingEntryId === entry.id ? ' · 수정 중' : ''}
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                              <button
+                                type="button"
+                                aria-label={`${index + 1}회차 수정`}
+                                onClick={() => prepareReadingEdit(selectedExistingBookId, entry, index)}
+                                style={{
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#1A3C6E',
+                                  cursor: 'pointer',
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                  padding: 0,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3,
+                                }}
+                              >
+                                <Pencil style={{ width: 12, height: 12 }} />
+                                수정
+                              </button>
+
+                            </div>
+                          </div>
+                          <p style={{ margin: '6px 0 0', fontSize: 12, color: '#4b5563', lineHeight: 1.5 }}>
+                            {getReadingEntryPreview(entry) || '내용 미리보기 없음'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+                      아직 표시할 회차가 없습니다. 오늘 내용을 추가하면 이 책의 첫 회차로 쌓입니다.
+                    </p>
+                      )}
+                    </div>
               )}
 
               {(format === '육아일기' || format === '텃밭일지' || format === '성장기록') && (
@@ -6411,7 +6385,7 @@ ${contentValues.slice(0, 4100)}`,
                         )}
                       </div>
                     ) : fields
-                      .filter((field) => !(format === '독서사유' && ['reading_book_text', 'reading_book_title', 'reading_author'].includes(field.key)))
+                      .filter((field) => !(format === '독서사유' && ['reading_book_text', 'reading_book_title', 'reading_author', 'reading_journal'].includes(field.key)))
                       .map((field) => {
                         // 📚 독서사유 — 이어쓰기 모드면 책 제목·저자 readonly
                         const isReadingBookField =
@@ -6979,7 +6953,7 @@ ${contentValues.slice(0, 4100)}`,
                 </button>
               </div>
             ) : format === '독서사유' ? (
-              // 📚 독서사유 — 두 버튼만 (지시서 [5]): 중간기록저장하기 / 독서마무리하기
+              // 독서장 저장과 완독
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <button
                   onClick={handleSaveChapterNote}
@@ -6999,19 +6973,12 @@ ${contentValues.slice(0, 4100)}`,
                     justifyContent: 'center',
                     gap: 6,
                   }}
-                  title="기존 polishContent(강도 6 수준) 자동 다듬기 → chapter_note 로 저장"
                 >
-                  {isPolishing ? (
-                    <>
-                      <Wand2 className="animate-spin" style={{ width: 15, height: 15 }} />
-                      다듬는 중...
-                    </>
-                  ) : (
-                    <>{isEditingReadingEntry ? '📖 회차 수정 저장하기' : '📖 독서장 추가하기'}</>
-                  )}
+                  {isSaving ? '저장 중…' : isEditingReadingEntry ? '수정한 기록 저장' : '오늘 기록 저장'}
                 </button>
                 <button
-                  onClick={isEditingReadingEntry ? cancelReadingEdit : handleReadingFinishClick}
+                  ref={readingFinishTriggerRef}
+                  onClick={isEditingReadingEntry ? cancelReadingEdit : () => handleReadingFinishClick()}
                   disabled={isReadingChatBusy || isExtractingBookText || isReadingFinishing || isSaving || isPolishing}
                   style={{
                     padding: '12px 16px',
@@ -7024,9 +6991,9 @@ ${contentValues.slice(0, 4100)}`,
                     opacity: (isReadingFinishing || isSaving || isPolishing) ? 0.7 : 1,
                     fontWeight: 700,
                   }}
-                  title={isEditingReadingEntry ? '수정 중인 회차를 닫고 새 회차 입력으로 돌아가기' : '같은 책의 모든 chapter_note 를 모아 final_reflection 으로 마무리'}
+                  title={isEditingReadingEntry ? '수정 취소' : '이 책을 완독으로 저장하기'}
                 >
-                  {isEditingReadingEntry ? '수정 취소' : isReadingFinishing ? '분석 중...' : '✨ 독서마무리하기'}
+                  {isEditingReadingEntry ? '수정 취소' : isReadingFinishing ? '기록 확인 중…' : '다 읽었어요'}
                 </button>
               </div>
             ) : isLedgerFormat ? (
@@ -7121,11 +7088,12 @@ ${contentValues.slice(0, 4100)}`,
             )}
           </div>
           )}{/* end footer conditional */}
-        </div>
+        </EditorSurface>
       </div>
+      </DialogPrimitive.Root>
 
       {/* SAYU 미리보기 모달 */}
-      {showPolishModal && (
+      {!isReadingEditor && showPolishModal && (
         <div
           style={{
             position: 'fixed',
@@ -7253,7 +7221,7 @@ ${contentValues.slice(0, 4100)}`,
         </div>
       )}
 
-      {showMonthlyAiQuotaModal && (
+      {!isReadingEditor && showMonthlyAiQuotaModal && (
         <div
           style={{
             position: 'fixed',
@@ -7379,46 +7347,81 @@ ${contentValues.slice(0, 4100)}`,
       )}
 
       {/* 독서사유 최종 완료 모달 */}
-      {showReadingFinishModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.65)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1200,
-            padding: 20,
-          }}
-          onClick={() => setShowReadingFinishModal(false)}
-        >
-          <div
+      <DialogPrimitive.Root open={showReadingFinishModal} onOpenChange={open => { if (!open) closeReadingFinish(); }}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay
             style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0,0,0,0.65)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1200,
+              padding: 20,
+            }}
+          />
+          <DialogPrimitive.Content
+            aria-modal="true"
+            aria-describedby={`${readingDialogId}-finish-description`}
+            onCloseAutoFocus={event => {
+              event.preventDefault();
+              readingFinishTriggerRef.current?.focus();
+            }}
+            onEscapeKeyDown={event => { if (finishActionsDisabled) event.preventDefault(); }}
+            onPointerDownOutside={event => event.preventDefault()}
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 1201,
               backgroundColor: '#FAF9F6',
               borderRadius: 12,
               maxWidth: 760,
-              width: '100%',
+              width: 'calc(100% - 40px)',
               maxHeight: '88vh',
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
             }}
-            onClick={(e) => e.stopPropagation()}
           >
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e5e5', backgroundColor: '#fff' }}>
-              <h2 style={{ fontSize: 19, color: '#1A3C6E', fontWeight: 700, margin: 0 }}>
+              <DialogPrimitive.Title style={{ fontSize: 19, color: '#1A3C6E', fontWeight: 700, margin: 0 }}>
                 📚 독서사유 마무리
-              </h2>
-              <p style={{ fontSize: 12, color: '#777', margin: '6px 0 0 0' }}>
-                누적 기록을 바탕으로 만든 SAYU 분석과 자기성찰 질문입니다.
+              </DialogPrimitive.Title>
+              <p id={`${readingDialogId}-finish-description`} style={{ fontSize: 12, color: '#777', margin: '6px 0 0 0' }}>
+                완독으로 저장하면 SAYU에서 이 책의 기록을 다시 볼 수 있어요.
               </p>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-              <label style={{ display: 'block', fontSize: 13, color: '#555', marginBottom: 8, fontWeight: 600 }}>
+              {!showReadingQuestions && <button type="button" disabled={isReadingFinishing || isSaving}
+                onClick={requestReadingAnalysis}>
+                AI 분석과 질문 보기 (선택)
+              </button>}
+              {showReadingQuestions && <>
+              <p ref={readingAnalysisStatusRef} role="status" tabIndex={-1}>
+                {readingAnalysisStatus === 'loading' && 'AI 분석을 불러오고 있어요. 기다리는 동안 답을 쓰거나 바로 완독으로 저장할 수 있어요.'}
+                {readingAnalysisStatus === 'ready' && 'AI 분석이 준비됐어요.'}
+              </p>
+              {readingAnalysisStatus === 'error' && (
+                <>
+                  <p role="alert">{readingAnalysisLimitReached
+                    ? 'AI 사용 한도에 도달했어요. 바로 완독으로 저장할 수 있어요.'
+                    : 'AI 분석을 불러오지 못했어요. 바로 완독으로 저장할 수 있어요.'}</p>
+                </>
+              )}
+              {(readingAnalysisStatus === 'idle' || (readingAnalysisStatus === 'error' && !readingAnalysisLimitReached)) && (
+                <button type="button" className="min-h-11 rounded-lg border border-[#1A3C6E] px-3 font-semibold text-[#1A3C6E]"
+                  onClick={requestReadingAnalysis} disabled={isSaving}>AI 분석 다시 시도</button>
+              )}
+              {readingAnalysisStatus === 'ready' && <>
+              <label htmlFor={`${readingDialogId}-analysis`} style={{ display: 'block', fontSize: 13, color: '#555', marginBottom: 8, fontWeight: 600 }}>
                 SAYU 분석
               </label>
               <textarea
+                id={`${readingDialogId}-analysis`}
+                disabled={isSaving}
                 value={readingAnalysis}
                 onChange={(e) => setReadingAnalysis(e.target.value)}
                 style={{
@@ -7437,13 +7440,16 @@ ${contentValues.slice(0, 4100)}`,
                   whiteSpace: 'pre-wrap',
                 }}
               />
+              </>}
               <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {readingReflectionQuestions.map((question) => (
+                {readingReflectionQuestions.map((question, index) => (
                   <div key={question}>
-                    <label style={{ display: 'block', fontSize: 13, color: '#555', marginBottom: 6, fontWeight: 600 }}>
+                    <label htmlFor={`${readingDialogId}-question-${index}`} style={{ display: 'block', fontSize: 13, color: '#555', marginBottom: 6, fontWeight: 600 }}>
                       {question}
                     </label>
                     <textarea
+                      id={`${readingDialogId}-question-${index}`}
+                      disabled={isSaving}
                       rows={3}
                       value={readingReflectionAnswers[question] || ''}
                       onChange={(e) => setReadingReflectionAnswers((prev) => ({ ...prev, [question]: e.target.value }))}
@@ -7465,25 +7471,27 @@ ${contentValues.slice(0, 4100)}`,
                   </div>
                 ))}
               </div>
+              </>}
             </div>
             <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e5e5', display: 'flex', justifyContent: 'flex-end', gap: 10, backgroundColor: '#fff' }}>
               <button
-                onClick={() => setShowReadingFinishModal(false)}
-                style={{ padding: '10px 18px', fontSize: 14, border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', color: '#555', cursor: 'pointer' }}
+                onClick={closeReadingFinish}
+                disabled={finishActionsDisabled}
+                style={{ padding: '10px 18px', fontSize: 14, border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', color: '#555', cursor: finishActionsDisabled ? 'not-allowed' : 'pointer', opacity: finishActionsDisabled ? 0.55 : 1 }}
               >
                 닫기
               </button>
               <button
                 onClick={handleSaveReadingFinal}
-                disabled={isSaving}
-                style={{ padding: '10px 22px', fontSize: 14, border: 'none', borderRadius: 8, background: '#1A3C6E', color: '#FAF9F6', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1, fontWeight: 700 }}
+                disabled={finishActionsDisabled}
+                style={{ padding: '10px 22px', fontSize: 14, border: 'none', borderRadius: 8, background: '#1A3C6E', color: '#FAF9F6', cursor: finishActionsDisabled ? 'not-allowed' : 'pointer', opacity: finishActionsDisabled ? 0.55 : 1, fontWeight: 700 }}
               >
-                {isSaving ? '저장 중...' : '최종 독서사유 저장'}
+                {isSaving ? '저장 중...' : '완독으로 저장'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
       {/* 📋 주식 거래 후보 선택 모달 */}
       {showCandidates && (

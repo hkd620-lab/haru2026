@@ -243,6 +243,7 @@ function RecordPageContent() {
   const photoReadBusyRef = useRef(false);
   const [photoReadBusy, setPhotoReadBusy] = useState(false);
   const [formatPickerOpen, setFormatPickerOpen] = useState(false);
+  const [continueReadingId, setContinueReadingId] = useState<string>();
   const [draftEditorData, setDraftEditorData] = useState<Record<string, string> | undefined>();
   const [draftEditorPhotos, setDraftEditorPhotos] = useState<File[]>([]);
   const [draftEditorRecordId, setDraftEditorRecordId] = useState<string | null>(null);
@@ -583,6 +584,9 @@ function RecordPageContent() {
     if (incomingFrom) setFromPath(incomingFrom);
     if (!incomingFormat) return;
     autoOpenedRef.current = true;
+    if (incomingFormat === '독서사유' && typeof location.state?.continueReadingId === 'string') {
+      setContinueReadingId(location.state.continueReadingId);
+    }
     openFormatDirectly(incomingFormat as RecordFormat);
     if (incomingFormat === 'HARU가계부') setHouseholdEntryMode(incomingHouseholdEntry);
     // state 소비 후 history에서 제거 — 새로고침/뒤로가기 시 재열림 방지
@@ -813,7 +817,9 @@ function RecordPageContent() {
     let hasContent = false;
     Object.entries(formatData).forEach(([key, value]) => {
       if (key === '_recordId' || key === '_recordDate' || key === 'formats' || key.startsWith('_growth')) return;
-      if (typeof value === 'string' && value.trim().length > 0) {
+      if (key === 'reading_journal' && formatData.reading_accumulation_mode === 'edit' && typeof value === 'string') {
+        updateData[key] = value;
+      } else if (typeof value === 'string' && value.trim().length > 0) {
         updateData[key] = value;
         hasContent = true;
       } else if (key === 'garden_crops' && Array.isArray(value)) {
@@ -946,7 +952,7 @@ function RecordPageContent() {
         }
       }
       finishDraftAfterSave(recordId);
-      toast.success('내용이 저장되었습니다!');
+      if (!savedFormats.includes('독서사유')) toast.success('내용이 저장되었습니다!');
       return recordId;
     } catch (error) {
       console.error('저장 실패:', error);
@@ -1236,19 +1242,25 @@ function RecordPageContent() {
     {savedFormat && (
       <FormatModal
         isOpen={formatModalOpen}
-        onClose={() => {
+        onClose={(savedReadingId) => {
           setFormatModalOpen(false);
+          setContinueReadingId(undefined);
           setHouseholdEntryMode(undefined);
           if (draftEditorRecordId) {
             setDraftEditorRecordId(null);
             setDraftEditorData(undefined);
             setDraftEditorPhotos([]);
+            if (!savedReadingId) return;
+          }
+          if (savedReadingId) {
+            navigate('/sayu', { state: { filterFormat: '독서사유' } });
             return;
           }
           closeToOrigin();
         }}
         format={savedFormat}
         recordId={draftEditorRecordId || savedDateStr}
+        continueReadingId={continueReadingId}
         initialData={draftEditorData}
         initialPhotos={draftEditorPhotos}
         initialWritingDraft={!!draftEditorRecordId}

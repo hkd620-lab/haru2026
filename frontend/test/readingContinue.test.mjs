@@ -8,6 +8,8 @@ import { transform } from 'esbuild';
 import { parseReadingAiReference, readingAiReferenceText, resetReadingBookDraft } from '../src/app/services/readingAiCore.ts';
 import { mergeReadingBookDates, resolveReadingBookStartDate } from '../src/app/services/readingBookDates.ts';
 
+import { getBooksInProgress } from '../src/app/types/haruTypes.ts';
+
 const source = readFileSync(new URL('../src/app/components/FormatModal.tsx', import.meta.url), 'utf8');
 function slice(startMark, endMark) {
   const start = source.indexOf(startMark);
@@ -36,6 +38,7 @@ function fixture({ books, selected = '', formData = {}, initialJournal = '', bus
     knownReadingBooks: books, selectedExistingBookId: selected, formData,
     uploadedImages: [], editingReadingEntryId: '', editingReadingEntryDate: '',
     isReadingChatBusy: busy, isExtractingBookText: false, isSaving: false, isPolishing: false, isReadingFinishing: false,
+    readingSaveNotice: { current: undefined },
     initialReadingJournalRef: { current: initialJournal }, ocrPhotoSelectionVersionRef: { current: 0 },
     resetReadingBookDraft, resolveReadingBookStartDate, parseReadingAiReference, readingAiReferenceText,
     makeReadingBookId: () => 'made-id',
@@ -155,4 +158,27 @@ test('이어작성 카드는 기존 버튼 패턴을 쓰고 책 목록과 같은
   assert.match(source, /<button\s+type="button"\s+onClick=\{handleContinueReadingCard\}/);
   assert.match(source, /onClick=\{\(\) => continueReadingBook\(b\.readingBookId\)\}/);
   assert.match(source, /\.\.\.mergeReadingBookDates\(\{ startedAt: '', firstDate: '', lastDate: '' \}, recordDates\)/);
+});
+
+
+test('SAYU는 저자 없는 회차를 같은 책으로 묶고 구형 완독 기록도 반영한다', () => {
+  const note = { formats: ['독서사유'], reading_book_title: '산책', date: '2026-11-03' };
+  const other = { ...note, reading_author: '다른 저자' };
+  const books = getBooksInProgress([note, { ...note, date: '2026-10-01' }, other]);
+  assert.equal(books.length, 2);
+  assert.equal(books.find(book => !book.author)?.count, 2);
+  const finished = { ...note, readingEntryType: 'final_reflection' };
+  assert.deepEqual(getBooksInProgress([finished, note, other]).map(book => book.author), ['다른 저자']);
+});
+
+test('저자를 나중에 채운 회차도 이전 책 ID로 묶고 목록에 저자를 표시한다', async () => {
+  const legacy = { date: '2026-11-03', formats: ['독서사유'], readingBookId: 'a', reading_book_title: '책 a', reading_simple: '이전 감상' };
+  const { context, state } = fixture({ books: [book('a', { author: '' })], selected: 'a',
+    formData: { reading_book_title: '책 a', reading_author: '나중에 쓴 저자', reading_journal: '새 감상' } });
+  await context.handleSaveChapterNote();
+  assert.equal(state.saved.readingId, 'a');
+  assert.equal(state.saved.reading_author, '나중에 쓴 저자');
+  const saved = { ...legacy, ...state.saved, date: '2026-11-26' };
+  assert.deepEqual(getBooksInProgress([legacy, saved]).map(({id, author, count}) => ({id, author, count})),
+    [{ id: 'a', author: '나중에 쓴 저자', count: 2 }]);
 });
