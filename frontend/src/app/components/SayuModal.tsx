@@ -649,6 +649,7 @@ export function SayuModal({
   const [isSpecialDay, setIsSpecialDay] = useState(false);
   const [viewMode, setViewMode] = useState<'ai' | 'original'>('ai');
   const [editedOriginalData, setEditedOriginalData] = useState<Record<string, string>>(originalData || {});
+  const hasEditableOriginal = Object.keys(editedOriginalData).some(key => !isFinalReading || isEditableFinalReadingField(key));
   const openedHouseholdOriginalRef = useRef<Record<string, string>>({});
   const [isSavingOriginal, setIsSavingOriginal] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
@@ -2635,8 +2636,10 @@ export function SayuModal({
               lineHeight: 1.5,
             }}
           >
-            <span aria-hidden="true">✏️</span>
-            <span>이 기록은 바로 수정할 수 있습니다. 수정한 뒤 아래 ‘저장’ 버튼을 눌러주세요.</span>
+            <span aria-hidden="true">{isFinalReading && !hasEditableOriginal ? '📖' : '✏️'}</span>
+            <span>{isFinalReading && !hasEditableOriginal
+              ? '완독할 때 모아 둔 독서 기록을 볼 수 있어요.'
+              : '이 기록은 바로 수정할 수 있습니다. 수정한 뒤 아래 ‘저장’ 버튼을 눌러주세요.'}</span>
           </div>
           )}
           {viewMode === 'ai' ? (
@@ -3544,7 +3547,7 @@ export function SayuModal({
         )}
 
         {/* Footer - 원본 탭: 저장 + 다시 다듬기 */}
-        {viewMode === 'original' && Object.keys(editedOriginalData).some(key => !isFinalReading || isEditableFinalReadingField(key)) && (
+        {viewMode === 'original' && hasEditableOriginal && (
           <div
             style={{
               padding: '16px 20px',

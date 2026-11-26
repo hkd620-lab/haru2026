@@ -4187,7 +4187,7 @@ export function SayuPage() {
 
           const keywords = getRecordPreviewKeywords(record, prefix);
           const title = getRecordDisplayTitle(record, prefix, label);
-          const subtitle = keywords.slice(0, 4).join(' · ');
+          const subtitle = prefix === 'reading' ? '완독 기록' : keywords.slice(0, 4).join(' · ');
           const openEntry = () => openFormatSayu(record.date, prefix, label, record.id);
           return [{
             id: `${record.id}_${prefix}`,
