@@ -8,6 +8,7 @@ import { ReadingAiChat } from './ReadingAiChat';
 import { ReadingBookFields } from './ReadingBookFields';
 import { useReadingDraft } from '../hooks/useReadingDraft';
 import { applyReadingAiReference, buildPreviousReadingSummary, buildReadingSnapshot, parseReadingAiReference, readingAiReferenceText, resetReadingBookDraft } from '../services/readingAiCore';
+import { getReadingAnalysisRequestId } from '../services/readingAnalysisRequest';
 import { mergeReadingBookDates, resolveReadingBookStartDate } from '../services/readingBookDates';
 import { useNavigate } from 'react-router';
 import { getTestData } from '../data/testData';
@@ -793,8 +794,9 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const bookListLoaded = bookListStatus === 'ready';
   const [showReadingQuestions, setShowReadingQuestions] = useState(false);
   const [readingAnalysis, setReadingAnalysis] = useState('');
-  const [readingAnalysisStatus, setReadingAnalysisStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [readingAnalysisStatus, setReadingAnalysisStatus] = useState<'idle' | 'loading' | 'ready' | 'error' | 'expired'>('idle');
   const readingAnalysisRequest = useRef(0);
+  const [readingAnalysisInProgress, setReadingAnalysisInProgress] = useState(false);
   const readingReflectionBookId = useRef('');
   const [readingAnalysisLimitReached, setReadingAnalysisLimitReached] = useState(false);
   const readingSaveNotice = useRef<string | number | undefined>(undefined);
@@ -886,6 +888,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setShowReadingQuestions(false);
       setIsReadingFinishing(false);
       readingAnalysisRequest.current += 1;
+      setReadingAnalysisInProgress(false);
       readingReflectionBookId.current = '';
       setReadingAnalysisLimitReached(false);
       setReadingAnalysisStatus('idle');
@@ -3705,6 +3708,7 @@ ${contentValues}
       entries.sort((a, b) => a.date.localeCompare(b.date));
       const snapshot = buildReadingSnapshot(entries);
       if (readingReflectionBookId.current !== currentBookId || snapshot !== readingEntriesSnapshot) {
+        setReadingAnalysisInProgress(false);
         setShowReadingQuestions(false);
         setReadingAnalysis('');
         setReadingAnalysisStatus('idle');
@@ -3724,8 +3728,9 @@ ${contentValues}
   };
 
   const requestReadingAnalysis = async () => {
-    if (!readingEntriesSnapshot || readingAnalysisStatus === 'loading') return;
+    if (!user?.uid || !readingEntriesSnapshot || readingAnalysisStatus === 'loading') return;
     const request = ++readingAnalysisRequest.current;
+    setReadingAnalysisInProgress(false);
     const session = photoEditorSessionRef.current;
     const bookTitle = String(formData.reading_book_title || formData[`${prefix}_title`] || '').trim();
     setShowReadingQuestions(true);
@@ -3734,8 +3739,7 @@ ${contentValues}
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const polishContentFunc = httpsCallable(functions, 'polishContent', { timeout: 20_000 });
-      const result = await polishContentFunc({
-        text: `다음은 한 권의 책 "${bookTitle.slice(0, 200)}"을 읽는 동안 남긴 독서사유 누적 기록입니다.
+      const text = `다음은 한 권의 책 "${bookTitle.slice(0, 200)}"을 읽는 동안 남긴 독서사유 누적 기록입니다.
 사용자가 쓰지 않은 사건, 감정, 판단을 추가하지 말고, 기록에 드러난 흐름만 차분히 분석하세요.
 문체는 HARU SAYU처럼 절제되고 사실 기반이어야 합니다.
 AI 참고 메모는 보조자료이며 사용자의 생각·경험·판단으로 바꾸지 마세요. 사용자가 실제로 던진 질문과 직접 쓴 독서장, 생각의 변화에 초점을 맞추세요.
@@ -3748,19 +3752,35 @@ AI 참고 메모는 보조자료이며 사용자의 생각·경험·판단으로
 5. 장기 자산으로 남길 최종 독서사유
 
 누적 기록:
-${readingEntriesSnapshot}`,
+${readingEntriesSnapshot}`;
+      const analysisId = await getReadingAnalysisRequestId(user.uid, text);
+      if (session !== photoEditorSessionRef.current || request !== readingAnalysisRequest.current) return;
+      const result = await polishContentFunc({
+        text,
+        readingAnalysisId: analysisId,
         format: 'reading',
         mode: 'PREMIUM',
         includeAiComment: false,
       });
       if (session !== photoEditorSessionRef.current || request !== readingAnalysisRequest.current) return;
-      const analysis = (result.data as { text?: string }).text?.trim();
+      const data = result.data as { text?: string; status?: string };
+      if (data.status === 'processing') {
+        setReadingAnalysisInProgress(true);
+        setReadingAnalysisStatus('error');
+        return;
+      }
+      const analysis = data.text?.trim();
       setReadingAnalysis(analysis || '');
       setReadingAnalysisStatus(analysis ? 'ready' : 'error');
     } catch (error) {
       if (session !== photoEditorSessionRef.current || request !== readingAnalysisRequest.current) return;
+      const failure = error as { code?: string; details?: { reason?: string } } | null;
+      if (failure?.details?.reason === 'READING_ANALYSIS_EXPIRED') {
+        setReadingAnalysisStatus('expired');
+        return;
+      }
       console.error('독서사유 마무리 분석 실패:', error);
-      setReadingAnalysisLimitReached((error as { code?: string })?.code === 'functions/resource-exhausted');
+      setReadingAnalysisLimitReached(failure?.code === 'functions/resource-exhausted');
       setReadingAnalysisStatus('error');
     }
   };
@@ -7404,16 +7424,21 @@ ${readingEntriesSnapshot}`,
                 {readingAnalysisStatus === 'loading' && 'AI 분석을 불러오고 있어요. 기다리는 동안 답을 쓰거나 바로 완독으로 저장할 수 있어요.'}
                 {readingAnalysisStatus === 'ready' && 'AI 분석이 준비됐어요.'}
               </p>
+              {readingAnalysisStatus === 'expired' && (
+                <p role="alert">이전 분석 결과의 보관 시간이 지났어요. 바로 완독으로 저장할 수 있어요.</p>
+              )}
               {readingAnalysisStatus === 'error' && (
                 <>
                   <p role="alert">{readingAnalysisLimitReached
                     ? 'AI 사용 한도에 도달했어요. 바로 완독으로 저장할 수 있어요.'
-                    : 'AI 분석을 불러오지 못했어요. 바로 완독으로 저장할 수 있어요.'}</p>
+                    : readingAnalysisInProgress
+                      ? '앞서 요청한 분석이 진행 중이에요. 잠시 후 결과를 다시 확인해 주세요.'
+                      : 'AI 분석을 불러오지 못했어요. 바로 완독으로 저장할 수 있어요.'}</p>
                 </>
               )}
               {(readingAnalysisStatus === 'idle' || (readingAnalysisStatus === 'error' && !readingAnalysisLimitReached)) && (
                 <button type="button" className="min-h-11 rounded-lg border border-[#1A3C6E] px-3 font-semibold text-[#1A3C6E]"
-                  onClick={requestReadingAnalysis} disabled={isSaving}>AI 분석 다시 시도</button>
+                  onClick={requestReadingAnalysis} disabled={isSaving}>{readingAnalysisInProgress ? '분석 결과 다시 확인' : 'AI 분석 다시 시도'}</button>
               )}
               {readingAnalysisStatus === 'ready' && <>
               <label htmlFor={`${readingDialogId}-analysis`} style={{ display: 'block', fontSize: 13, color: '#555', marginBottom: 8, fontWeight: 600 }}>

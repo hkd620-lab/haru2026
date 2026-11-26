@@ -132,47 +132,52 @@ export async function reserveMonthlyAiQuota(
 ): Promise<MonthlyAiQuotaReservation> {
   const plan = await resolveMonthlyAiPlan(uid);
   const period = getKstMonthKey();
+  const db = admin.firestore();
+  return db.runTransaction(tx => reserveMonthlyAiQuotaInTransaction(db, tx, uid, featureKey, plan, period));
+}
+
+export async function reserveMonthlyAiQuotaInTransaction(
+  db: admin.firestore.Firestore,
+  tx: admin.firestore.Transaction,
+  uid: string,
+  featureKey: string,
+  plan: MonthlyAiPlan,
+  period: string,
+): Promise<MonthlyAiQuotaReservation> {
   const safeFeatureKey = sanitizeMonthlyAiFeatureKey(featureKey);
-  const ref = admin.firestore().doc(`users/${uid}/monthlyAiUsage/${period}`);
+  const ref = db.doc(`users/${uid}/monthlyAiUsage/${period}`);
+  const snap = await tx.get(ref);
+  const preview = previewMonthlyAiQuotaReservation(snap.data(), plan, period);
 
-  return admin.firestore().runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    const preview = previewMonthlyAiQuotaReservation(snap.data(), plan, period);
+  if (!preview.allowed) {
+    throw new HttpsError('resource-exhausted', '이번 달 AI 도움을 모두 사용했습니다. 요금제를 확인해 주세요.', {
+      reason: 'MONTHLY_AI_QUOTA_EXCEEDED',
+      plan: preview.status.plan,
+      used: preview.status.used,
+      limit: preview.status.limit,
+      remaining: preview.status.remaining,
+      period: preview.status.period,
+    });
+  }
 
-    if (!preview.allowed) {
-      throw new HttpsError(
-        'resource-exhausted',
-        '이번 달 AI 도움을 모두 사용했습니다. 요금제를 확인해 주세요.',
-        {
-          reason: 'MONTHLY_AI_QUOTA_EXCEEDED',
-          plan: preview.status.plan,
-          used: preview.status.used,
-          limit: preview.status.limit,
-          remaining: preview.status.remaining,
-          period: preview.status.period,
-        },
-      );
-    }
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  tx.set(ref, {
+    period,
+    planAtLastUse: plan,
+    usedCount: admin.firestore.FieldValue.increment(1),
+    byFeature: { [safeFeatureKey]: admin.firestore.FieldValue.increment(1) },
+    updatedAt: now,
+    ...(!snap.exists ? { createdAt: now } : {}),
+  }, { merge: true });
+  return { ...preview.nextStatus, uid, featureKey: safeFeatureKey };
+}
 
-    const now = admin.firestore.FieldValue.serverTimestamp();
-    const update: Record<string, unknown> = {
-      period,
-      planAtLastUse: plan,
-      usedCount: admin.firestore.FieldValue.increment(1),
-      byFeature: {
-        [safeFeatureKey]: admin.firestore.FieldValue.increment(1),
-      },
-      updatedAt: now,
-    };
-    if (!snap.exists) update.createdAt = now;
-    tx.set(ref, update, { merge: true });
-
-    return {
-      ...preview.nextStatus,
-      uid,
-      featureKey: safeFeatureKey,
-    };
-  });
+export function monthlyAiQuotaRefundFields(featureKey: string) {
+  return {
+    usedCount: admin.firestore.FieldValue.increment(-1),
+    byFeature: { [featureKey]: admin.firestore.FieldValue.increment(-1) },
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
 }
 
 export async function rollbackMonthlyAiQuotaReservation(
@@ -181,13 +186,7 @@ export async function rollbackMonthlyAiQuotaReservation(
   if (!reservation) return;
   try {
     const ref = admin.firestore().doc(`users/${reservation.uid}/monthlyAiUsage/${reservation.period}`);
-    await ref.set({
-      usedCount: admin.firestore.FieldValue.increment(-1),
-      byFeature: {
-        [reservation.featureKey]: admin.firestore.FieldValue.increment(-1),
-      },
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
+    await ref.set(monthlyAiQuotaRefundFields(reservation.featureKey), { merge: true });
   } catch (error) {
     console.warn('monthly AI quota rollback failed:', (error as any)?.message || error);
   }
