@@ -35,7 +35,9 @@ function formatFixture(reading = false) {
     selectedExistingBookId: 'synthetic-book', knownReadingBooks: [], setBlockedBookMessage() {}, makeReadingBookId: () => 'synthetic-book',
     setIsReadingFinishing() {}, getFirestore: () => ({}), collection: () => ({}), query: () => ({}), where: () => ({}),
     getDocs: async () => ({ forEach() {} }), buildCurrentReadingEntry: () => '사용자가 직접 쓴 독서장', buildReadingSnapshot,
-    setReadingAnalysisFailed() {}, setShowReadingQuestions() {}, setReadingReflectionAnswers() {}, setReadingEntriesSnapshot() {}, setReadingAnalysis: value => { state.analysis = value; }, setShowReadingFinishModal: value => { state.showFinish = value; },
+    readingSaveNotice: { current: undefined }, readingAnalysisRequest: { current: 0 }, readingAnalysisStatus: 'idle',
+    readingEntriesSnapshot: state.snapshot, setReadingAnalysisStatus: value => { state.analysisStatus = value; },
+    setShowReadingQuestions() {}, setReadingReflectionAnswers() {}, setReadingEntriesSnapshot: value => { state.snapshot = value; }, setReadingAnalysis: value => { state.analysis = value; }, setShowReadingFinishModal: value => { state.showFinish = value; },
     readingAiReferenceText, parseReadingAiReference, imagesKey: `${prefix}_images`, imageMetaKey: `${prefix}_image_meta`, uploadedImages: [], getUploadedImageMetaForSave: () => '[]',
     editingReadingEntryId: '', editingReadingEntryDate: '', buildReadingMeta: () => ({ entryType: 'readingNote' }),
     setIsSaving() {}, onSave: async payload => { state.saves.push(structuredClone(payload)); return 'synthetic-record'; }, closeAfterCommit() {},
@@ -118,7 +120,10 @@ test('새 다듬기 안내는 사용량 조회를 유지한다', () => {
 });
 
 test('선택한 독서 마무리 분석은 false를 보내고 분석 본문을 기존 미리보기에 전달한다', async () => {
-  const f = formatFixture(true); await f.call('handleReadingFinishClick')(true);
+  const f = formatFixture(true);
+  await f.call('handleReadingFinishClick')();
+  await f.call('requestReadingAnalysis')();
+  assert.equal(f.state.analysisStatus, 'ready');
   assert.equal(f.state.requests.length, 1); assert.equal(f.state.requests[0].includeAiComment, false);
   assert.equal(f.state.requests[0].format, 'reading'); assert.match(f.state.requests[0].text, /사용자가 직접 쓴 독서장/);
   assert.equal(f.state.analysis, '합성 본문'); assert.equal(f.state.showFinish, true); assert.deepEqual(f.state.errors, []);

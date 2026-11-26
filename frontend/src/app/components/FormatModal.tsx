@@ -105,7 +105,7 @@ type SayuMode = 'BASIC' | 'PREMIUM';
 
 interface FormatModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose: (savedReadingId?: string) => void;
   format: RecordFormat;
   recordId: string;
   initialData?: Record<string, string>;
@@ -793,13 +793,15 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const bookListLoaded = bookListStatus === 'ready';
   const [showReadingQuestions, setShowReadingQuestions] = useState(false);
   const [readingAnalysis, setReadingAnalysis] = useState('');
-  const [readingAnalysisFailed, setReadingAnalysisFailed] = useState(false);
+  const [readingAnalysisStatus, setReadingAnalysisStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const readingAnalysisRequest = useRef(0);
+  const readingSaveNotice = useRef<string | number | undefined>(undefined);
   const readingDialogId = useId();
   const readingFinishTriggerRef = useRef<HTMLButtonElement>(null);
   const readingAnalysisStatusRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (showReadingFinishModal && showReadingQuestions && isReadingFinishing) readingAnalysisStatusRef.current?.focus();
-  }, [showReadingFinishModal, showReadingQuestions, isReadingFinishing]);
+    if (showReadingFinishModal && readingAnalysisStatus === 'loading') readingAnalysisStatusRef.current?.focus();
+  }, [showReadingFinishModal, readingAnalysisStatus]);
   const [readingReflectionAnswers, setReadingReflectionAnswers] = useState<Record<string, string>>({});
   const [readingEntriesSnapshot, setReadingEntriesSnapshot] = useState<string>('');
   // 📚 독서사유 — 책 묶음(readingId canonical, readingBookId legacy compatibility) 관리
@@ -880,7 +882,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setBookListStatus('loading');
       setShowReadingQuestions(false);
       setIsReadingFinishing(false);
-      setReadingAnalysisFailed(false);
+      readingAnalysisRequest.current += 1;
+      setReadingAnalysisStatus('idle');
       setReadingAnalysis('');
       setReadingReflectionAnswers({});
       setReadingEntriesSnapshot('');
@@ -1059,7 +1062,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                   date,
                   noteCreatedAt: String(data.reading_note_createdAt || data.updatedAt || data.createdAt || ''),
                   readingBookText: String(data.reading_book_text || ''),
-                  readingJournal: String(data.reading_journal || ''),
+                  readingJournal: String(data.reading_journal || data.reading_simple || data.reading_thought || data.reading_sentence || ''),
                   readingSayu: String(data.reading_sayu || ''),
                   readingAiContext: String(data.reading_ai_context || ''),
                 };
@@ -1075,10 +1078,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
                 existing.hasFinalReflection = existing.hasFinalReflection || isFinal;
                 Object.assign(existing, mergeReadingBookDates(existing, recordDates));
                 // 더 최근 데이터의 저자/제목으로 갱신
-                if (date === existing.lastDate || !existing.author) {
-                  existing.bookTitle = title || existing.bookTitle;
-                  existing.author = author || existing.author;
-                }
+                if (date === existing.lastDate) existing.bookTitle = title;
+                if (author && (date === existing.lastDate || !existing.author)) existing.author = author;
               } else {
                 byBookId.set(bookId, {
                   readingBookId: bookId,
@@ -1781,7 +1782,9 @@ ${contentValues}
       return;
     }
     const bookTitle = String(formData.reading_book_title || '').trim();
-    const author = String(formData.reading_author || '').trim();
+    const author = selectedExistingBookId && selectedExistingBookId === makeReadingBookId(bookTitle, '')
+      ? ''
+      : String(formData.reading_author || '').trim();
     if (!bookTitle) {
       toast.warning('책 제목을 먼저 입력해 주세요.');
       return;
@@ -2450,11 +2453,11 @@ ${contentValues}
     return true;
   };
 
-  const closeAfterCommit = () => {
+  const closeAfterCommit = (savedReadingId?: string) => {
     ocrPhotoSelectionVersionRef.current += 1;
     if (format === '독서사유') readingDraft.clear(selectedExistingBookId || makeReadingBookId(formData.reading_book_title || '', formData.reading_author || ''));
     committedCloseRef.current = true;
-    onClose();
+    onClose(savedReadingId);
   };
 
   const handleCloseRequest = async () => {
@@ -3626,7 +3629,7 @@ ${contentValues}
     }
   };
 
-  const handleReadingFinishClick = async (withQuestions = false) => {
+  const handleReadingFinishClick = async () => {
     if (format !== '독서사유') return;
     const bookTitle = (formData.reading_book_title || formData[`${prefix}_title`] || '').trim();
     const bookAuthor = String(formData.reading_author || '').trim();
@@ -3648,8 +3651,7 @@ ${contentValues}
     }
     setIsReadingFinishing(true);
     const session = photoEditorSessionRef.current;
-    setReadingAnalysisFailed(false);
-    if (withQuestions) setShowReadingQuestions(true);
+    if (readingSaveNotice.current !== undefined) toast.dismiss(readingSaveNotice.current);
     try {
       const db = getFirestore();
       const recordsRef = collection(db, 'users', user.uid, 'records');
@@ -3686,18 +3688,31 @@ ${contentValues}
         return;
       }
       entries.sort((a, b) => a.date.localeCompare(b.date));
-      const entriesText = buildReadingSnapshot(entries);
-      setReadingEntriesSnapshot(entriesText);
-      if (!withQuestions) {
-        setShowReadingQuestions(false);
-        setReadingAnalysis('');
-        setReadingReflectionAnswers({});
-        setShowReadingFinishModal(true);
-        return;
-      }
+      setReadingEntriesSnapshot(buildReadingSnapshot(entries));
+      setShowReadingQuestions(false);
+      setReadingAnalysis('');
+      setReadingAnalysisStatus('idle');
+      setReadingReflectionAnswers({});
+      setShowReadingFinishModal(true);
+    } catch (error) {
+      if (session !== photoEditorSessionRef.current) return;
+      console.error('독서 기록 불러오기 실패:', error);
+      toast.error('책의 기록을 불러오지 못했어요. 다시 시도해 주세요.');
+    } finally {
+      if (session === photoEditorSessionRef.current) setIsReadingFinishing(false);
+    }
+  };
 
+  const requestReadingAnalysis = async () => {
+    if (!readingEntriesSnapshot || readingAnalysisStatus === 'loading') return;
+    const request = ++readingAnalysisRequest.current;
+    const session = photoEditorSessionRef.current;
+    const bookTitle = String(formData.reading_book_title || formData[`${prefix}_title`] || '').trim();
+    setShowReadingQuestions(true);
+    setReadingAnalysisStatus('loading');
+    try {
       const functions = getFunctions(undefined, 'asia-northeast3');
-      const polishContentFunc = httpsCallable(functions, 'polishContent');
+      const polishContentFunc = httpsCallable(functions, 'polishContent', { timeout: 20_000 });
       const result = await polishContentFunc({
         text: `다음은 한 권의 책 "${bookTitle.slice(0, 200)}"을 읽는 동안 남긴 독서사유 누적 기록입니다.
 사용자가 쓰지 않은 사건, 감정, 판단을 추가하지 말고, 기록에 드러난 흐름만 차분히 분석하세요.
@@ -3712,28 +3727,19 @@ AI 참고 메모는 보조자료이며 사용자의 생각·경험·판단으로
 5. 장기 자산으로 남길 최종 독서사유
 
 누적 기록:
-${entriesText}`,
+${readingEntriesSnapshot}`,
         format: 'reading',
         mode: 'PREMIUM',
         includeAiComment: false,
       });
-      if (session !== photoEditorSessionRef.current) return;
-      const responseData = result.data as { text?: string };
-      const analysis = responseData.text?.trim();
-      if (!analysis) {
-        setReadingAnalysisFailed(true);
-        return;
-      }
-      setReadingAnalysis(analysis);
-      setShowReadingFinishModal(true);
-      toast.success('독서사유 마무리 분석이 준비되었습니다.');
+      if (session !== photoEditorSessionRef.current || request !== readingAnalysisRequest.current) return;
+      const analysis = (result.data as { text?: string }).text?.trim();
+      setReadingAnalysis(analysis || '');
+      setReadingAnalysisStatus(analysis ? 'ready' : 'error');
     } catch (error) {
-      if (session !== photoEditorSessionRef.current) return;
-      console.error('독서사유 마무리 실패:', error);
-      if (withQuestions) setReadingAnalysisFailed(true);
-      else toast.error('책의 기록을 불러오지 못했어요. 다시 시도해 주세요.');
-    } finally {
-      if (session === photoEditorSessionRef.current) setIsReadingFinishing(false);
+      if (session !== photoEditorSessionRef.current || request !== readingAnalysisRequest.current) return;
+      console.error('독서사유 마무리 분석 실패:', error);
+      setReadingAnalysisStatus('error');
     }
   };
 
@@ -3787,7 +3793,7 @@ ${entriesText}`,
       if (bookTitle) updateData[`${prefix}_title`] = bookTitle;
 
       await onSave(updateData);
-      toast.success(editingReadingEntryId ? '📖 독서장 회차가 수정되었습니다.' : '📖 독서장이 누적 저장되었습니다.');
+      readingSaveNotice.current = toast.success(editingReadingEntryId ? '독서 기록을 수정했어요.' : '오늘 독서 기록을 저장했어요.');
       closeAfterCommit();
     } catch (error: any) {
       console.error('중간기록 저장 실패:', error);
@@ -3798,11 +3804,13 @@ ${entriesText}`,
   };
 
   const handleSaveReadingFinal = async () => {
+    readingAnalysisRequest.current += 1;
+    if (readingAnalysisStatus === 'loading') setReadingAnalysisStatus('idle');
     const answers = readingReflectionQuestions
       .filter(question => showReadingQuestions && readingReflectionAnswers[question]?.trim())
       .map((question) => `${question}\n${(readingReflectionAnswers[question] || '').trim()}`)
       .join('\n\n');
-    const finalSayu = [readingAnalysis.trim(), answers && '[자기성찰 답변]\n' + answers].filter(Boolean).join('\n\n') || readingEntriesSnapshot;
+    const finalSayu = [readingAnalysis.trim() || readingEntriesSnapshot, answers && '[자기성찰 답변]\n' + answers].filter(Boolean).join('\n\n');
     const updateData: Record<string, any> = {
       ...formData,
       reading_ai_context: JSON.stringify(parseReadingAiReference(formData.reading_ai_context, selectedExistingBookId || makeReadingBookId(formData.reading_book_title || '', formData.reading_author || ''))),
@@ -3835,7 +3843,7 @@ ${entriesText}`,
         } : undefined,
       });
       setShowReadingFinishModal(false);
-      closeAfterCommit();
+      closeAfterCommit(savedRecordId);
     } catch (error) {
       console.error('최종 독서사유 저장 실패:', error);
       toast.error('최종 저장에 실패했습니다.');
@@ -3908,11 +3916,18 @@ ${entriesText}`,
   };
 
   const isReadingEditor = format === '독서사유';
+  const matchingReadingBooks = isReadingEditor && !selectedExistingBookId && formData.reading_book_title?.trim()
+    ? knownReadingBooks.filter(book => !book.hasFinalReflection &&
+      normalizeBookField(book.bookTitle) === normalizeBookField(formData.reading_book_title))
+    : [];
   const EditorSurface = isReadingEditor ? DialogPrimitive.Content : 'div';
   const EditorTitle = isReadingEditor ? DialogPrimitive.Title : 'h2';
   const finishActionsDisabled = isSaving || isReadingFinishing;
   const closeReadingFinish = () => {
-    if (!finishActionsDisabled) setShowReadingFinishModal(false);
+    if (finishActionsDisabled) return;
+    readingAnalysisRequest.current += 1;
+    setReadingAnalysisStatus('idle');
+    setShowReadingFinishModal(false);
   };
 
   return (
@@ -3933,10 +3948,11 @@ ${entriesText}`,
           zIndex: 1000,
           padding: '20px',
         }}
-        onClick={handleCloseRequest}
+        onClick={isReadingEditor ? undefined : handleCloseRequest}
       >
         <EditorSurface
           aria-modal={isReadingEditor || undefined}
+          onPointerDownOutside={isReadingEditor ? event => event.preventDefault() : undefined}
           aria-describedby={undefined}
           style={{
             backgroundColor: '#FAF9F6',
@@ -4230,12 +4246,35 @@ ${entriesText}`,
 
               {format === '독서사유' && <ReadingBookFields
                 title={formData.reading_book_title || ''} author={formData.reading_author || ''}
-                locked={isReadingBookLocked} disabled={isReadingChatBusy || isExtractingBookText || isPolishing || isSaving || isReadingFinishing}
+                locked={isReadingBookLocked}
+                authorLocked={Boolean(knownReadingBooks.find(book => book.readingBookId === selectedExistingBookId)?.author)}
+                disabled={isReadingChatBusy || isExtractingBookText || isPolishing || isSaving || isReadingFinishing}
                 onChange={(key, value) => {
                   handleChange(key, value);
+                  if (selectedExistingBookId) return;
                   checkFinalReflectionBlock(key === 'reading_book_title' ? value : formData.reading_book_title || '', key === 'reading_author' ? value : formData.reading_author || '');
                 }}
               />}
+              {matchingReadingBooks.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <p>이 제목으로 읽는 중인 책이 있어요.</p>
+                  {matchingReadingBooks.map(book => (
+                    <button type="button" key={book.readingBookId} disabled={isSaving || isReadingFinishing || isReadingChatBusy || isExtractingBookText}
+                      onClick={() => {
+                        if (!onSelectExistingBook(book.readingBookId)) return;
+                        setFormData(prev => ({
+                          ...prev,
+                          reading_author: book.author || formData.reading_author || '',
+                          reading_journal: formData.reading_journal || '',
+                          reading_book_text: formData.reading_book_text || '',
+                          reading_ai_context: JSON.stringify(parseReadingAiReference(formData.reading_ai_context, book.readingBookId)),
+                        }));
+                      }}>
+                      {book.bookTitle}{book.author ? ` · ${book.author}` : ''}에 이어 쓰기
+                    </button>
+                  ))}
+                </div>
+              )}
               {format === '독서사유' && <label style={{ display: 'block', marginBottom: 16 }}>
                 오늘 읽고 든 생각
                 <textarea ref={readingJournalRef} aria-label="내 독서장" rows={4}
@@ -7031,7 +7070,7 @@ ${entriesText}`,
       </DialogPrimitive.Root>
 
       {/* SAYU 미리보기 모달 */}
-      {showPolishModal && (
+      {!isReadingEditor && showPolishModal && (
         <div
           style={{
             position: 'fixed',
@@ -7159,7 +7198,7 @@ ${entriesText}`,
         </div>
       )}
 
-      {showMonthlyAiQuotaModal && (
+      {!isReadingEditor && showMonthlyAiQuotaModal && (
         <div
           style={{
             position: 'fixed',
@@ -7307,7 +7346,7 @@ ${entriesText}`,
               readingFinishTriggerRef.current?.focus();
             }}
             onEscapeKeyDown={event => { if (finishActionsDisabled) event.preventDefault(); }}
-            onPointerDownOutside={event => { if (finishActionsDisabled) event.preventDefault(); }}
+            onPointerDownOutside={event => event.preventDefault()}
             style={{
               position: 'fixed',
               top: '50%',
@@ -7334,17 +7373,21 @@ ${entriesText}`,
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
               {!showReadingQuestions && <button type="button" disabled={isReadingFinishing || isSaving}
-                onClick={() => handleReadingFinishClick(true)}>
+                onClick={requestReadingAnalysis}>
                 AI 분석과 질문 보기 (선택)
               </button>}
               {showReadingQuestions && <>
-              {isReadingFinishing && (
-                <p ref={readingAnalysisStatusRef} role="status" tabIndex={-1}>AI 분석을 불러오고 있어요. 기다리는 동안 아래 질문에 답할 수 있어요.</p>
+              {readingAnalysisStatus === 'loading' && (
+                <p ref={readingAnalysisStatusRef} role="status" tabIndex={-1}>AI 분석을 불러오고 있어요. 기다리는 동안 답을 쓰거나 바로 완독으로 저장할 수 있어요.</p>
               )}
-              {readingAnalysisFailed && (
-                <p role="alert">AI 분석을 불러오지 못했어요. 질문에 답하거나 바로 완독으로 저장할 수 있어요.</p>
+              {readingAnalysisStatus === 'error' && (
+                <>
+                  <p role="alert">AI 분석을 불러오지 못했어요. 바로 완독으로 저장할 수 있어요.</p>
+                  <button type="button" onClick={requestReadingAnalysis} disabled={isSaving}>AI 분석 다시 시도</button>
+                </>
               )}
-              {!isReadingFinishing && !readingAnalysisFailed && <>
+              {readingAnalysisStatus === 'idle' && <button type="button" onClick={requestReadingAnalysis} disabled={isSaving}>AI 분석 다시 시도</button>}
+              {readingAnalysisStatus === 'ready' && <>
               <label htmlFor={`${readingDialogId}-analysis`} style={{ display: 'block', fontSize: 13, color: '#555', marginBottom: 8, fontWeight: 600 }}>
                 SAYU 분석
               </label>

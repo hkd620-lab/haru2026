@@ -1240,7 +1240,7 @@ function RecordPageContent() {
     {savedFormat && (
       <FormatModal
         isOpen={formatModalOpen}
-        onClose={() => {
+        onClose={(savedReadingId) => {
           setFormatModalOpen(false);
           setContinueReadingId(undefined);
           setHouseholdEntryMode(undefined);
@@ -1248,6 +1248,10 @@ function RecordPageContent() {
             setDraftEditorRecordId(null);
             setDraftEditorData(undefined);
             setDraftEditorPhotos([]);
+            if (!savedReadingId) return;
+          }
+          if (savedReadingId) {
+            navigate('/sayu', { state: { filterFormat: '독서사유' } });
             return;
           }
           closeToOrigin();

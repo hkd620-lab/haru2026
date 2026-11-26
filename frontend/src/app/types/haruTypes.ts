@@ -184,6 +184,7 @@ export function getBooksInProgress(records: readonly Record<string, any>[]) {
     const book = books.get(id) || { id, title, author: record.author || record.reading_author || '', date: '', count: 0 };
     book.count++;
     if (record.date > book.date) book.date = record.date;
+    if (!book.author) book.author = record.author || record.reading_author || '';
     books.set(id, book);
   }
   return [...books.values()].filter(book => !finished.has(book.id)).sort((a, b) => b.date.localeCompare(a.date));

@@ -4613,7 +4613,9 @@ export function SayuPage() {
             }
             return {
               title: groupDisplayLabel,
-              subtitle: `${formatCountLabel(groupCount)}`,
+              subtitle: group.label === '독서사유'
+                ? `최근 완독 · ${group.entries[0].title}`
+                : formatCountLabel(groupCount),
               description: `최근 기록 ${formatListDate(group.latestDate)} · 기록과 사유를 모아두었습니다.`,
             };
           })();

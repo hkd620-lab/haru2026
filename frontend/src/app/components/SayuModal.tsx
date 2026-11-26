@@ -1858,6 +1858,15 @@ export function SayuModal({
             displayLabel = key.charAt(0).toUpperCase() + key.slice(1);
           }
 
+          if (key === 'reading_entries_snapshot') {
+            return value.trim() ? (
+              <section key={key} aria-label="지금까지 남긴 독서 기록" style={{ backgroundColor: '#fff', padding: 16, borderRadius: 8 }}>
+                <h3>지금까지 남긴 독서 기록</h3>
+                <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{value}</p>
+              </section>
+            ) : null;
+          }
+
           const isTitle = key.endsWith('_title');
 
           return (
