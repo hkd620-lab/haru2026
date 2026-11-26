@@ -794,9 +794,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const bookListLoaded = bookListStatus === 'ready';
   const [showReadingQuestions, setShowReadingQuestions] = useState(false);
   const [readingAnalysis, setReadingAnalysis] = useState('');
-  const [readingAnalysisStatus, setReadingAnalysisStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [readingAnalysisStatus, setReadingAnalysisStatus] = useState<'idle' | 'loading' | 'ready' | 'error' | 'expired'>('idle');
   const readingAnalysisRequest = useRef(0);
-  const readingAnalysisId = useRef('');
   const [readingAnalysisInProgress, setReadingAnalysisInProgress] = useState(false);
   const readingReflectionBookId = useRef('');
   const [readingAnalysisLimitReached, setReadingAnalysisLimitReached] = useState(false);
@@ -889,7 +888,6 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setShowReadingQuestions(false);
       setIsReadingFinishing(false);
       readingAnalysisRequest.current += 1;
-      readingAnalysisId.current = '';
       setReadingAnalysisInProgress(false);
       readingReflectionBookId.current = '';
       setReadingAnalysisLimitReached(false);
@@ -3710,7 +3708,6 @@ ${contentValues}
       entries.sort((a, b) => a.date.localeCompare(b.date));
       const snapshot = buildReadingSnapshot(entries);
       if (readingReflectionBookId.current !== currentBookId || snapshot !== readingEntriesSnapshot) {
-        readingAnalysisId.current = '';
         setReadingAnalysisInProgress(false);
         setShowReadingQuestions(false);
         setReadingAnalysis('');
@@ -3733,7 +3730,6 @@ ${contentValues}
   const requestReadingAnalysis = async () => {
     if (!user?.uid || !readingEntriesSnapshot || readingAnalysisStatus === 'loading') return;
     const request = ++readingAnalysisRequest.current;
-    readingAnalysisId.current ||= globalThis.crypto.randomUUID();
     setReadingAnalysisInProgress(false);
     const session = photoEditorSessionRef.current;
     const bookTitle = String(formData.reading_book_title || formData[`${prefix}_title`] || '').trim();
@@ -3757,9 +3753,8 @@ AI 참고 메모는 보조자료이며 사용자의 생각·경험·판단으로
 
 누적 기록:
 ${readingEntriesSnapshot}`;
-      const analysisId = await getReadingAnalysisRequestId(user.uid, text, readingAnalysisId.current);
+      const analysisId = await getReadingAnalysisRequestId(user.uid, text);
       if (session !== photoEditorSessionRef.current || request !== readingAnalysisRequest.current) return;
-      readingAnalysisId.current = analysisId;
       const result = await polishContentFunc({
         text,
         readingAnalysisId: analysisId,
@@ -3779,7 +3774,11 @@ ${readingEntriesSnapshot}`;
       setReadingAnalysisStatus(analysis ? 'ready' : 'error');
     } catch (error) {
       if (session !== photoEditorSessionRef.current || request !== readingAnalysisRequest.current) return;
-      const failure = error as { code?: string } | null;
+      const failure = error as { code?: string; details?: { reason?: string } } | null;
+      if (failure?.details?.reason === 'READING_ANALYSIS_EXPIRED') {
+        setReadingAnalysisStatus('expired');
+        return;
+      }
       console.error('독서사유 마무리 분석 실패:', error);
       setReadingAnalysisLimitReached(failure?.code === 'functions/resource-exhausted');
       setReadingAnalysisStatus('error');
@@ -7425,6 +7424,9 @@ ${readingEntriesSnapshot}`;
                 {readingAnalysisStatus === 'loading' && 'AI 분석을 불러오고 있어요. 기다리는 동안 답을 쓰거나 바로 완독으로 저장할 수 있어요.'}
                 {readingAnalysisStatus === 'ready' && 'AI 분석이 준비됐어요.'}
               </p>
+              {readingAnalysisStatus === 'expired' && (
+                <p role="alert">이전 분석 결과의 보관 시간이 지났어요. 바로 완독으로 저장할 수 있어요.</p>
+              )}
               {readingAnalysisStatus === 'error' && (
                 <>
                   <p role="alert">{readingAnalysisLimitReached

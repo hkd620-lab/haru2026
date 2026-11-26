@@ -9,7 +9,8 @@ import {
 } from './utils/monthlyAiQuota';
 
 export const READING_ANALYSIS_COLLECTION = 'readingAnalysisRequests';
-const LEASE_MS = 10 * 60_000;
+// Leave time for the 60-second callable to settle before taking over a terminated attempt.
+const LEASE_MS = 2 * 60_000;
 const RESULT_LIFETIME_MS = 24 * 60 * 60_000;
 const FEATURE = 'polishContent';
 

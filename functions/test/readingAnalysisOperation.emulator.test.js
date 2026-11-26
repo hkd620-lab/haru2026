@@ -62,11 +62,15 @@ test('a crashed worker can be replaced without another charge, including across 
   const uid = await makeUser();
   const id = randomUUID();
   const old = await begin(uid, id);
+  assert.equal((await begin(uid, id, prompt, NOW + 60_000)).status, 'processing');
+  const replacement = await begin(uid, id, prompt, NOW + 120_000);
+  assert.equal(replacement.status, 'claimed');
   const nextMonth = Date.parse('2026-12-01T00:00:00Z');
   const current = await begin(uid, id, prompt, nextMonth);
   assert.equal(current.status, 'claimed');
   await assert.rejects(completeReadingAnalysis(old.lease, RESPONSE), { code: 'aborted' });
   await refundReadingAnalysis(old.lease);
+  await refundReadingAnalysis(replacement.lease);
   await completeReadingAnalysis(current.lease, RESPONSE);
   assert.deepEqual(await usage(uid), [1, 1]);
   assert.deepEqual(await usage(uid, '2026-12'), [0, 0]);

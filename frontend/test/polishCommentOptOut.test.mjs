@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { transformSync } from 'esbuild';
+import { getReadingAnalysisRequestId } from '../src/app/services/readingAnalysisRequest.ts';
 import { getFormatDisplayName } from '../src/app/records/recordFormatDescriptions.ts';
 import { buildReadingSnapshot, parseReadingAiReference, readingAiReferenceText } from '../src/app/services/readingAiCore.ts';
 
@@ -16,14 +17,14 @@ function handler(file, name, env) {
 function formatFixture(reading = false) {
   const prefix = reading ? 'reading' : 'diary';
   const readingReflectionBookId = { current: '' };
-  const readingAnalysisId = { current: '' };
+  const uid = crypto.randomUUID();
   const state = { requests: [], saves: [], errors: [], polished: '', stats: null, analysis: '', busy: false, showPolish: false, showFinish: false };
   const formData = reading
     ? { reading_book_title: '합성 책', reading_author: '합성 저자', reading_journal: '직접 쓴 생각', reading_ai_comment: '기존 한마디' }
     : { diary_simple: '직접 쓴 원문', diary_title: '사용자 제목', diary_ai_comment: '기존 한마디' };
   const env = () => ({
     repolishRequestRef: { current: null },
-    format: reading ? '독서사유' : '일기', prefix, formData, user: { uid: 'synthetic-user' }, recordStyle: 'simple', isPolishing: false, isSaving: false,
+    format: reading ? '독서사유' : '일기', prefix, formData, user: { uid }, recordStyle: 'simple', isPolishing: false, isSaving: false,
     photoEditorSessionRef: { current: 1 }, polishRequestRef: { current: null }, polishPreviewSourceRef: { current: undefined },
     setSayuMode() {}, setPolishStrength: value => { state.strength = value; }, setIsPolishing: value => { state.busy = value; },
     toast: { info() {}, warning() {}, success() {}, error: value => state.errors.push(value) }, console: { error: error => state.errors.push(String(error)) },
@@ -46,8 +47,8 @@ function formatFixture(reading = false) {
     selectedExistingBookId: 'synthetic-book', knownReadingBooks: [], setBlockedBookMessage() {}, makeReadingBookId: () => 'synthetic-book',
     setIsReadingFinishing() {}, getFirestore: () => ({}), collection: () => ({}), query: () => ({}), where: () => ({}),
     getDocs: async () => ({ forEach() {} }), buildCurrentReadingEntry: () => '사용자가 직접 쓴 독서장', buildReadingSnapshot,
-    readingSaveNotice: { current: undefined }, readingAnalysisRequest: { current: 0 }, readingAnalysisId, readingReflectionBookId,
-    getReadingAnalysisRequestId: async (_uid, _text, id) => id,
+    readingSaveNotice: { current: undefined }, readingAnalysisRequest: { current: 0 }, readingReflectionBookId,
+    getReadingAnalysisRequestId,
     setReadingAnalysisInProgress: value => { state.analysisInProgress = value; }, readingAnalysisStatus: 'idle', setReadingAnalysisLimitReached() {},
     readingEntriesSnapshot: state.snapshot, setReadingAnalysisStatus: value => { state.analysisStatus = value; },
     setShowReadingQuestions() {}, setReadingReflectionAnswers: value => { state.answers = value; }, setReadingEntriesSnapshot: value => { state.snapshot = value; }, setReadingAnalysis: value => { state.analysis = value; }, setShowReadingFinishModal: value => { state.showFinish = value; },
@@ -251,7 +252,45 @@ test('시간 초과와 진행 중 응답의 재시도는 동일한 분석 ID를 
   assert.ok(ids[0]);
   assert.deepEqual(ids, [ids[0], ids[0], ids[0]]);
   f.state.snapshot = '기존 흐름과 달라진 상태';
-  await f.call('handleReadingFinishClick')();
   await f.call('requestReadingAnalysis')();
-  assert.notEqual(f.state.requests.at(-1).readingAnalysisId, ids[0]);
+  const changedId = f.state.requests.at(-1).readingAnalysisId;
+  assert.notEqual(changedId, ids[0]);
+  f.formData.reading_book_title = '다른 제목';
+  await f.call('requestReadingAnalysis')();
+  assert.notEqual(f.state.requests.at(-1).readingAnalysisId, changedId);
+});
+
+test('같은 탭에서 두 기록을 오가고 모듈을 다시 로드해도 각각의 요청 번호를 되찾는다', async (t) => {
+  const storage = new Map();
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    value: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) },
+  });
+  t.after(() => {
+    if (descriptor) Object.defineProperty(globalThis, 'sessionStorage', descriptor);
+    else delete globalThis.sessionStorage;
+  });
+
+  const uid = crypto.randomUUID();
+  const first = await getReadingAnalysisRequestId(uid, '첫 번째 독서장');
+  const second = await getReadingAnalysisRequestId(uid, '두 번째 독서장');
+  const reloaded = await import('../src/app/services/readingAnalysisRequest.ts?reload');
+  assert.notEqual(first, second);
+  assert.equal(await reloaded.getReadingAnalysisRequestId(uid, '첫 번째 독서장'), first);
+  assert.equal(await reloaded.getReadingAnalysisRequestId(uid, '두 번째 독서장'), second);
+  assert.notEqual(await reloaded.getReadingAnalysisRequestId('other-user', '첫 번째 독서장'), first);
+
+  const saved = JSON.parse(storage.get(`haru.readingAnalysis.${uid}`));
+  assert.equal(Object.keys(saved).length, 2);
+  assert.ok(Object.keys(saved).every(digest => /^[a-f0-9]{64}$/.test(digest)));
+});
+
+test('만료된 결과는 재분석으로 차감하지 않고 완독 저장을 계속할 수 있다', async () => {
+  const f = formatFixture(true);
+  await f.call('handleReadingFinishClick')();
+  f.state.nextFailure = { code: 'functions/failed-precondition', details: { reason: 'READING_ANALYSIS_EXPIRED' } };
+  await f.call('requestReadingAnalysis')();
+  assert.equal(f.state.analysisStatus, 'expired');
+  assert.equal(f.state.requests.length, 1);
 });
