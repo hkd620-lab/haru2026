@@ -2491,7 +2491,7 @@ export function SayuPage() {
       isOpen: true,
       content: sayuContent,
       originalData,
-      isFinalReading: getResultChatSourceKey(formatKey, record) === 'reading_final_sayu',
+      isFinalReading: formatKey === 'reading' && isFinishedReading(record),
       format: formatLabel,
       formatKey,
       firestoreId: record.id,

@@ -817,7 +817,9 @@ function RecordPageContent() {
     let hasContent = false;
     Object.entries(formatData).forEach(([key, value]) => {
       if (key === '_recordId' || key === '_recordDate' || key === 'formats' || key.startsWith('_growth')) return;
-      if (typeof value === 'string' && value.trim().length > 0) {
+      if (key === 'reading_journal' && formatData.reading_accumulation_mode === 'edit' && typeof value === 'string') {
+        updateData[key] = value;
+      } else if (typeof value === 'string' && value.trim().length > 0) {
         updateData[key] = value;
         hasContent = true;
       } else if (key === 'garden_crops' && Array.isArray(value)) {

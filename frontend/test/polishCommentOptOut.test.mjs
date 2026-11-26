@@ -15,6 +15,7 @@ function handler(file, name, env) {
 }
 function formatFixture(reading = false) {
   const prefix = reading ? 'reading' : 'diary';
+  const readingReflectionBookId = { current: '' };
   const state = { requests: [], saves: [], errors: [], polished: '', stats: null, analysis: '', busy: false, showPolish: false, showFinish: false };
   const formData = reading
     ? { reading_book_title: '합성 책', reading_author: '합성 저자', reading_journal: '직접 쓴 생각', reading_ai_comment: '기존 한마디' }
@@ -35,9 +36,9 @@ function formatFixture(reading = false) {
     selectedExistingBookId: 'synthetic-book', knownReadingBooks: [], setBlockedBookMessage() {}, makeReadingBookId: () => 'synthetic-book',
     setIsReadingFinishing() {}, getFirestore: () => ({}), collection: () => ({}), query: () => ({}), where: () => ({}),
     getDocs: async () => ({ forEach() {} }), buildCurrentReadingEntry: () => '사용자가 직접 쓴 독서장', buildReadingSnapshot,
-    readingSaveNotice: { current: undefined }, readingAnalysisRequest: { current: 0 }, readingAnalysisStatus: 'idle',
+    readingSaveNotice: { current: undefined }, readingAnalysisRequest: { current: 0 }, readingReflectionBookId, readingAnalysisStatus: 'idle', setReadingAnalysisLimitReached() {},
     readingEntriesSnapshot: state.snapshot, setReadingAnalysisStatus: value => { state.analysisStatus = value; },
-    setShowReadingQuestions() {}, setReadingReflectionAnswers() {}, setReadingEntriesSnapshot: value => { state.snapshot = value; }, setReadingAnalysis: value => { state.analysis = value; }, setShowReadingFinishModal: value => { state.showFinish = value; },
+    setShowReadingQuestions() {}, setReadingReflectionAnswers: value => { state.answers = value; }, setReadingEntriesSnapshot: value => { state.snapshot = value; }, setReadingAnalysis: value => { state.analysis = value; }, setShowReadingFinishModal: value => { state.showFinish = value; },
     readingAiReferenceText, parseReadingAiReference, imagesKey: `${prefix}_images`, imageMetaKey: `${prefix}_image_meta`, uploadedImages: [], getUploadedImageMetaForSave: () => '[]',
     editingReadingEntryId: '', editingReadingEntryDate: '', buildReadingMeta: () => ({ entryType: 'readingNote' }),
     setIsSaving() {}, onSave: async payload => { state.saves.push(structuredClone(payload)); return 'synthetic-record'; }, closeAfterCommit() {},
@@ -196,4 +197,29 @@ test('원본 탭에서 약과 강은 각각 한 번 실행되어 저장 없이 S
     assert.equal(request.includeAiComment, false);
     assert.match(request.text, /\[원문 시작\]\n현재 원본 탭의 본문\n\[원문 끝\]/);
   }
+});
+
+test('같은 책의 완독 창을 다시 열면 분석과 사용자 답변을 유지한다', async () => {
+  const f = formatFixture(true);
+  await f.call('handleReadingFinishClick')();
+  await f.call('requestReadingAnalysis')();
+  f.state.answers = { question: '내 답변' };
+  await f.call('handleReadingFinishClick')();
+  assert.deepEqual(f.state.answers, { question: '내 답변' });
+  assert.equal(f.state.analysis, '합성 본문');
+  assert.equal(f.state.requests.length, 1);
+});
+
+test('완독 원본 저장은 편집 가능한 본문 필드만 Firestore에 보낸다', async () => {
+  const writes = [];
+  await handler('SayuModal', 'handleSaveOriginal', {
+    repolishRequestRef: { current: null }, currentUser: { uid: 'synthetic-user' },
+    firestoreId: 'synthetic-record', recordDate: '2026-11-26', isFinalReading: true, isHouseholdSayu: false,
+    editedOriginalData: { reading_journal: '고친 글', reading_status: 'completed', reading_entries_snapshot: '누적 기록',
+      reading_reflection_answers: '{}', reading_ai_context: 'null', reading_book_title: '책 제목' },
+    setIsSavingOriginal() {}, db: {}, doc: () => ({}), updateDoc: async (_ref, data) => writes.push(data),
+    isEditableFinalReadingField: key => key === 'reading_journal',
+    toast: { success() {}, error: assert.fail }, console,
+  })();
+  assert.deepEqual(writes, [{ reading_journal: '고친 글' }]);
 });

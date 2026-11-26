@@ -795,6 +795,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
   const [readingAnalysis, setReadingAnalysis] = useState('');
   const [readingAnalysisStatus, setReadingAnalysisStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const readingAnalysisRequest = useRef(0);
+  const readingReflectionBookId = useRef('');
+  const [readingAnalysisLimitReached, setReadingAnalysisLimitReached] = useState(false);
   const readingSaveNotice = useRef<string | number | undefined>(undefined);
   const readingDialogId = useId();
   const readingFinishTriggerRef = useRef<HTMLButtonElement>(null);
@@ -822,6 +824,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
     readingJournal: string;
     readingSayu: string;
     readingAiContext: string;
+    legacyMerged: boolean;
   };
   const [knownReadingBooks, setKnownReadingBooks] = useState<KnownReadingBook[]>([]);
   const [readingEntriesByBook, setReadingEntriesByBook] = useState<Record<string, KnownReadingEntry[]>>({});
@@ -883,6 +886,8 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
       setShowReadingQuestions(false);
       setIsReadingFinishing(false);
       readingAnalysisRequest.current += 1;
+      readingReflectionBookId.current = '';
+      setReadingAnalysisLimitReached(false);
       setReadingAnalysisStatus('idle');
       setReadingAnalysis('');
       setReadingReflectionAnswers({});
@@ -1057,14 +1062,19 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
               const isFinal = isFinishedReading(data);
               const date = String(data.date || '');
               if (!isFinal) {
+                const hasJournal = data.reading_legacy_merged === 'yes' || Boolean(String(data.reading_journal || '').trim());
                 const entry: KnownReadingEntry = {
                   id: docSnap.id,
                   date,
                   noteCreatedAt: String(data.reading_note_createdAt || data.updatedAt || data.createdAt || ''),
                   readingBookText: String(data.reading_book_text || ''),
-                  readingJournal: String(data.reading_journal || data.reading_simple || data.reading_thought || data.reading_sentence || ''),
+                  readingJournal: hasJournal
+                    ? String(data.reading_journal || '')
+                    : [data.reading_today_part, data.reading_simple, data.reading_sentence, data.reading_thought, data.reading_life_link, data.reading_space]
+                        .filter(value => typeof value === 'string' && value.trim()).join('\n\n'),
                   readingSayu: String(data.reading_sayu || ''),
                   readingAiContext: String(data.reading_ai_context || ''),
+                  legacyMerged: data.reading_legacy_merged === 'yes' || !hasJournal,
                 };
                 if (entry.readingBookText.trim() || entry.readingJournal.trim() || entry.readingSayu.trim()) {
                   const entries = entriesByBookId.get(bookId) || [];
@@ -3587,6 +3597,7 @@ ${contentValues}
       reading_started_at: prev.reading_started_at || entry.date || book.lastDate || '',
       reading_book_text: entry.readingBookText,
       reading_journal: entry.readingJournal,
+      reading_legacy_merged: entry.legacyMerged ? 'yes' : '',
       reading_sayu: entry.readingSayu,
       reading_ai_context: entry.readingAiContext,
       reading_note_createdAt: entry.noteCreatedAt || prev.reading_note_createdAt || '',
@@ -3608,6 +3619,7 @@ ${contentValues}
       ...prev,
       reading_book_text: '',
       reading_journal: '',
+      reading_legacy_merged: '',
       reading_sayu: '',
       reading_ai_context: '',
     }));
@@ -3665,16 +3677,19 @@ ${contentValues}
         // TODO(HARU-v3): legacy compatibility 제거 예정.
         // 신규 구조(entryType/readingStatus/readingId) 기준으로 migration 계획.
         if (readingBookIdOf(data) !== currentBookId || isFinishedReading(data)) return;
-        const text = [
+        const legacyNotes = data.reading_legacy_merged === 'yes' ? [] : [
           data.reading_today_part ? `오늘 읽은 챕터: ${data.reading_today_part}` : '',
-          data.reading_journal ? `독서장(사용자가 작성): ${data.reading_journal}` : '',
-          readingAiReferenceText(data.reading_ai_context, currentBookId),
-          data.reading_book_text ? `본문 내용(책 인용): ${data.reading_book_text}` : '',
           data.reading_sentence ? `기억 문장: ${data.reading_sentence}` : '',
           data.reading_thought ? `떠오른 생각: ${data.reading_thought}` : '',
           data.reading_life_link ? `내 삶과 연결: ${data.reading_life_link}` : '',
           data.reading_space ? `여백: ${data.reading_space}` : '',
           data.reading_simple ? `간편 기록: ${data.reading_simple}` : '',
+        ];
+        const text = [
+          data.reading_journal ? `독서장(사용자가 작성): ${data.reading_journal}` : '',
+          readingAiReferenceText(data.reading_ai_context, currentBookId),
+          data.reading_book_text ? `본문 내용(책 인용): ${data.reading_book_text}` : '',
+          ...legacyNotes,
         ].filter(Boolean).join('\n');
         const savedText = text.trim() || String(data.reading_sayu || '').trim();
         if (savedText) entries.push({ date: String(data.date || ''), text: savedText });
@@ -3688,11 +3703,16 @@ ${contentValues}
         return;
       }
       entries.sort((a, b) => a.date.localeCompare(b.date));
-      setReadingEntriesSnapshot(buildReadingSnapshot(entries));
-      setShowReadingQuestions(false);
-      setReadingAnalysis('');
-      setReadingAnalysisStatus('idle');
-      setReadingReflectionAnswers({});
+      const snapshot = buildReadingSnapshot(entries);
+      if (readingReflectionBookId.current !== currentBookId || snapshot !== readingEntriesSnapshot) {
+        setShowReadingQuestions(false);
+        setReadingAnalysis('');
+        setReadingAnalysisStatus('idle');
+        setReadingAnalysisLimitReached(false);
+        if (readingReflectionBookId.current !== currentBookId) setReadingReflectionAnswers({});
+      }
+      readingReflectionBookId.current = currentBookId;
+      setReadingEntriesSnapshot(snapshot);
       setShowReadingFinishModal(true);
     } catch (error) {
       if (session !== photoEditorSessionRef.current) return;
@@ -3710,6 +3730,7 @@ ${contentValues}
     const bookTitle = String(formData.reading_book_title || formData[`${prefix}_title`] || '').trim();
     setShowReadingQuestions(true);
     setReadingAnalysisStatus('loading');
+    setReadingAnalysisLimitReached(false);
     try {
       const functions = getFunctions(undefined, 'asia-northeast3');
       const polishContentFunc = httpsCallable(functions, 'polishContent', { timeout: 20_000 });
@@ -3739,6 +3760,7 @@ ${readingEntriesSnapshot}`,
     } catch (error) {
       if (session !== photoEditorSessionRef.current || request !== readingAnalysisRequest.current) return;
       console.error('독서사유 마무리 분석 실패:', error);
+      setReadingAnalysisLimitReached((error as { code?: string })?.code === 'functions/resource-exhausted');
       setReadingAnalysisStatus('error');
     }
   };
@@ -3788,6 +3810,7 @@ ${readingEntriesSnapshot}`,
           : now,
         [`${prefix}_note_updatedAt`]: now,
         [`${prefix}_accumulation_mode`]: editingReadingEntryId ? 'edit' : 'append',
+        reading_legacy_merged: editingReadingEntryId ? formData.reading_legacy_merged || '' : '',
         ...buildReadingMeta('chapter_note'),
       };
       if (bookTitle) updateData[`${prefix}_title`] = bookTitle;
@@ -3926,7 +3949,7 @@ ${readingEntriesSnapshot}`,
   const closeReadingFinish = () => {
     if (finishActionsDisabled) return;
     readingAnalysisRequest.current += 1;
-    setReadingAnalysisStatus('idle');
+    if (readingAnalysisStatus === 'loading') setReadingAnalysisStatus('idle');
     setShowReadingFinishModal(false);
   };
 
@@ -4257,7 +4280,7 @@ ${readingEntriesSnapshot}`,
               />}
               {matchingReadingBooks.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
-                  <p>이 제목으로 읽는 중인 책이 있어요.</p>
+                  <p role="status">이 제목으로 읽는 중인 책이 있어요.</p>
                   {matchingReadingBooks.map(book => (
                     <button type="button" key={book.readingBookId} disabled={isSaving || isReadingFinishing || isReadingChatBusy || isExtractingBookText}
                       onClick={() => {
@@ -7377,16 +7400,21 @@ ${readingEntriesSnapshot}`,
                 AI 분석과 질문 보기 (선택)
               </button>}
               {showReadingQuestions && <>
-              {readingAnalysisStatus === 'loading' && (
-                <p ref={readingAnalysisStatusRef} role="status" tabIndex={-1}>AI 분석을 불러오고 있어요. 기다리는 동안 답을 쓰거나 바로 완독으로 저장할 수 있어요.</p>
-              )}
+              <p ref={readingAnalysisStatusRef} role="status" tabIndex={-1}>
+                {readingAnalysisStatus === 'loading' && 'AI 분석을 불러오고 있어요. 기다리는 동안 답을 쓰거나 바로 완독으로 저장할 수 있어요.'}
+                {readingAnalysisStatus === 'ready' && 'AI 분석이 준비됐어요.'}
+              </p>
               {readingAnalysisStatus === 'error' && (
                 <>
-                  <p role="alert">AI 분석을 불러오지 못했어요. 바로 완독으로 저장할 수 있어요.</p>
-                  <button type="button" onClick={requestReadingAnalysis} disabled={isSaving}>AI 분석 다시 시도</button>
+                  <p role="alert">{readingAnalysisLimitReached
+                    ? 'AI 사용 한도에 도달했어요. 바로 완독으로 저장할 수 있어요.'
+                    : 'AI 분석을 불러오지 못했어요. 바로 완독으로 저장할 수 있어요.'}</p>
                 </>
               )}
-              {readingAnalysisStatus === 'idle' && <button type="button" onClick={requestReadingAnalysis} disabled={isSaving}>AI 분석 다시 시도</button>}
+              {(readingAnalysisStatus === 'idle' || (readingAnalysisStatus === 'error' && !readingAnalysisLimitReached)) && (
+                <button type="button" className="min-h-11 rounded-lg border border-[#1A3C6E] px-3 font-semibold text-[#1A3C6E]"
+                  onClick={requestReadingAnalysis} disabled={isSaving}>AI 분석 다시 시도</button>
+              )}
               {readingAnalysisStatus === 'ready' && <>
               <label htmlFor={`${readingDialogId}-analysis`} style={{ display: 'block', fontSize: 13, color: '#555', marginBottom: 8, fontWeight: 600 }}>
                 SAYU 분석
