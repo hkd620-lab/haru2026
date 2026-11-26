@@ -137,6 +137,7 @@ export const cancelAccountDeletion = onCall(
 // [유지]  sharedHaruLawCards — 손대지 않음
 const USER_SUBCOLLECTIONS_TO_DELETE = [
   'records',
+  'readingAnalysisRequests',
   'vaultItems',
   'growthSubjects',
   'library',

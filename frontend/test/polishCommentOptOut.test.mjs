@@ -16,6 +16,7 @@ function handler(file, name, env) {
 function formatFixture(reading = false) {
   const prefix = reading ? 'reading' : 'diary';
   const readingReflectionBookId = { current: '' };
+  const readingAnalysisId = { current: '' };
   const state = { requests: [], saves: [], errors: [], polished: '', stats: null, analysis: '', busy: false, showPolish: false, showFinish: false };
   const formData = reading
     ? { reading_book_title: '합성 책', reading_author: '합성 저자', reading_journal: '직접 쓴 생각', reading_ai_comment: '기존 한마디' }
@@ -30,13 +31,24 @@ function formatFixture(reading = false) {
     getFunctions: (_app, region) => { assert.equal(region, 'asia-northeast3'); return {}; },
     httpsCallable: (_functions, name) => { assert.equal(name, 'polishContent'); return async payload => {
       state.requests.push(structuredClone(payload));
+      if (state.nextFailure) {
+        const error = state.nextFailure;
+        state.nextFailure = undefined;
+        throw error;
+      }
+      if (state.pendingResponse) {
+        state.pendingResponse = false;
+        return { data: { status: 'processing' } };
+      }
       return { data: { text: '합성 본문', stats: reading ? null : { content_richness: 4 }, aiComment: '' } };
     }; },
     setPolishedContent: value => { state.polished = value; }, setPolishStats: value => { state.stats = value; }, setShowPolishModal: value => { state.showPolish = value; },
     selectedExistingBookId: 'synthetic-book', knownReadingBooks: [], setBlockedBookMessage() {}, makeReadingBookId: () => 'synthetic-book',
     setIsReadingFinishing() {}, getFirestore: () => ({}), collection: () => ({}), query: () => ({}), where: () => ({}),
     getDocs: async () => ({ forEach() {} }), buildCurrentReadingEntry: () => '사용자가 직접 쓴 독서장', buildReadingSnapshot,
-    readingSaveNotice: { current: undefined }, readingAnalysisRequest: { current: 0 }, readingReflectionBookId, readingAnalysisStatus: 'idle', setReadingAnalysisLimitReached() {},
+    readingSaveNotice: { current: undefined }, readingAnalysisRequest: { current: 0 }, readingAnalysisId, readingReflectionBookId,
+    getReadingAnalysisRequestId: async (_uid, _text, id) => id,
+    setReadingAnalysisInProgress: value => { state.analysisInProgress = value; }, readingAnalysisStatus: 'idle', setReadingAnalysisLimitReached() {},
     readingEntriesSnapshot: state.snapshot, setReadingAnalysisStatus: value => { state.analysisStatus = value; },
     setShowReadingQuestions() {}, setReadingReflectionAnswers: value => { state.answers = value; }, setReadingEntriesSnapshot: value => { state.snapshot = value; }, setReadingAnalysis: value => { state.analysis = value; }, setShowReadingFinishModal: value => { state.showFinish = value; },
     readingAiReferenceText, parseReadingAiReference, imagesKey: `${prefix}_images`, imageMetaKey: `${prefix}_image_meta`, uploadedImages: [], getUploadedImageMetaForSave: () => '[]',
@@ -222,4 +234,24 @@ test('완독 원본 저장은 편집 가능한 본문 필드만 Firestore에 보
     toast: { success() {}, error: assert.fail }, console,
   })();
   assert.deepEqual(writes, [{ reading_journal: '고친 글' }]);
+});
+
+test('시간 초과와 진행 중 응답의 재시도는 동일한 분석 ID를 보내고 내용이 바뀌면 새 ID를 쓴다', async () => {
+  const f = formatFixture(true);
+  await f.call('handleReadingFinishClick')();
+  f.state.nextFailure = { code: 'functions/deadline-exceeded' };
+  await f.call('requestReadingAnalysis')();
+  assert.equal(f.state.analysisStatus, 'error');
+  f.state.pendingResponse = true;
+  await f.call('requestReadingAnalysis')();
+  assert.equal(f.state.analysisInProgress, true);
+  await f.call('requestReadingAnalysis')();
+  assert.equal(f.state.analysisStatus, 'ready');
+  const ids = f.state.requests.map(request => request.readingAnalysisId);
+  assert.ok(ids[0]);
+  assert.deepEqual(ids, [ids[0], ids[0], ids[0]]);
+  f.state.snapshot = '기존 흐름과 달라진 상태';
+  await f.call('handleReadingFinishClick')();
+  await f.call('requestReadingAnalysis')();
+  assert.notEqual(f.state.requests.at(-1).readingAnalysisId, ids[0]);
 });

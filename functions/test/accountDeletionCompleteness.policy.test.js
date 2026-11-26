@@ -29,7 +29,7 @@ const requiredSubcollections = [
   'settings', 'readProgress', 'novelSettings', 'bibleProgress', 'bibleWordbook', 'vocabulary',
   'snsRecords', 'snsSearchHistory', 'savedSearches', 'timelines', 'legalCases', 'health',
   'petHealthLogs', 'petVaccineRecords', 'lawsuitClaimReasonUsage',
-  'videoFinderSaved', 'videoFinderHistory', 'videoFinderAccess', 'videoFinderAiCache',
+  'videoFinderSaved', 'videoFinderHistory', 'videoFinderAccess', 'videoFinderAiCache', 'readingAnalysisRequests',
 ];
 const subcollectionList = src.match(/const USER_SUBCOLLECTIONS_TO_DELETE = \[([\s\S]*?)\];/)[1];
 for (const name of requiredSubcollections) {

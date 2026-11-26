@@ -13,6 +13,7 @@ const sharp = require('sharp');
 import * as fs from 'fs';
 import * as path from 'path';
 import { logAiUsage } from './aiUsageLogger';
+import { beginReadingAnalysis, completeReadingAnalysis, refundReadingAnalysis, type ReadingAnalysisLease } from './readingAnalysisOperation';
 import { getEssayChatImageUrls, prepareEssayChatImages } from './resultChatImages';
 import { buildResultChatEvidence, isRecordMediaQuestion } from './resultChatEvidence';
 import { createPolishUsage, type PolishUsage } from './polishUsage';
@@ -3201,6 +3202,7 @@ export const polishContent = onCall(
       requestId: createAiUsageRequestId(),
     });
     let monthlyQuotaReservation: MonthlyAiQuotaReservation | null = null;
+    let readingOperation: ReadingAnalysisLease | undefined;
     try {
       const { text, mode = 'premium', format, includeAiComment, strengthProfile, strength: selectedStrength } = request.data;
       const useExpandedProfile = strengthProfile === 'expanded';
@@ -3227,6 +3229,12 @@ export const polishContent = onCall(
       const BALANCED_FORMATS = formatPrefixesOf(['텃밭일지', '애완동물관찰일지', '육아일기']);
       const CONSERVATIVE_FORMATS = formatPrefixesOf(['선교보고', '일반보고', '업무일지', '메모']);
       const normalizedFormat = typeof format === 'string' ? format.toLowerCase().trim() : '';
+      const readingAnalysisId = request.data.readingAnalysisId;
+      if (readingAnalysisId !== undefined &&
+          (normalizedFormat !== 'reading' || mode !== 'PREMIUM' || includeAiComment !== false ||
+           strength !== undefined || strengthProfile !== undefined)) {
+        throw new HttpsError('invalid-argument', '독서장 분석 요청을 확인해 주세요.');
+      }
       let formatGroup: 'rich' | 'balanced' | 'conservative';
       if (RICH_FORMATS.includes(normalizedFormat)) {
         formatGroup = 'rich';
@@ -3263,7 +3271,14 @@ export const polishContent = onCall(
         return { text: explicitSource, stats: null, aiComment: '', originalPreserved: true };
       }
 
-      monthlyQuotaReservation = await reserveMonthlyAiQuota(request.auth.uid, 'polishContent');
+      if (readingAnalysisId !== undefined) {
+        const op = await beginReadingAnalysis(admin.firestore(), uid, readingAnalysisId, text);
+        if (op.status === 'completed') return op.result;
+        if (op.status === 'processing') return { status: 'processing' };
+        readingOperation = op.lease;
+      } else {
+        monthlyQuotaReservation = await reserveMonthlyAiQuota(uid, 'polishContent');
+      }
 
       // 기본·풍성형 공통 원문 보존 규칙. 기록 화면은 원문을 [원문 시작]/[원문 끝] 표시 사이에 넣고 앞에 안내문을 붙여 보낸다.
       const SOURCE_PRESERVATION_RULES = `[원문 보존 규칙]
@@ -3714,16 +3729,25 @@ ${SOURCE_PRESERVATION_RULES}`;
         logger.warn('유료 이용 개시 로그 기록 실패(polishContent):', { uid, message: error?.message });
       });
 
-      return {
+      const result = {
         text: polishedText,
         stats: stats,
         aiComment: aiComment,
         ...(originalPreserved ? { originalPreserved: true } : {}),
       };
+      if (readingOperation) {
+        if (!result.text?.trim()) throw new HttpsError('internal', '독서 분석 결과를 만들지 못했습니다.');
+        await completeReadingAnalysis(readingOperation, result);
+      }
+      return result;
 
     } catch (error: any) {
       console.error('AI 처리 실패:', error);
-      await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+      if (readingOperation) {
+        await refundReadingAnalysis(readingOperation).catch(() => console.warn('reading analysis refund failed'));
+      } else {
+        await rollbackMonthlyAiQuotaReservation(monthlyQuotaReservation);
+      }
       await usage.rejected(error);
       if (error instanceof HttpsError) {
         throw error;
