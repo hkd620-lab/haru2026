@@ -133,6 +133,11 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* SAYU's footer reserves space for the fixed bottom navigation. */
+main:has(> .sayu-page-container) {
+  --content-pb: 0px;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
