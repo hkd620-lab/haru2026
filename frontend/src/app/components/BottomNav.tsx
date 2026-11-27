@@ -21,8 +21,8 @@ export function BottomNav() {
 
   const baseItems = [
     { path: homePath, icon: Home, label: 'HARU' },
-    { path: '/sayu', icon: Sparkles, label: 'SAYU·나의 기록' },
-    { path: '/sayu-together', icon: Users, label: '공개 기록 함께읽기' },
+    { path: '/sayu', icon: Sparkles, label: 'SAYU·나의 기록', mobileLabel: '나의 기록' },
+    { path: '/sayu-together', icon: Users, label: '공개 기록 함께읽기', mobileLabel: '함께 읽기' },
     { path: '/fun-videos', icon: Clapperboard, label: '재미 영상' },
     // 구독은 설정 화면·하단 안내(Footer)에서 들어간다 (은퇴자 대상 메뉴 정리 2026-11-18)
     { path: '/settings', icon: Settings, label: '설정' },
@@ -68,15 +68,9 @@ export function BottomNav() {
                 }}
               >
                 <Icon className="mb-1 h-5 w-5 shrink-0" strokeWidth={isActive ? 2.5 : 2} />
-                <span
-                  className="min-h-[34px] w-full min-w-0 max-w-full overflow-hidden text-center text-[14px] leading-[1.2] tracking-normal break-keep sm:text-base"
-                  style={{
-                    display: '-webkit-box',
-                    WebkitBoxOrient: 'vertical',
-                    WebkitLineClamp: 2,
-                  }}
-                >
-                  {item.label}
+                <span className="min-h-[34px] w-full min-w-0 break-keep text-center text-[14px] leading-[1.2] sm:text-base">
+                  <span className="sm:hidden">{'mobileLabel' in item ? item.mobileLabel : item.label}</span>
+                  <span className="hidden sm:inline">{item.label}</span>
                 </span>
               </Link>
             );
