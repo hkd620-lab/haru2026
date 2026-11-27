@@ -15,9 +15,9 @@ type SubFeature = {
 const FEATURES: SubFeature[] = [
   {
     path: '/child-health/growth',
-    title: '성장기록',
-    sub: '키·몸무게 측정 → 또래 백분위 → 성장 그래프',
-    desc: '국민건강보험공단 영유아 성장도표 기준으로 또래 백분위를 계산합니다. 기록이 쌓이면 성장 그래프가 자동으로 그려집니다.',
+    title: '관심人 성장일기',
+    sub: '성장 순간 기록 · 아이 성장 측정',
+    desc: '가족, 후배, 멘티의 성장 순간을 남겨요. 아이의 키·몸무게는 또래 백분위와 성장 그래프로 볼 수 있어요.',
     icon: (
       <>
         <path d="M12 2v20M2 12h20" />

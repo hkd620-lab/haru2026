@@ -1,3 +1,4 @@
+import { isSpecialDayRecord } from '../src/app/records/recordStats.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -109,7 +110,7 @@ test('SAYU exact-ID reader preserves the selected structured record, consent and
   for (const [record, prefix] of [[english, 'english_diary'], [growth, 'child_measure'], [voiding, 'voiding']]) {
     let result = null;
     const env = { records: [{ ...record, id: 'same-date-sibling' }, record], user: { uid: 'fixture-user' }, recordsOwnerUid: 'fixture-user',
-      healthReadConsent: true, ...views, getStructuredViewAccess, toast: { info() {} }, setStructuredRecord: value => { result = value; }, setSayuModalState() {}, setHarurawModal() {} };
+      healthReadConsent: true, ...views, getStructuredViewAccess, isSpecialDayRecord, toast: { info() {} }, setStructuredRecord: value => { result = value; }, setSayuModalState() {}, setHarurawModal() {} };
     handlers(source, ['openFormatSayu'], env).openFormatSayu(record.date, prefix, 'label', record.id);
     assert.equal(result.record.id, record.id);
     result = null; env.recordsOwnerUid = 'other-session'; handlers(source, ['openFormatSayu'], env).openFormatSayu(record.date, prefix, 'label', record.id);
@@ -126,19 +127,20 @@ function growthFixture() {
   const savingRef = { current: false }, pendingLinkRef = { current: null }, currentDraftKeyRef = { current: '' };
   const fixtureHandlers = () => {
     const env = { user: { uid: 'fixture-user' }, hasConsent: 'hasConsent' in state ? state.hasConsent : true, isCurrentSession: () => state.sessionActive !== false, savingRef, pendingLinkRef, currentDraftKeyRef,
-      selectedId: 'child-existing', newName: '', birthdate: '', gender: '', measuredate: state.date, height: state.height, weight: state.weight, headcircum: state.head,
+      selectedId: 'child-existing', newName: '', diaryTitle: '', diaryMemo: '', birthdate: '', gender: '', measuredate: state.date, height: state.height, weight: state.weight, headcircum: state.head,
       selectedSubject: { name: '합성 대상' }, matchedSubject: { name: '합성 대상' }, findSameNameChildSubject: async () => { state.lookups = (state.lookups ?? 0) + 1; return state.lookup ?? { status: 'none' }; },
       effectiveBirthdate: '2026-01-01', effectiveGender: 'F', savedGrowthRecordId: state.id,
       db: {}, getTodayStr: () => '2026-10-06', doc: (...parts) => parts.slice(1).join('/'),
       firestoreService: { saveRecord: async (uid, data) => { state.creates.push(data); if (state.recordPending) await state.recordPending; if (state.recordFail) throw new Error('fixture'); return 'exact-growth'; } },
       setDoc: async (path, data) => { state.links.push({ path, data }); if (state.linkPending && state.links.length === state.pendingAt) await state.linkPending; if (state.links.length === state.failAt) throw new Error('fixture'); },
       serverTimestamp: () => 'fixture-time', arrayUnion: value => [value], collection() {},
+      setSubjects() {}, setSelectedId() {}, setNewName() {}, setDiaryTitle() {}, setDiaryMemo() {}, setIsAddingPerson() {},
       setIsSaving() {}, setSavedGrowthRecordId: value => { state.id = value; }, setGrowthSaveStatus: value => { state.status = value; },
       setHeight: value => { state.height = value; }, setWeight: value => { state.weight = value; }, setHeadcircum: value => { state.head = value; }, setMeasuredate: value => { state.date = value; },
       navigate: (path, options) => state.routes.push({ path, ...options }), toast: { warning() {}, success() {}, error: message => { (state.errors ??= []).push(message); } }, console: { error() {} },
     };
     Object.assign(env, state.envOverrides); // 테스트가 화면의 선택·입력 상태(selectedId, newName, matchedSubject 등)를 바꿔 볼 수 있게 한다
-    currentDraftKeyRef.current = JSON.stringify([env.selectedId, env.newName, env.birthdate, env.gender, env.measuredate, env.height, env.weight, env.headcircum]);
+    currentDraftKeyRef.current = JSON.stringify([env.selectedId, env.newName, env.birthdate, env.gender, env.measuredate, env.height, env.weight, env.headcircum, env.diaryTitle, env.diaryMemo]);
     return handlers(read('pages/ChildHealthGrowthPage.tsx'), ['handleSave', 'handleViewGrowthRecord'], env);
   };
   return { state, handlers: fixtureHandlers };
@@ -147,6 +149,25 @@ test('growth save preserves measurement date and fields, then views the actual s
   const f = growthFixture(); await f.handlers().handleSave(); f.handlers().handleViewGrowthRecord();
   assert.equal(f.state.status, 'complete'); assert.equal(f.state.creates[0].child_measuredate, '2026-09-01');
   assert.equal(f.state.creates[0].child_height, '45.50'); assert.equal(f.state.routes[0].state.openRecordId, 'exact-growth');
+});
+test('growth diary saves a new person and custom title with a note alone', async () => {
+  const f = growthFixture();
+  f.state.envOverrides = {
+    selectedId: '', newName: '지수', selectedSubject: undefined, matchedSubject: undefined,
+    birthdate: '', gender: '', height: '', weight: '', headcircum: '',
+    diaryTitle: ' 지수 성장일기 ', diaryMemo: ' 발표를 마쳤다. ', doc: newChildDoc,
+  };
+  await f.handlers().handleSave();
+  const record = f.state.creates[0];
+  assert.equal(record.growth_diary_title, '지수 성장일기');
+  assert.equal(record.growth_diary_memo, '발표를 마쳤다.');
+  assert.ok(!('child_measuredate' in record));
+  assert.equal(f.state.links[0].data.diaryTitle, '지수 성장일기');
+  assert.equal(f.state.links[0].data.diaryOnly, true);
+  assert.equal(f.state.links[1].data.memo, '발표를 마쳤다.');
+  const view = views.buildStructuredAssistantView(record, 'child_measure');
+  assert.equal(view.title, '지수 성장일기');
+  assert.deepEqual(view.rows.find((row) => row.label === '일기 내용'), { label: '일기 내용', value: '발표를 마쳤다.' });
 });
 test('partial growth linkage retries the same entry without creating another record or rewriting the linked subject', async () => {
   const f = growthFixture(); f.state.failAt = 2; await f.handlers().handleSave();

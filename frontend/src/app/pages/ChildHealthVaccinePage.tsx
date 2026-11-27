@@ -86,6 +86,7 @@ export function ChildHealthVaccinePage() {
         );
         const snap = await getDocs(q);
         const list: GrowthSubject[] = snap.docs
+          .filter((d) => d.data().diaryOnly !== true)
           .map((d) => ({ id: d.id, name: String(d.data().name || ''), birthdate: String(d.data().birthdate || '') }))
           .filter((s) => s.name);
         setSubjects(list);

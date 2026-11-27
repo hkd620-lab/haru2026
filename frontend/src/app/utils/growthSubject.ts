@@ -20,7 +20,7 @@ export function findSameNameGrowthSubject<T extends GrowthSubjectLike>(subjects:
 // 저장 직전 "같은 이름의 아이가 이미 있는지" Firestore 조회 결과를 판정한다.
 // found: 같은 이름의 아이를 찾음 / none: 서버가 확인했고 같은 이름이 없음 / error: 확인하지 못함 — 실패를 "없음"으로 보면 안 된다.
 export type SameNameChildLookup =
-  | { status: 'found'; subject: { id: string; name: string; birthdate: string; gender?: 'M' | 'F' } }
+  | { status: 'found'; subject: { id: string; name: string; birthdate: string; diaryTitle?: string; gender?: 'M' | 'F' } }
   | { status: 'none' }
   | { status: 'error' };
 
@@ -41,6 +41,7 @@ export function resolveSameNameChild(snap: ChildSnapshotLike, name: unknown): Sa
         id: docSnap.id,
         name: String(data.name || '').trim(),
         birthdate: String(data.birthdate || data.growthSubjectBirthdate || ''),
+        ...(typeof data.diaryTitle === 'string' ? { diaryTitle: data.diaryTitle } : {}),
         gender: data.gender === 'M' || data.gender === 'F' ? (data.gender as 'M' | 'F') : undefined,
         latestRecordDate: String(data.latestRecordDate || ''),
       };

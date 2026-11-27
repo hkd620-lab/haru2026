@@ -37,9 +37,10 @@ export function buildStructuredAssistantView(record: Record<string, any>, prefix
   }
   if (prefix === 'child_measure') {
     add('대상', record.growthSubjectName);
+    add('일기 내용', record.growth_diary_memo);
     add('측정일', record.child_measuredate);
     add('키', record.child_height, 'cm'); add('몸무게', record.child_weight, 'kg'); add('머리둘레', record.child_headcircum, 'cm');
-    return { title: `${text(record.growthSubjectName) || '아이'} 성장기록`, rows, entries: [], origin: '/child-health/growth', sensitive: true };
+    return { title: text(record.growth_diary_title) || `${text(record.growthSubjectName) || '아이'} 성장기록`, rows, entries: [], origin: '/child-health/growth', sensitive: true };
   }
   add('취침', record.voiding_bedtime); add('기상', record.voiding_waketime);
   add('기존 저장 해석', record.voiding_sayu);
