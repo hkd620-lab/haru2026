@@ -68,7 +68,7 @@ export function BottomNav() {
                 }}
               >
                 <Icon className="mb-1 h-5 w-5 shrink-0" strokeWidth={isActive ? 2.5 : 2} />
-                <span className="min-h-[34px] w-full break-keep text-center text-xs leading-[1.2] sm:text-base">
+                <span className="min-h-[34px] w-full min-w-0 break-keep text-center text-[14px] leading-[1.2] sm:text-base">
                   <span className="sm:hidden">{'mobileLabel' in item ? item.mobileLabel : item.label}</span>
                   <span className="hidden sm:inline">{item.label}</span>
                 </span>
