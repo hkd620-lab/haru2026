@@ -1196,6 +1196,7 @@ export function FormatModal({ isOpen, onClose, format, recordId, initialData = {
             const q = query(subjectsRef, where('subjectType', '==', subjectType));
             const snap = await getDocs(q);
             const subjects = snap.docs
+              .filter((docSnap) => subjectType !== 'child' || docSnap.data().diaryOnly !== true)
               .map((docSnap) => {
                 const data = docSnap.data() as any;
                 return {

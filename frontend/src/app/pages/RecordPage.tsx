@@ -869,6 +869,11 @@ function RecordPageContent() {
             ? ((formatData as any)._sourceFormat as string)
             : growthSubjectType === 'child' ? '육아일기' : '텃밭일지';
         const prefix = growthSubjectType === 'child' ? 'child' : 'garden';
+        const hasChildMeasurements = growthSubjectType === 'child' &&
+          ['child_height', 'child_weight', 'child_headcircum'].some((key) => {
+            const value = Number(updateData[key]);
+            return Number.isFinite(value) && value > 0;
+          });
         const memo =
           String(updateData[`${prefix}_simple`] || '').trim() ||
           Object.entries(updateData)
@@ -897,6 +902,7 @@ function RecordPageContent() {
           {
             subjectType: growthSubjectType,
             name: growthSubjectName,
+            ...(hasChildMeasurements ? { diaryOnly: false } : {}),
             ...(growthSubjectBirthdate ? { birthdate: growthSubjectBirthdate } : {}),
             ...(growthSubjectGender ? { gender: growthSubjectGender } : {}),
             ...(existingGrowthSubjectId ? {} : { createdAt: serverTimestamp() }),
