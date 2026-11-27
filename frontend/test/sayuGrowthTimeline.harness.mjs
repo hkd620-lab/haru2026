@@ -1,3 +1,4 @@
+import { isSpecialDayRecord } from '../src/app/records/recordStats.ts';
 // SayuPage.tsx 의 성장타임라인 관련 블록을 소스에서 그대로 떼어 실행하는 하네스.
 // 같은 하네스로 이동 전 원본(main 33483fc)과 현재 소스를 같은 고정 데이터로 실행해 출력을 비교한다(P2c).
 import { transformSync } from 'esbuild';
@@ -83,7 +84,7 @@ export async function runSayuTimelineScenarios({ source, adapter, records, openC
   const baseEnv = {
     ...adapter,
     ...structuredViews,
-    getResultChatConfigForFormatKey, READING_ENTRY_TYPES, READING_STATUS, getFormatKey,
+    getResultChatConfigForFormatKey, READING_ENTRY_TYPES, READING_STATUS, getFormatKey, isSpecialDayRecord,
     h, Fragment: 'Fragment',
     records,
     user: { uid: 'fixture-user' },

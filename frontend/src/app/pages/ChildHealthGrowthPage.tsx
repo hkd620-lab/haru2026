@@ -19,6 +19,7 @@ import { findSameNameChildSubject } from '../services/growthSubjectLookup';
 type GrowthSubject = {
   id: string;
   name: string;
+  diaryTitle?: string;
   birthdate?: string;
   gender?: GrowthGender;
   latestRecordDate?: string;
@@ -60,6 +61,9 @@ function ChildHealthGrowthSession() {
   const [subjects, setSubjects] = useState<GrowthSubject[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [newName, setNewName] = useState('');
+  const [isAddingPerson, setIsAddingPerson] = useState(false);
+  const [diaryTitle, setDiaryTitle] = useState('');
+  const [diaryMemo, setDiaryMemo] = useState('');
   const [birthdate, setBirthdate] = useState('');
   const [gender, setGender] = useState<GrowthGender | ''>('');
 
@@ -74,7 +78,7 @@ function ChildHealthGrowthSession() {
   const [growthSaveStatus, setGrowthSaveStatus] = useState<'idle' | 'complete' | 'partial'>('idle');
   const pendingLinkRef = useRef<{ uid: string; draftKey: string; link: () => Promise<void> } | null>(null);
   const currentDraftKeyRef = useRef('');
-  currentDraftKeyRef.current = JSON.stringify([selectedId, newName, birthdate, gender, measuredate, height, weight, headcircum]);
+  currentDraftKeyRef.current = JSON.stringify([selectedId, newName, birthdate, gender, measuredate, height, weight, headcircum, diaryTitle, diaryMemo]);
 
   // 성장대상 목록 로드
   useEffect(() => {
@@ -93,6 +97,7 @@ function ChildHealthGrowthSession() {
             return {
               id: d.id,
               name: String(data.name || '').trim(),
+              diaryTitle: typeof data.diaryTitle === 'string' ? data.diaryTitle : undefined,
               birthdate: String(data.birthdate || ''),
               gender: data.gender === 'M' || data.gender === 'F' ? data.gender : undefined,
               latestRecordDate: String(data.latestRecordDate || ''),
@@ -142,11 +147,11 @@ function ChildHealthGrowthSession() {
   const handleSelectSubject = (id: string) => {
     const s = subjects.find((sub) => sub.id === id);
     setSelectedId(id);
-    if (id) {
-      setNewName('');
-      setBirthdate(s?.birthdate || '');
-      setGender(s?.gender || '');
-    }
+    setNewName('');
+    setDiaryTitle('');
+    setBirthdate(s?.birthdate || '');
+    setGender(s?.gender || '');
+    setIsAddingPerson(false);
   };
 
   const handleNewNameChange = (v: string) => {
@@ -168,16 +173,18 @@ function ChildHealthGrowthSession() {
 
   const handleSave = async () => {
     if (!user?.uid || hasConsent !== true || !isCurrentSession() || savingRef.current) return;
-    const draftKey = JSON.stringify([selectedId, newName, birthdate, gender, measuredate, height, weight, headcircum]);
+    const draftKey = JSON.stringify([selectedId, newName, birthdate, gender, measuredate, height, weight, headcircum, diaryTitle, diaryMemo]);
     const pendingLink = pendingLinkRef.current;
     if (pendingLink && pendingLink.uid !== user.uid) return;
     const subjectName = newName.trim() || selectedSubject?.name || '';
     if (!pendingLink && !subjectName) {
-      toast.warning('아이 이름을 입력하거나 선택해 주세요.');
+      toast.warning('이름이나 별명을 입력하거나 등록된 사람을 선택해 주세요.');
       return;
     }
-    if (!pendingLink && !height && !weight && !headcircum) {
-      toast.warning('키, 몸무게, 머리둘레 중 하나 이상 입력해 주세요.');
+    const memo = diaryMemo.trim();
+    const hasMeasurements = Boolean(height || weight || headcircum);
+    if (!pendingLink && !hasMeasurements && !memo) {
+      toast.warning('일기 내용이나 측정값을 입력해 주세요.');
       return;
     }
     savingRef.current = true;
@@ -190,19 +197,20 @@ function ChildHealthGrowthSession() {
         setGrowthSaveStatus('complete');
         if (pendingLink.draftKey === currentDraftKeyRef.current) {
           setHeight(''); setWeight(''); setHeadcircum(''); setMeasuredate(getTodayStr());
+          setDiaryMemo('');
         }
         toast.success('저장한 성장기록의 대상 연결을 완료했습니다.');
         return;
       }
       // 아이를 이름만 써서 새로 추가하는 경우, 저장 직전에 같은 이름의 아이가 이미 있는지 다시 확인한다 —
       // 대상 목록을 불러오기 전에 저장했거나 다른 기기에서 막 등록한 경우에도 같은 아이가 둘로 갈라지지 않게 한다
-      let existingSubject: { id: string; name: string; birthdate?: string; gender?: GrowthGender } | undefined = matchedSubject;
+      let existingSubject: GrowthSubject | undefined = matchedSubject;
       if (!existingSubject) {
         const lookup = await findSameNameChildSubject(user.uid, subjectName);
         if (!isCurrentSession()) return;
         // 확인하지 못했다면(네트워크 오류·오프라인 등) "같은 이름이 없다"고 보지 않고 저장을 멈춘다 — 그대로 저장하면 같은 아이가 둘로 갈라질 수 있다
         if (lookup.status === 'error') {
-          toast.error('같은 이름의 아이가 이미 있는지 확인하지 못했어요. 네트워크를 확인하고 다시 저장해 주세요.');
+          toast.error('같은 이름이 이미 등록됐는지 확인하지 못했어요. 네트워크를 확인하고 다시 저장해 주세요.');
           return;
         }
         if (lookup.status === 'found') {
@@ -212,7 +220,7 @@ function ChildHealthGrowthSession() {
             (birthdate && lookup.subject.birthdate && birthdate !== lookup.subject.birthdate) ||
             (gender && lookup.subject.gender && gender !== lookup.subject.gender)
           ) {
-            toast.error(`이미 등록된 "${lookup.subject.name}"의 생년월일·성별과 입력한 값이 달라요. 아이 선택에서 "${lookup.subject.name}"를 고르거나 입력값을 확인해 주세요.`);
+            toast.error(`이미 등록된 "${lookup.subject.name}"의 생년월일·성별과 입력한 값이 달라요. 사람 선택에서 "${lookup.subject.name}"를 고르거나 입력값을 확인해 주세요.`);
             return;
           }
           existingSubject = lookup.subject;
@@ -223,12 +231,17 @@ function ChildHealthGrowthSession() {
       setSavedGrowthRecordId(null);
       const today = getTodayStr();
       const saveName = existingSubject?.name || subjectName;
+      const customTitle = diaryTitle.trim();
+      const saveTitle = customTitle || existingSubject?.diaryTitle;
       const subjectId = selectedId || existingSubject?.id || doc(collection(db, 'users', user.uid, 'growthSubjects')).id;
       // 이미 있는 아이에 이어서 기록할 때는 그 아이의 생년월일·성별을 우선한다(위에서 서로 다른 값은 걸러냈으므로 비어 있던 쪽만 채워진다)
       const saveBirthdate = existingSubject?.birthdate || birthdate;
       const saveGender = existingSubject?.gender || gender || undefined;
       const recordFields: Record<string, string> = {
-        child_measuredate: measuredate,
+        ...(hasMeasurements ? { child_measuredate: measuredate } : {}),
+        // 기존 EPUB 내보내기는 growth_title과 growth_note를 읽는다.
+        ...(saveTitle ? { growth_diary_title: saveTitle, growth_title: saveTitle } : {}),
+        ...(memo ? { growth_diary_memo: memo, growth_note: memo } : {}),
         ...(height ? { child_height: height } : {}),
         ...(weight ? { child_weight: weight } : {}),
         ...(headcircum ? { child_headcircum: headcircum } : {}),
@@ -259,6 +272,8 @@ function ChildHealthGrowthSession() {
           {
             subjectType: 'child',
             name: saveName,
+            ...(customTitle ? { diaryTitle: customTitle } : {}),
+            ...(hasMeasurements || !isExistingSubject ? { diaryOnly: !hasMeasurements } : {}),
             ...(saveBirthdate ? { birthdate: saveBirthdate } : {}),
             ...(saveGender ? { gender: saveGender } : {}),
             ...(isExistingSubject ? {} : { createdAt: serverTimestamp() }),
@@ -273,6 +288,7 @@ function ChildHealthGrowthSession() {
 
         // entries 서브컬렉션
         const memoLines = [
+          memo,
           height ? `키 ${height}cm` : '',
           weight ? `몸무게 ${weight}kg` : '',
           headcircum ? `머리둘레 ${headcircum}cm` : '',
@@ -292,6 +308,17 @@ function ChildHealthGrowthSession() {
           },
           { merge: true },
         );
+        if (!isCurrentSession()) return;
+        setSubjects((current) => [
+          { id: subjectId, name: saveName, diaryTitle: saveTitle, birthdate: saveBirthdate, gender: saveGender, latestRecordDate: today },
+          ...current.filter((subject) => subject.id !== subjectId),
+        ]);
+        if (draftKey === currentDraftKeyRef.current) {
+          setSelectedId(subjectId);
+          setNewName('');
+          setDiaryTitle('');
+          setIsAddingPerson(false);
+        }
       };
       pendingLinkRef.current = { uid: user.uid, draftKey, link };
       await link();
@@ -299,9 +326,10 @@ function ChildHealthGrowthSession() {
       pendingLinkRef.current = null;
       setGrowthSaveStatus('complete');
 
-      toast.success('성장기록이 저장되었습니다!');
+      toast.success('관심人 성장일기가 저장되었습니다.');
       if (draftKey === currentDraftKeyRef.current) {
         setHeight(''); setWeight(''); setHeadcircum(''); setMeasuredate(getTodayStr());
+        setDiaryMemo('');
       }
     } catch (e) {
       if (!isCurrentSession()) return;
@@ -354,49 +382,68 @@ function ChildHealthGrowthSession() {
 
       <div className="mb-2 flex items-center gap-2">
         <span style={{ fontSize: 11, color: '#888780', letterSpacing: '0.04em' }}>
-          HARU · 아이건강 &gt; 성장기록
+          HARU · 아이건강 &gt; 관심人 성장일기
         </span>
       </div>
 
       <div className="mb-5">
-        <h1 className="text-xl font-bold" style={{ color: '#0F766E' }}>📏 성장기록</h1>
+        <h1 className="text-xl font-bold" style={{ color: '#0F766E' }}>📏 관심人 성장일기</h1>
         <p className="text-sm mt-1" style={{ color: '#6B7280', lineHeight: 1.6 }}>
-          키·몸무게를 기록하고 또래 백분위를 확인하세요.
+          가족, 후배, 멘티의 성장 순간을 남겨요. 아이의 키·몸무게를 입력하면 또래 백분위도 볼 수 있어요.
         </p>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* 아이 선택 */}
+        {/* 기록 대상 선택 */}
         <div style={{ padding: 16, border: '1px solid #99F6E4', borderRadius: 12, backgroundColor: '#F0FDFA' }}>
-          <label style={labelStyle}>아이 선택</label>
+          <label htmlFor="growth-person" style={labelStyle}>사람 선택</label>
           <select
+            id="growth-person"
             value={selectedId}
             onChange={(e) => handleSelectSubject(e.target.value)}
             style={{ ...inputStyle, marginBottom: 8, border: '1px solid #99F6E4' }}
           >
-            <option value="">기존 아이 선택</option>
+            <option value="">등록된 사람 선택</option>
             {subjects.map((s) => (
-              <option key={s.id} value={s.id}>{growthSubjectOptionLabel(s, subjects, true)}</option>
+              <option key={s.id} value={s.id}>{growthSubjectOptionLabel(s, subjects, true)}{s.diaryTitle ? ` · ${s.diaryTitle}` : ''}</option>
             ))}
           </select>
-          <input
+          <button type="button" aria-expanded={isAddingPerson} onClick={() => {
+            handleSelectSubject('');
+            setIsAddingPerson(!isAddingPerson);
+          }} className="text-sm font-semibold text-teal-800">
+            {isAddingPerson ? '추가 취소' : '+ 사람 추가'}
+          </button>
+          {isAddingPerson && <input
+            aria-label="이름 또는 별명"
             type="text"
             value={newName}
             onChange={(e) => handleNewNameChange(e.target.value)}
-            placeholder="또는 새 아이 이름 입력"
-            style={inputStyle}
-          />
+            placeholder="이름 또는 별명 (예: 민준이)"
+            style={{ ...inputStyle, marginTop: 8 }}
+          />}
           {sameNameSubject && (
             <p style={{ margin: '6px 0 0', fontSize: 12, color: '#0F766E', lineHeight: 1.5, wordBreak: 'keep-all' }}>
               이미 등록된 이름이에요. 저장하면 기존 "{sameNameSubject.name}"에 이어서 기록됩니다.
             </p>
           )}
 
+          {(isAddingPerson || selectedSubject) && <div style={{ marginTop: 12 }}>
+            <label htmlFor="growth-diary-title" style={labelStyle}>일기 이름</label>
+            <input
+              id="growth-diary-title"
+              value={diaryTitle}
+              onChange={(e) => setDiaryTitle(e.target.value)}
+              placeholder={matchedSubject?.diaryTitle || '예: 손주&애기 성장일기'}
+              style={inputStyle}
+            />
+          </div>}
+
           {/* 생년월일 / 성별 */}
           <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
             <div>
-              <label style={{ ...labelStyle, fontSize: 12 }}>생년월일</label>
+              <label style={{ ...labelStyle, fontSize: 12 }}>생년월일 (선택)</label>
               <input
                 type="date"
                 value={effectiveBirthdate}
@@ -410,7 +457,7 @@ function ChildHealthGrowthSession() {
               />
             </div>
             <div>
-              <label style={{ ...labelStyle, fontSize: 12 }}>성별</label>
+              <label style={{ ...labelStyle, fontSize: 12 }}>성별 (선택)</label>
               <div style={{ display: 'flex', gap: 8 }}>
                 {(['M', 'F'] as GrowthGender[]).map((g) => (
                   <button
@@ -438,9 +485,20 @@ function ChildHealthGrowthSession() {
           </div>
         </div>
 
+        <div>
+          <label htmlFor="growth-diary-memo" style={labelStyle}>일기 내용</label>
+          <textarea
+            id="growth-diary-memo"
+            rows={4}
+            value={diaryMemo}
+            onChange={(e) => setDiaryMemo(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
         {/* 측정값 입력 */}
         <div style={{ padding: 16, border: '1px solid #99F6E4', borderRadius: 12, backgroundColor: '#F0FDFA' }}>
-          <label style={labelStyle}>오늘 측정값</label>
+          <label style={labelStyle}>측정값 (선택)</label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
             {[
               { key: 'height', value: height, setter: setHeight, placeholder: '예: 85.4' },
