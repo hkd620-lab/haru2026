@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { useLocation, useNavigate } from 'react-router';
 import { VideoFinderPolicyLinks, VideoFinderPolicySummary, YouTubeAttribution } from './VideoFinderPolicies';
 import { VideoQuestionDialog, type VideoQuestionTarget } from './VideoQuestionDialog';
+import youtubePhoneGuide from './assets/youtube-phone.png';
+import youtubeComputerGuide from './assets/youtube-computer.png';
 import {
   ALL_TOPICS,
   DEFAULT_FILTERS,
@@ -691,6 +693,19 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
           <p className="mt-2 text-base leading-7 text-[#3b4a3f]">운영자가 골라 둔 ‘재미 영상’과 달리, 이곳은 내가 직접 찾고 모으는 곳이에요. 보관한 영상과 메모는 나만 봐요.</p>
           <p className="mt-2 text-base leading-7 text-[#3b4a3f]">영상 정보 출처: YouTube · 영상은 YouTube에서 재생돼요.</p>
           <div className="mt-3"><YouTubeAttribution /></div>
+        </section>
+
+        <section aria-labelledby="youtube-tips-heading" className="mt-5 rounded-2xl border border-[#dce3d2] bg-white p-5 sm:px-7">
+          <h2 id="youtube-tips-heading" className="text-xl font-bold">유튜브 사용 팁</h2>
+          <p className="mt-1 text-base leading-6 text-[#45564a]">기기에 맞는 그림 안내를 새 탭에서 열어 보세요.</p>
+          <div className="mt-2 flex flex-wrap gap-x-6">
+            <a href={youtubePhoneGuide} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center rounded-sm text-lg font-bold text-[#285843] underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">
+              휴대폰용 그림 보기
+            </a>
+            <a href={youtubeComputerGuide} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center rounded-sm text-lg font-bold text-[#285843] underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">
+              컴퓨터용 그림 보기
+            </a>
+          </div>
         </section>
 
         <nav aria-label="내 영상 찾기 메뉴" className="mt-5 flex flex-wrap gap-2 rounded-2xl border border-[#dce3d2] bg-[#f7faed] p-2">
