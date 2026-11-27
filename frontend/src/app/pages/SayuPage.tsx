@@ -4615,7 +4615,7 @@ export function SayuPage() {
               title: groupDisplayLabel,
               subtitle: group.label === '독서사유'
                 ? `최근 완독 · ${group.entries[0].title}`
-                : formatCountLabel(groupCount),
+                : null,
               description: `최근 기록 ${formatListDate(group.latestDate)} · 기록과 사유를 모아두었습니다.`,
             };
           })();
@@ -4644,9 +4644,11 @@ export function SayuPage() {
                       {formatCountLabel(groupCount)}
                     </span>
                   </span>
-                  <span style={{ fontSize: 12, color: '#4B5563', lineHeight: 1.45, fontWeight: 700 }}>
-                    {groupCopy.subtitle}
-                  </span>
+                  {groupCopy.subtitle && (
+                    <span style={{ fontSize: 12, color: '#4B5563', lineHeight: 1.45, fontWeight: 700 }}>
+                      {groupCopy.subtitle}
+                    </span>
+                  )}
                   <span style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4 }}>
                     {groupCopy.description}
                   </span>
