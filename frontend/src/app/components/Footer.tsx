@@ -25,11 +25,13 @@ export function Footer() {
           <div className="flex min-w-0 flex-col justify-between gap-1">
             <p>연락처: {BUSINESS_INFO.phone}</p>
             <p>이메일: {BUSINESS_INFO.email}</p>
-            <p>사이트: {BUSINESS_INFO.site}</p>
+            <p>
+              사이트: <a href="https://haru2026.com/welcome/" className="underline">하루랩 메인 홈페이지</a>
+            </p>
             <p>하루랩에서 운영하는 사이트에서 판매되는 모든 상품은 하루랩에서 책임지고 있습니다.</p>
             <p>
               민원 담당자: 허경대<br />
-              연락처: 010-6309-6107
+              연락처: {BUSINESS_INFO.phone}
             </p>
           </div>
         </section>
