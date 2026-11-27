@@ -161,6 +161,8 @@ test('growth diary saves a new person and custom title with a note alone', async
   const record = f.state.creates[0];
   assert.equal(record.growth_diary_title, '지수 성장일기');
   assert.equal(record.growth_diary_memo, '발표를 마쳤다.');
+  assert.equal(record.growth_title, record.growth_diary_title);
+  assert.equal(record.growth_note, record.growth_diary_memo);
   assert.ok(!('child_measuredate' in record));
   assert.equal(f.state.links[0].data.diaryTitle, '지수 성장일기');
   assert.equal(f.state.links[0].data.diaryOnly, true);

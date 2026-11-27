@@ -239,8 +239,9 @@ function ChildHealthGrowthSession() {
       const saveGender = existingSubject?.gender || gender || undefined;
       const recordFields: Record<string, string> = {
         ...(hasMeasurements ? { child_measuredate: measuredate } : {}),
-        ...(saveTitle ? { growth_diary_title: saveTitle } : {}),
-        ...(memo ? { growth_diary_memo: memo } : {}),
+        // 기존 EPUB 내보내기는 growth_title과 growth_note를 읽는다.
+        ...(saveTitle ? { growth_diary_title: saveTitle, growth_title: saveTitle } : {}),
+        ...(memo ? { growth_diary_memo: memo, growth_note: memo } : {}),
         ...(height ? { child_height: height } : {}),
         ...(weight ? { child_weight: weight } : {}),
         ...(headcircum ? { child_headcircum: headcircum } : {}),
