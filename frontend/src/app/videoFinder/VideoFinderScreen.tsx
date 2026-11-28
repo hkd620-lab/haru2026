@@ -691,6 +691,14 @@ function VideoFinderContent({ basePath, variant, client, accountKey, haruOrigin 
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">내 영상 찾기</h1>
           <p className="mt-3 text-lg leading-8">원하는 영상을 찾아 내 보관함에 모아요. 메모를 남겨 두고 며칠 뒤 다시 꺼내 볼 수 있어요.</p>
           <p className="mt-2 text-base leading-7 text-[#3b4a3f]">운영자가 골라 둔 ‘재미 영상’과 달리, 이곳은 내가 직접 찾고 모으는 곳이에요. 보관한 영상과 메모는 나만 봐요.</p>
+          <section aria-labelledby="vf-feature-guide-heading" className="my-4 border-y border-[#c4d2a7] py-4">
+            <h2 id="vf-feature-guide-heading" className="text-lg font-bold">내 영상 찾기에서 이렇게 써보세요</h2>
+            <ul className="mt-2 list-disc space-y-2 pl-5 text-base leading-7 text-[#3b4a3f]">
+              <li><strong>자주 찾는 주제는 한 번에.</strong> ‘관심 분야 추가’에서 ‘텃밭 가꾸기’처럼 내 주제를 만들고, 다음에는 같은 브라우저에서 그 주제를 눌러 검색해요.</li>
+              <li><strong>저장한 영상은 내 메모로.</strong> 보관한 영상에 ‘봄에 따라 하기’ 같은 메모나 태그를 남겨요. 제목이 생각나지 않아도 내 보관함에서 그 말로 찾을 수 있어요.</li>
+              <li><strong>좋아요가 많은 영상만 골라 보기.</strong> ‘좋아요 TOP 10’으로 검색하면 후보 중 공개 좋아요가 많은 영상 최대 10개를 볼 수 있어요. AI 검색을 쓸 때는 이 옵션을 고른 뒤 ‘찾기’를 눌러요.</li>
+            </ul>
+          </section>
           <p className="mt-2 text-base leading-7 text-[#3b4a3f]">영상 정보 출처: YouTube · 영상은 YouTube에서 재생돼요.</p>
           <div className="mt-3"><YouTubeAttribution /></div>
         </section>
